@@ -1,0 +1,21 @@
+{
+  "entity": "users",
+  "columns": [
+    {
+      "field": "email",
+      "title": "Email"
+    },
+    {
+      "field": "is_active",
+      "title": "Active"
+    }
+  ],
+  "filters": [],
+  "sort": [
+    [
+      "email",
+      "asc"
+    ]
+  ],
+  "pageSize": 10
+}

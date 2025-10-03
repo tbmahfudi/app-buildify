@@ -1,0 +1,12 @@
+{
+  "items": [
+    {
+      "title": "Dashboard",
+      "route": "dashboard"
+    },
+    {
+      "title": "Data Table",
+      "route": "datatable"
+    }
+  ]
+}
