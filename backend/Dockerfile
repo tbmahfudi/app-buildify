@@ -5,8 +5,8 @@ FROM python:3.11-slim
 WORKDIR /app
 
 # Copy backend files
-COPY backend/requirements.txt .
-COPY backend/ .
+COPY ./requirements.txt .
+COPY . .
 
 # Install dependencies
 RUN pip install --no-cache-dir --upgrade pip && \
