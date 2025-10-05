@@ -1,0 +1,28 @@
+{
+  "items": [
+    {
+      "title": "Dashboard",
+      "route": "dashboard"
+    },
+    {
+      "title": "Companies",
+      "route": "companies"
+    },
+    {
+      "title": "Branches",
+      "route": "branches"
+    },
+    {
+      "title": "Departments",
+      "route": "departments"
+    },
+    {
+      "title": "Audit Trail",
+      "route": "audit"
+    },
+    {
+      "title": "Settings",
+      "route": "settings"
+    }
+  ]
+}

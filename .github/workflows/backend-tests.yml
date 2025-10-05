@@ -1,0 +1,79 @@
+name: Backend Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: testuser
+          POSTGRES_PASSWORD: testpass
+          POSTGRES_DB: testdb
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Cache pip packages
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+    
+    - name: Install dependencies
+      run: |
+        cd backend
+        pip install --upgrade pip
+        pip install -r requirements.txt
+    
+    - name: Run migrations
+      env:
+        SQLALCHEMY_DATABASE_URL: postgresql+psycopg2://testuser:testpass@localhost:5432/testdb
+        SECRET_KEY: test-secret-key-for-ci-cd-pipeline
+      run: |
+        cd backend
+        alembic upgrade head
+    
+    - name: Seed data
+      env:
+        SQLALCHEMY_DATABASE_URL: postgresql+psycopg2://testuser:testpass@localhost:5432/testdb
+      run: |
+        cd backend
+        python -m app.seeds.seed_org
+        python -m app.seeds.seed_users
+    
+    - name: Start API server
+      env:
+        SQLALCHEMY_DATABASE_URL: postgresql+psycopg2://testuser:testpass@localhost:5432/testdb
+        SECRET_KEY: test-secret-key-for-ci-cd-pipeline
+      run: |
+        cd backend
+        uvicorn app.main:app --host 0.0.0.0 --port 8000 &
+        sleep 5
+    
+    - name: Run API tests
+      run: |
+        cd backend
+        chmod +x test_api.sh
+        ./test_api.sh
