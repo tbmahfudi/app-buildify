@@ -112,7 +112,7 @@ def upgrade():
         sa.Column('entity_type', sa.String(length=100), nullable=True),
         sa.Column('entity_id', sa.String(length=36), nullable=True),
         sa.Column('changes', sa.Text(), nullable=True),
-        sa.Column('metadata', sa.Text(), nullable=True),
+        sa.Column('context_info', sa.Text(), nullable=True),
         sa.Column('ip_address', sa.String(length=45), nullable=True),
         sa.Column('user_agent', sa.String(length=500), nullable=True),
         sa.Column('request_id', sa.String(length=36), nullable=True),

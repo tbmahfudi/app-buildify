@@ -25,7 +25,7 @@ class AuditLog(Base):
     
     # Details
     changes = Column(Text, nullable=True)  # JSON: before/after diff
-    metadata = Column(Text, nullable=True)  # JSON: additional context
+    context_info  = Column(Text, nullable=True)  # JSON: additional context
     
     # Request context
     ip_address = Column(String(45), nullable=True)

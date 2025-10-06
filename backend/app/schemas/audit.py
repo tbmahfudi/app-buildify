@@ -12,7 +12,7 @@ class AuditLogResponse(BaseModel):
     entity_type: Optional[str]
     entity_id: Optional[str]
     changes: Optional[Dict[str, Any]] = None
-    metadata: Optional[Dict[str, Any]] = None
+    context_info: Optional[Dict[str, Any]] = None
     ip_address: Optional[str]
     status: str
     error_message: Optional[str]

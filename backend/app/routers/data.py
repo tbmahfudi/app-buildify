@@ -384,7 +384,7 @@ def bulk_operation(
             action=f"BULK_{request.operation.upper()}",
             user=current_user,
             entity_type=entity,
-            metadata={
+            context_info={
                 "total": len(request.records),
                 "success": success,
                 "failed": failed

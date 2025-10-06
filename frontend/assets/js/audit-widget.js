@@ -131,6 +131,11 @@ export class AuditWidget {
       div.appendChild(changesDiv);
     }
 
+    if (log.context_info) {
+        const contextDiv = this.renderContextInfo(log.context_info);
+        div.appendChild(contextDiv);
+    }    
+
     // Error message (if failed)
     if (log.error_message) {
       const error = document.createElement('div');
@@ -287,6 +292,27 @@ export class AuditWidget {
     nav.appendChild(ul);
     this.container.appendChild(nav);
   }
+
+    renderContextInfo(contextInfo) {
+        const div = document.createElement('div');
+        div.className = 'audit-context mt-2';
+        
+        const details = document.createElement('details');
+        const summary = document.createElement('summary');
+        summary.className = 'text-info small';
+        summary.style.cursor = 'pointer';
+        summary.textContent = 'View context';
+        details.appendChild(summary);
+        
+        const contextList = document.createElement('div');
+        contextList.className = 'mt-2 p-2 bg-light rounded';
+        contextList.innerHTML = '<pre>' + JSON.stringify(contextInfo, null, 2) + '</pre>';
+        
+        details.appendChild(contextList);
+        div.appendChild(details);
+        
+        return div;
+    }  
 
   /**
    * Get action color

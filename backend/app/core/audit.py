@@ -14,7 +14,7 @@ def create_audit_log(
     entity_type: Optional[str] = None,
     entity_id: Optional[str] = None,
     changes: Optional[Dict[str, Any]] = None,
-    metadata: Optional[Dict[str, Any]] = None,
+    context_info: Optional[Dict[str, Any]] = None,
     request: Optional[Request] = None,
     status: str = "success",
     error_message: Optional[str] = None
@@ -38,7 +38,7 @@ def create_audit_log(
         entity_type=entity_type,
         entity_id=entity_id,
         changes=json.dumps(changes) if changes else None,
-        metadata=json.dumps(metadata) if metadata else None,
+        context_info=json.dumps(context_info) if context_info else None,
         ip_address=ip_address,
         user_agent=user_agent,
         request_id=str(uuid.uuid4()),

@@ -240,7 +240,7 @@ def update_tenant_settings(
         user=current_user,
         entity_type="tenant_settings",
         entity_id=str(settings.id),
-        metadata={"tenant_id": target_tenant},
+        context_info={"tenant_id": target_tenant},
         status="success"
     )
     

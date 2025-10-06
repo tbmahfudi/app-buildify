@@ -108,7 +108,7 @@ def create_entity_metadata(
         user=current_user,
         entity_type="entity_metadata",
         entity_id=str(metadata.id),
-        metadata={"entity_name": entity.entity_name},
+        context_info={"entity_name": entity.entity_name},
         status="success"
     )
     
@@ -170,7 +170,7 @@ def update_entity_metadata(
         user=current_user,
         entity_type="entity_metadata",
         entity_id=str(metadata.id),
-        metadata={"entity_name": entity_name},
+        context_info={"entity_name": entity_name},
         status="success"
     )
     
@@ -222,7 +222,7 @@ def delete_entity_metadata(
         user=current_user,
         entity_type="entity_metadata",
         entity_id=str(metadata.id),
-        metadata={"entity_name": entity_name},
+        context_info={"entity_name": entity_name},
         status="success"
     )
     
