@@ -3,6 +3,18 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import APP_NAME, ALLOWED_ORIGINS
 from app.routers import org, auth, metadata, data, audit, settings
 
+import logging
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler("app.log"),
+        logging.StreamHandler()
+    ]
+)
+
 app = FastAPI(title=APP_NAME)
 app.add_middleware(
     CORSMiddleware, 

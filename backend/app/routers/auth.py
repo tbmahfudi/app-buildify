@@ -4,12 +4,17 @@ from datetime import datetime
 from typing import Optional
 import json
 
+import logging
+from sqlalchemy.orm.exc import StaleDataError
+
 from app.core.dependencies import get_db, get_current_user
 from app.core.auth import verify_password, create_access_token, create_refresh_token, decode_token
 from app.models.user import User
 from app.schemas.auth import LoginRequest, TokenResponse, RefreshRequest, UserResponse
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
+# Set up logger at the top of your file
+logger = logging.getLogger(__name__)
 
 @router.post("/login", response_model=TokenResponse)
 def login(
@@ -50,10 +55,38 @@ def login(
     
     access_token = create_access_token(token_data)
     refresh_token = create_refresh_token({"sub": str(user.id)})
+    # Update last login - Fix for StaleDataError
+    try:
+        logger.info(f"Updating last_login for user {user.id}")
+        logger.debug(f"User object state before update: {db.object_session(user)}")
+        
+        # Ensure the object is in the session
+        if user not in db:
+            logger.warning(f"User {user.id} not in session, re-querying")
+            user = db.query(User).filter(User.id == user.id).first()
+            if not user:
+                raise HTTPException(status_code=500, detail="User session error")
+        
+        user.last_login = datetime.utcnow()
+        db.flush()  # Flush to see if there are any issues before commit
+        logger.debug(f"Flushed successfully, now committing")
+        db.commit()
+        logger.info(f"Successfully updated last_login for user {user.id}")
+        
+    except StaleDataError as e:
+        logger.error(f"StaleDataError for user {user.id}: {e}")
+        db.rollback()
+        # Still return tokens even if last_login update fails
+        logger.warning("Proceeding with login despite last_login update failure")
+    except Exception as e:
+        logger.error(f"Unexpected error updating last_login for user {user.id}: {e}")
+        db.rollback()
     
-    # Update last login
-    user.last_login = datetime.utcnow()
-    db.commit()
+    return TokenResponse(
+        access_token=access_token,
+        refresh_token=refresh_token
+    )
+    
     
     return TokenResponse(
         access_token=access_token,
