@@ -20,6 +20,9 @@ COMPOSE_FILE="docker-compose.dev.yml"
 PROJECT_DIR="infra"
 COMPOSE_FULL_PATH="$PROJECT_DIR/$COMPOSE_FILE"
 
+# Get the script's directory
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 # Function to print colored output
 print_info() {
     echo -e "${GREEN}[INFO]${NC} $1"
@@ -63,6 +66,7 @@ show_help() {
     echo "  build       - Build images"
     echo "  shell       - Open backend shell"
     echo "  db-shell    - Open database shell"
+    echo "  seed        - Seed database with test data"
     echo "  help        - Show this help message"
     echo ""
     echo "Database types:"
@@ -78,7 +82,7 @@ show_help() {
 # Function to start services
 start_services() {
     print_info "Starting services with $DATABASE..."
-    docker-compose -f $COMPOSE_FULL_PATH up -d
+    docker compose -f "$COMPOSE_FULL_PATH" up -d
     print_info "Services started successfully"
     print_info "Backend: http://localhost:8000"
     print_info "Frontend: http://localhost:8080"
@@ -87,7 +91,7 @@ start_services() {
 # Function to stop services
 stop_services() {
     print_info "Stopping services..."
-    docker-compose -f $COMPOSE_FULL_PATH down
+    docker compose -f "$COMPOSE_FULL_PATH" down
     print_info "Services stopped successfully"
 }
 
@@ -102,7 +106,7 @@ restart_services() {
 run_migrations() {
     print_info "Running database migrations..."
     
-    if ! docker-compose -f $COMPOSE_FULL_PATH exec -T backend alembic upgrade head; then
+    if ! docker compose -f "$COMPOSE_FULL_PATH" exec -T backend alembic upgrade head; then
         print_error "Migration failed"
         exit 1
     fi
@@ -113,7 +117,7 @@ run_migrations() {
 # Function to view logs
 view_logs() {
     print_info "Displaying logs (Ctrl+C to exit)..."
-    docker-compose -f $COMPOSE_FULL_PATH logs -f
+    docker compose -f "$COMPOSE_FULL_PATH" logs -f
 }
 
 # Function to clean up
@@ -123,7 +127,7 @@ clean_services() {
     echo
     if [[ $REPLY =~ ^[Yy]$ ]]; then
         print_info "Cleaning up..."
-        docker-compose -f $COMPOSE_FULL_PATH down -v
+        docker compose -f "$COMPOSE_FULL_PATH" down -v
         print_info "Cleanup completed"
     else
         print_info "Cleanup cancelled"
@@ -133,14 +137,14 @@ clean_services() {
 # Function to build images
 build_images() {
     print_info "Building images..."
-    docker-compose -f $COMPOSE_FULL_PATH build
+    docker compose -f "$COMPOSE_FULL_PATH" build
     print_info "Build completed successfully"
 }
 
 # Function to open backend shell
 open_backend_shell() {
     print_info "Opening backend shell..."
-    docker-compose -f $COMPOSE_FULL_PATH exec backend /bin/bash
+    docker compose -f "$COMPOSE_FULL_PATH" exec backend /bin/bash
 }
 
 # Function to open database shell
@@ -148,11 +152,26 @@ open_db_shell() {
     print_info "Opening $DATABASE shell..."
     
     if [ "$DATABASE" = "postgres" ]; then
-        docker-compose -f $COMPOSE_FULL_PATH exec postgres psql -U appuser -d appdb
+        docker compose -f "$COMPOSE_FULL_PATH" exec postgres psql -U appuser -d appdb
     elif [ "$DATABASE" = "mysql" ]; then
-        docker-compose -f $COMPOSE_FULL_PATH exec mysql mysql -u appuser -p appdb
+        docker compose -f "$COMPOSE_FULL_PATH" exec mysql mysql -u appuser -p appdb
     fi
+}
+
+# Function to seed database
+seed_database() {
+    print_info "Seeding database..."
     
+    print_info "Seeding organizations..."
+    docker compose -f "$COMPOSE_FULL_PATH" exec -T backend python -m app.seeds.seed_org
+    
+    print_info "Seeding users..."
+    docker compose -f "$COMPOSE_FULL_PATH" exec -T backend python -m app.seeds.seed_users
+    
+    print_info "Seeding metadata..."
+    docker compose -f "$COMPOSE_FULL_PATH" exec -T backend python -m app.seeds.seed_metadata
+    
+    print_info "Database seeding completed successfully"
 }
 
 # Main script logic
@@ -170,8 +189,8 @@ case $COMMAND in
         ;;
     migrate)
         validate_database
-        if [ ! -d "$PROJECT_DIR" ]; then
-            print_error "Project directory '$PROJECT_DIR' not found"
+        if [ ! -f "$COMPOSE_FULL_PATH" ]; then
+            print_error "Compose file not found: $COMPOSE_FULL_PATH"
             exit 1
         fi
         run_migrations
@@ -189,9 +208,9 @@ case $COMMAND in
     shell)
         open_backend_shell
         ;;
-    db-shell)
+    seed)
         validate_database
-        open_db_shell
+        seed_database
         ;;
     help|--help|-h)
         show_help
