@@ -78,7 +78,6 @@ show_help() {
 # Function to start services
 start_services() {
     print_info "Starting services with $DATABASE..."
-    cd "$PROJECT_DIR"
     docker-compose -f $COMPOSE_FULL_PATH up -d --build
     cd ..
     print_info "Services started successfully"
@@ -89,7 +88,6 @@ start_services() {
 # Function to stop services
 stop_services() {
     print_info "Stopping services..."
-    cd "$PROJECT_DIR"
     docker-compose -f $COMPOSE_FULL_PATH down
     cd ..
     print_info "Services stopped successfully"
@@ -105,7 +103,6 @@ restart_services() {
 # Function to run migrations
 run_migrations() {
     print_info "Running database migrations..."
-    cd "$PROJECT_DIR"
     
     if ! docker-compose exec -T backend alembic upgrade head; then
         print_error "Migration failed"
@@ -120,7 +117,6 @@ run_migrations() {
 # Function to view logs
 view_logs() {
     print_info "Displaying logs (Ctrl+C to exit)..."
-    cd "$PROJECT_DIR"
     docker-compose -f $COMPOSE_FULL_PATH logs -f
     cd ..
 }
@@ -132,7 +128,6 @@ clean_services() {
     echo
     if [[ $REPLY =~ ^[Yy]$ ]]; then
         print_info "Cleaning up..."
-        cd "$PROJECT_DIR"
         docker-compose -f $COMPOSE_FULL_PATH down -v
         cd ..
         print_info "Cleanup completed"
@@ -144,7 +139,6 @@ clean_services() {
 # Function to build images
 build_images() {
     print_info "Building images..."
-    cd "$PROJECT_DIR"
     docker-compose build
     cd ..
     print_info "Build completed successfully"
@@ -153,7 +147,6 @@ build_images() {
 # Function to open backend shell
 open_backend_shell() {
     print_info "Opening backend shell..."
-    cd "$PROJECT_DIR"
     docker-compose -f $COMPOSE_FULL_PATH exec backend /bin/bash
     cd ..
 }
@@ -161,7 +154,6 @@ open_backend_shell() {
 # Function to open database shell
 open_db_shell() {
     print_info "Opening $DATABASE shell..."
-    cd "$PROJECT_DIR"
     
     if [ "$DATABASE" = "postgres" ]; then
         docker-compose -f $COMPOSE_FULL_PATH exec postgres psql -U appuser -d appdb
