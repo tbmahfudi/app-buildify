@@ -102,7 +102,7 @@ restart_services() {
 run_migrations() {
     print_info "Running database migrations..."
     
-    if ! docker-compose exec -T backend alembic upgrade head; then
+    if ! docker-compose -f $COMPOSE_FULL_PATH exec -T backend alembic upgrade head; then
         print_error "Migration failed"
         exit 1
     fi
