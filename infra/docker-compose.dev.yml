@@ -2,6 +2,7 @@ version: '3.8'
 
 services:
   postgres:
+    container_name: app_buildify_postgresql
     image: postgres:15-alpine
     environment:
       POSTGRES_USER: appuser
@@ -36,6 +37,7 @@ services:
   #     retries: 5
 
   backend:
+    container_name: app_buildify_backend
     build:
       context: ../backend
       dockerfile: Dockerfile
@@ -59,6 +61,7 @@ services:
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
   frontend:
+    container_name: app_buildify_frontend
     image: nginx:1.27-alpine
     ports:
       - "8080:80"
