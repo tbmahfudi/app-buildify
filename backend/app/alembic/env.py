@@ -1,6 +1,7 @@
 from logging.config import fileConfig
 from sqlalchemy import engine_from_config, pool
 from alembic import context
+from alembic.script import ScriptDirectory
 import os
 import sys
 
@@ -84,11 +85,46 @@ def get_db_specific_options(db_type: str) -> dict:
     return options
 
 
+def filter_migrations_by_db(db_type: str):
+    """Filter migrations to only include ones for the current database type"""
+    script = ScriptDirectory.from_config(config)
+    
+    # Map database types to migration prefixes
+    db_prefixes = {
+        'sqlite': 'sqlite',
+        'mysql': 'mysql',
+        'postgresql': 'pg',
+    }
+    
+    prefix = db_prefixes.get(db_type, '')
+    
+    if prefix:
+        # Get all revisions
+        all_revisions = list(script.walk_revisions())
+        
+        # Filter to only matching prefix
+        matching_revisions = [
+            rev for rev in all_revisions 
+            if rev.revision and rev.revision.startswith(prefix)
+        ]
+        
+        if matching_revisions:
+            print(f"[INFO] Using {db_type} migrations (prefix: {prefix}_)")
+            return matching_revisions
+        else:
+            print(f"[WARNING] No migrations found for {db_type}. Using all migrations.")
+            return all_revisions
+    
+    return list(script.walk_revisions())
+
+
 def run_migrations_offline() -> None:
     """Run migrations in 'offline' mode."""
     url = get_database_url()
     db_type = detect_db_type(url)
     options = get_db_specific_options(db_type)
+    
+    print(f"[INFO] Running offline migrations for: {db_type}")
     
     context.configure(
         url=url,
@@ -108,6 +144,8 @@ def run_migrations_online() -> None:
     url = get_database_url()
     db_type = detect_db_type(url)
     options = get_db_specific_options(db_type)
+    
+    print(f"[INFO] Running online migrations for: {db_type}")
     
     configuration = config.get_section(config.config_ini_section)
     configuration["sqlalchemy.url"] = url
