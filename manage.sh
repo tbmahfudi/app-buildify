@@ -78,8 +78,7 @@ show_help() {
 # Function to start services
 start_services() {
     print_info "Starting services with $DATABASE..."
-    docker-compose -f $COMPOSE_FULL_PATH up -d --build
-    cd ..
+    docker-compose -f $COMPOSE_FULL_PATH up -d
     print_info "Services started successfully"
     print_info "Backend: http://localhost:8000"
     print_info "Frontend: http://localhost:8080"
@@ -89,7 +88,6 @@ start_services() {
 stop_services() {
     print_info "Stopping services..."
     docker-compose -f $COMPOSE_FULL_PATH down
-    cd ..
     print_info "Services stopped successfully"
 }
 
@@ -106,11 +104,9 @@ run_migrations() {
     
     if ! docker-compose exec -T backend alembic upgrade head; then
         print_error "Migration failed"
-        cd ..
         exit 1
     fi
     
-    cd ..
     print_info "Migrations completed successfully"
 }
 
@@ -118,7 +114,6 @@ run_migrations() {
 view_logs() {
     print_info "Displaying logs (Ctrl+C to exit)..."
     docker-compose -f $COMPOSE_FULL_PATH logs -f
-    cd ..
 }
 
 # Function to clean up
@@ -129,7 +124,6 @@ clean_services() {
     if [[ $REPLY =~ ^[Yy]$ ]]; then
         print_info "Cleaning up..."
         docker-compose -f $COMPOSE_FULL_PATH down -v
-        cd ..
         print_info "Cleanup completed"
     else
         print_info "Cleanup cancelled"
@@ -140,7 +134,6 @@ clean_services() {
 build_images() {
     print_info "Building images..."
     docker-compose -f $COMPOSE_FULL_PATH build
-    cd ..
     print_info "Build completed successfully"
 }
 
@@ -148,7 +141,6 @@ build_images() {
 open_backend_shell() {
     print_info "Opening backend shell..."
     docker-compose -f $COMPOSE_FULL_PATH exec backend /bin/bash
-    cd ..
 }
 
 # Function to open database shell
@@ -161,7 +153,6 @@ open_db_shell() {
         docker-compose -f $COMPOSE_FULL_PATH exec mysql mysql -u appuser -p appdb
     fi
     
-    cd ..
 }
 
 # Main script logic
