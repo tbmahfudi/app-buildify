@@ -1,3 +1,4 @@
+name: App_Buildify
 version: '3.8'
 
 services:
@@ -44,6 +45,7 @@ services:
     ports:
       - "8000:8000"
     environment:
+      PYTHONPATH: /app    
       # Use PostgreSQL
       SQLALCHEMY_DATABASE_URL: postgresql+psycopg2://appuser:apppass@postgres:5432/appdb
       # Or use MySQL
