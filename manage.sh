@@ -139,7 +139,7 @@ clean_services() {
 # Function to build images
 build_images() {
     print_info "Building images..."
-    docker-compose build
+    docker-compose -f $COMPOSE_FULL_PATH build
     cd ..
     print_info "Build completed successfully"
 }
