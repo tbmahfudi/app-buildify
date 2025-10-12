@@ -7,7 +7,8 @@ import sys
 # Add your project directory to the path
 sys.path.insert(0, os.path.realpath(os.path.join(os.path.dirname(__file__), '..')))
 
-from app.database import Base
+from app.core.db import engine
+from app.models.base import Base
 from app.models import *  # Import all your models
 
 # this is the Alembic Config object
