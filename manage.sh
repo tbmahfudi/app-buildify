@@ -18,6 +18,7 @@ COMMAND=${1:-help}
 DATABASE=${2:-postgres}
 COMPOSE_FILE="docker-compose.dev.yml"
 PROJECT_DIR="infra"
+COMPOSE_FULL_PATH="$PROJECT_DIR/$COMPOSE_FILE"
 
 # Function to print colored output
 print_info() {
@@ -78,7 +79,7 @@ show_help() {
 start_services() {
     print_info "Starting services with $DATABASE..."
     cd "$PROJECT_DIR"
-    docker-compose up -d --build
+    docker-compose -f $COMPOSE_FULL_PATH up -d --build
     cd ..
     print_info "Services started successfully"
     print_info "Backend: http://localhost:8000"
@@ -89,7 +90,7 @@ start_services() {
 stop_services() {
     print_info "Stopping services..."
     cd "$PROJECT_DIR"
-    docker-compose down
+    docker-compose -f $COMPOSE_FULL_PATH down
     cd ..
     print_info "Services stopped successfully"
 }
@@ -120,7 +121,7 @@ run_migrations() {
 view_logs() {
     print_info "Displaying logs (Ctrl+C to exit)..."
     cd "$PROJECT_DIR"
-    docker-compose logs -f
+    docker-compose -f $COMPOSE_FULL_PATH logs -f
     cd ..
 }
 
@@ -132,7 +133,7 @@ clean_services() {
     if [[ $REPLY =~ ^[Yy]$ ]]; then
         print_info "Cleaning up..."
         cd "$PROJECT_DIR"
-        docker-compose down -v
+        docker-compose -f $COMPOSE_FULL_PATH down -v
         cd ..
         print_info "Cleanup completed"
     else
@@ -153,7 +154,7 @@ build_images() {
 open_backend_shell() {
     print_info "Opening backend shell..."
     cd "$PROJECT_DIR"
-    docker-compose exec backend /bin/bash
+    docker-compose -f $COMPOSE_FULL_PATH exec backend /bin/bash
     cd ..
 }
 
@@ -163,9 +164,9 @@ open_db_shell() {
     cd "$PROJECT_DIR"
     
     if [ "$DATABASE" = "postgres" ]; then
-        docker-compose exec postgres psql -U appuser -d appdb
+        docker-compose -f $COMPOSE_FULL_PATH exec postgres psql -U appuser -d appdb
     elif [ "$DATABASE" = "mysql" ]; then
-        docker-compose exec mysql mysql -u appuser -p appdb
+        docker-compose -f $COMPOSE_FULL_PATH exec mysql mysql -u appuser -p appdb
     fi
     
     cd ..
