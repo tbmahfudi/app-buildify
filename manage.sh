@@ -16,7 +16,7 @@ NC='\033[0m' # No Color
 # Default values
 COMMAND=${1:-help}
 DATABASE=${2:-postgres}
-COMPOSE_FILE="docker-compose.yml"
+COMPOSE_FILE="docker-compose.dev.yml"
 PROJECT_DIR="infra"
 
 # Function to print colored output
