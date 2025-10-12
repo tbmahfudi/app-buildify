@@ -1,5 +1,4 @@
 name: App_Buildify
-version: '3.8'
 
 services:
   postgres:
