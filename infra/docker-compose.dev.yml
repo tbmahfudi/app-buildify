@@ -50,6 +50,7 @@ services:
       ACCESS_TOKEN_EXPIRE_MIN: 30
       REFRESH_TOKEN_EXPIRE_DAYS: 7
       ALLOWED_ORIGINS: http://localhost:8080,http://localhost:3000
+    working_dir: /app      
     volumes:
       - ../backend:/app
     depends_on:
