@@ -20,7 +20,7 @@ export class AuditWidget {
    * Render the widget
    */
   async render() {
-    this.container.innerHTML = '<div class="text-center"><div class="spinner-border" role="status"></div></div>';
+    this.container.innerHTML = '<div class="flex items-center justify-center p-8"><div class="text-center"><div class="inline-block"><div class="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div></div><p class="mt-3 text-gray-600">Loading...</p></div></div>';
 
     try {
       const logs = await this.fetchLogs();
@@ -69,10 +69,10 @@ export class AuditWidget {
 
     // Timeline
     const timeline = document.createElement('div');
-    timeline.className = 'audit-timeline';
+    timeline.className = 'audit-timeline space-y-4';
 
     if (data.logs.length === 0) {
-      timeline.innerHTML = '<p class="text-muted text-center">No audit logs found</p>';
+      timeline.innerHTML = '<div class="text-center py-8 text-gray-500"><i class="bi bi-inbox text-2xl block mb-2"></i><p>No audit logs found</p></div>';
     } else {
       data.logs.forEach(log => {
         const item = this.renderLogItem(log);
@@ -93,35 +93,48 @@ export class AuditWidget {
    */
   renderLogItem(log) {
     const div = document.createElement('div');
-    div.className = 'audit-item border-start border-3 ps-3 pb-3 mb-3';
-    div.style.borderColor = this.getActionColor(log.action);
+    const borderColor = this.getActionBorderClass(log.action);
+    div.className = `audit-item bg-white rounded-lg border-l-4 ${borderColor} p-4 shadow-sm`;
 
     const header = document.createElement('div');
-    header.className = 'd-flex justify-content-between align-items-start mb-2';
+    header.className = 'flex items-start justify-between mb-3';
 
-    const title = document.createElement('div');
-    title.innerHTML = `
-      <strong>${this.getActionIcon(log.action)} ${log.action}</strong>
-      ${log.entity_type ? `on <span class="badge bg-secondary">${log.entity_type}</span>` : ''}
-      ${log.status === 'failure' ? '<span class="badge bg-danger">Failed</span>' : ''}
+    const titleDiv = document.createElement('div');
+    titleDiv.className = 'flex items-center gap-3 flex-1';
+    
+    const icon = document.createElement('div');
+    icon.className = `flex items-center justify-center w-10 h-10 rounded-lg ${this.getActionBgClass(log.action)}`;
+    icon.innerHTML = this.getActionIcon(log.action);
+    
+    const titleContent = document.createElement('div');
+    titleContent.innerHTML = `
+      <div class="font-semibold text-gray-900">${log.action}</div>
+      <div class="text-sm text-gray-600">
+        ${log.entity_type ? `<span class="inline-block bg-gray-100 px-2 py-1 rounded text-xs mr-2">${log.entity_type}</span>` : ''}
+        ${log.status === 'failure' ? '<span class="inline-block bg-red-100 text-red-700 px-2 py-1 rounded text-xs font-medium">Failed</span>' : ''}
+      </div>
     `;
+    
+    titleDiv.appendChild(icon);
+    titleDiv.appendChild(titleContent);
 
     const timestamp = document.createElement('small');
-    timestamp.className = 'text-muted';
+    timestamp.className = 'text-gray-500 text-sm whitespace-nowrap ml-4';
     timestamp.textContent = this.formatDate(log.created_at);
 
-    header.appendChild(title);
+    header.appendChild(titleDiv);
     header.appendChild(timestamp);
     div.appendChild(header);
 
     // User info
     if (log.user_email) {
       const user = document.createElement('div');
-      user.className = 'text-muted small mb-2';
-      user.innerHTML = `<i class="bi bi-person"></i> ${log.user_email}`;
-      if (log.ip_address) {
-        user.innerHTML += ` from ${log.ip_address}`;
-      }
+      user.className = 'text-sm text-gray-600 mb-3 flex items-center gap-2';
+      user.innerHTML = `
+        <i class="bi bi-person-circle"></i>
+        <span>${log.user_email}</span>
+        ${log.ip_address ? `<span class="text-gray-500">from ${log.ip_address}</span>` : ''}
+      `;
       div.appendChild(user);
     }
 
@@ -131,15 +144,16 @@ export class AuditWidget {
       div.appendChild(changesDiv);
     }
 
+    // Context info
     if (log.context_info) {
-        const contextDiv = this.renderContextInfo(log.context_info);
-        div.appendChild(contextDiv);
-    }    
+      const contextDiv = this.renderContextInfo(log.context_info);
+      div.appendChild(contextDiv);
+    }
 
     // Error message (if failed)
     if (log.error_message) {
       const error = document.createElement('div');
-      error.className = 'alert alert-danger alert-sm mt-2 mb-0';
+      error.className = 'mt-3 p-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded';
       error.textContent = log.error_message;
       div.appendChild(error);
     }
@@ -152,25 +166,29 @@ export class AuditWidget {
    */
   renderChanges(changes) {
     const div = document.createElement('div');
-    div.className = 'audit-changes mt-2';
+    div.className = 'audit-changes mt-3';
 
     const details = document.createElement('details');
+    details.className = 'cursor-pointer';
+    
     const summary = document.createElement('summary');
-    summary.className = 'text-primary small';
-    summary.style.cursor = 'pointer';
+    summary.className = 'text-blue-600 font-medium text-sm hover:text-blue-700';
     summary.textContent = 'View changes';
+    summary.style.listStyle = 'none';
     details.appendChild(summary);
 
     const changesList = document.createElement('div');
-    changesList.className = 'mt-2 p-2 bg-light rounded';
+    changesList.className = 'mt-2 p-3 bg-gray-50 rounded border border-gray-200 space-y-2';
 
     Object.entries(changes).forEach(([field, change]) => {
       const item = document.createElement('div');
-      item.className = 'mb-2';
+      item.className = 'text-sm';
       item.innerHTML = `
-        <strong>${field}:</strong><br>
-        <span class="text-danger">- ${change.before !== null ? change.before : 'null'}</span><br>
-        <span class="text-success">+ ${change.after !== null ? change.after : 'null'}</span>
+        <div class="font-medium text-gray-900">${field}</div>
+        <div class="flex gap-2 mt-1">
+          <span class="flex-1 text-red-700"><i class="bi bi-dash"></i> ${change.before !== null ? change.before : '<em class="text-gray-500">null</em>'}</span>
+          <span class="flex-1 text-green-700"><i class="bi bi-plus"></i> ${change.after !== null ? change.after : '<em class="text-gray-500">null</em>'}</span>
+        </div>
       `;
       changesList.appendChild(item);
     });
@@ -182,16 +200,46 @@ export class AuditWidget {
   }
 
   /**
+   * Render context info
+   */
+  renderContextInfo(contextInfo) {
+    const div = document.createElement('div');
+    div.className = 'audit-context mt-3';
+    
+    const details = document.createElement('details');
+    details.className = 'cursor-pointer';
+    
+    const summary = document.createElement('summary');
+    summary.className = 'text-blue-600 font-medium text-sm hover:text-blue-700';
+    summary.textContent = 'View context';
+    summary.style.listStyle = 'none';
+    details.appendChild(summary);
+    
+    const contextList = document.createElement('div');
+    contextList.className = 'mt-2 p-3 bg-gray-50 rounded border border-gray-200 overflow-x-auto';
+    
+    const pre = document.createElement('pre');
+    pre.className = 'text-xs text-gray-600 font-mono whitespace-pre-wrap break-words';
+    pre.textContent = JSON.stringify(contextInfo, null, 2);
+    contextList.appendChild(pre);
+    
+    details.appendChild(contextList);
+    div.appendChild(details);
+    
+    return div;
+  }
+
+  /**
    * Render filters
    */
   renderFilters() {
     const filters = document.createElement('div');
-    filters.className = 'mb-3 p-3 bg-light rounded';
+    filters.className = 'mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200';
     filters.innerHTML = `
-      <div class="row g-2">
-        <div class="col-md-4">
-          <label class="form-label small">Action</label>
-          <select class="form-select form-select-sm" id="filter-action">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">Action</label>
+          <select class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" id="filter-action">
             <option value="">All actions</option>
             <option value="CREATE">Create</option>
             <option value="UPDATE">Update</option>
@@ -199,19 +247,23 @@ export class AuditWidget {
             <option value="LOGIN">Login</option>
           </select>
         </div>
-        <div class="col-md-4">
-          <label class="form-label small">Status</label>
-          <select class="form-select form-select-sm" id="filter-status">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">Status</label>
+          <select class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" id="filter-status">
             <option value="">All statuses</option>
             <option value="success">Success</option>
             <option value="failure">Failure</option>
           </select>
         </div>
-        <div class="col-md-4">
-          <label class="form-label small">&nbsp;</label>
-          <div>
-            <button class="btn btn-primary btn-sm" id="btn-apply-filters">Apply</button>
-            <button class="btn btn-secondary btn-sm" id="btn-clear-filters">Clear</button>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">&nbsp;</label>
+          <div class="flex gap-2">
+            <button type="button" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm font-medium" id="btn-apply-filters">
+              <i class="bi bi-check-lg"></i> Apply
+            </button>
+            <button type="button" class="px-4 py-2 bg-gray-300 text-gray-900 rounded-lg hover:bg-gray-400 transition text-sm font-medium" id="btn-clear-filters">
+              <i class="bi bi-arrow-counterclockwise"></i> Clear
+            </button>
           </div>
         </div>
       </div>
@@ -243,89 +295,69 @@ export class AuditWidget {
     const totalPages = Math.ceil(data.total / this.options.pageSize);
     
     const nav = document.createElement('nav');
-    const ul = document.createElement('ul');
-    ul.className = 'pagination pagination-sm justify-content-center';
+    nav.className = 'mt-6 flex items-center justify-center gap-2';
 
     // Previous
-    const prevLi = document.createElement('li');
-    prevLi.className = 'page-item' + (this.currentPage === 1 ? ' disabled' : '');
-    const prevA = document.createElement('a');
-    prevA.className = 'page-link';
-    prevA.href = '#';
-    prevA.textContent = 'Previous';
-    prevA.onclick = (e) => {
-      e.preventDefault();
+    const prevBtn = document.createElement('button');
+    prevBtn.className = 'px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition disabled:opacity-50 disabled:cursor-not-allowed';
+    prevBtn.textContent = '← Previous';
+    prevBtn.disabled = this.currentPage === 1;
+    prevBtn.onclick = () => {
       if (this.currentPage > 1) {
         this.currentPage--;
         this.render();
       }
     };
-    prevLi.appendChild(prevA);
-    ul.appendChild(prevLi);
+    nav.appendChild(prevBtn);
 
     // Page info
-    const infoLi = document.createElement('li');
-    infoLi.className = 'page-item disabled';
-    const infoSpan = document.createElement('span');
-    infoSpan.className = 'page-link';
-    infoSpan.textContent = `Page ${this.currentPage} of ${totalPages}`;
-    infoLi.appendChild(infoSpan);
-    ul.appendChild(infoLi);
+    const pageInfo = document.createElement('span');
+    pageInfo.className = 'px-4 py-2 text-gray-700 font-medium';
+    pageInfo.textContent = `Page ${this.currentPage} of ${totalPages}`;
+    nav.appendChild(pageInfo);
 
     // Next
-    const nextLi = document.createElement('li');
-    nextLi.className = 'page-item' + (this.currentPage === totalPages ? ' disabled' : '');
-    const nextA = document.createElement('a');
-    nextA.className = 'page-link';
-    nextA.href = '#';
-    nextA.textContent = 'Next';
-    nextA.onclick = (e) => {
-      e.preventDefault();
+    const nextBtn = document.createElement('button');
+    nextBtn.className = 'px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition disabled:opacity-50 disabled:cursor-not-allowed';
+    nextBtn.textContent = 'Next →';
+    nextBtn.disabled = this.currentPage === totalPages;
+    nextBtn.onclick = () => {
       if (this.currentPage < totalPages) {
         this.currentPage++;
         this.render();
       }
     };
-    nextLi.appendChild(nextA);
-    ul.appendChild(nextLi);
+    nav.appendChild(nextBtn);
 
-    nav.appendChild(ul);
     this.container.appendChild(nav);
   }
-
-    renderContextInfo(contextInfo) {
-        const div = document.createElement('div');
-        div.className = 'audit-context mt-2';
-        
-        const details = document.createElement('details');
-        const summary = document.createElement('summary');
-        summary.className = 'text-info small';
-        summary.style.cursor = 'pointer';
-        summary.textContent = 'View context';
-        details.appendChild(summary);
-        
-        const contextList = document.createElement('div');
-        contextList.className = 'mt-2 p-2 bg-light rounded';
-        contextList.innerHTML = '<pre>' + JSON.stringify(contextInfo, null, 2) + '</pre>';
-        
-        details.appendChild(contextList);
-        div.appendChild(details);
-        
-        return div;
-    }  
 
   /**
    * Get action color
    */
-  getActionColor(action) {
+  getActionBorderClass(action) {
     const colors = {
-      'CREATE': '#28a745',
-      'UPDATE': '#007bff',
-      'DELETE': '#dc3545',
-      'LOGIN': '#17a2b8',
-      'LOGOUT': '#6c757d'
+      'CREATE': 'border-green-500',
+      'UPDATE': 'border-blue-500',
+      'DELETE': 'border-red-500',
+      'LOGIN': 'border-cyan-500',
+      'LOGOUT': 'border-gray-500'
     };
-    return colors[action] || '#6c757d';
+    return colors[action] || 'border-gray-500';
+  }
+
+  /**
+   * Get action background class
+   */
+  getActionBgClass(action) {
+    const colors = {
+      'CREATE': 'bg-green-100',
+      'UPDATE': 'bg-blue-100',
+      'DELETE': 'bg-red-100',
+      'LOGIN': 'bg-cyan-100',
+      'LOGOUT': 'bg-gray-100'
+    };
+    return colors[action] || 'bg-gray-100';
   }
 
   /**
@@ -333,13 +365,13 @@ export class AuditWidget {
    */
   getActionIcon(action) {
     const icons = {
-      'CREATE': '➕',
-      'UPDATE': '✏️',
-      'DELETE': '🗑️',
-      'LOGIN': '🔑',
-      'LOGOUT': '🚪'
+      'CREATE': '<i class="bi bi-plus-circle text-green-600"></i>',
+      'UPDATE': '<i class="bi bi-pencil-square text-blue-600"></i>',
+      'DELETE': '<i class="bi bi-trash text-red-600"></i>',
+      'LOGIN': '<i class="bi bi-key text-cyan-600"></i>',
+      'LOGOUT': '<i class="bi bi-door-open text-gray-600"></i>'
     };
-    return icons[action] || '📝';
+    return icons[action] || '<i class="bi bi-file-earmark text-gray-600"></i>';
   }
 
   /**
@@ -350,25 +382,21 @@ export class AuditWidget {
     const now = new Date();
     const diff = now - date;
     
-    // Less than 1 minute
     if (diff < 60000) {
       return 'Just now';
     }
     
-    // Less than 1 hour
     if (diff < 3600000) {
       const minutes = Math.floor(diff / 60000);
-      return `${minutes} minute${minutes > 1 ? 's' : ''} ago`;
+      return `${minutes}m ago`;
     }
     
-    // Less than 24 hours
     if (diff < 86400000) {
       const hours = Math.floor(diff / 3600000);
-      return `${hours} hour${hours > 1 ? 's' : ''} ago`;
+      return `${hours}h ago`;
     }
     
-    // Otherwise show full date
-    return date.toLocaleString();
+    return date.toLocaleDateString();
   }
 
   /**
@@ -376,8 +404,9 @@ export class AuditWidget {
    */
   renderError(message) {
     this.container.innerHTML = `
-      <div class="alert alert-danger">
-        <strong>Error:</strong> ${message}
+      <div class="p-4 bg-red-50 border border-red-200 rounded-lg">
+        <strong class="text-red-800">Error:</strong>
+        <p class="text-red-700 text-sm mt-1">${message}</p>
       </div>
     `;
   }
@@ -389,21 +418,3 @@ export class AuditWidget {
     return this.render();
   }
 }
-
-// Add CSS for audit timeline
-const style = document.createElement('style');
-style.textContent = `
-  .audit-timeline {
-    position: relative;
-  }
-  .audit-item {
-    position: relative;
-  }
-  .audit-changes details summary {
-    list-style: none;
-  }
-  .audit-changes details summary::-webkit-details-marker {
-    display: none;
-  }
-`;
-document.head.appendChild(style);

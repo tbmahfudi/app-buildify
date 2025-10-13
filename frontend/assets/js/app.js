@@ -1,4 +1,4 @@
-import { apiFetch } from './api.js';
+import { apiFetch, login, logout as apiLogout } from './api.js';
 
 // Global state
 window.appState = {
@@ -10,23 +10,26 @@ export async function initApp() {
   // Check if logged in
   const token = localStorage.getItem('access_token');
   if (!token) {
-    showLogin();
+    window.location.href = '/assets/pages/login.html';
     return;
   }
 
   // Load user info
   try {
     const response = await apiFetch('/auth/me');
+    if (!response.ok) throw new Error('Auth failed');
     window.appState.user = await response.json();
     localStorage.setItem('user', JSON.stringify(window.appState.user));
   } catch (error) {
     console.error('Failed to load user:', error);
-    showLogin();
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('refresh_token');
+    window.location.href = '/assets/pages/login.html';
     return;
   }
 
-  // Show main app
-  showApp();
+  // Setup main layout
+  setupMainLayout();
   
   // Load menu
   await loadMenu();
@@ -42,88 +45,22 @@ export async function initApp() {
   });
 
   // Logout button
-  document.getElementById('btn-logout').addEventListener('click', logout);
+  const logoutBtn = document.getElementById('btn-logout');
+  if (logoutBtn) {
+    logoutBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      apiLogout();
+      window.location.href = '/assets/pages/login.html';
+    });
+  }
 }
 
-function showLogin() {
-  document.body.innerHTML = `
-    <div class="d-flex align-items-center justify-content-center vh-100 bg-light">
-      <div class="card shadow" style="width: 400px;">
-        <div class="card-body p-4">
-          <h4 class="text-center mb-4">NoCode Platform</h4>
-          <form id="login-form">
-            <div class="mb-3">
-              <label class="form-label">Email</label>
-              <input type="email" class="form-control" id="email" required>
-            </div>
-            <div class="mb-3">
-              <label class="form-label">Password</label>
-              <input type="password" class="form-control" id="password" required>
-            </div>
-            <div id="login-error" class="alert alert-danger" style="display:none;"></div>
-            <button type="submit" class="btn btn-primary w-100">Login</button>
-          </form>
-          <div class="mt-3 small text-muted text-center">
-            <p class="mb-1">Test Credentials:</p>
-            <p class="mb-0">admin@example.com / admin123</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  `;
-
-  document.getElementById('login-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    
-    const email = document.getElementById('email').value;
-    const password = document.getElementById('password').value;
-    
-    try {
-      const response = await fetch('http://localhost:8000/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
-      });
-
-      if (!response.ok) {
-        throw new Error('Invalid credentials');
-      }
-
-      const data = await response.json();
-      localStorage.setItem('access_token', data.access_token);
-      localStorage.setItem('refresh_token', data.refresh_token);
-      
-      window.location.reload();
-    } catch (error) {
-      const errorDiv = document.getElementById('login-error');
-      errorDiv.textContent = error.message;
-      errorDiv.style.display = 'block';
-    }
-  });
-}
-
-function showApp() {
-  document.body.innerHTML = `
-    <nav class="navbar navbar-expand navbar-dark bg-dark px-3">
-      <span class="navbar-brand">NoCode Platform</span>
-      <ul class="navbar-nav ms-auto">
-        <li class="nav-item dropdown">
-          <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
-            ${window.appState.user?.email || 'User'}
-          </a>
-          <ul class="dropdown-menu dropdown-menu-end">
-            <li><a class="dropdown-item" href="#settings">Settings</a></li>
-            <li><hr class="dropdown-divider"></li>
-            <li><a class="dropdown-item" href="#" id="btn-logout">Logout</a></li>
-          </ul>
-        </li>
-      </ul>
-    </nav>
-    <div class="d-flex">
-      <aside id="sidebar" class="bg-white border-end p-2" style="width:260px; min-height: calc(100vh - 56px);"></aside>
-      <main id="content" class="flex-fill p-3" style="min-height: calc(100vh - 56px);"></main>
-    </div>
-  `;
+function setupMainLayout() {
+  // Set user email in navbar
+  const userEmail = document.getElementById('user-email');
+  if (userEmail) {
+    userEmail.textContent = window.appState.user?.email || 'User';
+  }
 }
 
 async function loadMenu() {
@@ -131,23 +68,24 @@ async function loadMenu() {
     const response = await fetch('/config/menu.json');
     const menu = await response.json();
     
-    const sidebar = document.getElementById('sidebar');
-    const nav = document.createElement('nav');
-    nav.className = 'nav flex-column';
+    const navContainer = document.getElementById('sidebar-nav');
+    if (!navContainer) return;
+    
+    navContainer.innerHTML = '';
     
     menu.items.forEach(item => {
       const link = document.createElement('a');
-      link.className = 'nav-link text-dark';
+      link.className = 'nav-link block px-4 py-2 rounded-lg text-gray-800 hover:bg-gray-100 transition';
       link.href = `#${item.route}`;
       link.textContent = item.title;
-      link.onclick = () => {
-        document.querySelectorAll('#sidebar .nav-link').forEach(l => l.classList.remove('active'));
-        link.classList.add('active');
+      link.onclick = (e) => {
+        document.querySelectorAll('#sidebar-nav .nav-link').forEach(l => {
+          l.classList.remove('active', 'bg-blue-100', 'text-blue-600');
+        });
+        link.classList.add('active', 'bg-blue-100', 'text-blue-600');
       };
-      nav.appendChild(link);
+      navContainer.appendChild(link);
     });
-    
-    sidebar.appendChild(nav);
   } catch (error) {
     console.error('Failed to load menu:', error);
   }
@@ -157,7 +95,7 @@ async function loadRoute(route) {
   window.appState.currentRoute = route;
   
   const content = document.getElementById('content');
-  content.innerHTML = '<div class="text-center"><div class="spinner-border"></div></div>';
+  content.innerHTML = '<div class="flex items-center justify-center h-full"><div class="text-center"><div class="inline-block"><div class="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div></div><p class="mt-3 text-gray-600">Loading...</p></div></div>';
   
   try {
     const response = await fetch(`/assets/templates/${route}.html`);
@@ -172,16 +110,10 @@ async function loadRoute(route) {
     }));
   } catch (error) {
     content.innerHTML = `
-      <div class="alert alert-warning">
-        <strong>Page not found:</strong> ${route}
+      <div class="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+        <strong class="text-yellow-800">Page not found:</strong>
+        <p class="text-yellow-700">${route}</p>
       </div>
     `;
   }
-}
-
-function logout() {
-  localStorage.removeItem('access_token');
-  localStorage.removeItem('refresh_token');
-  localStorage.removeItem('user');
-  window.location.reload();
 }

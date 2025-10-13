@@ -1,18 +1,44 @@
-<div class="card shadow-sm">
-  <div class="card-body">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-      <h5 class="mb-0">
-        <i class="bi bi-clock-history"></i> Audit Trail
-      </h5>
-      <button id="btn-refresh-audit" class="btn btn-outline-secondary btn-sm">
-        <i class="bi bi-arrow-clockwise"></i> Refresh
-      </button>
+<div class="space-y-4">
+  <!-- Header -->
+  <div class="flex items-center justify-between">
+    <div>
+      <h2 class="text-2xl font-bold text-gray-900 flex items-center gap-2">
+        <i class="bi bi-clock-history"></i>
+        Audit Trail
+      </h2>
+      <p class="text-gray-600 text-sm mt-1">Complete history of all operations performed in the system</p>
     </div>
-
-    <p class="text-muted small">
-      Complete history of all operations performed in the system.
-    </p>
-
-    <div id="audit-container"></div>
+    <button id="btn-refresh-audit" class="px-4 py-2 bg-gray-200 text-gray-900 rounded-lg hover:bg-gray-300 transition flex items-center gap-2">
+      <i class="bi bi-arrow-clockwise"></i>
+      Refresh
+    </button>
   </div>
+
+  <!-- Audit Container -->
+  <div id="audit-container" class="space-y-4"></div>
 </div>
+
+<script type="module">
+  import { AuditWidget } from '../../assets/js/audit-widget.js';
+
+  document.addEventListener('route:loaded', async (e) => {
+    if (e.detail.route === 'audit') {
+      initAuditPage();
+    }
+  });
+
+  function initAuditPage() {
+    const container = document.getElementById('audit-container');
+    
+    const widget = new AuditWidget(container, {
+      showFilters: true,
+      pageSize: 20
+    });
+    
+    widget.render();
+
+    document.getElementById('btn-refresh-audit').onclick = () => {
+      widget.refresh();
+    };
+  }
+</script>

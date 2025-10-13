@@ -1,10 +1,137 @@
-<div class="row g-3">
-  <div class="col-md-4">
-    <div class="card shadow-sm">
-      <div class="card-body">Welcome! You're signed in.</div>
+<div class="space-y-6">
+  <!-- Welcome Section -->
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <div class="bg-white rounded-lg shadow-sm p-6 col-span-1 md:col-span-2">
+      <div class="flex items-center gap-4">
+        <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+          <i class="bi bi-check-circle text-blue-600 text-2xl"></i>
+        </div>
+        <div>
+          <h3 class="text-lg font-semibold text-gray-900">Welcome!</h3>
+          <p class="text-gray-600">You're successfully signed in to NoCode Platform</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-lg shadow-sm p-6">
+      <div class="flex flex-col items-center justify-center text-center">
+        <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mb-3">
+          <i class="bi bi-star text-green-600 text-2xl"></i>
+        </div>
+        <h3 class="text-lg font-semibold text-gray-900">Quick Start</h3>
+        <p class="text-sm text-gray-600">Get started with the platform</p>
+      </div>
     </div>
   </div>
-  <div class="col-md-8">
-    <div class="card shadow-sm"><div class="card-body">Charts go here…</div></div>
+
+  <!-- Stats Section -->
+  <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+    <div class="bg-white rounded-lg shadow-sm p-6">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-gray-600 text-sm font-medium">Total Users</p>
+          <p class="text-3xl font-bold text-gray-900 mt-2">0</p>
+        </div>
+        <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+          <i class="bi bi-people text-blue-600 text-xl"></i>
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-lg shadow-sm p-6">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-gray-600 text-sm font-medium">Active Sessions</p>
+          <p class="text-3xl font-bold text-gray-900 mt-2">1</p>
+        </div>
+        <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+          <i class="bi bi-activity text-green-600 text-xl"></i>
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-lg shadow-sm p-6">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-gray-600 text-sm font-medium">Data Records</p>
+          <p class="text-3xl font-bold text-gray-900 mt-2">0</p>
+        </div>
+        <div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+          <i class="bi bi-database text-purple-600 text-xl"></i>
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-lg shadow-sm p-6">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-gray-600 text-sm font-medium">System Health</p>
+          <p class="text-3xl font-bold text-green-600 mt-2">100%</p>
+        </div>
+        <div class="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
+          <i class="bi bi-heart-pulse text-yellow-600 text-xl"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Charts Section -->
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <div class="bg-white rounded-lg shadow-sm p-6">
+      <h4 class="text-lg font-semibold text-gray-900 mb-4">Activity Overview</h4>
+      <div class="h-64 flex items-center justify-center bg-gray-50 rounded-lg border border-gray-200">
+        <div class="text-center">
+          <i class="bi bi-graph-up text-gray-400 text-4xl block mb-2"></i>
+          <p class="text-gray-600">Chart placeholder</p>
+          <p class="text-sm text-gray-500">Charts will be displayed here</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-lg shadow-sm p-6">
+      <h4 class="text-lg font-semibold text-gray-900 mb-4">Recent Activity</h4>
+      <div class="space-y-4">
+        <div class="flex items-center gap-3 pb-3 border-b border-gray-200">
+          <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+            <i class="bi bi-plus-circle text-blue-600"></i>
+          </div>
+          <div>
+            <p class="text-sm font-medium text-gray-900">New record created</p>
+            <p class="text-xs text-gray-500">Just now</p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-3 pb-3 border-b border-gray-200">
+          <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
+            <i class="bi bi-pencil-square text-green-600"></i>
+          </div>
+          <div>
+            <p class="text-sm font-medium text-gray-900">Record updated</p>
+            <p class="text-xs text-gray-500">5 minutes ago</p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 bg-yellow-100 rounded-lg flex items-center justify-center flex-shrink-0">
+            <i class="bi bi-login text-yellow-600"></i>
+          </div>
+          <div>
+            <p class="text-sm font-medium text-gray-900">User signed in</p>
+            <p class="text-xs text-gray-500">30 minutes ago</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Info Section -->
+  <div class="bg-blue-50 border border-blue-200 rounded-lg p-6">
+    <div class="flex items-start gap-3">
+      <i class="bi bi-info-circle text-blue-600 text-xl mt-0.5"></i>
+      <div>
+        <h4 class="font-semibold text-blue-900">Getting Started</h4>
+        <p class="text-sm text-blue-800 mt-1">Start by exploring the menu on the left. You can manage companies, branches, departments, and view the audit trail. Check the settings to customize your preferences.</p>
+      </div>
+    </div>
   </div>
 </div>

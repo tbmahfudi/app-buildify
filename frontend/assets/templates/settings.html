@@ -1,22 +1,29 @@
-<div class="row">
-  <div class="col-md-8">
+<div class="space-y-6">
+  <!-- Header -->
+  <div>
+    <h2 class="text-2xl font-bold text-gray-900">Settings</h2>
+    <p class="text-gray-600 text-sm mt-1">Manage your preferences and account settings</p>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
     <!-- User Settings -->
-    <div class="card shadow-sm mb-4">
-      <div class="card-body">
-        <h5 class="card-title mb-4">User Preferences</h5>
+    <div class="lg:col-span-2">
+      <div class="bg-white rounded-lg shadow-sm p-6">
+        <h3 class="text-lg font-semibold text-gray-900 mb-6">User Preferences</h3>
         
-        <form id="user-settings-form">
-          <div class="row mb-3">
-            <div class="col-md-6">
-              <label class="form-label">Theme</label>
-              <select class="form-select" id="setting-theme">
+        <form id="user-settings-form" class="space-y-5">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div>
+              <label for="setting-theme" class="block text-sm font-medium text-gray-700 mb-2">Theme</label>
+              <select id="setting-theme" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                 <option value="light">Light</option>
                 <option value="dark">Dark</option>
               </select>
             </div>
-            <div class="col-md-6">
-              <label class="form-label">Density</label>
-              <select class="form-select" id="setting-density">
+
+            <div>
+              <label for="setting-density" class="block text-sm font-medium text-gray-700 mb-2">Density</label>
+              <select id="setting-density" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                 <option value="comfortable">Comfortable</option>
                 <option value="normal">Normal</option>
                 <option value="compact">Compact</option>
@@ -24,19 +31,20 @@
             </div>
           </div>
 
-          <div class="row mb-3">
-            <div class="col-md-6">
-              <label class="form-label">Language</label>
-              <select class="form-select" id="setting-language">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div>
+              <label for="setting-language" class="block text-sm font-medium text-gray-700 mb-2">Language</label>
+              <select id="setting-language" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                 <option value="en">English</option>
                 <option value="es">Spanish</option>
                 <option value="fr">French</option>
                 <option value="de">German</option>
               </select>
             </div>
-            <div class="col-md-6">
-              <label class="form-label">Timezone</label>
-              <select class="form-select" id="setting-timezone">
+
+            <div>
+              <label for="setting-timezone" class="block text-sm font-medium text-gray-700 mb-2">Timezone</label>
+              <select id="setting-timezone" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                 <option value="UTC">UTC</option>
                 <option value="America/New_York">Eastern Time</option>
                 <option value="America/Chicago">Central Time</option>
@@ -47,60 +55,251 @@
             </div>
           </div>
 
-          <div class="mb-3">
-            <small class="text-muted" id="settings-last-updated"></small>
-          </div>
+          <div class="text-sm text-gray-500" id="settings-last-updated"></div>
 
-          <button type="submit" class="btn btn-primary">Save Preferences</button>
+          <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+            Save Preferences
+          </button>
         </form>
       </div>
     </div>
 
-    <!-- Tenant Settings (Admin Only) -->
-    <div class="card shadow-sm mb-4" id="tenant-settings-card" style="display: none;">
-      <div class="card-body">
-        <h5 class="card-title mb-4">Tenant Settings</h5>
-        
-        <form id="tenant-settings-form">
-          <div class="mb-3">
-            <label class="form-label">Tenant Name</label>
-            <input type="text" class="form-control" id="tenant-name" placeholder="My Company">
-          </div>
-
-          <div class="row mb-3">
-            <div class="col-md-6">
-              <label class="form-label">Primary Color</label>
-              <input type="color" class="form-control form-control-color" id="tenant-primary-color" value="#0066cc">
-            </div>
-            <div class="col-md-6">
-              <label class="form-label">Secondary Color</label>
-              <input type="color" class="form-control form-control-color" id="tenant-secondary-color" value="#6c757d">
-            </div>
-          </div>
-
-          <div class="mb-3">
-            <label class="form-label">Logo URL</label>
-            <input type="url" class="form-control" id="tenant-logo-url" placeholder="https://example.com/logo.png">
-          </div>
-
-          <button type="submit" class="btn btn-primary">Save Tenant Settings</button>
-        </form>
-      </div>
-    </div>
-  </div>
-
-  <div class="col-md-4">
     <!-- Preview Card -->
-    <div class="card shadow-sm sticky-top" style="top: 20px;">
-      <div class="card-body">
-        <h6 class="card-title">Preview</h6>
-        <div id="settings-preview" class="border rounded p-3">
-          <p class="mb-2"><strong>Theme:</strong> <span id="preview-theme">Light</span></p>
-          <p class="mb-2"><strong>Density:</strong> <span id="preview-density">Normal</span></p>
-          <p class="mb-2"><strong>Language:</strong> <span id="preview-language">English</span></p>
-          <p class="mb-0"><strong>Timezone:</strong> <span id="preview-timezone">UTC</span></p>
+    <div class="lg:col-span-1">
+      <div class="bg-white rounded-lg shadow-sm p-6 sticky top-20">
+        <h3 class="text-lg font-semibold text-gray-900 mb-4">Preview</h3>
+        <div class="space-y-3 text-sm">
+          <div class="pb-3 border-b border-gray-200">
+            <p class="text-gray-600 font-medium">Theme</p>
+            <p id="preview-theme" class="text-gray-900 font-semibold">Light</p>
+          </div>
+          <div class="pb-3 border-b border-gray-200">
+            <p class="text-gray-600 font-medium">Density</p>
+            <p id="preview-density" class="text-gray-900 font-semibold">Normal</p>
+          </div>
+          <div class="pb-3 border-b border-gray-200">
+            <p class="text-gray-600 font-medium">Language</p>
+            <p id="preview-language" class="text-gray-900 font-semibold">English</p>
+          </div>
+          <div>
+            <p class="text-gray-600 font-medium">Timezone</p>
+            <p id="preview-timezone" class="text-gray-900 font-semibold">UTC</p>
+          </div>
         </div>
       </div>
     </div>
   </div>
+
+  <!-- Tenant Settings (Admin Only) -->
+  <div id="tenant-settings-card" class="hidden">
+    <div class="bg-white rounded-lg shadow-sm p-6">
+      <h3 class="text-lg font-semibold text-gray-900 mb-6">Tenant Settings</h3>
+      
+      <form id="tenant-settings-form" class="space-y-5">
+        <div>
+          <label for="tenant-name" class="block text-sm font-medium text-gray-700 mb-2">Tenant Name</label>
+          <input type="text" id="tenant-name" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="My Company">
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <div>
+            <label for="tenant-primary-color" class="block text-sm font-medium text-gray-700 mb-2">Primary Color</label>
+            <input type="color" id="tenant-primary-color" class="w-full h-10 border border-gray-300 rounded-lg cursor-pointer" value="#0066cc">
+          </div>
+
+          <div>
+            <label for="tenant-secondary-color" class="block text-sm font-medium text-gray-700 mb-2">Secondary Color</label>
+            <input type="color" id="tenant-secondary-color" class="w-full h-10 border border-gray-300 rounded-lg cursor-pointer" value="#6c757d">
+          </div>
+        </div>
+
+        <div>
+          <label for="tenant-logo-url" class="block text-sm font-medium text-gray-700 mb-2">Logo URL</label>
+          <input type="url" id="tenant-logo-url" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="https://example.com/logo.png">
+        </div>
+
+        <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+          Save Tenant Settings
+        </button>
+      </form>
+    </div>
+  </div>
 </div>
+
+<script type="module">
+  import { apiFetch } from '../../assets/js/api.js';
+
+  document.addEventListener('route:loaded', async (e) => {
+    if (e.detail.route === 'settings') {
+      initSettings();
+    }
+  });
+
+  async function initSettings() {
+    await loadUserSettings();
+    
+    const userForm = document.getElementById('user-settings-form');
+    userForm.addEventListener('submit', saveUserSettings);
+    setupLivePreview();
+
+    const userStr = localStorage.getItem('user');
+    if (userStr) {
+      const user = JSON.parse(userStr);
+      if (user.roles && (user.roles.includes('admin') || user.is_superuser)) {
+        document.getElementById('tenant-settings-card').classList.remove('hidden');
+        await loadTenantSettings();
+        
+        const tenantForm = document.getElementById('tenant-settings-form');
+        tenantForm.addEventListener('submit', saveTenantSettings);
+      }
+    }
+  }
+
+  async function loadUserSettings() {
+    try {
+      const response = await apiFetch('/settings/user');
+      const settings = await response.json();
+
+      document.getElementById('setting-theme').value = settings.theme || 'light';
+      document.getElementById('setting-density').value = settings.density || 'normal';
+      document.getElementById('setting-language').value = settings.language || 'en';
+      document.getElementById('setting-timezone').value = settings.timezone || 'UTC';
+
+      updatePreview();
+
+      if (settings.updated_at) {
+        document.getElementById('settings-last-updated').textContent = `Last updated: ${new Date(settings.updated_at).toLocaleString()}`;
+      }
+    } catch (error) {
+      console.error('Failed to load user settings:', error);
+    }
+  }
+
+  async function saveUserSettings(e) {
+    e.preventDefault();
+
+    const settings = {
+      theme: document.getElementById('setting-theme').value,
+      density: document.getElementById('setting-density').value,
+      language: document.getElementById('setting-language').value,
+      timezone: document.getElementById('setting-timezone').value
+    };
+
+    try {
+      const response = await apiFetch('/settings/user', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(settings)
+      });
+
+      if (response.ok) {
+        showAlert('Settings saved successfully!', 'success');
+        applyTheme(settings.theme);
+      } else {
+        const error = await response.json();
+        showAlert(error.detail || 'Failed to save settings', 'danger');
+      }
+    } catch (error) {
+      showAlert('Failed to save settings: ' + error.message, 'danger');
+    }
+  }
+
+  async function loadTenantSettings() {
+    try {
+      const response = await apiFetch('/settings/tenant');
+      const settings = await response.json();
+
+      document.getElementById('tenant-name').value = settings.tenant_name || '';
+      document.getElementById('tenant-primary-color').value = settings.primary_color || '#0066cc';
+      document.getElementById('tenant-secondary-color').value = settings.secondary_color || '#6c757d';
+      document.getElementById('tenant-logo-url').value = settings.logo_url || '';
+    } catch (error) {
+      console.error('Failed to load tenant settings:', error);
+    }
+  }
+
+  async function saveTenantSettings(e) {
+    e.preventDefault();
+
+    const settings = {
+      tenant_name: document.getElementById('tenant-name').value,
+      primary_color: document.getElementById('tenant-primary-color').value,
+      secondary_color: document.getElementById('tenant-secondary-color').value,
+      logo_url: document.getElementById('tenant-logo-url').value
+    };
+
+    try {
+      const response = await apiFetch('/settings/tenant', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(settings)
+      });
+
+      if (response.ok) {
+        showAlert('Tenant settings saved successfully!', 'success');
+        applyBranding(settings);
+      } else {
+        const error = await response.json();
+        showAlert(error.detail || 'Failed to save tenant settings', 'danger');
+      }
+    } catch (error) {
+      showAlert('Failed to save tenant settings: ' + error.message, 'danger');
+    }
+  }
+
+  function setupLivePreview() {
+    const fields = ['setting-theme', 'setting-density', 'setting-language', 'setting-timezone'];
+    
+    fields.forEach(fieldId => {
+      const field = document.getElementById(fieldId);
+      field.addEventListener('change', updatePreview);
+    });
+  }
+
+  function updatePreview() {
+    document.getElementById('preview-theme').textContent = document.getElementById('setting-theme').value;
+    document.getElementById('preview-density').textContent = document.getElementById('setting-density').value;
+    document.getElementById('preview-language').textContent = document.getElementById('setting-language').selectedOptions[0].text;
+    document.getElementById('preview-timezone').textContent = document.getElementById('setting-timezone').value;
+  }
+
+  function applyTheme(theme) {
+    if (theme === 'dark') {
+      document.documentElement.setAttribute('data-theme', 'dark');
+      document.body.classList.add('bg-gray-900', 'text-white');
+    } else {
+      document.documentElement.removeAttribute('data-theme');
+      document.body.classList.remove('bg-gray-900', 'text-white');
+    }
+  }
+
+  function applyBranding(settings) {
+    if (settings.primary_color) {
+      document.documentElement.style.setProperty('--color-primary', settings.primary_color);
+    }
+    if (settings.secondary_color) {
+      document.documentElement.style.setProperty('--color-secondary', settings.secondary_color);
+    }
+  }
+
+  function showAlert(message, type) {
+    const alert = document.createElement('div');
+    const bgColor = type === 'success' ? 'bg-green-50 border-green-200 text-green-700' : type === 'danger' ? 'bg-red-50 border-red-200 text-red-700' : 'bg-yellow-50 border-yellow-200 text-yellow-700';
+    const icon = type === 'success' ? 'bi-check-circle' : type === 'danger' ? 'bi-exclamation-circle' : 'bi-info-circle';
+    
+    alert.className = `fixed top-4 right-4 ${bgColor} border rounded-lg shadow-lg p-4 max-w-md z-50 flex items-start gap-3`;
+    alert.innerHTML = `
+      <i class="bi ${icon} flex-shrink-0 mt-0.5"></i>
+      <div class="flex-1">${message}</div>
+      <button onclick="this.closest('[class*=fixed]').remove()" class="text-lg hover:opacity-70">
+        <i class="bi bi-x"></i>
+      </button>
+    `;
+    
+    document.body.appendChild(alert);
+    
+    setTimeout(() => {
+      alert.remove();
+    }, 5000);
+  }
+</script>
