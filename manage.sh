@@ -67,6 +67,7 @@ show_help() {
     echo "  shell       - Open backend shell"
     echo "  db-shell    - Open database shell"
     echo "  seed        - Seed database with test data"
+    echo "  test        - Run API tests"
     echo "  help        - Show this help message"
     echo ""
     echo "Database types:"
@@ -174,6 +175,18 @@ seed_database() {
     print_info "Database seeding completed successfully"
 }
 
+# Function to run tests
+run_tests() {
+    print_info "Running API tests..."
+    
+    if ! docker compose -f "$COMPOSE_FULL_PATH" exec -T backend ./test_api_option_b.sh; then
+        print_error "Tests failed"
+        exit 1
+    fi
+    
+    print_info "Tests completed successfully"
+}
+
 # Main script logic
 case $COMMAND in
     start)
@@ -211,6 +224,9 @@ case $COMMAND in
     seed)
         validate_database
         seed_database
+        ;;
+    test)
+        run_tests
         ;;
     help|--help|-h)
         show_help
