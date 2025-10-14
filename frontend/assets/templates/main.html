@@ -6,7 +6,7 @@
   <title>NoCode Platform</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-  <link href="../../assets/css/app.css" rel="stylesheet" />
+  <link href="../css/app.css" rel="stylesheet" />
 </head>
 <body class="bg-gray-50 overflow-hidden">
   <div id="app" class="flex flex-col h-screen">
@@ -80,11 +80,12 @@
   </div>
 
   <script type="module">
-    import { initApp } from '../../assets/js/app.js';
-    import '../../assets/js/companies.js';
-    import '../../assets/js/generic-entity-page.js';
-    import '../../assets/js/settings.js';
-    import '../../assets/js/audit-page.js';
+    // Correct relative paths from frontend/assets/templates/main.html
+    import { initApp } from '../js/app.js';
+    import '../js/companies.js';
+    import '../js/generic-entity-page.js';
+    import '../js/settings.js';
+    import '../js/audit-page.js';
     
     initApp();
   </script>
