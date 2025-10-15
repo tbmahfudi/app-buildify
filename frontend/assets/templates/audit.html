@@ -17,28 +17,3 @@
   <!-- Audit Container -->
   <div id="audit-container" class="space-y-4"></div>
 </div>
-
-<script type="module">
-  import { AuditWidget } from '../../assets/js/audit-widget.js';
-
-  document.addEventListener('route:loaded', async (e) => {
-    if (e.detail.route === 'audit') {
-      initAuditPage();
-    }
-  });
-
-  function initAuditPage() {
-    const container = document.getElementById('audit-container');
-    
-    const widget = new AuditWidget(container, {
-      showFilters: true,
-      pageSize: 20
-    });
-    
-    widget.render();
-
-    document.getElementById('btn-refresh-audit').onclick = () => {
-      widget.refresh();
-    };
-  }
-</script>
