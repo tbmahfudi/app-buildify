@@ -85,31 +85,6 @@
     </div>
   </div>
 
-  <script type="module">
-    import { login } from '../../js/api.js';
-
-    const form = document.getElementById('login-form');
-    const errorDiv = document.getElementById('login-error');
-    const errorMessage = document.getElementById('error-message');
-
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      
-      const email = document.getElementById('email').value.trim();
-      const password = document.getElementById('password').value;
-      const tenant = document.getElementById('tenant').value.trim() || null;
-      
-      errorDiv.classList.add('hidden');
-      errorMessage.textContent = '';
-      
-      try {
-        await login(email, password, tenant);
-        window.location.href = '/index.html';
-      } catch (error) {
-        errorMessage.textContent = error.message;
-        errorDiv.classList.remove('hidden');
-      }
-    });
-  </script>
+  <script type="module" src="../../js/login-page.js"></script>
 </body>
 </html>
