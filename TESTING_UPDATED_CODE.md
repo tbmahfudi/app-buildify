@@ -3,13 +3,16 @@
 You can try the latest Codex changes locally without touching your already-working `main` branch by checking the update out into a throwaway branch (or even a separate worktree). The steps below assume your local clone already tracks your `origin` remote.
 
 ## 1. Fetch the Codex commit
-The Codex drop you reviewed lives on the `work` branch in the upstream repository and is rooted at commit `77f4be75a2af2934d82186b2a8308a9dd7bbd582`.
+The Codex drop you reviewed is rooted at commit `77f4be75a2af2934d82186b2a8308a9dd7bbd582`. Some forks publish it on a
+`work` branch, but others expose the commit without the branch ref (which triggers `fatal: couldn't find remote ref work`).
+
+Run the following to fetch the commit by its hash (this works whether or not the branch ref exists on your remote):
 
 ```bash
-git fetch origin work:codex-tailwind-updates
+git fetch origin 77f4be75a2af2934d82186b2a8308a9dd7bbd582:refs/heads/codex-tailwind-updates
 ```
 
-This command downloads the branch and creates a local branch named `codex-tailwind-updates` pointing at the Codex changes.
+If you do see an upstream branch (e.g., `origin/work`) you can still use `git fetch origin work:codex-tailwind-updates`, but the hash-based command above is the safest option.
 
 ## 2. Spin up a disposable checkout
 You now have two good options:
