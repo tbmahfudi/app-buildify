@@ -1,6 +1,36 @@
-const API_BASE = "/api";
+const normalizeBase = (value) => {
+  if (!value) return '/api';
+  return value.endsWith('/') ? value.replace(/\/+$/, '') : value;
+};
+
+const deriveApiBase = () => {
+  if (typeof window !== 'undefined') {
+    if (window.APP_CONFIG?.apiBase) {
+      return normalizeBase(window.APP_CONFIG.apiBase);
+    }
+
+    const metaBase = document.querySelector('meta[name="api-base"]')?.content;
+    if (metaBase) {
+      return normalizeBase(metaBase);
+    }
+
+    const { protocol, hostname } = window.location;
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+      return `${protocol}//${hostname}:8000/api`;
+    }
+  }
+
+  return '/api';
+};
+
+const API_BASE = deriveApiBase();
 let tokens = { access: null, refresh: null };
 let tenantId = null;
+
+const withBase = (path) => {
+  const safePath = path.startsWith('/') ? path : `/${path}`;
+  return `${API_BASE}${safePath}`;
+};
 
 function loadTokens() {
   try {
@@ -21,9 +51,9 @@ async function apiFetch(path, opts = {}) {
   const headers = opts.headers ? { ...opts.headers } : {};
   if (tokens.access) headers["Authorization"] = `Bearer ${tokens.access}`;
   if (tenantId) headers["X-Tenant-Id"] = tenantId;
-  const res = await fetch(`${API_BASE}${path}`, { ...opts, headers });
+  const res = await fetch(withBase(path), { ...opts, headers });
   if (res.status === 401 && tokens.refresh) {
-    const r = await fetch(`${API_BASE}/auth/refresh`, {
+    const r = await fetch(withBase('/auth/refresh'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ refresh_token: tokens.refresh })
@@ -39,7 +69,7 @@ async function apiFetch(path, opts = {}) {
   return res;
 }
 async function login(email, password, tenant) {
-  const res = await fetch(`${API_BASE}/auth/login`, {
+  const res = await fetch(withBase('/auth/login'), {
     method: "POST",
     headers: { "Content-Type": "application/json", ...(tenant ? {"X-Tenant-Id": tenant} : {}) },
     body: JSON.stringify({ email, password })

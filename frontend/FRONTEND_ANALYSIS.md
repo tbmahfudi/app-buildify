@@ -12,7 +12,7 @@
 - Routing is hash-based: templates are fetched from `/assets/templates/<route>.html`, injected into `#content`, and a `route:loaded` custom event is emitted so feature modules can self-initialize. 【F:frontend/assets/js/app.js†L94-L118】
 
 ## Data & Metadata Services
-- `api.js` encapsulates token persistence, tenant scoping, and refresh-token retries, ensuring all downstream fetches inherit authorization headers automatically. 【F:frontend/assets/js/api.js†L1-L63】
+- `api.js` encapsulates token persistence, tenant scoping, refresh-token retries, and now derives its base URL from runtime configuration (global `APP_CONFIG`, the `<meta name="api-base">` hint, or a localhost-friendly default of `http://localhost:8000/api`) so the SPA can talk to FastAPI even when the frontend is served from another port. 【F:frontend/assets/js/api.js†L1-L63】【F:frontend/index.html†L1-L17】【F:frontend/assets/templates/login.html†L1-L88】
 - `data-service.js` provides CRUD helpers backed by `/data/*` endpoints, normalizing payload shapes for list pagination, single-record retrieval, mutation, and bulk actions. 【F:frontend/assets/js/data-service.js†L6-L108】
 - `metadata-service.js` caches entity metadata in-memory, supports cache busting, and exposes permission helpers for role-aware UI decisions. 【F:frontend/assets/js/metadata-service.js†L6-L74】
 
