@@ -30,7 +30,12 @@ export async function initApp() {
   }
 
   // Setup main layout
-  setupMainLayout();
+  try {
+    await setupMainLayout();
+  } catch (error) {
+    console.error('Failed to setup layout:', error);
+    return;
+  }
 
   // Load menu
   await loadMenu();
@@ -61,7 +66,30 @@ function redirectToLogin() {
   window.location.replace(LOGIN_PAGE);
 }
 
-function setupMainLayout() {
+async function setupMainLayout() {
+  const appRoot = document.getElementById('app');
+  if (!appRoot) {
+    throw new Error('App root element not found');
+  }
+
+  if (!document.getElementById('content')) {
+    const response = await fetch('/assets/templates/main.html');
+    if (!response.ok) {
+      throw new Error('Main layout template not found');
+    }
+
+    const html = await response.text();
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+    const templateApp = doc.getElementById('app');
+
+    if (!templateApp) {
+      throw new Error('Main layout template missing app container');
+    }
+
+    appRoot.innerHTML = templateApp.innerHTML;
+  }
+
   // Set user email in navbar
   const userEmail = document.getElementById('user-email');
   if (userEmail) {
@@ -98,6 +126,10 @@ async function loadRoute(route) {
   window.appState.currentRoute = route;
 
   const content = document.getElementById('content');
+  if (!content) {
+    console.error('Content container not found for route:', route);
+    return;
+  }
   content.innerHTML = `
     <div class="flex items-center justify-center h-full">
       <div class="text-center">
