@@ -9,11 +9,6 @@ const deriveApiBase = () => {
       return normalizeBase(window.APP_CONFIG.apiBase);
     }
 
-    const metaBase = document.querySelector('meta[name="api-base"]')?.content;
-    if (metaBase) {
-      return normalizeBase(metaBase);
-    }
-
     const { protocol, hostname } = window.location;
     if (hostname === 'localhost' || hostname === '127.0.0.1') {
       return `${protocol}//${hostname}:8000/api`;
@@ -23,13 +18,13 @@ const deriveApiBase = () => {
   return '/api';
 };
 
-const API_BASE = deriveApiBase();
+let apiBase = deriveApiBase();
 let tokens = { access: null, refresh: null };
 let tenantId = null;
 
 const withBase = (path) => {
   const safePath = path.startsWith('/') ? path : `/${path}`;
-  return `${API_BASE}${safePath}`;
+  return `${apiBase}${safePath}`;
 };
 
 function loadTokens() {
@@ -68,6 +63,10 @@ async function apiFetch(path, opts = {}) {
   }
   return res;
 }
+
+function setApiBase(base) {
+  apiBase = normalizeBase(base);
+}
 async function login(email, password, tenant) {
   const res = await fetch(withBase('/auth/login'), {
     method: "POST",
@@ -90,4 +89,4 @@ function logout() {
   saveTokens();
 }
 loadTokens();
-export { apiFetch, login, logout, tokens, setTenant, tenantId };
+export { apiFetch, login, logout, tokens, setTenant, tenantId, setApiBase };
