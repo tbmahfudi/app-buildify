@@ -8,74 +8,73 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
   <link href="../../assets/css/app.css" rel="stylesheet" />
 </head>
-<body class="bg-gray-50 overflow-hidden">
-  <div id="app" class="flex flex-col h-screen">
-    <!-- Navigation Bar -->
-    <nav class="bg-gray-900 text-white px-6 py-4 shadow-lg">
-      <div class="flex items-center justify-between">
-        <div class="flex items-center gap-3">
-          <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-            <span class="text-white font-bold text-sm">NP</span>
-          </div>
-          <span class="text-xl font-semibold">NoCode Platform</span>
-        </div>
-
-        <div class="flex items-center gap-4">
-          <!-- User Dropdown -->
-          <div class="relative group">
-            <button class="px-4 py-2 rounded-lg hover:bg-gray-800 transition flex items-center gap-2">
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-              </svg>
-              <span id="user-email">User</span>
-              <svg class="w-4 h-4 transition group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
-              </svg>
-            </button>
-
-            <!-- Dropdown Menu -->
-            <div class="absolute right-0 mt-2 w-48 bg-white text-gray-900 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition z-50">
-              <a href="#settings" class="block px-4 py-3 hover:bg-gray-100 rounded-t-lg flex items-center gap-2">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                </svg>
-                Settings
-              </a>
-              <hr class="my-1">
-              <a href="#" id="btn-logout" class="block px-4 py-3 hover:bg-red-50 rounded-b-lg text-red-600 flex items-center gap-2">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
-                </svg>
-                Logout
-              </a>
+<body class="bg-slate-950 text-slate-100">
+  <div id="app" class="app-shell h-screen">
+    <aside id="sidebar" class="app-sidebar">
+      <div class="sidebar-inner">
+        <div class="sidebar-header">
+          <button id="sidebar-toggle" type="button" class="sidebar-toggle" aria-label="Toggle navigation">
+            <i class="bi bi-list"></i>
+          </button>
+          <div class="brand">
+            <div class="brand-logo">NP</div>
+            <div class="brand-text">
+              <span class="brand-title">NoCode Platform</span>
+              <span class="brand-subtitle">Operations Suite</span>
             </div>
           </div>
         </div>
-      </div>
-    </nav>
-    
-    <!-- Main Content Area -->
-    <div class="flex flex-1 overflow-hidden">
-      <!-- Sidebar -->
-      <aside class="w-64 bg-white border-r border-gray-200 overflow-y-auto">
-        <div class="p-4">
-          <nav id="sidebar-nav" class="flex flex-col gap-1">
-            <!-- Menu items will be loaded here by JavaScript -->
-          </nav>
-        </div>
 
-        <!-- Sidebar Footer -->
-        <div class="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200 bg-gray-50 w-64">
-          <div class="text-xs text-gray-500 text-center">
-            <p>© 2024 NoCode Platform</p>
-            <p>v1.0.0</p>
+        <nav id="sidebar-nav" class="sidebar-nav">
+          <!-- Menu items loaded dynamically -->
+        </nav>
+      </div>
+
+      <footer class="sidebar-footer">
+        <p class="sidebar-footer-title">NoCode Platform</p>
+        <p class="sidebar-footer-subtitle">© 2024 All rights reserved</p>
+      </footer>
+    </aside>
+
+    <div class="app-main">
+      <header class="app-header">
+        <div class="header-left">
+          <div class="header-logo" aria-hidden="true">NP</div>
+          <div class="header-title-group">
+            <p class="header-title">NoCode Platform</p>
+            <p class="header-subtitle">Build faster, operate smarter</p>
           </div>
         </div>
-      </aside>
-      
-      <!-- Content -->
-      <main id="content" class="flex-1 overflow-y-auto bg-gray-50 p-6"></main>
+
+        <div id="floating-submenu" class="floating-submenu hidden" aria-live="polite"></div>
+
+        <div class="header-actions">
+          <div class="user-menu">
+            <button id="user-menu-button" class="user-menu-button" type="button" aria-haspopup="true" aria-expanded="false">
+              <span class="user-avatar">NP</span>
+              <span id="user-email" class="user-name">User</span>
+              <i class="bi bi-chevron-down"></i>
+            </button>
+            <div id="user-menu-dropdown" class="user-menu-dropdown hidden" role="menu">
+              <a href="#profile" class="user-menu-item" role="menuitem">
+                <i class="bi bi-person"></i>
+                <span>Profile</span>
+              </a>
+              <a href="#settings" class="user-menu-item" role="menuitem">
+                <i class="bi bi-gear"></i>
+                <span>Settings</span>
+              </a>
+              <hr class="user-menu-separator">
+              <button id="btn-logout" class="user-menu-item user-menu-danger" type="button" role="menuitem">
+                <i class="bi bi-box-arrow-right"></i>
+                <span>Logout</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <main id="content" class="app-content" tabindex="-1"></main>
     </div>
   </div>
 
