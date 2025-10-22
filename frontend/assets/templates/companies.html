@@ -1,91 +1,399 @@
-<div class="space-y-4">
+<div class="space-y-6">
   <!-- Header -->
-  <div class="flex items-center justify-between">
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
     <div>
-      <h2 class="text-2xl font-bold text-gray-900">Companies</h2>
-      <p class="text-gray-600 text-sm mt-1">Manage your organizations</p>
+      <h2 class="text-3xl font-bold text-gray-900 flex items-center gap-2">
+        <i class="bi bi-building text-blue-600"></i>
+        Companies
+      </h2>
+      <p class="text-gray-600 text-sm mt-1">Manage your organizations and company structure</p>
     </div>
-    <button id="btn-add-company" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center gap-2">
+    <button id="btn-add-company" class="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 active:bg-blue-800 shadow-sm hover:shadow-md transition-all font-medium">
       <i class="bi bi-plus-lg"></i>
       Add Company
     </button>
   </div>
 
-  <!-- Table -->
+  <!-- Search and Filters -->
+  <div class="bg-white rounded-lg shadow-sm p-4">
+    <div class="flex flex-col sm:flex-row gap-3">
+      <div class="flex-1 relative">
+        <i class="bi bi-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+        <input 
+          type="text" 
+          id="search-companies"
+          placeholder="Search companies..." 
+          class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+      </div>
+      <button class="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition">
+        <i class="bi bi-funnel"></i>
+        Filter
+      </button>
+      <button id="btn-refresh" class="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition">
+        <i class="bi bi-arrow-clockwise"></i>
+        Refresh
+      </button>
+    </div>
+  </div>
+
+  <!-- Table Card -->
   <div class="bg-white rounded-lg shadow-sm overflow-hidden">
+    <!-- Table Header -->
+    <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
+      <div class="flex items-center justify-between">
+        <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wider">Company List</h3>
+        <span id="company-count" class="text-sm text-gray-500">0 companies</span>
+      </div>
+    </div>
+    
+    <!-- Table -->
     <div class="overflow-x-auto">
       <table id="companies-table" class="w-full">
         <thead>
           <tr class="border-b border-gray-200 bg-gray-50">
-            <th class="px-6 py-3 text-left text-sm font-semibold text-gray-900">Code</th>
-            <th class="px-6 py-3 text-left text-sm font-semibold text-gray-900">Name</th>
-            <th class="px-6 py-3 text-left text-sm font-semibold text-gray-900">Created</th>
-            <th class="px-6 py-3 text-left text-sm font-semibold text-gray-900">Actions</th>
+            <th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+              Code
+            </th>
+            <th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+              Name
+            </th>
+            <th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+              Created
+            </th>
+            <th class="px-6 py-3 text-right text-xs font-semibold text-gray-700 uppercase tracking-wider">
+              Actions
+            </th>
           </tr>
         </thead>
-        <tbody>
-          <tr>
-            <td colspan="4" class="px-6 py-8 text-center text-gray-500">
-              <i class="bi bi-inbox text-2xl block mb-2"></i>
-              <p>No companies found</p>
-            </td>
-          </tr>
+        <tbody id="companies-tbody" class="divide-y divide-gray-200">
+          <!-- Rows will be inserted here -->
         </tbody>
       </table>
     </div>
+    
+    <!-- Empty State -->
+    <div id="empty-state" class="hidden px-6 py-12 text-center">
+      <div class="w-16 h-16 mx-auto bg-gray-100 rounded-full flex items-center justify-center mb-4">
+        <i class="bi bi-inbox text-3xl text-gray-400"></i>
+      </div>
+      <h3 class="text-lg font-medium text-gray-900 mb-1">No companies found</h3>
+      <p class="text-gray-500 text-sm mb-4">Get started by creating your first company</p>
+      <button class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+        <i class="bi bi-plus-lg"></i>
+        Add Company
+      </button>
+    </div>
   </div>
+</div>
 
-  <!-- Modal -->
-  <div id="companyModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-    <div class="bg-white rounded-lg shadow-xl max-w-md w-full">
+<!-- Modal Overlay -->
+<div id="modal-overlay" class="hidden fixed inset-0 bg-black bg-opacity-50 z-40 transition-opacity"></div>
+
+<!-- Modal -->
+<div id="company-modal" class="hidden fixed inset-0 z-50 overflow-y-auto">
+  <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:p-0">
+    <div class="relative inline-block align-bottom bg-white rounded-xl shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
       <!-- Modal Header -->
-      <div class="flex items-center justify-between p-6 border-b border-gray-200">
-        <h3 class="text-lg font-semibold text-gray-900">Company</h3>
-        <button class="text-gray-400 hover:text-gray-600" data-company-modal-close>
-          <i class="bi bi-x-lg"></i>
+      <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+        <h3 id="modal-title" class="text-xl font-semibold text-gray-900">Add Company</h3>
+        <button id="btn-close-modal" class="text-gray-400 hover:text-gray-600 transition">
+          <i class="bi bi-x-lg text-xl"></i>
         </button>
       </div>
 
       <!-- Modal Body -->
-      <div class="p-6 space-y-4">
-        <form id="company-form">
-          <input type="hidden" id="company-id">
-          
-          <div>
-            <label for="company-code" class="block text-sm font-medium text-gray-700 mb-2">Code</label>
-            <input 
-              type="text" 
-              id="company-code" 
-              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
-              required>
-          </div>
-          
-          <div>
-            <label for="company-name" class="block text-sm font-medium text-gray-700 mb-2">Name</label>
-            <input 
-              type="text" 
-              id="company-name" 
-              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
-              required>
-          </div>
+      <form id="company-form" class="px-6 py-5 space-y-4">
+        <input type="hidden" id="company-id">
+        
+        <!-- Code Field -->
+        <div>
+          <label for="company-code" class="block text-sm font-medium text-gray-700 mb-2 text-left">
+            Company Code <span class="text-red-500">*</span>
+          </label>
+          <input 
+            type="text" 
+            id="company-code" 
+            required
+            placeholder="e.g., ACME"
+            class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+          <p class="mt-1 text-xs text-gray-500">Unique identifier for the company</p>
+        </div>
+        
+        <!-- Name Field -->
+        <div>
+          <label for="company-name" class="block text-sm font-medium text-gray-700 mb-2 text-left">
+            Company Name <span class="text-red-500">*</span>
+          </label>
+          <input 
+            type="text" 
+            id="company-name" 
+            required
+            placeholder="e.g., Acme Corporation"
+            class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+        </div>
 
-          <div id="company-error" class="hidden p-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg"></div>
-        </form>
-      </div>
+        <!-- Error Message -->
+        <div id="company-error" class="hidden p-3 bg-red-50 border border-red-200 rounded-lg">
+          <div class="flex items-start gap-2">
+            <i class="bi bi-exclamation-circle text-red-600 mt-0.5"></i>
+            <span id="error-message" class="text-sm text-red-700"></span>
+          </div>
+        </div>
+      </form>
 
       <!-- Modal Footer -->
-      <div class="flex items-center justify-end gap-3 p-6 border-t border-gray-200 bg-gray-50">
-        <button
-          class="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition"
-          data-company-modal-close>
+      <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 bg-gray-50">
+        <button 
+          id="btn-cancel-modal"
+          type="button"
+          class="px-5 py-2.5 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition font-medium">
           Cancel
         </button>
-        <button
-          id="btn-save-company"
-          class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
-          Save
+        <button 
+          id="btn-save-company" 
+          type="submit"
+          form="company-form"
+          class="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 active:bg-blue-800 transition font-medium flex items-center gap-2">
+          <i class="bi bi-check-lg"></i>
+          Save Company
         </button>
       </div>
     </div>
   </div>
 </div>
+
+<script type="module">
+  import { apiFetch } from '../../assets/js/api.js';
+  import { showToast, showLoading, hideLoading } from '../../assets/js/ui-utils.js';
+
+  let companies = [];
+
+  document.addEventListener('route:loaded', async (e) => {
+    if (e.detail.route === 'companies') {
+      initCompanies();
+    }
+  });
+
+  function initCompanies() {
+    // Event listeners
+    document.getElementById('btn-add-company').addEventListener('click', () => showModal());
+    document.getElementById('btn-refresh').addEventListener('click', loadCompanies);
+    document.getElementById('btn-close-modal').addEventListener('click', hideModal);
+    document.getElementById('btn-cancel-modal').addEventListener('click', hideModal);
+    document.getElementById('company-form').addEventListener('submit', saveCompany);
+    document.getElementById('search-companies').addEventListener('input', handleSearch);
+    
+    // Close modal on overlay click
+    document.getElementById('modal-overlay').addEventListener('click', hideModal);
+    
+    // Load initial data
+    loadCompanies();
+  }
+
+  async function loadCompanies() {
+    showLoading();
+    
+    try {
+      const res = await apiFetch('/org/companies');
+      const data = await res.json();
+      companies = data.items || [];
+      renderCompanies(companies);
+      updateCount(companies.length);
+    } catch (err) {
+      console.error('Failed to load companies:', err);
+      showToast('Failed to load companies', 'error');
+    } finally {
+      hideLoading();
+    }
+  }
+
+  function renderCompanies(items) {
+    const tbody = document.getElementById('companies-tbody');
+    const emptyState = document.getElementById('empty-state');
+    
+    if (items.length === 0) {
+      tbody.innerHTML = '';
+      emptyState.classList.remove('hidden');
+      return;
+    }
+    
+    emptyState.classList.add('hidden');
+    
+    tbody.innerHTML = items.map(c => `
+      <tr class="hover:bg-gray-50 transition">
+        <td class="px-6 py-4 whitespace-nowrap">
+          <div class="flex items-center">
+            <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
+              <i class="bi bi-building text-blue-600"></i>
+            </div>
+            <span class="text-sm font-medium text-gray-900">${escapeHtml(c.code)}</span>
+          </div>
+        </td>
+        <td class="px-6 py-4">
+          <div class="text-sm font-medium text-gray-900">${escapeHtml(c.name)}</div>
+        </td>
+        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+          ${new Date(c.created_at).toLocaleDateString()}
+        </td>
+        <td class="px-6 py-4 whitespace-nowrap text-right text-sm">
+          <button 
+            class="inline-flex items-center gap-1 px-3 py-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition"
+            onclick="window.editCompany('${c.id}')">
+            <i class="bi bi-pencil-square"></i>
+            Edit
+          </button>
+          <button 
+            class="inline-flex items-center gap-1 px-3 py-1.5 text-red-600 hover:bg-red-50 rounded-lg transition ml-2"
+            onclick="window.deleteCompany('${c.id}')">
+            <i class="bi bi-trash"></i>
+            Delete
+          </button>
+        </td>
+      </tr>
+    `).join('');
+  }
+
+  function showModal(company = null) {
+    const modal = document.getElementById('company-modal');
+    const overlay = document.getElementById('modal-overlay');
+    const title = document.getElementById('modal-title');
+    
+    title.textContent = company ? 'Edit Company' : 'Add Company';
+    document.getElementById('company-id').value = company?.id || '';
+    document.getElementById('company-code').value = company?.code || '';
+    document.getElementById('company-name').value = company?.name || '';
+    document.getElementById('company-error').classList.add('hidden');
+    
+    modal.classList.remove('hidden');
+    overlay.classList.remove('hidden');
+    
+    // Focus first input
+    setTimeout(() => document.getElementById('company-code').focus(), 100);
+  }
+
+  function hideModal() {
+    document.getElementById('company-modal').classList.add('hidden');
+    document.getElementById('modal-overlay').classList.add('hidden');
+  }
+
+  async function saveCompany(e) {
+    e.preventDefault();
+    
+    const id = document.getElementById('company-id').value;
+    const code = document.getElementById('company-code').value.trim();
+    const name = document.getElementById('company-name').value.trim();
+    const errorEl = document.getElementById('company-error');
+    const errorMsg = document.getElementById('error-message');
+    const saveBtn = document.getElementById('btn-save-company');
+    
+    errorEl.classList.add('hidden');
+    
+    if (!code || !name) {
+      errorMsg.textContent = 'All fields are required';
+      errorEl.classList.remove('hidden');
+      return;
+    }
+    
+    const body = { code, name };
+    const url = id ? `/org/companies/${id}` : '/org/companies';
+    const method = id ? 'PUT' : 'POST';
+    
+    try {
+      saveBtn.disabled = true;
+      saveBtn.innerHTML = '<i class="bi bi-arrow-repeat animate-spin"></i> Saving...';
+      
+      const res = await apiFetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      
+      if (res.ok) {
+        hideModal();
+        await loadCompanies();
+        showToast(id ? 'Company updated successfully' : 'Company created successfully', 'success');
+      } else {
+        const err = await res.json();
+        errorMsg.textContent = err.detail || 'Save failed';
+        errorEl.classList.remove('hidden');
+      }
+    } catch (err) {
+      errorMsg.textContent = 'Network error. Please try again.';
+      errorEl.classList.remove('hidden');
+    } finally {
+      saveBtn.disabled = false;
+      saveBtn.innerHTML = '<i class="bi bi-check-lg"></i> Save Company';
+    }
+  }
+
+  async function editCompany(id) {
+    try {
+      const res = await apiFetch(`/org/companies/${id}`);
+      const company = await res.json();
+      showModal(company);
+    } catch (err) {
+      showToast('Failed to load company', 'error');
+    }
+  }
+
+  async function deleteCompany(id) {
+    if (!confirm('Are you sure you want to delete this company? This action cannot be undone.')) {
+      return;
+    }
+    
+    showLoading();
+    
+    try {
+      const res = await apiFetch(`/org/companies/${id}`, { method: 'DELETE' });
+      
+      if (res.ok) {
+        await loadCompanies();
+        showToast('Company deleted successfully', 'success');
+      } else {
+        const err = await res.json();
+        showToast(err.detail || 'Delete failed', 'error');
+      }
+    } catch (err) {
+      showToast('Network error. Please try again.', 'error');
+    } finally {
+      hideLoading();
+    }
+  }
+
+  function handleSearch(e) {
+    const query = e.target.value.toLowerCase();
+    
+    if (!query) {
+      renderCompanies(companies);
+      updateCount(companies.length);
+      return;
+    }
+    
+    const filtered = companies.filter(c => 
+      c.code.toLowerCase().includes(query) ||
+      c.name.toLowerCase().includes(query)
+    );
+    
+    renderCompanies(filtered);
+    updateCount(filtered.length, companies.length);
+  }
+
+  function updateCount(filtered, total) {
+    const countEl = document.getElementById('company-count');
+    if (total && filtered !== total) {
+      countEl.textContent = `${filtered} of ${total} companies`;
+    } else {
+      countEl.textContent = `${filtered} companies`;
+    }
+  }
+
+  function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+
+  // Expose functions for inline onclick handlers
+  window.editCompany = editCompany;
+  window.deleteCompany = deleteCompany;
+</script>

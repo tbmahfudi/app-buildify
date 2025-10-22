@@ -1,327 +1,216 @@
-import { apiFetch, logout as apiLogout, tokens } from './api.js';
-
-const LOGIN_PAGE = '/assets/templates/login.html';
+import { apiFetch, login, logout as apiLogout } from './api.js';
+import { showToast, showLoading, hideLoading } from './ui-utils.js';
 
 // Global state
 window.appState = {
   user: null,
-  currentRoute: 'dashboard',
-  menu: []
+  currentRoute: 'dashboard'
 };
 
 export async function initApp() {
   // Check if logged in
-  if (!tokens.access) {
-    redirectToLogin();
+  const tokensStr = localStorage.getItem('tokens');
+  
+  if (!tokensStr) {
+    window.location.href = '/assets/templates/login.html';
     return;
   }
+
+  showLoading();
 
   // Load user info
   try {
     const response = await apiFetch('/auth/me');
+    
     if (!response.ok) throw new Error('Auth failed');
+    
     window.appState.user = await response.json();
-    localStorage.setItem('user', JSON.stringify(window.appState.user));
+    
+    // Update UI with user info
+    updateUserInfo();
+    
   } catch (error) {
     console.error('Failed to load user:', error);
-    apiLogout();
-    localStorage.removeItem('user');
-    redirectToLogin();
+    localStorage.removeItem('tokens');
+    window.location.href = '/assets/templates/login.html';
     return;
+  } finally {
+    hideLoading();
   }
 
   // Setup main layout
-  try {
-    await setupMainLayout();
-  } catch (error) {
-    console.error('Failed to setup layout:', error);
-    return;
-  }
-
+  setupEventListeners();
+  
   // Load menu
   await loadMenu();
-
+  
   // Load initial route
   const hash = window.location.hash.slice(1) || 'dashboard';
   await loadRoute(hash);
-
+  
   // Handle hash changes
   window.addEventListener('hashchange', () => {
     const route = window.location.hash.slice(1) || 'dashboard';
     loadRoute(route);
   });
+}
 
+function updateUserInfo() {
+  const userEmailEl = document.getElementById('user-email');
+  const userEmailDropdown = document.getElementById('user-email-dropdown');
+  
+  if (userEmailEl && window.appState.user) {
+    userEmailEl.textContent = window.appState.user.email;
+  }
+  
+  if (userEmailDropdown && window.appState.user) {
+    userEmailDropdown.textContent = window.appState.user.email;
+  }
+}
+
+function setupEventListeners() {
   // Logout button
   const logoutBtn = document.getElementById('btn-logout');
   if (logoutBtn) {
-    logoutBtn.addEventListener('click', (event) => {
-      event.preventDefault();
-      apiLogout();
-      localStorage.removeItem('user');
-      redirectToLogin();
+    logoutBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      handleLogout();
     });
   }
 }
 
-function redirectToLogin() {
-  window.location.replace(LOGIN_PAGE);
-}
-
-async function setupMainLayout() {
-  const appRoot = document.getElementById('app');
-  if (!appRoot) {
-    throw new Error('App root element not found');
+async function handleLogout() {
+  if (!window.confirm('Are you sure you want to logout?')) {
+    return;
   }
-
-  if (!document.getElementById('content')) {
-    const response = await fetch('/assets/templates/main.html');
-    if (!response.ok) {
-      throw new Error('Main layout template not found');
-    }
-
-    const html = await response.text();
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(html, 'text/html');
-    const templateApp = doc.getElementById('app');
-
-    if (!templateApp) {
-      throw new Error('Main layout template missing app container');
-    }
-
-    appRoot.innerHTML = templateApp.innerHTML;
-  }
-
-  initializeUserMenu();
-  initializeSidebarToggle();
-  updateUserProfileChip();
+  
+  apiLogout();
+  window.location.href = '/assets/templates/login.html';
 }
 
 async function loadMenu() {
   try {
     const response = await fetch('/config/menu.json');
     const menu = await response.json();
-
-    window.appState.menu = menu.items || [];
-
+    
     const navContainer = document.getElementById('sidebar-nav');
     if (!navContainer) return;
-
+    
     navContainer.innerHTML = '';
-
-    window.appState.menu.forEach((item) => {
+    
+    menu.items.forEach(item => {
       const link = document.createElement('a');
-      link.className = 'nav-link';
+      link.className = 'flex items-center gap-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 hover:text-blue-600 transition-colors group';
       link.href = `#${item.route}`;
-      link.dataset.route = item.route;
-      link.dataset.tooltip = item.title;
-      link.setAttribute('aria-label', item.title);
-
-      const content = document.createElement('div');
-      content.className = 'nav-link-content';
-
-      const iconWrapper = document.createElement('span');
-      iconWrapper.className = 'nav-icon';
-      iconWrapper.innerHTML = `<i class="bi ${item.icon || 'bi-circle'}"></i>`;
-
-      const label = document.createElement('span');
-      label.className = 'nav-label';
-      label.textContent = item.title;
-
-      content.appendChild(iconWrapper);
-      content.appendChild(label);
-      link.appendChild(content);
-
-      if (item.submenu?.length) {
-        const indicator = document.createElement('span');
-        indicator.className = 'nav-label text-xs text-slate-300/80';
-        indicator.textContent = `${item.submenu.length} shortcuts`;
-        link.appendChild(indicator);
-      }
-
-      link.addEventListener('click', () => setActiveNavLink(item.route));
+      
+      // Add icon based on route
+      const icon = getMenuIcon(item.route);
+      link.innerHTML = `
+        <i class="bi ${icon} text-lg"></i>
+        <span class="font-medium">${item.title}</span>
+      `;
+      
+      link.onclick = (e) => {
+        // Update active state
+        document.querySelectorAll('#sidebar-nav a').forEach(l => {
+          l.classList.remove('bg-blue-50', 'text-blue-600');
+          l.classList.add('text-gray-700');
+        });
+        link.classList.add('bg-blue-50', 'text-blue-600');
+        link.classList.remove('text-gray-700');
+      };
+      
       navContainer.appendChild(link);
     });
-
-    setActiveNavLink(window.appState.currentRoute);
+    
+    // Set initial active state
+    updateActiveMenuItem();
+    
   } catch (error) {
     console.error('Failed to load menu:', error);
+    showToast('Failed to load menu', 'error');
   }
+}
+
+function getMenuIcon(route) {
+  const icons = {
+    'dashboard': 'bi-speedometer2',
+    'companies': 'bi-building',
+    'branches': 'bi-diagram-3',
+    'departments': 'bi-people',
+    'audit': 'bi-clock-history',
+    'settings': 'bi-gear'
+  };
+  return icons[route] || 'bi-circle';
+}
+
+function updateActiveMenuItem() {
+  const currentRoute = window.location.hash.slice(1) || 'dashboard';
+  
+  document.querySelectorAll('#sidebar-nav a').forEach(link => {
+    const linkRoute = link.getAttribute('href').slice(1);
+    
+    if (linkRoute === currentRoute) {
+      link.classList.add('bg-blue-50', 'text-blue-600');
+      link.classList.remove('text-gray-700');
+    } else {
+      link.classList.remove('bg-blue-50', 'text-blue-600');
+      link.classList.add('text-gray-700');
+    }
+  });
 }
 
 async function loadRoute(route) {
   window.appState.currentRoute = route;
-
+  updateActiveMenuItem();
+  
   const content = document.getElementById('content');
-  if (!content) {
-    console.error('Content container not found for route:', route);
-    return;
-  }
+  
+  // Show loading state
   content.innerHTML = `
-    <div class="flex h-full items-center justify-center">
+    <div class="flex items-center justify-center h-full">
       <div class="text-center">
-        <div class="inline-flex h-12 w-12 items-center justify-center rounded-full border-4 border-sky-500/80 border-t-transparent animate-spin"></div>
-        <p class="mt-3 text-sm font-medium text-slate-200">Loading workspace…</p>
+        <div class="inline-block">
+          <div class="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+        </div>
+        <p class="mt-4 text-gray-600 font-medium">Loading ${route}...</p>
       </div>
     </div>
   `;
-
+  
   try {
     const response = await fetch(`/assets/templates/${route}.html`);
-    if (!response.ok) throw new Error('Template not found');
-
+    
+    if (!response.ok) {
+      throw new Error('Template not found');
+    }
+    
     const html = await response.text();
     content.innerHTML = html;
-
-    setActiveNavLink(route);
-
+    
     // Dispatch event for route-specific JS
-    document.dispatchEvent(new CustomEvent('route:loaded', {
-      detail: { route }
+    document.dispatchEvent(new CustomEvent('route:loaded', { 
+      detail: { route } 
     }));
+    
   } catch (error) {
     content.innerHTML = `
-      <div class="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-6 text-left text-amber-100">
-        <p class="text-sm font-semibold uppercase tracking-wide text-amber-300">Page not found</p>
-        <p class="mt-2 text-base">The view for <span class="font-semibold">${route}</span> has not been created yet.</p>
+      <div class="max-w-md mx-auto mt-20">
+        <div class="bg-yellow-50 border-l-4 border-yellow-500 p-6 rounded-lg shadow-sm">
+          <div class="flex items-start gap-3">
+            <i class="bi bi-exclamation-triangle-fill text-yellow-500 text-2xl"></i>
+            <div>
+              <h3 class="text-lg font-semibold text-yellow-800 mb-2">Page Not Found</h3>
+              <p class="text-yellow-700 mb-4">The page "${route}" could not be loaded.</p>
+              <button 
+                onclick="window.location.hash = 'dashboard'" 
+                class="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition">
+                <i class="bi bi-house"></i> Go to Dashboard
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     `;
-  }
-}
-
-function setActiveNavLink(route) {
-  const navContainer = document.getElementById('sidebar-nav');
-  if (!navContainer) return;
-
-  navContainer.querySelectorAll('.nav-link').forEach((link) => {
-    link.classList.remove('active');
-  });
-
-  const parentItem = findParentMenuItem(route);
-  if (!parentItem) {
-    updateFloatingSubmenu();
-    return;
-  }
-
-  const activeLink = navContainer.querySelector(`[data-route="${parentItem.route}"]`);
-  if (activeLink) {
-    activeLink.classList.add('active');
-  }
-
-  updateFloatingSubmenu(parentItem, route);
-}
-
-function findParentMenuItem(route) {
-  return window.appState.menu.find((item) => {
-    if (item.route === route) return true;
-    return item.submenu?.some((sub) => sub.route === route);
-  });
-}
-
-function updateFloatingSubmenu(menuItem = null, activeRoute = '') {
-  const floatingSubmenu = document.getElementById('floating-submenu');
-  if (!floatingSubmenu) return;
-
-  floatingSubmenu.innerHTML = '';
-
-  if (!menuItem?.submenu?.length) {
-    floatingSubmenu.classList.add('hidden');
-    return;
-  }
-
-  floatingSubmenu.classList.remove('hidden');
-
-  menuItem.submenu.forEach((subItem) => {
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = 'submenu-item';
-    button.innerHTML = `<i class="bi ${subItem.icon || 'bi-circle'}"></i>`;
-    button.dataset.tooltip = subItem.title;
-
-    if (subItem.route === activeRoute) {
-      button.classList.add('active');
-    }
-
-    button.addEventListener('click', () => {
-      window.location.hash = `#${subItem.route}`;
-      setActiveNavLink(subItem.route);
-    });
-
-    floatingSubmenu.appendChild(button);
-  });
-}
-
-function initializeSidebarToggle() {
-  if (window.__sidebarToggleInitialized) return;
-  const toggleButton = document.getElementById('sidebar-toggle');
-  if (!toggleButton) return;
-
-  toggleButton.addEventListener('click', () => {
-    document.body.classList.toggle('sidebar-collapsed');
-  });
-  window.__sidebarToggleInitialized = true;
-}
-
-function initializeUserMenu() {
-  if (window.__userMenuInitialized) return;
-  const userMenuButton = document.getElementById('user-menu-button');
-  const userMenuDropdown = document.getElementById('user-menu-dropdown');
-
-  if (!userMenuButton || !userMenuDropdown) return;
-
-  const toggleMenu = () => {
-    const isOpen = !userMenuDropdown.classList.contains('hidden');
-    if (isOpen) {
-      userMenuDropdown.classList.add('hidden');
-      userMenuButton.setAttribute('aria-expanded', 'false');
-    } else {
-      userMenuDropdown.classList.remove('hidden');
-      userMenuButton.setAttribute('aria-expanded', 'true');
-    }
-  };
-
-  userMenuButton.addEventListener('click', (event) => {
-    event.stopPropagation();
-    toggleMenu();
-  });
-
-  const handleDocumentClick = (event) => {
-    if (!userMenuDropdown.classList.contains('hidden') && !userMenuDropdown.contains(event.target)) {
-      userMenuDropdown.classList.add('hidden');
-      userMenuButton.setAttribute('aria-expanded', 'false');
-    }
-  };
-
-  document.addEventListener('click', handleDocumentClick);
-
-  const handleKeydown = (event) => {
-    if (event.key === 'Escape') {
-      userMenuDropdown.classList.add('hidden');
-      userMenuButton.setAttribute('aria-expanded', 'false');
-      userMenuButton.focus();
-    }
-  };
-
-  document.addEventListener('keydown', handleKeydown);
-
-  window.__userMenuInitialized = true;
-}
-
-function updateUserProfileChip() {
-  const userEmail = document.getElementById('user-email');
-  const avatar = document.querySelector('.user-avatar');
-
-  const displayName = window.appState.user?.name || window.appState.user?.email || 'User';
-
-  if (userEmail) {
-    userEmail.textContent = displayName;
-  }
-
-  if (avatar && displayName) {
-    avatar.textContent = displayName
-      .split(' ')
-      .map((part) => part.charAt(0))
-      .join('')
-      .slice(0, 2)
-      .toUpperCase();
   }
 }

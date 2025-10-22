@@ -1,83 +1,167 @@
 <!doctype html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>NoCode Platform</title>
+  
+  <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Bootstrap Icons (icons only) -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-  <link href="../../assets/css/app.css" rel="stylesheet" />
+  
+  <!-- Custom Tailwind Config -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: {
+              50: '#eff6ff',
+              100: '#dbeafe',
+              200: '#bfdbfe',
+              300: '#93c5fd',
+              400: '#60a5fa',
+              500: '#3b82f6',
+              600: '#2563eb',
+              700: '#1d4ed8',
+              800: '#1e40af',
+              900: '#1e3a8a',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  
+  <style>
+    /* Custom animations */
+    @keyframes slideIn {
+      from { transform: translateX(-100%); }
+      to { transform: translateX(0); }
+    }
+    
+    .slide-in {
+      animation: slideIn 0.3s ease-out;
+    }
+    
+    /* Smooth transitions */
+    * {
+      transition-property: background-color, border-color, color, fill, stroke;
+      transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+      transition-duration: 150ms;
+    }
+  </style>
 </head>
-<body class="bg-slate-950 text-slate-100">
-  <div id="app" class="app-shell h-screen">
-    <aside id="sidebar" class="app-sidebar">
-      <div class="sidebar-inner">
-        <div class="sidebar-header">
-          <button id="sidebar-toggle" type="button" class="sidebar-toggle" aria-label="Toggle navigation">
-            <i class="bi bi-list"></i>
+<body class="bg-gray-50 overflow-hidden">
+  <div id="app" class="flex flex-col h-screen">
+    <!-- Navigation Bar -->
+    <nav class="bg-gradient-to-r from-gray-900 to-gray-800 text-white px-6 py-4 shadow-lg">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center shadow-md transform hover:scale-105 transition-transform">
+            <span class="text-white font-bold text-lg">NP</span>
+          </div>
+          <span class="text-xl font-semibold">NoCode Platform</span>
+        </div>
+
+        <div class="flex items-center gap-4">
+          <!-- Notifications (placeholder) -->
+          <button class="relative p-2 rounded-lg hover:bg-gray-700 transition">
+            <i class="bi bi-bell text-xl"></i>
+            <span class="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
           </button>
-          <div class="brand">
-            <div class="brand-logo">NP</div>
-            <div class="brand-text">
-              <span class="brand-title">NoCode Platform</span>
-              <span class="brand-subtitle">Operations Suite</span>
-            </div>
-          </div>
-        </div>
-
-        <nav id="sidebar-nav" class="sidebar-nav">
-          <!-- Menu items loaded dynamically -->
-        </nav>
-      </div>
-
-      <footer class="sidebar-footer">
-        <p class="sidebar-footer-title">NoCode Platform</p>
-        <p class="sidebar-footer-subtitle">© 2024 All rights reserved</p>
-      </footer>
-    </aside>
-
-    <div class="app-main">
-      <header class="app-header">
-        <div class="header-left">
-          <div class="header-logo" aria-hidden="true">NP</div>
-          <div class="header-title-group">
-            <p class="header-title">NoCode Platform</p>
-            <p class="header-subtitle">Build faster, operate smarter</p>
-          </div>
-        </div>
-
-        <div id="floating-submenu" class="floating-submenu hidden" aria-live="polite"></div>
-
-        <div class="header-actions">
-          <div class="user-menu">
-            <button id="user-menu-button" class="user-menu-button" type="button" aria-haspopup="true" aria-expanded="false">
-              <span class="user-avatar">NP</span>
-              <span id="user-email" class="user-name">User</span>
-              <i class="bi bi-chevron-down"></i>
+          
+          <!-- User Dropdown -->
+          <div class="relative group">
+            <button class="flex items-center gap-3 px-4 py-2 rounded-lg hover:bg-gray-700 transition">
+              <div class="w-8 h-8 bg-gray-600 rounded-full flex items-center justify-center">
+                <i class="bi bi-person-fill"></i>
+              </div>
+              <div class="text-left hidden md:block">
+                <div id="user-email" class="text-sm font-medium">User</div>
+                <div class="text-xs text-gray-400">Administrator</div>
+              </div>
+              <i class="bi bi-chevron-down text-sm group-hover:rotate-180 transition-transform"></i>
             </button>
-            <div id="user-menu-dropdown" class="user-menu-dropdown hidden" role="menu">
-              <a href="#profile" class="user-menu-item" role="menuitem">
-                <i class="bi bi-person"></i>
-                <span>Profile</span>
+
+            <!-- Dropdown Menu -->
+            <div class="absolute right-0 mt-2 w-56 bg-white text-gray-900 rounded-xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 overflow-hidden">
+              <div class="p-3 border-b border-gray-100">
+                <p class="text-xs text-gray-500">Signed in as</p>
+                <p class="text-sm font-medium truncate" id="user-email-dropdown">user@example.com</p>
+              </div>
+              
+              <a href="#settings" class="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition">
+                <i class="bi bi-gear text-gray-500"></i>
+                <span class="text-sm">Settings</span>
               </a>
-              <a href="#settings" class="user-menu-item" role="menuitem">
-                <i class="bi bi-gear"></i>
-                <span>Settings</span>
+              
+              <a href="#profile" class="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition">
+                <i class="bi bi-person text-gray-500"></i>
+                <span class="text-sm">Profile</span>
               </a>
-              <hr class="user-menu-separator">
-              <button id="btn-logout" class="user-menu-item user-menu-danger" type="button" role="menuitem">
+              
+              <hr class="my-1">
+              
+              <button id="btn-logout" class="w-full flex items-center gap-3 px-4 py-3 hover:bg-red-50 text-red-600 transition">
                 <i class="bi bi-box-arrow-right"></i>
-                <span>Logout</span>
+                <span class="text-sm">Logout</span>
               </button>
             </div>
           </div>
         </div>
-      </header>
+      </div>
+    </nav>
+    
+    <!-- Main Content Area -->
+    <div class="flex flex-1 overflow-hidden">
+      <!-- Sidebar -->
+      <aside id="sidebar" class="w-64 bg-white border-r border-gray-200 overflow-y-auto slide-in">
+        <div class="p-4">
+          <nav id="sidebar-nav" class="space-y-1">
+            <!-- Menu items will be loaded here -->
+          </nav>
+        </div>
 
-      <main id="content" class="app-content" tabindex="-1"></main>
+        <!-- Sidebar Footer -->
+        <div class="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200 bg-gray-50 w-64">
+          <div class="text-xs text-gray-500 text-center">
+            <p class="font-medium">© 2024 NoCode Platform</p>
+            <p class="text-gray-400">v1.0.0 • Status: <span class="text-green-500">●</span> Online</p>
+          </div>
+        </div>
+      </aside>
+      
+      <!-- Content -->
+      <main id="content" class="flex-1 overflow-y-auto bg-gray-50 p-6">
+        <!-- Dynamic content loads here -->
+      </main>
     </div>
   </div>
 
-  <script type="module" src="../../assets/js/app-entry.js"></script>
+  <!-- Toast Container -->
+  <div id="toast-container" class="fixed top-4 right-4 z-50 space-y-2"></div>
+
+  <!-- Global Loading Overlay -->
+  <div id="loading-overlay" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+    <div class="bg-white rounded-lg p-6 shadow-xl">
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+        <span class="text-gray-700 font-medium">Loading...</span>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initApp } from '../js/app.js';
+    import '../js/companies.js';
+    import '../js/generic-entity-page.js';
+    import '../js/settings.js';
+    import '../js/audit-page.js';
+    
+    initApp();
+  </script>
 </body>
 </html>
