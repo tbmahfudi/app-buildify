@@ -4,9 +4,21 @@ from alembic import context
 from alembic.script import ScriptDirectory
 import os
 import sys
+from pathlib import Path
 
 # Add your project directory to the path
 sys.path.insert(0, os.path.realpath(os.path.join(os.path.dirname(__file__), '..')))
+
+# Add the backend directory to the Python path
+# This ensures the 'app' module can be imported regardless of where alembic is run from
+backend_dir = Path(__file__).resolve().parent.parent.parent
+sys.path.insert(0, str(backend_dir))
+
+# Now proceed with the rest of your imports
+from logging.config import fileConfig
+from sqlalchemy import engine_from_config
+from sqlalchemy import pool
+from alembic import context
 
 from app.core.config import SQLALCHEMY_DATABASE_URL
 from app.models.base import Base
