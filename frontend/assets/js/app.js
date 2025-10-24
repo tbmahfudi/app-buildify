@@ -1,4 +1,5 @@
 import { apiFetch, login, logout as apiLogout } from './api.js';
+import { showToast, showLoading, hideLoading } from './ui-utils.js';
 
 // Global state
 window.appState = {
@@ -8,28 +9,37 @@ window.appState = {
 
 export async function initApp() {
   // Check if logged in
-  const token = localStorage.getItem('access_token');
-  if (!token) {
-    window.location.href = '/assets/pages/login.html';
+  const tokensStr = localStorage.getItem('tokens');
+  
+  if (!tokensStr) {
+    window.location.href = '/assets/templates/login.html';
     return;
   }
+
+  showLoading();
 
   // Load user info
   try {
     const response = await apiFetch('/auth/me');
+    
     if (!response.ok) throw new Error('Auth failed');
+    
     window.appState.user = await response.json();
-    localStorage.setItem('user', JSON.stringify(window.appState.user));
+    
+    // Update UI with user info
+    updateUserInfo();
+    
   } catch (error) {
     console.error('Failed to load user:', error);
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('refresh_token');
-    window.location.href = '/assets/pages/login.html';
+    localStorage.removeItem('tokens');
+    window.location.href = '/assets/templates/login.html';
     return;
+  } finally {
+    hideLoading();
   }
 
   // Setup main layout
-  setupMainLayout();
+  setupEventListeners();
   
   // Load menu
   await loadMenu();
@@ -43,24 +53,39 @@ export async function initApp() {
     const route = window.location.hash.slice(1) || 'dashboard';
     loadRoute(route);
   });
+}
 
+function updateUserInfo() {
+  const userEmailEl = document.getElementById('user-email');
+  const userEmailDropdown = document.getElementById('user-email-dropdown');
+  
+  if (userEmailEl && window.appState.user) {
+    userEmailEl.textContent = window.appState.user.email;
+  }
+  
+  if (userEmailDropdown && window.appState.user) {
+    userEmailDropdown.textContent = window.appState.user.email;
+  }
+}
+
+function setupEventListeners() {
   // Logout button
   const logoutBtn = document.getElementById('btn-logout');
   if (logoutBtn) {
     logoutBtn.addEventListener('click', (e) => {
       e.preventDefault();
-      apiLogout();
-      window.location.href = '/assets/pages/login.html';
+      handleLogout();
     });
   }
 }
 
-function setupMainLayout() {
-  // Set user email in navbar
-  const userEmail = document.getElementById('user-email');
-  if (userEmail) {
-    userEmail.textContent = window.appState.user?.email || 'User';
+async function handleLogout() {
+  if (!window.confirm('Are you sure you want to logout?')) {
+    return;
   }
+  
+  apiLogout();
+  window.location.href = '/assets/templates/login.html';
 }
 
 async function loadMenu() {
@@ -75,31 +100,90 @@ async function loadMenu() {
     
     menu.items.forEach(item => {
       const link = document.createElement('a');
-      link.className = 'nav-link block px-4 py-2 rounded-lg text-gray-800 hover:bg-gray-100 transition';
+      link.className = 'flex items-center gap-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 hover:text-blue-600 transition-colors group';
       link.href = `#${item.route}`;
-      link.textContent = item.title;
+      
+      // Add icon based on route
+      const icon = getMenuIcon(item.route);
+      link.innerHTML = `
+        <i class="bi ${icon} text-lg"></i>
+        <span class="font-medium">${item.title}</span>
+      `;
+      
       link.onclick = (e) => {
-        document.querySelectorAll('#sidebar-nav .nav-link').forEach(l => {
-          l.classList.remove('active', 'bg-blue-100', 'text-blue-600');
+        // Update active state
+        document.querySelectorAll('#sidebar-nav a').forEach(l => {
+          l.classList.remove('bg-blue-50', 'text-blue-600');
+          l.classList.add('text-gray-700');
         });
-        link.classList.add('active', 'bg-blue-100', 'text-blue-600');
+        link.classList.add('bg-blue-50', 'text-blue-600');
+        link.classList.remove('text-gray-700');
       };
+      
       navContainer.appendChild(link);
     });
+    
+    // Set initial active state
+    updateActiveMenuItem();
+    
   } catch (error) {
     console.error('Failed to load menu:', error);
+    showToast('Failed to load menu', 'error');
   }
+}
+
+function getMenuIcon(route) {
+  const icons = {
+    'dashboard': 'bi-speedometer2',
+    'companies': 'bi-building',
+    'branches': 'bi-diagram-3',
+    'departments': 'bi-people',
+    'audit': 'bi-clock-history',
+    'settings': 'bi-gear'
+  };
+  return icons[route] || 'bi-circle';
+}
+
+function updateActiveMenuItem() {
+  const currentRoute = window.location.hash.slice(1) || 'dashboard';
+  
+  document.querySelectorAll('#sidebar-nav a').forEach(link => {
+    const linkRoute = link.getAttribute('href').slice(1);
+    
+    if (linkRoute === currentRoute) {
+      link.classList.add('bg-blue-50', 'text-blue-600');
+      link.classList.remove('text-gray-700');
+    } else {
+      link.classList.remove('bg-blue-50', 'text-blue-600');
+      link.classList.add('text-gray-700');
+    }
+  });
 }
 
 async function loadRoute(route) {
   window.appState.currentRoute = route;
+  updateActiveMenuItem();
   
   const content = document.getElementById('content');
-  content.innerHTML = '<div class="flex items-center justify-center h-full"><div class="text-center"><div class="inline-block"><div class="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div></div><p class="mt-3 text-gray-600">Loading...</p></div></div>';
+  
+  // Show loading state
+  content.innerHTML = `
+    <div class="flex items-center justify-center h-full">
+      <div class="text-center">
+        <div class="inline-block">
+          <div class="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+        </div>
+        <p class="mt-4 text-gray-600 font-medium">Loading ${route}...</p>
+      </div>
+    </div>
+  `;
   
   try {
     const response = await fetch(`/assets/templates/${route}.html`);
-    if (!response.ok) throw new Error('Template not found');
+    
+    if (!response.ok) {
+      throw new Error('Template not found');
+    }
     
     const html = await response.text();
     content.innerHTML = html;
@@ -108,11 +192,24 @@ async function loadRoute(route) {
     document.dispatchEvent(new CustomEvent('route:loaded', { 
       detail: { route } 
     }));
+    
   } catch (error) {
     content.innerHTML = `
-      <div class="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-        <strong class="text-yellow-800">Page not found:</strong>
-        <p class="text-yellow-700">${route}</p>
+      <div class="max-w-md mx-auto mt-20">
+        <div class="bg-yellow-50 border-l-4 border-yellow-500 p-6 rounded-lg shadow-sm">
+          <div class="flex items-start gap-3">
+            <i class="bi bi-exclamation-triangle-fill text-yellow-500 text-2xl"></i>
+            <div>
+              <h3 class="text-lg font-semibold text-yellow-800 mb-2">Page Not Found</h3>
+              <p class="text-yellow-700 mb-4">The page "${route}" could not be loaded.</p>
+              <button 
+                onclick="window.location.hash = 'dashboard'" 
+                class="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition">
+                <i class="bi bi-house"></i> Go to Dashboard
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     `;
   }

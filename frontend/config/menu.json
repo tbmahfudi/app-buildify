@@ -2,27 +2,28 @@
   "items": [
     {
       "title": "Dashboard",
-      "route": "dashboard"
+      "route": "dashboard",
+      "icon": "bi-speedometer2"
     },
     {
-      "title": "Companies",
-      "route": "companies"
-    },
-    {
-      "title": "Branches",
-      "route": "branches"
-    },
-    {
-      "title": "Departments",
-      "route": "departments"
+      "title": "Data Management",
+      "route": "companies",
+      "icon": "bi-building",
+      "submenu": [
+        { "title": "Companies", "route": "companies", "icon": "bi-buildings" },
+        { "title": "Branches", "route": "branches", "icon": "bi-diagram-3" },
+        { "title": "Departments", "route": "departments", "icon": "bi-people" }
+      ]
     },
     {
       "title": "Audit Trail",
-      "route": "audit"
+      "route": "audit",
+      "icon": "bi-activity"
     },
     {
       "title": "Settings",
-      "route": "settings"
+      "route": "settings",
+      "icon": "bi-sliders2"
     }
   ]
 }
