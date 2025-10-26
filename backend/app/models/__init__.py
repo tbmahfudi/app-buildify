@@ -38,6 +38,9 @@ from .audit import AuditLog
 from .settings import UserSettings, TenantSettings
 from .metadata import EntityMetadata
 
+# Token revocation
+from .token_blacklist import TokenBlacklist
+
 # Export all models
 __all__ = [
     # Base
@@ -71,4 +74,7 @@ __all__ = [
     "UserSettings",
     "TenantSettings",
     "EntityMetadata",
+
+    # Token revocation
+    "TokenBlacklist",
 ]
