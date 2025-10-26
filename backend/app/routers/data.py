@@ -15,7 +15,7 @@ from app.schemas.data import (
 )
 from app.core.audit import create_audit_log, compute_diff
 
-router = APIRouter(prefix="/api/data", tags=["data"])
+router = APIRouter(prefix="/data", tags=["data"])
 
 # Entity registry - maps entity names to SQLAlchemy models
 ENTITY_REGISTRY = {

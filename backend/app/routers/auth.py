@@ -1,43 +1,40 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Header
+from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from datetime import datetime
-from typing import Optional
 import json
 
 import logging
 from sqlalchemy.orm.exc import StaleDataError
 
-from app.core.dependencies import get_db, get_current_user
+from app.core.dependencies import get_db, get_current_user, security
 from app.core.auth import verify_password, create_access_token, create_refresh_token, decode_token
 from app.models.user import User
 from app.schemas.auth import LoginRequest, TokenResponse, RefreshRequest, UserResponse
 
-router = APIRouter(prefix="/api/auth", tags=["auth"])
+router = APIRouter(prefix="/auth", tags=["auth"])
 # Set up logger at the top of your file
 logger = logging.getLogger(__name__)
 
 @router.post("/login", response_model=TokenResponse)
 def login(
     credentials: LoginRequest,
-    db: Session = Depends(get_db),
-    x_tenant_id: Optional[str] = Header(None)
+    db: Session = Depends(get_db)
 ):
-    """Login endpoint with optional tenant context"""
+    """
+    Login endpoint - authenticates user and returns JWT tokens.
+    Tenant ID is securely embedded in the JWT token payload.
+    """
     user = db.query(User).filter(User.email == credentials.email).first()
-    
+
     if not user or not verify_password(credentials.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password"
         )
-    
+
     if not user.is_active:
         raise HTTPException(status_code=403, detail="Inactive user")
-    
-    # Validate tenant access
-    if x_tenant_id and user.tenant_id and user.tenant_id != x_tenant_id:
-        if not user.is_superuser:
-            raise HTTPException(status_code=403, detail="Tenant access denied")
     
     # Parse roles
     try:
@@ -138,7 +135,7 @@ def get_me(current_user: User = Depends(get_current_user)):
         roles = json.loads(current_user.roles or "[]")
     except:
         roles = []
-    
+
     return UserResponse(
         id=str(current_user.id),
         email=current_user.email,
@@ -150,3 +147,28 @@ def get_me(current_user: User = Depends(get_current_user)):
         created_at=current_user.created_at,
         last_login=current_user.last_login
     )
+
+
+@router.post("/logout")
+def logout(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Logout endpoint - revokes the current access token.
+    Requires Redis to be configured for token revocation.
+    """
+    from app.core.auth import revoke_token
+
+    token = credentials.credentials
+    success = revoke_token(token)
+
+    if success:
+        logger.info(f"User {current_user.id} logged out successfully")
+        return {"message": "Logged out successfully"}
+    else:
+        logger.warning(f"Token revocation failed for user {current_user.id}")
+        return {
+            "message": "Logged out (token revocation unavailable)",
+            "note": "Redis is not configured, token will expire naturally"
+        }

@@ -14,7 +14,7 @@ from app.schemas.org import (
     DepartmentCreate, DepartmentUpdate, DepartmentResponse, DepartmentListResponse
 )
 
-router = APIRouter(prefix="/api/org", tags=["org"])
+router = APIRouter(prefix="/org", tags=["org"])
 
 # ============= COMPANIES =============
 
