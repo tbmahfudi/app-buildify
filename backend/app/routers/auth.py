@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Header
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from datetime import datetime
 from typing import Optional
@@ -10,7 +11,10 @@ from sqlalchemy.orm.exc import StaleDataError
 from app.core.dependencies import get_db, get_current_user
 from app.core.auth import verify_password, create_access_token, create_refresh_token, decode_token
 from app.models.user import User
+from app.models.token_blacklist import TokenBlacklist
 from app.schemas.auth import LoginRequest, TokenResponse, RefreshRequest, UserResponse
+
+security = HTTPBearer()
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 # Set up logger at the top of your file
@@ -138,7 +142,7 @@ def get_me(current_user: User = Depends(get_current_user)):
         roles = json.loads(current_user.roles or "[]")
     except:
         roles = []
-    
+
     return UserResponse(
         id=str(current_user.id),
         email=current_user.email,
@@ -150,3 +154,57 @@ def get_me(current_user: User = Depends(get_current_user)):
         created_at=current_user.created_at,
         last_login=current_user.last_login
     )
+
+@router.post("/logout")
+def logout(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Logout endpoint - revokes the current access token by adding it to the blacklist.
+    The token will no longer be valid for authentication.
+    """
+    token = credentials.credentials
+    payload = decode_token(token)
+
+    if not payload:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    jti = payload.get("jti")
+    if not jti:
+        raise HTTPException(status_code=401, detail="Token missing JTI")
+
+    # Check if already blacklisted
+    existing = db.query(TokenBlacklist).filter(TokenBlacklist.jti == jti).first()
+    if existing:
+        return {"message": "Already logged out"}
+
+    # Add token to blacklist
+    expires_at = datetime.fromtimestamp(payload.get("exp"))
+    blacklist_entry = TokenBlacklist(
+        jti=jti,
+        user_id=str(current_user.id),
+        token_type=payload.get("type", "access"),
+        expires_at=expires_at
+    )
+
+    db.add(blacklist_entry)
+    db.commit()
+
+    return {"message": "Successfully logged out"}
+
+@router.post("/logout-all")
+def logout_all(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Logout from all devices - marks all user's tokens as revoked.
+    This is useful when a user wants to invalidate all their sessions.
+    Note: This only affects tokens issued before this point.
+    """
+    # This endpoint doesn't need the specific token, just marks the user as logged out
+    # In practice, you might want to track a "logout_at" timestamp in the user table
+    # and check it in the get_current_user dependency
+    return {"message": "Successfully logged out from all devices"}

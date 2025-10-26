@@ -6,6 +6,7 @@ import json
 from .db import SessionLocal
 from .auth import decode_token
 from ..models.user import User
+from ..models.token_blacklist import TokenBlacklist
 
 security = HTTPBearer()
 
@@ -23,30 +24,41 @@ def get_current_user(
 ) -> User:
     token = credentials.credentials
     payload = decode_token(token)
-    
+
     if not payload or payload.get("type") != "access":
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid authentication credentials",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
+
+    # Check if token is blacklisted (revoked)
+    jti = payload.get("jti")
+    if jti:
+        blacklisted = db.query(TokenBlacklist).filter(TokenBlacklist.jti == jti).first()
+        if blacklisted:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token has been revoked",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
     user_id = payload.get("sub")
     if not user_id:
         raise HTTPException(status_code=401, detail="Invalid token")
-    
+
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
-    
+
     if not user.is_active:
         raise HTTPException(status_code=403, detail="Inactive user")
-    
+
     # Validate tenant access
     if x_tenant_id and user.tenant_id and user.tenant_id != x_tenant_id:
         if not user.is_superuser:
             raise HTTPException(status_code=403, detail="Tenant access denied")
-    
+
     return user
 
 def get_current_active_user(current_user: User = Depends(get_current_user)) -> User:
