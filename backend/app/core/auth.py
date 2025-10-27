@@ -3,9 +3,7 @@ import uuid
 from datetime import datetime, timedelta
 from passlib.context import CryptContext
 from typing import Optional, Dict
-import uuid
 from .config import SECRET_KEY, ACCESS_TOKEN_EXPIRE_MIN, REFRESH_TOKEN_EXPIRE_DAYS
-from .redis_client import get_redis
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -79,7 +77,7 @@ def create_refresh_token(data: dict) -> str:
 def decode_token(token: str) -> Optional[Dict]:
     """
     Decode and validate a JWT token.
-    Checks token revocation if Redis is available.
+    Token revocation is checked via database in dependencies.py.
 
     Args:
         token: JWT token string
@@ -89,46 +87,6 @@ def decode_token(token: str) -> Optional[Dict]:
     """
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-
-        # Check if token has been revoked (if Redis is available)
-        jti = payload.get("jti")
-        if jti:
-            redis_client = get_redis()
-            if redis_client.is_token_revoked(jti):
-                return None
-
         return payload
     except jwt.PyJWTError:
         return None
-
-
-def revoke_token(token: str) -> bool:
-    """
-    Revoke a JWT token by adding it to the revocation list.
-
-    Args:
-        token: JWT token string to revoke
-
-    Returns:
-        True if successful, False otherwise
-    """
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        jti = payload.get("jti")
-        exp = payload.get("exp")
-
-        if not jti or not exp:
-            return False
-
-        # Calculate remaining TTL
-        expires_at = datetime.fromtimestamp(exp)
-        remaining = int((expires_at - datetime.utcnow()).total_seconds())
-
-        if remaining <= 0:
-            return True  # Token already expired
-
-        redis_client = get_redis()
-        return redis_client.revoke_token(jti, remaining)
-
-    except jwt.PyJWTError:
-        return False

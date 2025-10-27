@@ -2,7 +2,6 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from typing import Optional, List
-import json
 from .db import SessionLocal
 from .auth import decode_token
 from ..models.user import User
@@ -59,7 +58,7 @@ def get_current_user(
 
     # Validate tenant_id from JWT matches user's tenant
     token_tenant_id = payload.get("tenant_id")
-    if user.tenant_id and token_tenant_id != user.tenant_id:
+    if user.tenant_id and token_tenant_id and str(token_tenant_id) != str(user.tenant_id):
         raise HTTPException(
             status_code=401,
             detail="Token tenant mismatch - please re-authenticate"
@@ -88,7 +87,7 @@ def verify_tenant_access(user: User, tenant_id: str) -> None:
             detail="User has no tenant assignment"
         )
 
-    if user.tenant_id != tenant_id:
+    if str(user.tenant_id) != str(tenant_id):
         raise HTTPException(
             status_code=403,
             detail="Access denied: You don't have permission to access this tenant's data"
@@ -104,14 +103,55 @@ def require_superuser(current_user: User = Depends(get_current_user)) -> User:
         raise HTTPException(status_code=403, detail="Superuser required")
     return current_user
 
-def has_role(role: str):
-    def role_checker(current_user: User = Depends(get_current_user)) -> User:
-        try:
-            user_roles = json.loads(current_user.roles or "[]")
-        except:
-            user_roles = []
-        
-        if role not in user_roles and not current_user.is_superuser:
-            raise HTTPException(status_code=403, detail=f"Role '{role}' required")
+def has_permission(permission: str):
+    """
+    Dependency to check if user has a specific permission.
+    Uses the RBAC system to check permissions.
+
+    Args:
+        permission: Permission code to check (e.g., "users:create:tenant")
+
+    Returns:
+        Function that validates the permission
+    """
+    def permission_checker(current_user: User = Depends(get_current_user)) -> User:
+        # Superusers have all permissions
+        if current_user.is_superuser:
+            return current_user
+
+        # Get user permissions from RBAC system
+        user_permissions = current_user.get_permissions() if hasattr(current_user, 'get_permissions') else set()
+
+        if permission not in user_permissions:
+            raise HTTPException(
+                status_code=403,
+                detail=f"Permission '{permission}' required"
+            )
         return current_user
-    return role_checker
+    return permission_checker
+
+def has_any_permission(permissions: List[str]):
+    """
+    Dependency to check if user has any of the specified permissions.
+
+    Args:
+        permissions: List of permission codes
+
+    Returns:
+        Function that validates user has at least one permission
+    """
+    def permission_checker(current_user: User = Depends(get_current_user)) -> User:
+        # Superusers have all permissions
+        if current_user.is_superuser:
+            return current_user
+
+        # Get user permissions from RBAC system
+        user_permissions = current_user.get_permissions() if hasattr(current_user, 'get_permissions') else set()
+
+        if not any(perm in user_permissions for perm in permissions):
+            raise HTTPException(
+                status_code=403,
+                detail=f"One of these permissions required: {', '.join(permissions)}"
+            )
+        return current_user
+    return permission_checker
