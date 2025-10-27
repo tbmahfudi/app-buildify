@@ -1,5 +1,6 @@
 import { apiFetch, login, logout as apiLogout } from './api.js';
 import { showToast, showLoading, hideLoading } from './ui-utils.js';
+import { filterMenuByRole, applyRBACToElements } from './rbac.js';
 
 // Global state
 window.appState = {
@@ -92,44 +93,120 @@ async function loadMenu() {
   try {
     const response = await fetch('/config/menu.json');
     const menu = await response.json();
-    
+
+    // Filter menu items based on user roles
+    const filteredItems = filterMenuByRole(menu.items);
+
     const navContainer = document.getElementById('sidebar-nav');
     if (!navContainer) return;
-    
+
     navContainer.innerHTML = '';
-    
-    menu.items.forEach(item => {
-      const link = document.createElement('a');
-      link.className = 'flex items-center gap-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 hover:text-blue-600 transition-colors group';
-      link.href = `#${item.route}`;
-      
-      // Add icon based on route
-      const icon = getMenuIcon(item.route);
-      link.innerHTML = `
-        <i class="bi ${icon} text-lg"></i>
-        <span class="font-medium">${item.title}</span>
-      `;
-      
-      link.onclick = (e) => {
-        // Update active state
-        document.querySelectorAll('#sidebar-nav a').forEach(l => {
-          l.classList.remove('bg-blue-50', 'text-blue-600');
-          l.classList.add('text-gray-700');
-        });
-        link.classList.add('bg-blue-50', 'text-blue-600');
-        link.classList.remove('text-gray-700');
-      };
-      
-      navContainer.appendChild(link);
+
+    filteredItems.forEach(item => {
+      // If item has submenu, create an expandable menu
+      if (item.submenu && item.submenu.length > 0) {
+        const menuGroup = createSubmenuItem(item);
+        navContainer.appendChild(menuGroup);
+      } else {
+        const link = createMenuItem(item);
+        navContainer.appendChild(link);
+      }
     });
-    
+
     // Set initial active state
     updateActiveMenuItem();
-    
+
   } catch (error) {
     console.error('Failed to load menu:', error);
     showToast('Failed to load menu', 'error');
   }
+}
+
+function createMenuItem(item) {
+  const link = document.createElement('a');
+  link.className = 'flex items-center gap-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 hover:text-blue-600 transition-colors group';
+  link.href = `#${item.route}`;
+
+  // Use icon from menu item or fallback to getMenuIcon
+  const icon = item.icon || getMenuIcon(item.route);
+  link.innerHTML = `
+    <i class="bi ${icon} text-lg"></i>
+    <span class="font-medium">${item.title}</span>
+  `;
+
+  link.onclick = (e) => {
+    // Update active state
+    document.querySelectorAll('#sidebar-nav a').forEach(l => {
+      l.classList.remove('bg-blue-50', 'text-blue-600');
+      l.classList.add('text-gray-700');
+    });
+    link.classList.add('bg-blue-50', 'text-blue-600');
+    link.classList.remove('text-gray-700');
+  };
+
+  return link;
+}
+
+function createSubmenuItem(item) {
+  const container = document.createElement('div');
+  container.className = 'submenu-container';
+
+  // Create parent item
+  const parent = document.createElement('div');
+  parent.className = 'flex items-center justify-between px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 cursor-pointer transition-colors';
+
+  const icon = item.icon || getMenuIcon(item.route);
+  parent.innerHTML = `
+    <div class="flex items-center gap-3">
+      <i class="bi ${icon} text-lg"></i>
+      <span class="font-medium">${item.title}</span>
+    </div>
+    <i class="bi bi-chevron-down text-sm transition-transform submenu-arrow"></i>
+  `;
+
+  // Create submenu
+  const submenu = document.createElement('div');
+  submenu.className = 'submenu hidden ml-4 mt-1 space-y-1';
+
+  item.submenu.forEach(subitem => {
+    const sublink = document.createElement('a');
+    sublink.className = 'flex items-center gap-3 px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-50 hover:text-blue-600 transition-colors text-sm';
+    sublink.href = `#${subitem.route}`;
+
+    const subicon = subitem.icon || 'bi-circle';
+    sublink.innerHTML = `
+      <i class="bi ${subicon}"></i>
+      <span>${subitem.title}</span>
+    `;
+
+    sublink.onclick = (e) => {
+      // Update active state for submenu items
+      document.querySelectorAll('#sidebar-nav a').forEach(l => {
+        l.classList.remove('bg-blue-50', 'text-blue-600');
+        l.classList.add('text-gray-600');
+      });
+      sublink.classList.add('bg-blue-50', 'text-blue-600');
+      sublink.classList.remove('text-gray-600');
+    };
+
+    submenu.appendChild(sublink);
+  });
+
+  // Toggle submenu on parent click
+  parent.onclick = () => {
+    submenu.classList.toggle('hidden');
+    const arrow = parent.querySelector('.submenu-arrow');
+    if (submenu.classList.contains('hidden')) {
+      arrow.style.transform = 'rotate(0deg)';
+    } else {
+      arrow.style.transform = 'rotate(180deg)';
+    }
+  };
+
+  container.appendChild(parent);
+  container.appendChild(submenu);
+
+  return container;
 }
 
 function getMenuIcon(route) {
@@ -138,6 +215,7 @@ function getMenuIcon(route) {
     'companies': 'bi-building',
     'branches': 'bi-diagram-3',
     'departments': 'bi-people',
+    'users': 'bi-people-fill',
     'audit': 'bi-clock-history',
     'settings': 'bi-gear'
   };
