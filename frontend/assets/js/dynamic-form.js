@@ -1,6 +1,8 @@
 /**
- * Dynamic Form Builder - Renders forms from metadata
+ * Dynamic Form Builder - Renders forms from metadata with RBAC support
  */
+import { canViewField, canEditField } from './rbac.js';
+
 export class DynamicForm {
   constructor(container, metadata, record = null) {
     this.container = container;
@@ -29,18 +31,36 @@ export class DynamicForm {
   }
 
   /**
-   * Create form group for a field
+   * Create form group for a field with RBAC support
    */
   createFormGroup(fieldConfig) {
+    // Check if user can view this field
+    if (!canViewField(fieldConfig)) {
+      // If user cannot view the field, return empty div
+      const hiddenDiv = document.createElement('div');
+      hiddenDiv.style.display = 'none';
+      return hiddenDiv;
+    }
+
     const div = document.createElement('div');
     div.className = 'mb-3';
+
+    // Check if user can edit this field
+    const canEdit = canEditField(fieldConfig);
+
+    // If field is marked as readonly OR user cannot edit, make it readonly
+    fieldConfig.readonly = fieldConfig.readonly || !canEdit;
 
     // Label
     const label = document.createElement('label');
     label.className = 'form-label';
     label.textContent = fieldConfig.title;
-    if (fieldConfig.required) {
+    if (fieldConfig.required && canEdit) {
       label.innerHTML += ' <span class="text-danger">*</span>';
+    }
+    // Add lock icon if readonly due to RBAC
+    if (!canEdit && !fieldConfig.readonly) {
+      label.innerHTML += ' <i class="bi bi-lock-fill text-muted text-xs ms-1" title="You do not have permission to edit this field"></i>';
     }
     div.appendChild(label);
 
