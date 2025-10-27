@@ -28,7 +28,7 @@ def upgrade():
     op.add_column('companies', sa.Column('tax_id', sa.String(length=50), nullable=True))
     op.add_column('companies', sa.Column('registration_number', sa.String(length=50), nullable=True))
     op.add_column('companies', sa.Column('is_active', sa.Boolean(), nullable=False, server_default='true'))
-    op.add_column('companies', sa.Column('metadata', sa.Text(), nullable=True))
+    op.add_column('companies', sa.Column('extra_data', sa.Text(), nullable=True))
     op.add_column('companies', sa.Column('deleted_at', sa.DateTime(), nullable=True))
 
     # Drop old unique constraint on code, add new one with tenant_id
@@ -44,7 +44,7 @@ def upgrade():
     # Add new fields to branches
     op.add_column('branches', sa.Column('description', sa.Text(), nullable=True))
     op.add_column('branches', sa.Column('is_active', sa.Boolean(), nullable=False, server_default='true'))
-    op.add_column('branches', sa.Column('metadata', sa.Text(), nullable=True))
+    op.add_column('branches', sa.Column('extra_data', sa.Text(), nullable=True))
     op.add_column('branches', sa.Column('deleted_at', sa.DateTime(), nullable=True))
     op.create_index('ix_branches_is_active', 'branches', ['is_active'])
 
@@ -58,7 +58,7 @@ def upgrade():
     op.create_foreign_key('fk_departments_parent', 'departments', 'departments', ['parent_id'], ['id'], ondelete='SET NULL')
     op.add_column('departments', sa.Column('description', sa.Text(), nullable=True))
     op.add_column('departments', sa.Column('is_active', sa.Boolean(), nullable=False, server_default='true'))
-    op.add_column('departments', sa.Column('metadata', sa.Text(), nullable=True))
+    op.add_column('departments', sa.Column('extra_data', sa.Text(), nullable=True))
     op.add_column('departments', sa.Column('deleted_at', sa.DateTime(), nullable=True))
     op.create_index('ix_departments_parent_id', 'departments', ['parent_id'])
     op.create_index('ix_departments_is_active', 'departments', ['is_active'])
@@ -82,7 +82,7 @@ def upgrade():
     op.add_column('users', sa.Column('phone', sa.String(length=50), nullable=True))
     op.add_column('users', sa.Column('avatar_url', sa.String(length=500), nullable=True))
     op.add_column('users', sa.Column('is_verified', sa.Boolean(), nullable=False, server_default='false'))
-    op.add_column('users', sa.Column('metadata', sa.Text(), nullable=True))
+    op.add_column('users', sa.Column('extra_data', sa.Text(), nullable=True))
     op.add_column('users', sa.Column('deleted_at', sa.DateTime(), nullable=True))
 
     # Create indexes
@@ -104,7 +104,7 @@ def downgrade():
     op.drop_constraint('fk_users_tenant', 'users', type_='foreignkey')
 
     op.drop_column('users', 'deleted_at')
-    op.drop_column('users', 'metadata')
+    op.drop_column('users', 'extra_data')
     op.drop_column('users', 'is_verified')
     op.drop_column('users', 'avatar_url')
     op.drop_column('users', 'phone')
@@ -122,7 +122,7 @@ def downgrade():
     op.drop_constraint('fk_departments_parent', 'departments', type_='foreignkey')
     op.drop_constraint('fk_departments_tenant', 'departments', type_='foreignkey')
     op.drop_column('departments', 'deleted_at')
-    op.drop_column('departments', 'metadata')
+    op.drop_column('departments', 'extra_data')
     op.drop_column('departments', 'is_active')
     op.drop_column('departments', 'description')
     op.drop_column('departments', 'parent_id')
@@ -133,7 +133,7 @@ def downgrade():
     op.drop_index('ix_branches_is_active', table_name='branches')
     op.drop_constraint('fk_branches_tenant', 'branches', type_='foreignkey')
     op.drop_column('branches', 'deleted_at')
-    op.drop_column('branches', 'metadata')
+    op.drop_column('branches', 'extra_data')
     op.drop_column('branches', 'is_active')
     op.drop_column('branches', 'description')
     op.drop_index('ix_branches_tenant_id', table_name='branches')
@@ -146,7 +146,7 @@ def downgrade():
 
     op.drop_constraint('fk_companies_tenant', 'companies', type_='foreignkey')
     op.drop_column('companies', 'deleted_at')
-    op.drop_column('companies', 'metadata')
+    op.drop_column('companies', 'extra_data')
     op.drop_column('companies', 'is_active')
     op.drop_column('companies', 'registration_number')
     op.drop_column('companies', 'tax_id')

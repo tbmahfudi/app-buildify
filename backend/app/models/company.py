@@ -43,8 +43,8 @@ class Company(Base):
     # Status
     is_active = Column(Boolean, default=True, nullable=False, index=True)
 
-    # Metadata (JSON)
-    metadata = Column(Text, nullable=True)  # JSON: custom fields
+    # Extra data (JSON)
+    extra_data = Column(Text, nullable=True)  # JSON: custom fields
 
     # Timestamps
     created_at = Column(DateTime, server_default=func.now(), nullable=False)

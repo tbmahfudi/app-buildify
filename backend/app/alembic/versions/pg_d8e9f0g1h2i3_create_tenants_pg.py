@@ -46,8 +46,8 @@ def upgrade():
         sa.Column('logo_url', sa.String(length=500), nullable=True),
         sa.Column('primary_color', sa.String(length=7), nullable=True),
 
-        # Metadata
-        sa.Column('metadata', sa.Text(), nullable=True),
+        # Extra data
+        sa.Column('extra_data', sa.Text(), nullable=True),
 
         # Timestamps
         sa.Column('created_at', sa.DateTime(), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
