@@ -13,7 +13,7 @@ from app.schemas.metadata import (
 )
 from app.core.audit import create_audit_log
 
-router = APIRouter(prefix="/api/metadata", tags=["metadata"])
+router = APIRouter(prefix="/metadata", tags=["metadata"])
 
 @router.get("/entities", response_model=EntityListResponse)
 def list_entities(
