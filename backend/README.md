@@ -20,13 +20,12 @@ docker run -d -p 6379:6379 redis:alpine
 
 # Run migrations (choose your database)
 alembic upgrade head  # SQLite
-# OR
+# OR for PostgreSQL (recommended for production)
 export SQLALCHEMY_DATABASE_URL=postgresql+psycopg2://user:pass@localhost/db
-alembic upgrade pg_a1b2c3d4e5f6
+alembic upgrade pg_g1h2i3j4k5l6  # Latest multi-tenant migration
 
-# Seed data (development only - use secure credentials in production)
-python -m app.seeds.seed_org
-python -m app.seeds.seed_users
+# Seed data (development only - creates 5 sample organizations)
+python -m app.seeds.seed_complete_org
 
 # Run API
 uvicorn app.main:app --reload
@@ -34,10 +33,10 @@ uvicorn app.main:app --reload
 
 ## Database Configuration
 
-### PostgreSQL
+### PostgreSQL (Recommended for Production)
 ```bash
 export SQLALCHEMY_DATABASE_URL=postgresql+psycopg2://user:pass@localhost/appdb
-alembic upgrade pg_a1b2c3d4e5f6
+alembic upgrade pg_g1h2i3j4k5l6  # Multi-tenant architecture
 ```
 
 ### MySQL
@@ -55,19 +54,33 @@ alembic upgrade head
 ## Seeding
 
 ```bash
-# Seed organizations (companies, branches, departments)
-python -m app.seeds.seed_org
-
-# Seed users with test credentials
-python -m app.seeds.seed_users
+# Seed complete multi-tenant organizations
+python -m app.seeds.seed_complete_org
 ```
 
-**Test Users (Development Only):**
-- `admin@example.com` / `admin123` (superuser, all roles)
-- `user@example.com` / `user123` (regular user with tenant)
-- `viewer@example.com` / `viewer123` (view-only)
+This creates **5 realistic organizational scenarios**:
+- Tech Startup (25 employees)
+- Retail Chain (200 employees, 15 stores)
+- Healthcare Network (1000+ employees, 3 hospitals)
+- Remote-First Tech (150 remote employees)
+- Financial Services (500 employees)
 
-**SECURITY WARNING:** Never use these credentials in production! Generate strong, unique passwords.
+**Test Credentials (Development Only):**
+
+**Superuser (Cross-tenant access):**
+- Email: `superadmin@system.com`
+- Password: `SuperAdmin123!`
+
+**Tenant Users (Password: `password123` for all):**
+- `ceo@techstart.com` - Tech Startup
+- `ceo@fashionhub.com` - Retail Chain
+- `ceo@medcare.com` - Healthcare
+- `ceo@cloudwork.com` - Remote Tech
+- `ceo@fintech.com` - Financial Services
+
+📖 **See [SEED_DATA.md](./SEED_DATA.md) for complete documentation**
+
+**⚠️ SECURITY WARNING:** Never use these credentials in production! Generate strong, unique passwords.
 
 ## API Versioning
 
@@ -80,10 +93,10 @@ The legacy endpoints are maintained for backward compatibility but will be remov
 ## API Endpoints
 
 ### Authentication (`/api/v1/auth`)
-- `POST /login` - Login with email/password, returns JWT tokens
+- `POST /login` - Login with email/password, returns JWT tokens with expiration
 - `POST /refresh` - Refresh access token using refresh token
-- `POST /logout` - Revoke current access token (requires Redis)
-- `GET /me` - Get current user profile
+- `POST /logout` - Revoke current access token (database-backed blacklist)
+- `GET /me` - Get current user profile and permissions
 
 ### Organizations
 - `GET /api/org/companies` - List companies

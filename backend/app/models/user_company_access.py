@@ -38,7 +38,7 @@ class UserCompanyAccess(Base):
     department_id = Column(GUID, ForeignKey("departments.id", ondelete="SET NULL"), nullable=True, index=True)
 
     # Granted by
-    granted_by_user_id = Column(GUID, nullable=True)  # Who granted this access
+    granted_by_user_id = Column(GUID, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)  # Who granted this access
     granted_at = Column(DateTime, server_default=func.now(), nullable=False)
 
     # Timestamps

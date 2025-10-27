@@ -20,7 +20,7 @@ class RolePermission(Base):
 
     # Timestamps
     created_at = Column(DateTime, server_default=func.now(), nullable=False)
-    granted_by_user_id = Column(GUID, nullable=True)
+    granted_by_user_id = Column(GUID, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
     # Relationships
     role = relationship("Role", back_populates="role_permissions")
@@ -52,10 +52,10 @@ class UserRole(Base):
 
     # Timestamps
     created_at = Column(DateTime, server_default=func.now(), nullable=False)
-    granted_by_user_id = Column(GUID, nullable=True)
+    granted_by_user_id = Column(GUID, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
     # Relationships
-    user = relationship("User", back_populates="user_roles")
+    user = relationship("User", back_populates="user_roles", foreign_keys=[user_id])
     role = relationship("Role", back_populates="user_roles")
 
     # Constraints
@@ -84,10 +84,10 @@ class UserGroup(Base):
 
     # Timestamps
     created_at = Column(DateTime, server_default=func.now(), nullable=False)
-    added_by_user_id = Column(GUID, nullable=True)
+    added_by_user_id = Column(GUID, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
     # Relationships
-    user = relationship("User", back_populates="user_groups")
+    user = relationship("User", back_populates="user_groups", foreign_keys=[user_id])
     group = relationship("Group", back_populates="user_groups")
 
     # Constraints
@@ -116,7 +116,7 @@ class GroupRole(Base):
 
     # Timestamps
     created_at = Column(DateTime, server_default=func.now(), nullable=False)
-    granted_by_user_id = Column(GUID, nullable=True)
+    granted_by_user_id = Column(GUID, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
     # Relationships
     group = relationship("Group", back_populates="group_roles")

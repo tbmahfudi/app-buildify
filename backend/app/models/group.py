@@ -43,7 +43,7 @@ class Group(Base):
     # Timestamps
     created_at = Column(DateTime, server_default=func.now(), nullable=False)
     updated_at = Column(DateTime, onupdate=func.now())
-    created_by_user_id = Column(GUID, nullable=True)
+    created_by_user_id = Column(GUID, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
     # Relationships
     tenant = relationship("Tenant", back_populates="groups")
