@@ -1,78 +1,147 @@
-from pydantic import BaseModel, Field
-from typing import Optional, List, Dict, Any
+from pydantic import BaseModel, Field, ConfigDict
+from typing import Optional, List, Dict, Any, Literal
 from datetime import datetime
 
 class FieldMetadata(BaseModel):
-    """Single field metadata"""
-    field: str
-    title: str
-    type: str  # text, number, date, boolean, select, etc.
-    required: bool = False
-    readonly: bool = False
-    default: Optional[Any] = None
-    validators: Optional[Dict[str, Any]] = None
-    widget: Optional[str] = None  # Custom widget type
-    options: Optional[List[Dict[str, Any]]] = None  # For select fields
-    rbac_view: Optional[List[str]] = None  # Roles that can view
-    rbac_edit: Optional[List[str]] = None  # Roles that can edit
+    """Single field metadata for form configuration"""
+    field: str = Field(..., description="Field name/key")
+    title: str = Field(..., description="Display title for the field")
+    type: str = Field(..., description="Field type: text, number, date, boolean, select, etc.")
+    required: bool = Field(default=False, description="Whether field is required")
+    readonly: bool = Field(default=False, description="Whether field is read-only")
+    default: Optional[Any] = Field(None, description="Default value")
+    validators: Optional[Dict[str, Any]] = Field(None, description="Validation rules")
+    widget: Optional[str] = Field(None, description="Custom widget type")
+    options: Optional[List[Dict[str, Any]]] = Field(None, description="Options for select fields")
+    rbac_view: Optional[List[str]] = Field(None, description="Roles that can view this field")
+    rbac_edit: Optional[List[str]] = Field(None, description="Roles that can edit this field")
+    help_text: Optional[str] = Field(None, description="Help text for the field")
+    placeholder: Optional[str] = Field(None, description="Placeholder text")
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "field": "email",
+                "title": "Email Address",
+                "type": "email",
+                "required": True,
+                "readonly": False,
+                "validators": {"pattern": "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"},
+                "help_text": "Enter your email address"
+            }
+        }
+    )
 
 class ColumnMetadata(BaseModel):
-    """Table column metadata"""
-    field: str
-    title: str
-    sortable: bool = True
-    filterable: bool = True
-    width: Optional[int] = None
-    format: Optional[str] = None  # date, currency, etc.
-    rbac_view: Optional[List[str]] = None
+    """Table column metadata for grid configuration"""
+    field: str = Field(..., description="Field name/key")
+    title: str = Field(..., description="Column header title")
+    sortable: bool = Field(default=True, description="Whether column is sortable")
+    filterable: bool = Field(default=True, description="Whether column is filterable")
+    width: Optional[int] = Field(None, description="Column width in pixels")
+    format: Optional[str] = Field(None, description="Format type: date, currency, percentage, etc.")
+    rbac_view: Optional[List[str]] = Field(None, description="Roles that can view this column")
+    align: Optional[Literal["left", "center", "right"]] = Field(None, description="Column alignment")
 
 class TableConfig(BaseModel):
     """Table/Grid configuration"""
-    columns: List[ColumnMetadata]
-    default_sort: Optional[List[List[str]]] = None  # [["field", "asc"]]
-    default_filters: Optional[Dict[str, Any]] = None
-    page_size: int = 25
-    actions: Optional[List[str]] = None  # view, edit, delete
+    columns: List[ColumnMetadata] = Field(..., description="Column definitions")
+    default_sort: Optional[List[List[str]]] = Field(None, description="Default sort configuration [[field, asc/desc]]")
+    default_filters: Optional[Dict[str, Any]] = Field(None, description="Default filters")
+    page_size: int = Field(default=25, ge=1, le=100, description="Default page size")
+    actions: Optional[List[str]] = Field(None, description="Available actions: view, edit, delete")
+    selectable: bool = Field(default=False, description="Whether rows are selectable")
+    exportable: bool = Field(default=False, description="Whether data can be exported")
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "columns": [
+                    {"field": "name", "title": "Name", "sortable": True},
+                    {"field": "email", "title": "Email", "sortable": True}
+                ],
+                "default_sort": [["name", "asc"]],
+                "page_size": 25,
+                "actions": ["view", "edit", "delete"],
+                "selectable": True
+            }
+        }
+    )
 
 class FormConfig(BaseModel):
     """Form configuration"""
-    fields: List[FieldMetadata]
-    layout: Optional[str] = "vertical"  # vertical, horizontal, grid
-    sections: Optional[List[Dict[str, Any]]] = None
-    
+    fields: List[FieldMetadata] = Field(..., description="Field definitions")
+    layout: Optional[Literal["vertical", "horizontal", "grid"]] = Field(default="vertical", description="Form layout type")
+    sections: Optional[List[Dict[str, Any]]] = Field(None, description="Form sections for grouping fields")
+    submit_button_text: Optional[str] = Field(None, description="Custom submit button text")
+    cancel_button_text: Optional[str] = Field(None, description="Custom cancel button text")
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "fields": [
+                    {
+                        "field": "name",
+                        "title": "Name",
+                        "type": "text",
+                        "required": True
+                    }
+                ],
+                "layout": "vertical",
+                "submit_button_text": "Save",
+                "cancel_button_text": "Cancel"
+            }
+        }
+    )
+
 class EntityMetadataResponse(BaseModel):
-    """Complete entity metadata"""
-    entity_name: str
-    display_name: str
-    description: Optional[str] = None
-    icon: Optional[str] = None
-    table: TableConfig
-    form: FormConfig
-    permissions: Optional[Dict[str, List[str]]] = None  # {role: [actions]}
-    version: int
-    is_active: bool
-    
-    class Config:
-        from_attributes = True
+    """Complete entity metadata response"""
+    id: str = Field(..., description="Metadata unique identifier")
+    entity_name: str = Field(..., description="Entity name (unique identifier)")
+    display_name: str = Field(..., description="Human-readable display name")
+    description: Optional[str] = Field(None, description="Entity description")
+    icon: Optional[str] = Field(None, description="Icon name or URL")
+    table: TableConfig = Field(..., description="Table/grid configuration")
+    form: FormConfig = Field(..., description="Form configuration")
+    permissions: Optional[Dict[str, List[str]]] = Field(None, description="Role-based permissions {role: [actions]}")
+    version: int = Field(..., description="Version number for optimistic locking")
+    is_active: bool = Field(..., description="Whether entity is active")
+    is_system: bool = Field(default=False, description="Whether entity is system-defined")
+    created_at: datetime = Field(..., description="Creation timestamp")
+    updated_at: Optional[datetime] = Field(None, description="Last update timestamp")
+    created_by: Optional[str] = Field(None, description="Created by user ID")
+    updated_by: Optional[str] = Field(None, description="Last updated by user ID")
+
+    model_config = ConfigDict(from_attributes=True)
 
 class EntityMetadataCreate(BaseModel):
-    entity_name: str
-    display_name: str
-    description: Optional[str] = None
-    icon: Optional[str] = None
-    table_config: TableConfig
-    form_config: FormConfig
-    permissions: Optional[Dict[str, List[str]]] = None
+    """Create entity metadata"""
+    entity_name: str = Field(..., max_length=100, description="Entity name (unique)")
+    display_name: str = Field(..., max_length=255, description="Display name")
+    description: Optional[str] = Field(None, description="Entity description")
+    icon: Optional[str] = Field(None, max_length=50, description="Icon name")
+    table_config: TableConfig = Field(..., description="Table configuration")
+    form_config: FormConfig = Field(..., description="Form configuration")
+    permissions: Optional[Dict[str, List[str]]] = Field(None, description="Role permissions")
+    is_system: bool = Field(default=False, description="System entity flag")
 
 class EntityMetadataUpdate(BaseModel):
-    display_name: Optional[str] = None
-    description: Optional[str] = None
-    icon: Optional[str] = None
-    table_config: Optional[TableConfig] = None
-    form_config: Optional[FormConfig] = None
-    permissions: Optional[Dict[str, List[str]]] = None
+    """Update entity metadata"""
+    display_name: Optional[str] = Field(None, max_length=255, description="Display name")
+    description: Optional[str] = Field(None, description="Entity description")
+    icon: Optional[str] = Field(None, max_length=50, description="Icon name")
+    table_config: Optional[TableConfig] = Field(None, description="Table configuration")
+    form_config: Optional[FormConfig] = Field(None, description="Form configuration")
+    permissions: Optional[Dict[str, List[str]]] = Field(None, description="Role permissions")
+    is_active: Optional[bool] = Field(None, description="Active status")
 
 class EntityListResponse(BaseModel):
     """List of available entities"""
-    entities: List[str]
-    total: int
+    entities: List[str] = Field(..., description="List of entity names")
+    total: int = Field(..., description="Total count of entities")
+
+class EntityMetadataDetailResponse(BaseModel):
+    """Detailed entity metadata with additional info"""
+    metadata: EntityMetadataResponse = Field(..., description="Entity metadata")
+    statistics: Optional[Dict[str, Any]] = Field(None, description="Usage statistics")
+    last_accessed: Optional[datetime] = Field(None, description="Last accessed timestamp")

@@ -3,6 +3,7 @@ import uuid
 from datetime import datetime, timedelta
 from passlib.context import CryptContext
 from typing import Optional, Dict
+import uuid
 from .config import SECRET_KEY, ACCESS_TOKEN_EXPIRE_MIN, REFRESH_TOKEN_EXPIRE_DAYS
 from .redis_client import get_redis
 

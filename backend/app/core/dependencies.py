@@ -6,6 +6,7 @@ import json
 from .db import SessionLocal
 from .auth import decode_token
 from ..models.user import User
+from ..models.token_blacklist import TokenBlacklist
 
 security = HTTPBearer()
 
@@ -33,6 +34,17 @@ def get_current_user(
             detail="Invalid authentication credentials",
             headers={"WWW-Authenticate": "Bearer"},
         )
+
+    # Check if token is blacklisted (revoked)
+    jti = payload.get("jti")
+    if jti:
+        blacklisted = db.query(TokenBlacklist).filter(TokenBlacklist.jti == jti).first()
+        if blacklisted:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token has been revoked",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
 
     user_id = payload.get("sub")
     if not user_id:
