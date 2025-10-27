@@ -16,6 +16,12 @@
       ]
     },
     {
+      "title": "User Management",
+      "route": "users",
+      "icon": "bi-people-fill",
+      "roles": ["admin"]
+    },
+    {
       "title": "Audit Trail",
       "route": "audit",
       "icon": "bi-activity"

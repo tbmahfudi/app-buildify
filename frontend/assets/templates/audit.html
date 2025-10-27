@@ -1,19 +1,238 @@
-<div class="space-y-4">
+<div class="space-y-6">
   <!-- Header -->
-  <div class="flex items-center justify-between">
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
     <div>
-      <h2 class="text-2xl font-bold text-gray-900 flex items-center gap-2">
-        <i class="bi bi-clock-history"></i>
+      <h2 class="text-3xl font-bold text-gray-900 flex items-center gap-2">
+        <i class="bi bi-clock-history text-blue-600"></i>
         Audit Trail
       </h2>
       <p class="text-gray-600 text-sm mt-1">Complete history of all operations performed in the system</p>
     </div>
-    <button id="btn-refresh-audit" class="px-4 py-2 bg-gray-200 text-gray-900 rounded-lg hover:bg-gray-300 transition flex items-center gap-2">
+    <button id="btn-refresh-audit" class="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 active:bg-blue-800 shadow-sm hover:shadow-md transition-all font-medium">
       <i class="bi bi-arrow-clockwise"></i>
       Refresh
     </button>
   </div>
 
-  <!-- Audit Container -->
-  <div id="audit-container" class="space-y-4"></div>
+  <!-- Filters Card -->
+  <div class="bg-white rounded-lg shadow-sm p-4">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wider flex items-center gap-2">
+        <i class="bi bi-funnel"></i>
+        Filters
+      </h3>
+      <button id="btn-clear-filters" class="text-sm text-gray-600 hover:text-gray-900 transition">
+        Clear All
+      </button>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+      <!-- Action Filter -->
+      <div>
+        <label class="block text-xs font-medium text-gray-700 mb-1">Action</label>
+        <select id="filter-action" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+          <option value="">All Actions</option>
+          <option value="CREATE">Create</option>
+          <option value="UPDATE">Update</option>
+          <option value="DELETE">Delete</option>
+          <option value="LOGIN">Login</option>
+          <option value="LOGOUT">Logout</option>
+        </select>
+      </div>
+
+      <!-- Entity Type Filter -->
+      <div>
+        <label class="block text-xs font-medium text-gray-700 mb-1">Entity Type</label>
+        <select id="filter-entity-type" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+          <option value="">All Types</option>
+          <option value="users">Users</option>
+          <option value="companies">Companies</option>
+          <option value="branches">Branches</option>
+          <option value="departments">Departments</option>
+        </select>
+      </div>
+
+      <!-- Status Filter -->
+      <div>
+        <label class="block text-xs font-medium text-gray-700 mb-1">Status</label>
+        <select id="filter-status" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+          <option value="">All Status</option>
+          <option value="success">Success</option>
+          <option value="failure">Failure</option>
+          <option value="warning">Warning</option>
+        </select>
+      </div>
+
+      <!-- User Filter -->
+      <div>
+        <label class="block text-xs font-medium text-gray-700 mb-1">User Email</label>
+        <input
+          type="text"
+          id="filter-user"
+          placeholder="Search by email..."
+          class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+      </div>
+
+      <!-- Date From -->
+      <div>
+        <label class="block text-xs font-medium text-gray-700 mb-1">Date From</label>
+        <input
+          type="date"
+          id="filter-date-from"
+          class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+      </div>
+
+      <!-- Date To -->
+      <div>
+        <label class="block text-xs font-medium text-gray-700 mb-1">Date To</label>
+        <input
+          type="date"
+          id="filter-date-to"
+          class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+      </div>
+
+      <!-- Search -->
+      <div class="sm:col-span-2">
+        <label class="block text-xs font-medium text-gray-700 mb-1">Search Details</label>
+        <div class="relative">
+          <i class="bi bi-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+          <input
+            type="text"
+            id="filter-search"
+            placeholder="Search in audit details..."
+            class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-3 flex justify-end">
+      <button id="btn-apply-filters" class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm font-medium">
+        <i class="bi bi-check-lg"></i>
+        Apply Filters
+      </button>
+    </div>
+  </div>
+
+  <!-- Summary Stats -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" id="audit-stats">
+    <div class="bg-white rounded-lg shadow-sm p-4">
+      <div class="flex items-center gap-3">
+        <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+          <i class="bi bi-activity text-blue-600 text-xl"></i>
+        </div>
+        <div>
+          <p class="text-2xl font-bold text-gray-900" id="stat-total">0</p>
+          <p class="text-xs text-gray-600">Total Events</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-lg shadow-sm p-4">
+      <div class="flex items-center gap-3">
+        <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+          <i class="bi bi-check-circle text-green-600 text-xl"></i>
+        </div>
+        <div>
+          <p class="text-2xl font-bold text-gray-900" id="stat-success">0</p>
+          <p class="text-xs text-gray-600">Successful</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-lg shadow-sm p-4">
+      <div class="flex items-center gap-3">
+        <div class="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
+          <i class="bi bi-x-circle text-red-600 text-xl"></i>
+        </div>
+        <div>
+          <p class="text-2xl font-bold text-gray-900" id="stat-failure">0</p>
+          <p class="text-xs text-gray-600">Failed</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-lg shadow-sm p-4">
+      <div class="flex items-center gap-3">
+        <div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+          <i class="bi bi-people text-purple-600 text-xl"></i>
+        </div>
+        <div>
+          <p class="text-2xl font-bold text-gray-900" id="stat-users">0</p>
+          <p class="text-xs text-gray-600">Unique Users</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Audit Timeline -->
+  <div class="bg-white rounded-lg shadow-sm overflow-hidden">
+    <!-- Table Header -->
+    <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
+      <div class="flex items-center justify-between">
+        <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wider">Audit Events</h3>
+        <span id="audit-count" class="text-sm text-gray-500">0 events</span>
+      </div>
+    </div>
+
+    <!-- Timeline Container -->
+    <div id="audit-container" class="divide-y divide-gray-200">
+      <!-- Events will be inserted here -->
+    </div>
+
+    <!-- Empty State -->
+    <div id="empty-state" class="hidden px-6 py-12 text-center">
+      <div class="w-16 h-16 mx-auto bg-gray-100 rounded-full flex items-center justify-center mb-4">
+        <i class="bi bi-inbox text-3xl text-gray-400"></i>
+      </div>
+      <h3 class="text-lg font-medium text-gray-900 mb-1">No audit events found</h3>
+      <p class="text-gray-500 text-sm">Try adjusting your filters or date range</p>
+    </div>
+
+    <!-- Pagination -->
+    <div class="px-6 py-4 border-t border-gray-200 bg-gray-50">
+      <div class="flex items-center justify-between">
+        <div class="text-sm text-gray-700">
+          Showing <span id="page-start">0</span> to <span id="page-end">0</span> of <span id="total-events">0</span> events
+        </div>
+        <div class="flex gap-2">
+          <button id="btn-prev-page" disabled class="px-3 py-1 border border-gray-300 rounded-lg hover:bg-gray-50 transition disabled:opacity-50 disabled:cursor-not-allowed">
+            <i class="bi bi-chevron-left"></i>
+          </button>
+          <span id="page-info" class="px-4 py-1 text-sm text-gray-700">Page 1</span>
+          <button id="btn-next-page" disabled class="px-3 py-1 border border-gray-300 rounded-lg hover:bg-gray-50 transition disabled:opacity-50 disabled:cursor-not-allowed">
+            <i class="bi bi-chevron-right"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
+
+<!-- Detail Modal -->
+<div id="audit-detail-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 overflow-y-auto">
+  <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:p-0">
+    <div class="relative inline-block align-bottom bg-white rounded-xl shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-3xl sm:w-full">
+      <!-- Modal Header -->
+      <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+        <h3 class="text-xl font-semibold text-gray-900">Audit Event Details</h3>
+        <button id="btn-close-detail" class="text-gray-400 hover:text-gray-600 transition">
+          <i class="bi bi-x-lg text-xl"></i>
+        </button>
+      </div>
+
+      <!-- Modal Body -->
+      <div id="audit-detail-content" class="px-6 py-5 max-h-96 overflow-y-auto">
+        <!-- Details will be inserted here -->
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 bg-gray-50">
+        <button id="btn-close-detail-footer" class="px-5 py-2.5 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition font-medium">
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="module" src="../../assets/js/audit-enhanced.js"></script>
