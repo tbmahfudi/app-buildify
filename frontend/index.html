@@ -7,9 +7,9 @@
   <!-- Content Security Policy -->
   <meta http-equiv="Content-Security-Policy" content="
     default-src 'self';
-    script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdn.jsdelivr.net;
-    style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdn.jsdelivr.net;
-    font-src 'self' https://cdn.jsdelivr.net;
+    script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://unpkg.com;
+    style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://unpkg.com;
+    font-src 'self' https://cdn.jsdelivr.net https://unpkg.com;
     img-src 'self' data: https:;
     connect-src 'self' http://localhost:8000 https:;
     frame-ancestors 'none';
@@ -26,6 +26,20 @@
         href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"
         integrity="sha384-XGjxtQfXaH2tnPFa9x+ruJTVU3+D6RGLg8yz7BlOFtYP7JlxGvsYmBslqt9aLBo7"
         crossorigin="anonymous">
+
+  <!-- Phosphor Icons (Multiple Weights) -->
+  <!-- Regular weight (default) -->
+  <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
+  <!-- Bold weight -->
+  <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/bold/style.css">
+  <!-- Light weight -->
+  <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/light/style.css">
+  <!-- Thin weight -->
+  <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/thin/style.css">
+  <!-- Fill weight -->
+  <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/fill/style.css">
+  <!-- Duotone weight -->
+  <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/duotone/style.css">
 
   <link href="assets/css/app.css" rel="stylesheet" />
 </head>

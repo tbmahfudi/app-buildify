@@ -52,7 +52,7 @@ function initCardExamples() {
     cards.basic = new FlexCard('#card-basic', {
         title: 'Basic Card',
         subtitle: 'A simple card with title and subtitle',
-        icon: 'bi-card-text',
+        icon: 'ph ph-article',
         content: '<p class="text-gray-700">This is a basic card component with minimal configuration. Perfect for displaying simple content blocks.</p>'
     });
 
@@ -60,7 +60,7 @@ function initCardExamples() {
     cards.actions = new FlexCard('#card-actions', {
         title: 'User Profile',
         subtitle: 'John Doe',
-        icon: 'bi-person-circle',
+        icon: 'ph ph-user-circle',
         content: `
             <div class="space-y-2 text-sm">
                 <div class="flex justify-between">
@@ -79,12 +79,12 @@ function initCardExamples() {
         `,
         actions: [
             {
-                icon: 'bi-pencil',
+                icon: 'ph ph-pencil',
                 variant: 'ghost',
                 onClick: () => showToast('Edit action clicked!', 'info')
             },
             {
-                icon: 'bi-trash',
+                icon: 'ph ph-trash',
                 variant: 'ghost',
                 onClick: () => showToast('Delete action clicked!', 'warning')
             }
@@ -94,7 +94,7 @@ function initCardExamples() {
     // Card with Badge
     cards.badge = new FlexCard('#card-badge', {
         title: 'Premium Feature',
-        icon: 'bi-star-fill',
+        icon: 'ph-fill ph-star',
         badge: { text: 'PRO', variant: 'warning' },
         content: '<p class="text-gray-700">This feature is available for premium users. Upgrade your plan to unlock advanced capabilities.</p>',
         variant: 'bordered'
@@ -104,7 +104,7 @@ function initCardExamples() {
     cards.collapsible = new FlexCard('#card-collapsible', {
         title: 'Collapsible Content',
         subtitle: 'Click the chevron to toggle',
-        icon: 'bi-chevron-down',
+        icon: 'ph ph-caret-down',
         collapsible: true,
         collapsed: false,
         content: `
@@ -123,7 +123,7 @@ function initCardExamples() {
     // Card with Footer
     cards.footer = new FlexCard('#card-footer', {
         title: 'Task Assignment',
-        icon: 'bi-clipboard-check',
+        icon: 'ph ph-clipboard-text',
         content: `
             <div class="space-y-3">
                 <div>
@@ -149,7 +149,7 @@ function initCardExamples() {
             {
                 label: 'Assign Task',
                 variant: 'primary',
-                icon: 'bi-check-lg',
+                icon: 'ph ph-check',
                 onClick: () => showToast('Task assigned successfully!', 'success')
             }
         ]
@@ -159,7 +159,7 @@ function initCardExamples() {
     cards.shadowed = new FlexCard('#card-shadowed', {
         title: 'Elevated Card',
         subtitle: 'With shadow effect',
-        icon: 'bi-box',
+        icon: 'ph ph-package',
         variant: 'shadowed',
         content: '<p class="text-gray-700">This card uses the shadowed variant for a more prominent, elevated appearance.</p>'
     });
@@ -168,7 +168,7 @@ function initCardExamples() {
     cards.loading = new FlexCard('#card-loading', {
         title: 'Data Dashboard',
         subtitle: 'Real-time metrics',
-        icon: 'bi-bar-chart',
+        icon: 'ph ph-chart-bar',
         content: `
             <div class="space-y-4">
                 <div class="flex justify-between items-center">
@@ -187,7 +187,7 @@ function initCardExamples() {
         `,
         actions: [
             {
-                icon: 'bi-arrow-clockwise',
+                icon: 'ph ph-arrows-clockwise',
                 variant: 'ghost',
                 onClick: () => {
                     cards.loading.setLoading(true);
@@ -220,7 +220,7 @@ function initModalExamples() {
     modals.basic = new FlexModal({
         title: 'Basic Modal',
         subtitle: 'A simple modal dialog',
-        icon: 'bi-info-circle',
+        icon: 'ph ph-info',
         content: `
             <p class="text-gray-700 mb-4">This is a basic modal with a title, subtitle, and content. You can close it by:</p>
             <ul class="list-disc list-inside space-y-2 text-sm text-gray-600">
@@ -247,7 +247,7 @@ function initModalExamples() {
     modals.form = new FlexModal({
         title: 'Create New User',
         subtitle: 'Enter user details below',
-        icon: 'bi-person-plus',
+        icon: 'ph ph-user-plus',
         size: 'md',
         content: `
             <form id="user-form" class="space-y-4">
@@ -284,7 +284,7 @@ function initModalExamples() {
             {
                 label: 'Create User',
                 variant: 'primary',
-                icon: 'bi-check-lg',
+                icon: 'ph ph-check',
                 onClick: (e, modal) => {
                     showToast('User created successfully!', 'success');
                     modal.hide();
@@ -300,12 +300,12 @@ function initModalExamples() {
     // Confirmation Modal
     modals.confirm = new FlexModal({
         title: 'Delete Confirmation',
-        icon: 'bi-exclamation-triangle',
+        icon: 'ph ph-warning',
         size: 'sm',
         content: `
             <div class="text-center py-4">
                 <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
-                    <i class="bi bi-trash text-red-600 text-xl"></i>
+                    <i class="ph-fill ph-trash text-red-600 text-xl"></i>
                 </div>
                 <p class="text-gray-700 mb-2">Are you sure you want to delete this item?</p>
                 <p class="text-sm text-gray-500">This action cannot be undone.</p>
@@ -320,7 +320,7 @@ function initModalExamples() {
             {
                 label: 'Delete',
                 variant: 'danger',
-                icon: 'bi-trash',
+                icon: 'ph ph-trash',
                 onClick: (e, modal) => {
                     showToast('Item deleted', 'success');
                     modal.hide();
@@ -337,7 +337,7 @@ function initModalExamples() {
     modals.large = new FlexModal({
         title: 'Large Modal Example',
         subtitle: 'With more content space',
-        icon: 'bi-window',
+        icon: 'ph ph-app-window',
         size: 'xl',
         content: `
             <div class="prose max-w-none">
@@ -451,7 +451,7 @@ function initTabsExamples() {
             {
                 id: 'home',
                 label: 'Home',
-                icon: 'bi-house',
+                icon: 'ph ph-house',
                 content: `
                     <div class="p-6 bg-white border border-gray-200 rounded-b-lg">
                         <h3 class="text-lg font-semibold text-gray-900 mb-3">Welcome Home</h3>
@@ -462,7 +462,7 @@ function initTabsExamples() {
             {
                 id: 'profile',
                 label: 'Profile',
-                icon: 'bi-person',
+                icon: 'ph ph-user',
                 content: `
                     <div class="p-6 bg-white border border-gray-200 rounded-b-lg">
                         <h3 class="text-lg font-semibold text-gray-900 mb-3">User Profile</h3>
@@ -473,7 +473,7 @@ function initTabsExamples() {
             {
                 id: 'settings',
                 label: 'Settings',
-                icon: 'bi-gear',
+                icon: 'ph ph-gear',
                 content: `
                     <div class="p-6 bg-white border border-gray-200 rounded-b-lg">
                         <h3 class="text-lg font-semibold text-gray-900 mb-3">Settings</h3>
@@ -491,7 +491,7 @@ function initTabsExamples() {
             {
                 id: 'overview',
                 label: 'Overview',
-                icon: 'bi-grid',
+                icon: 'ph ph-grid-four',
                 content: `
                     <div class="p-6 bg-gray-50 rounded-lg mt-3">
                         <h3 class="text-lg font-semibold text-gray-900 mb-3">Dashboard Overview</h3>
@@ -515,7 +515,7 @@ function initTabsExamples() {
             {
                 id: 'analytics',
                 label: 'Analytics',
-                icon: 'bi-graph-up',
+                icon: 'ph ph-chart-line-up',
                 content: `
                     <div class="p-6 bg-gray-50 rounded-lg mt-3">
                         <h3 class="text-lg font-semibold text-gray-900 mb-3">Analytics Dashboard</h3>
@@ -526,7 +526,7 @@ function initTabsExamples() {
             {
                 id: 'reports',
                 label: 'Reports',
-                icon: 'bi-file-text',
+                icon: 'ph ph-file-text',
                 content: `
                     <div class="p-6 bg-gray-50 rounded-lg mt-3">
                         <h3 class="text-lg font-semibold text-gray-900 mb-3">Reports</h3>
@@ -544,7 +544,7 @@ function initTabsExamples() {
             {
                 id: 'code',
                 label: 'Code',
-                icon: 'bi-code-slash',
+                icon: 'ph ph-code',
                 content: `
                     <div class="p-6 bg-white border-l border-r border-b border-gray-200 rounded-b-lg">
                         <pre class="bg-gray-800 text-gray-100 p-4 rounded overflow-x-auto"><code>function greet(name) {
@@ -558,7 +558,7 @@ console.log(greet('World'));</code></pre>
             {
                 id: 'preview',
                 label: 'Preview',
-                icon: 'bi-eye',
+                icon: 'ph ph-eye',
                 content: `
                     <div class="p-6 bg-white border-l border-r border-b border-gray-200 rounded-b-lg">
                         <div class="text-center py-8">
@@ -571,7 +571,7 @@ console.log(greet('World'));</code></pre>
             {
                 id: 'docs',
                 label: 'Documentation',
-                icon: 'bi-book',
+                icon: 'ph ph-book',
                 content: `
                     <div class="p-6 bg-white border-l border-r border-b border-gray-200 rounded-b-lg">
                         <h3 class="text-lg font-semibold text-gray-900 mb-3">Function Documentation</h3>
@@ -637,7 +637,7 @@ console.log(greet('World'));</code></pre>
             {
                 id: 'general',
                 label: 'General',
-                icon: 'bi-sliders',
+                icon: 'ph ph-sliders',
                 content: `
                     <div class="p-6 bg-white border border-gray-200 rounded-lg">
                         <h3 class="text-lg font-semibold text-gray-900 mb-4">General Settings</h3>
@@ -661,7 +661,7 @@ console.log(greet('World'));</code></pre>
             {
                 id: 'security',
                 label: 'Security',
-                icon: 'bi-shield-lock',
+                icon: 'ph ph-shield-check',
                 content: `
                     <div class="p-6 bg-white border border-gray-200 rounded-lg">
                         <h3 class="text-lg font-semibold text-gray-900 mb-4">Security Settings</h3>
@@ -685,7 +685,7 @@ console.log(greet('World'));</code></pre>
             {
                 id: 'notifications',
                 label: 'Notifications',
-                icon: 'bi-bell',
+                icon: 'ph ph-bell',
                 content: `
                     <div class="p-6 bg-white border border-gray-200 rounded-lg">
                         <h3 class="text-lg font-semibold text-gray-900 mb-4">Notification Preferences</h3>
@@ -709,7 +709,7 @@ console.log(greet('World'));</code></pre>
             {
                 id: 'privacy',
                 label: 'Privacy',
-                icon: 'bi-eye-slash',
+                icon: 'ph ph-eye-slash',
                 content: `
                     <div class="p-6 bg-white border border-gray-200 rounded-lg">
                         <h3 class="text-lg font-semibold text-gray-900 mb-4">Privacy Settings</h3>
@@ -739,17 +739,17 @@ function initCombinedExample() {
     const combinedCard = new FlexCard('#combined-example', {
         title: 'User Management Dashboard',
         subtitle: 'Combining Card and Tabs components',
-        icon: 'bi-people',
+        icon: 'ph ph-users',
         badge: { text: 'Live', variant: 'success' },
         actions: [
             {
                 label: 'Add User',
-                icon: 'bi-person-plus',
+                icon: 'ph ph-user-plus',
                 variant: 'primary',
                 onClick: () => {
                     const modal = new FlexModal({
                         title: 'Add New User',
-                        icon: 'bi-person-plus',
+                        icon: 'ph ph-user-plus',
                         size: 'md',
                         content: `
                             <div class="space-y-4">
@@ -791,7 +791,7 @@ function initCombinedExample() {
                 }
             },
             {
-                icon: 'bi-arrow-clockwise',
+                icon: 'ph ph-arrows-clockwise',
                 variant: 'ghost',
                 onClick: () => showToast('Refreshed!', 'info')
             }
@@ -811,7 +811,7 @@ function initCombinedExample() {
                 {
                     id: 'users-list',
                     label: 'All Users',
-                    icon: 'bi-people',
+                    icon: 'ph ph-users',
                     badge: '48',
                     content: `
                         <div class="py-4">
@@ -837,7 +837,7 @@ function initCombinedExample() {
                 {
                     id: 'admins',
                     label: 'Admins',
-                    icon: 'bi-shield-check',
+                    icon: 'ph ph-shield-check',
                     badge: { text: '5', variant: 'warning' },
                     content: `
                         <div class="py-4">
@@ -848,7 +848,7 @@ function initCombinedExample() {
                 {
                     id: 'activity',
                     label: 'Activity',
-                    icon: 'bi-activity',
+                    icon: 'ph ph-activity',
                     content: `
                         <div class="py-4">
                             <div class="space-y-3">
