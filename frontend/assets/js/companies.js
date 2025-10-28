@@ -81,25 +81,40 @@ function renderCompanies(companies) {
   companies.forEach((company) => {
     const row = document.createElement('tr');
     row.className = 'border-b border-gray-200 hover:bg-gray-50 transition';
-    row.innerHTML = `
-      <td class="px-6 py-4 text-sm font-medium text-gray-900">${company.code}</td>
-      <td class="px-6 py-4 text-sm text-gray-600">${company.name}</td>
-      <td class="px-6 py-4 text-sm text-gray-600">${formatDate(company.created_at)}</td>
-      <td class="px-6 py-4 text-sm flex gap-2">
-        <button
-          class="edit-btn px-3 py-1 text-blue-600 border border-blue-600 rounded hover:bg-blue-50 transition text-sm"
-          data-company-id="${company.id}"
-        >
-          <i class="bi bi-pencil-square"></i> Edit
-        </button>
-        <button
-          class="delete-btn px-3 py-1 text-red-600 border border-red-600 rounded hover:bg-red-50 transition text-sm"
-          data-company-id="${company.id}"
-        >
-          <i class="bi bi-trash"></i> Delete
-        </button>
-      </td>
-    `;
+
+    // Create cells with XSS protection
+    const codeCell = document.createElement('td');
+    codeCell.className = 'px-6 py-4 text-sm font-medium text-gray-900';
+    codeCell.textContent = company.code;
+
+    const nameCell = document.createElement('td');
+    nameCell.className = 'px-6 py-4 text-sm text-gray-600';
+    nameCell.textContent = company.name;
+
+    const dateCell = document.createElement('td');
+    dateCell.className = 'px-6 py-4 text-sm text-gray-600';
+    dateCell.textContent = formatDate(company.created_at);
+
+    const actionsCell = document.createElement('td');
+    actionsCell.className = 'px-6 py-4 text-sm flex gap-2';
+
+    const editBtn = document.createElement('button');
+    editBtn.className = 'edit-btn px-3 py-1 text-blue-600 border border-blue-600 rounded hover:bg-blue-50 transition text-sm';
+    editBtn.setAttribute('data-company-id', company.id);
+    editBtn.innerHTML = '<i class="bi bi-pencil-square"></i> Edit';
+
+    const deleteBtn = document.createElement('button');
+    deleteBtn.className = 'delete-btn px-3 py-1 text-red-600 border border-red-600 rounded hover:bg-red-50 transition text-sm';
+    deleteBtn.setAttribute('data-company-id', company.id);
+    deleteBtn.innerHTML = '<i class="bi bi-trash"></i> Delete';
+
+    actionsCell.appendChild(editBtn);
+    actionsCell.appendChild(deleteBtn);
+
+    row.appendChild(codeCell);
+    row.appendChild(nameCell);
+    row.appendChild(dateCell);
+    row.appendChild(actionsCell);
 
     tbody.appendChild(row);
   });

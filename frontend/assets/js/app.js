@@ -2,11 +2,20 @@ import { apiFetch, login, logout as apiLogout } from './api.js';
 import { showToast, showLoading, hideLoading } from './ui-utils.js';
 import { filterMenuByRole, applyRBACToElements } from './rbac.js';
 
-// Global state
-window.appState = {
+// Module-level state (not polluting global namespace)
+const appState = {
   user: null,
   currentRoute: 'dashboard'
 };
+
+// Export state getter for other modules
+export function getAppState() {
+  return appState;
+}
+
+export function getCurrentUser() {
+  return appState.user;
+}
 
 export async function initApp() {
   // Check if logged in
@@ -22,11 +31,11 @@ export async function initApp() {
   // Load user info
   try {
     const response = await apiFetch('/auth/me');
-    
+
     if (!response.ok) throw new Error('Auth failed');
-    
-    window.appState.user = await response.json();
-    
+
+    appState.user = await response.json();
+
     // Update UI with user info
     updateUserInfo();
     
@@ -59,13 +68,13 @@ export async function initApp() {
 function updateUserInfo() {
   const userEmailEl = document.getElementById('user-email');
   const userEmailDropdown = document.getElementById('user-email-dropdown');
-  
-  if (userEmailEl && window.appState.user) {
-    userEmailEl.textContent = window.appState.user.email;
+
+  if (userEmailEl && appState.user) {
+    userEmailEl.textContent = appState.user.email;
   }
-  
-  if (userEmailDropdown && window.appState.user) {
-    userEmailDropdown.textContent = window.appState.user.email;
+
+  if (userEmailDropdown && appState.user) {
+    userEmailDropdown.textContent = appState.user.email;
   }
 }
 
@@ -239,7 +248,7 @@ function updateActiveMenuItem() {
 }
 
 async function loadRoute(route) {
-  window.appState.currentRoute = route;
+  appState.currentRoute = route;
   updateActiveMenuItem();
   
   const content = document.getElementById('content');

@@ -231,40 +231,71 @@ export class EntityManager {
    * Show view dialog (read-only)
    */
   showViewDialog(row) {
-    const details = this.metadata.table.columns
-      .map(col => `<strong>${col.title}:</strong> ${row[col.field] || 'N/A'}`)
-      .join('<br>');
+    // Create backdrop
+    const backdrop = document.createElement('div');
+    backdrop.id = 'modal-backdrop';
+    backdrop.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9998;';
 
-    const alertDiv = document.createElement('div');
-    alertDiv.className = 'alert alert-info';
-    alertDiv.innerHTML = details;
+    // Create modal container
+    const modal = document.createElement('div');
+    modal.style.cssText = 'position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); z-index: 9999; max-width: 500px; width: 90%;';
 
-    // Simple modal-like alert
-    const modalContent = `
-      <div style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); 
-                  background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-                  z-index: 9999; max-width: 500px; width: 90%;">
-        <h5>${this.metadata.display_name} Details</h5>
-        <hr>
-        ${details}
-        <br><br>
-        <button class="btn btn-secondary" onclick="this.parentElement.remove(); document.getElementById('modal-backdrop').remove();">Close</button>
-      </div>
-      <div id="modal-backdrop" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-                  background: rgba(0,0,0,0.5); z-index: 9998;"></div>
-    `;
-    
-    const div = document.createElement('div');
-    div.innerHTML = modalContent;
-    document.body.appendChild(div);
+    // Create title
+    const title = document.createElement('h5');
+    title.textContent = `${this.metadata.display_name} Details`;
+    modal.appendChild(title);
+
+    // Create separator
+    const hr = document.createElement('hr');
+    modal.appendChild(hr);
+
+    // Create details list
+    const detailsContainer = document.createElement('div');
+    detailsContainer.className = 'mt-3';
+
+    this.metadata.table.columns.forEach(col => {
+      const row_div = document.createElement('div');
+      row_div.className = 'mb-2';
+
+      const label = document.createElement('strong');
+      label.textContent = `${col.title}: `;
+
+      const value = document.createTextNode(row[col.field] || 'N/A');
+
+      row_div.appendChild(label);
+      row_div.appendChild(value);
+      detailsContainer.appendChild(row_div);
+    });
+
+    modal.appendChild(detailsContainer);
+
+    // Create close button
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'btn btn-secondary mt-3';
+    closeBtn.textContent = 'Close';
+    closeBtn.onclick = () => {
+      modal.remove();
+      backdrop.remove();
+    };
+    modal.appendChild(closeBtn);
+
+    // Add to DOM
+    document.body.appendChild(backdrop);
+    document.body.appendChild(modal);
+
+    // Close on backdrop click
+    backdrop.onclick = () => {
+      modal.remove();
+      backdrop.remove();
+    };
   }
 
   /**
-   * Show error message
+   * Show error message (XSS-safe)
    */
   showError(message) {
     const errorDiv = document.getElementById(`${this.entity}-error`);
-    errorDiv.textContent = message;
+    errorDiv.textContent = message; // Already safe with textContent
     errorDiv.style.display = 'block';
   }
 
