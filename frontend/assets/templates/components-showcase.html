@@ -270,6 +270,184 @@
         </div>
     </section>
 
+    <!-- Layout Components Section -->
+    <section class="space-y-6">
+        <div class="border-b border-gray-200 pb-4">
+            <div class="flex items-center gap-3 mb-2">
+                <h2 class="text-2xl font-semibold text-gray-900">Layout Components</h2>
+                <span class="px-3 py-1 bg-green-100 text-green-800 text-sm font-medium rounded-full">NEW - Foundation MVP</span>
+            </div>
+            <p class="text-gray-600">Flexible, responsive layout system with FlexStack and FlexGrid</p>
+        </div>
+
+        <!-- FlexStack Examples -->
+        <div class="space-y-4">
+            <h3 class="text-xl font-semibold text-gray-900 flex items-center gap-2">
+                <i class="ph-duotone ph-rows text-blue-600"></i>
+                FlexStack - 1D Layouts
+            </h3>
+            <p class="text-gray-600">Simple yet powerful horizontal/vertical stacking with responsive behavior</p>
+
+            <!-- Stack Examples Grid -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Horizontal Stack -->
+                <div class="space-y-3">
+                    <h4 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Horizontal Stack</h4>
+                    <div class="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                        <div id="stack-horizontal"></div>
+                    </div>
+                </div>
+
+                <!-- Vertical Stack -->
+                <div class="space-y-3">
+                    <h4 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Vertical Stack</h4>
+                    <div class="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                        <div id="stack-vertical"></div>
+                    </div>
+                </div>
+
+                <!-- Stack with Dividers -->
+                <div class="space-y-3">
+                    <h4 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">With Dividers</h4>
+                    <div class="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                        <div id="stack-dividers"></div>
+                    </div>
+                </div>
+
+                <!-- Responsive Stack -->
+                <div class="space-y-3">
+                    <h4 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Responsive (Vertical → Horizontal)</h4>
+                    <div class="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                        <div id="stack-responsive"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stack Features -->
+            <div class="bg-blue-50 p-4 rounded-lg">
+                <h4 class="font-semibold text-blue-900 mb-2">FlexStack Features:</h4>
+                <ul class="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-blue-800">
+                    <li class="flex items-center gap-2"><i class="ph ph-check text-blue-600"></i> Horizontal/vertical direction</li>
+                    <li class="flex items-center gap-2"><i class="ph ph-check text-blue-600"></i> Responsive direction switching</li>
+                    <li class="flex items-center gap-2"><i class="ph ph-check text-blue-600"></i> Flexible gap control</li>
+                    <li class="flex items-center gap-2"><i class="ph ph-check text-blue-600"></i> Alignment & justify options</li>
+                    <li class="flex items-center gap-2"><i class="ph ph-check text-blue-600"></i> Optional dividers</li>
+                    <li class="flex items-center gap-2"><i class="ph ph-check text-blue-600"></i> Wrap support</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- FlexGrid Examples -->
+        <div class="space-y-4">
+            <h3 class="text-xl font-semibold text-gray-900 flex items-center gap-2">
+                <i class="ph-duotone ph-grid-four text-green-600"></i>
+                FlexGrid - 2D Responsive Grids
+            </h3>
+            <p class="text-gray-600">Powerful responsive grid system with column/row spanning</p>
+
+            <!-- Simple Grid Example -->
+            <div class="space-y-3">
+                <h4 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Responsive Grid (1-2-3-4 columns)</h4>
+                <div id="grid-basic"></div>
+            </div>
+
+            <!-- Grid with Spans -->
+            <div class="space-y-3">
+                <h4 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Grid with Column Spans</h4>
+                <div id="grid-spans"></div>
+            </div>
+
+            <!-- Dashboard Grid -->
+            <div class="space-y-3">
+                <h4 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Dashboard Layout Example</h4>
+                <div id="grid-dashboard"></div>
+            </div>
+
+            <!-- Grid Features -->
+            <div class="bg-green-50 p-4 rounded-lg">
+                <h4 class="font-semibold text-green-900 mb-2">FlexGrid Features:</h4>
+                <ul class="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-green-800">
+                    <li class="flex items-center gap-2"><i class="ph ph-check text-green-600"></i> Responsive columns (1-12)</li>
+                    <li class="flex items-center gap-2"><i class="ph ph-check text-green-600"></i> Column & row spanning</li>
+                    <li class="flex items-center gap-2"><i class="ph ph-check text-green-600"></i> Flexible gap control</li>
+                    <li class="flex items-center gap-2"><i class="ph ph-check text-green-600"></i> Equal height rows</li>
+                    <li class="flex items-center gap-2"><i class="ph ph-check text-green-600"></i> Dense packing</li>
+                    <li class="flex items-center gap-2"><i class="ph ph-check text-green-600"></i> Dynamic item management</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Combined Example -->
+        <div class="space-y-4">
+            <h3 class="text-xl font-semibold text-gray-900 flex items-center gap-2">
+                <i class="ph-duotone ph-stack text-purple-600"></i>
+                Combined Layout Example
+            </h3>
+            <p class="text-gray-600">FlexGrid + FlexStack + FlexCard working together</p>
+
+            <div id="layout-combined"></div>
+        </div>
+
+        <!-- Quick Reference -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- FlexStack Usage -->
+            <div class="bg-gray-50 p-4 rounded-lg">
+                <h4 class="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                    <i class="ph ph-rows text-blue-600"></i>
+                    FlexStack Usage
+                </h4>
+                <pre class="text-xs bg-gray-800 text-gray-100 p-3 rounded overflow-x-auto"><code>import { FlexStack } from './layout/flex-stack.js';
+
+// Horizontal stack with buttons
+const stack = new FlexStack('#container', {
+  direction: 'horizontal',
+  gap: 3,
+  align: 'center',
+  justify: 'start',
+  items: [
+    { content: button1 },
+    { content: button2 },
+    { content: button3 }
+  ]
+});
+
+// Responsive stack
+const responsiveStack = new FlexStack('#container', {
+  direction: { xs: 'vertical', md: 'horizontal' },
+  gap: { xs: 2, md: 4 },
+  divider: { enabled: true }
+});</code></pre>
+            </div>
+
+            <!-- FlexGrid Usage -->
+            <div class="bg-gray-50 p-4 rounded-lg">
+                <h4 class="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                    <i class="ph ph-grid-four text-green-600"></i>
+                    FlexGrid Usage
+                </h4>
+                <pre class="text-xs bg-gray-800 text-gray-100 p-3 rounded overflow-x-auto"><code>import { FlexGrid } from './layout/flex-grid.js';
+
+// Responsive grid
+const grid = new FlexGrid('#container', {
+  columns: { xs: 1, sm: 2, md: 3, lg: 4 },
+  gap: 6,
+  items: [
+    { id: 'card1', content: card1, span: 2 },
+    { id: 'card2', content: card2, span: 1 },
+    { id: 'card3', content: card3, span: 1 }
+  ]
+});
+
+// Add item dynamically
+grid.addItem({
+  id: 'card4',
+  content: card4,
+  span: { xs: 1, md: 2 }
+});</code></pre>
+            </div>
+        </div>
+    </section>
+
     <!-- FlexCard Section -->
     <section class="space-y-6">
         <div class="border-b border-gray-200 pb-4">

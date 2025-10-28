@@ -1,7 +1,7 @@
 /**
  * Components Showcase Module
  *
- * Demonstrates FlexCard, FlexModal, and FlexTabs components with interactive examples
+ * Demonstrates all components: Layout (FlexStack, FlexGrid), FlexCard, FlexModal, and FlexTabs
  *
  * @author Claude Code
  * @version 1.0.0
@@ -10,11 +10,15 @@
 import { FlexCard } from './components/flex-card.js';
 import { FlexModal } from './components/flex-modal.js';
 import { FlexTabs } from './components/flex-tabs.js';
+import { FlexStack } from './layout/flex-stack.js';
+import { FlexGrid } from './layout/flex-grid.js';
 import { showToast } from './ui-utils.js';
 
 let modals = {};
 let cards = {};
 let tabs = {};
+let stacks = {};
+let grids = {};
 
 /**
  * Initialize showcase on route load
@@ -31,6 +35,9 @@ document.addEventListener('route:loaded', async (e) => {
 function initShowcase() {
     console.log('Initializing Components Showcase...');
 
+    // Initialize layout components
+    initLayoutExamples();
+
     // Initialize card examples
     initCardExamples();
 
@@ -42,6 +49,362 @@ function initShowcase() {
 
     // Initialize combined example
     initCombinedExample();
+}
+
+/**
+ * Initialize Layout Examples (FlexStack and FlexGrid)
+ */
+function initLayoutExamples() {
+    // FlexStack Examples
+
+    // 1. Horizontal Stack
+    const stackHorizontal = new FlexStack('#stack-horizontal', {
+        direction: 'horizontal',
+        gap: 3,
+        align: 'center',
+        justify: 'start',
+        items: [
+            {
+                content: `<button class="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 flex items-center gap-2">
+                    <i class="ph ph-plus"></i>
+                    <span>New</span>
+                </button>`
+            },
+            {
+                content: `<button class="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 flex items-center gap-2">
+                    <i class="ph ph-pencil"></i>
+                    <span>Edit</span>
+                </button>`
+            },
+            {
+                content: `<button class="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 flex items-center gap-2">
+                    <i class="ph ph-trash"></i>
+                    <span>Delete</span>
+                </button>`
+            }
+        ]
+    });
+
+    // 2. Vertical Stack
+    const stackVertical = new FlexStack('#stack-vertical', {
+        direction: 'vertical',
+        gap: 2,
+        align: 'stretch',
+        items: [
+            {
+                content: `<div class="p-3 bg-blue-50 border border-blue-200 rounded-md">
+                    <div class="flex items-center gap-2">
+                        <i class="ph-fill ph-check-circle text-blue-600"></i>
+                        <span class="text-sm text-blue-900">Task completed</span>
+                    </div>
+                </div>`
+            },
+            {
+                content: `<div class="p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+                    <div class="flex items-center gap-2">
+                        <i class="ph-fill ph-warning text-yellow-600"></i>
+                        <span class="text-sm text-yellow-900">Pending review</span>
+                    </div>
+                </div>`
+            },
+            {
+                content: `<div class="p-3 bg-green-50 border border-green-200 rounded-md">
+                    <div class="flex items-center gap-2">
+                        <i class="ph-fill ph-info text-green-600"></i>
+                        <span class="text-sm text-green-900">All systems operational</span>
+                    </div>
+                </div>`
+            }
+        ]
+    });
+
+    // 3. Stack with Dividers
+    const stackDividers = new FlexStack('#stack-dividers', {
+        direction: 'horizontal',
+        gap: 4,
+        align: 'center',
+        divider: {
+            enabled: true,
+            variant: 'line',
+            color: 'gray-300'
+        },
+        items: [
+            {
+                content: `<div class="text-center">
+                    <div class="text-2xl font-bold text-gray-900">1,234</div>
+                    <div class="text-xs text-gray-500">Users</div>
+                </div>`
+            },
+            {
+                content: `<div class="text-center">
+                    <div class="text-2xl font-bold text-gray-900">89</div>
+                    <div class="text-xs text-gray-500">Active</div>
+                </div>`
+            },
+            {
+                content: `<div class="text-center">
+                    <div class="text-2xl font-bold text-gray-900">45</div>
+                    <div class="text-xs text-gray-500">Pending</div>
+                </div>`
+            }
+        ]
+    });
+
+    // 4. Responsive Stack (vertical on mobile, horizontal on desktop)
+    const stackResponsive = new FlexStack('#stack-responsive', {
+        direction: { xs: 'vertical', md: 'horizontal' },
+        gap: { xs: 2, md: 4 },
+        align: 'center',
+        items: [
+            {
+                content: `<div class="px-4 py-2 bg-purple-100 text-purple-800 rounded-md font-medium">
+                    Mobile: Vertical
+                </div>`
+            },
+            {
+                content: `<div class="px-4 py-2 bg-blue-100 text-blue-800 rounded-md font-medium">
+                    Desktop: Horizontal
+                </div>`
+            },
+            {
+                content: `<div class="px-4 py-2 bg-green-100 text-green-800 rounded-md font-medium">
+                    Resize to see!
+                </div>`
+            }
+        ]
+    });
+
+    stacks = { stackHorizontal, stackVertical, stackDividers, stackResponsive };
+
+    // FlexGrid Examples
+
+    // 1. Basic Responsive Grid
+    const gridBasic = new FlexGrid('#grid-basic', {
+        columns: { xs: 1, sm: 2, md: 3, lg: 4 },
+        gap: 4,
+        items: Array.from({ length: 8 }, (_, i) => ({
+            id: `grid-item-${i}`,
+            content: `<div class="p-6 bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 rounded-lg text-center">
+                <div class="text-3xl font-bold text-blue-600">${i + 1}</div>
+                <div class="text-sm text-blue-700 mt-1">Grid Item</div>
+            </div>`
+        }))
+    });
+
+    // 2. Grid with Column Spans
+    const gridSpans = new FlexGrid('#grid-spans', {
+        columns: { xs: 1, sm: 2, md: 4 },
+        gap: 4,
+        items: [
+            {
+                id: 'span-1',
+                span: { xs: 1, md: 2 },
+                content: `<div class="p-6 bg-gradient-to-br from-purple-50 to-purple-100 border border-purple-200 rounded-lg">
+                    <div class="text-lg font-semibold text-purple-900">Span 2 Columns</div>
+                    <div class="text-sm text-purple-700 mt-1">Takes up 2 columns on desktop</div>
+                </div>`
+            },
+            {
+                id: 'span-2',
+                span: 1,
+                content: `<div class="p-6 bg-gradient-to-br from-green-50 to-green-100 border border-green-200 rounded-lg text-center">
+                    <div class="text-lg font-semibold text-green-900">1 Col</div>
+                </div>`
+            },
+            {
+                id: 'span-3',
+                span: 1,
+                content: `<div class="p-6 bg-gradient-to-br from-green-50 to-green-100 border border-green-200 rounded-lg text-center">
+                    <div class="text-lg font-semibold text-green-900">1 Col</div>
+                </div>`
+            },
+            {
+                id: 'span-4',
+                span: { xs: 1, md: 4 },
+                content: `<div class="p-6 bg-gradient-to-br from-orange-50 to-orange-100 border border-orange-200 rounded-lg">
+                    <div class="text-lg font-semibold text-orange-900">Full Width (Span 4)</div>
+                    <div class="text-sm text-orange-700 mt-1">Takes up all 4 columns</div>
+                </div>`
+            }
+        ]
+    });
+
+    // 3. Dashboard Grid Example
+    const gridDashboard = new FlexGrid('#grid-dashboard', {
+        columns: { xs: 1, md: 2, lg: 4 },
+        gap: 6,
+        items: [
+            {
+                id: 'stats',
+                span: { xs: 1, lg: 4 },
+                content: `<div class="p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                        <i class="ph-duotone ph-chart-line text-blue-600"></i>
+                        Statistics Overview
+                    </h3>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div class="text-center">
+                            <div class="text-3xl font-bold text-blue-600">1.2K</div>
+                            <div class="text-sm text-gray-600">Total Users</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-3xl font-bold text-green-600">$45K</div>
+                            <div class="text-sm text-gray-600">Revenue</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-3xl font-bold text-purple-600">89%</div>
+                            <div class="text-sm text-gray-600">Satisfaction</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-3xl font-bold text-orange-600">+12%</div>
+                            <div class="text-sm text-gray-600">Growth</div>
+                        </div>
+                    </div>
+                </div>`
+            },
+            {
+                id: 'recent',
+                span: { xs: 1, md: 2, lg: 2 },
+                content: `<div class="p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                        <i class="ph ph-clock text-indigo-600"></i>
+                        Recent Activity
+                    </h3>
+                    <div class="space-y-3">
+                        <div class="text-sm text-gray-700">User logged in</div>
+                        <div class="text-sm text-gray-700">New order placed</div>
+                        <div class="text-sm text-gray-700">Report generated</div>
+                    </div>
+                </div>`
+            },
+            {
+                id: 'quick',
+                span: { xs: 1, md: 2, lg: 2 },
+                content: `<div class="p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                        <i class="ph-duotone ph-lightning text-yellow-600"></i>
+                        Quick Actions
+                    </h3>
+                    <div class="space-y-2">
+                        <button class="w-full px-3 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 text-sm">
+                            <i class="ph ph-plus"></i> New User
+                        </button>
+                        <button class="w-full px-3 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 text-sm">
+                            <i class="ph ph-download"></i> Export Data
+                        </button>
+                    </div>
+                </div>`
+            }
+        ]
+    });
+
+    grids = { gridBasic, gridSpans, gridDashboard };
+
+    // Combined Layout Example
+    initCombinedLayoutExample();
+}
+
+/**
+ * Initialize combined layout example
+ */
+function initCombinedLayoutExample() {
+    const combinedGrid = new FlexGrid('#layout-combined', {
+        columns: { xs: 1, md: 2, lg: 3 },
+        gap: 6,
+        items: [
+            {
+                id: 'combined-1',
+                span: { xs: 1, lg: 2 },
+                content: (() => {
+                    const card = new FlexCard(document.createElement('div'), {
+                        title: 'Team Members',
+                        icon: 'ph ph-users',
+                        badge: { text: '4 Online', variant: 'success' },
+                        content: (() => {
+                            const stack = new FlexStack(document.createElement('div'), {
+                                direction: 'vertical',
+                                gap: 3,
+                                items: [
+                                    {
+                                        content: `<div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                                            <div class="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-semibold">JD</div>
+                                            <div class="flex-1">
+                                                <div class="font-medium text-gray-900">John Doe</div>
+                                                <div class="text-sm text-gray-500">john@example.com</div>
+                                            </div>
+                                            <span class="w-2 h-2 bg-green-500 rounded-full"></span>
+                                        </div>`
+                                    },
+                                    {
+                                        content: `<div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                                            <div class="w-10 h-10 bg-purple-500 rounded-full flex items-center justify-center text-white font-semibold">JS</div>
+                                            <div class="flex-1">
+                                                <div class="font-medium text-gray-900">Jane Smith</div>
+                                                <div class="text-sm text-gray-500">jane@example.com</div>
+                                            </div>
+                                            <span class="w-2 h-2 bg-green-500 rounded-full"></span>
+                                        </div>`
+                                    },
+                                    {
+                                        content: `<div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                                            <div class="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center text-white font-semibold">BJ</div>
+                                            <div class="flex-1">
+                                                <div class="font-medium text-gray-900">Bob Johnson</div>
+                                                <div class="text-sm text-gray-500">bob@example.com</div>
+                                            </div>
+                                            <span class="w-2 h-2 bg-gray-400 rounded-full"></span>
+                                        </div>`
+                                    }
+                                ]
+                            });
+                            return stack.getElement();
+                        })()
+                    });
+                    return card.getElement();
+                })()
+            },
+            {
+                id: 'combined-2',
+                span: 1,
+                content: (() => {
+                    const card = new FlexCard(document.createElement('div'), {
+                        title: 'Quick Stats',
+                        icon: 'ph-duotone ph-chart-bar',
+                        variant: 'shadowed',
+                        content: (() => {
+                            const stack = new FlexStack(document.createElement('div'), {
+                                direction: 'vertical',
+                                gap: 4,
+                                divider: { enabled: true },
+                                items: [
+                                    {
+                                        content: `<div class="text-center">
+                                            <div class="text-3xl font-bold text-blue-600">245</div>
+                                            <div class="text-sm text-gray-600">Total Projects</div>
+                                        </div>`
+                                    },
+                                    {
+                                        content: `<div class="text-center">
+                                            <div class="text-3xl font-bold text-green-600">89%</div>
+                                            <div class="text-sm text-gray-600">Completion Rate</div>
+                                        </div>`
+                                    },
+                                    {
+                                        content: `<div class="text-center">
+                                            <div class="text-3xl font-bold text-purple-600">12</div>
+                                            <div class="text-sm text-gray-600">Active Tasks</div>
+                                        </div>`
+                                    }
+                                ]
+                            });
+                            return stack.getElement();
+                        })()
+                    });
+                    return card.getElement();
+                })()
+            }
+        ]
+    });
 }
 
 /**
