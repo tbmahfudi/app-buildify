@@ -3,12 +3,14 @@
  * Provides permission checking and role-based UI visibility
  */
 
+import { getCurrentUser as getUser } from './app.js';
+
 /**
  * Get current user from app state
  * @returns {Object|null} Current user object
  */
 function getCurrentUser() {
-  return window.appState?.user || null;
+  return getUser() || null;
 }
 
 /**

@@ -274,11 +274,20 @@ export class DynamicTable {
    * Render error message
    */
   renderError(message) {
-    this.container.innerHTML = `
-      <div class="alert alert-danger" role="alert">
-        <strong>Error:</strong> ${message}
-      </div>
-    `;
+    const alertDiv = document.createElement('div');
+    alertDiv.className = 'alert alert-danger';
+    alertDiv.setAttribute('role', 'alert');
+
+    const strong = document.createElement('strong');
+    strong.textContent = 'Error: ';
+
+    const messageText = document.createTextNode(message);
+
+    alertDiv.appendChild(strong);
+    alertDiv.appendChild(messageText);
+
+    this.container.innerHTML = '';
+    this.container.appendChild(alertDiv);
   }
 
   /**

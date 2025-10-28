@@ -22,6 +22,11 @@ let apiBase = deriveApiBase();
 let tokens = { access: null, refresh: null };
 let tenantId = null;
 
+// SECURITY NOTE: Token storage in localStorage is vulnerable to XSS attacks.
+// RECOMMENDED: Backend should implement httpOnly cookies for token storage.
+// This would prevent JavaScript access to tokens entirely.
+// Until then, we use localStorage with additional protections.
+
 const withBase = (path) => {
   const safePath = path.startsWith('/') ? path : `/${path}`;
   return `${apiBase}${safePath}`;
@@ -30,12 +35,41 @@ const withBase = (path) => {
 function loadTokens() {
   try {
     const t = JSON.parse(localStorage.getItem("tokens"));
-    if (t) tokens = t;
+    if (t) {
+      // Validate token structure before accepting
+      if (t.access && typeof t.access === 'string' &&
+          t.refresh && typeof t.refresh === 'string') {
+        tokens = t;
+      } else {
+        // Invalid token structure, clear it
+        console.warn('Invalid token structure detected, clearing tokens');
+        clearTokens();
+      }
+    }
     tenantId = localStorage.getItem("tenantId") || null;
-  } catch {}
+  } catch (error) {
+    console.error('Error loading tokens:', error);
+    clearTokens();
+  }
 }
+
 function saveTokens() {
-  localStorage.setItem("tokens", JSON.stringify(tokens));
+  if (!tokens.access || !tokens.refresh) {
+    console.warn('Attempted to save invalid tokens');
+    return;
+  }
+  try {
+    localStorage.setItem("tokens", JSON.stringify(tokens));
+  } catch (error) {
+    console.error('Error saving tokens:', error);
+  }
+}
+
+function clearTokens() {
+  localStorage.removeItem("tokens");
+  localStorage.removeItem("tenantId");
+  tokens = { access: null, refresh: null };
+  tenantId = null;
 }
 function setTenant(id) {
   tenantId = id || null;
@@ -85,8 +119,8 @@ async function login(email, password, tenant) {
   return j;
 }
 function logout() {
-  tokens = { access: null, refresh: null };
-  saveTokens();
+  clearTokens();
 }
+
 loadTokens();
 export { apiFetch, login, logout, tokens, setTenant, tenantId, setApiBase };
