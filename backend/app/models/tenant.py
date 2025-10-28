@@ -49,8 +49,8 @@ class Tenant(Base):
     logo_url = Column(String(500), nullable=True)
     primary_color = Column(String(7), nullable=True)  # Hex color
 
-    # Metadata (JSON)
-    metadata = Column(Text, nullable=True)  # JSON: custom fields
+    # Extra data (JSON)
+    extra_data = Column(Text, nullable=True)  # JSON: custom fields
 
     # Timestamps
     created_at = Column(DateTime, server_default=func.now(), nullable=False)

@@ -38,8 +38,8 @@ class User(Base):
     is_superuser = Column(Boolean, default=False, nullable=False)
     is_verified = Column(Boolean, default=False, nullable=False)
 
-    # Metadata (JSON)
-    metadata = Column(Text, nullable=True)  # JSON: custom fields
+    # Extra data (JSON)
+    extra_data = Column(Text, nullable=True)  # JSON: custom fields
 
     # Timestamps
     created_at = Column(DateTime, server_default=func.now(), nullable=False)
