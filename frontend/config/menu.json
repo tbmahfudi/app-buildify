@@ -6,6 +6,11 @@
       "icon": "bi-speedometer2"
     },
     {
+      "title": "Components",
+      "route": "components-showcase",
+      "icon": "bi-columns-gap"
+    },
+    {
       "title": "Data Management",
       "route": "companies",
       "icon": "bi-building",

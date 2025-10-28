@@ -1,0 +1,295 @@
+<!-- Components Showcase Page -->
+<div class="p-6 space-y-8">
+    <!-- Page Header -->
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-900 mb-2">UI Components Showcase</h1>
+        <p class="text-gray-600">Explore and interact with reusable FlexCard, FlexModal, and FlexTabs components</p>
+    </div>
+
+    <!-- FlexCard Section -->
+    <section class="space-y-6">
+        <div class="border-b border-gray-200 pb-4">
+            <h2 class="text-2xl font-semibold text-gray-900 mb-2">FlexCard Component</h2>
+            <p class="text-gray-600">Flexible card/panel component with customizable headers, footers, and actions</p>
+        </div>
+
+        <!-- Card Examples Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- Basic Card -->
+            <div>
+                <h3 class="text-sm font-semibold text-gray-700 mb-3 uppercase tracking-wide">Basic Card</h3>
+                <div id="card-basic"></div>
+            </div>
+
+            <!-- Card with Actions -->
+            <div>
+                <h3 class="text-sm font-semibold text-gray-700 mb-3 uppercase tracking-wide">Card with Actions</h3>
+                <div id="card-actions"></div>
+            </div>
+
+            <!-- Card with Badge -->
+            <div>
+                <h3 class="text-sm font-semibold text-gray-700 mb-3 uppercase tracking-wide">Card with Badge</h3>
+                <div id="card-badge"></div>
+            </div>
+
+            <!-- Collapsible Card -->
+            <div>
+                <h3 class="text-sm font-semibold text-gray-700 mb-3 uppercase tracking-wide">Collapsible Card</h3>
+                <div id="card-collapsible"></div>
+            </div>
+
+            <!-- Card with Footer -->
+            <div>
+                <h3 class="text-sm font-semibold text-gray-700 mb-3 uppercase tracking-wide">Card with Footer</h3>
+                <div id="card-footer"></div>
+            </div>
+
+            <!-- Shadowed Card -->
+            <div>
+                <h3 class="text-sm font-semibold text-gray-700 mb-3 uppercase tracking-wide">Shadowed Variant</h3>
+                <div id="card-shadowed"></div>
+            </div>
+        </div>
+
+        <!-- Loading Card Demo -->
+        <div class="mt-6">
+            <h3 class="text-sm font-semibold text-gray-700 mb-3 uppercase tracking-wide">Loading State Demo</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div id="card-loading"></div>
+                <div class="flex items-center gap-3">
+                    <button id="toggle-loading" class="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors">
+                        Toggle Loading
+                    </button>
+                    <span class="text-sm text-gray-600">Click to simulate loading state</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FlexModal Section -->
+    <section class="space-y-6">
+        <div class="border-b border-gray-200 pb-4">
+            <h2 class="text-2xl font-semibold text-gray-900 mb-2">FlexModal Component</h2>
+            <p class="text-gray-600">Flexible modal/dialog component with multiple sizes and configurations</p>
+        </div>
+
+        <!-- Modal Buttons -->
+        <div class="flex flex-wrap gap-3">
+            <button id="modal-basic-btn" class="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors">
+                Basic Modal
+            </button>
+            <button id="modal-form-btn" class="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 transition-colors">
+                Form Modal
+            </button>
+            <button id="modal-confirm-btn" class="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors">
+                Confirmation Modal
+            </button>
+            <button id="modal-large-btn" class="px-4 py-2 bg-purple-500 text-white rounded-md hover:bg-purple-600 transition-colors">
+                Large Modal
+            </button>
+            <button id="modal-scrollable-btn" class="px-4 py-2 bg-indigo-500 text-white rounded-md hover:bg-indigo-600 transition-colors">
+                Scrollable Content
+            </button>
+            <button id="modal-nested-btn" class="px-4 py-2 bg-yellow-500 text-white rounded-md hover:bg-yellow-600 transition-colors">
+                Nested Modal Demo
+            </button>
+        </div>
+
+        <!-- Modal Features -->
+        <div class="bg-gray-50 p-4 rounded-lg">
+            <h4 class="font-semibold text-gray-900 mb-2">Features Demonstrated:</h4>
+            <ul class="list-disc list-inside space-y-1 text-sm text-gray-700">
+                <li>Multiple sizes (sm, md, lg, xl)</li>
+                <li>Header with title, subtitle, and close button</li>
+                <li>Scrollable body content</li>
+                <li>Footer with action buttons</li>
+                <li>Backdrop blur and dismiss</li>
+                <li>Keyboard navigation (ESC to close, Tab trapping)</li>
+                <li>Modal stacking support</li>
+            </ul>
+        </div>
+    </section>
+
+    <!-- FlexTabs Section -->
+    <section class="space-y-6">
+        <div class="border-b border-gray-200 pb-4">
+            <h2 class="text-2xl font-semibold text-gray-900 mb-2">FlexTabs Component</h2>
+            <p class="text-gray-600">Flexible tabs component for organizing content into switchable views</p>
+        </div>
+
+        <!-- Underline Tabs -->
+        <div class="space-y-3">
+            <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Underline Style</h3>
+            <div id="tabs-underline"></div>
+        </div>
+
+        <!-- Pills Tabs -->
+        <div class="space-y-3">
+            <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Pills Style</h3>
+            <div id="tabs-pills"></div>
+        </div>
+
+        <!-- Enclosed Tabs -->
+        <div class="space-y-3">
+            <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Enclosed Style</h3>
+            <div id="tabs-enclosed"></div>
+        </div>
+
+        <!-- Tabs with Badges -->
+        <div class="space-y-3">
+            <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Tabs with Badges</h3>
+            <div id="tabs-badges"></div>
+        </div>
+
+        <!-- Vertical Tabs -->
+        <div class="space-y-3">
+            <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Vertical Orientation</h3>
+            <div id="tabs-vertical" class="max-w-4xl"></div>
+        </div>
+
+        <!-- Tabs Features -->
+        <div class="bg-gray-50 p-4 rounded-lg">
+            <h4 class="font-semibold text-gray-900 mb-2">Features Demonstrated:</h4>
+            <ul class="list-disc list-inside space-y-1 text-sm text-gray-700">
+                <li>Multiple variants (underline, pills, enclosed)</li>
+                <li>Horizontal and vertical orientations</li>
+                <li>Icon support</li>
+                <li>Badge/counter support</li>
+                <li>Lazy loading capability</li>
+                <li>URL hash synchronization (optional)</li>
+                <li>RBAC integration support</li>
+            </ul>
+        </div>
+    </section>
+
+    <!-- Combined Example Section -->
+    <section class="space-y-6">
+        <div class="border-b border-gray-200 pb-4">
+            <h2 class="text-2xl font-semibold text-gray-900 mb-2">Combined Components Example</h2>
+            <p class="text-gray-600">A real-world example using multiple components together</p>
+        </div>
+
+        <div id="combined-example"></div>
+    </section>
+
+    <!-- Code Documentation -->
+    <section class="space-y-6">
+        <div class="border-b border-gray-200 pb-4">
+            <h2 class="text-2xl font-semibold text-gray-900 mb-2">Quick Reference</h2>
+            <p class="text-gray-600">Basic usage examples for each component</p>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- FlexCard Usage -->
+            <div class="bg-gray-50 p-4 rounded-lg">
+                <h4 class="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                    <i class="bi bi-card-heading text-blue-600"></i>
+                    FlexCard Usage
+                </h4>
+                <pre class="text-xs bg-gray-800 text-gray-100 p-3 rounded overflow-x-auto"><code>import { FlexCard } from './components/flex-card.js';
+
+const card = new FlexCard('#container', {
+  title: 'Card Title',
+  subtitle: 'Subtitle',
+  icon: 'bi-star',
+  badge: {text: 'New', variant: 'primary'},
+  content: 'Card content here...',
+  collapsible: true,
+  actions: [
+    {
+      label: 'Edit',
+      icon: 'bi-pencil',
+      onClick: () => alert('Edit clicked')
+    }
+  ]
+});
+</code></pre>
+            </div>
+
+            <!-- FlexModal Usage -->
+            <div class="bg-gray-50 p-4 rounded-lg">
+                <h4 class="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                    <i class="bi bi-window text-green-600"></i>
+                    FlexModal Usage
+                </h4>
+                <pre class="text-xs bg-gray-800 text-gray-100 p-3 rounded overflow-x-auto"><code>import { FlexModal } from './components/flex-modal.js';
+
+const modal = new FlexModal({
+  title: 'Modal Title',
+  subtitle: 'Modal description',
+  size: 'lg',
+  content: 'Modal content...',
+  footerActions: [
+    {
+      label: 'Cancel',
+      variant: 'ghost',
+      onClick: (e, modal) => modal.hide()
+    },
+    {
+      label: 'Save',
+      variant: 'primary',
+      onClick: (e, modal) => {
+        // Save logic
+        modal.hide();
+      }
+    }
+  ]
+});
+
+modal.show();
+</code></pre>
+            </div>
+
+            <!-- FlexTabs Usage -->
+            <div class="bg-gray-50 p-4 rounded-lg">
+                <h4 class="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                    <i class="bi bi-folder2 text-purple-600"></i>
+                    FlexTabs Usage
+                </h4>
+                <pre class="text-xs bg-gray-800 text-gray-100 p-3 rounded overflow-x-auto"><code>import { FlexTabs } from './components/flex-tabs.js';
+
+const tabs = new FlexTabs('#container', {
+  variant: 'underline',
+  tabs: [
+    {
+      id: 'tab1',
+      label: 'Tab One',
+      icon: 'bi-house',
+      content: 'Tab 1 content...'
+    },
+    {
+      id: 'tab2',
+      label: 'Tab Two',
+      badge: {text: '5', variant: 'danger'},
+      content: 'Tab 2 content...'
+    }
+  ]
+});
+</code></pre>
+            </div>
+        </div>
+    </section>
+
+    <!-- Component File Locations -->
+    <section class="space-y-4">
+        <div class="border-b border-gray-200 pb-4">
+            <h2 class="text-2xl font-semibold text-gray-900 mb-2">Component Files</h2>
+            <p class="text-gray-600">Location of component source files in the project</p>
+        </div>
+
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div class="flex items-start gap-3">
+                <i class="bi bi-info-circle text-blue-600 text-xl flex-shrink-0 mt-0.5"></i>
+                <div class="space-y-2 text-sm">
+                    <p class="font-semibold text-blue-900">Component locations:</p>
+                    <ul class="space-y-1 text-blue-800 font-mono">
+                        <li>📄 frontend/assets/js/components/flex-card.js</li>
+                        <li>📄 frontend/assets/js/components/flex-modal.js</li>
+                        <li>📄 frontend/assets/js/components/flex-tabs.js</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
