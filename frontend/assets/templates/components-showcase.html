@@ -448,6 +448,200 @@ grid.addItem({
         </div>
     </section>
 
+    <!-- Phase 2: Containers & Sections -->
+    <section class="space-y-6">
+        <div class="border-b border-gray-200 pb-4">
+            <div class="flex items-center gap-3 mb-2">
+                <h2 class="text-2xl font-semibold text-gray-900">Phase 2: Containers & Sections</h2>
+                <span class="px-3 py-1 bg-indigo-100 text-indigo-800 text-sm font-medium rounded-full">NEW - Phase 2</span>
+            </div>
+            <p class="text-gray-600">Advanced layout components for page structure: FlexContainer, FlexSection, and FlexSidebar</p>
+        </div>
+
+        <!-- FlexContainer Examples -->
+        <div class="space-y-4">
+            <h3 class="text-xl font-semibold text-gray-900 flex items-center gap-2">
+                <i class="ph-duotone ph-layout text-indigo-600"></i>
+                FlexContainer - Content Width Control
+            </h3>
+            <p class="text-gray-600">Responsive container for controlling content width, alignment, and horizontal padding</p>
+
+            <!-- Container Examples -->
+            <div class="space-y-6">
+                <!-- Preset Comparison -->
+                <div class="space-y-3">
+                    <h4 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Preset Comparison</h4>
+                    <div id="container-presets"></div>
+                </div>
+
+                <!-- Responsive Gutters -->
+                <div class="space-y-3">
+                    <h4 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Responsive Gutters</h4>
+                    <div id="container-gutters"></div>
+                </div>
+
+                <!-- Alignment Variations -->
+                <div class="space-y-3">
+                    <h4 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Alignment Variations</h4>
+                    <div id="container-alignment"></div>
+                </div>
+
+                <!-- Breakout Demo -->
+                <div class="space-y-3">
+                    <h4 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Breakout Demo</h4>
+                    <div id="container-breakout"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- FlexSection Examples -->
+        <div class="space-y-4">
+            <h3 class="text-xl font-semibold text-gray-900 flex items-center gap-2">
+                <i class="ph-duotone ph-copy text-indigo-600"></i>
+                FlexSection - Semantic Page Sections
+            </h3>
+            <p class="text-gray-600">Full-width sections with backgrounds, spacing, and slotted content areas</p>
+
+            <!-- Section Examples -->
+            <div class="space-y-6">
+                <!-- Hero Section -->
+                <div class="space-y-3">
+                    <h4 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Hero Section (Gradient Background)</h4>
+                    <div id="section-hero"></div>
+                </div>
+
+                <!-- Content Section -->
+                <div class="space-y-3">
+                    <h4 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Content Section</h4>
+                    <div id="section-content"></div>
+                </div>
+
+                <!-- Feature Section -->
+                <div class="space-y-3">
+                    <h4 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Feature Section (Image Background)</h4>
+                    <div id="section-feature"></div>
+                </div>
+
+                <!-- CTA Section -->
+                <div class="space-y-3">
+                    <h4 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Call-to-Action Section</h4>
+                    <div id="section-cta"></div>
+                </div>
+
+                <!-- Background Types -->
+                <div class="space-y-3">
+                    <h4 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Background Types</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div id="section-bg-solid"></div>
+                        <div id="section-bg-gradient"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- FlexSidebar Examples -->
+        <div class="space-y-4">
+            <h3 class="text-xl font-semibold text-gray-900 flex items-center gap-2">
+                <i class="ph-duotone ph-sidebar text-indigo-600"></i>
+                FlexSidebar - Responsive Sidebar Layouts
+            </h3>
+            <p class="text-gray-600">Complex sidebar patterns with overlay, push, and reveal modes</p>
+
+            <!-- Sidebar Examples -->
+            <div class="space-y-6">
+                <!-- Basic Sidebar -->
+                <div class="space-y-3">
+                    <h4 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Basic Left Sidebar (Click to Toggle)</h4>
+                    <div id="sidebar-basic"></div>
+                </div>
+
+                <!-- Admin Dashboard -->
+                <div class="space-y-3">
+                    <h4 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Admin Dashboard with Resizable Sidebar</h4>
+                    <div id="sidebar-admin"></div>
+                </div>
+
+                <!-- Mode Comparison -->
+                <div class="space-y-3">
+                    <h4 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Display Modes (Overlay vs Push)</h4>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        <div id="sidebar-overlay"></div>
+                        <div id="sidebar-push"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Combined Example -->
+        <div class="space-y-4">
+            <h3 class="text-xl font-semibold text-gray-900 flex items-center gap-2">
+                <i class="ph-duotone ph-sparkle text-indigo-600"></i>
+                Complete Layout Example
+            </h3>
+            <p class="text-gray-600">FlexSidebar + FlexSection + FlexContainer + FlexGrid working together</p>
+
+            <div class="space-y-3">
+                <div id="phase2-combined"></div>
+            </div>
+        </div>
+
+        <!-- Quick Reference -->
+        <div class="bg-gradient-to-br from-indigo-50 to-blue-50 p-6 rounded-lg border border-indigo-200">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Quick Reference</h3>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- FlexContainer -->
+                <div>
+                    <h4 class="font-semibold text-indigo-900 mb-2 flex items-center gap-2">
+                        <i class="ph-duotone ph-layout text-indigo-600"></i>
+                        FlexContainer
+                    </h4>
+                    <pre class="text-xs bg-gray-800 text-gray-100 p-3 rounded overflow-x-auto"><code>import FlexContainer from './layout/flex-container.js';
+
+const container = new FlexContainer('#content', {
+  preset: 'standard',  // narrow | standard | wide | full
+  align: 'center',     // left | center | right
+  gutter: true         // responsive padding
+});</code></pre>
+                </div>
+
+                <!-- FlexSection -->
+                <div>
+                    <h4 class="font-semibold text-indigo-900 mb-2 flex items-center gap-2">
+                        <i class="ph-duotone ph-copy text-indigo-600"></i>
+                        FlexSection
+                    </h4>
+                    <pre class="text-xs bg-gray-800 text-gray-100 p-3 rounded overflow-x-auto"><code>import FlexSection from './layout/flex-section.js';
+
+const section = new FlexSection('#hero', {
+  variant: 'hero',     // hero | content | feature | cta
+  padding: '2xl',      // sm | md | lg | xl | 2xl
+  background: {
+    type: 'gradient',
+    gradient: { from: 'blue-600', to: 'indigo-600' }
+  }
+});</code></pre>
+                </div>
+
+                <!-- FlexSidebar -->
+                <div>
+                    <h4 class="font-semibold text-indigo-900 mb-2 flex items-center gap-2">
+                        <i class="ph-duotone ph-sidebar text-indigo-600"></i>
+                        FlexSidebar
+                    </h4>
+                    <pre class="text-xs bg-gray-800 text-gray-100 p-3 rounded overflow-x-auto"><code>import FlexSidebar from './layout/flex-sidebar.js';
+
+const layout = new FlexSidebar('#app', {
+  position: 'left',    // left | right | both
+  width: { xs: '100%', md: '280px' },
+  mobileMode: 'overlay',  // overlay | push
+  desktopMode: 'push'     // push | overlay | reveal
+});</code></pre>
+                </div>
+            </div>
+        </div>
+    </section>
+
     <!-- FlexCard Section -->
     <section class="space-y-6">
         <div class="border-b border-gray-200 pb-4">

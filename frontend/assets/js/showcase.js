@@ -1,10 +1,11 @@
 /**
  * Components Showcase Module
  *
- * Demonstrates all components: Layout (FlexStack, FlexGrid), FlexCard, FlexModal, and FlexTabs
+ * Demonstrates all components: Layout (FlexStack, FlexGrid), Phase 2 (FlexContainer, FlexSection, FlexSidebar),
+ * FlexCard, FlexModal, and FlexTabs
  *
  * @author Claude Code
- * @version 1.0.0
+ * @version 2.0.0
  */
 
 import { FlexCard } from './components/flex-card.js';
@@ -12,6 +13,9 @@ import { FlexModal } from './components/flex-modal.js';
 import { FlexTabs } from './components/flex-tabs.js';
 import { FlexStack } from './layout/flex-stack.js';
 import { FlexGrid } from './layout/flex-grid.js';
+import FlexContainer from './layout/flex-container.js';
+import FlexSection from './layout/flex-section.js';
+import FlexSidebar from './layout/flex-sidebar.js';
 import { showToast } from './ui-utils.js';
 
 let modals = {};
@@ -19,6 +23,9 @@ let cards = {};
 let tabs = {};
 let stacks = {};
 let grids = {};
+let containers = {};
+let sections = {};
+let sidebars = {};
 
 /**
  * Initialize showcase on route load
@@ -35,8 +42,14 @@ document.addEventListener('route:loaded', async (e) => {
 function initShowcase() {
     console.log('Initializing Components Showcase...');
 
-    // Initialize layout components
+    // Initialize layout components (Foundation MVP)
     initLayoutExamples();
+
+    // Initialize Phase 2 components
+    initPhase2ContainerExamples();
+    initPhase2SectionExamples();
+    initPhase2SidebarExamples();
+    initPhase2CombinedExample();
 
     // Initialize card examples
     initCardExamples();
@@ -47,7 +60,7 @@ function initShowcase() {
     // Initialize tabs examples
     initTabsExamples();
 
-    // Initialize combined example
+    // Initialize combined example (Foundation MVP)
     initCombinedExample();
 }
 
@@ -1234,6 +1247,700 @@ function initCombinedExample() {
             ]
         });
     }, 100);
+}
+
+/**
+ * Initialize Phase 2 Container Examples
+ */
+function initPhase2ContainerExamples() {
+    console.log('Initializing Phase 2 Container Examples...');
+
+    // Example 1: Preset Comparison
+    const presetsContainer = document.querySelector('#container-presets');
+    if (presetsContainer) {
+        presetsContainer.innerHTML = `
+            <div class="space-y-4">
+                ${['narrow', 'standard', 'wide', 'full'].map(preset => `
+                    <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                        <div class="bg-gray-100 px-4 py-2 border-b border-gray-200">
+                            <code class="text-sm font-semibold text-gray-700">preset: "${preset}"</code>
+                        </div>
+                        <div id="container-preset-${preset}" class="p-4 bg-gradient-to-r from-blue-50 to-indigo-50">
+                            <div class="bg-white border-2 border-dashed border-indigo-300 rounded p-4 text-center">
+                                <p class="text-gray-700">Content within ${preset} container</p>
+                                <p class="text-xs text-gray-500 mt-1">Max-width: ${
+                                    preset === 'narrow' ? '768px' :
+                                    preset === 'standard' ? '1280px' :
+                                    preset === 'wide' ? '1536px' :
+                                    '100%'
+                                }</p>
+                            </div>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+
+        // Initialize containers
+        ['narrow', 'standard', 'wide', 'full'].forEach(preset => {
+            containers[`preset-${preset}`] = new FlexContainer(`#container-preset-${preset}`, {
+                preset: preset,
+                align: 'center',
+                gutter: true
+            });
+        });
+    }
+
+    // Example 2: Responsive Gutters
+    const guttersContainer = document.querySelector('#container-gutters');
+    if (guttersContainer) {
+        guttersContainer.innerHTML = `
+            <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                <div class="bg-gray-100 px-4 py-2 border-b border-gray-200">
+                    <code class="text-sm font-semibold text-gray-700">gutter: { xs: 4, md: 6, lg: 8 }</code>
+                </div>
+                <div id="container-gutters-demo" class="bg-gradient-to-r from-purple-50 to-pink-50 p-1">
+                    <div class="bg-white border-2 border-dashed border-purple-300 rounded p-6">
+                        <p class="text-gray-700">Resize your browser to see responsive gutters</p>
+                        <p class="text-sm text-gray-500 mt-2">Mobile: 1rem • Tablet: 1.5rem • Desktop: 2rem</p>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        containers['gutters'] = new FlexContainer('#container-gutters-demo', {
+            preset: 'standard',
+            padding: { xs: 4, md: 6, lg: 8 },
+            align: 'center'
+        });
+    }
+
+    // Example 3: Alignment Variations
+    const alignmentContainer = document.querySelector('#container-alignment');
+    if (alignmentContainer) {
+        alignmentContainer.innerHTML = `
+            <div class="space-y-4">
+                ${['left', 'center', 'right'].map(align => `
+                    <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                        <div class="bg-gray-100 px-4 py-2 border-b border-gray-200">
+                            <code class="text-sm font-semibold text-gray-700">align: "${align}"</code>
+                        </div>
+                        <div id="container-align-${align}" class="p-4 bg-gradient-to-r from-green-50 to-teal-50">
+                            <div class="bg-white border-2 border-dashed border-green-300 rounded p-4">
+                                <p class="text-gray-700">${align.charAt(0).toUpperCase() + align.slice(1)}-aligned content</p>
+                            </div>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+
+        ['left', 'center', 'right'].forEach(align => {
+            containers[`align-${align}`] = new FlexContainer(`#container-align-${align}`, {
+                preset: 'narrow',
+                align: align,
+                gutter: false
+            });
+        });
+    }
+
+    // Example 4: Breakout Demo
+    const breakoutContainer = document.querySelector('#container-breakout');
+    if (breakoutContainer) {
+        breakoutContainer.innerHTML = `
+            <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                <div class="bg-gray-100 px-4 py-2 border-b border-gray-200">
+                    <code class="text-sm font-semibold text-gray-700">allowBreakout: true</code>
+                </div>
+                <div id="container-breakout-demo" class="p-4 bg-gradient-to-r from-amber-50 to-orange-50">
+                    <div class="space-y-4">
+                        <div class="bg-white border border-amber-300 rounded p-4">
+                            <p class="text-gray-700">Contained content (respects max-width)</p>
+                        </div>
+                        <div class="bg-indigo-600 text-white p-6 rounded -mx-4">
+                            <p class="font-semibold">Full-width breakout content</p>
+                            <p class="text-sm text-indigo-100 mt-1">This escapes the container width constraints</p>
+                        </div>
+                        <div class="bg-white border border-amber-300 rounded p-4">
+                            <p class="text-gray-700">Back to contained content</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        containers['breakout'] = new FlexContainer('#container-breakout-demo', {
+            preset: 'narrow',
+            allowBreakout: true,
+            gutter: true
+        });
+    }
+}
+
+/**
+ * Initialize Phase 2 Section Examples
+ */
+function initPhase2SectionExamples() {
+    console.log('Initializing Phase 2 Section Examples...');
+
+    // Example 1: Hero Section
+    const heroContainer = document.querySelector('#section-hero');
+    if (heroContainer) {
+        heroContainer.innerHTML = '<div id="section-hero-demo"></div>';
+
+        setTimeout(() => {
+            sections['hero'] = new FlexSection('#section-hero-demo', {
+                variant: 'hero',
+                padding: '2xl',
+                background: {
+                    type: 'gradient',
+                    gradient: {
+                        from: 'indigo-600',
+                        to: 'purple-600',
+                        direction: 'to-br'
+                    }
+                },
+                slots: {
+                    body: {
+                        content: `
+                            <div class="text-center text-white space-y-6">
+                                <h1 class="text-4xl font-bold">Welcome to Phase 2</h1>
+                                <p class="text-xl text-indigo-100">Advanced layout components for modern web applications</p>
+                                <div class="flex gap-4 justify-center">
+                                    <button class="px-6 py-3 bg-white text-indigo-600 font-semibold rounded-lg hover:bg-indigo-50 transition-colors">
+                                        Get Started
+                                    </button>
+                                    <button class="px-6 py-3 border-2 border-white text-white font-semibold rounded-lg hover:bg-white hover:text-indigo-600 transition-colors">
+                                        Learn More
+                                    </button>
+                                </div>
+                            </div>
+                        `,
+                        align: 'center'
+                    }
+                }
+            });
+        }, 50);
+    }
+
+    // Example 2: Content Section
+    const contentContainer = document.querySelector('#section-content');
+    if (contentContainer) {
+        contentContainer.innerHTML = '<div id="section-content-demo"></div>';
+
+        setTimeout(() => {
+            sections['content'] = new FlexSection('#section-content-demo', {
+                variant: 'content',
+                padding: 'xl',
+                background: {
+                    type: 'solid',
+                    color: 'white'
+                },
+                divider: {
+                    top: true,
+                    bottom: true,
+                    color: 'gray-200'
+                },
+                slots: {
+                    header: {
+                        content: '<h2 class="text-2xl font-bold text-gray-900">About Our Platform</h2>',
+                        align: 'left'
+                    },
+                    body: {
+                        content: `
+                            <p class="text-gray-600 leading-relaxed">
+                                FlexSection provides a powerful way to create semantic page sections with consistent spacing,
+                                backgrounds, and content organization. Perfect for building landing pages, marketing sites,
+                                and content-heavy applications.
+                            </p>
+                        `
+                    }
+                }
+            });
+        }, 50);
+    }
+
+    // Example 3: Feature Section
+    const featureContainer = document.querySelector('#section-feature');
+    if (featureContainer) {
+        featureContainer.innerHTML = '<div id="section-feature-demo"></div>';
+
+        setTimeout(() => {
+            sections['feature'] = new FlexSection('#section-feature-demo', {
+                variant: 'feature',
+                padding: { xs: 'lg', lg: 'xl' },
+                background: {
+                    type: 'solid',
+                    color: 'gray-900'
+                },
+                slots: {
+                    header: {
+                        content: '<h2 class="text-2xl font-bold text-white">Key Features</h2>',
+                        align: 'center'
+                    },
+                    body: {
+                        content: `
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
+                                <div class="bg-white/10 backdrop-blur-sm rounded-lg p-6 text-white">
+                                    <i class="ph-duotone ph-rocket text-4xl text-indigo-400 mb-3 block"></i>
+                                    <h3 class="text-lg font-semibold mb-2">Fast Performance</h3>
+                                    <p class="text-gray-300 text-sm">Optimized for speed and efficiency</p>
+                                </div>
+                                <div class="bg-white/10 backdrop-blur-sm rounded-lg p-6 text-white">
+                                    <i class="ph-duotone ph-palette text-4xl text-purple-400 mb-3 block"></i>
+                                    <h3 class="text-lg font-semibold mb-2">Beautiful Design</h3>
+                                    <p class="text-gray-300 text-sm">Carefully crafted user experience</p>
+                                </div>
+                                <div class="bg-white/10 backdrop-blur-sm rounded-lg p-6 text-white">
+                                    <i class="ph-duotone ph-shield-check text-4xl text-green-400 mb-3 block"></i>
+                                    <h3 class="text-lg font-semibold mb-2">Secure & Reliable</h3>
+                                    <p class="text-gray-300 text-sm">Built with security in mind</p>
+                                </div>
+                            </div>
+                        `
+                    }
+                }
+            });
+        }, 50);
+    }
+
+    // Example 4: CTA Section
+    const ctaContainer = document.querySelector('#section-cta');
+    if (ctaContainer) {
+        ctaContainer.innerHTML = '<div id="section-cta-demo"></div>';
+
+        setTimeout(() => {
+            sections['cta'] = new FlexSection('#section-cta-demo', {
+                variant: 'cta',
+                padding: 'lg',
+                background: {
+                    type: 'gradient',
+                    gradient: {
+                        from: 'green-400',
+                        to: 'blue-500',
+                        direction: 'to-r'
+                    }
+                },
+                slots: {
+                    body: {
+                        content: `
+                            <div class="flex flex-col md:flex-row items-center justify-between gap-6 text-white">
+                                <div>
+                                    <h3 class="text-2xl font-bold mb-2">Ready to get started?</h3>
+                                    <p class="text-green-50">Join thousands of satisfied users today</p>
+                                </div>
+                                <button class="px-8 py-3 bg-white text-green-600 font-bold rounded-lg hover:bg-green-50 transition-colors whitespace-nowrap">
+                                    Sign Up Free
+                                </button>
+                            </div>
+                        `,
+                        align: 'center'
+                    }
+                }
+            });
+        }, 50);
+    }
+
+    // Example 5: Solid Background
+    const solidBgContainer = document.querySelector('#section-bg-solid');
+    if (solidBgContainer) {
+        solidBgContainer.innerHTML = '<div id="section-bg-solid-demo"></div>';
+
+        setTimeout(() => {
+            sections['bg-solid'] = new FlexSection('#section-bg-solid-demo', {
+                variant: 'content',
+                padding: 'md',
+                background: {
+                    type: 'solid',
+                    color: 'blue-50'
+                },
+                slots: {
+                    body: {
+                        content: `
+                            <div class="text-center">
+                                <h4 class="font-semibold text-blue-900 mb-2">Solid Color</h4>
+                                <p class="text-sm text-blue-700">bg-blue-50</p>
+                            </div>
+                        `
+                    }
+                }
+            });
+        }, 50);
+    }
+
+    // Example 6: Gradient Background
+    const gradientBgContainer = document.querySelector('#section-bg-gradient');
+    if (gradientBgContainer) {
+        gradientBgContainer.innerHTML = '<div id="section-bg-gradient-demo"></div>';
+
+        setTimeout(() => {
+            sections['bg-gradient'] = new FlexSection('#section-bg-gradient-demo', {
+                variant: 'content',
+                padding: 'md',
+                background: {
+                    type: 'gradient',
+                    gradient: {
+                        from: 'pink-500',
+                        via: 'purple-500',
+                        to: 'indigo-500',
+                        direction: 'to-r'
+                    }
+                },
+                slots: {
+                    body: {
+                        content: `
+                            <div class="text-center text-white">
+                                <h4 class="font-semibold mb-2">Gradient</h4>
+                                <p class="text-sm text-pink-100">pink → purple → indigo</p>
+                            </div>
+                        `
+                    }
+                }
+            });
+        }, 50);
+    }
+}
+
+/**
+ * Initialize Phase 2 Sidebar Examples
+ */
+function initPhase2SidebarExamples() {
+    console.log('Initializing Phase 2 Sidebar Examples...');
+
+    // Example 1: Basic Sidebar
+    const basicContainer = document.querySelector('#sidebar-basic');
+    if (basicContainer) {
+        basicContainer.innerHTML = '<div id="sidebar-basic-demo" class="border border-gray-200 rounded-lg overflow-hidden" style="height: 400px;"></div>';
+
+        setTimeout(() => {
+            sidebars['basic'] = new FlexSidebar('#sidebar-basic-demo', {
+                position: 'left',
+                width: { xs: '100%', md: '240px' },
+                collapsible: true,
+                collapseBreakpoint: 'md',
+                mobileMode: 'overlay',
+                desktopMode: 'push',
+                defaultOpen: { xs: false, md: true },
+                backdrop: true,
+                content: {
+                    sidebar: `
+                        <div class="bg-gray-900 text-white h-full p-4">
+                            <h3 class="font-bold text-lg mb-4">Navigation</h3>
+                            <nav class="space-y-2">
+                                <a href="#" class="block px-3 py-2 rounded hover:bg-gray-800 transition-colors">
+                                    <i class="ph ph-house mr-2"></i>Dashboard
+                                </a>
+                                <a href="#" class="block px-3 py-2 rounded hover:bg-gray-800 transition-colors">
+                                    <i class="ph ph-user mr-2"></i>Profile
+                                </a>
+                                <a href="#" class="block px-3 py-2 rounded hover:bg-gray-800 transition-colors">
+                                    <i class="ph ph-gear mr-2"></i>Settings
+                                </a>
+                            </nav>
+                        </div>
+                    `,
+                    main: `
+                        <div class="p-6 bg-gray-50 h-full">
+                            <h2 class="text-xl font-bold text-gray-900 mb-4">Main Content</h2>
+                            <p class="text-gray-600 mb-4">Click the button below to toggle the sidebar</p>
+                            <button onclick="window.toggleBasicSidebar()" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors">
+                                <i class="ph ph-sidebar mr-2"></i>Toggle Sidebar
+                            </button>
+                        </div>
+                    `
+                }
+            });
+
+            // Make toggle function globally available
+            window.toggleBasicSidebar = () => sidebars['basic'].toggle();
+        }, 50);
+    }
+
+    // Example 2: Admin Dashboard
+    const adminContainer = document.querySelector('#sidebar-admin');
+    if (adminContainer) {
+        adminContainer.innerHTML = '<div id="sidebar-admin-demo" class="border border-gray-200 rounded-lg overflow-hidden" style="height: 500px;"></div>';
+
+        setTimeout(() => {
+            sidebars['admin'] = new FlexSidebar('#sidebar-admin-demo', {
+                position: 'left',
+                width: { md: '280px' },
+                minWidth: '240px',
+                maxWidth: '400px',
+                resizable: true,
+                sticky: false,
+                collapsible: true,
+                mobileMode: 'overlay',
+                desktopMode: 'push',
+                defaultOpen: { xs: false, md: true },
+                content: {
+                    sidebar: `
+                        <div class="bg-indigo-900 text-white h-full">
+                            <div class="p-4 border-b border-indigo-800">
+                                <h3 class="font-bold text-lg">Admin Panel</h3>
+                                <p class="text-xs text-indigo-300 mt-1">Resizable sidebar</p>
+                            </div>
+                            <nav class="p-4 space-y-1">
+                                <a href="#" class="flex items-center gap-3 px-3 py-2 rounded bg-indigo-800 text-white">
+                                    <i class="ph ph-gauge"></i>
+                                    <span>Dashboard</span>
+                                </a>
+                                <a href="#" class="flex items-center gap-3 px-3 py-2 rounded hover:bg-indigo-800 transition-colors">
+                                    <i class="ph ph-users"></i>
+                                    <span>Users</span>
+                                </a>
+                                <a href="#" class="flex items-center gap-3 px-3 py-2 rounded hover:bg-indigo-800 transition-colors">
+                                    <i class="ph ph-chart-bar"></i>
+                                    <span>Analytics</span>
+                                </a>
+                                <a href="#" class="flex items-center gap-3 px-3 py-2 rounded hover:bg-indigo-800 transition-colors">
+                                    <i class="ph ph-gear"></i>
+                                    <span>Settings</span>
+                                </a>
+                            </nav>
+                        </div>
+                    `,
+                    main: `
+                        <div class="p-6 bg-gray-50 h-full overflow-y-auto">
+                            <div class="mb-6">
+                                <h2 class="text-2xl font-bold text-gray-900 mb-2">Dashboard Overview</h2>
+                                <p class="text-gray-600">Drag the sidebar edge to resize</p>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div class="bg-white rounded-lg p-4 border border-gray-200">
+                                    <p class="text-sm text-gray-500">Total Users</p>
+                                    <p class="text-2xl font-bold text-gray-900 mt-1">1,234</p>
+                                </div>
+                                <div class="bg-white rounded-lg p-4 border border-gray-200">
+                                    <p class="text-sm text-gray-500">Active Sessions</p>
+                                    <p class="text-2xl font-bold text-gray-900 mt-1">456</p>
+                                </div>
+                                <div class="bg-white rounded-lg p-4 border border-gray-200">
+                                    <p class="text-sm text-gray-500">Revenue</p>
+                                    <p class="text-2xl font-bold text-gray-900 mt-1">$12.5K</p>
+                                </div>
+                            </div>
+                        </div>
+                    `
+                }
+            });
+        }, 50);
+    }
+
+    // Example 3: Overlay Mode
+    const overlayContainer = document.querySelector('#sidebar-overlay');
+    if (overlayContainer) {
+        overlayContainer.innerHTML = '<div id="sidebar-overlay-demo" class="border border-gray-200 rounded-lg overflow-hidden" style="height: 300px;"></div>';
+
+        setTimeout(() => {
+            sidebars['overlay'] = new FlexSidebar('#sidebar-overlay-demo', {
+                position: 'left',
+                width: '200px',
+                mobileMode: 'overlay',
+                desktopMode: 'overlay',
+                defaultOpen: false,
+                backdrop: true,
+                content: {
+                    sidebar: `
+                        <div class="bg-purple-900 text-white h-full p-4">
+                            <h4 class="font-bold mb-3">Overlay Mode</h4>
+                            <p class="text-xs text-purple-200">Floats over content</p>
+                        </div>
+                    `,
+                    main: `
+                        <div class="p-4 bg-gray-50 h-full flex items-center justify-center">
+                            <button onclick="window.toggleOverlaySidebar()" class="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700">
+                                Toggle Overlay
+                            </button>
+                        </div>
+                    `
+                }
+            });
+
+            window.toggleOverlaySidebar = () => sidebars['overlay'].toggle();
+        }, 50);
+    }
+
+    // Example 4: Push Mode
+    const pushContainer = document.querySelector('#sidebar-push');
+    if (pushContainer) {
+        pushContainer.innerHTML = '<div id="sidebar-push-demo" class="border border-gray-200 rounded-lg overflow-hidden" style="height: 300px;"></div>';
+
+        setTimeout(() => {
+            sidebars['push'] = new FlexSidebar('#sidebar-push-demo', {
+                position: 'left',
+                width: '200px',
+                mobileMode: 'push',
+                desktopMode: 'push',
+                defaultOpen: false,
+                backdrop: false,
+                content: {
+                    sidebar: `
+                        <div class="bg-green-900 text-white h-full p-4">
+                            <h4 class="font-bold mb-3">Push Mode</h4>
+                            <p class="text-xs text-green-200">Pushes content aside</p>
+                        </div>
+                    `,
+                    main: `
+                        <div class="p-4 bg-gray-50 h-full flex items-center justify-center">
+                            <button onclick="window.togglePushSidebar()" class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">
+                                Toggle Push
+                            </button>
+                        </div>
+                    `
+                }
+            });
+
+            window.togglePushSidebar = () => sidebars['push'].toggle();
+        }, 50);
+    }
+}
+
+/**
+ * Initialize Phase 2 Combined Example
+ */
+function initPhase2CombinedExample() {
+    console.log('Initializing Phase 2 Combined Example...');
+
+    const combinedContainer = document.querySelector('#phase2-combined');
+    if (combinedContainer) {
+        combinedContainer.innerHTML = '<div id="phase2-combined-demo" class="border-2 border-indigo-300 rounded-lg overflow-hidden" style="height: 600px;"></div>';
+
+        setTimeout(() => {
+            // Create sidebar layout
+            sidebars['combined'] = new FlexSidebar('#phase2-combined-demo', {
+                position: 'left',
+                width: { xs: '100%', md: '260px' },
+                collapsible: true,
+                mobileMode: 'overlay',
+                desktopMode: 'push',
+                defaultOpen: { xs: false, md: true },
+                backdrop: true,
+                content: {
+                    sidebar: `
+                        <div class="bg-gradient-to-b from-indigo-900 to-purple-900 text-white h-full">
+                            <div class="p-4 border-b border-indigo-700">
+                                <h3 class="font-bold">Complete Example</h3>
+                                <p class="text-xs text-indigo-200 mt-1">All components working together</p>
+                            </div>
+                            <nav class="p-4 space-y-1">
+                                <a href="#" class="flex items-center gap-2 px-3 py-2 rounded bg-indigo-800">
+                                    <i class="ph ph-layout"></i>
+                                    <span class="text-sm">Overview</span>
+                                </a>
+                                <a href="#" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-indigo-800">
+                                    <i class="ph ph-copy"></i>
+                                    <span class="text-sm">Sections</span>
+                                </a>
+                                <a href="#" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-indigo-800">
+                                    <i class="ph ph-sidebar"></i>
+                                    <span class="text-sm">Layouts</span>
+                                </a>
+                            </nav>
+                        </div>
+                    `,
+                    main: `
+                        <div class="bg-gray-50 h-full overflow-y-auto">
+                            <!-- Hero Section -->
+                            <div id="combined-hero"></div>
+
+                            <!-- Stats Section -->
+                            <div id="combined-stats"></div>
+
+                            <!-- CTA Section -->
+                            <div id="combined-cta"></div>
+                        </div>
+                    `
+                }
+            });
+
+            // Wait for sidebar to render, then create sections inside
+            setTimeout(() => {
+                // Hero Section
+                new FlexSection('#combined-hero', {
+                    variant: 'hero',
+                    padding: { xs: 'lg', md: 'xl' },
+                    background: {
+                        type: 'gradient',
+                        gradient: {
+                            from: 'blue-600',
+                            to: 'indigo-600',
+                            direction: 'to-br'
+                        }
+                    },
+                    slots: {
+                        body: {
+                            content: `
+                                <div class="text-center text-white">
+                                    <h1 class="text-3xl font-bold mb-3">Complete Layout System</h1>
+                                    <p class="text-blue-100">FlexSidebar + FlexSection + FlexContainer</p>
+                                    <button onclick="window.toggleCombinedSidebar()" class="mt-4 px-4 py-2 bg-white text-blue-600 rounded-lg hover:bg-blue-50">
+                                        <i class="ph ph-sidebar mr-2"></i>Toggle Sidebar
+                                    </button>
+                                </div>
+                            `
+                        }
+                    }
+                });
+
+                // Stats Section
+                new FlexSection('#combined-stats', {
+                    variant: 'content',
+                    padding: 'lg',
+                    width: 'contained',
+                    background: {
+                        type: 'solid',
+                        color: 'white'
+                    },
+                    slots: {
+                        body: {
+                            content: `
+                                <div class="grid grid-cols-3 gap-4">
+                                    <div class="text-center">
+                                        <p class="text-3xl font-bold text-indigo-600">3</p>
+                                        <p class="text-sm text-gray-600">Components</p>
+                                    </div>
+                                    <div class="text-center">
+                                        <p class="text-3xl font-bold text-purple-600">∞</p>
+                                        <p class="text-sm text-gray-600">Possibilities</p>
+                                    </div>
+                                    <div class="text-center">
+                                        <p class="text-3xl font-bold text-pink-600">100%</p>
+                                        <p class="text-sm text-gray-600">Flexible</p>
+                                    </div>
+                                </div>
+                            `
+                        }
+                    }
+                });
+
+                // CTA Section
+                new FlexSection('#combined-cta', {
+                    variant: 'cta',
+                    padding: 'md',
+                    background: {
+                        type: 'gradient',
+                        gradient: {
+                            from: 'green-400',
+                            to: 'teal-500',
+                            direction: 'to-r'
+                        }
+                    },
+                    slots: {
+                        body: {
+                            content: `
+                                <div class="text-center text-white">
+                                    <p class="font-semibold">Phase 2 is complete!</p>
+                                </div>
+                            `
+                        }
+                    }
+                });
+
+                window.toggleCombinedSidebar = () => sidebars['combined'].toggle();
+            }, 100);
+        }, 50);
+    }
 }
 
 export { initShowcase };
