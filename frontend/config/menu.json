@@ -3,33 +3,38 @@
     {
       "title": "Dashboard",
       "route": "dashboard",
-      "icon": "bi-speedometer2"
+      "icon": "ph ph-gauge"
+    },
+    {
+      "title": "Components",
+      "route": "components-showcase",
+      "icon": "ph-duotone ph-squares-four"
     },
     {
       "title": "Data Management",
       "route": "companies",
-      "icon": "bi-building",
+      "icon": "ph ph-buildings",
       "submenu": [
-        { "title": "Companies", "route": "companies", "icon": "bi-buildings" },
-        { "title": "Branches", "route": "branches", "icon": "bi-diagram-3" },
-        { "title": "Departments", "route": "departments", "icon": "bi-people" }
+        { "title": "Companies", "route": "companies", "icon": "ph ph-buildings" },
+        { "title": "Branches", "route": "branches", "icon": "ph ph-tree-structure" },
+        { "title": "Departments", "route": "departments", "icon": "ph ph-users-three" }
       ]
     },
     {
       "title": "User Management",
       "route": "users",
-      "icon": "bi-people-fill",
+      "icon": "ph-bold ph-users",
       "roles": ["admin"]
     },
     {
       "title": "Audit Trail",
       "route": "audit",
-      "icon": "bi-activity"
+      "icon": "ph ph-activity"
     },
     {
       "title": "Settings",
       "route": "settings",
-      "icon": "bi-sliders2"
+      "icon": "ph ph-sliders"
     }
   ]
 }
