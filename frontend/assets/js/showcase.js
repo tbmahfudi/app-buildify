@@ -2,10 +2,10 @@
  * Components Showcase Module
  *
  * Demonstrates all components: Layout (FlexStack, FlexGrid), Phase 2 (FlexContainer, FlexSection, FlexSidebar),
- * FlexCard, FlexModal, and FlexTabs
+ * Phase 3 (FlexCluster, FlexToolbar, FlexMasonry, FlexSplitPane), FlexCard, FlexModal, and FlexTabs
  *
  * @author Claude Code
- * @version 2.0.0
+ * @version 3.0.0
  */
 
 import { FlexCard } from './components/flex-card.js';
@@ -16,6 +16,10 @@ import { FlexGrid } from './layout/flex-grid.js';
 import FlexContainer from './layout/flex-container.js';
 import FlexSection from './layout/flex-section.js';
 import FlexSidebar from './layout/flex-sidebar.js';
+import FlexCluster from './layout/flex-cluster.js';
+import FlexToolbar from './layout/flex-toolbar.js';
+import FlexMasonry from './layout/flex-masonry.js';
+import FlexSplitPane from './layout/flex-split-pane.js';
 import { showToast } from './ui-utils.js';
 
 let modals = {};
@@ -26,6 +30,10 @@ let grids = {};
 let containers = {};
 let sections = {};
 let sidebars = {};
+let clusters = {};
+let toolbars = {};
+let masonries = {};
+let splitPanes = {};
 
 /**
  * Initialize showcase on route load
@@ -50,6 +58,12 @@ function initShowcase() {
     initPhase2SectionExamples();
     initPhase2SidebarExamples();
     initPhase2CombinedExample();
+
+    // Initialize Phase 3 components
+    initPhase3ClusterExamples();
+    initPhase3ToolbarExamples();
+    initPhase3MasonryExamples();
+    initPhase3SplitPaneExamples();
 
     // Initialize card examples
     initCardExamples();
@@ -1940,6 +1954,581 @@ function initPhase2CombinedExample() {
                 window.toggleCombinedSidebar = () => sidebars['combined'].toggle();
             }, 100);
         }, 50);
+    }
+}
+
+/**
+ * Initialize Phase 3 FlexCluster Examples
+ */
+function initPhase3ClusterExamples() {
+    console.log('Initializing Phase 3 FlexCluster Examples...');
+
+    // Example 1: Tag Cloud
+    const tagCloudContainer = document.querySelector('#cluster-tag-cloud');
+    if (tagCloudContainer) {
+        clusters['tagCloud'] = new FlexCluster(tagCloudContainer, {
+            gap: 2,
+            justify: 'start',
+            wrap: true,
+            items: [
+                { id: 'tag-js', content: '<span class="px-3 py-1 bg-blue-100 text-blue-800 text-sm font-medium rounded-full hover:bg-blue-200 cursor-pointer transition-colors">JavaScript</span>' },
+                { id: 'tag-react', content: '<span class="px-3 py-1 bg-cyan-100 text-cyan-800 text-sm font-medium rounded-full hover:bg-cyan-200 cursor-pointer transition-colors">React</span>' },
+                { id: 'tag-vue', content: '<span class="px-3 py-1 bg-green-100 text-green-800 text-sm font-medium rounded-full hover:bg-green-200 cursor-pointer transition-colors">Vue.js</span>' },
+                { id: 'tag-css', content: '<span class="px-3 py-1 bg-purple-100 text-purple-800 text-sm font-medium rounded-full hover:bg-purple-200 cursor-pointer transition-colors">CSS</span>' },
+                { id: 'tag-html', content: '<span class="px-3 py-1 bg-orange-100 text-orange-800 text-sm font-medium rounded-full hover:bg-orange-200 cursor-pointer transition-colors">HTML</span>' },
+                { id: 'tag-ts', content: '<span class="px-3 py-1 bg-indigo-100 text-indigo-800 text-sm font-medium rounded-full hover:bg-indigo-200 cursor-pointer transition-colors">TypeScript</span>' },
+                { id: 'tag-node', content: '<span class="px-3 py-1 bg-lime-100 text-lime-800 text-sm font-medium rounded-full hover:bg-lime-200 cursor-pointer transition-colors">Node.js</span>' },
+                { id: 'tag-python', content: '<span class="px-3 py-1 bg-yellow-100 text-yellow-800 text-sm font-medium rounded-full hover:bg-yellow-200 cursor-pointer transition-colors">Python</span>' },
+                { id: 'tag-rust', content: '<span class="px-3 py-1 bg-red-100 text-red-800 text-sm font-medium rounded-full hover:bg-red-200 cursor-pointer transition-colors">Rust</span>' },
+                { id: 'tag-go', content: '<span class="px-3 py-1 bg-teal-100 text-teal-800 text-sm font-medium rounded-full hover:bg-teal-200 cursor-pointer transition-colors">Go</span>' }
+            ]
+        });
+    }
+
+    // Example 2: Button Toolbar
+    const toolbarContainer = document.querySelector('#cluster-toolbar');
+    if (toolbarContainer) {
+        clusters['toolbar'] = new FlexCluster(toolbarContainer, {
+            gap: 2,
+            justify: 'between',
+            align: 'center',
+            wrap: false,
+            items: [
+                {
+                    id: 'btn-new',
+                    content: `<button class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2">
+                        <i class="ph ph-plus"></i>
+                        <span>New</span>
+                    </button>`,
+                    priority: 3
+                },
+                {
+                    id: 'btn-save',
+                    content: `<button class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2">
+                        <i class="ph ph-floppy-disk"></i>
+                        <span>Save</span>
+                    </button>`,
+                    priority: 2
+                },
+                {
+                    id: 'btn-edit',
+                    content: `<button class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors flex items-center gap-2">
+                        <i class="ph ph-pencil"></i>
+                        <span>Edit</span>
+                    </button>`,
+                    priority: 1
+                },
+                {
+                    id: 'btn-delete',
+                    content: `<button class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2">
+                        <i class="ph ph-trash"></i>
+                        <span>Delete</span>
+                    </button>`,
+                    priority: 0
+                }
+            ]
+        });
+    }
+
+    // Example 3: Filter Chips
+    const chipsContainer = document.querySelector('#cluster-chips');
+    if (chipsContainer) {
+        clusters['chips'] = new FlexCluster(chipsContainer, {
+            gap: 2,
+            justify: 'start',
+            wrap: true,
+            items: [
+                {
+                    id: 'chip-all',
+                    content: `<button class="px-4 py-2 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 transition-colors">
+                        All
+                    </button>`
+                },
+                {
+                    id: 'chip-active',
+                    content: `<button class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-300 transition-colors">
+                        Active
+                    </button>`
+                },
+                {
+                    id: 'chip-pending',
+                    content: `<button class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-300 transition-colors">
+                        Pending
+                    </button>`
+                },
+                {
+                    id: 'chip-archived',
+                    content: `<button class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-300 transition-colors">
+                        Archived
+                    </button>`
+                }
+            ]
+        });
+    }
+
+    // Example 4: Social Share Buttons
+    const socialContainer = document.querySelector('#cluster-social');
+    if (socialContainer) {
+        clusters['social'] = new FlexCluster(socialContainer, {
+            gap: 3,
+            justify: 'center',
+            align: 'center',
+            wrap: false,
+            items: [
+                {
+                    id: 'share-twitter',
+                    content: `<button class="w-10 h-10 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition-colors flex items-center justify-center">
+                        <i class="ph-bold ph-twitter-logo"></i>
+                    </button>`
+                },
+                {
+                    id: 'share-facebook',
+                    content: `<button class="w-10 h-10 bg-blue-700 text-white rounded-full hover:bg-blue-800 transition-colors flex items-center justify-center">
+                        <i class="ph-bold ph-facebook-logo"></i>
+                    </button>`
+                },
+                {
+                    id: 'share-linkedin',
+                    content: `<button class="w-10 h-10 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors flex items-center justify-center">
+                        <i class="ph-bold ph-linkedin-logo"></i>
+                    </button>`
+                },
+                {
+                    id: 'share-link',
+                    content: `<button class="w-10 h-10 bg-gray-700 text-white rounded-full hover:bg-gray-800 transition-colors flex items-center justify-center">
+                        <i class="ph-bold ph-link"></i>
+                    </button>`
+                }
+            ]
+        });
+    }
+}
+
+/**
+ * Initialize Phase 3 FlexToolbar Examples
+ */
+function initPhase3ToolbarExamples() {
+    console.log('Initializing Phase 3 FlexToolbar Examples...');
+
+    // Example 1: App Header
+    const appHeaderContainer = document.querySelector('#toolbar-app-header');
+    if (appHeaderContainer) {
+        toolbars['appHeader'] = new FlexToolbar(appHeaderContainer, {
+            position: 'top',
+            sticky: true,
+            theme: 'light',
+            elevation: 2,
+            height: { xs: '56px', md: '64px' },
+            actions: {
+                left: [
+                    {
+                        id: 'menu',
+                        content: `<button class="px-3 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
+                            <i class="ph ph-list text-xl"></i>
+                        </button>`
+                    },
+                    {
+                        id: 'logo',
+                        content: `<div class="flex items-center gap-2">
+                            <i class="ph-fill ph-cube text-2xl text-indigo-600"></i>
+                            <span class="font-bold text-xl text-gray-900">MyApp</span>
+                        </div>`
+                    }
+                ],
+                right: [
+                    {
+                        id: 'search',
+                        content: `<button class="px-3 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
+                            <i class="ph ph-magnifying-glass text-xl"></i>
+                        </button>`
+                    },
+                    {
+                        id: 'notifications',
+                        content: `<button class="px-3 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors relative">
+                            <i class="ph ph-bell text-xl"></i>
+                            <span class="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+                        </button>`
+                    },
+                    {
+                        id: 'profile',
+                        content: `<button class="px-3 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
+                            <div class="w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center text-white font-semibold text-sm">
+                                JD
+                            </div>
+                        </button>`
+                    }
+                ]
+            }
+        });
+    }
+
+    // Example 2: Editor Toolbar
+    const editorToolbarContainer = document.querySelector('#toolbar-editor');
+    if (editorToolbarContainer) {
+        toolbars['editor'] = new FlexToolbar(editorToolbarContainer, {
+            position: 'top',
+            sticky: false,
+            theme: 'light',
+            elevation: 1,
+            dividers: true,
+            actions: {
+                left: [
+                    {
+                        id: 'bold',
+                        content: `<button class="px-3 py-2 text-gray-700 hover:bg-gray-100 rounded transition-colors" title="Bold">
+                            <i class="ph-bold ph-text-b"></i>
+                        </button>`
+                    },
+                    {
+                        id: 'italic',
+                        content: `<button class="px-3 py-2 text-gray-700 hover:bg-gray-100 rounded transition-colors" title="Italic">
+                            <i class="ph-bold ph-text-italic"></i>
+                        </button>`
+                    },
+                    {
+                        id: 'underline',
+                        content: `<button class="px-3 py-2 text-gray-700 hover:bg-gray-100 rounded transition-colors" title="Underline">
+                            <i class="ph-bold ph-text-underline"></i>
+                        </button>`
+                    }
+                ],
+                center: [
+                    {
+                        id: 'align-left',
+                        content: `<button class="px-3 py-2 text-gray-700 hover:bg-gray-100 rounded transition-colors">
+                            <i class="ph ph-text-align-left"></i>
+                        </button>`
+                    },
+                    {
+                        id: 'align-center',
+                        content: `<button class="px-3 py-2 text-gray-700 hover:bg-gray-100 rounded transition-colors">
+                            <i class="ph ph-text-align-center"></i>
+                        </button>`
+                    },
+                    {
+                        id: 'align-right',
+                        content: `<button class="px-3 py-2 text-gray-700 hover:bg-gray-100 rounded transition-colors">
+                            <i class="ph ph-text-align-right"></i>
+                        </button>`
+                    }
+                ],
+                right: [
+                    {
+                        id: 'link',
+                        content: `<button class="px-3 py-2 text-gray-700 hover:bg-gray-100 rounded transition-colors">
+                            <i class="ph ph-link"></i>
+                        </button>`
+                    },
+                    {
+                        id: 'image',
+                        content: `<button class="px-3 py-2 text-gray-700 hover:bg-gray-100 rounded transition-colors">
+                            <i class="ph ph-image"></i>
+                        </button>`
+                    }
+                ]
+            }
+        });
+    }
+
+    // Example 3: Bottom Action Bar
+    const bottomBarContainer = document.querySelector('#toolbar-bottom');
+    if (bottomBarContainer) {
+        toolbars['bottom'] = new FlexToolbar(bottomBarContainer, {
+            position: 'bottom',
+            sticky: true,
+            theme: 'dark',
+            elevation: 3,
+            actions: {
+                center: [
+                    {
+                        id: 'cancel',
+                        content: `<button class="px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors">
+                            Cancel
+                        </button>`
+                    },
+                    {
+                        id: 'save',
+                        content: `<button class="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors flex items-center gap-2">
+                            <i class="ph ph-check"></i>
+                            <span>Save Changes</span>
+                        </button>`
+                    }
+                ]
+            }
+        });
+    }
+
+    // Example 4: Mobile Bottom Navigation
+    const mobileNavContainer = document.querySelector('#toolbar-mobile');
+    if (mobileNavContainer) {
+        toolbars['mobile'] = new FlexToolbar(mobileNavContainer, {
+            position: 'bottom',
+            sticky: false,
+            theme: 'light',
+            elevation: 2,
+            height: '64px',
+            actions: {
+                left: [
+                    {
+                        id: 'home',
+                        content: `<button class="flex flex-col items-center gap-1 px-4 py-2 text-indigo-600">
+                            <i class="ph-fill ph-house text-xl"></i>
+                            <span class="text-xs font-medium">Home</span>
+                        </button>`
+                    }
+                ],
+                center: [
+                    {
+                        id: 'search',
+                        content: `<button class="flex flex-col items-center gap-1 px-4 py-2 text-gray-600">
+                            <i class="ph ph-magnifying-glass text-xl"></i>
+                            <span class="text-xs font-medium">Search</span>
+                        </button>`
+                    },
+                    {
+                        id: 'favorites',
+                        content: `<button class="flex flex-col items-center gap-1 px-4 py-2 text-gray-600">
+                            <i class="ph ph-heart text-xl"></i>
+                            <span class="text-xs font-medium">Favorites</span>
+                        </button>`
+                    }
+                ],
+                right: [
+                    {
+                        id: 'profile',
+                        content: `<button class="flex flex-col items-center gap-1 px-4 py-2 text-gray-600">
+                            <i class="ph ph-user text-xl"></i>
+                            <span class="text-xs font-medium">Profile</span>
+                        </button>`
+                    }
+                ]
+            }
+        });
+    }
+}
+
+/**
+ * Initialize Phase 3 FlexMasonry Examples
+ */
+function initPhase3MasonryExamples() {
+    console.log('Initializing Phase 3 FlexMasonry Examples...');
+
+    // Example 1: Basic Grid
+    const basicGridContainer = document.querySelector('#masonry-basic');
+    if (basicGridContainer) {
+        // Generate items with random heights
+        const items = Array.from({ length: 12 }, (_, i) => {
+            const heights = [120, 160, 200, 240, 180, 140];
+            const colors = ['blue', 'purple', 'green', 'orange', 'pink', 'indigo'];
+            const height = heights[i % heights.length];
+            const color = colors[i % colors.length];
+
+            return {
+                id: `basic-${i}`,
+                height: height,
+                content: `<div class="bg-${color}-100 border border-${color}-200 rounded-lg p-4" style="height: ${height}px;">
+                    <div class="flex items-center justify-center h-full">
+                        <div class="text-center">
+                            <div class="text-3xl font-bold text-${color}-600">${i + 1}</div>
+                            <div class="text-xs text-${color}-700 mt-1">${height}px</div>
+                        </div>
+                    </div>
+                </div>`
+            };
+        });
+
+        masonries['basic'] = new FlexMasonry(basicGridContainer, {
+            columns: { xs: 1, sm: 2, md: 3, lg: 4 },
+            gap: 4,
+            items: items
+        });
+    }
+
+    // Example 2: Card Masonry
+    const cardMasonryContainer = document.querySelector('#masonry-cards');
+    if (cardMasonryContainer) {
+        const cardData = [
+            { title: 'Card Title 1', desc: 'Short description', height: 160 },
+            { title: 'Card Title 2', desc: 'This is a longer description that takes up more space in the card layout', height: 200 },
+            { title: 'Card Title 3', desc: 'Medium length description here', height: 180 },
+            { title: 'Card Title 4', desc: 'Brief text', height: 140 },
+            { title: 'Card Title 5', desc: 'Another description with some more content to display', height: 220 },
+            { title: 'Card Title 6', desc: 'Simple card', height: 150 }
+        ];
+
+        const cardItems = cardData.map((card, i) => ({
+            id: `card-${i}`,
+            height: card.height,
+            content: `<div class="bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow p-4" style="height: ${card.height}px;">
+                <h3 class="text-lg font-semibold text-gray-900 mb-2">${card.title}</h3>
+                <p class="text-sm text-gray-600">${card.desc}</p>
+            </div>`
+        }));
+
+        masonries['cards'] = new FlexMasonry(cardMasonryContainer, {
+            columns: { xs: 1, sm: 2, md: 3 },
+            gap: 4,
+            animated: true,
+            items: cardItems
+        });
+    }
+
+    // Example 3: Image Gallery (placeholder)
+    const galleryContainer = document.querySelector('#masonry-gallery');
+    if (galleryContainer) {
+        const galleryItems = [
+            { height: 200, color: 'rose' },
+            { height: 280, color: 'amber' },
+            { height: 240, color: 'emerald' },
+            { height: 180, color: 'sky' },
+            { height: 260, color: 'violet' },
+            { height: 220, color: 'teal' },
+            { height: 190, color: 'fuchsia' },
+            { height: 250, color: 'lime' }
+        ].map((item, i) => ({
+            id: `gallery-${i}`,
+            height: item.height,
+            content: `<div class="bg-gradient-to-br from-${item.color}-400 to-${item.color}-600 rounded-lg overflow-hidden" style="height: ${item.height}px;">
+                <div class="w-full h-full flex items-center justify-center">
+                    <i class="ph-fill ph-image text-white text-4xl opacity-50"></i>
+                </div>
+            </div>`
+        }));
+
+        masonries['gallery'] = new FlexMasonry(galleryContainer, {
+            columns: { xs: 2, sm: 3, md: 4 },
+            gap: 3,
+            animated: true,
+            items: galleryItems
+        });
+    }
+}
+
+/**
+ * Initialize Phase 3 FlexSplitPane Examples
+ */
+function initPhase3SplitPaneExamples() {
+    console.log('Initializing Phase 3 FlexSplitPane Examples...');
+
+    // Example 1: Horizontal Split
+    const horizontalContainer = document.querySelector('#split-horizontal');
+    if (horizontalContainer) {
+        splitPanes['horizontal'] = new FlexSplitPane(horizontalContainer, {
+            direction: 'horizontal',
+            panes: [
+                {
+                    id: 'left',
+                    content: `<div class="p-6 bg-blue-50 h-full">
+                        <h3 class="text-lg font-semibold text-blue-900 mb-3">Left Pane</h3>
+                        <p class="text-sm text-blue-700">This is the left pane. Drag the divider to resize.</p>
+                        <div class="mt-4 space-y-2">
+                            <div class="p-3 bg-white rounded border border-blue-200">
+                                <p class="text-xs text-gray-600">Item 1</p>
+                            </div>
+                            <div class="p-3 bg-white rounded border border-blue-200">
+                                <p class="text-xs text-gray-600">Item 2</p>
+                            </div>
+                            <div class="p-3 bg-white rounded border border-blue-200">
+                                <p class="text-xs text-gray-600">Item 3</p>
+                            </div>
+                        </div>
+                    </div>`,
+                    size: '50%',
+                    minSize: '200px'
+                },
+                {
+                    id: 'right',
+                    content: `<div class="p-6 bg-purple-50 h-full">
+                        <h3 class="text-lg font-semibold text-purple-900 mb-3">Right Pane</h3>
+                        <p class="text-sm text-purple-700">This is the right pane. Try resizing!</p>
+                        <div class="mt-4 p-4 bg-white rounded border border-purple-200">
+                            <p class="text-xs text-gray-600">Content area</p>
+                        </div>
+                    </div>`,
+                    size: '50%',
+                    minSize: '200px'
+                }
+            ],
+            handleSize: 8,
+            handleColor: 'indigo-600'
+        });
+    }
+
+    // Example 2: Vertical Split
+    const verticalContainer = document.querySelector('#split-vertical');
+    if (verticalContainer) {
+        splitPanes['vertical'] = new FlexSplitPane(verticalContainer, {
+            direction: 'vertical',
+            panes: [
+                {
+                    id: 'top',
+                    content: `<div class="p-6 bg-green-50 h-full overflow-auto">
+                        <h3 class="text-lg font-semibold text-green-900 mb-3">Top Pane</h3>
+                        <p class="text-sm text-green-700">Vertical split layout. Drag down to resize.</p>
+                    </div>`,
+                    size: '50%',
+                    minSize: '100px'
+                },
+                {
+                    id: 'bottom',
+                    content: `<div class="p-6 bg-amber-50 h-full overflow-auto">
+                        <h3 class="text-lg font-semibold text-amber-900 mb-3">Bottom Pane</h3>
+                        <p class="text-sm text-amber-700">The bottom section of the vertical split.</p>
+                    </div>`,
+                    size: '50%',
+                    minSize: '100px'
+                }
+            ],
+            handleSize: 8,
+            handleColor: 'green-600'
+        });
+    }
+
+    // Example 3: Multi-Pane (3 panes)
+    const multiPaneContainer = document.querySelector('#split-multi');
+    if (multiPaneContainer) {
+        splitPanes['multi'] = new FlexSplitPane(multiPaneContainer, {
+            direction: 'horizontal',
+            panes: [
+                {
+                    id: 'sidebar',
+                    content: `<div class="p-4 bg-gray-800 text-white h-full">
+                        <h4 class="font-semibold mb-3 text-sm">Sidebar</h4>
+                        <div class="space-y-1 text-xs">
+                            <div class="p-2 bg-gray-700 rounded">Nav 1</div>
+                            <div class="p-2 hover:bg-gray-700 rounded cursor-pointer">Nav 2</div>
+                            <div class="p-2 hover:bg-gray-700 rounded cursor-pointer">Nav 3</div>
+                        </div>
+                    </div>`,
+                    size: '200px',
+                    minSize: '150px',
+                    maxSize: '300px'
+                },
+                {
+                    id: 'main',
+                    content: `<div class="p-4 bg-white h-full">
+                        <h4 class="font-semibold mb-2 text-sm">Main Content</h4>
+                        <p class="text-xs text-gray-600">The main content area with flexible sizing.</p>
+                    </div>`,
+                    size: '60%',
+                    minSize: '300px'
+                },
+                {
+                    id: 'panel',
+                    content: `<div class="p-4 bg-indigo-50 h-full">
+                        <h4 class="font-semibold mb-2 text-sm text-indigo-900">Side Panel</h4>
+                        <p class="text-xs text-indigo-700">Additional panel on the right.</p>
+                    </div>`,
+                    size: '250px',
+                    minSize: '200px',
+                    maxSize: '400px'
+                }
+            ],
+            handleSize: 6,
+            handleColor: 'gray-400',
+            persist: true,
+            persistKey: 'multi-pane-layout'
+        });
     }
 }
 
