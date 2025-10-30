@@ -29,8 +29,12 @@ export class BaseComponent {
             throw new Error('Container element not found');
         }
 
-        // Store options
-        this.options = options;
+        // Merge options with defaults
+        const defaults = this.constructor.DEFAULTS || {};
+        this.options = this.mergeOptions(defaults, options);
+
+        // Backward compatibility alias
+        this.element = this.container;
 
         // Component state
         this.state = {
@@ -40,6 +44,7 @@ export class BaseComponent {
 
         // Event listeners storage
         this._listeners = new Map();
+        this.events = this._listeners;  // Backward compatibility alias
 
         // DOM references
         this.elements = {};
@@ -87,15 +92,44 @@ export class BaseComponent {
             this._listeners.set(eventName, []);
         }
         this._listeners.get(eventName).push(handler);
-        this.container.addEventListener(eventName, handler);
+
+        // Wrap handler to pass detail instead of full event
+        const wrappedHandler = (event) => {
+            if (event instanceof CustomEvent && event.detail) {
+                handler(event.detail);
+            } else {
+                handler(event);
+            }
+        };
+
+        // Store both handlers for removal
+        if (!handler._wrappedHandler) {
+            handler._wrappedHandler = wrappedHandler;
+        }
+
+        this.container.addEventListener(eventName, handler._wrappedHandler);
     }
 
     /**
      * Remove event listener
      * @param {string} eventName - Event name
-     * @param {Function} handler - Event handler
+     * @param {Function} handler - Event handler (optional - removes all if not provided)
      */
     off(eventName, handler) {
+        if (!handler) {
+            // Remove all listeners for this event
+            const handlers = this._listeners.get(eventName);
+            if (handlers) {
+                handlers.forEach(h => {
+                    const wrappedHandler = h._wrappedHandler || h;
+                    this.container.removeEventListener(eventName, wrappedHandler);
+                });
+                this._listeners.delete(eventName);
+            }
+            return;
+        }
+
+        // Remove specific listener
         const handlers = this._listeners.get(eventName);
         if (handlers) {
             const index = handlers.indexOf(handler);
@@ -103,7 +137,22 @@ export class BaseComponent {
                 handlers.splice(index, 1);
             }
         }
-        this.container.removeEventListener(eventName, handler);
+
+        const wrappedHandler = handler._wrappedHandler || handler;
+        this.container.removeEventListener(eventName, wrappedHandler);
+    }
+
+    /**
+     * Add event listener that fires once
+     * @param {string} eventName - Event name
+     * @param {Function} handler - Event handler
+     */
+    once(eventName, handler) {
+        const onceHandler = (...args) => {
+            handler(...args);
+            this.off(eventName, onceHandler);
+        };
+        this.on(eventName, onceHandler);
     }
 
     /**
@@ -116,6 +165,31 @@ export class BaseComponent {
             });
         });
         this._listeners.clear();
+    }
+
+    /**
+     * Get option value
+     * @param {string} key - Option key
+     */
+    getOption(key) {
+        return this.options[key];
+    }
+
+    /**
+     * Set option value
+     * @param {string} key - Option key
+     * @param {*} value - Option value
+     */
+    setOption(key, value) {
+        this.options[key] = value;
+    }
+
+    /**
+     * Set multiple options
+     * @param {Object} options - Options to set
+     */
+    setOptions(options) {
+        Object.assign(this.options, options);
     }
 
     /**
@@ -188,39 +262,68 @@ export class BaseComponent {
     }
 
     /**
-     * Add classes to element
-     * @param {HTMLElement} element - Target element
-     * @param {string|string[]} classes - Classes to add
+     * Add classes to component element (or specified element)
+     * @param {string|HTMLElement} elementOrClass - Element or class name
+     * @param {string|string[]} classes - Classes to add (if first param is element)
      */
-    addClass(element, classes) {
-        if (typeof classes === 'string') {
-            classes = classes.split(' ').filter(c => c);
+    addClass(elementOrClass, classes) {
+        // If first argument is a string, it's the class name for the container
+        if (typeof elementOrClass === 'string') {
+            const classNames = elementOrClass.split(' ').filter(c => c);
+            this.container.classList.add(...classNames);
+        } else {
+            // First argument is an element
+            if (typeof classes === 'string') {
+                classes = classes.split(' ').filter(c => c);
+            }
+            elementOrClass.classList.add(...classes);
         }
-        element.classList.add(...classes);
     }
 
     /**
-     * Remove classes from element
-     * @param {HTMLElement} element - Target element
-     * @param {string|string[]} classes - Classes to remove
+     * Remove classes from component element (or specified element)
+     * @param {string|HTMLElement} elementOrClass - Element or class name
+     * @param {string|string[]} classes - Classes to remove (if first param is element)
      */
-    removeClass(element, classes) {
-        if (typeof classes === 'string') {
-            classes = classes.split(' ').filter(c => c);
+    removeClass(elementOrClass, classes) {
+        // If first argument is a string, it's the class name for the container
+        if (typeof elementOrClass === 'string') {
+            const classNames = elementOrClass.split(' ').filter(c => c);
+            this.container.classList.remove(...classNames);
+        } else {
+            // First argument is an element
+            if (typeof classes === 'string') {
+                classes = classes.split(' ').filter(c => c);
+            }
+            elementOrClass.classList.remove(...classes);
         }
-        element.classList.remove(...classes);
     }
 
     /**
-     * Toggle classes on element
-     * @param {HTMLElement} element - Target element
-     * @param {string|string[]} classes - Classes to toggle
+     * Toggle classes on component element (or specified element)
+     * @param {string|HTMLElement} elementOrClass - Element or class name
+     * @param {string|string[]} classes - Classes to toggle (if first param is element)
      */
-    toggleClass(element, classes) {
-        if (typeof classes === 'string') {
-            classes = classes.split(' ').filter(c => c);
+    toggleClass(elementOrClass, classes) {
+        // If first argument is a string, it's the class name for the container
+        if (typeof elementOrClass === 'string') {
+            const classNames = elementOrClass.split(' ').filter(c => c);
+            classNames.forEach(cls => this.container.classList.toggle(cls));
+        } else {
+            // First argument is an element
+            if (typeof classes === 'string') {
+                classes = classes.split(' ').filter(c => c);
+            }
+            classes.forEach(cls => elementOrClass.classList.toggle(cls));
         }
-        classes.forEach(cls => element.classList.toggle(cls));
+    }
+
+    /**
+     * Check if component element has class
+     * @param {string} className - Class name to check
+     */
+    hasClass(className) {
+        return this.container.classList.contains(className);
     }
 
     /**
