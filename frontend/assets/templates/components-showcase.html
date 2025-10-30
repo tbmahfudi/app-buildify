@@ -642,6 +642,240 @@ const layout = new FlexSidebar('#app', {
         </div>
     </section>
 
+    <!-- Phase 3: Advanced Layout Components -->
+    <section class="space-y-6">
+        <div class="border-b border-gray-200 pb-4">
+            <div class="flex items-center gap-3 mb-2">
+                <h2 class="text-2xl font-semibold text-gray-900">Phase 3: Advanced Layout Components</h2>
+                <span class="px-3 py-1 bg-purple-100 text-purple-800 text-sm font-medium rounded-full">NEW - Phase 3</span>
+            </div>
+            <p class="text-gray-600">Advanced layout patterns: FlexCluster, FlexToolbar, FlexMasonry, and FlexSplitPane</p>
+        </div>
+
+        <!-- FlexCluster Examples -->
+        <div class="space-y-4">
+            <h3 class="text-xl font-semibold text-gray-900 flex items-center gap-2">
+                <i class="ph-duotone ph-dots-nine text-purple-600"></i>
+                FlexCluster - Tag Groups & Button Clusters
+            </h3>
+            <p class="text-gray-600">Horizontal grouping with flexible spacing and wrapping</p>
+
+            <!-- Cluster Examples -->
+            <div class="space-y-6">
+                <!-- Tag Cloud -->
+                <div class="space-y-3">
+                    <h4 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Tag Cloud (Wrapping)</h4>
+                    <div class="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                        <div id="cluster-tags"></div>
+                    </div>
+                </div>
+
+                <!-- Button Toolbar -->
+                <div class="space-y-3">
+                    <h4 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Button Toolbar</h4>
+                    <div class="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                        <div id="cluster-buttons"></div>
+                    </div>
+                </div>
+
+                <!-- Chip Group -->
+                <div class="space-y-3">
+                    <h4 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Filter Chips</h4>
+                    <div class="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                        <div id="cluster-chips"></div>
+                    </div>
+                </div>
+
+                <!-- Social Share -->
+                <div class="space-y-3">
+                    <h4 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Social Share Buttons (Justify Between)</h4>
+                    <div class="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                        <div id="cluster-social"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- FlexToolbar Examples -->
+        <div class="space-y-4">
+            <h3 class="text-xl font-semibold text-gray-900 flex items-center gap-2">
+                <i class="ph-duotone ph-align-top text-purple-600"></i>
+                FlexToolbar - Header/Footer Toolbars
+            </h3>
+            <p class="text-gray-600">Action toolbars with left, center, right positioning</p>
+
+            <!-- Toolbar Examples -->
+            <div class="space-y-6">
+                <!-- App Header -->
+                <div class="space-y-3">
+                    <h4 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">App Header (Light Theme)</h4>
+                    <div id="toolbar-header"></div>
+                </div>
+
+                <!-- Editor Toolbar -->
+                <div class="space-y-3">
+                    <h4 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Editor Toolbar (Dark Theme)</h4>
+                    <div id="toolbar-editor"></div>
+                </div>
+
+                <!-- Bottom Actions -->
+                <div class="space-y-3">
+                    <h4 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Bottom Action Bar</h4>
+                    <div id="toolbar-bottom"></div>
+                </div>
+
+                <!-- Mobile Toolbar -->
+                <div class="space-y-3">
+                    <h4 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Mobile Toolbar (Icon Only)</h4>
+                    <div id="toolbar-mobile"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- FlexMasonry Examples -->
+        <div class="space-y-4">
+            <h3 class="text-xl font-semibold text-gray-900 flex items-center gap-2">
+                <i class="ph-duotone ph-grid-four text-purple-600"></i>
+                FlexMasonry - Pinterest-Style Layouts
+            </h3>
+            <p class="text-gray-600">Masonry grid with varying item heights</p>
+
+            <!-- Masonry Examples -->
+            <div class="space-y-6">
+                <!-- Basic Masonry -->
+                <div class="space-y-3">
+                    <h4 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Basic Masonry Grid (2-4 Columns)</h4>
+                    <div class="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                        <div id="masonry-basic"></div>
+                    </div>
+                </div>
+
+                <!-- Card Masonry -->
+                <div class="space-y-3">
+                    <h4 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Card Masonry with Variable Heights</h4>
+                    <div class="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                        <div id="masonry-cards"></div>
+                    </div>
+                </div>
+
+                <!-- Image Gallery -->
+                <div class="space-y-3">
+                    <h4 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Image Gallery Placeholder</h4>
+                    <div class="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                        <div id="masonry-images"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- FlexSplitPane Examples -->
+        <div class="space-y-4">
+            <h3 class="text-xl font-semibold text-gray-900 flex items-center gap-2">
+                <i class="ph-duotone ph-columns text-purple-600"></i>
+                FlexSplitPane - Resizable Split Layouts
+            </h3>
+            <p class="text-gray-600">Resizable split panes like VS Code</p>
+
+            <!-- SplitPane Examples -->
+            <div class="space-y-6">
+                <!-- Horizontal Split -->
+                <div class="space-y-3">
+                    <h4 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Horizontal Split (Editor + Preview)</h4>
+                    <div class="border border-gray-200 rounded-lg overflow-hidden" style="height: 400px;">
+                        <div id="split-horizontal"></div>
+                    </div>
+                </div>
+
+                <!-- Vertical Split -->
+                <div class="space-y-3">
+                    <h4 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Vertical Split (Top + Bottom)</h4>
+                    <div class="border border-gray-200 rounded-lg overflow-hidden" style="height: 400px;">
+                        <div id="split-vertical"></div>
+                    </div>
+                </div>
+
+                <!-- Multi-Pane Split -->
+                <div class="space-y-3">
+                    <h4 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Multi-Pane Split (3 Panes)</h4>
+                    <div class="border border-gray-200 rounded-lg overflow-hidden" style="height: 400px;">
+                        <div id="split-multi"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Reference -->
+        <div class="bg-gradient-to-br from-purple-50 to-pink-50 p-6 rounded-lg border border-purple-200">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Quick Reference</h3>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <!-- FlexCluster -->
+                <div>
+                    <h4 class="font-semibold text-purple-900 mb-2 flex items-center gap-2">
+                        <i class="ph-duotone ph-dots-nine text-purple-600"></i>
+                        FlexCluster
+                    </h4>
+                    <pre class="text-xs bg-gray-800 text-gray-100 p-3 rounded overflow-x-auto"><code>import FlexCluster from './layout/flex-cluster.js';
+
+const cluster = new FlexCluster('#tags', {
+  gap: 2,
+  justify: 'start',  // start | center | end
+  wrap: true,
+  items: [...]
+});</code></pre>
+                </div>
+
+                <!-- FlexToolbar -->
+                <div>
+                    <h4 class="font-semibold text-purple-900 mb-2 flex items-center gap-2">
+                        <i class="ph-duotone ph-align-top text-purple-600"></i>
+                        FlexToolbar
+                    </h4>
+                    <pre class="text-xs bg-gray-800 text-gray-100 p-3 rounded overflow-x-auto"><code>import FlexToolbar from './layout/flex-toolbar.js';
+
+const toolbar = new FlexToolbar('#header', {
+  position: 'top',
+  sticky: true,
+  theme: 'light',  // light | dark
+  actions: { left: [...], right: [...] }
+});</code></pre>
+                </div>
+
+                <!-- FlexMasonry -->
+                <div>
+                    <h4 class="font-semibold text-purple-900 mb-2 flex items-center gap-2">
+                        <i class="ph-duotone ph-grid-four text-purple-600"></i>
+                        FlexMasonry
+                    </h4>
+                    <pre class="text-xs bg-gray-800 text-gray-100 p-3 rounded overflow-x-auto"><code>import FlexMasonry from './layout/flex-masonry.js';
+
+const masonry = new FlexMasonry('#gallery', {
+  columns: { xs: 1, md: 2, lg: 3 },
+  gap: 4,
+  items: [...]
+});</code></pre>
+                </div>
+
+                <!-- FlexSplitPane -->
+                <div>
+                    <h4 class="font-semibold text-purple-900 mb-2 flex items-center gap-2">
+                        <i class="ph-duotone ph-columns text-purple-600"></i>
+                        FlexSplitPane
+                    </h4>
+                    <pre class="text-xs bg-gray-800 text-gray-100 p-3 rounded overflow-x-auto"><code>import FlexSplitPane from './layout/flex-split-pane.js';
+
+const split = new FlexSplitPane('#container', {
+  direction: 'horizontal',  // or vertical
+  panes: [
+    { id: 'left', content: ..., size: '50%' },
+    { id: 'right', content: ..., size: '50%' }
+  ]
+});</code></pre>
+                </div>
+            </div>
+        </div>
+    </section>
+
     <!-- FlexCard Section -->
     <section class="space-y-6">
         <div class="border-b border-gray-200 pb-4">
