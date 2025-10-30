@@ -431,11 +431,11 @@ describe('FlexInput', () => {
                 type: 'password',
                 showPasswordToggle: true
             });
-            const focusSpy = vi.spyOn(flexInput.inputElement, 'focus');
 
             flexInput.togglePasswordVisibility();
 
-            expect(focusSpy).toHaveBeenCalled();
+            // After toggle, the input element is recreated and should have focus
+            expect(document.activeElement).toBe(flexInput.inputElement);
         });
     });
 
@@ -507,6 +507,7 @@ describe('FlexInput', () => {
 
             expect(flexInput.state.valid).toBe(false);
 
+            // After render, get fresh reference to input element
             input(flexInput.inputElement, 'abcde');
             focus(flexInput.inputElement);
             blur(flexInput.inputElement);

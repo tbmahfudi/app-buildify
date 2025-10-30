@@ -172,7 +172,7 @@ export default class FlexInput extends BaseComponent {
         label.className = `flex-input-label font-medium text-gray-700 ${sizeClasses}`;
 
         if (this.options.labelPosition === 'floating') {
-            label.className = `absolute left-3 transition-all duration-200 pointer-events-none ${sizeClasses}`;
+            label.className = `flex-input-label absolute left-3 transition-all duration-200 pointer-events-none ${sizeClasses}`;
 
             if (this.state.focused || this.state.value) {
                 label.classList.add('-top-2', 'text-xs', 'bg-white', 'px-1');
@@ -549,6 +549,7 @@ export default class FlexInput extends BaseComponent {
 
         if (this.state.touched) {
             this.render();
+            this.attachEventListeners();
         }
 
         this.emit('validate', { valid: isValid, error });
@@ -567,6 +568,7 @@ export default class FlexInput extends BaseComponent {
         }
 
         this.render();
+        this.attachEventListeners();
         this.emit('clear');
 
         if (this.options.onClear) {
@@ -580,6 +582,7 @@ export default class FlexInput extends BaseComponent {
     togglePasswordVisibility() {
         this.state.showPassword = !this.state.showPassword;
         this.render();
+        this.attachEventListeners();
         this.inputElement.focus();
     }
 
@@ -599,6 +602,7 @@ export default class FlexInput extends BaseComponent {
             this.inputElement.value = value;
         }
         this.render();
+        this.attachEventListeners();
         this.emit('change', { value });
     }
 
@@ -626,6 +630,7 @@ export default class FlexInput extends BaseComponent {
     setDisabled(disabled) {
         this.options.disabled = disabled;
         this.render();
+        this.attachEventListeners();
     }
 
     /**
@@ -636,6 +641,7 @@ export default class FlexInput extends BaseComponent {
         this.state.error = error;
         this.state.touched = true;
         this.render();
+        this.attachEventListeners();
     }
 
     /**
@@ -645,6 +651,7 @@ export default class FlexInput extends BaseComponent {
         this.state.valid = true;
         this.state.error = null;
         this.render();
+        this.attachEventListeners();
     }
 
     /**
