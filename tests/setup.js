@@ -17,6 +17,21 @@ global.console = {
     error: console.error
 };
 
+// Mock matchMedia for responsive components
+Object.defineProperty(window, 'matchMedia', {
+    writable: true,
+    value: vi.fn().mockImplementation(query => ({
+        matches: false,
+        media: query,
+        onchange: null,
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+    })),
+});
+
 // Add custom matchers or global setup here
 beforeEach(() => {
     // Clear DOM before each test
