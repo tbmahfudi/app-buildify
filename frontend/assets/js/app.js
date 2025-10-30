@@ -1,6 +1,7 @@
 import { apiFetch, login, logout as apiLogout } from './api.js';
 import { showToast, showLoading, hideLoading } from './ui-utils.js';
 import { filterMenuByRole, applyRBACToElements } from './rbac.js';
+import { moduleLoader, moduleRegistry } from './core/module-system/index.js';
 
 // Module-level state (not polluting global namespace)
 const appState = {
@@ -50,10 +51,26 @@ export async function initApp() {
 
   // Setup main layout
   setupEventListeners();
-  
-  // Load menu
+
+  // Load enabled modules
+  try {
+    console.log('Loading enabled modules...');
+    await moduleLoader.loadAllModules();
+
+    // Register loaded modules
+    for (const module of moduleLoader.getAllModules()) {
+      moduleRegistry.register(module);
+    }
+
+    console.log(`✓ ${moduleRegistry.getModuleCount()} modules loaded and registered`);
+  } catch (error) {
+    console.error('Failed to load modules:', error);
+    // Continue even if modules fail to load
+  }
+
+  // Load menu (now includes module menu items)
   await loadMenu();
-  
+
   // Load initial route
   const hash = window.location.hash.slice(1) || 'dashboard';
   await loadRoute(hash);
@@ -103,8 +120,22 @@ async function loadMenu() {
     const response = await fetch('/config/menu.json');
     const menu = await response.json();
 
-    // Filter menu items based on user roles
-    const filteredItems = filterMenuByRole(menu.items);
+    // Get menu items from loaded modules
+    const moduleMenuItems = await moduleRegistry.getAccessibleMenuItems();
+
+    // Convert module menu items to core menu format
+    const moduleMenuFormatted = moduleMenuItems.map(item => ({
+      title: item.menu?.label || item.name,
+      route: item.path.replace('#/', ''),
+      icon: item.menu?.icon || 'bi-circle',
+      permission: item.permission
+    }));
+
+    // Merge core menu with module menu items
+    const allMenuItems = [...menu.items, ...moduleMenuFormatted];
+
+    // Filter menu items based on user roles and permissions
+    const filteredItems = filterMenuByRole(allMenuItems);
 
     const navContainer = document.getElementById('sidebar-nav');
     if (!navContainer) return;
@@ -250,9 +281,9 @@ function updateActiveMenuItem() {
 async function loadRoute(route) {
   appState.currentRoute = route;
   updateActiveMenuItem();
-  
+
   const content = document.getElementById('content');
-  
+
   // Show loading state
   content.innerHTML = `
     <div class="flex items-center justify-center h-full">
@@ -264,23 +295,57 @@ async function loadRoute(route) {
       </div>
     </div>
   `;
-  
+
   try {
+    // Check if this is a module route
+    const moduleRoute = moduleRegistry.findRoute(`#/${route}`);
+
+    if (moduleRoute && moduleRoute.handler) {
+      // This is a module route - load the module page
+      console.log(`Loading module route: ${route}`);
+
+      // Create app-content div if it doesn't exist
+      content.innerHTML = '<div id="app-content"></div>';
+
+      // Call the module route handler
+      const PageClass = await moduleRoute.handler();
+
+      if (PageClass) {
+        const page = new PageClass();
+        if (typeof page.render === 'function') {
+          await page.render();
+        } else {
+          throw new Error('Module page does not have a render method');
+        }
+      } else {
+        throw new Error('Module page not found');
+      }
+
+      // Dispatch event for route-specific JS
+      document.dispatchEvent(new CustomEvent('route:loaded', {
+        detail: { route, isModule: true }
+      }));
+
+      return;
+    }
+
+    // Not a module route - try loading core template
     const response = await fetch(`/assets/templates/${route}.html`);
-    
+
     if (!response.ok) {
       throw new Error('Template not found');
     }
-    
+
     const html = await response.text();
     content.innerHTML = html;
-    
+
     // Dispatch event for route-specific JS
-    document.dispatchEvent(new CustomEvent('route:loaded', { 
-      detail: { route } 
+    document.dispatchEvent(new CustomEvent('route:loaded', {
+      detail: { route, isModule: false }
     }));
-    
+
   } catch (error) {
+    console.error(`Error loading route ${route}:`, error);
     content.innerHTML = `
       <div class="max-w-md mx-auto mt-20">
         <div class="bg-yellow-50 border-l-4 border-yellow-500 p-6 rounded-lg shadow-sm">
@@ -289,8 +354,8 @@ async function loadRoute(route) {
             <div>
               <h3 class="text-lg font-semibold text-yellow-800 mb-2">Page Not Found</h3>
               <p class="text-yellow-700 mb-4">The page "${route}" could not be loaded.</p>
-              <button 
-                onclick="window.location.hash = 'dashboard'" 
+              <button
+                onclick="window.location.hash = 'dashboard'"
                 class="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition">
                 <i class="bi bi-house"></i> Go to Dashboard
               </button>

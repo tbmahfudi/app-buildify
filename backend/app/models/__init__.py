@@ -41,6 +41,9 @@ from .metadata import EntityMetadata
 # Token revocation
 from .token_blacklist import TokenBlacklist
 
+# Module system
+from .module_registry import ModuleRegistry, TenantModule
+
 # Export all models
 __all__ = [
     # Base
@@ -77,4 +80,8 @@ __all__ = [
 
     # Token revocation
     "TokenBlacklist",
+
+    # Module system
+    "ModuleRegistry",
+    "TenantModule",
 ]

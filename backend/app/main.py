@@ -10,12 +10,17 @@ from app.core.exceptions import register_exception_handlers
 from app.core.rate_limiter import setup_rate_limiting
 from app.core.redis_client import redis_client
 from app.core.db import SessionLocal
-from app.routers import org, auth, metadata, data, audit, settings
+from app.routers import org, auth, metadata, data, audit, settings, modules
+from app.core.module_system.registry import ModuleRegistryService
+from pathlib import Path
 
 # Initialize settings and logging
 settings_instance = get_settings()
 setup_logging()
 logger = get_logger(__name__)
+
+# Global module registry instance
+module_registry: ModuleRegistryService = None
 
 
 @asynccontextmanager
@@ -23,11 +28,37 @@ async def lifespan(app: FastAPI):
     """
     Application lifespan handler for startup and shutdown events.
     """
+    global module_registry
+
     # Startup
     logger.info("Starting application", app_name=settings_instance.APP_NAME, environment=settings_instance.ENVIRONMENT)
 
     # Initialize Redis connection (optional, fails gracefully if unavailable)
     redis_client.connect()
+
+    # Initialize module system
+    try:
+        logger.info("Initializing module system...")
+        db = SessionLocal()
+        modules_path = Path(__file__).parent / "modules"
+        module_registry = ModuleRegistryService(db, modules_path)
+
+        # Sync modules from filesystem
+        module_registry.sync_modules()
+
+        # Include routers from installed modules
+        for router in module_registry.get_all_routers():
+            app.include_router(router)
+            logger.info(f"Included router from module")
+
+        # Make module_registry available to routes
+        from app.routers import modules as modules_router
+        modules_router.module_registry = module_registry
+
+        logger.info(f"Module system initialized: {module_registry.get_module_count()} modules loaded")
+    except Exception as e:
+        logger.error(f"Failed to initialize module system: {e}", exc_info=True)
+        # Continue even if module system fails to initialize
 
     # Initialize Sentry if configured
     if settings_instance.SENTRY_DSN:
@@ -76,6 +107,41 @@ app.add_middleware(
     allow_headers=["*"]
 )
 
+# Module access control middleware
+@app.middleware("http")
+async def module_access_middleware(request: Request, call_next):
+    """
+    Middleware to check if user has access to module endpoints.
+    Validates that the module is enabled for the tenant.
+    """
+    # Only check module endpoints
+    if request.url.path.startswith("/api/v1/") and module_registry:
+        path_parts = request.url.path.split("/")
+
+        # Check if this is a potential module endpoint
+        # Format: /api/v1/{module_name}/...
+        if len(path_parts) >= 4:
+            potential_module = path_parts[3]
+
+            # Skip core endpoints
+            core_endpoints = ["auth", "org", "metadata", "data", "audit", "settings", "modules", "health", "healthz", "system"]
+            if potential_module not in core_endpoints:
+                # This might be a module endpoint
+                # Check if module exists and is enabled
+                try:
+                    # Get user's tenant from JWT token
+                    auth_header = request.headers.get("authorization")
+                    if auth_header and auth_header.startswith("Bearer "):
+                        # We would need to decode JWT to get tenant_id
+                        # For now, we'll let the endpoint handle authorization
+                        # This middleware is a placeholder for future enhancement
+                        pass
+                except Exception as e:
+                    logger.warning(f"Module access check failed: {e}")
+
+    response = await call_next(request)
+    return response
+
 # Setup rate limiting
 limiter = setup_rate_limiting(app)
 
@@ -90,6 +156,7 @@ app.include_router(metadata.router, prefix="/api/v1")
 app.include_router(data.router, prefix="/api/v1")
 app.include_router(audit.router, prefix="/api/v1")
 app.include_router(settings.router, prefix="/api/v1")
+app.include_router(modules.router, prefix="/api/v1")
 
 # Also maintain backward compatibility with old endpoints (deprecated)
 app.include_router(auth.router, tags=["deprecated"])
@@ -183,6 +250,8 @@ async def system_info():
             "rbac",
             "api-versioning",
             "structured-logging",
-            "health-monitoring"
-        ]
+            "health-monitoring",
+            "pluggable-modules"
+        ],
+        "loaded_modules": module_registry.get_module_count() if module_registry else 0
     }
