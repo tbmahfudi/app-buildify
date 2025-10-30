@@ -79,22 +79,22 @@ describe('FlexCluster', () => {
             expect(container.classList.contains('flex-cluster')).toBe(true);
         });
 
-        it('should apply flex styles', () => {
+        it('should apply flex display', () => {
             const cluster = new FlexCluster(container);
 
-            expect(container.classList.contains('flex')).toBe(true);
+            expect(container.style.display).toBe('flex');
         });
 
         it('should apply wrap styles when wrap is true', () => {
             const cluster = new FlexCluster(container, { wrap: true });
 
-            expect(container.classList.contains('flex-wrap')).toBe(true);
+            expect(container.style.flexWrap).toBe('wrap');
         });
 
         it('should apply no-wrap styles when wrap is false', () => {
             const cluster = new FlexCluster(container, { wrap: false });
 
-            expect(container.classList.contains('flex-nowrap')).toBe(true);
+            expect(container.style.flexWrap).toBe('nowrap');
         });
 
         it('should render items', () => {
@@ -102,7 +102,7 @@ describe('FlexCluster', () => {
                 items: defaultItems
             });
 
-            const items = container.querySelectorAll('.flex-cluster-item');
+            const items = container.querySelectorAll('.flex-cluster__item');
             expect(items.length).toBe(3);
         });
 
@@ -121,37 +121,37 @@ describe('FlexCluster', () => {
         it('should apply justify-start', () => {
             const cluster = new FlexCluster(container, { justify: 'start' });
 
-            expect(container.classList.contains('justify-start')).toBe(true);
+            expect(container.style.justifyContent).toBe('flex-start');
         });
 
         it('should apply justify-center', () => {
             const cluster = new FlexCluster(container, { justify: 'center' });
 
-            expect(container.classList.contains('justify-center')).toBe(true);
+            expect(container.style.justifyContent).toBe('center');
         });
 
         it('should apply justify-end', () => {
             const cluster = new FlexCluster(container, { justify: 'end' });
 
-            expect(container.classList.contains('justify-end')).toBe(true);
+            expect(container.style.justifyContent).toBe('flex-end');
         });
 
         it('should apply justify-between', () => {
             const cluster = new FlexCluster(container, { justify: 'between' });
 
-            expect(container.classList.contains('justify-between')).toBe(true);
+            expect(container.style.justifyContent).toBe('space-between');
         });
 
         it('should apply justify-around', () => {
             const cluster = new FlexCluster(container, { justify: 'around' });
 
-            expect(container.classList.contains('justify-around')).toBe(true);
+            expect(container.style.justifyContent).toBe('space-around');
         });
 
         it('should apply justify-evenly', () => {
             const cluster = new FlexCluster(container, { justify: 'evenly' });
 
-            expect(container.classList.contains('justify-evenly')).toBe(true);
+            expect(container.style.justifyContent).toBe('space-evenly');
         });
     });
 
@@ -159,45 +159,45 @@ describe('FlexCluster', () => {
         it('should apply items-center by default', () => {
             const cluster = new FlexCluster(container);
 
-            expect(container.classList.contains('items-center')).toBe(true);
+            expect(container.style.alignItems).toBe('center');
         });
 
         it('should apply items-start', () => {
             const cluster = new FlexCluster(container, { align: 'start' });
 
-            expect(container.classList.contains('items-start')).toBe(true);
+            expect(container.style.alignItems).toBe('flex-start');
         });
 
         it('should apply items-end', () => {
             const cluster = new FlexCluster(container, { align: 'end' });
 
-            expect(container.classList.contains('items-end')).toBe(true);
+            expect(container.style.alignItems).toBe('flex-end');
         });
 
         it('should apply items-stretch', () => {
             const cluster = new FlexCluster(container, { align: 'stretch' });
 
-            expect(container.classList.contains('items-stretch')).toBe(true);
+            expect(container.style.alignItems).toBe('stretch');
         });
 
         it('should apply items-baseline', () => {
             const cluster = new FlexCluster(container, { align: 'baseline' });
 
-            expect(container.classList.contains('items-baseline')).toBe(true);
+            expect(container.style.alignItems).toBe('baseline');
         });
     });
 
     describe('Gap Spacing', () => {
-        it('should apply gap-2 by default', () => {
+        it('should apply gap 0.5rem by default', () => {
             const cluster = new FlexCluster(container);
 
-            expect(container.classList.contains('gap-2')).toBe(true);
+            expect(container.style.gap).toBe('0.5rem');
         });
 
         it('should apply custom gap', () => {
             const cluster = new FlexCluster(container, { gap: 4 });
 
-            expect(container.classList.contains('gap-4')).toBe(true);
+            expect(container.style.gap).toBe('1rem');
         });
 
         it('should update gap with setGap()', () => {
@@ -205,8 +205,7 @@ describe('FlexCluster', () => {
 
             cluster.setGap(6);
 
-            expect(container.classList.contains('gap-6')).toBe(true);
-            expect(container.classList.contains('gap-2')).toBe(false);
+            expect(container.style.gap).toBe('1.5rem');
         });
     });
 
@@ -328,8 +327,7 @@ describe('FlexCluster', () => {
 
             cluster.setJustify('center');
 
-            expect(container.classList.contains('justify-center')).toBe(true);
-            expect(container.classList.contains('justify-start')).toBe(false);
+            expect(container.style.justifyContent).toBe('center');
         });
 
         it('should update align with setAlign()', () => {
@@ -337,8 +335,7 @@ describe('FlexCluster', () => {
 
             cluster.setAlign('start');
 
-            expect(container.classList.contains('items-start')).toBe(true);
-            expect(container.classList.contains('items-center')).toBe(false);
+            expect(container.style.alignItems).toBe('flex-start');
         });
 
         it('should update wrap with setWrap()', () => {
@@ -346,8 +343,7 @@ describe('FlexCluster', () => {
 
             cluster.setWrap(false);
 
-            expect(container.classList.contains('flex-nowrap')).toBe(true);
-            expect(container.classList.contains('flex-wrap')).toBe(false);
+            expect(container.style.flexWrap).toBe('nowrap');
         });
     });
 
@@ -361,10 +357,10 @@ describe('FlexCluster', () => {
                 ]
             });
 
-            const items = container.querySelectorAll('.flex-cluster-item');
-            expect(items[0].getAttribute('data-item-id')).toBe('high');
-            expect(items[1].getAttribute('data-item-id')).toBe('medium');
-            expect(items[2].getAttribute('data-item-id')).toBe('low');
+            const items = container.querySelectorAll('.flex-cluster__item');
+            expect(items[0].dataset.itemId).toBe('high');
+            expect(items[1].dataset.itemId).toBe('medium');
+            expect(items[2].dataset.itemId).toBe('low');
         });
 
         it('should maintain original order when priority is same', () => {
@@ -376,26 +372,24 @@ describe('FlexCluster', () => {
                 ]
             });
 
-            const items = container.querySelectorAll('.flex-cluster-item');
-            expect(items[0].getAttribute('data-item-id')).toBe('first');
-            expect(items[1].getAttribute('data-item-id')).toBe('second');
-            expect(items[2].getAttribute('data-item-id')).toBe('third');
+            const items = container.querySelectorAll('.flex-cluster__item');
+            expect(items[0].dataset.itemId).toBe('first');
+            expect(items[1].dataset.itemId).toBe('second');
+            expect(items[2].dataset.itemId).toBe('third');
         });
     });
 
     describe('Animations', () => {
-        it('should apply transition classes when animated', () => {
+        it('should apply transition style when animated', () => {
             const cluster = new FlexCluster(container, { animated: true });
 
-            const clusterElement = container;
-            expect(clusterElement.classList.contains('transition-all')).toBe(true);
+            expect(container.style.transition).toContain('all');
         });
 
-        it('should not apply transition classes when not animated', () => {
+        it('should not apply transition style when not animated', () => {
             const cluster = new FlexCluster(container, { animated: false });
 
-            const clusterElement = container;
-            expect(clusterElement.classList.contains('transition-all')).toBe(false);
+            expect(container.style.transition).toBe('');
         });
     });
 
