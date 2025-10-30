@@ -1,0 +1,263 @@
+{
+  "name": "financial",
+  "display_name": "Financial Management",
+  "version": "1.0.0",
+  "description": "Complete financial management system with chart of accounts, invoicing, payments, and financial reporting",
+  "author": "Buildify Team",
+  "license": "Proprietary",
+
+  "compatibility": {
+    "platform_version": ">=1.0.0",
+    "python_version": ">=3.8"
+  },
+
+  "category": "finance",
+  "tags": ["accounting", "invoicing", "finance", "reporting", "payments"],
+
+  "dependencies": {
+    "required": [],
+    "optional": []
+  },
+
+  "permissions": [
+    {
+      "code": "financial:accounts:read:company",
+      "name": "View Accounts",
+      "description": "View chart of accounts",
+      "category": "financial",
+      "scope": "company"
+    },
+    {
+      "code": "financial:accounts:create:company",
+      "name": "Create Accounts",
+      "description": "Create new accounts in chart of accounts",
+      "category": "financial",
+      "scope": "company"
+    },
+    {
+      "code": "financial:accounts:update:company",
+      "name": "Update Accounts",
+      "description": "Update existing accounts",
+      "category": "financial",
+      "scope": "company"
+    },
+    {
+      "code": "financial:accounts:delete:company",
+      "name": "Delete Accounts",
+      "description": "Delete accounts from chart of accounts",
+      "category": "financial",
+      "scope": "company"
+    },
+    {
+      "code": "financial:transactions:read:company",
+      "name": "View Transactions",
+      "description": "View financial transactions",
+      "category": "financial",
+      "scope": "company"
+    },
+    {
+      "code": "financial:transactions:create:company",
+      "name": "Create Transactions",
+      "description": "Create financial transactions",
+      "category": "financial",
+      "scope": "company"
+    },
+    {
+      "code": "financial:transactions:update:company",
+      "name": "Update Transactions",
+      "description": "Update financial transactions",
+      "category": "financial",
+      "scope": "company"
+    },
+    {
+      "code": "financial:transactions:delete:company",
+      "name": "Delete Transactions",
+      "description": "Delete financial transactions",
+      "category": "financial",
+      "scope": "company"
+    },
+    {
+      "code": "financial:transactions:post:company",
+      "name": "Post Transactions",
+      "description": "Post transactions to the ledger",
+      "category": "financial",
+      "scope": "company"
+    },
+    {
+      "code": "financial:invoices:read:company",
+      "name": "View Invoices",
+      "description": "View invoices",
+      "category": "financial",
+      "scope": "company"
+    },
+    {
+      "code": "financial:invoices:create:company",
+      "name": "Create Invoices",
+      "description": "Create and manage invoices",
+      "category": "financial",
+      "scope": "company"
+    },
+    {
+      "code": "financial:invoices:update:company",
+      "name": "Update Invoices",
+      "description": "Update invoice details",
+      "category": "financial",
+      "scope": "company"
+    },
+    {
+      "code": "financial:invoices:delete:company",
+      "name": "Delete Invoices",
+      "description": "Delete invoices",
+      "category": "financial",
+      "scope": "company"
+    },
+    {
+      "code": "financial:invoices:send:company",
+      "name": "Send Invoices",
+      "description": "Send invoices to customers",
+      "category": "financial",
+      "scope": "company"
+    },
+    {
+      "code": "financial:payments:read:company",
+      "name": "View Payments",
+      "description": "View payment records",
+      "category": "financial",
+      "scope": "company"
+    },
+    {
+      "code": "financial:payments:create:company",
+      "name": "Create Payments",
+      "description": "Record payments",
+      "category": "financial",
+      "scope": "company"
+    },
+    {
+      "code": "financial:payments:update:company",
+      "name": "Update Payments",
+      "description": "Update payment records",
+      "category": "financial",
+      "scope": "company"
+    },
+    {
+      "code": "financial:payments:delete:company",
+      "name": "Delete Payments",
+      "description": "Delete payment records",
+      "category": "financial",
+      "scope": "company"
+    },
+    {
+      "code": "financial:reports:read:company",
+      "name": "View Reports",
+      "description": "View financial reports",
+      "category": "financial",
+      "scope": "company"
+    },
+    {
+      "code": "financial:reports:export:company",
+      "name": "Export Reports",
+      "description": "Export financial reports",
+      "category": "financial",
+      "scope": "company"
+    }
+  ],
+
+  "default_roles": {
+    "Financial Manager": [
+      "financial:*:company"
+    ],
+    "Accountant": [
+      "financial:accounts:read:company",
+      "financial:transactions:*:company",
+      "financial:reports:read:company"
+    ],
+    "Billing Clerk": [
+      "financial:invoices:*:company",
+      "financial:payments:*:company"
+    ],
+    "Financial Viewer": [
+      "financial:accounts:read:company",
+      "financial:transactions:read:company",
+      "financial:invoices:read:company",
+      "financial:reports:read:company"
+    ]
+  },
+
+  "database": {
+    "has_migrations": true,
+    "tables": [
+      "financial_accounts",
+      "financial_transactions",
+      "financial_invoices",
+      "financial_invoice_line_items",
+      "financial_payments"
+    ]
+  },
+
+  "api": {
+    "prefix": "/api/v1/financial",
+    "routes": [
+      "/accounts",
+      "/transactions",
+      "/invoices",
+      "/payments",
+      "/reports"
+    ]
+  },
+
+  "configuration": {
+    "settings": [
+      {
+        "key": "default_currency",
+        "type": "string",
+        "default": "USD",
+        "description": "Default currency for financial operations"
+      },
+      {
+        "key": "fiscal_year_start",
+        "type": "string",
+        "default": "01-01",
+        "description": "Fiscal year start date (MM-DD)"
+      },
+      {
+        "key": "enable_multi_currency",
+        "type": "boolean",
+        "default": false,
+        "description": "Enable multi-currency support"
+      },
+      {
+        "key": "tax_rate",
+        "type": "number",
+        "default": 0,
+        "description": "Default tax rate percentage"
+      },
+      {
+        "key": "invoice_prefix",
+        "type": "string",
+        "default": "INV",
+        "description": "Invoice number prefix"
+      }
+    ]
+  },
+
+  "subscription_tier": "premium",
+  "pricing": {
+    "model": "per_company",
+    "free_tier": false,
+    "basic_tier": false,
+    "premium_tier": true,
+    "enterprise_tier": true
+  },
+
+  "installation": {
+    "pre_install_checks": true,
+    "post_install_tasks": [
+      "create_default_accounts"
+    ]
+  },
+
+  "status": "stable",
+  "homepage": "https://docs.buildify.com/modules/financial",
+  "repository": "https://github.com/buildify/financial-module",
+  "support_email": "support@buildify.com"
+}
