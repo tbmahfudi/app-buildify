@@ -47,7 +47,7 @@ class UserCompanyAccess(Base):
     revoked_at = Column(DateTime, nullable=True)  # When access was revoked
 
     # Relationships
-    user = relationship("User", back_populates="company_accesses")
+    user = relationship("User", back_populates="company_accesses", foreign_keys=[user_id])
     company = relationship("Company", back_populates="user_accesses")
     branch = relationship("Branch")
     department = relationship("Department")

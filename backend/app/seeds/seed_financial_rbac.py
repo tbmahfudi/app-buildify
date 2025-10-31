@@ -200,10 +200,23 @@ def seed_financial_rbac():
             ).first()
 
             if not perm:
+                # Parse permission code: format is "financial:resource:action:scope"
+                # Example: "financial:accounts:read:company" -> resource="accounts", action="read", scope="company"
+                parts = perm_data["code"].split(":")
+                if len(parts) == 4:
+                    _, resource, action, scope = parts
+                elif len(parts) == 3:
+                    resource, action, scope = parts
+                else:
+                    raise ValueError(f"Invalid permission code format: {perm_data['code']}")
+
                 perm = Permission(
                     code=perm_data["code"],
                     name=perm_data["name"],
                     description=perm_data["description"],
+                    resource=resource,
+                    action=action,
+                    scope=scope,
                     category=perm_data["category"],
                     is_system=False
                 )
@@ -326,14 +339,17 @@ def seed_financial_rbac():
 
                     if not existing:
                         role_perm = RolePermission(
-                            role_id=role.id,
-                            permission_id=perm.id
+                            id=str(uuid.uuid4()),
+                            role_id=str(role.id),
+                            permission_id=str(perm.id),
+                            created_at=datetime.utcnow()
                         )
                         db.add(role_perm)
 
+            # Commit after each role to avoid bulk insert issues with UUIDs
+            db.commit()
             role_map[role_name] = role
 
-        db.commit()
         print(f"✓ Created {len(roles_config)} roles with permissions")
 
         # ========================================================================
@@ -421,7 +437,7 @@ def seed_financial_rbac():
 
                 user = User(
                     email=assignment["email"],
-                    password_hash=hash_password("password123"),  # Default password
+                    hashed_password=hash_password("password123"),  # Default password
                     full_name=assignment["title"],
                     tenant_id=tenant.id,
                     default_company_id=company.id,
@@ -429,7 +445,7 @@ def seed_financial_rbac():
                     branch_id=branch.id if branch else None,
                     is_active=True,
                     is_superuser=False,
-                    email_verified=True,
+                    is_verified=True,
                     created_at=datetime.utcnow()
                 )
                 db.add(user)
@@ -452,8 +468,10 @@ def seed_financial_rbac():
 
                     if not existing:
                         user_role = UserRole(
-                            user_id=user.id,
-                            role_id=role.id
+                            id=str(uuid.uuid4()),
+                            user_id=str(user.id),
+                            role_id=str(role.id),
+                            created_at=datetime.utcnow()
                         )
                         db.add(user_role)
                         print(f"  ✓ Assigned {user.email} → {role_name}")

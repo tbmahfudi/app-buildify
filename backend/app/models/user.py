@@ -54,11 +54,17 @@ class User(Base):
     department = relationship("Department")
 
     # Multi-company access
-    company_accesses = relationship("UserCompanyAccess", back_populates="user", cascade="all, delete-orphan")
+    company_accesses = relationship("UserCompanyAccess", back_populates="user",
+                                   foreign_keys="[UserCompanyAccess.user_id]",
+                                   cascade="all, delete-orphan")
 
     # RBAC
-    user_roles = relationship("UserRole", back_populates="user", cascade="all, delete-orphan")
-    user_groups = relationship("UserGroup", back_populates="user", cascade="all, delete-orphan")
+    user_roles = relationship("UserRole", back_populates="user",
+                             foreign_keys="[UserRole.user_id]",
+                             cascade="all, delete-orphan")
+    user_groups = relationship("UserGroup", back_populates="user",
+                              foreign_keys="[UserGroup.user_id]",
+                              cascade="all, delete-orphan")
 
     def __repr__(self):
         return f"<User(id={self.id}, email={self.email}, tenant_id={self.tenant_id})>"
