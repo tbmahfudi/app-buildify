@@ -13,3 +13,6 @@ __pycache__
 
 # Temporary setup scripts
 backend/create_*.py
+
+# Database backups
+backups/
