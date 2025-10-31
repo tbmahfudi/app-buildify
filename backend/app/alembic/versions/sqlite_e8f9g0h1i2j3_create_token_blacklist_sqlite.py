@@ -3,7 +3,7 @@ from alembic import op
 import sqlalchemy as sa
 
 revision = "sqlite_e8f9g0h1i2j3"
-down_revision = "001_create_all_tables_sqlite"
+down_revision = "001_sqlite_complete"
 branch_labels = None
 depends_on = None
 

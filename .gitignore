@@ -4,3 +4,12 @@ dist
 __pycache__
 *.pyc
 .env
+
+# SQLite databases
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+
+# Temporary setup scripts
+backend/create_*.py

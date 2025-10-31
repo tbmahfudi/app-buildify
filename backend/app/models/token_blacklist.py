@@ -11,10 +11,8 @@ class TokenBlacklist(Base):
     __table_args__ = (
         Index('ix_token_blacklist_jti', 'jti'),
         Index('ix_token_blacklist_expires_at', 'expires_at'),
-        # PostgreSQL UNLOGGED table option
-        {'postgresql_unlogged': True},
-        # MySQL MEMORY engine option
-        {'mysql_engine': 'MEMORY'},
+        # MySQL MEMORY engine option for better performance
+        {'mysql_engine': 'MEMORY'}
     )
 
     jti = Column(String(255), primary_key=True)  # JWT ID (unique token identifier)
