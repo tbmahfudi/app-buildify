@@ -152,16 +152,16 @@ def run_migrations_offline() -> None:
 
 def run_migrations_online() -> None:
     """Run migrations in 'online' mode."""
-    
+
     url = get_database_url()
     db_type = detect_db_type(url)
     options = get_db_specific_options(db_type)
-    
+
     print(f"[INFO] Running online migrations for: {db_type}")
-    
+
     configuration = config.get_section(config.config_ini_section)
     configuration["sqlalchemy.url"] = url
-    
+
     connect_args = {}
     if db_type == 'sqlite':
         connect_args = {
@@ -171,7 +171,7 @@ def run_migrations_online() -> None:
         connect_args = {
             'charset': 'utf8mb4',
         }
-    
+
     connectable = engine_from_config(
         configuration,
         prefix="sqlalchemy.",

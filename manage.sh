@@ -134,10 +134,29 @@ restart_services() {
 run_migrations() {
     print_info "Running database migrations..."
 
-    # Use 'heads' (plural) instead of 'head' to upgrade all branches
-    # This handles multiple migration branches (PostgreSQL, MySQL, SQLite)
-    if ! docker compose -f "$COMPOSE_FULL_PATH" exec -T backend alembic upgrade heads; then
+    # Determine the correct migration head based on database type
+    # Each database has its own migration branch to avoid conflicts
+    case $DATABASE in
+        postgres)
+            MIGRATION_HEAD="pg_m1n2o3p4q5r6"
+            ;;
+        mysql)
+            MIGRATION_HEAD="mysql_m1n2o3p4q5r6"
+            ;;
+        sqlite)
+            MIGRATION_HEAD="sqlite_m1n2o3p4q5r6"
+            ;;
+        *)
+            print_error "Unknown database type: $DATABASE"
+            exit 1
+            ;;
+    esac
+
+    print_info "Upgrading to $DATABASE head: $MIGRATION_HEAD"
+
+    if ! docker compose -f "$COMPOSE_FULL_PATH" exec -T backend alembic upgrade "$MIGRATION_HEAD"; then
         print_error "Migration failed"
+        print_info "Tip: Check if the database is properly initialized and accessible"
         exit 1
     fi
 
