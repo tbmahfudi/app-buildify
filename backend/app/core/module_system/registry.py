@@ -556,5 +556,14 @@ class ModuleRegistryService:
             "status": registry_entry.status,
         }
 
+    def get_module_count(self) -> int:
+        """
+        Get the number of loaded modules.
+
+        Returns:
+            Number of modules currently loaded in memory
+        """
+        return len(self.modules)
+
     def __repr__(self):
         return f"<ModuleRegistryService(loaded_modules={len(self.modules)})>"
