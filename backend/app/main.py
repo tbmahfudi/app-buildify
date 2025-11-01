@@ -8,7 +8,6 @@ from app.core.config import get_settings
 from app.core.logging_config import setup_logging, get_logger
 from app.core.exceptions import register_exception_handlers
 from app.core.rate_limiter import setup_rate_limiting
-from app.core.redis_client import redis_client
 from app.core.db import SessionLocal
 from app.routers import org, auth, metadata, data, audit, settings, modules
 from app.core.module_system.registry import ModuleRegistryService
@@ -32,9 +31,6 @@ async def lifespan(app: FastAPI):
 
     # Startup
     logger.info("Starting application", app_name=settings_instance.APP_NAME, environment=settings_instance.ENVIRONMENT)
-
-    # Initialize Redis connection (optional, fails gracefully if unavailable)
-    redis_client.connect()
 
     # Initialize module system
     try:
@@ -84,7 +80,6 @@ async def lifespan(app: FastAPI):
 
     # Shutdown
     logger.info("Shutting down application")
-    redis_client.disconnect()
 
 
 # Create FastAPI app with API versioning
@@ -205,15 +200,6 @@ async def health_check(request: Request):
         health_status["components"]["database"] = {
             "status": "unhealthy",
             "error": str(e)
-        }
-
-    # Check Redis
-    if redis_client.is_available:
-        health_status["components"]["redis"] = {"status": "healthy"}
-    else:
-        health_status["components"]["redis"] = {
-            "status": "unavailable",
-            "note": "Token revocation disabled"
         }
 
     # Check rate limiting
