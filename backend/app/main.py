@@ -1,7 +1,6 @@
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, FileResponse
-from fastapi.staticfiles import StaticFiles
+from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 from datetime import datetime
 
@@ -242,35 +241,3 @@ async def system_info():
         ],
         "loaded_modules": module_registry.get_module_count() if module_registry else 0
     }
-
-
-# Configure static file serving
-# Get the frontend directory path (relative to this file)
-frontend_dir = Path(__file__).parent.parent.parent / "frontend"
-
-# Mount static files for assets (CSS, JS, images, etc.) with proper MIME types
-app.mount("/assets", StaticFiles(directory=str(frontend_dir / "assets")), name="assets")
-
-# Serve index.html for root and catch-all routes (SPA routing)
-@app.get("/{full_path:path}")
-async def serve_frontend(full_path: str):
-    """
-    Catch-all route to serve the frontend application.
-    This allows the SPA to handle its own routing.
-    """
-    # Don't intercept API calls
-    if full_path.startswith("api/"):
-        return JSONResponse(
-            status_code=status.HTTP_404_NOT_FOUND,
-            content={"detail": "API endpoint not found"}
-        )
-
-    # Serve index.html for all other routes
-    index_path = frontend_dir / "index.html"
-    if index_path.exists():
-        return FileResponse(str(index_path))
-    else:
-        return JSONResponse(
-            status_code=status.HTTP_404_NOT_FOUND,
-            content={"detail": "Frontend not found"}
-        )
