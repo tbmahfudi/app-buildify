@@ -2,9 +2,44 @@
 
 A production-ready, multi-tenant NoCode application platform with comprehensive RBAC, security, and organizational management.
 
+## 🆘 Need Help?
+
+**Getting "relation 'tenants' does not exist" error?**
+
+→ **[QUICKSTART.md](QUICKSTART.md)** - Fastest way to fix and get running
+→ **[FIX_TENANTS_TABLE.md](FIX_TENANTS_TABLE.md)** - Detailed troubleshooting guide
+
 ## 🚀 Quick Start
 
-### Backend Setup
+### Option 1: Using Docker (Recommended)
+
+```bash
+# Complete setup (build, start, migrate, seed)
+./manage.sh setup postgres
+
+# Or step by step:
+./manage.sh start postgres   # Start all services
+./manage.sh migrate postgres  # Run database migrations
+./manage.sh seed             # Add test data
+```
+
+**Access:**
+- **Backend API**: http://localhost:8000
+- **API Docs (Swagger)**: http://localhost:8000/docs
+- **Frontend**: http://localhost:8080
+
+**Useful commands:**
+```bash
+./manage.sh status          # Check service health
+./manage.sh logs backend    # View logs
+./manage.sh shell           # Open backend shell
+./manage.sh db-shell        # Open database shell
+./manage.sh help            # See all commands
+```
+
+### Option 2: Local Development (Without Docker)
+
+**Backend Setup:**
 
 ```bash
 cd backend
@@ -13,23 +48,21 @@ cd backend
 pip install -r requirements.txt
 
 # Setup environment
-cp .env.example .env
-# Edit .env and set SECRET_KEY (generate with: openssl rand -hex 32)
+cp .env.template .env
+# Edit .env and set SQLALCHEMY_DATABASE_URL
 
 # Run migrations
-alembic upgrade head  # SQLite for development
-# OR for PostgreSQL (recommended for production)
-export SQLALCHEMY_DATABASE_URL=postgresql+psycopg2://user:pass@localhost/db
-alembic upgrade pg_g1h2i3j4k5l6
+python run_migrations.py
+# Or: alembic upgrade heads
 
-# Seed multi-tenant data (creates 5 sample organizations)
-python -m app.seeds.seed_complete_org
+# Seed data (optional)
+python -m app.seeds.seed_users
 
 # Run API
 uvicorn app.main:app --reload
 ```
 
-### Frontend Setup
+**Frontend Setup:**
 
 ```bash
 cd frontend
@@ -37,10 +70,9 @@ python -m http.server 8080
 # Or use any static file server
 ```
 
-### Access
-
+**Access:**
 - **Backend API**: http://localhost:8000
-- **API Docs (Swagger)**: http://localhost:8000/api/docs
+- **API Docs (Swagger)**: http://localhost:8000/docs
 - **Frontend**: http://localhost:8080
 
 ## 📖 Documentation
