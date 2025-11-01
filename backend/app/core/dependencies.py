@@ -155,3 +155,29 @@ def has_any_permission(permissions: List[str]):
             )
         return current_user
     return permission_checker
+
+def has_role(role_code: str):
+    """
+    Dependency to check if user has a specific role.
+
+    Args:
+        role_code: Role code to check (e.g., "admin", "user")
+
+    Returns:
+        Function that validates the user has the role
+    """
+    def role_checker(current_user: User = Depends(get_current_user)) -> User:
+        # Superusers have all roles
+        if current_user.is_superuser:
+            return current_user
+
+        # Check if user has the required role
+        user_role_codes = {user_role.role.code for user_role in current_user.user_roles if user_role.role and user_role.role.is_active}
+
+        if role_code not in user_role_codes:
+            raise HTTPException(
+                status_code=403,
+                detail=f"Role '{role_code}' required"
+            )
+        return current_user
+    return role_checker
