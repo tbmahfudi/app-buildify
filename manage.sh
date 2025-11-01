@@ -112,7 +112,32 @@ start_services() {
     print_info "Starting services with $DATABASE..."
     docker compose -f "$COMPOSE_FULL_PATH" up -d
     print_info "Services started successfully"
+
+    # Wait for backend to be healthy
+    print_info "Waiting for backend to be ready..."
+    MAX_RETRIES=30
+    RETRY_COUNT=0
+
+    while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+        if curl -sf http://localhost:8000/api/healthz > /dev/null 2>&1; then
+            echo -e "${GREEN}✓ Backend is healthy and ready${NC}"
+            break
+        fi
+
+        RETRY_COUNT=$((RETRY_COUNT + 1))
+        if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
+            print_error "Backend failed to become healthy after $MAX_RETRIES attempts"
+            print_warning "Check logs with: $0 logs backend"
+            exit 1
+        fi
+
+        echo -n "."
+        sleep 2
+    done
+    echo ""
+
     print_info "Backend: http://localhost:8000"
+    print_info "API Docs: http://localhost:8000/api/docs"
     print_info "Frontend: http://localhost:8080"
 }
 
