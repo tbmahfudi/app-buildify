@@ -2,12 +2,23 @@
 
 ## What Was Fixed
 
-The issue was that `alembic upgrade heads` was trying to run ALL migration branches (SQLite, MySQL, PostgreSQL) simultaneously, causing:
+Two critical migration issues were resolved:
+
+### Issue 1: Mixed Database Migrations
+`alembic upgrade heads` was trying to run ALL migration branches (SQLite, MySQL, PostgreSQL) simultaneously, causing:
 - SQLite migrations to run on PostgreSQL databases
 - Foreign key errors like "relation 'tenants' does not exist"
 - Migration failures during db-reset
 
 **Solution**: Updated `manage.sh` to target the correct migration head for each database type.
+
+### Issue 2: Invalid Column Rename Migration
+The `pg_h2i3j4k5l6m7` migration was trying to rename `metadata` to `extra_data`, but:
+- Tables were created with `extra_data` column from the start
+- The `metadata` column never existed in fresh PostgreSQL databases
+- This caused "column 'metadata' does not exist" errors
+
+**Solution**: Updated the migration to check if columns exist before attempting renames, making it safe for both fresh and existing databases.
 
 ## How to Test
 
@@ -91,6 +102,7 @@ Try creating a test request in the Swagger UI to verify the database is working.
 - `Running upgrade  -> 001_sqlite_complete` (on PostgreSQL)
 - `Running upgrade sqlite_...` messages (on PostgreSQL)
 - `relation "tenants" does not exist` errors
+- `column "metadata" does not exist` errors
 - Mixed migration branches running together
 
 ✅ **Should see:**
@@ -98,6 +110,10 @@ Try creating a test request in the Swagger UI to verify the database is working.
 - Only `mysql_*` migrations running for MySQL
 - Clean, sequential migration execution
 - Successful table creation
+- For the metadata rename migration (pg_h2i3j4k5l6m7), you'll see:
+  * `Column 'tenants.extra_data' already exists, skipping rename`
+  * `Column 'companies.extra_data' already exists, skipping rename`
+  * Similar messages for branches, departments, and users tables
 
 ## Migration Heads Reference
 
@@ -175,11 +191,20 @@ alembic upgrade sqlite_m1n2o3p4q5r6
 ✅ `./manage.sh db-reset postgres` completes without errors
 ✅ All PostgreSQL migrations run in correct order
 ✅ `tenants` table and all other tables are created
+✅ No `column "metadata" does not exist` errors
+✅ Metadata rename migration skips gracefully (columns already correct)
 ✅ Seeding completes successfully
 ✅ Backend API is accessible and functional
 ✅ No SQLite or MySQL migrations run on PostgreSQL
 
 ## Related Files Changed
 
+### Fix #1: Database-Specific Migration Heads
 - `manage.sh`: Updated `run_migrations()` function (line 133-164)
 - `backend/app/alembic/env.py`: Simplified `run_migrations_online()` function
+
+### Fix #2: Column Rename Migration Safety
+- `backend/app/alembic/versions/pg_h2i3j4k5l6m7_rename_metadata_to_extra_data_pg.py`:
+  * Added `column_exists()` helper function
+  * Added existence checks before column renames
+  * Made migration safe for fresh and existing databases
