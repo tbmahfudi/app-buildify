@@ -11,9 +11,35 @@ This means your database migrations haven't been run yet, so the `tenants` table
 
 ## Quick Fix
 
-### Option 1: Using the Migration Helper Script (Recommended)
+### Option 1: Using manage.sh (Easiest - Recommended)
 
-We've created a helper script to make this easy:
+If you're using Docker Compose (which is the standard setup):
+
+```bash
+# From project root
+./manage.sh migrate postgres
+```
+
+For MySQL:
+```bash
+./manage.sh migrate mysql
+```
+
+This will:
+- ✓ Check if Docker services are running (start them with `./manage.sh start postgres` if needed)
+- ✓ Run all necessary migrations
+- ✓ Create the tenants table and all other required tables
+- ✓ Handle database-specific migrations automatically
+
+**Complete setup from scratch:**
+```bash
+# This does everything: build, start, migrate, and seed
+./manage.sh setup postgres
+```
+
+### Option 2: Using the Migration Helper Script
+
+If you're running without Docker:
 
 ```bash
 cd backend
@@ -26,10 +52,21 @@ The script will:
 - ✓ Run all necessary migrations
 - ✓ Create the tenants table and all other required tables
 
-### Option 2: Manual Migration with Alembic
+Or use the quick fix script:
+```bash
+./fix-db.sh
+```
+
+### Option 3: Manual Migration with Alembic
 
 If you prefer to run migrations manually:
 
+**With Docker:**
+```bash
+docker compose -f infra/docker-compose.dev.yml exec backend alembic upgrade heads
+```
+
+**Without Docker:**
 ```bash
 cd backend
 
@@ -38,21 +75,6 @@ export SQLALCHEMY_DATABASE_URL="postgresql://user:password@localhost:5432/appdb"
 
 # Run migrations
 alembic upgrade heads
-```
-
-### Option 3: Using Docker Compose
-
-If you're using Docker Compose:
-
-```bash
-# From project root
-./manage.sh migrate postgres
-```
-
-Or directly:
-
-```bash
-docker compose -f infra/docker-compose.dev.yml exec backend alembic upgrade heads
 ```
 
 ## Setting Up Database Connection
