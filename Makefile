@@ -21,11 +21,11 @@ setup:
 
 migrate-pg:
 	@echo "Running PostgreSQL migrations..."
-	cd backend && alembic upgrade pg_a1b2c3d4e5f6
+	cd backend && alembic upgrade heads
 
 migrate-mysql:
 	@echo "Running MySQL migrations..."
-	cd backend && alembic upgrade mysql_f6e5d4c3b2a1
+	cd backend && alembic upgrade heads
 
 seed:
 	@echo "Seeding database..."
@@ -39,14 +39,14 @@ run:
 
 docker-up:
 	@echo "Starting Docker environment..."
-	docker-compose -f docker-compose.dev.yml up -d
+	docker-compose -f infra/docker-compose.dev.yml up -d
 	@echo "Waiting for database to be ready..."
 	sleep 5
 	@echo "Running migrations..."
-	docker-compose -f docker-compose.dev.yml exec backend alembic upgrade head
+	docker-compose -f infra/docker-compose.dev.yml exec backend alembic upgrade heads
 	@echo "Seeding data..."
-	docker-compose -f docker-compose.dev.yml exec backend python -m app.seeds.seed_org
-	docker-compose -f docker-compose.dev.yml exec backend python -m app.seeds.seed_users
+	docker-compose -f infra/docker-compose.dev.yml exec backend python -m app.seeds.seed_org
+	docker-compose -f infra/docker-compose.dev.yml exec backend python -m app.seeds.seed_users
 	@echo ""
 	@echo "✅ Environment ready!"
 	@echo "Frontend: http://localhost:8080"
@@ -54,10 +54,10 @@ docker-up:
 	@echo "API Docs: http://localhost:8000/docs"
 
 docker-down:
-	docker-compose -f docker-compose.dev.yml down
+	docker-compose -f infra/docker-compose.dev.yml down
 
 docker-logs:
-	docker-compose -f docker-compose.dev.yml logs -f
+	docker-compose -f infra/docker-compose.dev.yml logs -f
 
 clean:
 	find . -type d -name __pycache__ -exec rm -rf {} +

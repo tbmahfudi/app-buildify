@@ -133,12 +133,14 @@ restart_services() {
 # Function to run migrations
 run_migrations() {
     print_info "Running database migrations..."
-    
-    if ! docker compose -f "$COMPOSE_FULL_PATH" exec -T backend alembic upgrade head; then
+
+    # Use 'heads' (plural) instead of 'head' to upgrade all branches
+    # This handles multiple migration branches (PostgreSQL, MySQL, SQLite)
+    if ! docker compose -f "$COMPOSE_FULL_PATH" exec -T backend alembic upgrade heads; then
         print_error "Migration failed"
         exit 1
     fi
-    
+
     print_info "Migrations completed successfully"
 }
 
