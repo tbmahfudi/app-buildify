@@ -1,5 +1,7 @@
 # Quick Start Guide - Fix "tenants table does not exist"
 
+> **✅ Migration fix has been applied!** The issue with mixed database migrations has been resolved. The commands below should now work correctly.
+
 ## TL;DR - Fastest Solution
 
 ```bash
@@ -10,7 +12,7 @@
 That's it! This command will:
 1. Build Docker images
 2. Start all services (database, backend, frontend)
-3. **Run migrations** (creates tenants table and all other tables)
+3. **Run migrations** (creates tenants table and all other tables - PostgreSQL migrations only)
 4. Seed the database with test data
 
 ---
