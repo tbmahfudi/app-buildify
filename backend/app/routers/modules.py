@@ -213,7 +213,7 @@ async def get_module_manifest(
 async def install_module(
     request: ModuleInstallRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_superuser()),
+    current_user: User = Depends(require_superuser),
     registry: ModuleRegistryService = Depends(get_module_registry)
 ):
     """
@@ -246,7 +246,7 @@ async def install_module(
 async def uninstall_module(
     request: ModuleUninstallRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_superuser()),
+    current_user: User = Depends(require_superuser),
     registry: ModuleRegistryService = Depends(get_module_registry)
 ):
     """
@@ -418,7 +418,7 @@ async def update_module_configuration(
 
 @router.post("/sync", response_model=ModuleOperationResponse)
 async def sync_modules(
-    current_user: User = Depends(require_superuser()),
+    current_user: User = Depends(require_superuser),
     registry: ModuleRegistryService = Depends(get_module_registry)
 ):
     """
