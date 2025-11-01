@@ -5,7 +5,7 @@
  * Provides centralized access to module routes, menus, and widgets.
  */
 
-import { hasPermission } from '../rbac.js';
+import { hasPermission } from '../../rbac.js';
 
 class ModuleRegistry {
   constructor() {

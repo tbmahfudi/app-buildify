@@ -5,7 +5,7 @@
  * Modules are loaded only if they are enabled for the current tenant.
  */
 
-import { getAuthToken } from '../api.js';
+import { getAuthToken } from '../../api.js';
 
 class ModuleLoader {
   constructor() {

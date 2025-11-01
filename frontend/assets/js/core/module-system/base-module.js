@@ -5,7 +5,7 @@
  * Provides lifecycle management, route registration, and utility methods.
  */
 
-import { hasPermission } from '../rbac.js';
+import { hasPermission } from '../../rbac.js';
 
 export class BaseModule {
   /**
