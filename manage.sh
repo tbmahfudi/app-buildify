@@ -216,17 +216,15 @@ open_db_shell() {
 # Function to seed database
 seed_database() {
     print_info "Seeding database..."
-    
-    print_info "Seeding organizations..."
-    docker compose -f "$COMPOSE_FULL_PATH" exec -T backend python -m app.seeds.seed_org
-    
-    print_info "Seeding users..."
-    docker compose -f "$COMPOSE_FULL_PATH" exec -T backend python -m app.seeds.seed_users
-    
-    print_info "Seeding metadata..."
-    docker compose -f "$COMPOSE_FULL_PATH" exec -T backend python -m app.seeds.seed_metadata
-    
-    print_info "Database seeding completed successfully"
+
+    print_info "Seeding complete organizational data (tenants, companies, users, etc.)..."
+    if docker compose -f "$COMPOSE_FULL_PATH" exec -T backend python -m app.seeds.seed_complete_org; then
+        print_info "Database seeding completed successfully"
+    else
+        print_warning "Seeding failed or was skipped"
+        print_info "Note: You can manually seed data later with:"
+        print_info "  docker compose -f $COMPOSE_FULL_PATH exec backend python -m app.seeds.seed_complete_org"
+    fi
 }
 
 # Function to run tests
@@ -390,10 +388,13 @@ reset_database() {
 quick_seed_database() {
     print_info "Quick seeding database with minimal data..."
 
-    print_info "Seeding users..."
-    docker compose -f "$COMPOSE_FULL_PATH" exec -T backend python -m app.seeds.seed_users
-
-    print_info "Quick seed completed successfully"
+    print_info "Seeding complete organizational data..."
+    print_info "Note: Using seed_complete_org (no minimal seed available)"
+    if docker compose -f "$COMPOSE_FULL_PATH" exec -T backend python -m app.seeds.seed_complete_org; then
+        print_info "Quick seed completed successfully"
+    else
+        print_warning "Seeding failed or was skipped"
+    fi
 }
 
 # Function to setup complete environment
