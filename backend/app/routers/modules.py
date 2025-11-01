@@ -13,12 +13,11 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
 
-from core.db import get_db
-from core.dependencies import get_current_user, require_superuser
-from core.module_system.registry import ModuleRegistryService
-from models.user import User
-from models.module_registry import ModuleRegistry, TenantModule
-from schemas.module import (
+from app.core.dependencies import get_db, get_current_user, require_superuser
+from app.core.module_system.registry import ModuleRegistryService
+from app.models.user import User
+from app.models.module_registry import ModuleRegistry, TenantModule
+from app.schemas.module import (
     ModuleListItem,
     ModuleInfo,
     ModuleInstallRequest,
