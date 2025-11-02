@@ -95,6 +95,15 @@ export function can(permission) {
 }
 
 /**
+ * Alias for can() function - checks if user has a specific permission
+ * @param {string} permission - Permission string (e.g., "users:create")
+ * @returns {boolean} True if user has permission
+ */
+export function hasPermission(permission) {
+  return can(permission);
+}
+
+/**
  * Check if user can view a field based on metadata RBAC
  * @param {Object} fieldMeta - Field metadata with rbac_view array
  * @returns {boolean} True if user can view the field
@@ -272,6 +281,7 @@ export default {
   hasAnyRole,
   hasAllRoles,
   can,
+  hasPermission,
   canViewField,
   canEditField,
   belongsToTenant,

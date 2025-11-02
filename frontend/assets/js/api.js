@@ -122,5 +122,13 @@ function logout() {
   clearTokens();
 }
 
+/**
+ * Get the current access token
+ * @returns {string|null} The access token or null if not available
+ */
+function getAuthToken() {
+  return tokens.access;
+}
+
 loadTokens();
-export { apiFetch, login, logout, tokens, setTenant, tenantId, setApiBase };
+export { apiFetch, login, logout, tokens, setTenant, tenantId, setApiBase, getAuthToken };
