@@ -17,21 +17,18 @@ depends_on = None
 
 
 def upgrade():
-    # Add description field if it doesn't exist (might already exist from earlier migration)
-    # We'll catch the exception if it already exists
-    try:
-        op.add_column('departments', sa.Column('description', sa.Text(), nullable=True))
-    except Exception:
-        pass  # Column already exists
-
-    # Rename parent_id to parent_department_id if parent_id exists
-    # Otherwise add parent_department_id as a new column
+    # Check what columns exist before making changes
     from sqlalchemy import inspect
     from alembic import context
     conn = context.get_bind()
     inspector = inspect(conn)
     columns = [col['name'] for col in inspector.get_columns('departments')]
 
+    # Add description field if it doesn't exist
+    if 'description' not in columns:
+        op.add_column('departments', sa.Column('description', sa.Text(), nullable=True))
+
+    # Handle parent_id -> parent_department_id rename or add
     if 'parent_id' in columns and 'parent_department_id' not in columns:
         # Rename existing parent_id column
         op.alter_column('departments', 'parent_id', new_column_name='parent_department_id')
