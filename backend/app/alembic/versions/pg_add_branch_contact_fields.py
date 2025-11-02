@@ -11,7 +11,7 @@ from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision = 'pg_add_branch_fields'
-down_revision = 'pg_h2i3j4k5l6m7'
+down_revision = 'pg_m1n2o3p4q5r6'  # Updated to come after module system migration
 branch_labels = None
 depends_on = None
 
