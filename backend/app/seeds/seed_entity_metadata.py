@@ -11,7 +11,6 @@ The metadata defines table/grid configuration and form configuration for each en
 """
 
 import sys
-import uuid
 import json
 from pathlib import Path
 
@@ -26,7 +25,6 @@ from app.models.metadata import EntityMetadata
 def create_users_metadata(db: Session):
     """Create metadata for users entity"""
     metadata = EntityMetadata(
-        id=str(uuid.uuid4()),
         entity_name="users",
         display_name="Users",
         description="System users with roles and permissions",
@@ -81,7 +79,6 @@ def create_users_metadata(db: Session):
 def create_companies_metadata(db: Session):
     """Create metadata for companies entity"""
     metadata = EntityMetadata(
-        id=str(uuid.uuid4()),
         entity_name="companies",
         display_name="Companies",
         description="Organizations and companies in the system",
@@ -146,7 +143,6 @@ def create_companies_metadata(db: Session):
 def create_branches_metadata(db: Session):
     """Create metadata for branches entity"""
     metadata = EntityMetadata(
-        id=str(uuid.uuid4()),
         entity_name="branches",
         display_name="Branches",
         description="Company branches and locations",
@@ -222,7 +218,6 @@ def create_branches_metadata(db: Session):
 def create_departments_metadata(db: Session):
     """Create metadata for departments entity"""
     metadata = EntityMetadata(
-        id=str(uuid.uuid4()),
         entity_name="departments",
         display_name="Departments",
         description="Organizational departments",
