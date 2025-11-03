@@ -6,6 +6,7 @@
  */
 
 import { hasPermission } from '../../rbac.js';
+import { apiFetch } from '../../api.js';
 
 export class BaseModule {
   /**
@@ -298,11 +299,7 @@ export class BaseModule {
    */
   async getConfiguration() {
     try {
-      const response = await fetch(`/api/v1/modules/${this.name}/configuration`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      const response = await apiFetch(`/modules/${this.name}/configuration`);
 
       if (response.ok) {
         return await response.json();
