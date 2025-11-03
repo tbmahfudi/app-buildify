@@ -31,36 +31,27 @@ def create_users_metadata(db: Session):
         icon="bi-people-fill",
         table_config=json.dumps({
             "columns": [
-                {"field": "email", "label": "Email", "type": "text", "sortable": True, "searchable": True},
-                {"field": "full_name", "label": "Full Name", "type": "text", "sortable": True, "searchable": True},
-                {"field": "is_active", "label": "Status", "type": "badge", "sortable": True},
-                {"field": "created_at", "label": "Created", "type": "date", "sortable": True},
+                {"field": "email", "title": "Email", "sortable": True, "filterable": True},
+                {"field": "full_name", "title": "Full Name", "sortable": True, "filterable": True},
+                {"field": "is_active", "title": "Status", "sortable": True, "filterable": True},
+                {"field": "created_at", "title": "Created", "sortable": True, "filterable": True, "format": "date"},
             ],
             "default_sort": [["created_at", "desc"]],
             "page_size": 25,
-            "enable_search": True,
-            "enable_filters": True,
-            "enable_export": True,
+            "actions": ["view", "edit", "delete"],
+            "selectable": True,
+            "exportable": True,
         }),
         form_config=json.dumps({
-            "sections": [
-                {
-                    "title": "Basic Information",
-                    "fields": [
-                        {"name": "email", "label": "Email", "type": "email", "required": True},
-                        {"name": "full_name", "label": "Full Name", "type": "text", "required": True},
-                        {"name": "password", "label": "Password", "type": "password", "required": True, "create_only": True},
-                    ]
-                },
-                {
-                    "title": "Status",
-                    "fields": [
-                        {"name": "is_active", "label": "Active", "type": "checkbox", "default": True},
-                    ]
-                }
+            "fields": [
+                {"field": "email", "title": "Email", "type": "email", "required": True},
+                {"field": "full_name", "title": "Full Name", "type": "text", "required": True},
+                {"field": "password", "title": "Password", "type": "password", "required": True},
+                {"field": "is_active", "title": "Active", "type": "boolean", "default": True},
             ],
             "layout": "vertical",
-            "submit_label": "Save User",
+            "submit_button_text": "Save User",
+            "cancel_button_text": "Cancel",
         }),
         permissions=json.dumps({
             "create": "users:create",
@@ -85,46 +76,32 @@ def create_companies_metadata(db: Session):
         icon="bi-building",
         table_config=json.dumps({
             "columns": [
-                {"field": "name", "label": "Company Name", "type": "text", "sortable": True, "searchable": True},
-                {"field": "code", "label": "Code", "type": "text", "sortable": True, "searchable": True},
-                {"field": "industry", "label": "Industry", "type": "text", "sortable": True},
-                {"field": "is_active", "label": "Status", "type": "badge", "sortable": True},
-                {"field": "created_at", "label": "Created", "type": "date", "sortable": True},
+                {"field": "name", "title": "Company Name", "sortable": True, "filterable": True},
+                {"field": "code", "title": "Code", "sortable": True, "filterable": True},
+                {"field": "industry", "title": "Industry", "sortable": True, "filterable": True},
+                {"field": "is_active", "title": "Status", "sortable": True, "filterable": True},
+                {"field": "created_at", "title": "Created", "sortable": True, "filterable": True, "format": "date"},
             ],
             "default_sort": [["name", "asc"]],
             "page_size": 25,
-            "enable_search": True,
-            "enable_filters": True,
-            "enable_export": True,
+            "actions": ["view", "edit", "delete"],
+            "selectable": True,
+            "exportable": True,
         }),
         form_config=json.dumps({
-            "sections": [
-                {
-                    "title": "Basic Information",
-                    "fields": [
-                        {"name": "name", "label": "Company Name", "type": "text", "required": True},
-                        {"name": "code", "label": "Code", "type": "text", "required": True},
-                        {"name": "industry", "label": "Industry", "type": "text"},
-                        {"name": "description", "label": "Description", "type": "textarea"},
-                    ]
-                },
-                {
-                    "title": "Contact Information",
-                    "fields": [
-                        {"name": "email", "label": "Email", "type": "email"},
-                        {"name": "phone", "label": "Phone", "type": "tel"},
-                        {"name": "website", "label": "Website", "type": "url"},
-                    ]
-                },
-                {
-                    "title": "Status",
-                    "fields": [
-                        {"name": "is_active", "label": "Active", "type": "checkbox", "default": True},
-                    ]
-                }
+            "fields": [
+                {"field": "name", "title": "Company Name", "type": "text", "required": True},
+                {"field": "code", "title": "Code", "type": "text", "required": True},
+                {"field": "industry", "title": "Industry", "type": "text"},
+                {"field": "description", "title": "Description", "type": "text"},
+                {"field": "email", "title": "Email", "type": "email"},
+                {"field": "phone", "title": "Phone", "type": "text"},
+                {"field": "website", "title": "Website", "type": "text"},
+                {"field": "is_active", "title": "Active", "type": "boolean", "default": True},
             ],
             "layout": "vertical",
-            "submit_label": "Save Company",
+            "submit_button_text": "Save Company",
+            "cancel_button_text": "Cancel",
         }),
         permissions=json.dumps({
             "create": "companies:create",
@@ -149,57 +126,38 @@ def create_branches_metadata(db: Session):
         icon="bi-diagram-3",
         table_config=json.dumps({
             "columns": [
-                {"field": "name", "label": "Branch Name", "type": "text", "sortable": True, "searchable": True},
-                {"field": "code", "label": "Code", "type": "text", "sortable": True, "searchable": True},
-                {"field": "city", "label": "City", "type": "text", "sortable": True},
-                {"field": "is_headquarters", "label": "HQ", "type": "badge", "sortable": True},
-                {"field": "is_active", "label": "Status", "type": "badge", "sortable": True},
-                {"field": "created_at", "label": "Created", "type": "date", "sortable": True},
+                {"field": "name", "title": "Branch Name", "sortable": True, "filterable": True},
+                {"field": "code", "title": "Code", "sortable": True, "filterable": True},
+                {"field": "city", "title": "City", "sortable": True, "filterable": True},
+                {"field": "is_headquarters", "title": "HQ", "sortable": True, "filterable": True},
+                {"field": "is_active", "title": "Status", "sortable": True, "filterable": True},
+                {"field": "created_at", "title": "Created", "sortable": True, "filterable": True, "format": "date"},
             ],
             "default_sort": [["name", "asc"]],
             "page_size": 25,
-            "enable_search": True,
-            "enable_filters": True,
-            "enable_export": True,
+            "actions": ["view", "edit", "delete"],
+            "selectable": True,
+            "exportable": True,
         }),
         form_config=json.dumps({
-            "sections": [
-                {
-                    "title": "Basic Information",
-                    "fields": [
-                        {"name": "name", "label": "Branch Name", "type": "text", "required": True},
-                        {"name": "code", "label": "Code", "type": "text", "required": True},
-                        {"name": "description", "label": "Description", "type": "textarea"},
-                        {"name": "is_headquarters", "label": "Headquarters", "type": "checkbox", "default": False},
-                    ]
-                },
-                {
-                    "title": "Contact Information",
-                    "fields": [
-                        {"name": "email", "label": "Email", "type": "email"},
-                        {"name": "phone", "label": "Phone", "type": "tel"},
-                    ]
-                },
-                {
-                    "title": "Address",
-                    "fields": [
-                        {"name": "address_line1", "label": "Address Line 1", "type": "text"},
-                        {"name": "address_line2", "label": "Address Line 2", "type": "text"},
-                        {"name": "city", "label": "City", "type": "text"},
-                        {"name": "state", "label": "State/Province", "type": "text"},
-                        {"name": "postal_code", "label": "Postal Code", "type": "text"},
-                        {"name": "country", "label": "Country", "type": "text"},
-                    ]
-                },
-                {
-                    "title": "Status",
-                    "fields": [
-                        {"name": "is_active", "label": "Active", "type": "checkbox", "default": True},
-                    ]
-                }
+            "fields": [
+                {"field": "name", "title": "Branch Name", "type": "text", "required": True},
+                {"field": "code", "title": "Code", "type": "text", "required": True},
+                {"field": "description", "title": "Description", "type": "text"},
+                {"field": "is_headquarters", "title": "Headquarters", "type": "boolean", "default": False},
+                {"field": "email", "title": "Email", "type": "email"},
+                {"field": "phone", "title": "Phone", "type": "text"},
+                {"field": "address_line1", "title": "Address Line 1", "type": "text"},
+                {"field": "address_line2", "title": "Address Line 2", "type": "text"},
+                {"field": "city", "title": "City", "type": "text"},
+                {"field": "state", "title": "State/Province", "type": "text"},
+                {"field": "postal_code", "title": "Postal Code", "type": "text"},
+                {"field": "country", "title": "Country", "type": "text"},
+                {"field": "is_active", "title": "Active", "type": "boolean", "default": True},
             ],
             "layout": "vertical",
-            "submit_label": "Save Branch",
+            "submit_button_text": "Save Branch",
+            "cancel_button_text": "Cancel",
         }),
         permissions=json.dumps({
             "create": "branches:create",
@@ -224,37 +182,28 @@ def create_departments_metadata(db: Session):
         icon="bi-people",
         table_config=json.dumps({
             "columns": [
-                {"field": "name", "label": "Department Name", "type": "text", "sortable": True, "searchable": True},
-                {"field": "code", "label": "Code", "type": "text", "sortable": True, "searchable": True},
-                {"field": "description", "label": "Description", "type": "text"},
-                {"field": "is_active", "label": "Status", "type": "badge", "sortable": True},
-                {"field": "created_at", "label": "Created", "type": "date", "sortable": True},
+                {"field": "name", "title": "Department Name", "sortable": True, "filterable": True},
+                {"field": "code", "title": "Code", "sortable": True, "filterable": True},
+                {"field": "description", "title": "Description", "sortable": False, "filterable": True},
+                {"field": "is_active", "title": "Status", "sortable": True, "filterable": True},
+                {"field": "created_at", "title": "Created", "sortable": True, "filterable": True, "format": "date"},
             ],
             "default_sort": [["name", "asc"]],
             "page_size": 25,
-            "enable_search": True,
-            "enable_filters": True,
-            "enable_export": True,
+            "actions": ["view", "edit", "delete"],
+            "selectable": True,
+            "exportable": True,
         }),
         form_config=json.dumps({
-            "sections": [
-                {
-                    "title": "Basic Information",
-                    "fields": [
-                        {"name": "name", "label": "Department Name", "type": "text", "required": True},
-                        {"name": "code", "label": "Code", "type": "text", "required": True},
-                        {"name": "description", "label": "Description", "type": "textarea"},
-                    ]
-                },
-                {
-                    "title": "Status",
-                    "fields": [
-                        {"name": "is_active", "label": "Active", "type": "checkbox", "default": True},
-                    ]
-                }
+            "fields": [
+                {"field": "name", "title": "Department Name", "type": "text", "required": True},
+                {"field": "code", "title": "Code", "type": "text", "required": True},
+                {"field": "description", "title": "Description", "type": "text"},
+                {"field": "is_active", "title": "Active", "type": "boolean", "default": True},
             ],
             "layout": "vertical",
-            "submit_label": "Save Department",
+            "submit_button_text": "Save Department",
+            "cancel_button_text": "Cancel",
         }),
         permissions=json.dumps({
             "create": "departments:create",
