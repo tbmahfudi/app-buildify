@@ -5,7 +5,7 @@
  * Modules are loaded only if they are enabled for the current tenant.
  */
 
-import { getAuthToken } from '../../api.js';
+import { getAuthToken, apiFetch } from '../../api.js';
 
 class ModuleLoader {
   constructor() {
@@ -28,12 +28,7 @@ class ModuleLoader {
         return [];
       }
 
-      const response = await fetch('/api/v1/modules/enabled/names', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
+      const response = await apiFetch('/modules/enabled/names');
 
       if (!response.ok) {
         throw new Error(`Failed to fetch enabled modules: ${response.statusText}`);
