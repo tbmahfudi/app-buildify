@@ -6,6 +6,7 @@
  */
 
 import { hasPermission } from '../../rbac.js';
+import { apiFetch } from '../../api.js';
 
 export class BaseModule {
   /**
@@ -271,24 +272,13 @@ export class BaseModule {
    * @returns {Promise<Response>} Fetch response
    */
   async apiRequest(endpoint, options = {}) {
-    const apiPrefix = this.manifest.api?.prefix || `/api/v1/${this.name}`;
-    const url = `${apiPrefix}${endpoint}`;
+    // Module API prefix - defaults to /modules/{module-name}
+    // Use manifest.api.prefix if specified, otherwise default
+    const apiPrefix = this.manifest.api?.prefix || `/modules/${this.name}`;
+    const fullPath = `${apiPrefix}${endpoint}`;
 
-    // Add auth token if available
-    const token = localStorage.getItem('token');
-    const headers = {
-      'Content-Type': 'application/json',
-      ...(options.headers || {})
-    };
-
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
-
-    return await fetch(url, {
-      ...options,
-      headers
-    });
+    // Use apiFetch for consistent auth, token refresh, and backend URL handling
+    return await apiFetch(fullPath, options);
   }
 
   /**
@@ -298,11 +288,7 @@ export class BaseModule {
    */
   async getConfiguration() {
     try {
-      const response = await fetch(`/api/v1/modules/${this.name}/configuration`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      const response = await apiFetch(`/modules/${this.name}/configuration`);
 
       if (response.ok) {
         return await response.json();

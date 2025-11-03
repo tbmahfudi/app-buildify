@@ -4,7 +4,7 @@
  * UI for managing modules - viewing available modules, enabling/disabling for tenant.
  */
 
-import { getAuthToken } from './api.js';
+import { getAuthToken, apiFetch } from './api.js';
 import { hasPermission } from './rbac.js';
 
 export class ModuleManager {
@@ -136,11 +136,7 @@ export class ModuleManager {
     const list = document.getElementById('available-modules-list');
 
     try {
-      const response = await fetch('/api/v1/modules/available', {
-        headers: {
-          'Authorization': `Bearer ${getAuthToken()}`
-        }
-      });
+      const response = await apiFetch('/modules/available');
 
       if (!response.ok) {
         throw new Error('Failed to load modules');
@@ -231,11 +227,7 @@ export class ModuleManager {
     const list = document.getElementById('enabled-modules-list');
 
     try {
-      const response = await fetch('/api/v1/modules/enabled', {
-        headers: {
-          'Authorization': `Bearer ${getAuthToken()}`
-        }
-      });
+      const response = await apiFetch('/modules/enabled');
 
       if (!response.ok) {
         throw new Error('Failed to load enabled modules');
@@ -323,12 +315,8 @@ export class ModuleManager {
     if (!confirm(`Install module "${moduleName}"?`)) return;
 
     try {
-      const response = await fetch('/api/v1/modules/install', {
+      const response = await apiFetch('/modules/install', {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${getAuthToken()}`,
-          'Content-Type': 'application/json'
-        },
         body: JSON.stringify({ module_name: moduleName })
       });
 
@@ -352,12 +340,8 @@ export class ModuleManager {
     if (!confirm(`Uninstall module "${moduleName}"? This cannot be undone.`)) return;
 
     try {
-      const response = await fetch('/api/v1/modules/uninstall', {
+      const response = await apiFetch('/modules/uninstall', {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${getAuthToken()}`,
-          'Content-Type': 'application/json'
-        },
         body: JSON.stringify({ module_name: moduleName })
       });
 
@@ -379,12 +363,8 @@ export class ModuleManager {
    */
   async enableModule(moduleName) {
     try {
-      const response = await fetch('/api/v1/modules/enable', {
+      const response = await apiFetch('/modules/enable', {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${getAuthToken()}`,
-          'Content-Type': 'application/json'
-        },
         body: JSON.stringify({ module_name: moduleName })
       });
 
@@ -411,12 +391,8 @@ export class ModuleManager {
     if (!confirm(`Disable module "${moduleName}"?`)) return;
 
     try {
-      const response = await fetch('/api/v1/modules/disable', {
+      const response = await apiFetch('/modules/disable', {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${getAuthToken()}`,
-          'Content-Type': 'application/json'
-        },
         body: JSON.stringify({ module_name: moduleName })
       });
 
@@ -451,11 +427,8 @@ export class ModuleManager {
     if (!confirm('Sync modules from filesystem?')) return;
 
     try {
-      const response = await fetch('/api/v1/modules/sync', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${getAuthToken()}`
-        }
+      const response = await apiFetch('/modules/sync', {
+        method: 'POST'
       });
 
       const result = await response.json();
