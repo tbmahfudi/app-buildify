@@ -1,5 +1,5 @@
 const normalizeBase = (value) => {
-  if (!value) return '/api';
+  if (!value) return '/api/v1';
   return value.endsWith('/') ? value.replace(/\/+$/, '') : value;
 };
 
@@ -11,11 +11,11 @@ const deriveApiBase = () => {
 
     const { protocol, hostname } = window.location;
     if (hostname === 'localhost' || hostname === '127.0.0.1') {
-      return `${protocol}//${hostname}:8000/api`;
+      return `${protocol}//${hostname}:8000/api/v1`;
     }
   }
 
-  return '/api';
+  return '/api/v1';
 };
 
 let apiBase = deriveApiBase();
