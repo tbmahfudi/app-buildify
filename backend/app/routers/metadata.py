@@ -49,8 +49,9 @@ def get_entity_metadata(
     table_config = json.loads(metadata.table_config) if metadata.table_config else {}
     form_config = json.loads(metadata.form_config) if metadata.form_config else {}
     permissions = json.loads(metadata.permissions) if metadata.permissions else {}
-    
+
     return EntityMetadataResponse(
+        id=str(metadata.id),
         entity_name=metadata.entity_name,
         display_name=metadata.display_name,
         description=metadata.description,
@@ -59,7 +60,12 @@ def get_entity_metadata(
         form=FormConfig(**form_config),
         permissions=permissions,
         version=metadata.version,
-        is_active=metadata.is_active
+        is_active=metadata.is_active,
+        is_system=metadata.is_system,
+        created_at=metadata.created_at,
+        updated_at=metadata.updated_at,
+        created_by=str(metadata.created_by) if metadata.created_by else None,
+        updated_by=str(metadata.updated_by) if metadata.updated_by else None
     )
 
 @router.post("/entities", response_model=EntityMetadataResponse, status_code=status.HTTP_201_CREATED)
@@ -111,8 +117,9 @@ def create_entity_metadata(
         context_info={"entity_name": entity.entity_name},
         status="success"
     )
-    
+
     return EntityMetadataResponse(
+        id=str(metadata.id),
         entity_name=metadata.entity_name,
         display_name=metadata.display_name,
         description=metadata.description,
@@ -121,7 +128,12 @@ def create_entity_metadata(
         form=entity.form_config,
         permissions=entity.permissions or {},
         version=metadata.version,
-        is_active=metadata.is_active
+        is_active=metadata.is_active,
+        is_system=metadata.is_system,
+        created_at=metadata.created_at,
+        updated_at=metadata.updated_at,
+        created_by=str(metadata.created_by) if metadata.created_by else None,
+        updated_by=str(metadata.updated_by) if metadata.updated_by else None
     )
 
 @router.put("/entities/{entity_name}", response_model=EntityMetadataResponse)
@@ -178,8 +190,9 @@ def update_entity_metadata(
     table_config = json.loads(metadata.table_config) if metadata.table_config else {}
     form_config = json.loads(metadata.form_config) if metadata.form_config else {}
     permissions = json.loads(metadata.permissions) if metadata.permissions else {}
-    
+
     return EntityMetadataResponse(
+        id=str(metadata.id),
         entity_name=metadata.entity_name,
         display_name=metadata.display_name,
         description=metadata.description,
@@ -188,7 +201,12 @@ def update_entity_metadata(
         form=FormConfig(**form_config),
         permissions=permissions,
         version=metadata.version,
-        is_active=metadata.is_active
+        is_active=metadata.is_active,
+        is_system=metadata.is_system,
+        created_at=metadata.created_at,
+        updated_at=metadata.updated_at,
+        created_by=str(metadata.created_by) if metadata.created_by else None,
+        updated_by=str(metadata.updated_by) if metadata.updated_by else None
     )
 
 @router.delete("/entities/{entity_name}", status_code=status.HTTP_204_NO_CONTENT)
