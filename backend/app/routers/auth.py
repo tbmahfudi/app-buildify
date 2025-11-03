@@ -14,7 +14,7 @@ from app.schemas.auth import LoginRequest, TokenResponse, RefreshRequest, UserRe
 
 security = HTTPBearer()
 
-router = APIRouter(prefix="/api/auth", tags=["auth"])
+router = APIRouter(prefix="/auth", tags=["auth"])
 # Set up logger at the top of your file
 logger = logging.getLogger(__name__)
 
