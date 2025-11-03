@@ -288,24 +288,28 @@ def seed_entity_metadata():
         if "users" not in existing_names:
             print("  ✓ Creating users metadata")
             create_users_metadata(db)
+            db.flush()  # Force ID generation immediately
         else:
             print("  - Users metadata already exists")
 
         if "companies" not in existing_names:
             print("  ✓ Creating companies metadata")
             create_companies_metadata(db)
+            db.flush()  # Force ID generation immediately
         else:
             print("  - Companies metadata already exists")
 
         if "branches" not in existing_names:
             print("  ✓ Creating branches metadata")
             create_branches_metadata(db)
+            db.flush()  # Force ID generation immediately
         else:
             print("  - Branches metadata already exists")
 
         if "departments" not in existing_names:
             print("  ✓ Creating departments metadata")
             create_departments_metadata(db)
+            db.flush()  # Force ID generation immediately
         else:
             print("  - Departments metadata already exists")
 
