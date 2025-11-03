@@ -57,6 +57,7 @@ async function loadUsers() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        entity: 'users',
         page: currentPage,
         page_size: pageSize,
         sort: [['created_at', 'desc']]
@@ -398,6 +399,7 @@ async function applyFilters({ search = '', role = '', status = '' } = {}) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        entity: 'users',
         filters: filters.length > 0 ? filters : undefined,
         page: 1,
         page_size: pageSize,
