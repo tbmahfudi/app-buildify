@@ -19,7 +19,7 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent.parent))
 
 from sqlalchemy.orm import Session
-from app.core.database import SessionLocal
+from app.core.db import SessionLocal
 from app.models.metadata import EntityMetadata
 
 
