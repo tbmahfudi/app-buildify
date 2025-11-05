@@ -10,9 +10,9 @@ from datetime import datetime
 from pathlib import Path
 import logging
 
-from models.module_registry import ModuleRegistry, TenantModule
-from models.permission import Permission
-from models.tenant import Tenant
+from app.models.module_registry import ModuleRegistry, TenantModule
+from app.models.permission import Permission
+from app.models.tenant import Tenant
 from .base_module import BaseModule
 from .loader import ModuleLoader
 
