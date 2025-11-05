@@ -35,6 +35,12 @@
       "title": "Settings",
       "route": "settings",
       "icon": "ph ph-sliders"
+    },
+    {
+      "title": "Module Management",
+      "route": "modules",
+      "icon": "ph ph-package",
+      "permission": "modules:manage:tenant"
     }
   ]
 }
