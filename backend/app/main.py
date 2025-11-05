@@ -36,7 +36,7 @@ async def lifespan(app: FastAPI):
     try:
         logger.info("Initializing module system...")
         db = SessionLocal()
-        modules_path = Path(__file__).parent / "modules"
+        modules_path = Path(__file__).parent.parent / "modules"
         module_registry = ModuleRegistryService(db, modules_path)
 
         # Sync modules from filesystem
