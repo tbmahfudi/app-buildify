@@ -6,9 +6,9 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
 
-from core.db import get_db
-from core.dependencies import get_current_user, has_permission
-from models.user import User
+from app.core.db import get_db
+from app.core.dependencies import get_current_user, has_permission
+from app.models.user import User
 from ..models import FinancialAccount
 from ..schemas.account import AccountCreate, AccountUpdate, AccountResponse
 from ..permissions import FinancialPermissions

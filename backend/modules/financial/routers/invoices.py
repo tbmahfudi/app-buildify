@@ -7,9 +7,9 @@ from sqlalchemy.orm import Session
 from typing import List
 from datetime import datetime
 
-from core.db import get_db
-from core.dependencies import get_current_user, has_permission
-from models.user import User
+from app.core.db import get_db
+from app.core.dependencies import get_current_user, has_permission
+from app.models.user import User
 from ..models import FinancialInvoice, FinancialInvoiceLineItem
 from ..schemas.invoice import InvoiceCreate, InvoiceUpdate, InvoiceResponse
 from ..permissions import FinancialPermissions

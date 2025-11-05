@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import List, Dict, Any
 import logging
 
-from core.module_system.base_module import BaseModule
+from app.core.module_system.base_module import BaseModule
 from .routers import accounts_router, invoices_router
 from .permissions import FinancialPermissions
 from .models import (

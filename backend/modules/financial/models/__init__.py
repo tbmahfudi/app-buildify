@@ -10,7 +10,7 @@ Database models for financial management including:
 
 from sqlalchemy import Column, String, Boolean, DateTime, Numeric, Text, ForeignKey, Integer, func
 from sqlalchemy.orm import relationship
-from models.base import Base, GUID, generate_uuid
+from app.models.base import Base, GUID, generate_uuid
 
 
 class FinancialAccount(Base):
