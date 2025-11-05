@@ -71,7 +71,12 @@ export function can(permission) {
   // Superusers can do everything
   if (user.is_superuser) return true;
 
-  // For now, check roles
+  // Check if user has the specific permission in their permissions array
+  if (user.permissions && Array.isArray(user.permissions)) {
+    if (user.permissions.includes(permission)) return true;
+  }
+
+  // For now, check roles as fallback
   // In the future, this can be enhanced with fine-grained permissions
   const [resource, action] = permission.split(':');
 
