@@ -246,7 +246,7 @@ export function applyRBACToElements(container = document) {
 }
 
 /**
- * Filter menu items based on user roles
+ * Filter menu items based on user roles and permissions
  * @param {Array} menuItems - Array of menu item objects
  * @returns {Array} Filtered menu items
  */
@@ -255,13 +255,19 @@ export function filterMenuByRole(menuItems) {
   if (!user) return [];
 
   return menuItems.filter(item => {
-    // If no roles specified, show to all
-    if (!item.roles || !Array.isArray(item.roles) || item.roles.length === 0) {
-      return true;
+    // Check permission if specified
+    if (item.permission) {
+      const hasAccess = can(item.permission);
+      if (!hasAccess) return false;
     }
 
-    // Check if user has any of the required roles
-    return hasAnyRole(item.roles);
+    // Check roles if specified
+    if (item.roles && Array.isArray(item.roles) && item.roles.length > 0) {
+      return hasAnyRole(item.roles);
+    }
+
+    // If no roles or permission specified, show to all authenticated users
+    return true;
   }).map(item => {
     // Recursively filter submenu items
     if (item.submenu && Array.isArray(item.submenu)) {
