@@ -70,6 +70,9 @@ async function loadUsers() {
     users = data.items || [];
     totalUsers = data.total || users.length;
 
+    console.log('Users loaded:', users.length, 'Total:', totalUsers);
+    console.log('Sample user:', users[0]);
+
     renderUsers(users);
     updatePagination();
   } catch (err) {
@@ -87,7 +90,13 @@ function renderUsers(items) {
   const emptyState = document.getElementById('empty-state');
   const countEl = document.getElementById('user-count');
 
-  if (!tbody) return;
+  console.log('renderUsers called with', items.length, 'items');
+  console.log('tbody element:', tbody);
+
+  if (!tbody) {
+    console.error('tbody element not found!');
+    return;
+  }
 
   if (items.length === 0) {
     tbody.innerHTML = '';
@@ -167,6 +176,9 @@ function renderUsers(items) {
       </tr>
     `;
   }).join('');
+
+  console.log('Rendered HTML length:', tbody.innerHTML.length);
+  console.log('First row preview:', tbody.innerHTML.substring(0, 200));
 }
 
 function showModal(user = null) {
