@@ -84,12 +84,66 @@
             </button>
           </div>
 
-          <!-- Notifications (placeholder) -->
-          <button class="relative p-2 rounded-lg hover:bg-gray-700 transition"
-                  aria-label="Notifications">
-            <i class="bi bi-bell text-xl" aria-hidden="true"></i>
-            <span class="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" aria-label="You have unread notifications"></span>
-          </button>
+          <!-- Notifications Dropdown -->
+          <div class="relative group">
+            <button class="relative p-2 rounded-lg hover:bg-gray-700 transition"
+                    aria-label="Notifications"
+                    aria-haspopup="true"
+                    aria-expanded="false">
+              <i class="bi bi-bell text-xl" aria-hidden="true"></i>
+              <span class="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" aria-label="You have unread notifications"></span>
+            </button>
+
+            <!-- Notifications Dropdown Menu -->
+            <div class="absolute right-0 mt-2 w-80 bg-white text-gray-900 rounded-xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 overflow-hidden"
+                 role="menu"
+                 aria-label="Notifications menu">
+              <div class="p-3 border-b border-gray-100 flex items-center justify-between">
+                <h3 class="text-sm font-semibold">Notifications</h3>
+                <button class="text-xs text-blue-600 hover:text-blue-700">Mark all as read</button>
+              </div>
+
+              <div class="max-h-96 overflow-y-auto">
+                <!-- Sample notification -->
+                <a href="#" class="flex gap-3 px-4 py-3 hover:bg-gray-50 transition border-l-4 border-blue-500">
+                  <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                    <i class="bi bi-info-circle text-blue-600"></i>
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <p class="text-sm font-medium text-gray-900">System Update</p>
+                    <p class="text-xs text-gray-500 mt-1">Your system has been updated successfully</p>
+                    <p class="text-xs text-gray-400 mt-1">2 minutes ago</p>
+                  </div>
+                </a>
+
+                <a href="#" class="flex gap-3 px-4 py-3 hover:bg-gray-50 transition border-l-4 border-transparent">
+                  <div class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+                    <i class="bi bi-check-circle text-green-600"></i>
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <p class="text-sm font-medium text-gray-900">Task Completed</p>
+                    <p class="text-xs text-gray-500 mt-1">Data export has been completed</p>
+                    <p class="text-xs text-gray-400 mt-1">1 hour ago</p>
+                  </div>
+                </a>
+
+                <a href="#" class="flex gap-3 px-4 py-3 hover:bg-gray-50 transition border-l-4 border-transparent">
+                  <div class="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center flex-shrink-0">
+                    <i class="bi bi-exclamation-triangle text-yellow-600"></i>
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <p class="text-sm font-medium text-gray-900">Warning</p>
+                    <p class="text-xs text-gray-500 mt-1">Low disk space detected</p>
+                    <p class="text-xs text-gray-400 mt-1">3 hours ago</p>
+                  </div>
+                </a>
+              </div>
+
+              <div class="p-3 border-t border-gray-100 text-center">
+                <a href="#notifications" class="text-sm text-blue-600 hover:text-blue-700">View all notifications</a>
+              </div>
+            </div>
+          </div>
 
           <!-- User Dropdown -->
           <div class="relative group">
