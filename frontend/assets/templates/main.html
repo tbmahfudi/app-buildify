@@ -245,5 +245,58 @@
 
     initApp();
   </script>
+
+  <!-- Fix for dropdown menus - ensure they work with both CSS and JS -->
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // Get all dropdown containers
+      const dropdowns = document.querySelectorAll('.group');
+
+      dropdowns.forEach(dropdown => {
+        const button = dropdown.querySelector('button');
+        const menu = dropdown.querySelector('[role="menu"]');
+
+        if (button && menu) {
+          // Add click event as fallback
+          button.addEventListener('click', function(e) {
+            e.stopPropagation();
+
+            // Close other dropdowns
+            document.querySelectorAll('[role="menu"]').forEach(m => {
+              if (m !== menu) {
+                m.classList.add('opacity-0', 'invisible');
+                m.classList.remove('opacity-100', 'visible');
+              }
+            });
+
+            // Toggle current dropdown
+            menu.classList.toggle('opacity-0');
+            menu.classList.toggle('invisible');
+            menu.classList.toggle('opacity-100');
+            menu.classList.toggle('visible');
+          });
+
+          // Ensure hover works too
+          dropdown.addEventListener('mouseenter', function() {
+            menu.classList.remove('opacity-0', 'invisible');
+            menu.classList.add('opacity-100', 'visible');
+          });
+
+          dropdown.addEventListener('mouseleave', function() {
+            menu.classList.add('opacity-0', 'invisible');
+            menu.classList.remove('opacity-100', 'visible');
+          });
+        }
+      });
+
+      // Close dropdowns when clicking outside
+      document.addEventListener('click', function() {
+        document.querySelectorAll('[role="menu"]').forEach(menu => {
+          menu.classList.add('opacity-0', 'invisible');
+          menu.classList.remove('opacity-100', 'visible');
+        });
+      });
+    });
+  </script>
 </body>
 </html>
