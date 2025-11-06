@@ -1,17 +1,1 @@
 <div id="app-content"></div>
-
-<script type="module">
-  import { moduleManager } from '/assets/js/module-manager-enhanced.js';
-
-  // Listen for route loaded event
-  document.addEventListener('route:loaded', async (e) => {
-    if (e.detail.route === 'modules') {
-      await moduleManager.render();
-    }
-  });
-
-  // Initial render if already on this route
-  if (window.location.hash === '#modules') {
-    moduleManager.render();
-  }
-</script>
