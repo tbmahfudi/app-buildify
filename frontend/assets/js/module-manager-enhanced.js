@@ -440,6 +440,9 @@ export class ModuleManager {
     try {
       const response = await apiFetch('/modules/install', {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
         body: JSON.stringify({ module_name: moduleName })
       });
 
@@ -465,6 +468,9 @@ export class ModuleManager {
     try {
       const response = await apiFetch('/modules/uninstall', {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
         body: JSON.stringify({ module_name: moduleName })
       });
 
@@ -488,6 +494,9 @@ export class ModuleManager {
     try {
       const response = await apiFetch('/modules/enable', {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
         body: JSON.stringify({ module_name: moduleName })
       });
 
@@ -516,6 +525,9 @@ export class ModuleManager {
     try {
       const response = await apiFetch('/modules/disable', {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
         body: JSON.stringify({ module_name: moduleName })
       });
 
