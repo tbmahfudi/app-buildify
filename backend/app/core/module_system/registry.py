@@ -419,6 +419,20 @@ class ModuleRegistryService:
         permissions = module.get_permissions()
 
         for perm_data in permissions:
+            # Parse permission code to extract resource, action, and scope
+            # Format: module:resource:action:scope or resource:action:scope
+            code_parts = perm_data["code"].split(":")
+
+            if len(code_parts) == 4:
+                # Format: module:resource:action:scope (e.g., financial:accounts:read:company)
+                _, resource, action, scope = code_parts
+            elif len(code_parts) == 3:
+                # Format: resource:action:scope (e.g., users:create:tenant)
+                resource, action, scope = code_parts
+            else:
+                logger.warning(f"Invalid permission code format: {perm_data['code']}, skipping")
+                continue
+
             # Check if permission already exists
             existing = self.db.query(Permission).filter(
                 Permission.code == perm_data["code"]
@@ -429,6 +443,9 @@ class ModuleRegistryService:
                     code=perm_data["code"],
                     name=perm_data["name"],
                     description=perm_data.get("description"),
+                    resource=resource,
+                    action=action,
+                    scope=scope,
                     category=perm_data.get("category", "module"),
                     is_system=perm_data.get("is_system", False)
                 )
@@ -438,6 +455,9 @@ class ModuleRegistryService:
                 # Update existing permission if needed
                 existing.name = perm_data["name"]
                 existing.description = perm_data.get("description")
+                existing.resource = resource
+                existing.action = action
+                existing.scope = scope
                 existing.category = perm_data.get("category", "module")
 
         self.db.commit()
