@@ -9,12 +9,13 @@ Provides REST API for managing modules:
 - Update module configuration
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from typing import List
 
 from app.core.dependencies import get_db, get_current_user, require_superuser
 from app.core.module_system.registry import ModuleRegistryService
+from app.core.audit import create_audit_log
 from app.models.user import User
 from app.models.module_registry import ModuleRegistry, TenantModule
 from app.schemas.module import (
@@ -211,7 +212,8 @@ async def get_module_manifest(
 
 @router.post("/install", response_model=ModuleOperationResponse)
 async def install_module(
-    request: ModuleInstallRequest,
+    request_data: ModuleInstallRequest,
+    http_request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_superuser),
     registry: ModuleRegistryService = Depends(get_module_registry)
@@ -222,29 +224,52 @@ async def install_module(
     Requires superuser permissions.
 
     Args:
-        request: Module installation request
+        request_data: Module installation request
 
     Returns:
         Operation result
     """
-    success, error = registry.install_module(request.module_name, current_user.id)
+    success, error = registry.install_module(request_data.module_name, current_user.id)
 
     if not success:
+        # Audit failed installation
+        create_audit_log(
+            db=db,
+            action="module_install",
+            user=current_user,
+            entity_type="module",
+            entity_id=request_data.module_name,
+            request=http_request,
+            status="failure",
+            error_message=error
+        )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=error
         )
 
+    # Audit successful installation
+    create_audit_log(
+        db=db,
+        action="module_install",
+        user=current_user,
+        entity_type="module",
+        entity_id=request_data.module_name,
+        request=http_request,
+        status="success"
+    )
+
     return ModuleOperationResponse(
         success=True,
-        message=f"Module '{request.module_name}' installed successfully",
-        module_name=request.module_name
+        message=f"Module '{request_data.module_name}' installed successfully",
+        module_name=request_data.module_name
     )
 
 
 @router.post("/uninstall", response_model=ModuleOperationResponse)
 async def uninstall_module(
-    request: ModuleUninstallRequest,
+    request_data: ModuleUninstallRequest,
+    http_request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_superuser),
     registry: ModuleRegistryService = Depends(get_module_registry)
@@ -255,29 +280,52 @@ async def uninstall_module(
     Requires superuser permissions.
 
     Args:
-        request: Module uninstallation request
+        request_data: Module uninstallation request
 
     Returns:
         Operation result
     """
-    success, error = registry.uninstall_module(request.module_name)
+    success, error = registry.uninstall_module(request_data.module_name)
 
     if not success:
+        # Audit failed uninstallation
+        create_audit_log(
+            db=db,
+            action="module_uninstall",
+            user=current_user,
+            entity_type="module",
+            entity_id=request_data.module_name,
+            request=http_request,
+            status="failure",
+            error_message=error
+        )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=error
         )
 
+    # Audit successful uninstallation
+    create_audit_log(
+        db=db,
+        action="module_uninstall",
+        user=current_user,
+        entity_type="module",
+        entity_id=request_data.module_name,
+        request=http_request,
+        status="success"
+    )
+
     return ModuleOperationResponse(
         success=True,
-        message=f"Module '{request.module_name}' uninstalled successfully",
-        module_name=request.module_name
+        message=f"Module '{request_data.module_name}' uninstalled successfully",
+        module_name=request_data.module_name
     )
 
 
 @router.post("/enable", response_model=ModuleOperationResponse)
 async def enable_module(
-    request: ModuleEnableRequest,
+    request_data: ModuleEnableRequest,
+    http_request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
     registry: ModuleRegistryService = Depends(get_module_registry)
@@ -288,7 +336,7 @@ async def enable_module(
     User must have appropriate permissions for their tenant.
 
     Args:
-        request: Module enable request with optional configuration
+        request_data: Module enable request with optional configuration
 
     Returns:
         Operation result
@@ -297,28 +345,53 @@ async def enable_module(
     # For now, require superuser or tenant admin
 
     success, error = registry.enable_module_for_tenant(
-        request.module_name,
+        request_data.module_name,
         current_user.tenant_id,
         current_user.id,
-        request.configuration
+        request_data.configuration
     )
 
     if not success:
+        # Audit failed enable
+        create_audit_log(
+            db=db,
+            action="module_enable",
+            user=current_user,
+            entity_type="module",
+            entity_id=request_data.module_name,
+            context_info={"tenant_id": current_user.tenant_id},
+            request=http_request,
+            status="failure",
+            error_message=error
+        )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=error
         )
 
+    # Audit successful enable
+    create_audit_log(
+        db=db,
+        action="module_enable",
+        user=current_user,
+        entity_type="module",
+        entity_id=request_data.module_name,
+        context_info={"tenant_id": current_user.tenant_id},
+        request=http_request,
+        status="success"
+    )
+
     return ModuleOperationResponse(
         success=True,
-        message=f"Module '{request.module_name}' enabled for tenant",
-        module_name=request.module_name
+        message=f"Module '{request_data.module_name}' enabled for tenant",
+        module_name=request_data.module_name
     )
 
 
 @router.post("/disable", response_model=ModuleOperationResponse)
 async def disable_module(
-    request: ModuleDisableRequest,
+    request_data: ModuleDisableRequest,
+    http_request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
     registry: ModuleRegistryService = Depends(get_module_registry)
@@ -327,7 +400,7 @@ async def disable_module(
     Disable a module for current tenant.
 
     Args:
-        request: Module disable request
+        request_data: Module disable request
 
     Returns:
         Operation result
@@ -335,21 +408,45 @@ async def disable_module(
     # TODO: Add permission check
 
     success, error = registry.disable_module_for_tenant(
-        request.module_name,
+        request_data.module_name,
         current_user.tenant_id,
         current_user.id
     )
 
     if not success:
+        # Audit failed disable
+        create_audit_log(
+            db=db,
+            action="module_disable",
+            user=current_user,
+            entity_type="module",
+            entity_id=request_data.module_name,
+            context_info={"tenant_id": current_user.tenant_id},
+            request=http_request,
+            status="failure",
+            error_message=error
+        )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=error
         )
 
+    # Audit successful disable
+    create_audit_log(
+        db=db,
+        action="module_disable",
+        user=current_user,
+        entity_type="module",
+        entity_id=request_data.module_name,
+        context_info={"tenant_id": current_user.tenant_id},
+        request=http_request,
+        status="success"
+    )
+
     return ModuleOperationResponse(
         success=True,
-        message=f"Module '{request.module_name}' disabled for tenant",
-        module_name=request.module_name
+        message=f"Module '{request_data.module_name}' disabled for tenant",
+        module_name=request_data.module_name
     )
 
 
