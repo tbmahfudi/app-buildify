@@ -56,9 +56,25 @@ psycopg2.errors.UndefinedColumn: column audit_logs.company_id does not exist
 **Files Modified:**
 - `frontend/assets/js/audit-enhanced.js` - Changed `data.items` to `data.logs`
 
+### 5. Alembic Multiple Heads Error
+
+**Problem:** Running `alembic upgrade head` resulted in "multiple heads" error.
+
+**Root Cause:** The migration history had multiple branches that weren't merged:
+- `pg_add_audit_org_fields` (new audit columns)
+- `pg_fix_dept_constraint` (department constraints)
+- `pg_merge_heads` (earlier merge attempt)
+
+**Solution:** Created a merge migration `pg_merge_all_heads` that combines all three branches into a single head.
+
+**Files Created:**
+- `backend/app/alembic/versions/pg_merge_all_heads.py` - Merge migration
+
 ## How to Apply Database Migration
 
 You need to apply the database migration to add missing columns to the `audit_logs` table.
+
+**Important:** The "multiple heads" error has been fixed with the `pg_merge_all_heads` migration. Running `alembic upgrade head` will now work correctly.
 
 ### Option 1: Using Alembic (Recommended)
 
@@ -66,7 +82,7 @@ You need to apply the database migration to add missing columns to the `audit_lo
 # Enter the backend container
 docker exec -it app_buildify_backend bash
 
-# Run the migration
+# Run the migration (this will apply the merge and audit_logs changes)
 cd /app
 alembic upgrade head
 
