@@ -98,6 +98,48 @@ def list_audit_logs(
         has_prev=has_prev
     )
 
+def _get_audit_summary_impl(db: Session, current_user: User):
+    """Implementation for audit statistics summary"""
+    query = db.query(AuditLog)
+
+    # Filter by tenant for non-superusers
+    if not current_user.is_superuser and current_user.tenant_id:
+        query = query.filter(AuditLog.tenant_id == current_user.tenant_id)
+
+    total = query.count()
+    success = query.filter(AuditLog.status == "success").count()
+    failed = query.filter(AuditLog.status == "failure").count()
+
+    # Top actions
+    from sqlalchemy import func
+    top_actions = db.query(
+        AuditLog.action,
+        func.count(AuditLog.id).label('count')
+    ).group_by(AuditLog.action).order_by(func.count(AuditLog.id).desc()).limit(10).all()
+
+    return {
+        "total_logs": total,
+        "success_count": success,
+        "failed_count": failed,
+        "top_actions": [{"action": a[0], "count": a[1]} for a in top_actions]
+    }
+
+@router.get("/summary")
+def get_audit_summary_short(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(has_role("admin"))
+):
+    """Get audit statistics summary (short path)"""
+    return _get_audit_summary_impl(db, current_user)
+
+@router.get("/stats/summary")
+def get_audit_summary(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(has_role("admin"))
+):
+    """Get audit statistics summary"""
+    return _get_audit_summary_impl(db, current_user)
+
 @router.get("/{log_id}", response_model=AuditLogResponse)
 def get_audit_log(
     log_id: UUID,
@@ -106,15 +148,15 @@ def get_audit_log(
 ):
     """Get a specific audit log"""
     log = db.query(AuditLog).filter(AuditLog.id == str(log_id)).first()
-    
+
     if not log:
         raise HTTPException(status_code=404, detail="Audit log not found")
-    
+
     # Check permissions
     if not current_user.is_superuser:
         if current_user.tenant_id and log.tenant_id != current_user.tenant_id:
             raise HTTPException(status_code=403, detail="Access denied")
-    
+
     return AuditLogResponse(
         id=str(log.id),
         user_id=log.user_id,
@@ -130,34 +172,3 @@ def get_audit_log(
         error_message=log.error_message,
         created_at=log.created_at
     )
-
-@router.get("/stats/summary")
-def get_audit_summary(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(has_role("admin"))
-):
-    """Get audit statistics summary"""
-    
-    query = db.query(AuditLog)
-    
-    # Filter by tenant for non-superusers
-    if not current_user.is_superuser and current_user.tenant_id:
-        query = query.filter(AuditLog.tenant_id == current_user.tenant_id)
-    
-    total = query.count()
-    success = query.filter(AuditLog.status == "success").count()
-    failed = query.filter(AuditLog.status == "failure").count()
-    
-    # Top actions
-    from sqlalchemy import func
-    top_actions = db.query(
-        AuditLog.action,
-        func.count(AuditLog.id).label('count')
-    ).group_by(AuditLog.action).order_by(func.count(AuditLog.id).desc()).limit(10).all()
-    
-    return {
-        "total_logs": total,
-        "success_count": success,
-        "failed_count": failed,
-        "top_actions": [{"action": a[0], "count": a[1]} for a in top_actions]
-    }
