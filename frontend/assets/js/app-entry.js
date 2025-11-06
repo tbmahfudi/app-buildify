@@ -4,5 +4,6 @@ import './generic-entity-page.js';
 import './settings.js';
 import './audit-page.js';
 import './showcase.js';
+import './modules.js';
 
 initApp();
