@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from datetime import datetime
@@ -8,6 +8,7 @@ from sqlalchemy.orm.exc import StaleDataError
 from app.core.dependencies import get_db, get_current_user
 from app.core.auth import verify_password, create_access_token, create_refresh_token, decode_token
 from app.core.config import ACCESS_TOKEN_EXPIRE_MIN
+from app.core.audit import create_audit_log
 from app.models.user import User
 from app.models.token_blacklist import TokenBlacklist
 from app.schemas.auth import LoginRequest, TokenResponse, RefreshRequest, UserResponse
@@ -21,6 +22,7 @@ logger = logging.getLogger(__name__)
 @router.post("/login", response_model=TokenResponse)
 def login(
     credentials: LoginRequest,
+    request: Request,
     db: Session = Depends(get_db)
 ):
     """
@@ -30,12 +32,34 @@ def login(
     user = db.query(User).filter(User.email == credentials.email).first()
 
     if not user or not verify_password(credentials.password, user.hashed_password):
+        # Audit failed login attempt
+        create_audit_log(
+            db=db,
+            action="login",
+            user=None,
+            entity_type="user",
+            entity_id=credentials.email,
+            request=request,
+            status="failure",
+            error_message="Invalid credentials"
+        )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password"
         )
 
     if not user.is_active:
+        # Audit inactive user login attempt
+        create_audit_log(
+            db=db,
+            action="login",
+            user=user,
+            entity_type="user",
+            entity_id=str(user.id),
+            request=request,
+            status="failure",
+            error_message="User account is inactive"
+        )
         raise HTTPException(status_code=403, detail="Inactive user")
 
     # Get user permissions from RBAC system
@@ -77,6 +101,17 @@ def login(
     except Exception as e:
         logger.error(f"Unexpected error updating last_login for user {user.id}: {e}")
         db.rollback()
+
+    # Audit successful login
+    create_audit_log(
+        db=db,
+        action="login",
+        user=user,
+        entity_type="user",
+        entity_id=str(user.id),
+        request=request,
+        status="success"
+    )
 
     return TokenResponse(
         access_token=access_token,
@@ -142,6 +177,7 @@ def get_me(current_user: User = Depends(get_current_user)):
 
 @router.post("/logout")
 def logout(
+    request: Request,
     credentials: HTTPAuthorizationCredentials = Depends(security),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -176,6 +212,17 @@ def logout(
 
     db.add(blacklist_entry)
     db.commit()
+
+    # Audit successful logout
+    create_audit_log(
+        db=db,
+        action="logout",
+        user=current_user,
+        entity_type="user",
+        entity_id=str(current_user.id),
+        request=request,
+        status="success"
+    )
 
     logger.info(f"User {current_user.id} logged out successfully")
     return {"message": "Successfully logged out"}

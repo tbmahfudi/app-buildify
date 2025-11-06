@@ -18,7 +18,7 @@ export class ModuleManager {
    * Render the module manager page
    */
   async render() {
-    const container = document.getElementById('app-content');
+    const container = document.getElementById('content');
     if (!container) return;
 
     // Check permissions
