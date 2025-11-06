@@ -93,7 +93,8 @@ class FinancialModule(BaseModule):
 
         # Check if database connection is available
         try:
-            db_session.execute("SELECT 1")
+            from sqlalchemy import text
+            db_session.execute(text("SELECT 1"))
             return True, None
         except Exception as e:
             return False, f"Database connection failed: {str(e)}"
