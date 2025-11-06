@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import and_
 from typing import List
+from uuid import UUID
 import json
 
 from app.core.dependencies import get_db, get_current_user, has_role
@@ -83,21 +84,28 @@ def list_audit_logs(
         }
         result_logs.append(AuditLogResponse(**log_dict))
     
+    # Calculate pagination flags
+    has_next = (request.page * request.page_size) < total
+    has_prev = request.page > 1
+
     return AuditLogListResponse(
         logs=result_logs,
         total=total,
+        filtered=total,
         page=request.page,
-        page_size=request.page_size
+        page_size=request.page_size,
+        has_next=has_next,
+        has_prev=has_prev
     )
 
 @router.get("/{log_id}", response_model=AuditLogResponse)
 def get_audit_log(
-    log_id: str,
+    log_id: UUID,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """Get a specific audit log"""
-    log = db.query(AuditLog).filter(AuditLog.id == log_id).first()
+    log = db.query(AuditLog).filter(AuditLog.id == str(log_id)).first()
     
     if not log:
         raise HTTPException(status_code=404, detail="Audit log not found")
