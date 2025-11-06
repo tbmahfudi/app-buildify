@@ -450,6 +450,7 @@ class ModuleRegistryService:
                     is_system=perm_data.get("is_system", False)
                 )
                 self.db.add(perm)
+                self.db.flush()  # Flush to get the ID assigned
                 logger.info(f"Registered permission: {perm_data['code']}")
             else:
                 # Update existing permission if needed
