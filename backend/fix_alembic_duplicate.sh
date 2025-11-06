@@ -21,8 +21,8 @@ echo "Step 4: Verifying the fix..."
 docker exec app_buildify_postgresql psql -U appuser -d appdb -c "SELECT * FROM alembic_version;"
 
 echo ""
-echo "Step 5: Now try upgrading to apply audit_logs changes..."
-docker exec app_buildify_backend bash -c "cd /app && alembic upgrade head"
+echo "Step 5: Now try upgrading to apply audit_logs changes (PostgreSQL only)..."
+docker exec app_buildify_backend bash -c "cd /app && alembic upgrade pg_merge_all_heads"
 
 echo ""
 echo "=== Fix Complete ==="
