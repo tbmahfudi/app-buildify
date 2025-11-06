@@ -69,12 +69,12 @@ def list_audit_logs(
     for log in logs:
         log_dict = {
             "id": str(log.id),
-            "user_id": log.user_id,
+            "user_id": str(log.user_id) if log.user_id else None,
             "user_email": log.user_email,
-            "tenant_id": log.tenant_id,
+            "tenant_id": str(log.tenant_id) if log.tenant_id else None,
             "action": log.action,
             "entity_type": log.entity_type,
-            "entity_id": log.entity_id,
+            "entity_id": str(log.entity_id) if log.entity_id else None,
             "changes": json.loads(log.changes) if log.changes else None,
             "context_info": json.loads(log.context_info) if log.context_info else None,
             "ip_address": log.ip_address,
@@ -159,12 +159,12 @@ def get_audit_log(
 
     return AuditLogResponse(
         id=str(log.id),
-        user_id=log.user_id,
+        user_id=str(log.user_id) if log.user_id else None,
         user_email=log.user_email,
-        tenant_id=log.tenant_id,
+        tenant_id=str(log.tenant_id) if log.tenant_id else None,
         action=log.action,
         entity_type=log.entity_type,
-        entity_id=log.entity_id,
+        entity_id=str(log.entity_id) if log.entity_id else None,
         changes=json.loads(log.changes) if log.changes else None,
         context_info=json.loads(log.context_info) if log.context_info else None,
         ip_address=log.ip_address,
