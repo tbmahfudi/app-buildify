@@ -67,7 +67,7 @@ async function loadUsers() {
     if (!res.ok) throw new Error('Failed to load users');
 
     const data = await res.json();
-    users = data.items || [];
+    users = data.rows || [];
     totalUsers = data.total || users.length;
 
     console.log('Users loaded:', users.length, 'Total:', totalUsers);
@@ -422,7 +422,7 @@ async function applyFilters({ search = '', role = '', status = '' } = {}) {
     if (!res.ok) throw new Error('Failed to filter users');
 
     const data = await res.json();
-    users = data.items || [];
+    users = data.rows || [];
     totalUsers = data.total || users.length;
     currentPage = 1;
 

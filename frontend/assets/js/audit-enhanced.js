@@ -58,7 +58,7 @@ async function loadAuditEvents() {
     if (!res.ok) throw new Error('Failed to load audit events');
 
     const data = await res.json();
-    auditEvents = data.items || [];
+    auditEvents = data.logs || [];
     totalEvents = data.total || auditEvents.length;
 
     renderAuditEvents(auditEvents);
