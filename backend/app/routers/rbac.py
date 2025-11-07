@@ -9,8 +9,7 @@ from sqlalchemy import or_, and_, func
 from typing import List, Optional
 from uuid import UUID
 
-from app.core.db import get_db
-from app.core.dependencies import get_current_user, has_permission
+from app.core.dependencies import get_db, get_current_user, has_permission
 from app.models.user import User
 from app.models.role import Role
 from app.models.permission import Permission
