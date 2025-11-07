@@ -5,5 +5,6 @@ import './settings.js';
 import './audit-page.js';
 import './showcase.js';
 import './modules.js';
+import './rbac-page.js';
 
 initApp();
