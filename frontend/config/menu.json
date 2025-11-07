@@ -27,6 +27,12 @@
       "roles": ["admin"]
     },
     {
+      "title": "RBAC Management",
+      "route": "rbac",
+      "icon": "ph ph-shield-check",
+      "roles": ["admin"]
+    },
+    {
       "title": "Audit Trail",
       "route": "audit",
       "icon": "ph ph-activity"

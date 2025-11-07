@@ -9,7 +9,7 @@ from app.core.logging_config import setup_logging, get_logger
 from app.core.exceptions import register_exception_handlers
 from app.core.rate_limiter import setup_rate_limiting
 from app.core.db import SessionLocal
-from app.routers import org, auth, metadata, data, audit, settings, modules
+from app.routers import org, auth, metadata, data, audit, settings, modules, rbac
 from app.core.module_system.registry import ModuleRegistryService
 from pathlib import Path
 
@@ -119,7 +119,7 @@ async def module_access_middleware(request: Request, call_next):
             potential_module = path_parts[3]
 
             # Skip core endpoints
-            core_endpoints = ["auth", "org", "metadata", "data", "audit", "settings", "modules", "health", "healthz", "system"]
+            core_endpoints = ["auth", "org", "metadata", "data", "audit", "settings", "modules", "rbac", "health", "healthz", "system"]
             if potential_module not in core_endpoints:
                 # This might be a module endpoint
                 # Check if module exists and is enabled
@@ -152,6 +152,7 @@ app.include_router(data.router, prefix="/api/v1")
 app.include_router(audit.router, prefix="/api/v1")
 app.include_router(settings.router, prefix="/api/v1")
 app.include_router(modules.router, prefix="/api/v1")
+app.include_router(rbac.router, prefix="/api/v1")
 
 # Also maintain backward compatibility with old endpoints (deprecated)
 app.include_router(auth.router, tags=["deprecated"])
