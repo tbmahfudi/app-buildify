@@ -241,10 +241,10 @@ async function loadDashboard() {
   try {
     // Load all data for statistics
     const [rolesRes, permissionsRes, groupsRes, usersRes] = await Promise.all([
-      apiFetch('/api/v1/rbac/roles?limit=1000'),
-      apiFetch('/api/v1/rbac/permissions?limit=1000'),
-      apiFetch('/api/v1/rbac/groups?limit=1000'),
-      apiFetch('/api/v1/org/users?limit=1000')
+      apiFetch('/rbac/roles?limit=1000'),
+      apiFetch('/rbac/permissions?limit=1000'),
+      apiFetch('/rbac/groups?limit=1000'),
+      apiFetch('/org/users?limit=1000')
     ]);
 
     console.log('API responses received:', { rolesRes, permissionsRes, groupsRes, usersRes });
@@ -333,7 +333,7 @@ function renderBarChart(elementId, data, color) {
  */
 async function loadOrganizationStructure() {
   try {
-    const response = await apiFetch('/api/v1/rbac/organization-structure');
+    const response = await apiFetch('/rbac/organization-structure');
     const data = await response.json();
 
     state.orgStructure = data;
@@ -426,7 +426,7 @@ async function loadRoles() {
     if (state.filters.roles.type) params.append('role_type', state.filters.roles.type);
     if (state.filters.roles.status) params.append('is_active', state.filters.roles.status === 'active');
 
-    const response = await apiFetch(`/api/v1/rbac/roles?${params}`);
+    const response = await apiFetch(`/rbac/roles?${params}`);
     const data = await response.json();
 
     state.roles = data.items || [];
@@ -504,7 +504,7 @@ async function loadRoles() {
  */
 async function loadPermissionCategories() {
   try {
-    const response = await apiFetch('/api/v1/rbac/permission-categories');
+    const response = await apiFetch('/rbac/permission-categories');
     const data = await response.json();
 
     const select = document.getElementById('permissions-category-filter');
@@ -535,7 +535,7 @@ async function loadPermissions() {
     if (state.filters.permissions.category) params.append('category', state.filters.permissions.category);
     if (state.filters.permissions.status) params.append('is_active', state.filters.permissions.status === 'active');
 
-    const response = await apiFetch(`/api/v1/rbac/permissions?${params}`);
+    const response = await apiFetch(`/rbac/permissions?${params}`);
     const data = await response.json();
 
     state.permissions = data.items || [];
@@ -613,7 +613,7 @@ async function loadGroups() {
     if (state.filters.groups.type) params.append('group_type', state.filters.groups.type);
     if (state.filters.groups.status) params.append('is_active', state.filters.groups.status === 'active');
 
-    const response = await apiFetch(`/api/v1/rbac/groups?${params}`);
+    const response = await apiFetch(`/rbac/groups?${params}`);
     const data = await response.json();
 
     state.groups = data.items || [];
@@ -685,7 +685,7 @@ async function loadGroups() {
  */
 async function loadUsersForAccess() {
   try {
-    const response = await apiFetch('/api/v1/org/users?limit=1000');
+    const response = await apiFetch('/org/users?limit=1000');
     const data = await response.json();
 
     state.users = data.items || [];
@@ -712,8 +712,8 @@ async function loadUserAccess(userId) {
     showLoading();
 
     const [rolesRes, permissionsRes] = await Promise.all([
-      apiFetch(`/api/v1/rbac/users/${userId}/roles`),
-      apiFetch(`/api/v1/rbac/users/${userId}/permissions`)
+      apiFetch(`/rbac/users/${userId}/roles`),
+      apiFetch(`/rbac/users/${userId}/permissions`)
     ]);
 
     const rolesData = await rolesRes.json();
@@ -806,7 +806,7 @@ async function viewRoleDetails(roleId) {
   try {
     showLoading();
 
-    const response = await apiFetch(`/api/v1/rbac/roles/${roleId}`);
+    const response = await apiFetch(`/rbac/roles/${roleId}`);
     const role = await response.json();
 
     const modal = document.getElementById('role-modal');
@@ -902,7 +902,7 @@ async function viewPermissionDetails(permissionId) {
   try {
     showLoading();
 
-    const response = await apiFetch(`/api/v1/rbac/permissions/${permissionId}`);
+    const response = await apiFetch(`/rbac/permissions/${permissionId}`);
     const perm = await response.json();
 
     const modal = document.getElementById('permission-modal');
@@ -971,7 +971,7 @@ async function viewGroupDetails(groupId) {
   try {
     showLoading();
 
-    const response = await apiFetch(`/api/v1/rbac/groups/${groupId}`);
+    const response = await apiFetch(`/rbac/groups/${groupId}`);
     const group = await response.json();
 
     const modal = document.getElementById('group-modal');
@@ -1071,7 +1071,7 @@ async function removeUserRole(userId, roleId) {
   try {
     showLoading();
 
-    const response = await apiFetch(`/api/v1/rbac/users/${userId}/roles/${roleId}`, {
+    const response = await apiFetch(`/rbac/users/${userId}/roles/${roleId}`, {
       method: 'DELETE'
     });
 
