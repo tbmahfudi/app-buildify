@@ -2,13 +2,15 @@ import { apiFetch } from './api.js';
 
 document.addEventListener('route:loaded', (event) => {
   if (event.detail.route === 'settings') {
-    initSettingsPage();
+    // Use setTimeout to ensure DOM is fully ready after innerHTML update
+    setTimeout(() => initSettingsPage(), 0);
   }
 });
 
 async function initSettingsPage() {
   const userForm = document.getElementById('user-settings-form');
   if (!userForm) {
+    console.error('Settings: user-settings-form element not found');
     return;
   }
 
@@ -20,8 +22,10 @@ async function initSettingsPage() {
     setupLivePreview();
     userForm.addEventListener('submit', handleUserFormSubmit);
     userForm.dataset.initialized = 'true';
+    console.log('Settings: Form initialized and event listener attached');
   } else {
     updatePreview();
+    console.log('Settings: Form already initialized, updated preview only');
   }
 
   const currentUser = parseUser(localStorage.getItem('user'));
@@ -69,6 +73,7 @@ async function loadUserSettings() {
 
 async function handleUserFormSubmit(event) {
   event.preventDefault();
+  console.log('Settings: Form submit event triggered');
 
   const payload = {
     theme: getSelectValue('setting-theme'),
@@ -76,6 +81,8 @@ async function handleUserFormSubmit(event) {
     language: getSelectValue('setting-language'),
     timezone: getSelectValue('setting-timezone'),
   };
+
+  console.log('Settings: Saving user settings with payload:', payload);
 
   try {
     const response = await apiFetch('/settings/user', {
@@ -85,14 +92,16 @@ async function handleUserFormSubmit(event) {
     });
 
     if (response.ok) {
+      console.log('Settings: User settings saved successfully');
       showAlert('Settings saved successfully!', 'success');
       applyTheme(payload.theme);
     } else {
       const error = await safeJson(response);
+      console.error('Settings: Failed to save user settings. Response:', response.status, error);
       showAlert((error && error.detail) || 'Failed to save settings.', 'danger');
     }
   } catch (error) {
-    console.error('Failed to save user settings:', error);
+    console.error('Settings: Exception while saving user settings:', error);
     showAlert('Failed to save settings. Please try again.', 'danger');
   }
 }
@@ -114,6 +123,7 @@ async function loadTenantSettings() {
 
 async function handleTenantFormSubmit(event) {
   event.preventDefault();
+  console.log('Settings: Tenant form submit event triggered');
 
   const payload = {
     tenant_name: getInputValue('tenant-name'),
@@ -121,6 +131,8 @@ async function handleTenantFormSubmit(event) {
     secondary_color: getInputValue('tenant-secondary-color'),
     logo_url: getInputValue('tenant-logo-url'),
   };
+
+  console.log('Settings: Saving tenant settings with payload:', payload);
 
   try {
     const response = await apiFetch('/settings/tenant', {
@@ -130,14 +142,16 @@ async function handleTenantFormSubmit(event) {
     });
 
     if (response.ok) {
+      console.log('Settings: Tenant settings saved successfully');
       showAlert('Tenant settings saved successfully!', 'success');
       applyBranding(payload);
     } else {
       const error = await safeJson(response);
+      console.error('Settings: Failed to save tenant settings. Response:', response.status, error);
       showAlert((error && error.detail) || 'Failed to save tenant settings.', 'danger');
     }
   } catch (error) {
-    console.error('Failed to save tenant settings:', error);
+    console.error('Settings: Exception while saving tenant settings:', error);
     showAlert('Failed to save tenant settings. Please try again.', 'danger');
   }
 }
