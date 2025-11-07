@@ -505,12 +505,16 @@ def list_users(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """List all users in the current tenant"""
+    """List all users - superusers see all, regular users see their tenant"""
     query = db.query(User)
 
-    # Filter by tenant unless superuser
+    # Filter by tenant for non-superusers
     if not current_user.is_superuser:
-        query = query.filter(User.tenant_id == current_user.tenant_id)
+        if current_user.tenant_id:
+            query = query.filter(User.tenant_id == current_user.tenant_id)
+        else:
+            # Non-superuser without tenant - return empty
+            return {"items": [], "total": 0}
 
     total = query.count()
     items = query.offset(skip).limit(limit).all()

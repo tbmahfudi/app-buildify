@@ -341,6 +341,18 @@ async function loadOrganizationStructure() {
     const container = document.getElementById('org-structure-tree');
     if (!container) return;
 
+    // Handle case where no tenant exists
+    if (!data.tenant) {
+      container.innerHTML = `
+        <div class="text-center p-8 bg-gray-50 rounded-lg">
+          <i class="ph ph-buildings text-5xl text-gray-400 mb-3"></i>
+          <p class="text-gray-600 font-medium">No tenant data available</p>
+          <p class="text-gray-500 text-sm mt-2">Please create a tenant or assign one to your account.</p>
+        </div>
+      `;
+      return;
+    }
+
     let html = `
       <div class="border-l-4 border-blue-500 pl-4">
         <div class="flex items-center gap-3 mb-4">
