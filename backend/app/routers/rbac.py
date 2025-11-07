@@ -17,7 +17,7 @@ from app.models.group import Group
 from app.models.rbac_junctions import UserRole, RolePermission, GroupRole, UserGroup
 from app.models.tenant import Tenant
 from app.models.company import Company
-from app.core.audit import audit_log
+from app.core.audit import create_audit_log
 
 router = APIRouter(prefix="/rbac", tags=["RBAC Management"])
 
@@ -321,12 +321,12 @@ async def assign_permissions_to_role(
 
     db.commit()
 
-    audit_log(
+    create_audit_log(
         db,
         action="assign_permissions_to_role",
         entity_type="Role",
         entity_id=role_id,
-        user_id=current_user.id,
+        user=current_user,
         changes={
             "role_code": role.code,
             "permissions_added": added
@@ -362,12 +362,12 @@ async def remove_permission_from_role(
     db.delete(role_perm)
     db.commit()
 
-    audit_log(
+    create_audit_log(
         db,
         action="remove_permission_from_role",
         entity_type="Role",
         entity_id=role_id,
-        user_id=current_user.id,
+        user=current_user,
         changes={
             "role_code": role.code,
             "permission_id": str(permission_id)
@@ -559,12 +559,12 @@ async def add_members_to_group(
 
     db.commit()
 
-    audit_log(
+    create_audit_log(
         db,
         action="add_members_to_group",
         entity_type="Group",
         entity_id=group_id,
-        user_id=current_user.id,
+        user=current_user,
         changes={
             "group_name": group.name,
             "members_added": added
@@ -593,12 +593,12 @@ async def remove_member_from_group(
     db.delete(user_group)
     db.commit()
 
-    audit_log(
+    create_audit_log(
         db,
         action="remove_member_from_group",
         entity_type="Group",
         entity_id=group_id,
-        user_id=current_user.id,
+        user=current_user,
         changes={
             "removed_user_id": str(user_id)
         }
@@ -644,12 +644,12 @@ async def assign_roles_to_group(
 
     db.commit()
 
-    audit_log(
+    create_audit_log(
         db,
         action="assign_roles_to_group",
         entity_type="Group",
         entity_id=group_id,
-        user_id=current_user.id,
+        user=current_user,
         changes={
             "group_name": group.name,
             "roles_added": added
@@ -678,12 +678,12 @@ async def remove_role_from_group(
     db.delete(group_role)
     db.commit()
 
-    audit_log(
+    create_audit_log(
         db,
         action="remove_role_from_group",
         entity_type="Group",
         entity_id=group_id,
-        user_id=current_user.id,
+        user=current_user,
         changes={
             "role_id": str(role_id)
         }
@@ -827,12 +827,12 @@ async def assign_roles_to_user(
 
     db.commit()
 
-    audit_log(
+    create_audit_log(
         db,
         action="assign_roles_to_user",
         entity_type="User",
         entity_id=user_id,
-        user_id=current_user.id,
+        user=current_user,
         changes={
             "user_email": user.email,
             "roles_added": added
@@ -861,12 +861,12 @@ async def remove_role_from_user(
     db.delete(user_role)
     db.commit()
 
-    audit_log(
+    create_audit_log(
         db,
         action="remove_role_from_user",
         entity_type="User",
         entity_id=user_id,
-        user_id=current_user.id,
+        user=current_user,
         changes={
             "role_id": str(role_id)
         }
