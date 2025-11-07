@@ -47,13 +47,16 @@ def get_user_settings(
             preferences = json.loads(settings.preferences)
         except:
             preferences = None
-    
+
     return UserSettingsResponse(
+        id=str(settings.id),
+        user_id=settings.user_id,
         theme=settings.theme,
         language=settings.language,
         timezone=settings.timezone,
         density=settings.density,
         preferences=preferences,
+        created_at=settings.created_at,
         updated_at=settings.updated_at
     )
 
@@ -112,13 +115,16 @@ def update_user_settings(
             preferences = json.loads(settings.preferences)
         except:
             preferences = None
-    
+
     return UserSettingsResponse(
+        id=str(settings.id),
+        user_id=settings.user_id,
         theme=settings.theme,
         language=settings.language,
         timezone=settings.timezone,
         density=settings.density,
         preferences=preferences,
+        created_at=settings.created_at,
         updated_at=settings.updated_at
     )
 
@@ -160,8 +166,9 @@ def get_tenant_settings(
     theme_config = json.loads(settings.theme_config) if settings.theme_config else None
     enabled_features = json.loads(settings.enabled_features) if settings.enabled_features else None
     tenant_settings = json.loads(settings.settings) if settings.settings else None
-    
+
     return TenantSettingsResponse(
+        id=str(settings.id),
         tenant_id=settings.tenant_id,
         tenant_name=settings.tenant_name,
         logo_url=settings.logo_url,
@@ -170,7 +177,9 @@ def get_tenant_settings(
         theme_config=theme_config,
         enabled_features=enabled_features,
         settings=tenant_settings,
-        updated_at=settings.updated_at
+        created_at=settings.created_at,
+        updated_at=settings.updated_at,
+        updated_by=settings.updated_by
     )
 
 @router.put("/tenant", response_model=TenantSettingsResponse)
@@ -248,8 +257,9 @@ def update_tenant_settings(
     theme_config = json.loads(settings.theme_config) if settings.theme_config else None
     enabled_features = json.loads(settings.enabled_features) if settings.enabled_features else None
     tenant_settings = json.loads(settings.settings) if settings.settings else None
-    
+
     return TenantSettingsResponse(
+        id=str(settings.id),
         tenant_id=settings.tenant_id,
         tenant_name=settings.tenant_name,
         logo_url=settings.logo_url,
@@ -258,5 +268,7 @@ def update_tenant_settings(
         theme_config=theme_config,
         enabled_features=enabled_features,
         settings=tenant_settings,
-        updated_at=settings.updated_at
+        created_at=settings.created_at,
+        updated_at=settings.updated_at,
+        updated_by=settings.updated_by
     )
