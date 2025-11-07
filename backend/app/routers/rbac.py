@@ -17,6 +17,8 @@ from app.models.group import Group
 from app.models.rbac_junctions import UserRole, RolePermission, GroupRole, UserGroup
 from app.models.tenant import Tenant
 from app.models.company import Company
+from app.models.branch import Branch
+from app.models.department import Department
 from app.core.audit import create_audit_log
 
 router = APIRouter(prefix="/rbac", tags=["RBAC Management"])
@@ -916,6 +918,12 @@ async def get_organization_structure(
     # Get companies
     companies = db.query(Company).filter(Company.tenant_id == query_tenant_id).all()
 
+    # Get branches
+    branches = db.query(Branch).filter(Branch.tenant_id == query_tenant_id).all()
+
+    # Get departments
+    departments = db.query(Department).filter(Department.tenant_id == query_tenant_id).all()
+
     # Get groups
     groups = db.query(Group).filter(Group.tenant_id == query_tenant_id).all()
 
@@ -930,20 +938,59 @@ async def get_organization_structure(
         )
     ).all()
 
+    # Build company hierarchy with branches and departments
+    company_hierarchy = []
+    for c in companies:
+        # Get branches for this company
+        company_branches = [b for b in branches if str(b.company_id) == str(c.id)]
+
+        branches_data = []
+        for b in company_branches:
+            # Get departments for this branch
+            branch_departments = [d for d in departments if str(d.branch_id) == str(b.id)]
+
+            branches_data.append({
+                "id": str(b.id),
+                "name": b.name,
+                "code": b.code,
+                "is_active": b.is_active,
+                "departments": [
+                    {
+                        "id": str(d.id),
+                        "name": d.name,
+                        "code": d.code,
+                        "is_active": d.is_active
+                    }
+                    for d in branch_departments
+                ]
+            })
+
+        # Get departments without branches (company-level departments)
+        company_departments = [d for d in departments if d.branch_id is None and str(d.company_id) == str(c.id)]
+
+        company_hierarchy.append({
+            "id": str(c.id),
+            "name": c.name,
+            "is_active": c.is_active,
+            "branches": branches_data,
+            "departments": [
+                {
+                    "id": str(d.id),
+                    "name": d.name,
+                    "code": d.code,
+                    "is_active": d.is_active
+                }
+                for d in company_departments
+            ]
+        })
+
     return {
         "tenant": {
             "id": str(tenant.id),
             "name": tenant.name,
             "is_active": tenant.is_active
         },
-        "companies": [
-            {
-                "id": str(c.id),
-                "name": c.name,
-                "is_active": c.is_active
-            }
-            for c in companies
-        ],
+        "companies": company_hierarchy,
         "groups": [
             {
                 "id": str(g.id),
