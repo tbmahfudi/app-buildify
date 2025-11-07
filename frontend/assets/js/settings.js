@@ -1,11 +1,49 @@
 import { apiFetch } from './api.js';
 
+// Initialize settings on app load
+document.addEventListener('DOMContentLoaded', () => {
+  initGlobalSettings();
+});
+
+// Also listen for route changes to settings page
 document.addEventListener('route:loaded', (event) => {
   if (event.detail.route === 'settings') {
     // Use setTimeout to ensure DOM is fully ready after innerHTML update
     setTimeout(() => initSettingsPage(), 0);
   }
 });
+
+/**
+ * Load and apply user settings globally on app initialization
+ */
+async function initGlobalSettings() {
+  try {
+    const response = await apiFetch('/settings/user');
+    if (response.ok) {
+      const settings = await response.json();
+
+      // Apply settings to the entire site
+      applyAllSettings({
+        theme: settings.theme,
+        density: settings.density,
+        language: settings.language,
+        timezone: settings.timezone
+      });
+
+      console.log('Settings: Global settings initialized');
+    }
+  } catch (error) {
+    console.warn('Settings: Could not load global settings, using defaults', error);
+
+    // Apply default settings if loading fails
+    applyAllSettings({
+      theme: 'light',
+      density: 'normal',
+      language: 'en',
+      timezone: 'UTC'
+    });
+  }
+}
 
 async function initSettingsPage() {
   const userForm = document.getElementById('user-settings-form');
@@ -59,6 +97,14 @@ async function loadUserSettings() {
 
     updatePreview();
 
+    // Apply loaded settings to the site
+    applyAllSettings({
+      theme: settings.theme,
+      density: settings.density,
+      language: settings.language,
+      timezone: settings.timezone
+    });
+
     if (settings.updated_at) {
       const lastUpdated = document.getElementById('settings-last-updated');
       if (lastUpdated) {
@@ -94,7 +140,12 @@ async function handleUserFormSubmit(event) {
     if (response.ok) {
       console.log('Settings: User settings saved successfully');
       showAlert('Settings saved successfully!', 'success');
-      applyTheme(payload.theme);
+
+      // Apply all settings to the site immediately
+      applyAllSettings(payload);
+
+      // Store settings in localStorage for persistence
+      localStorage.setItem('userSettings', JSON.stringify(payload));
     } else {
       const error = await safeJson(response);
       console.error('Settings: Failed to save user settings. Response:', response.status, error);
@@ -185,6 +236,62 @@ function applyTheme(theme) {
     document.documentElement.removeAttribute('data-theme');
     document.body.classList.remove('bg-gray-900', 'text-white');
   }
+}
+
+function applyDensity(density) {
+  // Remove existing density classes
+  document.body.classList.remove('density-comfortable', 'density-normal', 'density-compact');
+
+  // Apply new density class
+  if (density === 'comfortable') {
+    document.body.classList.add('density-comfortable');
+    document.documentElement.style.setProperty('--spacing-scale', '1.25');
+  } else if (density === 'compact') {
+    document.body.classList.add('density-compact');
+    document.documentElement.style.setProperty('--spacing-scale', '0.75');
+  } else {
+    document.body.classList.add('density-normal');
+    document.documentElement.style.setProperty('--spacing-scale', '1');
+  }
+}
+
+function applyLanguage(language) {
+  // Set HTML lang attribute
+  document.documentElement.lang = language;
+
+  // Store for future i18n implementation
+  localStorage.setItem('preferredLanguage', language);
+
+  console.log(`Settings: Language set to ${language}`);
+}
+
+function applyTimezone(timezone) {
+  // Store timezone for date formatting throughout the app
+  localStorage.setItem('userTimezone', timezone);
+
+  console.log(`Settings: Timezone set to ${timezone}`);
+}
+
+function applyAllSettings(settings) {
+  console.log('Settings: Applying all settings to the site', settings);
+
+  if (settings.theme) {
+    applyTheme(settings.theme);
+  }
+
+  if (settings.density) {
+    applyDensity(settings.density);
+  }
+
+  if (settings.language) {
+    applyLanguage(settings.language);
+  }
+
+  if (settings.timezone) {
+    applyTimezone(settings.timezone);
+  }
+
+  console.log('Settings: All settings applied successfully');
 }
 
 function applyBranding(settings) {
