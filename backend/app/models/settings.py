@@ -9,8 +9,8 @@ class UserSettings(Base):
     # Primary key
     id = Column(GUID, primary_key=True, default=generate_uuid)
 
-    # Foreign key
-    user_id = Column(GUID, nullable=False, index=True)
+    # Foreign key (stored as string to match database schema)
+    user_id = Column(String(36), nullable=False, index=True)
 
     # Settings (JSON)
     theme = Column(String(20), default="light")  # light, dark
@@ -40,8 +40,8 @@ class TenantSettings(Base):
     # Primary key
     id = Column(GUID, primary_key=True, default=generate_uuid)
 
-    # Foreign key
-    tenant_id = Column(GUID, nullable=False, unique=True, index=True)
+    # Foreign key (stored as string to match database schema)
+    tenant_id = Column(String(36), nullable=False, unique=True, index=True)
 
     # Branding
     tenant_name = Column(String(255), nullable=True)
@@ -61,7 +61,7 @@ class TenantSettings(Base):
     # Audit
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, onupdate=func.now())
-    updated_by = Column(GUID, nullable=True)
+    updated_by = Column(String(36), nullable=True)
 
     def __repr__(self):
         return f"<TenantSettings(tenant_id={self.tenant_id}, tenant_name={self.tenant_name})>"
