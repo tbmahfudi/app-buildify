@@ -14,6 +14,7 @@ from app.schemas.org import (
     BranchCreate, BranchUpdate, BranchResponse, BranchListResponse,
     DepartmentCreate, DepartmentUpdate, DepartmentResponse, DepartmentListResponse
 )
+from app.schemas.auth import UserResponse
 
 router = APIRouter(prefix="/org", tags=["org"])
 
@@ -493,3 +494,43 @@ def delete_department(
     )
 
     return None
+
+
+# ============= USERS =============
+
+@router.get("/users")
+def list_users(
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """List all users - superusers see all, regular users see their tenant"""
+    query = db.query(User)
+
+    # Filter by tenant for non-superusers
+    if not current_user.is_superuser:
+        if current_user.tenant_id:
+            query = query.filter(User.tenant_id == current_user.tenant_id)
+        else:
+            # Non-superuser without tenant - return empty
+            return {"items": [], "total": 0}
+
+    total = query.count()
+    items = query.offset(skip).limit(limit).all()
+
+    return {
+        "items": [
+            {
+                "id": str(u.id),
+                "email": u.email,
+                "full_name": u.full_name,
+                "is_active": u.is_active,
+                "is_superuser": u.is_superuser,
+                "tenant_id": str(u.tenant_id) if u.tenant_id else None,
+                "created_at": u.created_at.isoformat() if u.created_at else None
+            }
+            for u in items
+        ],
+        "total": total
+    }

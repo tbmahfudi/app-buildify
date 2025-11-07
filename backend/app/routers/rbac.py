@@ -889,10 +889,29 @@ async def get_organization_structure(
     # Determine which tenant to query
     query_tenant_id = tenant_id if current_user.is_superuser and tenant_id else current_user.tenant_id
 
+    # If superuser has no tenant and no tenant specified, get first available tenant
+    if not query_tenant_id and current_user.is_superuser:
+        first_tenant = db.query(Tenant).first()
+        if first_tenant:
+            query_tenant_id = first_tenant.id
+        else:
+            # No tenants exist at all
+            return {
+                "tenant": None,
+                "companies": [],
+                "groups": [],
+                "users": [],
+                "roles": []
+            }
+
+    # Check if user has a tenant
+    if not query_tenant_id:
+        raise HTTPException(status_code=400, detail="User has no tenant assigned")
+
     # Get tenant
     tenant = db.query(Tenant).filter(Tenant.id == query_tenant_id).first()
     if not tenant:
-        raise HTTPException(status_code=404, detail="Tenant not found")
+        raise HTTPException(status_code=404, detail=f"Tenant not found: {query_tenant_id}")
 
     # Get companies
     companies = db.query(Company).filter(Company.tenant_id == query_tenant_id).all()
