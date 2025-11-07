@@ -31,9 +31,21 @@ const state = {
  * Initialize RBAC Manager
  */
 export async function initRBACManager() {
-  setupTabNavigation();
-  setupEventListeners();
-  await loadDashboard();
+  console.log('Setting up RBAC Manager...');
+
+  try {
+    setupTabNavigation();
+    console.log('Tab navigation setup complete');
+
+    setupEventListeners();
+    console.log('Event listeners setup complete');
+
+    await loadDashboard();
+    console.log('Dashboard loaded');
+  } catch (error) {
+    console.error('Error during RBAC Manager initialization:', error);
+    throw error;
+  }
 }
 
 /**
@@ -225,6 +237,7 @@ async function loadTabData(tabId) {
  * Load dashboard statistics
  */
 async function loadDashboard() {
+  console.log('Loading dashboard...');
   try {
     // Load all data for statistics
     const [rolesRes, permissionsRes, groupsRes, usersRes] = await Promise.all([
@@ -234,16 +247,33 @@ async function loadDashboard() {
       apiFetch('/api/v1/org/users?limit=1000')
     ]);
 
+    console.log('API responses received:', { rolesRes, permissionsRes, groupsRes, usersRes });
+
+    // Check if responses are OK
+    if (!rolesRes.ok) throw new Error(`Roles API error: ${rolesRes.status}`);
+    if (!permissionsRes.ok) throw new Error(`Permissions API error: ${permissionsRes.status}`);
+    if (!groupsRes.ok) throw new Error(`Groups API error: ${groupsRes.status}`);
+    if (!usersRes.ok) throw new Error(`Users API error: ${usersRes.status}`);
+
     const rolesData = await rolesRes.json();
     const permissionsData = await permissionsRes.json();
     const groupsData = await groupsRes.json();
     const usersData = await usersRes.json();
 
+    console.log('Dashboard data loaded:', { rolesData, permissionsData, groupsData, usersData });
+
     // Update stat cards
-    document.getElementById('stat-roles').textContent = rolesData.total || rolesData.items?.length || 0;
-    document.getElementById('stat-permissions').textContent = permissionsData.total || permissionsData.items?.length || 0;
-    document.getElementById('stat-groups').textContent = groupsData.total || groupsData.items?.length || 0;
-    document.getElementById('stat-users').textContent = usersData.total || usersData.items?.length || 0;
+    const statRoles = document.getElementById('stat-roles');
+    const statPermissions = document.getElementById('stat-permissions');
+    const statGroups = document.getElementById('stat-groups');
+    const statUsers = document.getElementById('stat-users');
+
+    if (statRoles) statRoles.textContent = rolesData.total || rolesData.items?.length || 0;
+    if (statPermissions) statPermissions.textContent = permissionsData.total || permissionsData.items?.length || 0;
+    if (statGroups) statGroups.textContent = groupsData.total || groupsData.items?.length || 0;
+    if (statUsers) statUsers.textContent = usersData.total || usersData.items?.length || 0;
+
+    console.log('Stat cards updated');
 
     // Count roles by type
     const rolesByType = {};
