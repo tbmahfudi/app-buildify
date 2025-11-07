@@ -377,21 +377,67 @@ async function loadOrganizationStructure() {
           </div>
         </div>
 
-        <!-- Companies -->
+        <!-- Companies with Branches and Departments -->
         ${data.companies?.length > 0 ? `
-          <div class="ml-6 border-l-4 border-green-500 pl-4 mb-4">
+          <div class="ml-6 space-y-4">
             <div class="font-semibold text-gray-700 mb-2">
               <i class="ph ph-building mr-2"></i>Companies (${data.companies.length})
             </div>
-            <div class="space-y-2">
-              ${data.companies.map(company => `
-                <div class="flex items-center gap-2 text-sm">
-                  <i class="ph ph-dot text-green-500"></i>
+            ${data.companies.map(company => `
+              <div class="border-l-4 border-green-500 pl-4">
+                <div class="flex items-center gap-2 text-sm font-medium mb-2">
+                  <i class="ph-fill ph-building text-green-600"></i>
                   ${company.name}
                   ${!company.is_active ? '<span class="text-xs text-red-500">(Inactive)</span>' : ''}
                 </div>
-              `).join('')}
-            </div>
+
+                <!-- Company-level Departments -->
+                ${company.departments?.length > 0 ? `
+                  <div class="ml-4 mb-3">
+                    <div class="text-xs text-gray-500 mb-1">Company Departments:</div>
+                    ${company.departments.map(dept => `
+                      <div class="flex items-center gap-2 text-xs ml-2">
+                        <i class="ph ph-identification-card text-amber-500"></i>
+                        ${dept.name} <span class="text-gray-400">(${dept.code})</span>
+                        ${!dept.is_active ? '<span class="text-red-500">(Inactive)</span>' : ''}
+                      </div>
+                    `).join('')}
+                  </div>
+                ` : ''}
+
+                <!-- Branches -->
+                ${company.branches?.length > 0 ? `
+                  <div class="ml-4 space-y-3">
+                    ${company.branches.map(branch => `
+                      <div class="border-l-4 border-teal-400 pl-3 py-1">
+                        <div class="flex items-center gap-2 text-xs font-medium mb-1">
+                          <i class="ph-fill ph-tree-structure text-teal-600"></i>
+                          ${branch.name} <span class="text-gray-400">(${branch.code})</span>
+                          ${!branch.is_active ? '<span class="text-red-500">(Inactive)</span>' : ''}
+                        </div>
+
+                        <!-- Branch Departments -->
+                        ${branch.departments?.length > 0 ? `
+                          <div class="ml-4 mt-1">
+                            ${branch.departments.map(dept => `
+                              <div class="flex items-center gap-2 text-xs ml-2">
+                                <i class="ph ph-identification-card text-amber-500"></i>
+                                ${dept.name} <span class="text-gray-400">(${dept.code})</span>
+                                ${!dept.is_active ? '<span class="text-red-500">(Inactive)</span>' : ''}
+                              </div>
+                            `).join('')}
+                          </div>
+                        ` : ''}
+                      </div>
+                    `).join('')}
+                  </div>
+                ` : ''}
+
+                ${company.branches?.length === 0 && company.departments?.length === 0 ? `
+                  <div class="text-xs text-gray-400 ml-4">No branches or departments</div>
+                ` : ''}
+              </div>
+            `).join('')}
           </div>
         ` : ''}
 
