@@ -2,6 +2,227 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================
+   CSS CUSTOM PROPERTIES (VARIABLES)
+   ============================================ */
+
+:root {
+  /* Light Theme Colors (Default) */
+  --color-primary: #2563eb;
+  --color-primary-hover: #1d4ed8;
+  --color-secondary: #6c757d;
+
+  --color-bg-main: #f8fafc;
+  --color-bg-sidebar: rgba(15, 23, 42, 0.82);
+  --color-bg-header: rgba(15, 23, 42, 0.65);
+  --color-bg-content: rgba(15, 23, 42, 0.2);
+  --color-bg-card: #ffffff;
+  --color-bg-card-hover: #f1f5f9;
+
+  --color-text-primary: #0f172a;
+  --color-text-secondary: #64748b;
+  --color-text-tertiary: #94a3b8;
+  --color-text-inverse: #ffffff;
+
+  --color-border: rgba(148, 163, 184, 0.2);
+  --color-border-light: rgba(148, 163, 184, 0.1);
+
+  /* Spacing Scale (for density modes) */
+  --spacing-scale: 1;
+
+  /* Computed spacing values */
+  --spacing-xs: calc(0.25rem * var(--spacing-scale));
+  --spacing-sm: calc(0.5rem * var(--spacing-scale));
+  --spacing-md: calc(0.75rem * var(--spacing-scale));
+  --spacing-lg: calc(1rem * var(--spacing-scale));
+  --spacing-xl: calc(1.5rem * var(--spacing-scale));
+  --spacing-2xl: calc(2rem * var(--spacing-scale));
+
+  /* Border radius scale */
+  --radius-sm: calc(0.5rem * var(--spacing-scale));
+  --radius-md: calc(0.75rem * var(--spacing-scale));
+  --radius-lg: calc(1rem * var(--spacing-scale));
+
+  /* Font sizes scale */
+  --font-scale: 1;
+  --font-xs: calc(0.75rem * var(--font-scale));
+  --font-sm: calc(0.875rem * var(--font-scale));
+  --font-base: calc(1rem * var(--font-scale));
+  --font-lg: calc(1.125rem * var(--font-scale));
+  --font-xl: calc(1.25rem * var(--font-scale));
+}
+
+/* ============================================
+   DARK THEME
+   ============================================ */
+
+[data-theme="dark"] {
+  /* Dark Theme Colors */
+  --color-bg-main: #0f172a;
+  --color-bg-sidebar: rgba(15, 23, 42, 0.95);
+  --color-bg-header: rgba(15, 23, 42, 0.85);
+  --color-bg-content: rgba(15, 23, 42, 0.4);
+  --color-bg-card: #1e293b;
+  --color-bg-card-hover: #334155;
+
+  --color-text-primary: #f1f5f9;
+  --color-text-secondary: #cbd5e1;
+  --color-text-tertiary: #94a3b8;
+  --color-text-inverse: #0f172a;
+
+  --color-border: rgba(148, 163, 184, 0.15);
+  --color-border-light: rgba(148, 163, 184, 0.08);
+}
+
+/* Dark theme body and main elements */
+[data-theme="dark"] body {
+  background: linear-gradient(135deg, #0f172a, #1e293b);
+  color: var(--color-text-primary);
+}
+
+[data-theme="dark"] .app-shell {
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.98), rgba(30, 41, 59, 0.95));
+}
+
+[data-theme="dark"] .app-content {
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.3), rgba(30, 41, 59, 0.4));
+}
+
+/* Dark theme cards and components */
+[data-theme="dark"] .bg-white {
+  background-color: var(--color-bg-card) !important;
+}
+
+[data-theme="dark"] .text-gray-900 {
+  color: var(--color-text-primary) !important;
+}
+
+[data-theme="dark"] .text-gray-700 {
+  color: var(--color-text-secondary) !important;
+}
+
+[data-theme="dark"] .text-gray-600 {
+  color: var(--color-text-tertiary) !important;
+}
+
+[data-theme="dark"] .border-gray-200,
+[data-theme="dark"] .border-gray-300 {
+  border-color: var(--color-border) !important;
+}
+
+/* Dark theme form inputs */
+[data-theme="dark"] input,
+[data-theme="dark"] select,
+[data-theme="dark"] textarea {
+  background-color: rgba(15, 23, 42, 0.5) !important;
+  border-color: var(--color-border) !important;
+  color: var(--color-text-primary) !important;
+}
+
+[data-theme="dark"] input:focus,
+[data-theme="dark"] select:focus,
+[data-theme="dark"] textarea:focus {
+  border-color: var(--color-primary) !important;
+  background-color: rgba(15, 23, 42, 0.7) !important;
+}
+
+/* Dark theme buttons */
+[data-theme="dark"] button:not(.bg-blue-600):not(.bg-red-600):not(.bg-green-600) {
+  background-color: rgba(148, 163, 184, 0.1);
+  color: var(--color-text-primary);
+}
+
+/* ============================================
+   DENSITY MODES
+   ============================================ */
+
+/* Comfortable Mode (1.25x spacing) */
+body.density-comfortable {
+  --spacing-scale: 1.25;
+  --font-scale: 1.1;
+}
+
+body.density-comfortable .app-sidebar {
+  width: 320px;
+}
+
+body.density-comfortable .app-header {
+  padding: calc(1.5rem * 1.25) calc(2rem * 1.25);
+}
+
+body.density-comfortable .app-content {
+  padding: calc(1.75rem * 1.25);
+}
+
+body.density-comfortable .nav-link {
+  padding: calc(0.75rem * 1.25);
+  margin-bottom: calc(0.25rem * 1.25);
+}
+
+body.density-comfortable .nav-icon {
+  width: calc(40px * 1.15);
+  height: calc(40px * 1.15);
+  font-size: calc(1.15rem * 1.15);
+}
+
+body.density-comfortable .sidebar-inner {
+  padding: calc(1.5rem * 1.25) calc(1.25rem * 1.25);
+}
+
+/* Normal Mode (1x spacing - default) */
+body.density-normal {
+  --spacing-scale: 1;
+  --font-scale: 1;
+}
+
+/* Compact Mode (0.75x spacing) */
+body.density-compact {
+  --spacing-scale: 0.75;
+  --font-scale: 0.95;
+}
+
+body.density-compact .app-sidebar {
+  width: 240px;
+}
+
+body.density-compact .app-header {
+  padding: calc(1.5rem * 0.75) calc(2rem * 0.75);
+}
+
+body.density-compact .app-content {
+  padding: calc(1.75rem * 0.75);
+}
+
+body.density-compact .nav-link {
+  padding: calc(0.75rem * 0.75);
+  margin-bottom: calc(0.15rem);
+}
+
+body.density-compact .nav-icon {
+  width: calc(40px * 0.85);
+  height: calc(40px * 0.85);
+  font-size: calc(1.15rem * 0.85);
+}
+
+body.density-compact .sidebar-inner {
+  padding: calc(1.5rem * 0.75) calc(1.25rem * 0.75);
+}
+
+body.density-compact .brand-logo {
+  width: calc(44px * 0.85);
+  height: calc(44px * 0.85);
+  font-size: calc(1.1rem * 0.85);
+}
+
+body.density-compact .header-logo {
+  width: calc(46px * 0.85);
+  height: calc(46px * 0.85);
+}
+
+/* ============================================
+   EXISTING STYLES
+   ============================================ */
+
 body {
   min-height: 100vh;
   font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -458,4 +679,159 @@ body.sidebar-collapsed .nav-link:focus::after {
 
 .audit-changes details summary::-webkit-details-marker {
   display: none;
+}
+
+/* ============================================
+   THEME & DENSITY UTILITY CLASSES
+   ============================================ */
+
+/* Smooth transitions for theme changes */
+body,
+.app-shell,
+.app-sidebar,
+.app-header,
+.app-content,
+.bg-white,
+input,
+select,
+textarea,
+button {
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+
+/* Typography with density-aware sizing */
+.text-responsive-sm {
+  font-size: var(--font-sm);
+}
+
+.text-responsive-base {
+  font-size: var(--font-base);
+}
+
+.text-responsive-lg {
+  font-size: var(--font-lg);
+}
+
+.text-responsive-xl {
+  font-size: var(--font-xl);
+}
+
+/* Spacing utilities with density support */
+.spacing-responsive {
+  padding: var(--spacing-lg);
+}
+
+.spacing-responsive-x {
+  padding-left: var(--spacing-lg);
+  padding-right: var(--spacing-lg);
+}
+
+.spacing-responsive-y {
+  padding-top: var(--spacing-lg);
+  padding-bottom: var(--spacing-lg);
+}
+
+/* Border radius with density support */
+.radius-responsive-sm {
+  border-radius: var(--radius-sm);
+}
+
+.radius-responsive-md {
+  border-radius: var(--radius-md);
+}
+
+.radius-responsive-lg {
+  border-radius: var(--radius-lg);
+}
+
+/* Theme-aware text colors */
+.text-theme-primary {
+  color: var(--color-text-primary);
+}
+
+.text-theme-secondary {
+  color: var(--color-text-secondary);
+}
+
+.text-theme-tertiary {
+  color: var(--color-text-tertiary);
+}
+
+/* Theme-aware backgrounds */
+.bg-theme-card {
+  background-color: var(--color-bg-card);
+}
+
+.bg-theme-card:hover {
+  background-color: var(--color-bg-card-hover);
+}
+
+/* Theme-aware borders */
+.border-theme {
+  border-color: var(--color-border);
+}
+
+.border-theme-light {
+  border-color: var(--color-border-light);
+}
+
+/* Dark theme table styling */
+[data-theme="dark"] table {
+  color: var(--color-text-primary);
+}
+
+[data-theme="dark"] thead {
+  background-color: rgba(15, 23, 42, 0.4);
+}
+
+[data-theme="dark"] tbody tr:hover {
+  background-color: rgba(59, 130, 246, 0.08);
+}
+
+[data-theme="dark"] th,
+[data-theme="dark"] td {
+  border-color: var(--color-border);
+}
+
+/* Dark theme hover states */
+[data-theme="dark"] .hover\:bg-gray-50:hover,
+[data-theme="dark"] .hover\:bg-gray-100:hover {
+  background-color: rgba(148, 163, 184, 0.1) !important;
+}
+
+[data-theme="dark"] .hover\:bg-blue-50:hover {
+  background-color: rgba(59, 130, 246, 0.15) !important;
+}
+
+/* Animation for density transitions */
+.density-transition {
+  transition: width 0.3s ease, padding 0.3s ease, margin 0.3s ease, font-size 0.2s ease;
+}
+
+/* Apply density transitions to key elements */
+.app-sidebar,
+.app-header,
+.app-content,
+.nav-link,
+.nav-icon,
+.sidebar-inner,
+.brand-logo,
+.header-logo {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Ensure proper text rendering across densities */
+body.density-comfortable {
+  line-height: 1.65;
+  letter-spacing: 0.01em;
+}
+
+body.density-normal {
+  line-height: 1.5;
+  letter-spacing: normal;
+}
+
+body.density-compact {
+  line-height: 1.4;
+  letter-spacing: -0.01em;
 }
