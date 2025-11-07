@@ -13,7 +13,9 @@ const state = {
   permissions: [],
   groups: [],
   users: [],
+  tenants: [],
   orgStructure: null,
+  selectedTenantId: null,
   currentPage: {
     roles: 0,
     permissions: 0,
@@ -34,6 +36,13 @@ export async function initRBACManager() {
   console.log('Setting up RBAC Manager...');
 
   try {
+    // Check if user is superuser and setup tenant selector
+    const currentUser = getCurrentUser();
+    if (currentUser && currentUser.is_superuser) {
+      console.log('Superuser detected, loading tenant selector...');
+      await setupTenantSelector();
+    }
+
     setupTabNavigation();
     console.log('Tab navigation setup complete');
 
@@ -333,7 +342,12 @@ function renderBarChart(elementId, data, color) {
  */
 async function loadOrganizationStructure() {
   try {
-    const response = await apiFetch('/rbac/organization-structure');
+    // Add tenant_id parameter if selected
+    const url = state.selectedTenantId
+      ? `/rbac/organization-structure?tenant_id=${state.selectedTenantId}`
+      : '/rbac/organization-structure';
+
+    const response = await apiFetch(url);
     const data = await response.json();
 
     state.orgStructure = data;
@@ -1122,6 +1136,49 @@ function updatePagination(type, data) {
 
   if (nextBtn) {
     nextBtn.disabled = data.skip + data.items.length >= data.total;
+  }
+}
+
+/**
+ * Setup tenant selector for superusers
+ */
+async function setupTenantSelector() {
+  try {
+    // Fetch all tenants
+    const response = await apiFetch('/org/tenants?limit=1000');
+    const data = await response.json();
+
+    state.tenants = data.items || [];
+
+    // Show the tenant selector container
+    const container = document.getElementById('tenant-selector-container');
+    if (container) {
+      container.classList.remove('hidden');
+    }
+
+    // Populate the selector
+    const selector = document.getElementById('tenant-selector');
+    if (selector && state.tenants.length > 0) {
+      selector.innerHTML = '<option value="">All Tenants</option>' +
+        state.tenants.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+
+      // Add change event listener
+      selector.addEventListener('change', async (e) => {
+        state.selectedTenantId = e.target.value || null;
+        console.log('Tenant changed to:', state.selectedTenantId);
+
+        // Reload current tab data
+        const activeTab = document.querySelector('.rbac-tab.active');
+        if (activeTab) {
+          const tabId = activeTab.id.replace('tab-', '');
+          await loadTabData(tabId);
+        }
+      });
+
+      console.log(`Tenant selector loaded with ${state.tenants.length} tenants`);
+    }
+  } catch (error) {
+    console.error('Error loading tenants:', error);
   }
 }
 

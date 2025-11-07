@@ -496,6 +496,40 @@ def delete_department(
     return None
 
 
+# ============= TENANTS =============
+
+@router.get("/tenants")
+def list_tenants(
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """List all tenants - superuser only"""
+    # Only superusers can list tenants
+    if not current_user.is_superuser:
+        raise HTTPException(status_code=403, detail="Only superusers can list tenants")
+
+    from app.models.tenant import Tenant
+
+    query = db.query(Tenant)
+    total = query.count()
+    items = query.offset(skip).limit(limit).all()
+
+    return {
+        "items": [
+            {
+                "id": str(t.id),
+                "name": t.name,
+                "is_active": t.is_active,
+                "created_at": t.created_at.isoformat() if t.created_at else None
+            }
+            for t in items
+        ],
+        "total": total
+    }
+
+
 # ============= USERS =============
 
 @router.get("/users")
