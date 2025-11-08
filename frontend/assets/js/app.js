@@ -321,7 +321,7 @@ function createMenuItem(item) {
   return link;
 }
 
-function createSubmenuItem(item) {
+function createSubmenuItem(item, level = 1) {
   const sidebar = document.getElementById('sidebar');
   const isCollapsed = sidebar?.getAttribute('data-collapsed') === 'true';
 
@@ -339,45 +339,7 @@ function createSubmenuItem(item) {
     `;
 
     // Create popup menu with fixed positioning to avoid clipping
-    const popup = document.createElement('div');
-    popup.className = 'fixed hidden bg-white border border-gray-200 rounded-xl shadow-xl min-w-[220px] overflow-hidden';
-    popup.style.zIndex = '99999';
-
-    // Add title header
-    const popupHeader = document.createElement('div');
-    popupHeader.className = 'px-4 py-2 bg-gray-50 border-b border-gray-200';
-    popupHeader.innerHTML = `<span class="font-semibold text-gray-700 text-sm">${item.title}</span>`;
-    popup.appendChild(popupHeader);
-
-    // Add submenu items
-    const popupContent = document.createElement('div');
-    popupContent.className = 'py-1';
-
-    item.submenu.forEach(subitem => {
-      const sublink = document.createElement('a');
-      sublink.className = 'flex items-center gap-3 px-4 py-2 text-gray-600 hover:bg-gray-50 hover:text-blue-600 transition-colors text-sm';
-      sublink.href = `#${subitem.route}`;
-
-      const subicon = subitem.icon || 'ph-duotone ph-square';
-      sublink.innerHTML = `
-        <i class="${subicon} text-lg"></i>
-        <span>${subitem.title}</span>
-      `;
-
-      sublink.onclick = (e) => {
-        document.querySelectorAll('#sidebar-nav a').forEach(l => {
-          l.classList.remove('bg-blue-50', 'text-blue-600');
-          l.classList.add('text-gray-600');
-        });
-        sublink.classList.add('bg-blue-50', 'text-blue-600');
-        sublink.classList.remove('text-gray-600');
-        popup.classList.add('hidden');
-      };
-
-      popupContent.appendChild(sublink);
-    });
-
-    popup.appendChild(popupContent);
+    const popup = createCollapsedSubmenuPopup(item);
     document.body.appendChild(popup);
 
     // Position popup on hover
@@ -389,7 +351,6 @@ function createSubmenuItem(item) {
     });
 
     parent.addEventListener('mouseleave', (e) => {
-      // Check if mouse is moving to the popup
       const popupRect = popup.getBoundingClientRect();
       const isMovingToPopup = e.clientX >= popupRect.left && e.clientX <= popupRect.right &&
                                e.clientY >= popupRect.top && e.clientY <= popupRect.bottom;
@@ -426,26 +387,33 @@ function createSubmenuItem(item) {
     submenu.className = 'submenu hidden ml-4 mt-1 space-y-1';
 
     item.submenu.forEach(subitem => {
-      const sublink = document.createElement('a');
-      sublink.className = 'flex items-center gap-3 px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-50 hover:text-blue-600 transition-colors text-sm';
-      sublink.href = `#${subitem.route}`;
+      if (subitem.submenu && subitem.submenu.length > 0) {
+        // Nested submenu - recursively create
+        const nestedSubmenuItem = createSubmenuItem(subitem, level + 1);
+        submenu.appendChild(nestedSubmenuItem);
+      } else {
+        // Regular link
+        const sublink = document.createElement('a');
+        sublink.className = 'flex items-center gap-3 px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-50 hover:text-blue-600 transition-colors text-sm';
+        sublink.href = `#${subitem.route}`;
 
-      const subicon = subitem.icon || 'ph-duotone ph-square';
-      sublink.innerHTML = `
-        <i class="${subicon} text-lg flex-shrink-0"></i>
-        <span>${subitem.title}</span>
-      `;
+        const subicon = subitem.icon || 'ph-duotone ph-square';
+        sublink.innerHTML = `
+          <i class="${subicon} text-lg flex-shrink-0"></i>
+          <span>${subitem.title}</span>
+        `;
 
-      sublink.onclick = (e) => {
-        document.querySelectorAll('#sidebar-nav a').forEach(l => {
-          l.classList.remove('bg-blue-50', 'text-blue-600');
-          l.classList.add('text-gray-600');
-        });
-        sublink.classList.add('bg-blue-50', 'text-blue-600');
-        sublink.classList.remove('text-gray-600');
-      };
+        sublink.onclick = (e) => {
+          document.querySelectorAll('#sidebar-nav a').forEach(l => {
+            l.classList.remove('bg-blue-50', 'text-blue-600');
+            l.classList.add('text-gray-600');
+          });
+          sublink.classList.add('bg-blue-50', 'text-blue-600');
+          sublink.classList.remove('text-gray-600');
+        };
 
-      submenu.appendChild(sublink);
+        submenu.appendChild(sublink);
+      }
     });
 
     // Toggle submenu on parent click
@@ -464,6 +432,110 @@ function createSubmenuItem(item) {
   }
 
   return container;
+}
+
+// Helper function to create collapsed popup menu (supports nested submenus)
+function createCollapsedSubmenuPopup(item) {
+  const popup = document.createElement('div');
+  popup.className = 'fixed hidden bg-white border border-gray-200 rounded-xl shadow-xl min-w-[220px] max-w-[280px] overflow-hidden';
+  popup.style.zIndex = '99999';
+
+  // Add title header
+  const popupHeader = document.createElement('div');
+  popupHeader.className = 'px-4 py-2 bg-gray-50 border-b border-gray-200';
+  popupHeader.innerHTML = `<span class="font-semibold text-gray-700 text-sm">${item.title}</span>`;
+  popup.appendChild(popupHeader);
+
+  // Add submenu items
+  const popupContent = document.createElement('div');
+  popupContent.className = 'py-1';
+
+  item.submenu.forEach(subitem => {
+    if (subitem.submenu && subitem.submenu.length > 0) {
+      // Nested submenu - create expandable section
+      const nestedContainer = document.createElement('div');
+      nestedContainer.className = 'border-b border-gray-100 last:border-0';
+
+      const nestedHeader = document.createElement('div');
+      nestedHeader.className = 'flex items-center justify-between px-4 py-2 text-gray-700 hover:bg-gray-50 cursor-pointer';
+
+      const subicon = subitem.icon || 'ph-duotone ph-folder';
+      nestedHeader.innerHTML = `
+        <div class="flex items-center gap-2">
+          <i class="${subicon} text-base"></i>
+          <span class="text-sm font-medium">${subitem.title}</span>
+        </div>
+        <i class="ph ph-caret-right text-xs nested-arrow transition-transform"></i>
+      `;
+
+      const nestedContent = document.createElement('div');
+      nestedContent.className = 'hidden bg-gray-50/50 border-t border-gray-100';
+
+      subitem.submenu.forEach(nestedItem => {
+        const nestedLink = document.createElement('a');
+        nestedLink.className = 'flex items-center gap-2 px-4 py-2 pl-8 text-gray-600 hover:bg-gray-100 hover:text-blue-600 transition-colors text-xs';
+        nestedLink.href = `#${nestedItem.route}`;
+
+        const nestedIcon = nestedItem.icon || 'ph-duotone ph-circle';
+        nestedLink.innerHTML = `
+          <i class="${nestedIcon} text-sm"></i>
+          <span>${nestedItem.title}</span>
+        `;
+
+        nestedLink.onclick = () => {
+          document.querySelectorAll('#sidebar-nav a').forEach(l => {
+            l.classList.remove('bg-blue-50', 'text-blue-600');
+            l.classList.add('text-gray-600');
+          });
+          nestedLink.classList.add('bg-blue-50', 'text-blue-600');
+          nestedLink.classList.remove('text-gray-600');
+          popup.classList.add('hidden');
+        };
+
+        nestedContent.appendChild(nestedLink);
+      });
+
+      nestedHeader.onclick = () => {
+        nestedContent.classList.toggle('hidden');
+        const arrow = nestedHeader.querySelector('.nested-arrow');
+        if (nestedContent.classList.contains('hidden')) {
+          arrow.style.transform = 'rotate(0deg)';
+        } else {
+          arrow.style.transform = 'rotate(90deg)';
+        }
+      };
+
+      nestedContainer.appendChild(nestedHeader);
+      nestedContainer.appendChild(nestedContent);
+      popupContent.appendChild(nestedContainer);
+    } else {
+      // Regular link
+      const sublink = document.createElement('a');
+      sublink.className = 'flex items-center gap-3 px-4 py-2 text-gray-600 hover:bg-gray-50 hover:text-blue-600 transition-colors text-sm';
+      sublink.href = `#${subitem.route}`;
+
+      const subicon = subitem.icon || 'ph-duotone ph-square';
+      sublink.innerHTML = `
+        <i class="${subicon} text-lg"></i>
+        <span>${subitem.title}</span>
+      `;
+
+      sublink.onclick = (e) => {
+        document.querySelectorAll('#sidebar-nav a').forEach(l => {
+          l.classList.remove('bg-blue-50', 'text-blue-600');
+          l.classList.add('text-gray-600');
+        });
+        sublink.classList.add('bg-blue-50', 'text-blue-600');
+        sublink.classList.remove('text-gray-600');
+        popup.classList.add('hidden');
+      };
+
+      popupContent.appendChild(sublink);
+    }
+  });
+
+  popup.appendChild(popupContent);
+  return popup;
 }
 
 function getMenuIcon(route) {
