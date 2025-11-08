@@ -1147,8 +1147,21 @@ body.density-compact .navbar .gap-2 {
 
 /* Hide menu labels when sidebar is collapsed */
 .sidebar-collapsed .sidebar-menu-label,
-.sidebar-collapsed .sidebar-footer-content {
+.sidebar-collapsed .sidebar-footer-content,
+.sidebar-collapsed .sidebar-header-text {
   display: none !important;
+}
+
+/* Adjust sidebar header when collapsed */
+.sidebar-collapsed .sidebar-header {
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1rem 0.5rem;
+}
+
+.sidebar-collapsed .sidebar-header-content {
+  flex-direction: column;
+  gap: 0.5rem;
 }
 
 /* Show collapsed footer when sidebar is collapsed */
