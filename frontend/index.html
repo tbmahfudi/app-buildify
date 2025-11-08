@@ -74,7 +74,7 @@
           <span class="text-xl font-semibold">NoCode Platform</span>
           <!-- Sidebar Toggle Button -->
           <button id="sidebar-toggle" class="p-1.5 rounded-lg hover:bg-gray-700 transition-colors" aria-label="Toggle sidebar">
-            <i class="ph-duotone ph-list text-lg"></i>
+            <i class="ph-duotone ph-sidebar-simple text-lg"></i>
           </button>
         </div>
 
@@ -207,11 +207,11 @@
     <div class="flex flex-1 overflow-hidden">
       <!-- Sidebar -->
       <aside id="sidebar"
-             class="sidebar relative w-64 bg-white border-r border-gray-200 overflow-y-auto overflow-x-hidden slide-in transition-all duration-300"
+             class="sidebar relative w-64 bg-white border-r border-gray-200 slide-in transition-all duration-300"
              role="navigation"
              aria-label="Main navigation"
              data-collapsed="false">
-        <div class="sidebar-content p-4 pb-20">
+        <div class="sidebar-content p-2 pb-20 overflow-y-auto overflow-x-hidden h-full">
           <nav id="sidebar-nav" class="space-y-1" role="menu">
             <!-- Menu items will be loaded here -->
           </nav>
@@ -223,8 +223,11 @@
             <p class="font-medium">© 2024 NoCode Platform</p>
             <p class="text-gray-400">v1.0.0 • Status: <span class="text-green-500">●</span> Online</p>
           </div>
-          <div class="sidebar-footer-collapsed hidden text-center">
-            <p class="text-xs text-gray-500 font-medium">© 2024</p>
+          <div class="sidebar-footer-collapsed hidden text-center group relative">
+            <i class="ph-duotone ph-copyright text-2xl text-gray-400"></i>
+            <div class="sidebar-footer-tooltip hidden group-hover:block absolute left-full bottom-0 ml-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg whitespace-nowrap z-[9999] shadow-lg">
+              © 2024 NoCode Platform<br>v1.0.0 • Status: <span class="text-green-400">●</span> Online
+            </div>
           </div>
         </div>
       </aside>

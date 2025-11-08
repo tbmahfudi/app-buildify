@@ -1233,10 +1233,22 @@ body.density-compact .navbar .gap-2 {
   align-items: center;
 }
 
+/* Allow sidebar footer to show tooltips outside bounds */
+.sidebar-footer {
+  overflow: visible;
+  position: relative;
+}
+
 /* Smooth transitions */
 .sidebar {
   transition: width 0.3s ease-in-out, min-width 0.3s ease-in-out;
   z-index: 1000;
+  overflow: visible;
+}
+
+/* Allow sidebar to show tooltips and popups outside bounds */
+.sidebar-content {
+  position: relative;
 }
 
 /* Ensure main content is below sidebar and tooltips */
@@ -1315,4 +1327,10 @@ body.density-compact .navbar .gap-2 {
 /* Hide tooltip when sidebar is collapsed (will use existing tooltip system) */
 .sidebar-collapsed .sidebar-collapse-tooltip {
   display: block !important;
+}
+
+/* Footer tooltip styling */
+.sidebar-footer-tooltip {
+  pointer-events: none;
+  line-height: 1.6;
 }
