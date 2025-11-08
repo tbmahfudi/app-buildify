@@ -452,33 +452,39 @@ function createCollapsedSubmenuPopup(item) {
 
   item.submenu.forEach(subitem => {
     if (subitem.submenu && subitem.submenu.length > 0) {
-      // Nested submenu - create expandable section
+      // Nested submenu - create item that shows another popup on hover
       const nestedContainer = document.createElement('div');
-      nestedContainer.className = 'border-b border-gray-100 last:border-0';
+      nestedContainer.className = 'relative';
 
-      const nestedHeader = document.createElement('div');
-      nestedHeader.className = 'flex items-center justify-between px-4 py-2 text-gray-700 hover:bg-gray-50 cursor-pointer';
+      const nestedTrigger = document.createElement('div');
+      nestedTrigger.className = 'flex items-center justify-between px-4 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600 cursor-pointer transition-colors';
 
       const subicon = subitem.icon || 'ph-duotone ph-folder';
-      nestedHeader.innerHTML = `
-        <div class="flex items-center gap-2">
-          <i class="${subicon} text-base"></i>
+      nestedTrigger.innerHTML = `
+        <div class="flex items-center gap-3">
+          <i class="${subicon} text-lg"></i>
           <span class="text-sm font-medium">${subitem.title}</span>
         </div>
-        <i class="ph ph-caret-right text-xs nested-arrow transition-transform"></i>
+        <i class="ph ph-caret-right text-xs"></i>
       `;
 
+      // Create nested popup menu
+      const nestedPopup = document.createElement('div');
+      nestedPopup.className = 'fixed hidden bg-white border border-gray-200 rounded-xl shadow-xl min-w-[200px] overflow-hidden';
+      nestedPopup.style.zIndex = '100000'; // Higher than parent popup
+
+      // Add nested items
       const nestedContent = document.createElement('div');
-      nestedContent.className = 'hidden bg-gray-50/50 border-t border-gray-100';
+      nestedContent.className = 'py-1';
 
       subitem.submenu.forEach(nestedItem => {
         const nestedLink = document.createElement('a');
-        nestedLink.className = 'flex items-center gap-2 px-4 py-2 pl-8 text-gray-600 hover:bg-gray-100 hover:text-blue-600 transition-colors text-xs';
+        nestedLink.className = 'flex items-center gap-3 px-4 py-2 text-gray-600 hover:bg-blue-50 hover:text-blue-600 transition-colors text-sm';
         nestedLink.href = `#${nestedItem.route}`;
 
         const nestedIcon = nestedItem.icon || 'ph-duotone ph-circle';
         nestedLink.innerHTML = `
-          <i class="${nestedIcon} text-sm"></i>
+          <i class="${nestedIcon} text-base"></i>
           <span>${nestedItem.title}</span>
         `;
 
@@ -490,23 +496,41 @@ function createCollapsedSubmenuPopup(item) {
           nestedLink.classList.add('bg-blue-50', 'text-blue-600');
           nestedLink.classList.remove('text-gray-600');
           popup.classList.add('hidden');
+          nestedPopup.classList.add('hidden');
         };
 
         nestedContent.appendChild(nestedLink);
       });
 
-      nestedHeader.onclick = () => {
-        nestedContent.classList.toggle('hidden');
-        const arrow = nestedHeader.querySelector('.nested-arrow');
-        if (nestedContent.classList.contains('hidden')) {
-          arrow.style.transform = 'rotate(0deg)';
-        } else {
-          arrow.style.transform = 'rotate(90deg)';
-        }
-      };
+      nestedPopup.appendChild(nestedContent);
+      document.body.appendChild(nestedPopup);
 
-      nestedContainer.appendChild(nestedHeader);
-      nestedContainer.appendChild(nestedContent);
+      // Show nested popup on hover
+      nestedTrigger.addEventListener('mouseenter', () => {
+        const rect = nestedTrigger.getBoundingClientRect();
+        nestedPopup.style.left = `${rect.right + 8}px`;
+        nestedPopup.style.top = `${rect.top}px`;
+        nestedPopup.classList.remove('hidden');
+      });
+
+      nestedTrigger.addEventListener('mouseleave', (e) => {
+        const nestedRect = nestedPopup.getBoundingClientRect();
+        const isMovingToNested = e.clientX >= nestedRect.left && e.clientX <= nestedRect.right &&
+                                  e.clientY >= nestedRect.top && e.clientY <= nestedRect.bottom;
+        if (!isMovingToNested) {
+          setTimeout(() => {
+            if (!nestedPopup.matches(':hover')) {
+              nestedPopup.classList.add('hidden');
+            }
+          }, 100);
+        }
+      });
+
+      nestedPopup.addEventListener('mouseleave', () => {
+        nestedPopup.classList.add('hidden');
+      });
+
+      nestedContainer.appendChild(nestedTrigger);
       popupContent.appendChild(nestedContainer);
     } else {
       // Regular link
