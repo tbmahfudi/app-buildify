@@ -97,6 +97,10 @@
     <nav class="bg-gradient-to-r from-gray-900 to-gray-800 text-white px-6 py-4 shadow-lg">
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-3">
+          <!-- Sidebar Toggle Button -->
+          <button id="sidebar-toggle" class="p-2 rounded-lg hover:bg-gray-700 transition-colors" aria-label="Toggle sidebar">
+            <i class="ph-duotone ph-list text-2xl"></i>
+          </button>
           <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center shadow-md transform hover:scale-105 transition-transform">
             <span class="text-white font-bold text-lg">NP</span>
           </div>
@@ -107,9 +111,9 @@
           <!-- Tenant Switcher (for superusers) -->
           <div id="tenant-switcher" class="hidden relative group">
             <button class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-700 transition text-sm">
-              <i class="bi bi-building text-blue-400"></i>
+              <i class="ph-duotone ph-buildings text-blue-400 text-lg"></i>
               <span id="current-tenant-name">Default Tenant</span>
-              <i class="bi bi-chevron-down text-xs"></i>
+              <i class="ph ph-caret-down text-xs"></i>
             </button>
           </div>
 
@@ -119,7 +123,7 @@
                     aria-label="Notifications"
                     aria-haspopup="true"
                     aria-expanded="false">
-              <i class="bi bi-bell text-xl" aria-hidden="true"></i>
+              <i class="ph-duotone ph-bell text-2xl" aria-hidden="true"></i>
               <span class="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" aria-label="You have unread notifications"></span>
             </button>
 
@@ -136,7 +140,7 @@
                 <!-- Sample notification -->
                 <a href="#" class="flex gap-3 px-4 py-3 hover:bg-gray-50 transition border-l-4 border-blue-500">
                   <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-                    <i class="bi bi-info-circle text-blue-600"></i>
+                    <i class="ph-duotone ph-info text-blue-600 text-lg"></i>
                   </div>
                   <div class="flex-1 min-w-0">
                     <p class="text-sm font-medium text-gray-900">System Update</p>
@@ -147,7 +151,7 @@
 
                 <a href="#" class="flex gap-3 px-4 py-3 hover:bg-gray-50 transition border-l-4 border-transparent">
                   <div class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
-                    <i class="bi bi-check-circle text-green-600"></i>
+                    <i class="ph-duotone ph-check-circle text-green-600 text-lg"></i>
                   </div>
                   <div class="flex-1 min-w-0">
                     <p class="text-sm font-medium text-gray-900">Task Completed</p>
@@ -158,7 +162,7 @@
 
                 <a href="#" class="flex gap-3 px-4 py-3 hover:bg-gray-50 transition border-l-4 border-transparent">
                   <div class="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center flex-shrink-0">
-                    <i class="bi bi-exclamation-triangle text-yellow-600"></i>
+                    <i class="ph-duotone ph-warning text-yellow-600 text-lg"></i>
                   </div>
                   <div class="flex-1 min-w-0">
                     <p class="text-sm font-medium text-gray-900">Warning</p>
@@ -181,13 +185,13 @@
                     aria-haspopup="true"
                     aria-expanded="false">
               <div class="w-8 h-8 bg-gray-600 rounded-full flex items-center justify-center">
-                <i class="bi bi-person-fill"></i>
+                <i class="ph-duotone ph-user text-lg"></i>
               </div>
               <div class="text-left hidden md:block">
                 <div id="user-email" class="text-sm font-medium">User</div>
                 <div class="text-xs text-gray-400">Administrator</div>
               </div>
-              <i class="bi bi-chevron-down text-sm group-hover:rotate-180 transition-transform"></i>
+              <i class="ph ph-caret-down text-sm group-hover:rotate-180 transition-transform"></i>
             </button>
 
             <!-- Dropdown Menu -->
@@ -202,14 +206,14 @@
               <a href="#settings"
                  class="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition"
                  role="menuitem">
-                <i class="bi bi-gear text-gray-500" aria-hidden="true"></i>
+                <i class="ph-duotone ph-gear text-gray-500 text-lg" aria-hidden="true"></i>
                 <span class="text-sm">Settings</span>
               </a>
 
               <a href="#profile"
                  class="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition"
                  role="menuitem">
-                <i class="bi bi-person text-gray-500" aria-hidden="true"></i>
+                <i class="ph-duotone ph-user text-gray-500 text-lg" aria-hidden="true"></i>
                 <span class="text-sm">Profile</span>
               </a>
 
@@ -219,7 +223,7 @@
                       class="w-full flex items-center gap-3 px-4 py-3 hover:bg-red-50 text-red-600 transition"
                       role="menuitem"
                       aria-label="Logout from your account">
-                <i class="bi bi-box-arrow-right" aria-hidden="true"></i>
+                <i class="ph-duotone ph-sign-out text-lg" aria-hidden="true"></i>
                 <span class="text-sm">Logout</span>
               </button>
             </div>
@@ -232,18 +236,19 @@
     <div class="flex flex-1 overflow-hidden">
       <!-- Sidebar -->
       <aside id="sidebar"
-             class="w-64 bg-white border-r border-gray-200 overflow-y-auto slide-in"
+             class="sidebar w-64 bg-white border-r border-gray-200 overflow-y-auto overflow-x-hidden slide-in transition-all duration-300"
              role="navigation"
-             aria-label="Main navigation">
-        <div class="p-4">
+             aria-label="Main navigation"
+             data-collapsed="false">
+        <div class="sidebar-content p-4">
           <nav id="sidebar-nav" class="space-y-1" role="menu">
             <!-- Menu items will be loaded here -->
           </nav>
         </div>
 
         <!-- Sidebar Footer -->
-        <div class="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200 bg-gray-50 w-64">
-          <div class="text-xs text-gray-500 text-center">
+        <div class="sidebar-footer absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200 bg-gray-50 transition-all duration-300">
+          <div class="text-xs text-gray-500 text-center sidebar-footer-content">
             <p class="font-medium">© 2024 NoCode Platform</p>
             <p class="text-gray-400">v1.0.0 • Status: <span class="text-green-500">●</span> Online</p>
           </div>

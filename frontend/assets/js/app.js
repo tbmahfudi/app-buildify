@@ -104,6 +104,31 @@ function setupEventListeners() {
       handleLogout();
     });
   }
+
+  // Sidebar toggle button
+  const sidebarToggle = document.getElementById('sidebar-toggle');
+  const sidebar = document.getElementById('sidebar');
+
+  if (sidebarToggle && sidebar) {
+    sidebarToggle.addEventListener('click', () => {
+      const isCollapsed = sidebar.getAttribute('data-collapsed') === 'true';
+
+      if (isCollapsed) {
+        // Expand sidebar
+        sidebar.setAttribute('data-collapsed', 'false');
+        sidebar.classList.remove('sidebar-collapsed');
+        sidebar.classList.add('w-64');
+      } else {
+        // Collapse sidebar
+        sidebar.setAttribute('data-collapsed', 'true');
+        sidebar.classList.add('sidebar-collapsed');
+        sidebar.classList.remove('w-64');
+      }
+
+      // Reload menu to update tooltips
+      loadMenu();
+    });
+  }
 }
 
 async function handleLogout() {
@@ -163,16 +188,32 @@ async function loadMenu() {
 }
 
 function createMenuItem(item) {
+  const sidebar = document.getElementById('sidebar');
+  const isCollapsed = sidebar?.getAttribute('data-collapsed') === 'true';
+
   const link = document.createElement('a');
-  link.className = 'flex items-center gap-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 hover:text-blue-600 transition-colors group';
+  link.className = 'sidebar-menu-item flex items-center gap-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 hover:text-blue-600 transition-colors group relative';
   link.href = `#${item.route}`;
+  link.setAttribute('data-tooltip', item.title);
 
   // Use icon from menu item or fallback to getMenuIcon
   const icon = item.icon || getMenuIcon(item.route);
-  link.innerHTML = `
-    <i class="bi ${icon} text-lg"></i>
-    <span class="font-medium">${item.title}</span>
-  `;
+
+  if (isCollapsed) {
+    link.innerHTML = `
+      <div class="w-full flex justify-center">
+        <i class="${icon} text-2xl"></i>
+      </div>
+      <div class="sidebar-tooltip hidden group-hover:block absolute left-full ml-2 px-3 py-2 bg-gray-900 text-white text-sm rounded-lg whitespace-nowrap z-50 shadow-lg">
+        ${item.title}
+      </div>
+    `;
+  } else {
+    link.innerHTML = `
+      <i class="${icon} text-xl flex-shrink-0"></i>
+      <span class="sidebar-menu-label font-medium">${item.title}</span>
+    `;
+  }
 
   link.onclick = (e) => {
     // Update active state
@@ -188,78 +229,135 @@ function createMenuItem(item) {
 }
 
 function createSubmenuItem(item) {
+  const sidebar = document.getElementById('sidebar');
+  const isCollapsed = sidebar?.getAttribute('data-collapsed') === 'true';
+
   const container = document.createElement('div');
-  container.className = 'submenu-container';
+  container.className = 'submenu-container relative group';
 
-  // Create parent item
-  const parent = document.createElement('div');
-  parent.className = 'flex items-center justify-between px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 cursor-pointer transition-colors';
+  if (isCollapsed) {
+    // Collapsed state - show icon with popup menu
+    const parent = document.createElement('div');
+    parent.className = 'flex items-center justify-center px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 cursor-pointer transition-colors relative';
 
-  const icon = item.icon || getMenuIcon(item.route);
-  parent.innerHTML = `
-    <div class="flex items-center gap-3">
-      <i class="bi ${icon} text-lg"></i>
-      <span class="font-medium">${item.title}</span>
-    </div>
-    <i class="bi bi-chevron-down text-sm transition-transform submenu-arrow"></i>
-  `;
-
-  // Create submenu
-  const submenu = document.createElement('div');
-  submenu.className = 'submenu hidden ml-4 mt-1 space-y-1';
-
-  item.submenu.forEach(subitem => {
-    const sublink = document.createElement('a');
-    sublink.className = 'flex items-center gap-3 px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-50 hover:text-blue-600 transition-colors text-sm';
-    sublink.href = `#${subitem.route}`;
-
-    const subicon = subitem.icon || 'bi-circle';
-    sublink.innerHTML = `
-      <i class="bi ${subicon}"></i>
-      <span>${subitem.title}</span>
+    const icon = item.icon || getMenuIcon(item.route);
+    parent.innerHTML = `
+      <i class="${icon} text-2xl"></i>
     `;
 
-    sublink.onclick = (e) => {
-      // Update active state for submenu items
-      document.querySelectorAll('#sidebar-nav a').forEach(l => {
-        l.classList.remove('bg-blue-50', 'text-blue-600');
-        l.classList.add('text-gray-600');
-      });
-      sublink.classList.add('bg-blue-50', 'text-blue-600');
-      sublink.classList.remove('text-gray-600');
+    // Create popup menu for submenu items
+    const popup = document.createElement('div');
+    popup.className = 'submenu-popup hidden group-hover:block absolute left-full ml-2 top-0 bg-white border border-gray-200 rounded-xl shadow-xl z-50 min-w-[200px] overflow-hidden';
+
+    // Add title header
+    const popupHeader = document.createElement('div');
+    popupHeader.className = 'px-4 py-2 bg-gray-50 border-b border-gray-200';
+    popupHeader.innerHTML = `<span class="font-semibold text-gray-700 text-sm">${item.title}</span>`;
+    popup.appendChild(popupHeader);
+
+    // Add submenu items
+    const popupContent = document.createElement('div');
+    popupContent.className = 'py-1';
+
+    item.submenu.forEach(subitem => {
+      const sublink = document.createElement('a');
+      sublink.className = 'flex items-center gap-3 px-4 py-2 text-gray-600 hover:bg-gray-50 hover:text-blue-600 transition-colors text-sm';
+      sublink.href = `#${subitem.route}`;
+
+      const subicon = subitem.icon || 'ph-duotone ph-square';
+      sublink.innerHTML = `
+        <i class="${subicon} text-lg"></i>
+        <span>${subitem.title}</span>
+      `;
+
+      sublink.onclick = (e) => {
+        document.querySelectorAll('#sidebar-nav a').forEach(l => {
+          l.classList.remove('bg-blue-50', 'text-blue-600');
+          l.classList.add('text-gray-600');
+        });
+        sublink.classList.add('bg-blue-50', 'text-blue-600');
+        sublink.classList.remove('text-gray-600');
+      };
+
+      popupContent.appendChild(sublink);
+    });
+
+    popup.appendChild(popupContent);
+    parent.appendChild(popup);
+    container.appendChild(parent);
+  } else {
+    // Expanded state - show full menu with arrow
+    const parent = document.createElement('div');
+    parent.className = 'flex items-center justify-between px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 cursor-pointer transition-colors';
+
+    const icon = item.icon || getMenuIcon(item.route);
+    parent.innerHTML = `
+      <div class="flex items-center gap-3">
+        <i class="${icon} text-xl flex-shrink-0"></i>
+        <span class="font-medium sidebar-menu-label">${item.title}</span>
+      </div>
+      <i class="ph ph-caret-down text-sm transition-transform submenu-arrow"></i>
+    `;
+
+    // Create submenu
+    const submenu = document.createElement('div');
+    submenu.className = 'submenu hidden ml-4 mt-1 space-y-1';
+
+    item.submenu.forEach(subitem => {
+      const sublink = document.createElement('a');
+      sublink.className = 'flex items-center gap-3 px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-50 hover:text-blue-600 transition-colors text-sm';
+      sublink.href = `#${subitem.route}`;
+
+      const subicon = subitem.icon || 'ph-duotone ph-square';
+      sublink.innerHTML = `
+        <i class="${subicon} text-lg flex-shrink-0"></i>
+        <span>${subitem.title}</span>
+      `;
+
+      sublink.onclick = (e) => {
+        document.querySelectorAll('#sidebar-nav a').forEach(l => {
+          l.classList.remove('bg-blue-50', 'text-blue-600');
+          l.classList.add('text-gray-600');
+        });
+        sublink.classList.add('bg-blue-50', 'text-blue-600');
+        sublink.classList.remove('text-gray-600');
+      };
+
+      submenu.appendChild(sublink);
+    });
+
+    // Toggle submenu on parent click
+    parent.onclick = () => {
+      submenu.classList.toggle('hidden');
+      const arrow = parent.querySelector('.submenu-arrow');
+      if (submenu.classList.contains('hidden')) {
+        arrow.style.transform = 'rotate(0deg)';
+      } else {
+        arrow.style.transform = 'rotate(180deg)';
+      }
     };
 
-    submenu.appendChild(sublink);
-  });
-
-  // Toggle submenu on parent click
-  parent.onclick = () => {
-    submenu.classList.toggle('hidden');
-    const arrow = parent.querySelector('.submenu-arrow');
-    if (submenu.classList.contains('hidden')) {
-      arrow.style.transform = 'rotate(0deg)';
-    } else {
-      arrow.style.transform = 'rotate(180deg)';
-    }
-  };
-
-  container.appendChild(parent);
-  container.appendChild(submenu);
+    container.appendChild(parent);
+    container.appendChild(submenu);
+  }
 
   return container;
 }
 
 function getMenuIcon(route) {
   const icons = {
-    'dashboard': 'bi-speedometer2',
-    'companies': 'bi-building',
-    'branches': 'bi-diagram-3',
-    'departments': 'bi-people',
-    'users': 'bi-people-fill',
-    'audit': 'bi-clock-history',
-    'settings': 'bi-gear'
+    'dashboard': 'ph-duotone ph-gauge',
+    'companies': 'ph-duotone ph-buildings',
+    'branches': 'ph-duotone ph-tree-structure',
+    'departments': 'ph-duotone ph-users-three',
+    'users': 'ph-duotone ph-users',
+    'audit': 'ph-duotone ph-clock-counter-clockwise',
+    'settings': 'ph-duotone ph-gear',
+    'rbac': 'ph-duotone ph-shield-check',
+    'modules': 'ph-duotone ph-package',
+    'components-showcase': 'ph-duotone ph-squares-four'
   };
-  return icons[route] || 'bi-circle';
+  return icons[route] || 'ph-duotone ph-circle';
 }
 
 function updateActiveMenuItem() {
@@ -350,14 +448,14 @@ async function loadRoute(route) {
       <div class="max-w-md mx-auto mt-20">
         <div class="bg-yellow-50 border-l-4 border-yellow-500 p-6 rounded-lg shadow-sm">
           <div class="flex items-start gap-3">
-            <i class="bi bi-exclamation-triangle-fill text-yellow-500 text-2xl"></i>
+            <i class="ph-duotone ph-warning text-yellow-500 text-3xl"></i>
             <div>
               <h3 class="text-lg font-semibold text-yellow-800 mb-2">Page Not Found</h3>
               <p class="text-yellow-700 mb-4">The page "${route}" could not be loaded.</p>
               <button
                 onclick="window.location.hash = 'dashboard'"
-                class="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition">
-                <i class="bi bi-house"></i> Go to Dashboard
+                class="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition flex items-center gap-2">
+                <i class="ph ph-house"></i> Go to Dashboard
               </button>
             </div>
           </div>
