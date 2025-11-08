@@ -6,47 +6,73 @@
       "icon": "ph-duotone ph-gauge"
     },
     {
-      "title": "Components",
-      "route": "components-showcase",
-      "icon": "ph-duotone ph-squares-four"
-    },
-    {
-      "title": "Data Management",
-      "route": "companies",
+      "title": "Administration",
       "icon": "ph-duotone ph-buildings",
       "submenu": [
         { "title": "Companies", "route": "companies", "icon": "ph-duotone ph-building" },
         { "title": "Branches", "route": "branches", "icon": "ph-duotone ph-tree-structure" },
-        { "title": "Departments", "route": "departments", "icon": "ph-duotone ph-users-three" }
+        { "title": "Departments", "route": "departments", "icon": "ph-duotone ph-users-three" },
+        { "title": "Users", "route": "users", "icon": "ph-duotone ph-users", "roles": ["admin"] },
+        { "title": "Groups", "route": "groups", "icon": "ph-duotone ph-user-circle-gear" },
+        { "title": "Roles & Permissions", "route": "rbac", "icon": "ph-duotone ph-shield-check", "roles": ["admin"] },
+        { "title": "Auth Policies", "route": "auth-policies", "icon": "ph-duotone ph-lock-key" }
       ]
     },
     {
-      "title": "User Management",
-      "route": "users",
-      "icon": "ph-duotone ph-users",
-      "roles": ["admin"]
+      "title": "System Management",
+      "icon": "ph-duotone ph-gear-six",
+      "submenu": [
+        {
+          "title": "System Settings",
+          "icon": "ph-duotone ph-gear",
+          "submenu": [
+            { "title": "General", "route": "settings", "icon": "ph-duotone ph-sliders" },
+            { "title": "Integration", "route": "settings-integration", "icon": "ph-duotone ph-plugs-connected" },
+            { "title": "Security", "route": "settings-security", "icon": "ph-duotone ph-shield-checkered" },
+            { "title": "Notifications", "route": "settings-notifications", "icon": "ph-duotone ph-bell-ringing" }
+          ]
+        },
+        {
+          "title": "Module Management",
+          "icon": "ph-duotone ph-package",
+          "submenu": [
+            { "title": "Installed Modules", "route": "modules", "icon": "ph-duotone ph-squares-four", "permission": "modules:manage:tenant" },
+            { "title": "Marketplace", "route": "modules-marketplace", "icon": "ph-duotone ph-storefront" },
+            { "title": "Updates", "route": "modules-updates", "icon": "ph-duotone ph-download-simple" },
+            { "title": "Builder", "route": "modules-builder", "icon": "ph-duotone ph-code-block" }
+          ]
+        },
+        {
+          "title": "Monitoring & Audit",
+          "icon": "ph-duotone ph-chart-line-up",
+          "submenu": [
+            { "title": "Audit Trail", "route": "audit", "icon": "ph-duotone ph-clock-counter-clockwise" },
+            { "title": "System Logs", "route": "system-logs", "icon": "ph-duotone ph-file-text" },
+            { "title": "API Activity", "route": "api-activity", "icon": "ph-duotone ph-plugs" },
+            { "title": "Usage Analytics", "route": "usage-analytics", "icon": "ph-duotone ph-chart-bar" }
+          ]
+        }
+      ]
     },
     {
-      "title": "RBAC Management",
-      "route": "rbac",
-      "icon": "ph-duotone ph-shield-check",
-      "roles": ["admin"]
+      "title": "Developer Tools",
+      "icon": "ph-duotone ph-code",
+      "submenu": [
+        { "title": "Components", "route": "components-showcase", "icon": "ph-duotone ph-squares-four" },
+        { "title": "Schema Designer", "route": "schema-designer", "icon": "ph-duotone ph-database" },
+        { "title": "API Playground", "route": "api-playground", "icon": "ph-duotone ph-terminal-window" },
+        { "title": "Code Generator", "route": "code-generator", "icon": "ph-duotone ph-brackets-curly" }
+      ]
     },
     {
-      "title": "Audit Trail",
-      "route": "audit",
-      "icon": "ph-duotone ph-clock-counter-clockwise"
-    },
-    {
-      "title": "Settings",
-      "route": "settings",
-      "icon": "ph-duotone ph-gear"
-    },
-    {
-      "title": "Module Management",
-      "route": "modules",
-      "icon": "ph-duotone ph-package",
-      "permission": "modules:manage:tenant"
+      "title": "Help & Support",
+      "icon": "ph-duotone ph-lifebuoy",
+      "submenu": [
+        { "title": "User Guide", "route": "user-guide", "icon": "ph-duotone ph-book-open" },
+        { "title": "API Docs", "route": "api-docs", "icon": "ph-duotone ph-file-code" },
+        { "title": "Contact Support", "route": "contact-support", "icon": "ph-duotone ph-headset" },
+        { "title": "Changelog", "route": "changelog", "icon": "ph-duotone ph-git-diff" }
+      ]
     }
   ]
 }
