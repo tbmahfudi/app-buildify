@@ -108,16 +108,11 @@ function setupEventListeners() {
     });
   }
 
-  // Sidebar toggle buttons (navbar and sidebar collapse button)
+  // Sidebar toggle button (navbar)
   const sidebarToggle = document.getElementById('sidebar-toggle');
-  const sidebarCollapseBtn = document.getElementById('sidebar-collapse-btn');
 
   if (sidebarToggle) {
     sidebarToggle.addEventListener('click', toggleSidebar);
-  }
-
-  if (sidebarCollapseBtn) {
-    sidebarCollapseBtn.addEventListener('click', toggleSidebar);
   }
 }
 
@@ -141,9 +136,6 @@ function toggleSidebar() {
     sidebar.classList.add('sidebar-collapsed');
     sidebar.classList.remove('w-64');
   }
-
-  // Update collapse button icon
-  updateCollapseButtonIcon(!isCollapsed);
 
   // Save state to localStorage
   saveSidebarState(!isCollapsed);

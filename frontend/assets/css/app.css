@@ -1151,6 +1151,11 @@ body.density-compact .navbar .gap-2 {
   display: none !important;
 }
 
+/* Show collapsed footer when sidebar is collapsed */
+.sidebar-collapsed .sidebar-footer-collapsed {
+  display: block !important;
+}
+
 /* Tooltip styles for collapsed sidebar */
 .sidebar-tooltip {
   position: absolute;
@@ -1231,7 +1236,13 @@ body.density-compact .navbar .gap-2 {
 /* Smooth transitions */
 .sidebar {
   transition: width 0.3s ease-in-out, min-width 0.3s ease-in-out;
-  z-index: 40;
+  z-index: 1000;
+}
+
+/* Ensure main content is below sidebar and tooltips */
+#content {
+  position: relative;
+  z-index: 1;
 }
 
 .sidebar-menu-label,
@@ -1242,6 +1253,13 @@ body.density-compact .navbar .gap-2 {
 /* Hover effects for collapsed menu items */
 .sidebar-collapsed .sidebar-menu-item:hover {
   background-color: #f3f4f6;
+  position: relative;
+  z-index: 10000;
+}
+
+/* Ensure menu items with tooltips are positioned correctly */
+.sidebar-menu-item {
+  position: relative;
 }
 
 /* Active state for collapsed menu items */
