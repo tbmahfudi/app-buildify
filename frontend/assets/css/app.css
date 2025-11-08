@@ -1141,8 +1141,8 @@ body.density-compact .navbar .gap-2 {
 
 /* Collapsed sidebar */
 .sidebar-collapsed {
-  width: 80px !important;
-  min-width: 80px !important;
+  width: 64px !important;
+  min-width: 64px !important;
 }
 
 /* Hide menu labels when sidebar is collapsed */
@@ -1227,7 +1227,7 @@ body.density-compact .navbar .gap-2 {
 
 /* Adjust sidebar footer when collapsed */
 .sidebar-collapsed .sidebar-footer {
-  padding: 1rem 0.5rem;
+  padding: 0.75rem 0.5rem;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -1249,6 +1249,13 @@ body.density-compact .navbar .gap-2 {
 /* Allow sidebar to show tooltips and popups outside bounds */
 .sidebar-content {
   position: relative;
+  overflow-x: visible !important;
+}
+
+/* Reduce padding when sidebar is collapsed */
+.sidebar-collapsed .sidebar-content {
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
 }
 
 /* Ensure main content is below sidebar and tooltips */
