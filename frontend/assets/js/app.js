@@ -439,6 +439,7 @@ function createCollapsedSubmenuPopup(item) {
   const popup = document.createElement('div');
   popup.className = 'fixed hidden bg-white border border-gray-200 rounded-xl shadow-xl min-w-[220px] max-w-[280px] overflow-hidden';
   popup.style.zIndex = '99999';
+  popup.dataset.popupLevel = '1';
 
   // Add title header
   const popupHeader = document.createElement('div');
@@ -446,120 +447,229 @@ function createCollapsedSubmenuPopup(item) {
   popupHeader.innerHTML = `<span class="font-semibold text-gray-700 text-sm">${item.title}</span>`;
   popup.appendChild(popupHeader);
 
+  // Check if all items are final (no submenu) - use grid layout
+  const allItemsFinal = item.submenu.every(subitem => !subitem.submenu || subitem.submenu.length === 0);
+
   // Add submenu items
   const popupContent = document.createElement('div');
-  popupContent.className = 'py-1';
 
-  item.submenu.forEach(subitem => {
-    if (subitem.submenu && subitem.submenu.length > 0) {
-      // Nested submenu - create item that shows another popup on hover
-      const nestedContainer = document.createElement('div');
-      nestedContainer.className = 'relative';
+  if (allItemsFinal) {
+    // Grid layout for final items - big icons with text below
+    popupContent.className = 'p-4 grid grid-cols-2 gap-3';
 
-      const nestedTrigger = document.createElement('div');
-      nestedTrigger.className = 'flex items-center justify-between px-4 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600 cursor-pointer transition-colors';
-
-      const subicon = subitem.icon || 'ph-duotone ph-folder';
-      nestedTrigger.innerHTML = `
-        <div class="flex items-center gap-3">
-          <i class="${subicon} text-lg"></i>
-          <span class="text-sm font-medium">${subitem.title}</span>
-        </div>
-        <i class="ph ph-caret-right text-xs"></i>
-      `;
-
-      // Create nested popup menu
-      const nestedPopup = document.createElement('div');
-      nestedPopup.className = 'fixed hidden bg-white border border-gray-200 rounded-xl shadow-xl min-w-[200px] overflow-hidden';
-      nestedPopup.style.zIndex = '100000'; // Higher than parent popup
-
-      // Add nested items
-      const nestedContent = document.createElement('div');
-      nestedContent.className = 'py-1';
-
-      subitem.submenu.forEach(nestedItem => {
-        const nestedLink = document.createElement('a');
-        nestedLink.className = 'flex items-center gap-3 px-4 py-2 text-gray-600 hover:bg-blue-50 hover:text-blue-600 transition-colors text-sm';
-        nestedLink.href = `#${nestedItem.route}`;
-
-        const nestedIcon = nestedItem.icon || 'ph-duotone ph-circle';
-        nestedLink.innerHTML = `
-          <i class="${nestedIcon} text-base"></i>
-          <span>${nestedItem.title}</span>
-        `;
-
-        nestedLink.onclick = () => {
-          document.querySelectorAll('#sidebar-nav a').forEach(l => {
-            l.classList.remove('bg-blue-50', 'text-blue-600');
-            l.classList.add('text-gray-600');
-          });
-          nestedLink.classList.add('bg-blue-50', 'text-blue-600');
-          nestedLink.classList.remove('text-gray-600');
-          popup.classList.add('hidden');
-          nestedPopup.classList.add('hidden');
-        };
-
-        nestedContent.appendChild(nestedLink);
-      });
-
-      nestedPopup.appendChild(nestedContent);
-      document.body.appendChild(nestedPopup);
-
-      // Show nested popup on hover
-      nestedTrigger.addEventListener('mouseenter', () => {
-        const rect = nestedTrigger.getBoundingClientRect();
-        nestedPopup.style.left = `${rect.right + 8}px`;
-        nestedPopup.style.top = `${rect.top}px`;
-        nestedPopup.classList.remove('hidden');
-      });
-
-      nestedTrigger.addEventListener('mouseleave', (e) => {
-        const nestedRect = nestedPopup.getBoundingClientRect();
-        const isMovingToNested = e.clientX >= nestedRect.left && e.clientX <= nestedRect.right &&
-                                  e.clientY >= nestedRect.top && e.clientY <= nestedRect.bottom;
-        if (!isMovingToNested) {
-          setTimeout(() => {
-            if (!nestedPopup.matches(':hover')) {
-              nestedPopup.classList.add('hidden');
-            }
-          }, 100);
-        }
-      });
-
-      nestedPopup.addEventListener('mouseleave', () => {
-        nestedPopup.classList.add('hidden');
-      });
-
-      nestedContainer.appendChild(nestedTrigger);
-      popupContent.appendChild(nestedContainer);
-    } else {
-      // Regular link
-      const sublink = document.createElement('a');
-      sublink.className = 'flex items-center gap-3 px-4 py-2 text-gray-600 hover:bg-gray-50 hover:text-blue-600 transition-colors text-sm';
-      sublink.href = `#${subitem.route}`;
+    item.submenu.forEach(subitem => {
+      const gridItem = document.createElement('a');
+      gridItem.className = 'flex flex-col items-center gap-2 p-3 rounded-lg text-gray-600 hover:bg-blue-50 hover:text-blue-600 transition-colors cursor-pointer';
+      gridItem.href = `#${subitem.route}`;
 
       const subicon = subitem.icon || 'ph-duotone ph-square';
-      sublink.innerHTML = `
-        <i class="${subicon} text-lg"></i>
-        <span>${subitem.title}</span>
+      gridItem.innerHTML = `
+        <i class="${subicon} text-4xl"></i>
+        <span class="text-xs text-center font-medium leading-tight">${subitem.title}</span>
       `;
 
-      sublink.onclick = (e) => {
+      gridItem.onclick = () => {
         document.querySelectorAll('#sidebar-nav a').forEach(l => {
           l.classList.remove('bg-blue-50', 'text-blue-600');
           l.classList.add('text-gray-600');
         });
-        sublink.classList.add('bg-blue-50', 'text-blue-600');
-        sublink.classList.remove('text-gray-600');
+        gridItem.classList.add('bg-blue-50', 'text-blue-600');
+        gridItem.classList.remove('text-gray-600');
         popup.classList.add('hidden');
       };
 
-      popupContent.appendChild(sublink);
-    }
-  });
+      popupContent.appendChild(gridItem);
+    });
+  } else {
+    // List layout for items with submenus
+    popupContent.className = 'py-1';
+    const childPopups = [];
+
+    item.submenu.forEach(subitem => {
+      if (subitem.submenu && subitem.submenu.length > 0) {
+        // Nested submenu - create item that shows another popup on hover
+        const nestedContainer = document.createElement('div');
+        nestedContainer.className = 'relative';
+
+        const nestedTrigger = document.createElement('div');
+        nestedTrigger.className = 'flex items-center justify-between px-4 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600 cursor-pointer transition-colors';
+
+        const subicon = subitem.icon || 'ph-duotone ph-folder';
+        nestedTrigger.innerHTML = `
+          <div class="flex items-center gap-3">
+            <i class="${subicon} text-lg"></i>
+            <span class="text-sm font-medium">${subitem.title}</span>
+          </div>
+          <i class="ph ph-caret-right text-xs"></i>
+        `;
+
+        // Create nested popup menu
+        const nestedPopup = createNestedPopup(subitem, popup);
+        childPopups.push(nestedPopup);
+        document.body.appendChild(nestedPopup);
+
+        // Show nested popup on hover
+        nestedTrigger.addEventListener('mouseenter', () => {
+          // Hide other child popups
+          childPopups.forEach(p => {
+            if (p !== nestedPopup) p.classList.add('hidden');
+          });
+
+          const rect = nestedTrigger.getBoundingClientRect();
+          nestedPopup.style.left = `${rect.right + 8}px`;
+          nestedPopup.style.top = `${rect.top}px`;
+          nestedPopup.classList.remove('hidden');
+        });
+
+        nestedTrigger.addEventListener('mouseleave', (e) => {
+          const nestedRect = nestedPopup.getBoundingClientRect();
+          const isMovingToNested = e.clientX >= nestedRect.left && e.clientX <= nestedRect.right &&
+                                    e.clientY >= nestedRect.top && e.clientY <= nestedRect.bottom;
+          if (!isMovingToNested) {
+            setTimeout(() => {
+              if (!nestedPopup.matches(':hover')) {
+                nestedPopup.classList.add('hidden');
+              }
+            }, 100);
+          }
+        });
+
+        nestedPopup.addEventListener('mouseleave', () => {
+          setTimeout(() => {
+            if (!nestedPopup.matches(':hover') && !nestedTrigger.matches(':hover')) {
+              nestedPopup.classList.add('hidden');
+            }
+          }, 100);
+        });
+
+        nestedContainer.appendChild(nestedTrigger);
+        popupContent.appendChild(nestedContainer);
+      } else {
+        // Regular link
+        const sublink = document.createElement('a');
+        sublink.className = 'flex items-center gap-3 px-4 py-2 text-gray-600 hover:bg-blue-50 hover:text-blue-600 transition-colors text-sm';
+        sublink.href = `#${subitem.route}`;
+
+        const subicon = subitem.icon || 'ph-duotone ph-square';
+        sublink.innerHTML = `
+          <i class="${subicon} text-lg"></i>
+          <span>${subitem.title}</span>
+        `;
+
+        sublink.onclick = (e) => {
+          document.querySelectorAll('#sidebar-nav a').forEach(l => {
+            l.classList.remove('bg-blue-50', 'text-blue-600');
+            l.classList.add('text-gray-600');
+          });
+          sublink.classList.add('bg-blue-50', 'text-blue-600');
+          sublink.classList.remove('text-gray-600');
+          popup.classList.add('hidden');
+        };
+
+        popupContent.appendChild(sublink);
+      }
+    });
+
+    // Store child popups reference
+    popup.childPopups = childPopups;
+  }
 
   popup.appendChild(popupContent);
+
+  // Enhanced mouseleave to check child popups
+  popup.addEventListener('mouseleave', () => {
+    setTimeout(() => {
+      const anyChildHovered = popup.childPopups && popup.childPopups.some(child => child.matches(':hover'));
+      if (!popup.matches(':hover') && !anyChildHovered) {
+        popup.classList.add('hidden');
+        if (popup.childPopups) {
+          popup.childPopups.forEach(child => child.classList.add('hidden'));
+        }
+      }
+    }, 100);
+  });
+
   return popup;
+}
+
+// Helper function to create nested popup (for second level)
+function createNestedPopup(item, parentPopup) {
+  const nestedPopup = document.createElement('div');
+
+  // Check if all items are final - use grid layout
+  const allItemsFinal = item.submenu.every(subitem => !subitem.submenu || subitem.submenu.length === 0);
+
+  if (allItemsFinal) {
+    // Grid layout for final items
+    nestedPopup.className = 'fixed hidden bg-white border border-gray-200 rounded-xl shadow-xl min-w-[280px] overflow-hidden';
+    nestedPopup.style.zIndex = '100000';
+
+    const nestedContent = document.createElement('div');
+    nestedContent.className = 'p-4 grid grid-cols-2 gap-3';
+
+    item.submenu.forEach(nestedItem => {
+      const gridItem = document.createElement('a');
+      gridItem.className = 'flex flex-col items-center gap-2 p-3 rounded-lg text-gray-600 hover:bg-blue-50 hover:text-blue-600 transition-colors cursor-pointer';
+      gridItem.href = `#${nestedItem.route}`;
+
+      const nestedIcon = nestedItem.icon || 'ph-duotone ph-circle';
+      gridItem.innerHTML = `
+        <i class="${nestedIcon} text-4xl"></i>
+        <span class="text-xs text-center font-medium leading-tight">${nestedItem.title}</span>
+      `;
+
+      gridItem.onclick = () => {
+        document.querySelectorAll('#sidebar-nav a').forEach(l => {
+          l.classList.remove('bg-blue-50', 'text-blue-600');
+          l.classList.add('text-gray-600');
+        });
+        gridItem.classList.add('bg-blue-50', 'text-blue-600');
+        gridItem.classList.remove('text-gray-600');
+        parentPopup.classList.add('hidden');
+        nestedPopup.classList.add('hidden');
+      };
+
+      nestedContent.appendChild(gridItem);
+    });
+
+    nestedPopup.appendChild(nestedContent);
+  } else {
+    // List layout
+    nestedPopup.className = 'fixed hidden bg-white border border-gray-200 rounded-xl shadow-xl min-w-[200px] overflow-hidden';
+    nestedPopup.style.zIndex = '100000';
+
+    const nestedContent = document.createElement('div');
+    nestedContent.className = 'py-1';
+
+    item.submenu.forEach(nestedItem => {
+      const nestedLink = document.createElement('a');
+      nestedLink.className = 'flex items-center gap-3 px-4 py-2 text-gray-600 hover:bg-blue-50 hover:text-blue-600 transition-colors text-sm';
+      nestedLink.href = `#${nestedItem.route}`;
+
+      const nestedIcon = nestedItem.icon || 'ph-duotone ph-circle';
+      nestedLink.innerHTML = `
+        <i class="${nestedIcon} text-base"></i>
+        <span>${nestedItem.title}</span>
+      `;
+
+      nestedLink.onclick = () => {
+        document.querySelectorAll('#sidebar-nav a').forEach(l => {
+          l.classList.remove('bg-blue-50', 'text-blue-600');
+          l.classList.add('text-gray-600');
+        });
+        nestedLink.classList.add('bg-blue-50', 'text-blue-600');
+        nestedLink.classList.remove('text-gray-600');
+        parentPopup.classList.add('hidden');
+        nestedPopup.classList.add('hidden');
+      };
+
+      nestedContent.appendChild(nestedLink);
+    });
+
+    nestedPopup.appendChild(nestedContent);
+  }
+
+  return nestedPopup;
 }
 
 function getMenuIcon(route) {
