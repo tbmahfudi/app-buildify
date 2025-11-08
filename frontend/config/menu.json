@@ -3,7 +3,7 @@
     {
       "title": "Dashboard",
       "route": "dashboard",
-      "icon": "ph ph-gauge"
+      "icon": "ph-duotone ph-gauge"
     },
     {
       "title": "Components",
@@ -13,39 +13,39 @@
     {
       "title": "Data Management",
       "route": "companies",
-      "icon": "ph ph-buildings",
+      "icon": "ph-duotone ph-buildings",
       "submenu": [
-        { "title": "Companies", "route": "companies", "icon": "ph ph-buildings" },
-        { "title": "Branches", "route": "branches", "icon": "ph ph-tree-structure" },
-        { "title": "Departments", "route": "departments", "icon": "ph ph-users-three" }
+        { "title": "Companies", "route": "companies", "icon": "ph-duotone ph-building" },
+        { "title": "Branches", "route": "branches", "icon": "ph-duotone ph-tree-structure" },
+        { "title": "Departments", "route": "departments", "icon": "ph-duotone ph-users-three" }
       ]
     },
     {
       "title": "User Management",
       "route": "users",
-      "icon": "ph-bold ph-users",
+      "icon": "ph-duotone ph-users",
       "roles": ["admin"]
     },
     {
       "title": "RBAC Management",
       "route": "rbac",
-      "icon": "ph ph-shield-check",
+      "icon": "ph-duotone ph-shield-check",
       "roles": ["admin"]
     },
     {
       "title": "Audit Trail",
       "route": "audit",
-      "icon": "ph ph-activity"
+      "icon": "ph-duotone ph-clock-counter-clockwise"
     },
     {
       "title": "Settings",
       "route": "settings",
-      "icon": "ph ph-sliders"
+      "icon": "ph-duotone ph-gear"
     },
     {
       "title": "Module Management",
       "route": "modules",
-      "icon": "ph ph-package",
+      "icon": "ph-duotone ph-package",
       "permission": "modules:manage:tenant"
     }
   ]
