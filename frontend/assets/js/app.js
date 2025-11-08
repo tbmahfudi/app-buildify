@@ -576,14 +576,33 @@ function createCollapsedSubmenuPopup(item) {
 
   popup.appendChild(popupContent);
 
-  // Enhanced mouseleave to check child popups
+  // Enhanced mouseleave to check child popups and their descendants
   popup.addEventListener('mouseleave', () => {
     setTimeout(() => {
-      const anyChildHovered = popup.childPopups && popup.childPopups.some(child => child.matches(':hover'));
-      if (!popup.matches(':hover') && !anyChildHovered) {
+      // Check if any child or descendant is hovered
+      const isAnyDescendantHovered = () => {
+        if (!popup.childPopups) return false;
+
+        for (const child of popup.childPopups) {
+          if (child.matches(':hover')) return true;
+          // Check child's children (for 3-level menus)
+          if (child.childPopups && child.childPopups.some(grandchild => grandchild.matches(':hover'))) {
+            return true;
+          }
+        }
+        return false;
+      };
+
+      if (!popup.matches(':hover') && !isAnyDescendantHovered()) {
         popup.classList.add('hidden');
         if (popup.childPopups) {
-          popup.childPopups.forEach(child => child.classList.add('hidden'));
+          popup.childPopups.forEach(child => {
+            child.classList.add('hidden');
+            // Also hide child's children
+            if (child.childPopups) {
+              child.childPopups.forEach(grandchild => grandchild.classList.add('hidden'));
+            }
+          });
         }
       }
     }, 100);
@@ -627,6 +646,10 @@ function createNestedPopup(item, parentPopup) {
         gridItem.classList.remove('text-gray-600');
         parentPopup.classList.add('hidden');
         nestedPopup.classList.add('hidden');
+        // Also hide parent's parent if it exists
+        if (parentPopup.parentPopup) {
+          parentPopup.parentPopup.classList.add('hidden');
+        }
       };
 
       nestedContent.appendChild(gridItem);
@@ -661,6 +684,10 @@ function createNestedPopup(item, parentPopup) {
         nestedLink.classList.remove('text-gray-600');
         parentPopup.classList.add('hidden');
         nestedPopup.classList.add('hidden');
+        // Also hide parent's parent if it exists
+        if (parentPopup.parentPopup) {
+          parentPopup.parentPopup.classList.add('hidden');
+        }
       };
 
       nestedContent.appendChild(nestedLink);
@@ -668,6 +695,19 @@ function createNestedPopup(item, parentPopup) {
 
     nestedPopup.appendChild(nestedContent);
   }
+
+  // Enhanced mouseleave to keep both popup and parent visible when content is hovered
+  nestedPopup.addEventListener('mouseleave', () => {
+    setTimeout(() => {
+      if (!nestedPopup.matches(':hover')) {
+        nestedPopup.classList.add('hidden');
+        // Don't hide parent - let parent's own mouseleave handle it
+      }
+    }, 150);
+  });
+
+  // Store reference to parent for chain hiding and visibility tracking
+  nestedPopup.parentPopup = parentPopup;
 
   return nestedPopup;
 }
