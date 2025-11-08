@@ -1246,12 +1246,6 @@ body.density-compact .navbar .gap-2 {
   overflow: visible;
 }
 
-/* Allow sidebar to show tooltips and popups outside bounds */
-.sidebar-content {
-  position: relative;
-  overflow-x: visible !important;
-}
-
 /* Reduce padding when sidebar is collapsed */
 .sidebar-collapsed .sidebar-content {
   padding-left: 0.5rem;
