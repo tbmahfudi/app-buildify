@@ -1080,3 +1080,57 @@ body.density-compact td {
 body.density-compact .sidebar-nav {
   gap: 0;
 }
+
+/* ============================================
+   NAVBAR - CONSISTENTLY SMALL ACROSS ALL THEMES
+   ============================================ */
+
+/* Base navbar styles - keep small */
+.navbar {
+  padding: 0.5rem 1rem !important;
+}
+
+/* Override density mode padding for navbar */
+body.density-comfortable .navbar,
+body.density-normal .navbar,
+body.density-compact .navbar {
+  padding: 0.5rem 1rem !important;
+}
+
+/* Ensure navbar elements stay small in all density modes */
+body.density-comfortable .navbar,
+body.density-normal .navbar,
+body.density-compact .navbar {
+  font-size: 0.875rem !important;
+}
+
+/* Keep navbar buttons small in all modes */
+body.density-comfortable .navbar button,
+body.density-normal .navbar button,
+body.density-compact .navbar button {
+  padding: 0.375rem 0.75rem !important;
+  font-size: 0.875rem !important;
+}
+
+/* Keep navbar icons small */
+body.density-comfortable .navbar svg,
+body.density-normal .navbar svg,
+body.density-compact .navbar svg {
+  width: 1rem !important;
+  height: 1rem !important;
+}
+
+/* Keep navbar logo small */
+body.density-comfortable .navbar > div > div:first-child > div,
+body.density-normal .navbar > div > div:first-child > div,
+body.density-compact .navbar > div > div:first-child > div {
+  width: 1.5rem !important;
+  height: 1.5rem !important;
+}
+
+/* Keep navbar gaps small */
+body.density-comfortable .navbar .gap-2,
+body.density-normal .navbar .gap-2,
+body.density-compact .navbar .gap-2 {
+  gap: 0.5rem !important;
+}
