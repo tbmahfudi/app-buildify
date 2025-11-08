@@ -21,7 +21,7 @@ export function getCurrentUser() {
 export async function initApp() {
   // Check if logged in
   const tokensStr = localStorage.getItem('tokens');
-  
+
   if (!tokensStr) {
     window.location.href = '/assets/templates/login.html';
     return;
@@ -39,7 +39,7 @@ export async function initApp() {
 
     // Update UI with user info
     updateUserInfo();
-    
+
   } catch (error) {
     console.error('Failed to load user:', error);
     localStorage.removeItem('tokens');
@@ -51,6 +51,9 @@ export async function initApp() {
 
   // Setup main layout
   setupEventListeners();
+
+  // Load and apply saved sidebar state
+  loadSidebarState();
 
   // Load enabled modules
   try {
@@ -74,7 +77,7 @@ export async function initApp() {
   // Load initial route
   const hash = window.location.hash.slice(1) || 'dashboard';
   await loadRoute(hash);
-  
+
   // Handle hash changes
   window.addEventListener('hashchange', () => {
     const route = window.location.hash.slice(1) || 'dashboard';
@@ -105,30 +108,112 @@ function setupEventListeners() {
     });
   }
 
-  // Sidebar toggle button
+  // Sidebar toggle buttons (navbar and sidebar collapse button)
   const sidebarToggle = document.getElementById('sidebar-toggle');
-  const sidebar = document.getElementById('sidebar');
+  const sidebarCollapseBtn = document.getElementById('sidebar-collapse-btn');
 
-  if (sidebarToggle && sidebar) {
-    sidebarToggle.addEventListener('click', () => {
-      const isCollapsed = sidebar.getAttribute('data-collapsed') === 'true';
-
-      if (isCollapsed) {
-        // Expand sidebar
-        sidebar.setAttribute('data-collapsed', 'false');
-        sidebar.classList.remove('sidebar-collapsed');
-        sidebar.classList.add('w-64');
-      } else {
-        // Collapse sidebar
-        sidebar.setAttribute('data-collapsed', 'true');
-        sidebar.classList.add('sidebar-collapsed');
-        sidebar.classList.remove('w-64');
-      }
-
-      // Reload menu to update tooltips
-      loadMenu();
-    });
+  if (sidebarToggle) {
+    sidebarToggle.addEventListener('click', toggleSidebar);
   }
+
+  if (sidebarCollapseBtn) {
+    sidebarCollapseBtn.addEventListener('click', toggleSidebar);
+  }
+}
+
+/**
+ * Toggle sidebar collapsed/expanded state
+ */
+function toggleSidebar() {
+  const sidebar = document.getElementById('sidebar');
+  if (!sidebar) return;
+
+  const isCollapsed = sidebar.getAttribute('data-collapsed') === 'true';
+
+  if (isCollapsed) {
+    // Expand sidebar
+    sidebar.setAttribute('data-collapsed', 'false');
+    sidebar.classList.remove('sidebar-collapsed');
+    sidebar.classList.add('w-64');
+  } else {
+    // Collapse sidebar
+    sidebar.setAttribute('data-collapsed', 'true');
+    sidebar.classList.add('sidebar-collapsed');
+    sidebar.classList.remove('w-64');
+  }
+
+  // Update collapse button icon
+  updateCollapseButtonIcon(!isCollapsed);
+
+  // Save state to localStorage
+  saveSidebarState(!isCollapsed);
+
+  // Reload menu to update tooltips and popup menus
+  loadMenu();
+}
+
+/**
+ * Update the collapse button icon direction
+ */
+function updateCollapseButtonIcon(isCollapsed) {
+  const collapseBtn = document.getElementById('sidebar-collapse-btn');
+  if (!collapseBtn) return;
+
+  const icon = collapseBtn.querySelector('i');
+  const tooltip = collapseBtn.querySelector('.sidebar-collapse-tooltip');
+
+  if (isCollapsed) {
+    // Show right arrow (expand)
+    icon.className = 'ph-duotone ph-caret-right text-xl transition-transform duration-300';
+    if (tooltip) tooltip.textContent = 'Expand sidebar';
+    collapseBtn.setAttribute('title', 'Expand sidebar');
+  } else {
+    // Show left arrow (collapse)
+    icon.className = 'ph-duotone ph-caret-left text-xl transition-transform duration-300';
+    if (tooltip) tooltip.textContent = 'Collapse sidebar';
+    collapseBtn.setAttribute('title', 'Collapse sidebar');
+  }
+}
+
+/**
+ * Load sidebar state from localStorage
+ */
+function loadSidebarState() {
+  const sidebar = document.getElementById('sidebar');
+  if (!sidebar) return;
+
+  // Check for saved state, fallback to default setting
+  const savedState = localStorage.getItem('sidebarCollapsed');
+  const defaultState = localStorage.getItem('sidebarDefaultState') || 'expanded';
+
+  let shouldCollapse = false;
+
+  if (savedState !== null) {
+    // Use saved state if available
+    shouldCollapse = savedState === 'true';
+  } else if (defaultState === 'collapsed') {
+    // Use default setting from preferences
+    shouldCollapse = true;
+  }
+
+  if (shouldCollapse) {
+    sidebar.setAttribute('data-collapsed', 'true');
+    sidebar.classList.add('sidebar-collapsed');
+    sidebar.classList.remove('w-64');
+    updateCollapseButtonIcon(true);
+  } else {
+    sidebar.setAttribute('data-collapsed', 'false');
+    sidebar.classList.remove('sidebar-collapsed');
+    sidebar.classList.add('w-64');
+    updateCollapseButtonIcon(false);
+  }
+}
+
+/**
+ * Save sidebar state to localStorage
+ */
+function saveSidebarState(isCollapsed) {
+  localStorage.setItem('sidebarCollapsed', isCollapsed.toString());
 }
 
 async function handleLogout() {

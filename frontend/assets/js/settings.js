@@ -95,6 +95,10 @@ async function loadUserSettings() {
     setSelectValue('setting-language', settings.language, 'en');
     setSelectValue('setting-timezone', settings.timezone, 'UTC');
 
+    // Load sidebar state from localStorage (not from server)
+    const sidebarState = localStorage.getItem('sidebarDefaultState') || 'expanded';
+    setSelectValue('setting-sidebar-state', sidebarState, 'expanded');
+
     updatePreview();
 
     // Apply loaded settings to the site
@@ -128,7 +132,12 @@ async function handleUserFormSubmit(event) {
     timezone: getSelectValue('setting-timezone'),
   };
 
+  // Save sidebar state to localStorage (not sent to server)
+  const sidebarState = getSelectValue('setting-sidebar-state');
+  localStorage.setItem('sidebarDefaultState', sidebarState);
+
   console.log('Settings: Saving user settings with payload:', payload);
+  console.log('Settings: Sidebar default state saved to localStorage:', sidebarState);
 
   try {
     const response = await apiFetch('/settings/user', {
@@ -208,7 +217,7 @@ async function handleTenantFormSubmit(event) {
 }
 
 function setupLivePreview() {
-  const fields = ['setting-theme', 'setting-density', 'setting-language', 'setting-timezone'];
+  const fields = ['setting-theme', 'setting-density', 'setting-sidebar-state', 'setting-language', 'setting-timezone'];
   fields.forEach((id) => {
     const element = document.getElementById(id);
     if (element) {
@@ -222,6 +231,9 @@ function setupLivePreview() {
 function updatePreview() {
   setTextContent('preview-theme', getSelectValue('setting-theme'));
   setTextContent('preview-density', getSelectValue('setting-density'));
+
+  const sidebarSelect = document.getElementById('setting-sidebar-state');
+  setTextContent('preview-sidebar-state', sidebarSelect?.selectedOptions[0]?.text || 'Expanded');
 
   const languageSelect = document.getElementById('setting-language');
   setTextContent('preview-language', languageSelect?.selectedOptions[0]?.text || '');
