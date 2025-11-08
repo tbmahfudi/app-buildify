@@ -281,10 +281,26 @@ function createMenuItem(item) {
       <div class="w-full flex justify-center">
         <i class="${icon} text-2xl"></i>
       </div>
-      <div class="sidebar-tooltip hidden group-hover:block absolute left-full ml-2 px-3 py-2 bg-gray-900 text-white text-sm rounded-lg whitespace-nowrap z-50 shadow-lg">
-        ${item.title}
-      </div>
     `;
+
+    // Add tooltip with fixed positioning to avoid clipping
+    const tooltip = document.createElement('div');
+    tooltip.className = 'fixed hidden px-3 py-2 bg-gray-900 text-white text-sm rounded-lg whitespace-nowrap shadow-lg pointer-events-none';
+    tooltip.style.zIndex = '99999';
+    tooltip.textContent = item.title;
+    document.body.appendChild(tooltip);
+
+    link.addEventListener('mouseenter', (e) => {
+      const rect = link.getBoundingClientRect();
+      tooltip.style.left = `${rect.right + 8}px`;
+      tooltip.style.top = `${rect.top + rect.height / 2}px`;
+      tooltip.style.transform = 'translateY(-50%)';
+      tooltip.classList.remove('hidden');
+    });
+
+    link.addEventListener('mouseleave', () => {
+      tooltip.classList.add('hidden');
+    });
   } else {
     link.innerHTML = `
       <i class="${icon} text-xl flex-shrink-0"></i>
@@ -322,9 +338,10 @@ function createSubmenuItem(item) {
       <i class="${icon} text-2xl"></i>
     `;
 
-    // Create popup menu for submenu items
+    // Create popup menu with fixed positioning to avoid clipping
     const popup = document.createElement('div');
-    popup.className = 'submenu-popup hidden group-hover:block absolute left-full ml-2 top-0 bg-white border border-gray-200 rounded-xl shadow-xl z-50 min-w-[200px] overflow-hidden';
+    popup.className = 'fixed hidden bg-white border border-gray-200 rounded-xl shadow-xl min-w-[220px] overflow-hidden';
+    popup.style.zIndex = '99999';
 
     // Add title header
     const popupHeader = document.createElement('div');
@@ -354,13 +371,41 @@ function createSubmenuItem(item) {
         });
         sublink.classList.add('bg-blue-50', 'text-blue-600');
         sublink.classList.remove('text-gray-600');
+        popup.classList.add('hidden');
       };
 
       popupContent.appendChild(sublink);
     });
 
     popup.appendChild(popupContent);
-    parent.appendChild(popup);
+    document.body.appendChild(popup);
+
+    // Position popup on hover
+    parent.addEventListener('mouseenter', () => {
+      const rect = parent.getBoundingClientRect();
+      popup.style.left = `${rect.right + 8}px`;
+      popup.style.top = `${rect.top}px`;
+      popup.classList.remove('hidden');
+    });
+
+    parent.addEventListener('mouseleave', (e) => {
+      // Check if mouse is moving to the popup
+      const popupRect = popup.getBoundingClientRect();
+      const isMovingToPopup = e.clientX >= popupRect.left && e.clientX <= popupRect.right &&
+                               e.clientY >= popupRect.top && e.clientY <= popupRect.bottom;
+      if (!isMovingToPopup) {
+        setTimeout(() => {
+          if (!popup.matches(':hover')) {
+            popup.classList.add('hidden');
+          }
+        }, 100);
+      }
+    });
+
+    popup.addEventListener('mouseleave', () => {
+      popup.classList.add('hidden');
+    });
+
     container.appendChild(parent);
   } else {
     // Expanded state - show full menu with arrow
