@@ -63,14 +63,12 @@ def get_database_url():
 
 def detect_db_type(url: str) -> str:
     """Detect database type from URL"""
-    if url.startswith('sqlite'):
-        return 'sqlite'
-    elif url.startswith('mysql'):
+    if url.startswith('mysql'):
         return 'mysql'
     elif url.startswith('postgresql'):
         return 'postgresql'
     else:
-        return 'unknown'
+        raise ValueError(f"Unsupported database type in URL: {url}. Only PostgreSQL and MySQL are supported.")
 
 
 def get_db_specific_options(db_type: str) -> dict:
@@ -78,56 +76,28 @@ def get_db_specific_options(db_type: str) -> dict:
     options = {
         'compare_type': True,
         'compare_server_default': True,
+        'render_as_batch': False,
     }
-    
-    if db_type == 'sqlite':
-        options.update({
-            'render_as_batch': True,
-            'compare_type': False,
-        })
-    elif db_type == 'mysql':
-        options.update({
-            'render_as_batch': False,
-        })
-    elif db_type == 'postgresql':
-        options.update({
-            'render_as_batch': False,
-        })
-    
+
     return options
 
 
 def filter_migrations_by_db(db_type: str):
-    """Filter migrations to only include ones for the current database type"""
-    script = ScriptDirectory.from_config(config)
-    
-    # Map database types to migration prefixes
-    db_prefixes = {
-        'sqlite': 'sqlite',
-        'mysql': 'mysql',
-        'postgresql': 'pg',
+    """
+    With version_locations configured in alembic.ini, Alembic automatically
+    filters migrations based on the database type. This function is kept for
+    logging purposes but no longer performs filtering.
+    """
+    db_locations = {
+        'mysql': 'versions/mysql/',
+        'postgresql': 'versions/postgresql/',
     }
-    
-    prefix = db_prefixes.get(db_type, '')
-    
-    if prefix:
-        # Get all revisions
-        all_revisions = list(script.walk_revisions())
-        
-        # Filter to only matching prefix
-        matching_revisions = [
-            rev for rev in all_revisions 
-            if rev.revision and rev.revision.startswith(prefix)
-        ]
-        
-        if matching_revisions:
-            print(f"[INFO] Using {db_type} migrations (prefix: {prefix}_)")
-            return matching_revisions
-        else:
-            print(f"[WARNING] No migrations found for {db_type}. Using all migrations.")
-            return all_revisions
-    
-    return list(script.walk_revisions())
+
+    location = db_locations.get(db_type, 'unknown')
+    print(f"[INFO] Using {db_type} migrations from {location}")
+
+    # Return None - version_locations in alembic.ini handles filtering
+    return None
 
 
 def run_migrations_offline() -> None:
@@ -135,8 +105,9 @@ def run_migrations_offline() -> None:
     url = get_database_url()
     db_type = detect_db_type(url)
     options = get_db_specific_options(db_type)
-    
+
     print(f"[INFO] Running offline migrations for: {db_type}")
+    filter_migrations_by_db(db_type)  # Log which migrations are being used
     
     context.configure(
         url=url,
@@ -158,16 +129,13 @@ def run_migrations_online() -> None:
     options = get_db_specific_options(db_type)
 
     print(f"[INFO] Running online migrations for: {db_type}")
+    filter_migrations_by_db(db_type)  # Log which migrations are being used
 
     configuration = config.get_section(config.config_ini_section)
     configuration["sqlalchemy.url"] = url
 
     connect_args = {}
-    if db_type == 'sqlite':
-        connect_args = {
-            'check_same_thread': False,
-        }
-    elif db_type == 'mysql':
+    if db_type == 'mysql':
         connect_args = {
             'charset': 'utf8mb4',
         }
