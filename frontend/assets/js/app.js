@@ -264,6 +264,62 @@ async function loadMenu() {
   }
 }
 
+// Helper function to get icon color based on menu category
+function getIconColor(title, route) {
+  const colorMap = {
+    // Main menu items - vibrant colors
+    'Dashboard': 'text-purple-600',
+    'Administration': 'text-blue-600',
+    'System Management': 'text-orange-600',
+    'Developer Tools': 'text-green-600',
+    'Help & Support': 'text-pink-600',
+
+    // Administration submenu
+    'Companies': 'text-blue-500',
+    'Branches': 'text-cyan-600',
+    'Departments': 'text-sky-600',
+    'Users': 'text-indigo-600',
+    'Groups': 'text-violet-600',
+    'Roles & Permissions': 'text-purple-600',
+    'Auth Policies': 'text-fuchsia-600',
+
+    // System Settings submenu
+    'System Settings': 'text-orange-500',
+    'General': 'text-amber-600',
+    'Integration': 'text-cyan-600',
+    'Security': 'text-red-600',
+    'Notifications': 'text-indigo-600',
+
+    // Module Management submenu
+    'Module Management': 'text-orange-500',
+    'Installed Modules': 'text-violet-600',
+    'Marketplace': 'text-emerald-600',
+    'Updates': 'text-sky-600',
+    'Builder': 'text-teal-600',
+
+    // Monitoring & Audit submenu
+    'Monitoring & Audit': 'text-orange-500',
+    'Audit Trail': 'text-amber-600',
+    'System Logs': 'text-slate-600',
+    'API Activity': 'text-fuchsia-600',
+    'Usage Analytics': 'text-lime-600',
+
+    // Developer Tools submenu
+    'Components': 'text-green-500',
+    'Schema Designer': 'text-emerald-600',
+    'API Playground': 'text-teal-600',
+    'Code Generator': 'text-lime-600',
+
+    // Help & Support submenu
+    'User Guide': 'text-pink-500',
+    'API Docs': 'text-rose-600',
+    'Contact Support': 'text-pink-600',
+    'Changelog': 'text-fuchsia-600',
+  };
+
+  return colorMap[title] || 'text-gray-600';
+}
+
 function createMenuItem(item) {
   const sidebar = document.getElementById('sidebar');
   const isCollapsed = sidebar?.getAttribute('data-collapsed') === 'true';
@@ -275,11 +331,12 @@ function createMenuItem(item) {
 
   // Use icon from menu item or fallback to getMenuIcon
   const icon = item.icon || getMenuIcon(item.route);
+  const iconColor = getIconColor(item.title, item.route);
 
   if (isCollapsed) {
     link.innerHTML = `
       <div class="w-full flex justify-center">
-        <i class="${icon} text-2xl"></i>
+        <i class="${icon} text-2xl ${iconColor}"></i>
       </div>
     `;
 
@@ -303,7 +360,7 @@ function createMenuItem(item) {
     });
   } else {
     link.innerHTML = `
-      <i class="${icon} text-xl flex-shrink-0"></i>
+      <i class="${icon} text-xl flex-shrink-0 ${iconColor}"></i>
       <span class="sidebar-menu-label font-medium">${item.title}</span>
     `;
   }
@@ -334,8 +391,9 @@ function createSubmenuItem(item, level = 1) {
     parent.className = 'flex items-center justify-center px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 cursor-pointer transition-colors relative';
 
     const icon = item.icon || getMenuIcon(item.route);
+    const iconColor = getIconColor(item.title, item.route);
     parent.innerHTML = `
-      <i class="${icon} text-2xl"></i>
+      <i class="${icon} text-2xl ${iconColor}"></i>
     `;
 
     // Create popup menu with fixed positioning to avoid clipping
@@ -374,9 +432,10 @@ function createSubmenuItem(item, level = 1) {
     parent.className = 'flex items-center justify-between px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 cursor-pointer transition-colors';
 
     const icon = item.icon || getMenuIcon(item.route);
+    const iconColor = getIconColor(item.title, item.route);
     parent.innerHTML = `
       <div class="flex items-center gap-3">
-        <i class="${icon} text-xl flex-shrink-0"></i>
+        <i class="${icon} text-xl flex-shrink-0 ${iconColor}"></i>
         <span class="font-medium sidebar-menu-label">${item.title}</span>
       </div>
       <i class="ph ph-caret-down text-sm transition-transform submenu-arrow"></i>
@@ -398,8 +457,9 @@ function createSubmenuItem(item, level = 1) {
         sublink.href = `#${subitem.route}`;
 
         const subicon = subitem.icon || 'ph-duotone ph-square';
+        const subiconColor = getIconColor(subitem.title, subitem.route);
         sublink.innerHTML = `
-          <i class="${subicon} text-lg flex-shrink-0"></i>
+          <i class="${subicon} text-lg flex-shrink-0 ${subiconColor}"></i>
           <span>${subitem.title}</span>
         `;
 
@@ -463,8 +523,9 @@ function createCollapsedSubmenuPopup(item) {
       gridItem.href = `#${subitem.route}`;
 
       const subicon = subitem.icon || 'ph-duotone ph-square';
+      const subiconColor = getIconColor(subitem.title, subitem.route);
       gridItem.innerHTML = `
-        <i class="${subicon} text-4xl"></i>
+        <i class="${subicon} text-4xl ${subiconColor}"></i>
         <span class="text-xs text-center font-medium leading-tight">${subitem.title}</span>
       `;
 
@@ -495,9 +556,10 @@ function createCollapsedSubmenuPopup(item) {
         nestedTrigger.className = 'flex items-center justify-between px-4 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600 cursor-pointer transition-colors';
 
         const subicon = subitem.icon || 'ph-duotone ph-folder';
+        const subiconColor = getIconColor(subitem.title, subitem.route);
         nestedTrigger.innerHTML = `
           <div class="flex items-center gap-3">
-            <i class="${subicon} text-lg"></i>
+            <i class="${subicon} text-lg ${subiconColor}"></i>
             <span class="text-sm font-medium">${subitem.title}</span>
           </div>
           <i class="ph ph-caret-right text-xs"></i>
@@ -566,8 +628,9 @@ function createCollapsedSubmenuPopup(item) {
         sublink.href = `#${subitem.route}`;
 
         const subicon = subitem.icon || 'ph-duotone ph-square';
+        const subiconColor = getIconColor(subitem.title, subitem.route);
         sublink.innerHTML = `
-          <i class="${subicon} text-lg"></i>
+          <i class="${subicon} text-lg ${subiconColor}"></i>
           <span>${subitem.title}</span>
         `;
 
@@ -658,8 +721,9 @@ function createNestedPopup(item, parentPopup) {
       gridItem.href = `#${nestedItem.route}`;
 
       const nestedIcon = nestedItem.icon || 'ph-duotone ph-circle';
+      const nestedIconColor = getIconColor(nestedItem.title, nestedItem.route);
       gridItem.innerHTML = `
-        <i class="${nestedIcon} text-4xl"></i>
+        <i class="${nestedIcon} text-4xl ${nestedIconColor}"></i>
         <span class="text-xs text-center font-medium leading-tight">${nestedItem.title}</span>
       `;
 
@@ -696,8 +760,9 @@ function createNestedPopup(item, parentPopup) {
       nestedLink.href = `#${nestedItem.route}`;
 
       const nestedIcon = nestedItem.icon || 'ph-duotone ph-circle';
+      const nestedIconColor = getIconColor(nestedItem.title, nestedItem.route);
       nestedLink.innerHTML = `
-        <i class="${nestedIcon} text-base"></i>
+        <i class="${nestedIcon} text-base ${nestedIconColor}"></i>
         <span>${nestedItem.title}</span>
       `;
 
