@@ -4,7 +4,7 @@ import { apiFetch } from './api.js';
 document.addEventListener('route:loaded', (event) => {
   if (event.detail.route === 'profile') {
     // Use setTimeout to ensure DOM is fully ready after innerHTML update
-    setTimeout(() => initProfilePage(), 0);
+    setTimeout(() => initProfilePage(), 50);
   }
 });
 
@@ -16,10 +16,27 @@ async function initProfilePage() {
   const passwordForm = document.getElementById('password-form');
 
   if (!profileForm || !passwordForm) {
-    console.error('Profile: Form elements not found');
+    console.error('Profile: Form elements not found, retrying...');
+    // Retry after a short delay
+    setTimeout(() => {
+      const retryProfileForm = document.getElementById('profile-form');
+      const retryPasswordForm = document.getElementById('password-form');
+      if (!retryProfileForm || !retryPasswordForm) {
+        console.error('Profile: Form elements still not found after retry');
+        return;
+      }
+      initProfilePageWithForms(retryProfileForm, retryPasswordForm);
+    }, 100);
     return;
   }
 
+  initProfilePageWithForms(profileForm, passwordForm);
+}
+
+/**
+ * Initialize profile page with the found forms
+ */
+async function initProfilePageWithForms(profileForm, passwordForm) {
   const firstInit = !profileForm.dataset.initialized;
 
   // Load user profile data
