@@ -11,7 +11,7 @@ from app.core.config import ACCESS_TOKEN_EXPIRE_MIN
 from app.core.audit import create_audit_log
 from app.models.user import User
 from app.models.token_blacklist import TokenBlacklist
-from app.schemas.auth import LoginRequest, TokenResponse, RefreshRequest, UserResponse
+from app.schemas.auth import LoginRequest, TokenResponse, RefreshRequest, UserResponse, ProfileUpdate, PasswordChangeRequest
 
 security = HTTPBearer()
 
@@ -166,13 +166,153 @@ def get_me(current_user: User = Depends(get_current_user)):
         id=str(current_user.id),
         email=current_user.email,
         full_name=current_user.full_name,
+        phone=current_user.phone,
         is_active=current_user.is_active,
         is_superuser=current_user.is_superuser,
         tenant_id=str(current_user.tenant_id) if current_user.tenant_id else None,
+        default_company_id=str(current_user.default_company_id) if current_user.default_company_id else None,
+        branch_id=str(current_user.branch_id) if current_user.branch_id else None,
+        department_id=str(current_user.department_id) if current_user.department_id else None,
         roles=permissions,  # Using permissions instead of deprecated roles field
         created_at=current_user.created_at,
+        updated_at=current_user.updated_at,
         last_login=current_user.last_login
     )
+
+@router.put("/me", response_model=UserResponse)
+def update_me(
+    profile_data: ProfileUpdate,
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Update current user profile"""
+    # Check if email is being changed and if it's already in use
+    if profile_data.email and profile_data.email != current_user.email:
+        existing_user = db.query(User).filter(User.email == profile_data.email).first()
+        if existing_user:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Email already in use"
+            )
+        current_user.email = profile_data.email
+
+    # Update other fields
+    if profile_data.full_name is not None:
+        current_user.full_name = profile_data.full_name
+
+    if profile_data.phone is not None:
+        current_user.phone = profile_data.phone
+
+    current_user.updated_at = datetime.utcnow()
+
+    try:
+        db.commit()
+        db.refresh(current_user)
+
+        # Audit profile update
+        create_audit_log(
+            db=db,
+            action="update_profile",
+            user=current_user,
+            entity_type="user",
+            entity_id=str(current_user.id),
+            request=request,
+            status="success"
+        )
+
+        logger.info(f"User {current_user.id} updated their profile")
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Failed to update profile for user {current_user.id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to update profile"
+        )
+
+    # Get user permissions
+    permissions = list(current_user.get_permissions()) if hasattr(current_user, 'get_permissions') else []
+
+    return UserResponse(
+        id=str(current_user.id),
+        email=current_user.email,
+        full_name=current_user.full_name,
+        phone=current_user.phone,
+        is_active=current_user.is_active,
+        is_superuser=current_user.is_superuser,
+        tenant_id=str(current_user.tenant_id) if current_user.tenant_id else None,
+        default_company_id=str(current_user.default_company_id) if current_user.default_company_id else None,
+        branch_id=str(current_user.branch_id) if current_user.branch_id else None,
+        department_id=str(current_user.department_id) if current_user.department_id else None,
+        roles=permissions,
+        created_at=current_user.created_at,
+        updated_at=current_user.updated_at,
+        last_login=current_user.last_login
+    )
+
+@router.post("/change-password")
+def change_password(
+    password_data: PasswordChangeRequest,
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Change current user password"""
+    # Verify current password
+    if not verify_password(password_data.current_password, current_user.hashed_password):
+        create_audit_log(
+            db=db,
+            action="change_password",
+            user=current_user,
+            entity_type="user",
+            entity_id=str(current_user.id),
+            request=request,
+            status="failure",
+            error_message="Invalid current password"
+        )
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Current password is incorrect"
+        )
+
+    # Verify new password matches confirmation
+    if password_data.new_password != password_data.confirm_password:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="New password and confirmation do not match"
+        )
+
+    # Import here to avoid circular dependency
+    from app.core.auth import hash_password
+
+    # Update password
+    current_user.hashed_password = hash_password(password_data.new_password)
+    current_user.updated_at = datetime.utcnow()
+
+    try:
+        db.commit()
+
+        # Audit password change
+        create_audit_log(
+            db=db,
+            action="change_password",
+            user=current_user,
+            entity_type="user",
+            entity_id=str(current_user.id),
+            request=request,
+            status="success"
+        )
+
+        logger.info(f"User {current_user.id} changed their password")
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Failed to change password for user {current_user.id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to change password"
+        )
+
+    return {"message": "Password changed successfully"}
 
 
 @router.post("/logout")
