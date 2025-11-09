@@ -9,7 +9,7 @@ from app.core.logging_config import setup_logging, get_logger
 from app.core.exceptions import register_exception_handlers
 from app.core.rate_limiter import setup_rate_limiting
 from app.core.db import SessionLocal
-from app.routers import org, auth, metadata, data, audit, settings, modules, rbac, reports
+from app.routers import org, auth, metadata, data, audit, settings, modules, rbac, reports, dashboards
 from app.core.module_system.registry import ModuleRegistryService
 from pathlib import Path
 
@@ -154,6 +154,7 @@ app.include_router(settings.router, prefix="/api/v1")
 app.include_router(modules.router, prefix="/api/v1")
 app.include_router(rbac.router, prefix="/api/v1")
 app.include_router(reports.router, prefix="/api/v1")
+app.include_router(dashboards.router, prefix="/api/v1")
 
 # Also maintain backward compatibility with old endpoints (deprecated)
 app.include_router(auth.router, tags=["deprecated"])

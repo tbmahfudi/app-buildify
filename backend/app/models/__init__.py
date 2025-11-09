@@ -53,6 +53,16 @@ from .report import (
     ReportCache
 )
 
+# Dashboard system
+from .dashboard import (
+    Dashboard,
+    DashboardPage,
+    DashboardWidget,
+    DashboardShare,
+    DashboardSnapshot,
+    WidgetDataCache
+)
+
 # Export all models
 __all__ = [
     # Base
@@ -100,4 +110,12 @@ __all__ = [
     "ReportSchedule",
     "ReportTemplate",
     "ReportCache",
+
+    # Dashboard system
+    "Dashboard",
+    "DashboardPage",
+    "DashboardWidget",
+    "DashboardShare",
+    "DashboardSnapshot",
+    "WidgetDataCache",
 ]
