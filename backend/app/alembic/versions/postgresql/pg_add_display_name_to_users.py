@@ -1,7 +1,7 @@
 """Add display_name to users table
 
 Revision ID: pg_add_display_name
-Revises: pg_merge_heads
+Revises: pg_merge_module_fk_dashboard
 Create Date: 2025-11-09
 
 """
@@ -11,7 +11,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = 'pg_add_display_name'
-down_revision = 'pg_merge_heads'
+down_revision = 'pg_merge_module_fk_dashboard'
 branch_labels = None
 depends_on = None
 
