@@ -14,12 +14,6 @@ sys.path.insert(0, os.path.realpath(os.path.join(os.path.dirname(__file__), '..'
 backend_dir = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(backend_dir))
 
-# Now proceed with the rest of your imports
-from logging.config import fileConfig
-from sqlalchemy import engine_from_config
-from sqlalchemy import pool
-from alembic import context
-
 from app.core.config import SQLALCHEMY_DATABASE_URL
 from app.models.base import Base
 
@@ -62,9 +56,6 @@ def configure_version_location():
     except Exception as e:
         # If we can't determine database type yet, that's okay - it will be determined later
         pass
-
-# Call configure_version_location early to set up the correct migration folder
-configure_version_location()
 
 
 def get_database_url():
