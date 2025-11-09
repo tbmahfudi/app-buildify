@@ -99,10 +99,10 @@ async function loadUserProfile() {
       if (statusElement && user.is_active !== undefined) {
         if (user.is_active) {
           statusElement.innerHTML = '<i class="bi bi-check-circle-fill"></i> Active';
-          statusElement.className = 'inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-green-500/20 text-green-400 border border-green-500/30';
+          statusElement.className = 'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700 border border-green-200';
         } else {
           statusElement.innerHTML = '<i class="bi bi-x-circle-fill"></i> Inactive';
-          statusElement.className = 'inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-red-500/20 text-red-400 border border-red-500/30';
+          statusElement.className = 'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700 border border-red-200';
         }
       }
     });

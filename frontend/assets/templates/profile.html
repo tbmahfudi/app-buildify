@@ -1,30 +1,21 @@
-<div class="space-y-6 max-w-7xl mx-auto">
-  <!-- Header Section -->
-  <header class="flex items-center justify-between pb-6 border-b border-slate-700/60">
-    <div>
-      <h1 class="text-3xl font-bold text-white flex items-center gap-3">
-        <i class="bi bi-person-circle text-blue-400"></i>
-        My Profile
-      </h1>
-      <p class="text-sm text-slate-400 mt-2">Manage your personal information and account settings</p>
-    </div>
-    <span class="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-blue-600 to-blue-500 px-5 py-2.5 text-sm text-white shadow-lg">
-      <i class="bi bi-shield-check"></i>
-      Account Center
-    </span>
-  </header>
+<div class="space-y-6">
+  <!-- Header -->
+  <div>
+    <h2 class="text-2xl font-bold text-gray-900">My Profile</h2>
+    <p class="text-gray-600 text-sm mt-1">Manage your personal information and account settings</p>
+  </div>
 
   <!-- Profile Overview Card -->
-  <div class="rounded-2xl border border-slate-700/60 bg-gradient-to-br from-slate-900/90 to-slate-800/90 p-8 shadow-2xl">
+  <div class="bg-white rounded-lg shadow-sm p-6">
     <div class="flex items-start gap-6">
       <!-- Avatar Section -->
       <div class="flex-shrink-0">
         <div class="relative group">
-          <div class="w-28 h-28 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-xl">
-            <span id="profile-avatar-initials" class="text-4xl font-bold text-white">U</span>
+          <div class="w-24 h-24 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center shadow-md">
+            <span id="profile-avatar-initials" class="text-3xl font-bold text-white">U</span>
           </div>
-          <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl flex items-center justify-center cursor-pointer">
-            <i class="bi bi-camera text-white text-2xl"></i>
+          <div class="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center cursor-pointer">
+            <i class="bi bi-camera text-white text-xl"></i>
           </div>
         </div>
       </div>
@@ -32,27 +23,27 @@
       <!-- User Info Summary -->
       <div class="flex-1">
         <div class="flex items-center gap-3 mb-2">
-          <h2 id="profile-overview-name" class="text-2xl font-bold text-white">Loading...</h2>
-          <span id="profile-overview-status" class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-green-500/20 text-green-400 border border-green-500/30">
+          <h3 id="profile-overview-name" class="text-xl font-bold text-gray-900">Loading...</h3>
+          <span id="profile-overview-status" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700 border border-green-200">
             <i class="bi bi-check-circle-fill"></i> Active
           </span>
         </div>
-        <p id="profile-overview-email" class="text-slate-300 mb-3 flex items-center gap-2">
-          <i class="bi bi-envelope text-slate-400"></i>
+        <p id="profile-overview-email" class="text-gray-600 mb-3 flex items-center gap-2 text-sm">
+          <i class="bi bi-envelope"></i>
           <span>user@example.com</span>
         </p>
-        <div class="flex flex-wrap gap-4 text-sm text-slate-400">
+        <div class="flex flex-wrap gap-4 text-sm text-gray-500">
           <div class="flex items-center gap-2">
-            <i class="bi bi-calendar-check text-blue-400"></i>
-            <span>Joined: <span id="profile-overview-joined" class="text-slate-300">-</span></span>
+            <i class="bi bi-calendar-check text-blue-500"></i>
+            <span>Joined: <span id="profile-overview-joined" class="text-gray-700 font-medium">-</span></span>
           </div>
           <div class="flex items-center gap-2">
-            <i class="bi bi-clock-history text-purple-400"></i>
-            <span>Last active: <span id="profile-overview-last-active" class="text-slate-300">-</span></span>
+            <i class="bi bi-clock-history text-purple-500"></i>
+            <span>Last active: <span id="profile-overview-last-active" class="text-gray-700 font-medium">-</span></span>
           </div>
           <div class="flex items-center gap-2">
-            <i class="bi bi-shield-fill-check text-green-400"></i>
-            <span>Role: <span id="profile-overview-role" class="text-slate-300 font-medium">-</span></span>
+            <i class="bi bi-shield-fill-check text-green-500"></i>
+            <span>Role: <span id="profile-overview-role" class="text-gray-700 font-medium">-</span></span>
           </div>
         </div>
       </div>
@@ -64,83 +55,81 @@
     <!-- Left Column (2/3 width) -->
     <div class="lg:col-span-2 space-y-6">
       <!-- Personal Information Card -->
-      <article class="rounded-2xl border border-slate-700/60 bg-slate-900/70 p-6 shadow-xl">
-        <div class="flex items-center justify-between mb-6">
-          <h3 class="text-xl font-semibold text-white flex items-center gap-2">
-            <i class="bi bi-person-lines-fill text-blue-400"></i>
-            Personal Information
-          </h3>
+      <div class="bg-white rounded-lg shadow-sm p-6">
+        <div class="flex items-center gap-2 mb-6">
+          <i class="bi bi-person-lines-fill text-blue-600 text-lg"></i>
+          <h3 class="text-lg font-semibold text-gray-900">Personal Information</h3>
         </div>
 
         <form id="profile-form" class="space-y-5">
           <!-- Full Name -->
           <div>
-            <label for="profile-full-name" class="block text-sm font-medium text-slate-300 mb-2">
-              Full Name <span class="text-red-400">*</span>
+            <label for="profile-full-name" class="block text-sm font-medium text-gray-700 mb-2">
+              Full Name <span class="text-red-500">*</span>
             </label>
             <input
               type="text"
               id="profile-full-name"
               name="full_name"
-              class="w-full px-4 py-2.5 bg-slate-800/50 border border-slate-700 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               placeholder="Enter your full legal name"
               required
             />
-            <p class="text-xs text-slate-400 mt-1">Your full legal name as it appears on official documents</p>
+            <p class="text-xs text-gray-500 mt-1">Your full legal name as it appears on official documents</p>
           </div>
 
           <!-- Display Name -->
           <div>
-            <label for="profile-display-name" class="block text-sm font-medium text-slate-300 mb-2">
-              Display Name <span class="text-slate-500">(max 50 characters)</span>
+            <label for="profile-display-name" class="block text-sm font-medium text-gray-700 mb-2">
+              Display Name <span class="text-gray-400 text-xs">(max 50 characters)</span>
             </label>
             <input
               type="text"
               id="profile-display-name"
               name="display_name"
               maxlength="50"
-              class="w-full px-4 py-2.5 bg-slate-800/50 border border-slate-700 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               placeholder="Enter your preferred display name"
             />
-            <p class="text-xs text-slate-400 mt-1">This name will appear in the navigation bar and throughout the app</p>
+            <p class="text-xs text-gray-500 mt-1">This name will appear in the navigation bar and throughout the app</p>
           </div>
 
           <!-- Email -->
           <div>
-            <label for="profile-email" class="block text-sm font-medium text-slate-300 mb-2">
-              Email Address <span class="text-red-400">*</span>
+            <label for="profile-email" class="block text-sm font-medium text-gray-700 mb-2">
+              Email Address <span class="text-red-500">*</span>
             </label>
             <input
               type="email"
               id="profile-email"
               name="email"
-              class="w-full px-4 py-2.5 bg-slate-800/50 border border-slate-700 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               placeholder="your.email@example.com"
               required
             />
-            <p class="text-xs text-slate-400 mt-1">Used for login and important notifications</p>
+            <p class="text-xs text-gray-500 mt-1">Used for login and important notifications</p>
           </div>
 
           <!-- Phone Number -->
           <div>
-            <label for="profile-phone" class="block text-sm font-medium text-slate-300 mb-2">
+            <label for="profile-phone" class="block text-sm font-medium text-gray-700 mb-2">
               Phone Number
             </label>
             <input
               type="tel"
               id="profile-phone"
               name="phone"
-              class="w-full px-4 py-2.5 bg-slate-800/50 border border-slate-700 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               placeholder="+1 (555) 123-4567"
             />
-            <p class="text-xs text-slate-400 mt-1">Optional contact number for support and notifications</p>
+            <p class="text-xs text-gray-500 mt-1">Optional contact number for support and notifications</p>
           </div>
 
           <!-- Action Buttons -->
           <div class="flex gap-3 pt-4">
             <button
               type="submit"
-              class="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-500 text-white rounded-lg hover:from-blue-700 hover:to-blue-600 transition-all font-medium shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
+              class="flex-1 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center justify-center gap-2 font-medium"
             >
               <i class="bi bi-check-circle"></i>
               Save Changes
@@ -148,31 +137,29 @@
             <button
               type="button"
               onclick="location.reload()"
-              class="px-6 py-3 bg-slate-700 text-slate-300 rounded-lg hover:bg-slate-600 transition-colors font-medium flex items-center gap-2"
+              class="px-6 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition font-medium flex items-center gap-2"
             >
               <i class="bi bi-arrow-clockwise"></i>
               Reset
             </button>
           </div>
         </form>
-      </article>
+      </div>
 
       <!-- Security Settings Card -->
-      <article class="rounded-2xl border border-slate-700/60 bg-slate-900/70 p-6 shadow-xl">
-        <div class="flex items-center justify-between mb-6">
-          <h3 class="text-xl font-semibold text-white flex items-center gap-2">
-            <i class="bi bi-shield-lock-fill text-purple-400"></i>
-            Security Settings
-          </h3>
+      <div class="bg-white rounded-lg shadow-sm p-6">
+        <div class="flex items-center gap-2 mb-6">
+          <i class="bi bi-shield-lock-fill text-purple-600 text-lg"></i>
+          <h3 class="text-lg font-semibold text-gray-900">Security Settings</h3>
         </div>
 
         <form id="password-form" class="space-y-5">
-          <div class="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4 mb-5">
+          <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-5">
             <div class="flex items-start gap-3">
-              <i class="bi bi-info-circle text-blue-400 text-lg mt-0.5"></i>
+              <i class="bi bi-info-circle text-blue-600 text-lg mt-0.5"></i>
               <div class="text-sm">
-                <p class="text-blue-300 font-medium">Password Requirements</p>
-                <ul class="text-blue-200 mt-2 space-y-1 text-xs">
+                <p class="text-blue-900 font-medium">Password Requirements</p>
+                <ul class="text-blue-800 mt-2 space-y-1 text-xs">
                   <li>• Minimum 8 characters long</li>
                   <li>• Must be different from your current password</li>
                   <li>• Consider using a mix of letters, numbers, and symbols</li>
@@ -183,28 +170,28 @@
 
           <!-- Current Password -->
           <div>
-            <label for="current-password" class="block text-sm font-medium text-slate-300 mb-2">
-              Current Password <span class="text-red-400">*</span>
+            <label for="current-password" class="block text-sm font-medium text-gray-700 mb-2">
+              Current Password <span class="text-red-500">*</span>
             </label>
             <input
               type="password"
               id="current-password"
               name="current_password"
-              class="w-full px-4 py-2.5 bg-slate-800/50 border border-slate-700 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
               placeholder="Enter your current password"
             />
           </div>
 
           <!-- New Password -->
           <div>
-            <label for="new-password" class="block text-sm font-medium text-slate-300 mb-2">
-              New Password <span class="text-red-400">*</span>
+            <label for="new-password" class="block text-sm font-medium text-gray-700 mb-2">
+              New Password <span class="text-red-500">*</span>
             </label>
             <input
               type="password"
               id="new-password"
               name="new_password"
-              class="w-full px-4 py-2.5 bg-slate-800/50 border border-slate-700 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
               placeholder="Enter new password (min 8 characters)"
               minlength="8"
             />
@@ -212,14 +199,14 @@
 
           <!-- Confirm New Password -->
           <div>
-            <label for="confirm-password" class="block text-sm font-medium text-slate-300 mb-2">
-              Confirm New Password <span class="text-red-400">*</span>
+            <label for="confirm-password" class="block text-sm font-medium text-gray-700 mb-2">
+              Confirm New Password <span class="text-red-500">*</span>
             </label>
             <input
               type="password"
               id="confirm-password"
               name="confirm_password"
-              class="w-full px-4 py-2.5 bg-slate-800/50 border border-slate-700 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
               placeholder="Confirm your new password"
               minlength="8"
             />
@@ -229,115 +216,115 @@
           <div class="pt-4">
             <button
               type="submit"
-              class="w-full px-6 py-3 bg-gradient-to-r from-purple-600 to-purple-500 text-white rounded-lg hover:from-purple-700 hover:to-purple-600 transition-all font-medium shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
+              class="w-full px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition font-medium flex items-center justify-center gap-2"
             >
               <i class="bi bi-key-fill"></i>
               Update Password
             </button>
           </div>
         </form>
-      </article>
+      </div>
     </div>
 
     <!-- Right Column (1/3 width) -->
     <div class="space-y-6">
       <!-- Organization Details Card -->
-      <article class="rounded-2xl border border-slate-700/60 bg-slate-900/70 p-6 shadow-xl">
-        <h3 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-          <i class="bi bi-building text-orange-400"></i>
-          Organization
-        </h3>
-        <div class="space-y-3 text-sm">
-          <div class="bg-slate-800/50 rounded-lg p-3 border border-slate-700/50">
-            <p class="text-slate-400 text-xs mb-1">Tenant</p>
-            <p id="profile-tenant" class="text-slate-200 font-medium truncate">-</p>
+      <div class="bg-white rounded-lg shadow-sm p-6">
+        <div class="flex items-center gap-2 mb-4">
+          <i class="bi bi-building text-orange-500 text-lg"></i>
+          <h3 class="text-lg font-semibold text-gray-900">Organization</h3>
+        </div>
+        <div class="space-y-3">
+          <div class="bg-gray-50 rounded-lg p-3 border border-gray-200">
+            <p class="text-xs text-gray-500 mb-1">Tenant</p>
+            <p id="profile-tenant" class="text-sm text-gray-900 font-medium truncate">-</p>
           </div>
-          <div class="bg-slate-800/50 rounded-lg p-3 border border-slate-700/50">
-            <p class="text-slate-400 text-xs mb-1">Company</p>
-            <p id="profile-company" class="text-slate-200 font-medium truncate">-</p>
+          <div class="bg-gray-50 rounded-lg p-3 border border-gray-200">
+            <p class="text-xs text-gray-500 mb-1">Company</p>
+            <p id="profile-company" class="text-sm text-gray-900 font-medium truncate">-</p>
           </div>
-          <div class="bg-slate-800/50 rounded-lg p-3 border border-slate-700/50">
-            <p class="text-slate-400 text-xs mb-1">Branch</p>
-            <p id="profile-branch" class="text-slate-200 font-medium truncate">-</p>
+          <div class="bg-gray-50 rounded-lg p-3 border border-gray-200">
+            <p class="text-xs text-gray-500 mb-1">Branch</p>
+            <p id="profile-branch" class="text-sm text-gray-900 font-medium truncate">-</p>
           </div>
-          <div class="bg-slate-800/50 rounded-lg p-3 border border-slate-700/50">
-            <p class="text-slate-400 text-xs mb-1">Department</p>
-            <p id="profile-department" class="text-slate-200 font-medium truncate">-</p>
+          <div class="bg-gray-50 rounded-lg p-3 border border-gray-200">
+            <p class="text-xs text-gray-500 mb-1">Department</p>
+            <p id="profile-department" class="text-sm text-gray-900 font-medium truncate">-</p>
           </div>
         </div>
-      </article>
+      </div>
 
       <!-- Account Statistics Card -->
-      <article class="rounded-2xl border border-slate-700/60 bg-slate-900/70 p-6 shadow-xl">
-        <h3 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-          <i class="bi bi-graph-up text-green-400"></i>
-          Account Stats
-        </h3>
-        <div class="space-y-4">
-          <div class="flex items-center justify-between pb-3 border-b border-slate-700/50">
+      <div class="bg-white rounded-lg shadow-sm p-6">
+        <div class="flex items-center gap-2 mb-4">
+          <i class="bi bi-graph-up text-green-500 text-lg"></i>
+          <h3 class="text-lg font-semibold text-gray-900">Account Stats</h3>
+        </div>
+        <div class="space-y-3">
+          <div class="flex items-center justify-between py-2 border-b border-gray-100">
             <div class="flex items-center gap-2">
-              <i class="bi bi-person-badge text-blue-400"></i>
-              <span class="text-slate-300 text-sm">User ID</span>
+              <i class="bi bi-person-badge text-blue-500"></i>
+              <span class="text-sm text-gray-600">User ID</span>
             </div>
-            <span id="profile-user-id" class="text-slate-400 text-xs font-mono">-</span>
+            <span id="profile-user-id" class="text-xs text-gray-500 font-mono">-</span>
           </div>
-          <div class="flex items-center justify-between pb-3 border-b border-slate-700/50">
+          <div class="flex items-center justify-between py-2 border-b border-gray-100">
             <div class="flex items-center gap-2">
-              <i class="bi bi-calendar-plus text-green-400"></i>
-              <span class="text-slate-300 text-sm">Member Since</span>
+              <i class="bi bi-calendar-plus text-green-500"></i>
+              <span class="text-sm text-gray-600">Member Since</span>
             </div>
-            <span id="profile-created" class="text-slate-200 text-sm font-medium">-</span>
+            <span id="profile-created" class="text-sm text-gray-900 font-medium">-</span>
           </div>
-          <div class="flex items-center justify-between pb-3 border-b border-slate-700/50">
+          <div class="flex items-center justify-between py-2 border-b border-gray-100">
             <div class="flex items-center gap-2">
-              <i class="bi bi-clock text-purple-400"></i>
-              <span class="text-slate-300 text-sm">Last Login</span>
+              <i class="bi bi-clock text-purple-500"></i>
+              <span class="text-sm text-gray-600">Last Login</span>
             </div>
-            <span id="profile-last-login" class="text-slate-200 text-sm font-medium">-</span>
+            <span id="profile-last-login" class="text-sm text-gray-900 font-medium">-</span>
           </div>
-          <div class="flex items-center justify-between">
+          <div class="flex items-center justify-between py-2">
             <div class="flex items-center gap-2">
-              <i class="bi bi-pencil-square text-orange-400"></i>
-              <span class="text-slate-300 text-sm">Last Updated</span>
+              <i class="bi bi-pencil-square text-orange-500"></i>
+              <span class="text-sm text-gray-600">Last Updated</span>
             </div>
-            <span id="profile-updated" class="text-slate-200 text-sm font-medium">-</span>
+            <span id="profile-updated" class="text-sm text-gray-900 font-medium">-</span>
           </div>
         </div>
-      </article>
+      </div>
 
       <!-- Account Actions Card -->
-      <article class="rounded-2xl border border-slate-700/60 bg-slate-900/70 p-6 shadow-xl">
-        <h3 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-          <i class="bi bi-gear-fill text-slate-400"></i>
-          Quick Actions
-        </h3>
-        <div class="space-y-3">
-          <a href="#settings" class="flex items-center gap-3 p-3 rounded-lg bg-slate-800/50 hover:bg-slate-700/50 transition-colors border border-slate-700/50 hover:border-slate-600">
-            <i class="bi bi-sliders text-blue-400 text-lg"></i>
+      <div class="bg-white rounded-lg shadow-sm p-6">
+        <div class="flex items-center gap-2 mb-4">
+          <i class="bi bi-gear-fill text-gray-600 text-lg"></i>
+          <h3 class="text-lg font-semibold text-gray-900">Quick Actions</h3>
+        </div>
+        <div class="space-y-2">
+          <a href="#settings" class="flex items-center gap-3 p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors border border-gray-200 hover:border-gray-300">
+            <i class="bi bi-sliders text-blue-600 text-lg"></i>
             <div class="flex-1">
-              <p class="text-slate-200 text-sm font-medium">Settings</p>
-              <p class="text-slate-400 text-xs">Theme, language & preferences</p>
+              <p class="text-sm text-gray-900 font-medium">Settings</p>
+              <p class="text-xs text-gray-500">Theme, language & preferences</p>
             </div>
-            <i class="bi bi-chevron-right text-slate-400"></i>
+            <i class="bi bi-chevron-right text-gray-400"></i>
           </a>
-          <button class="w-full flex items-center gap-3 p-3 rounded-lg bg-slate-800/50 hover:bg-slate-700/50 transition-colors border border-slate-700/50 hover:border-slate-600">
-            <i class="bi bi-download text-green-400 text-lg"></i>
+          <button class="w-full flex items-center gap-3 p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors border border-gray-200 hover:border-gray-300">
+            <i class="bi bi-download text-green-600 text-lg"></i>
             <div class="flex-1 text-left">
-              <p class="text-slate-200 text-sm font-medium">Export Data</p>
-              <p class="text-slate-400 text-xs">Download your information</p>
+              <p class="text-sm text-gray-900 font-medium">Export Data</p>
+              <p class="text-xs text-gray-500">Download your information</p>
             </div>
-            <i class="bi bi-chevron-right text-slate-400"></i>
+            <i class="bi bi-chevron-right text-gray-400"></i>
           </button>
-          <button class="w-full flex items-center gap-3 p-3 rounded-lg bg-red-500/10 hover:bg-red-500/20 transition-colors border border-red-500/30 hover:border-red-500/50">
-            <i class="bi bi-trash text-red-400 text-lg"></i>
+          <button class="w-full flex items-center gap-3 p-3 rounded-lg bg-red-50 hover:bg-red-100 transition-colors border border-red-200 hover:border-red-300">
+            <i class="bi bi-trash text-red-600 text-lg"></i>
             <div class="flex-1 text-left">
-              <p class="text-red-300 text-sm font-medium">Delete Account</p>
-              <p class="text-red-400/70 text-xs">Permanently remove account</p>
+              <p class="text-sm text-red-700 font-medium">Delete Account</p>
+              <p class="text-xs text-red-500">Permanently remove account</p>
             </div>
             <i class="bi bi-chevron-right text-red-400"></i>
           </button>
         </div>
-      </article>
+      </div>
     </div>
   </div>
 </div>
