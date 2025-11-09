@@ -69,8 +69,43 @@ async function loadUserProfile() {
 
     // Populate form fields
     setInputValue('profile-full-name', user.full_name || '');
+    setInputValue('profile-display-name', user.display_name || '');
     setInputValue('profile-email', user.email || '');
     setInputValue('profile-phone', user.phone || '');
+
+    // Set avatar initials
+    const initials = getInitials(user.display_name || user.full_name || user.email);
+    setTextContent('profile-avatar-initials', initials);
+
+    // Populate overview section
+    const displayName = user.display_name || user.full_name || user.email.split('@')[0];
+    setTextContent('profile-overview-name', displayName);
+
+    const overviewEmailEl = document.getElementById('profile-overview-email');
+    if (overviewEmailEl) {
+      const emailSpan = overviewEmailEl.querySelector('span');
+      if (emailSpan) {
+        emailSpan.textContent = user.email;
+      }
+    }
+
+    // Update status
+    const statusElements = [
+      document.getElementById('profile-overview-status'),
+      document.getElementById('profile-status')
+    ];
+
+    statusElements.forEach(statusElement => {
+      if (statusElement && user.is_active !== undefined) {
+        if (user.is_active) {
+          statusElement.innerHTML = '<i class="bi bi-check-circle-fill"></i> Active';
+          statusElement.className = 'inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-green-500/20 text-green-400 border border-green-500/30';
+        } else {
+          statusElement.innerHTML = '<i class="bi bi-x-circle-fill"></i> Inactive';
+          statusElement.className = 'inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-red-500/20 text-red-400 border border-red-500/30';
+        }
+      }
+    });
 
     // Display organization information
     setTextContent('profile-tenant', user.tenant_id || 'Not assigned');
@@ -78,42 +113,57 @@ async function loadUserProfile() {
     setTextContent('profile-branch', user.branch_id || 'Not assigned');
     setTextContent('profile-department', user.department_id || 'Not assigned');
 
-    // Display account information
-    const statusElement = document.getElementById('profile-status');
-    if (statusElement && user.is_active !== undefined) {
-      if (user.is_active) {
-        statusElement.innerHTML = '<i class="bi bi-check-circle-fill"></i> Active';
-        statusElement.className = 'inline-flex items-center gap-1.5 text-green-400';
-      } else {
-        statusElement.innerHTML = '<i class="bi bi-x-circle-fill"></i> Inactive';
-        statusElement.className = 'inline-flex items-center gap-1.5 text-red-400';
-      }
-    }
+    // Display account stats
+    setTextContent('profile-user-id', user.id ? user.id.substring(0, 8) + '...' : '-');
 
     // Format and display dates
     if (user.created_at) {
       const createdDate = new Date(user.created_at);
       setTextContent('profile-created', formatDate(createdDate));
+      setTextContent('profile-overview-joined', formatDate(createdDate));
     }
 
     if (user.last_login) {
       const lastLoginDate = new Date(user.last_login);
-      setTextContent('profile-last-login', formatDate(lastLoginDate));
+      setTextContent('profile-last-login', formatRelativeTime(lastLoginDate));
+      setTextContent('profile-overview-last-active', formatRelativeTime(lastLoginDate));
+    }
+
+    if (user.updated_at) {
+      const updatedDate = new Date(user.updated_at);
+      setTextContent('profile-updated', formatRelativeTime(updatedDate));
     }
 
     // Display role
+    let roleText = 'User';
     if (user.is_superuser) {
-      setTextContent('profile-role', 'Super Admin');
+      roleText = 'Super Admin';
     } else if (Array.isArray(user.roles) && user.roles.length > 0) {
-      setTextContent('profile-role', user.roles.join(', '));
-    } else {
-      setTextContent('profile-role', 'User');
+      roleText = user.roles.slice(0, 2).join(', ');
+      if (user.roles.length > 2) {
+        roleText += ` +${user.roles.length - 2} more`;
+      }
     }
+    setTextContent('profile-role', roleText);
+    setTextContent('profile-overview-role', roleText);
 
   } catch (error) {
     console.error('Profile: Failed to load user profile', error);
     showAlert('Unable to load profile data. Please try refreshing the page.', 'danger');
   }
+}
+
+/**
+ * Get initials from name
+ */
+function getInitials(name) {
+  if (!name) return 'U';
+
+  const parts = name.trim().split(/\s+/);
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  }
+  return name.substring(0, 2).toUpperCase();
 }
 
 /**
@@ -125,6 +175,7 @@ async function handleProfileFormSubmit(event) {
 
   const payload = {
     full_name: getInputValue('profile-full-name'),
+    display_name: getInputValue('profile-display-name'),
     email: getInputValue('profile-email'),
     phone: getInputValue('profile-phone')
   };
@@ -164,6 +215,13 @@ async function handleProfileFormSubmit(event) {
 
       // Reload profile to show updated data
       await loadUserProfile();
+
+      // Update navbar display name
+      const userNameEl = document.getElementById('user-name');
+      if (userNameEl) {
+        const displayName = updatedUser.display_name || updatedUser.full_name || updatedUser.email.split('@')[0];
+        userNameEl.textContent = displayName;
+      }
     } else {
       const error = await safeJson(response);
       console.error('Profile: Failed to update profile. Response:', response.status, error);
@@ -242,25 +300,37 @@ async function handlePasswordFormSubmit(event) {
 }
 
 /**
- * Format date for display
+ * Format date for display (e.g., "Jan 15, 2024")
  */
 function formatDate(date) {
+  return date.toLocaleDateString(undefined, {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric'
+  });
+}
+
+/**
+ * Format relative time (e.g., "2 days ago", "Just now")
+ */
+function formatRelativeTime(date) {
   const now = new Date();
   const diff = now - date;
-  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+  const seconds = Math.floor(diff / 1000);
+  const minutes = Math.floor(seconds / 60);
+  const hours = Math.floor(minutes / 60);
+  const days = Math.floor(hours / 24);
 
-  if (days === 0) {
-    return 'Today';
-  } else if (days === 1) {
-    return 'Yesterday';
+  if (seconds < 60) {
+    return 'Just now';
+  } else if (minutes < 60) {
+    return `${minutes} minute${minutes !== 1 ? 's' : ''} ago`;
+  } else if (hours < 24) {
+    return `${hours} hour${hours !== 1 ? 's' : ''} ago`;
   } else if (days < 7) {
-    return `${days} days ago`;
+    return `${days} day${days !== 1 ? 's' : ''} ago`;
   } else {
-    return date.toLocaleDateString(undefined, {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
+    return formatDate(date);
   }
 }
 
