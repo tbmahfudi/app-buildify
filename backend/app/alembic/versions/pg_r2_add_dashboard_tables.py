@@ -1,7 +1,7 @@
 """Add dashboard tables
 
-Revision ID: r2_add_dashboard_tables
-Revises: r1_add_report_tables
+Revision ID: pg_r2_add_dashboard_tables
+Revises: pg_r1_add_report_tables
 Create Date: 2025-11-09
 
 """
@@ -9,8 +9,8 @@ from alembic import op
 import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
-revision = 'r2_add_dashboard_tables'
-down_revision = 'r1_add_report_tables'
+revision = 'pg_r2_add_dashboard_tables'
+down_revision = 'pg_r1_add_report_tables'
 branch_labels = None
 depends_on = None
 

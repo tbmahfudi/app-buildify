@@ -1,6 +1,6 @@
 """Add report tables
 
-Revision ID: r1_add_report_tables
+Revision ID: pg_r1_add_report_tables
 Revises: pg_m1n2o3p4q5r6
 Create Date: 2025-11-09
 
@@ -9,7 +9,7 @@ from alembic import op
 import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
-revision = 'r1_add_report_tables'
+revision = 'pg_r1_add_report_tables'
 down_revision = 'pg_m1n2o3p4q5r6'
 branch_labels = None
 depends_on = None
