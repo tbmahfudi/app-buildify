@@ -44,6 +44,15 @@ from .token_blacklist import TokenBlacklist
 # Module system
 from .module_registry import ModuleRegistry, TenantModule
 
+# Report system
+from .report import (
+    ReportDefinition,
+    ReportExecution,
+    ReportSchedule,
+    ReportTemplate,
+    ReportCache
+)
+
 # Export all models
 __all__ = [
     # Base
@@ -84,4 +93,11 @@ __all__ = [
     # Module system
     "ModuleRegistry",
     "TenantModule",
+
+    # Report system
+    "ReportDefinition",
+    "ReportExecution",
+    "ReportSchedule",
+    "ReportTemplate",
+    "ReportCache",
 ]
