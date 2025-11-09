@@ -56,14 +56,24 @@ class UserUpdate(BaseModel):
     tenant_id: Optional[str] = Field(None, description="Tenant ID")
     roles: Optional[List[str]] = Field(None, description="User roles")
 
+class ProfileUpdate(BaseModel):
+    """Update current user profile"""
+    email: Optional[EmailStr] = Field(None, description="User email address")
+    full_name: Optional[str] = Field(None, max_length=255, description="User full name")
+    phone: Optional[str] = Field(None, max_length=50, description="User phone number")
+
 class UserResponse(BaseModel):
     """User information response"""
     id: str = Field(..., description="User unique identifier")
     email: str = Field(..., description="User email address")
     full_name: Optional[str] = Field(None, description="User full name")
+    phone: Optional[str] = Field(None, description="User phone number")
     is_active: bool = Field(..., description="Active status")
     is_superuser: bool = Field(..., description="Superuser flag")
     tenant_id: Optional[str] = Field(None, description="Tenant ID")
+    default_company_id: Optional[str] = Field(None, description="Default company ID")
+    branch_id: Optional[str] = Field(None, description="Branch ID")
+    department_id: Optional[str] = Field(None, description="Department ID")
     roles: List[str] = Field(default_factory=list, description="User roles")
     created_at: datetime = Field(..., description="Creation timestamp")
     updated_at: Optional[datetime] = Field(None, description="Last update timestamp")
