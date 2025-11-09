@@ -32,7 +32,7 @@ class ModuleRegistry(Base):
 
     # Installation tracking
     installed_at = Column(DateTime, nullable=True)
-    installed_by_user_id = Column(GUID, ForeignKey("users.id"), nullable=True)
+    installed_by_user_id = Column(GUID, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
     # Configuration
     manifest = Column(JSON, nullable=False)  # Full manifest data
@@ -95,9 +95,9 @@ class TenantModule(Base):
 
     # Activation tracking
     enabled_at = Column(DateTime, nullable=True)
-    enabled_by_user_id = Column(GUID, ForeignKey("users.id"), nullable=True)
+    enabled_by_user_id = Column(GUID, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     disabled_at = Column(DateTime, nullable=True)
-    disabled_by_user_id = Column(GUID, ForeignKey("users.id"), nullable=True)
+    disabled_by_user_id = Column(GUID, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
     # Usage tracking (optional, for billing)
     usage_count = Column(JSON, nullable=True)  # Track usage metrics
