@@ -1,7 +1,7 @@
 """Add dashboard tables
 
-Revision ID: add_dashboard_tables
-Revises: add_report_tables
+Revision ID: r2_add_dashboard_tables
+Revises: r1_add_report_tables
 Create Date: 2025-11-09
 
 """
@@ -9,8 +9,8 @@ from alembic import op
 import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
-revision = 'add_dashboard_tables'
-down_revision = 'add_report_tables'
+revision = 'r2_add_dashboard_tables'
+down_revision = 'r1_add_report_tables'
 branch_labels = None
 depends_on = None
 
@@ -30,17 +30,17 @@ def upgrade():
         sa.Column('global_parameters', sa.JSON(), nullable=True),
         sa.Column('global_filters', sa.JSON(), nullable=True),
         sa.Column('refresh_interval', sa.String(50), nullable=False, server_default='none'),
-        sa.Column('is_public', sa.Boolean(), nullable=False, server_default='0'),
+        sa.Column('is_public', sa.Boolean(), nullable=False, server_default='false'),
         sa.Column('allowed_roles', sa.JSON(), nullable=True),
         sa.Column('allowed_users', sa.JSON(), nullable=True),
-        sa.Column('show_header', sa.Boolean(), nullable=False, server_default='1'),
-        sa.Column('show_filters', sa.Boolean(), nullable=False, server_default='1'),
-        sa.Column('full_screen_mode', sa.Boolean(), nullable=False, server_default='0'),
+        sa.Column('show_header', sa.Boolean(), nullable=False, server_default='true'),
+        sa.Column('show_filters', sa.Boolean(), nullable=False, server_default='true'),
+        sa.Column('full_screen_mode', sa.Boolean(), nullable=False, server_default='false'),
         sa.Column('created_by', sa.Integer(), nullable=False),
         sa.Column('created_at', sa.DateTime(), nullable=False, server_default=sa.text('CURRENT_TIMESTAMP')),
         sa.Column('updated_at', sa.DateTime(), nullable=False, server_default=sa.text('CURRENT_TIMESTAMP')),
-        sa.Column('is_active', sa.Boolean(), nullable=False, server_default='1'),
-        sa.Column('is_favorite', sa.Boolean(), nullable=False, server_default='0'),
+        sa.Column('is_active', sa.Boolean(), nullable=False, server_default='true'),
+        sa.Column('is_favorite', sa.Boolean(), nullable=False, server_default='false'),
         sa.PrimaryKeyConstraint('id')
     )
     op.create_index('ix_dashboards_tenant_id', 'dashboards', ['tenant_id'])
@@ -58,7 +58,7 @@ def upgrade():
         sa.Column('icon', sa.String(50), nullable=True),
         sa.Column('layout_config', sa.JSON(), nullable=True),
         sa.Column('order', sa.Integer(), nullable=False, server_default='0'),
-        sa.Column('is_default', sa.Boolean(), nullable=False, server_default='0'),
+        sa.Column('is_default', sa.Boolean(), nullable=False, server_default='false'),
         sa.Column('created_at', sa.DateTime(), nullable=False, server_default=sa.text('CURRENT_TIMESTAMP')),
         sa.Column('updated_at', sa.DateTime(), nullable=False, server_default=sa.text('CURRENT_TIMESTAMP')),
         sa.PrimaryKeyConstraint('id'),
@@ -83,15 +83,16 @@ def upgrade():
         sa.Column('filter_mapping', sa.JSON(), nullable=True),
         sa.Column('position', sa.JSON(), nullable=False),
         sa.Column('order', sa.Integer(), nullable=False, server_default='0'),
-        sa.Column('show_title', sa.Boolean(), nullable=False, server_default='1'),
-        sa.Column('show_border', sa.Boolean(), nullable=False, server_default='1'),
+        sa.Column('show_title', sa.Boolean(), nullable=False, server_default='true'),
+        sa.Column('show_border', sa.Boolean(), nullable=False, server_default='true'),
         sa.Column('background_color', sa.String(20), nullable=True),
-        sa.Column('auto_refresh', sa.Boolean(), nullable=False, server_default='0'),
+        sa.Column('auto_refresh', sa.Boolean(), nullable=False, server_default='false'),
         sa.Column('refresh_interval', sa.String(50), nullable=False, server_default='none'),
         sa.Column('created_at', sa.DateTime(), nullable=False, server_default=sa.text('CURRENT_TIMESTAMP')),
         sa.Column('updated_at', sa.DateTime(), nullable=False, server_default=sa.text('CURRENT_TIMESTAMP')),
         sa.PrimaryKeyConstraint('id'),
-        sa.ForeignKeyConstraint(['page_id'], ['dashboard_pages.id'], ondelete='CASCADE')
+        sa.ForeignKeyConstraint(['page_id'], ['dashboard_pages.id'], ondelete='CASCADE'),
+        sa.ForeignKeyConstraint(['report_definition_id'], ['report_definitions.id'], ondelete='SET NULL')
     )
     op.create_index('ix_dashboard_widgets_tenant_id', 'dashboard_widgets', ['tenant_id'])
     op.create_index('ix_dashboard_widgets_page_id', 'dashboard_widgets', ['page_id'])
@@ -105,9 +106,9 @@ def upgrade():
         sa.Column('shared_with_user_id', sa.Integer(), nullable=True),
         sa.Column('shared_with_role_id', sa.Integer(), nullable=True),
         sa.Column('share_token', sa.String(255), nullable=True, unique=True),
-        sa.Column('can_view', sa.Boolean(), nullable=False, server_default='1'),
-        sa.Column('can_edit', sa.Boolean(), nullable=False, server_default='0'),
-        sa.Column('can_share', sa.Boolean(), nullable=False, server_default='0'),
+        sa.Column('can_view', sa.Boolean(), nullable=False, server_default='true'),
+        sa.Column('can_edit', sa.Boolean(), nullable=False, server_default='false'),
+        sa.Column('can_share', sa.Boolean(), nullable=False, server_default='false'),
         sa.Column('expires_at', sa.DateTime(), nullable=True),
         sa.Column('created_by', sa.Integer(), nullable=False),
         sa.Column('created_at', sa.DateTime(), nullable=False, server_default=sa.text('CURRENT_TIMESTAMP')),

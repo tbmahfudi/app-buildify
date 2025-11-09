@@ -1,17 +1,16 @@
 """Add report tables
 
-Revision ID: add_report_tables
-Revises:
+Revision ID: r1_add_report_tables
+Revises: pg_m1n2o3p4q5r6
 Create Date: 2025-11-09
 
 """
 from alembic import op
 import sqlalchemy as sa
-from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision = 'add_report_tables'
-down_revision = None  # Update this to reference the previous migration
+revision = 'r1_add_report_tables'
+down_revision = 'pg_m1n2o3p4q5r6'
 branch_labels = None
 depends_on = None
 
@@ -32,14 +31,14 @@ def upgrade():
         sa.Column('parameters', sa.JSON(), nullable=True),
         sa.Column('visualization_config', sa.JSON(), nullable=True),
         sa.Column('formatting_rules', sa.JSON(), nullable=True),
-        sa.Column('is_public', sa.Boolean(), nullable=False, server_default='0'),
+        sa.Column('is_public', sa.Boolean(), nullable=False, server_default='false'),
         sa.Column('allowed_roles', sa.JSON(), nullable=True),
         sa.Column('allowed_users', sa.JSON(), nullable=True),
         sa.Column('created_by', sa.Integer(), nullable=False),
         sa.Column('created_at', sa.DateTime(), nullable=False, server_default=sa.text('CURRENT_TIMESTAMP')),
         sa.Column('updated_at', sa.DateTime(), nullable=False, server_default=sa.text('CURRENT_TIMESTAMP')),
-        sa.Column('is_active', sa.Boolean(), nullable=False, server_default='1'),
-        sa.Column('is_template', sa.Boolean(), nullable=False, server_default='0'),
+        sa.Column('is_active', sa.Boolean(), nullable=False, server_default='true'),
+        sa.Column('is_template', sa.Boolean(), nullable=False, server_default='false'),
         sa.PrimaryKeyConstraint('id')
     )
     op.create_index('ix_report_definitions_tenant_id', 'report_definitions', ['tenant_id'])
@@ -74,7 +73,7 @@ def upgrade():
         sa.Column('tenant_id', sa.Integer(), nullable=False),
         sa.Column('report_definition_id', sa.Integer(), nullable=False),
         sa.Column('name', sa.String(255), nullable=False),
-        sa.Column('is_active', sa.Boolean(), nullable=False, server_default='1'),
+        sa.Column('is_active', sa.Boolean(), nullable=False, server_default='true'),
         sa.Column('cron_expression', sa.String(100), nullable=False),
         sa.Column('timezone', sa.String(50), nullable=False, server_default='UTC'),
         sa.Column('default_parameters', sa.JSON(), nullable=True),
@@ -102,7 +101,7 @@ def upgrade():
         sa.Column('tags', sa.JSON(), nullable=True),
         sa.Column('template_config', sa.JSON(), nullable=False),
         sa.Column('preview_image_url', sa.String(500), nullable=True),
-        sa.Column('is_builtin', sa.Boolean(), nullable=False, server_default='0'),
+        sa.Column('is_builtin', sa.Boolean(), nullable=False, server_default='false'),
         sa.Column('usage_count', sa.Integer(), nullable=False, server_default='0'),
         sa.Column('created_at', sa.DateTime(), nullable=False, server_default=sa.text('CURRENT_TIMESTAMP')),
         sa.Column('updated_at', sa.DateTime(), nullable=False, server_default=sa.text('CURRENT_TIMESTAMP')),
