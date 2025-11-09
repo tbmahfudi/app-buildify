@@ -18,7 +18,8 @@ from app.models.user import User
 from app.models.company import Company
 from app.models.role import Role
 from app.models.permission import Permission
-from app.models.rbac_junctions import RolePermission, UserRole
+from app.models.rbac_junctions import RolePermission, GroupRole, UserGroup
+from app.models.group import Group
 from app.models.module_registry import ModuleRegistry, TenantModule
 
 
@@ -353,19 +354,104 @@ def seed_financial_rbac():
         print(f"✓ Created {len(roles_config)} roles with permissions")
 
         # ========================================================================
-        # STEP 4: Assign Users to Roles
+        # STEP 4: Create Groups and Assign Roles to Groups
         # ========================================================================
-        print("\n🔐 Step 4: Assigning FashionHub users to Financial roles...")
+        print("\n👥 Step 4: Creating Financial groups and assigning roles...")
+
+        groups_config = {
+            "Financial Managers": {
+                "code": "FIN_MANAGERS",
+                "description": "Finance executives with full financial access",
+                "roles": ["Financial Manager"],
+                "group_type": "team"
+            },
+            "Accountants": {
+                "code": "ACCOUNTANTS",
+                "description": "Accounting team members",
+                "roles": ["Accountant"],
+                "group_type": "team"
+            },
+            "Billing Clerks": {
+                "code": "BILLING_CLERKS",
+                "description": "Billing and invoicing staff",
+                "roles": ["Billing Clerk"],
+                "group_type": "team"
+            },
+            "Financial Viewers": {
+                "code": "FIN_VIEWERS",
+                "description": "Users with read-only financial access",
+                "roles": ["Financial Viewer"],
+                "group_type": "team"
+            }
+        }
+
+        group_map = {}
+        for group_name, group_config in groups_config.items():
+            # Check if group exists
+            group = db.query(Group).filter(
+                Group.code == group_config["code"],
+                Group.tenant_id == tenant.id,
+                Group.company_id == company.id
+            ).first()
+
+            if not group:
+                group = Group(
+                    code=group_config["code"],
+                    name=group_name,
+                    description=group_config["description"],
+                    tenant_id=tenant.id,
+                    company_id=company.id,
+                    group_type=group_config["group_type"],
+                    is_active=True,
+                    created_at=datetime.utcnow()
+                )
+                db.add(group)
+                db.flush()
+                print(f"  ✓ Created group: {group_name}")
+            else:
+                print(f"  • Group exists: {group_name}")
+
+            # Assign roles to group
+            for role_name in group_config["roles"]:
+                role = role_map.get(role_name)
+                if role:
+                    # Check if role already assigned to group
+                    existing = db.query(GroupRole).filter(
+                        GroupRole.group_id == group.id,
+                        GroupRole.role_id == role.id
+                    ).first()
+
+                    if not existing:
+                        group_role = GroupRole(
+                            id=str(uuid.uuid4()),
+                            group_id=str(group.id),
+                            role_id=str(role.id),
+                            created_at=datetime.utcnow()
+                        )
+                        db.add(group_role)
+                        print(f"    ✓ Assigned role '{role_name}' to group '{group_name}'")
+                    else:
+                        print(f"    • Role '{role_name}' already assigned to group '{group_name}'")
+
+            db.commit()
+            group_map[group_name] = group
+
+        print(f"✓ Created {len(groups_config)} groups with role assignments")
+
+        # ========================================================================
+        # STEP 5: Assign Users to Groups
+        # ========================================================================
+        print("\n🔐 Step 5: Assigning FashionHub users to groups...")
 
         user_assignments = [
             {
                 "email": "cfo@fashionhub.com",
-                "roles": ["Financial Manager"],
+                "groups": ["Financial Managers"],
                 "title": "CFO (Chief Financial Officer)"
             },
             {
                 "email": "accountant1@fashionhub.com",
-                "roles": ["Accountant"],
+                "groups": ["Accountants"],
                 "title": "Senior Accountant",
                 "create_if_missing": True,
                 "dept": "FIN",
@@ -373,7 +459,7 @@ def seed_financial_rbac():
             },
             {
                 "email": "accountant2@fashionhub.com",
-                "roles": ["Accountant"],
+                "groups": ["Accountants"],
                 "title": "Staff Accountant",
                 "create_if_missing": True,
                 "dept": "FIN",
@@ -381,7 +467,7 @@ def seed_financial_rbac():
             },
             {
                 "email": "billing@fashionhub.com",
-                "roles": ["Billing Clerk"],
+                "groups": ["Billing Clerks"],
                 "title": "Billing Specialist",
                 "create_if_missing": True,
                 "dept": "FIN",
@@ -389,7 +475,7 @@ def seed_financial_rbac():
             },
             {
                 "email": "ar@fashionhub.com",
-                "roles": ["Billing Clerk"],
+                "groups": ["Billing Clerks"],
                 "title": "Accounts Receivable Clerk",
                 "create_if_missing": True,
                 "dept": "FIN",
@@ -397,12 +483,12 @@ def seed_financial_rbac():
             },
             {
                 "email": "ceo@fashionhub.com",
-                "roles": ["Financial Viewer"],
+                "groups": ["Financial Viewers"],
                 "title": "CEO (Read-only financial access)"
             },
             {
                 "email": "manager.nyc1@fashionhub.com",
-                "roles": ["Financial Viewer"],
+                "groups": ["Financial Viewers"],
                 "title": "Store Manager (View financial reports)"
             }
         ]
@@ -456,35 +542,35 @@ def seed_financial_rbac():
                 print(f"  ⚠ User not found: {assignment['email']}")
                 continue
 
-            # Assign roles
-            for role_name in assignment["roles"]:
-                role = role_map.get(role_name)
-                if role:
-                    # Check if already assigned
-                    existing = db.query(UserRole).filter(
-                        UserRole.user_id == user.id,
-                        UserRole.role_id == role.id
+            # Assign user to groups
+            for group_name in assignment["groups"]:
+                group = group_map.get(group_name)
+                if group:
+                    # Check if user already in group
+                    existing = db.query(UserGroup).filter(
+                        UserGroup.user_id == user.id,
+                        UserGroup.group_id == group.id
                     ).first()
 
                     if not existing:
-                        user_role = UserRole(
+                        user_group = UserGroup(
                             id=str(uuid.uuid4()),
                             user_id=str(user.id),
-                            role_id=str(role.id),
+                            group_id=str(group.id),
                             created_at=datetime.utcnow()
                         )
-                        db.add(user_role)
-                        print(f"  ✓ Assigned {user.email} → {role_name}")
+                        db.add(user_group)
+                        print(f"  ✓ Added {user.email} to group '{group_name}'")
                     else:
-                        print(f"  • Already assigned: {user.email} → {role_name}")
+                        print(f"  • User {user.email} already in group '{group_name}'")
 
         db.commit()
-        print(f"✓ User role assignments completed")
+        print(f"✓ User group assignments completed")
 
         # ========================================================================
-        # STEP 5: Enable Financial Module for FashionHub Tenant
+        # STEP 6: Enable Financial Module for FashionHub Tenant
         # ========================================================================
-        print("\n🔌 Step 5: Enabling Financial module for FashionHub tenant...")
+        print("\n🔌 Step 6: Enabling Financial module for FashionHub tenant...")
 
         # Check if Financial module is registered
         module = db.query(ModuleRegistry).filter(
@@ -540,10 +626,14 @@ def seed_financial_rbac():
         for role_name in roles_config.keys():
             print(f"   • {role_name}")
 
-        print(f"\n🔐 User Access Configured:")
+        print(f"\n🏢 Groups Created:")
+        for group_name in groups_config.keys():
+            print(f"   • {group_name}")
+
+        print(f"\n🔐 User Access Configured (via Groups):")
         for assignment in user_assignments:
-            roles_str = ", ".join(assignment["roles"])
-            print(f"   • {assignment['email']:<30} → {roles_str}")
+            groups_str = ", ".join(assignment["groups"])
+            print(f"   • {assignment['email']:<30} → {groups_str}")
 
         print(f"\n📋 Permissions Registered: {len(financial_permissions)}")
         print(f"\n🎯 Next Steps:")
