@@ -166,6 +166,7 @@ def get_me(current_user: User = Depends(get_current_user)):
         id=str(current_user.id),
         email=current_user.email,
         full_name=current_user.full_name,
+        display_name=current_user.display_name,
         phone=current_user.phone,
         is_active=current_user.is_active,
         is_superuser=current_user.is_superuser,
@@ -200,6 +201,11 @@ def update_me(
     # Update other fields
     if profile_data.full_name is not None:
         current_user.full_name = profile_data.full_name
+
+    if profile_data.display_name is not None:
+        # Truncate display_name to 50 characters if needed
+        display_name = profile_data.display_name[:50] if profile_data.display_name else None
+        current_user.display_name = display_name
 
     if profile_data.phone is not None:
         current_user.phone = profile_data.phone
@@ -237,6 +243,7 @@ def update_me(
         id=str(current_user.id),
         email=current_user.email,
         full_name=current_user.full_name,
+        display_name=current_user.display_name,
         phone=current_user.phone,
         is_active=current_user.is_active,
         is_superuser=current_user.is_superuser,

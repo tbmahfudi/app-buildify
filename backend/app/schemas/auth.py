@@ -60,6 +60,7 @@ class ProfileUpdate(BaseModel):
     """Update current user profile"""
     email: Optional[EmailStr] = Field(None, description="User email address")
     full_name: Optional[str] = Field(None, max_length=255, description="User full name")
+    display_name: Optional[str] = Field(None, max_length=50, description="Display name for UI (max 50 chars)")
     phone: Optional[str] = Field(None, max_length=50, description="User phone number")
 
 class UserResponse(BaseModel):
@@ -67,6 +68,7 @@ class UserResponse(BaseModel):
     id: str = Field(..., description="User unique identifier")
     email: str = Field(..., description="User email address")
     full_name: Optional[str] = Field(None, description="User full name")
+    display_name: Optional[str] = Field(None, description="Display name for UI")
     phone: Optional[str] = Field(None, description="User phone number")
     is_active: bool = Field(..., description="Active status")
     is_superuser: bool = Field(..., description="Superuser flag")

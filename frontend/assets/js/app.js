@@ -86,15 +86,23 @@ export async function initApp() {
 }
 
 function updateUserInfo() {
-  const userEmailEl = document.getElementById('user-email');
+  const userNameEl = document.getElementById('user-name');
   const userEmailDropdown = document.getElementById('user-email-dropdown');
 
-  if (userEmailEl && appState.user) {
-    userEmailEl.textContent = appState.user.email;
-  }
+  if (appState.user) {
+    // Display name with fallback to full_name, then email
+    const displayName = appState.user.display_name || appState.user.full_name || appState.user.email.split('@')[0];
 
-  if (userEmailDropdown && appState.user) {
-    userEmailDropdown.textContent = appState.user.email;
+    if (userNameEl) {
+      userNameEl.textContent = displayName;
+    }
+
+    if (userEmailDropdown) {
+      userEmailDropdown.textContent = appState.user.email;
+    }
+
+    // Store user in localStorage for quick access across the app
+    localStorage.setItem('user', JSON.stringify(appState.user));
   }
 }
 
