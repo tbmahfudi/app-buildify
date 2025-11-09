@@ -33,6 +33,39 @@ if config.config_file_name is not None:
 # Set target metadata for autogenerate support
 target_metadata = Base.metadata
 
+# Configure version_locations based on database type
+def configure_version_location():
+    """
+    Dynamically set version_locations based on database type.
+    This ensures only the correct migrations are loaded.
+    """
+    try:
+        url = get_database_url()
+        db_type = detect_db_type(url)
+
+        # Get the base directory (where alembic.ini is located)
+        config_dir = os.path.dirname(config.config_file_name) if config.config_file_name else '.'
+
+        # Map database types to their migration folders
+        db_folders = {
+            'postgresql': os.path.join(config_dir, 'app/alembic/versions/postgresql'),
+            'mysql': os.path.join(config_dir, 'app/alembic/versions/mysql'),
+        }
+
+        version_location = db_folders.get(db_type)
+        if version_location:
+            # Override version_locations to only use the correct folder
+            config.set_main_option('version_locations', version_location)
+            print(f"[INFO] Configured version_locations for {db_type}: {version_location}")
+        else:
+            raise ValueError(f"No migration folder configured for database type: {db_type}")
+    except Exception as e:
+        # If we can't determine database type yet, that's okay - it will be determined later
+        pass
+
+# Call configure_version_location early to set up the correct migration folder
+configure_version_location()
+
 
 def get_database_url():
     """Get database URL from environment variable or config"""
@@ -82,11 +115,11 @@ def get_db_specific_options(db_type: str) -> dict:
     return options
 
 
-def filter_migrations_by_db(db_type: str):
+def log_migration_location(db_type: str):
     """
-    With version_locations configured in alembic.ini, Alembic automatically
-    filters migrations based on the database type. This function is kept for
-    logging purposes but no longer performs filtering.
+    Logs which migration folder is being used.
+    The actual filtering is done by configure_version_location() which
+    dynamically sets version_locations in the config.
     """
     db_locations = {
         'mysql': 'versions/mysql/',
@@ -96,18 +129,18 @@ def filter_migrations_by_db(db_type: str):
     location = db_locations.get(db_type, 'unknown')
     print(f"[INFO] Using {db_type} migrations from {location}")
 
-    # Return None - version_locations in alembic.ini handles filtering
-    return None
-
 
 def run_migrations_offline() -> None:
     """Run migrations in 'offline' mode."""
+    # Configure version_locations before loading migrations
+    configure_version_location()
+
     url = get_database_url()
     db_type = detect_db_type(url)
     options = get_db_specific_options(db_type)
 
     print(f"[INFO] Running offline migrations for: {db_type}")
-    filter_migrations_by_db(db_type)  # Log which migrations are being used
+    log_migration_location(db_type)  # Log which migrations are being used
     
     context.configure(
         url=url,
@@ -123,13 +156,15 @@ def run_migrations_offline() -> None:
 
 def run_migrations_online() -> None:
     """Run migrations in 'online' mode."""
+    # Configure version_locations before loading migrations
+    configure_version_location()
 
     url = get_database_url()
     db_type = detect_db_type(url)
     options = get_db_specific_options(db_type)
 
     print(f"[INFO] Running online migrations for: {db_type}")
-    filter_migrations_by_db(db_type)  # Log which migrations are being used
+    log_migration_location(db_type)  # Log which migrations are being used
 
     configuration = config.get_section(config.config_ini_section)
     configuration["sqlalchemy.url"] = url

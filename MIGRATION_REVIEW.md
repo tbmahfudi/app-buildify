@@ -198,12 +198,28 @@ If MySQL support is required, create:
    - All migrations moved from flat structure to database-specific subfolders
 
 3. **Updated Configuration Files**
-   - **alembic.ini**: Added `version_locations` to automatically detect database-specific migrations
+   - **alembic.ini**: Added `version_locations` (dynamically overridden at runtime)
    - **env.py**:
      - Removed SQLite support
      - Simplified database detection
      - Added logging for which migration folder is being used
      - Removed SQLite-specific connection arguments
+
+### Phase 3: Fixed Migration Filtering
+1. **Problem Identified**
+   - Static `version_locations` in `alembic.ini` loaded migrations from ALL folders
+   - Alembic was trying to run both PostgreSQL and MySQL migrations simultaneously
+   - Error: `relation "companies" already exists`
+
+2. **Solution Implemented**
+   - Added `configure_version_location()` function in `env.py`
+   - Dynamically sets `version_locations` based on detected database type at runtime
+   - Called early in migration process to override static configuration
+   - **alembic.ini**: Updated to show version_locations is dynamic (PostgreSQL as fallback)
+   - **env.py**:
+     - Added `configure_version_location()` to override version_locations dynamically
+     - Renamed `filter_migrations_by_db()` to `log_migration_location()` for clarity
+     - Called `configure_version_location()` in both offline and online migration modes
 
 ## PostgreSQL Files - All Necessary
 
@@ -223,10 +239,11 @@ If MySQL support is required, create:
 2. ✅ **DONE:** Removed SQLite support (3 files deleted)
 3. ✅ **DONE:** Reorganized migrations into database-specific subfolders
 4. ✅ **DONE:** Updated configuration (alembic.ini, env.py)
-5. **TODO:** Decide on MySQL strategy (complete migrations, remove support, or document limitations)
-6. **TODO:** If keeping MySQL, create missing migrations (see Recommendations section)
-7. **TODO:** Commit and push all changes
-8. **TODO:** Run migrations: `alembic upgrade head` to create report and dashboard tables
+5. ✅ **DONE:** Fixed migration filtering to prevent cross-database contamination
+6. **TODO:** Decide on MySQL strategy (complete migrations, remove support, or document limitations)
+7. **TODO:** If keeping MySQL, create missing migrations (see Recommendations section)
+8. **TODO:** Commit and push all changes
+9. **TODO:** Run migrations: `alembic upgrade head` to create report and dashboard tables
 
 ## Migration Commands
 
@@ -266,11 +283,12 @@ backend/app/alembic/
 ### How It Works
 
 1. **Automatic Detection**: `env.py` detects database type from `DATABASE_URL` environment variable
-2. **Subfolder Selection**: Based on database type, Alembic automatically uses the correct subfolder:
-   - PostgreSQL → uses `versions/postgresql/` migrations
-   - MySQL → uses `versions/mysql/` migrations
-3. **Configuration**: `alembic.ini` has `version_locations` pointing to both subfolders
+2. **Dynamic Configuration**: `configure_version_location()` dynamically sets `version_locations` at runtime:
+   - PostgreSQL → uses `versions/postgresql/` migrations only
+   - MySQL → uses `versions/mysql/` migrations only
+3. **Configuration Override**: `alembic.ini` has a default fallback, but `env.py` overrides it at runtime
 4. **No Manual Selection**: Developers don't need to specify which migrations to run - it's automatic
+5. **Prevents Cross-Contamination**: Only migrations for the active database type are loaded and executed
 
 ### Benefits
 
