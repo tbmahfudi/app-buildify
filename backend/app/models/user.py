@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Boolean, DateTime, func, ForeignKey, Text
+from sqlalchemy import Column, String, Boolean, DateTime, Integer, func, ForeignKey, Text
 from sqlalchemy.orm import relationship
 from .base import Base, GUID, generate_uuid
 
@@ -42,6 +42,15 @@ class User(Base):
     # Extra data (JSON)
     extra_data = Column(Text, nullable=True)  # JSON: custom fields
 
+    # Security
+    password_changed_at = Column(DateTime, nullable=True)
+    password_expires_at = Column(DateTime, nullable=True, index=True)
+    failed_login_attempts = Column(Integer, default=0, nullable=False)
+    locked_until = Column(DateTime, nullable=True, index=True)
+    last_password_check_at = Column(DateTime, nullable=True)
+    require_password_change = Column(Boolean, default=False, nullable=False)
+    grace_logins_remaining = Column(Integer, nullable=True)
+
     # Timestamps
     created_at = Column(DateTime, server_default=func.now(), nullable=False)
     updated_at = Column(DateTime, onupdate=func.now())
@@ -66,6 +75,24 @@ class User(Base):
     user_groups = relationship("UserGroup", back_populates="user",
                               foreign_keys="[UserGroup.user_id]",
                               cascade="all, delete-orphan")
+
+    # Security relationships
+    password_history = relationship("PasswordHistory", back_populates="user",
+                                   foreign_keys="[PasswordHistory.user_id]",
+                                   cascade="all, delete-orphan",
+                                   order_by="desc(PasswordHistory.created_at)")
+    login_attempts = relationship("LoginAttempt", back_populates="user",
+                                 foreign_keys="[LoginAttempt.user_id]",
+                                 cascade="all, delete-orphan")
+    sessions = relationship("UserSession", back_populates="user",
+                          foreign_keys="[UserSession.user_id]",
+                          cascade="all, delete-orphan")
+    lockouts = relationship("AccountLockout", back_populates="user",
+                           foreign_keys="[AccountLockout.user_id]",
+                           cascade="all, delete-orphan")
+    reset_tokens = relationship("PasswordResetToken", back_populates="user",
+                               foreign_keys="[PasswordResetToken.user_id]",
+                               cascade="all, delete-orphan")
 
     def __repr__(self):
         return f"<User(id={self.id}, email={self.email}, tenant_id={self.tenant_id})>"

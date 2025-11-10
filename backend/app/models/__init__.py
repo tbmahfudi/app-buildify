@@ -63,6 +63,16 @@ from .dashboard import (
     WidgetDataCache
 )
 
+# Security system
+from .password_history import PasswordHistory
+from .login_attempt import LoginAttempt
+from .account_lockout import AccountLockout
+from .user_session import UserSession
+from .security_policy import SecurityPolicy
+from .notification_queue import NotificationQueue
+from .notification_config import NotificationConfig
+from .password_reset_token import PasswordResetToken
+
 # Export all models
 __all__ = [
     # Base
@@ -118,4 +128,14 @@ __all__ = [
     "DashboardShare",
     "DashboardSnapshot",
     "WidgetDataCache",
+
+    # Security system
+    "PasswordHistory",
+    "LoginAttempt",
+    "AccountLockout",
+    "UserSession",
+    "SecurityPolicy",
+    "NotificationQueue",
+    "NotificationConfig",
+    "PasswordResetToken",
 ]
