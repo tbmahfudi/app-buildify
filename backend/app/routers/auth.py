@@ -20,7 +20,7 @@ from app.schemas.auth import (
 from app.schemas.security import PasswordPolicyRequirements, PasswordStrengthCheck
 
 # Import security services
-from app.core.security_config import SecurityConfig
+from app.core.security_config import SecurityConfigService
 from app.core.password_validator import PasswordValidator
 from app.core.password_history import PasswordHistoryService
 from app.core.lockout_manager import LockoutManager
@@ -157,7 +157,7 @@ def login(
         )
 
     # Check password expiration
-    security_config = SecurityConfig(db)
+    security_config = SecurityConfigService(db)
     password_expired = False
     grace_login_allowed = False
 
@@ -275,7 +275,7 @@ def get_password_policy(
     This is a public endpoint (no authentication required) to show password requirements
     during registration or password change.
     """
-    security_config = SecurityConfig(db)
+    security_config = SecurityConfigService(db)
 
     # Get password policy configuration
     min_length = security_config.get_config("password_min_length", tenant_id) or 8
@@ -495,7 +495,7 @@ def change_password(
         )
 
     # Initialize security services
-    security_config = SecurityConfig(db)
+    security_config = SecurityConfigService(db)
     password_validator = PasswordValidator(db, current_user.tenant_id)
     password_history_service = PasswordHistoryService(db)
     notification_service = NotificationService(db)
@@ -645,7 +645,7 @@ def reset_password_request(
     # Always return success message to prevent email enumeration
     # But only actually send email if user exists
     if user:
-        security_config = SecurityConfig(db)
+        security_config = SecurityConfigService(db)
         notification_service = NotificationService(db)
 
         # Check if user account is active
@@ -766,7 +766,7 @@ def reset_password_confirm(
         )
 
     # Initialize security services
-    security_config = SecurityConfig(db)
+    security_config = SecurityConfigService(db)
     password_validator = PasswordValidator(db, user.tenant_id)
     password_history_service = PasswordHistoryService(db)
     notification_service = NotificationService(db)

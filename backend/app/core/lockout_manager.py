@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 from app.models.user import User
 from app.models.login_attempt import LoginAttempt
 from app.models.account_lockout import AccountLockout
-from app.core.security_config import SecurityConfig
+from app.core.security_config import SecurityConfigService
 
 
 class LockoutManager:
@@ -28,7 +28,7 @@ class LockoutManager:
             db: Database session
         """
         self.db = db
-        self.security_config = SecurityConfig(db)
+        self.security_config = SecurityConfigService(db)
 
     def get_recent_failed_attempts(
         self,

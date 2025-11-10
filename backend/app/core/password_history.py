@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from app.models.password_history import PasswordHistory
 from app.models.user import User
 from app.core.auth import verify_password
-from app.core.security_config import SecurityConfig
+from app.core.security_config import SecurityConfigService
 
 
 class PasswordHistoryService:
@@ -38,7 +38,7 @@ class PasswordHistoryService:
         self.db.add(history_entry)
 
         # Get security config to determine history limit
-        security_config = SecurityConfig(self.db)
+        security_config = SecurityConfigService(self.db)
         history_count = security_config.get_config("password_history_count", user.tenant_id) or 5
 
         # Clean up old history entries beyond the limit
@@ -114,7 +114,7 @@ class PasswordHistoryService:
             True if password is allowed (not in history), False otherwise
         """
         # Get security config to determine how many passwords to check
-        security_config = SecurityConfig(self.db)
+        security_config = SecurityConfigService(self.db)
         history_count = security_config.get_config("password_history_count", user.tenant_id)
 
         # If history checking is disabled, allow any password
@@ -144,7 +144,7 @@ class PasswordHistoryService:
             True if password found in history, False otherwise
         """
         if check_count is None:
-            security_config = SecurityConfig(self.db)
+            security_config = SecurityConfigService(self.db)
             check_count = security_config.get_config("password_history_count", user.tenant_id) or 5
 
         history_entries = self.get_password_history(user, limit=check_count)
