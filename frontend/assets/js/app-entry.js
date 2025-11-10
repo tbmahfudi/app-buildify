@@ -7,5 +7,6 @@ import './audit-page.js';
 import './showcase.js';
 import './modules.js';
 import './rbac-page.js';
+import './auth-policies-page.js';
 
 initApp();
