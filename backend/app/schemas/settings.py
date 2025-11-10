@@ -42,7 +42,7 @@ class UserSettingsUpdate(BaseModel):
 class TenantSettingsResponse(BaseModel):
     """Tenant settings response"""
     id: str = Field(..., description="Settings unique identifier")
-    tenant_id: str = Field(..., description="Tenant ID")
+    tenant_id: Optional[str] = Field(None, description="Tenant ID (None for default settings)")
     tenant_name: Optional[str] = Field(None, description="Tenant display name")
     logo_url: Optional[str] = Field(None, description="Logo URL")
     primary_color: Optional[str] = Field(None, description="Primary brand color (hex)")
@@ -50,7 +50,7 @@ class TenantSettingsResponse(BaseModel):
     theme_config: Optional[Dict[str, Any]] = Field(None, description="Theme configuration (CSS variables)")
     enabled_features: Optional[Dict[str, Any]] = Field(None, description="Feature flags")
     settings: Optional[Dict[str, Any]] = Field(None, description="Miscellaneous settings")
-    created_at: datetime = Field(..., description="Creation timestamp")
+    created_at: Optional[datetime] = Field(None, description="Creation timestamp")
     updated_at: Optional[datetime] = Field(None, description="Last update timestamp")
     updated_by: Optional[str] = Field(None, description="Last updated by user ID")
 

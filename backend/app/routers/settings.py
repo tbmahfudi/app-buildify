@@ -137,15 +137,29 @@ def get_tenant_settings(
     current_user: User = Depends(get_current_user)
 ):
     """Get tenant settings (uses current user's tenant if not specified)"""
-    
+
     # Determine tenant_id
-    target_tenant = tenant_id or current_user.tenant_id
-    
+    target_tenant = tenant_id or str(current_user.tenant_id) if current_user.tenant_id else None
+
     if not target_tenant:
-        raise HTTPException(status_code=400, detail="No tenant context")
-    
+        # Return default settings for users without a tenant
+        return TenantSettingsResponse(
+            id=str(uuid.uuid4()),
+            tenant_id=None,
+            tenant_name="Default",
+            logo_url=None,
+            primary_color="#1976d2",
+            secondary_color="#424242",
+            theme_config=None,
+            enabled_features=None,
+            settings=None,
+            created_at=None,
+            updated_at=None,
+            updated_by=None
+        )
+
     # Check permissions
-    if tenant_id and tenant_id != current_user.tenant_id and not current_user.is_superuser:
+    if tenant_id and str(tenant_id) != str(current_user.tenant_id) and not current_user.is_superuser:
         raise HTTPException(status_code=403, detail="Cannot access other tenant's settings")
     
     settings = db.query(TenantSettings).filter(
