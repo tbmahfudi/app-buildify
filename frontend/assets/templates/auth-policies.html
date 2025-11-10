@@ -1,37 +1,12 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Auth Policies</title>
-</head>
-<body>
-    <div id="security-admin-container" class="h-full"></div>
-
-    <script type="module">
-        import '/components/security-admin.js';
-
-        // Wait for DOM to be ready and route to be fully loaded
-        document.addEventListener('route:loaded', async (event) => {
-            if (event.detail.route === 'auth-policies') {
-                // Initialize SecurityAdmin component
-                const securityAdmin = new SecurityAdmin();
-                await securityAdmin.init('security-admin-container');
-
-                // Make it globally accessible for internal component methods
-                window.securityAdmin = securityAdmin;
-            }
-        });
-
-        // Also try immediate initialization (in case route:loaded already fired)
-        if (window.location.hash === '#auth-policies') {
-            setTimeout(async () => {
-                if (!window.securityAdmin) {
-                    const securityAdmin = new SecurityAdmin();
-                    await securityAdmin.init('security-admin-container');
-                    window.securityAdmin = securityAdmin;
-                }
-            }, 100);
-        }
-    </script>
-</body>
-</html>
+<!-- Security Administration / Auth Policies -->
+<div id="security-admin-container" class="h-full">
+  <!-- SecurityAdmin component will be rendered here -->
+  <div class="flex items-center justify-center h-full">
+    <div class="text-center">
+      <div class="inline-block">
+        <div class="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+      <p class="mt-4 text-gray-600 font-medium">Loading Security Administration...</p>
+    </div>
+  </div>
+</div>
