@@ -408,29 +408,29 @@ function createSubmenuItem(item, level = 1) {
     const popup = createCollapsedSubmenuPopup(item);
     document.body.appendChild(popup);
 
-    // Position popup on hover
+    // Position popup on hover - overlap by 2px to eliminate gap
     parent.addEventListener('mouseenter', () => {
       const rect = parent.getBoundingClientRect();
-      popup.style.left = `${rect.right + 2}px`;
+      popup.style.left = `${rect.right - 2}px`;
       popup.style.top = `${rect.top}px`;
       popup.classList.remove('hidden');
     });
 
     parent.addEventListener('mouseleave', (e) => {
-      const popupRect = popup.getBoundingClientRect();
-      const isMovingToPopup = e.clientX >= popupRect.left && e.clientX <= popupRect.right &&
-                               e.clientY >= popupRect.top && e.clientY <= popupRect.bottom;
-      if (!isMovingToPopup) {
-        setTimeout(() => {
-          if (!popup.matches(':hover')) {
-            popup.classList.add('hidden');
-          }
-        }, 150);
-      }
+      // Check if moving to popup or if popup is already being hovered
+      setTimeout(() => {
+        if (!popup.matches(':hover') && !popup.hasActiveChild) {
+          popup.classList.add('hidden');
+        }
+      }, 100);
     });
 
     popup.addEventListener('mouseleave', () => {
-      popup.classList.add('hidden');
+      setTimeout(() => {
+        if (!parent.matches(':hover') && !popup.hasActiveChild) {
+          popup.classList.add('hidden');
+        }
+      }, 100);
     });
 
     container.appendChild(parent);
@@ -578,7 +578,7 @@ function createCollapsedSubmenuPopup(item) {
         childPopups.push(nestedPopup);
         document.body.appendChild(nestedPopup);
 
-        // Show nested popup on hover
+        // Show nested popup on hover - overlap by 2px to eliminate gap
         nestedTrigger.addEventListener('mouseenter', () => {
           // Hide other child popups
           childPopups.forEach(p => {
@@ -589,26 +589,21 @@ function createCollapsedSubmenuPopup(item) {
           });
 
           const rect = nestedTrigger.getBoundingClientRect();
-          nestedPopup.style.left = `${rect.right + 2}px`;
+          nestedPopup.style.left = `${rect.right - 2}px`;
           nestedPopup.style.top = `${rect.top}px`;
           nestedPopup.classList.remove('hidden');
           nestedPopup.isActive = true;
           popup.hasActiveChild = true;
         });
 
-        nestedTrigger.addEventListener('mouseleave', (e) => {
-          const nestedRect = nestedPopup.getBoundingClientRect();
-          const isMovingToNested = e.clientX >= nestedRect.left && e.clientX <= nestedRect.right &&
-                                    e.clientY >= nestedRect.top && e.clientY <= nestedRect.bottom;
-          if (!isMovingToNested) {
-            setTimeout(() => {
-              if (!nestedPopup.matches(':hover')) {
-                nestedPopup.classList.add('hidden');
-                nestedPopup.isActive = false;
-                popup.hasActiveChild = childPopups.some(p => p.isActive);
-              }
-            }, 150);
-          }
+        nestedTrigger.addEventListener('mouseleave', () => {
+          setTimeout(() => {
+            if (!nestedPopup.matches(':hover')) {
+              nestedPopup.classList.add('hidden');
+              nestedPopup.isActive = false;
+              popup.hasActiveChild = childPopups.some(p => p.isActive);
+            }
+          }, 100);
         });
 
         // Keep parent visible when nested popup is hovered
@@ -624,7 +619,7 @@ function createCollapsedSubmenuPopup(item) {
               nestedPopup.isActive = false;
               popup.hasActiveChild = childPopups.some(p => p.isActive);
             }
-          }, 150);
+          }, 100);
         });
 
         nestedContainer.appendChild(nestedTrigger);
@@ -663,16 +658,16 @@ function createCollapsedSubmenuPopup(item) {
 
   popup.appendChild(popupContent);
 
+  // Keep popup visible when mouse re-enters from child
+  popup.addEventListener('mouseenter', () => {
+    popup.classList.remove('hidden');
+  });
+
   // Enhanced mouseleave to check child popups and their descendants
   popup.addEventListener('mouseleave', () => {
     setTimeout(() => {
-      // Don't hide if there's an active child
-      if (popup.hasActiveChild) {
-        return;
-      }
-
-      // Check if any child or descendant is hovered
-      const isAnyDescendantHovered = () => {
+      // Check if any child or descendant is hovered or active
+      const isAnyDescendantActive = () => {
         if (!popup.childPopups) return false;
 
         for (const child of popup.childPopups) {
@@ -685,9 +680,12 @@ function createCollapsedSubmenuPopup(item) {
         return false;
       };
 
-      if (!popup.matches(':hover') && !isAnyDescendantHovered()) {
+      // Update hasActiveChild flag
+      popup.hasActiveChild = isAnyDescendantActive();
+
+      // Only hide if neither the popup nor any descendant is hovered/active
+      if (!popup.matches(':hover') && !popup.hasActiveChild) {
         popup.classList.add('hidden');
-        popup.hasActiveChild = false;
         if (popup.childPopups) {
           popup.childPopups.forEach(child => {
             child.classList.add('hidden');
@@ -702,7 +700,7 @@ function createCollapsedSubmenuPopup(item) {
           });
         }
       }
-    }, 200);
+    }, 100);
   });
 
   return popup;
