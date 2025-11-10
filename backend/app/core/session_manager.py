@@ -7,27 +7,33 @@ Manages user sessions with support for:
 - Session termination on password change
 - Activity tracking
 """
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from typing import List, Optional
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_, delete
+from sqlalchemy.orm import Session
 
-from app.models import UserSession, User
-from app.core.security_config import SessionSecurityConfig
+from app.models.user_session import UserSession
+from app.models.user import User
+from app.core.security_config import SecurityConfig
+from app.core.config import ACCESS_TOKEN_EXPIRE_MIN
 
 
 class SessionManager:
     """Manages user session lifecycle and enforcement"""
 
-    def __init__(self, policy: SessionSecurityConfig):
-        self.policy = policy
+    def __init__(self, db: Session):
+        """
+        Initialize session manager with database session.
 
-    async def create_session(
+        Args:
+            db: Database session
+        """
+        self.db = db
+        self.security_config = SecurityConfig(db)
+
+    def create_session(
         self,
-        db: AsyncSession,
-        user_id: str,
+        user: User,
         jti: str,
-        expires_at: datetime,
         device_id: Optional[str] = None,
         device_name: Optional[str] = None,
         ip_address: Optional[str] = None,
@@ -37,10 +43,8 @@ class SessionManager:
         Create a new user session.
 
         Args:
-            db: Database session
-            user_id: User ID
+            user: User instance
             jti: JWT ID from access token
-            expires_at: Session expiration time
             device_id: Optional device fingerprint
             device_name: Optional device name
             ip_address: IP address
@@ -49,8 +53,19 @@ class SessionManager:
         Returns:
             UserSession instance
         """
+        # Calculate expiration based on policy
+        timeout_minutes = self.security_config.get_config("session_timeout_minutes", user.tenant_id) or ACCESS_TOKEN_EXPIRE_MIN
+        absolute_timeout_hours = self.security_config.get_config("session_absolute_timeout_hours", user.tenant_id) or 24
+
+        # Use the shorter of the two timeouts
+        timeout_delta = min(
+            timedelta(minutes=timeout_minutes),
+            timedelta(hours=absolute_timeout_hours)
+        )
+        expires_at = datetime.utcnow() + timeout_delta
+
         session = UserSession(
-            user_id=user_id,
+            user_id=str(user.id),
             jti=jti,
             expires_at=expires_at,
             device_id=device_id,
@@ -58,246 +73,197 @@ class SessionManager:
             ip_address=ip_address,
             user_agent=user_agent
         )
-        db.add(session)
-        await db.commit()
-        await db.refresh(session)
+        self.db.add(session)
+        self.db.commit()
+        self.db.refresh(session)
 
         # Enforce concurrent session limit
-        await self.enforce_concurrent_limit(db, user_id)
+        self.enforce_concurrent_limit(user)
 
         return session
 
-    async def get_active_sessions(
-        self,
-        db: AsyncSession,
-        user_id: str
-    ) -> List[UserSession]:
+    def get_active_sessions(self, user: User) -> List[UserSession]:
         """
         Get all active sessions for a user.
 
         Args:
-            db: Database session
-            user_id: User ID
+            user: User instance
 
         Returns:
             List of active UserSession instances
         """
-        now = datetime.now(timezone.utc)
+        now = datetime.utcnow()
 
-        query = select(UserSession).where(
-            and_(
-                UserSession.user_id == user_id,
-                UserSession.revoked_at == None,
-                UserSession.expires_at > now
-            )
-        ).order_by(UserSession.last_activity.desc())
+        sessions = self.db.query(UserSession).filter(
+            UserSession.user_id == str(user.id),
+            UserSession.revoked_at == None,
+            UserSession.expires_at > now
+        ).order_by(UserSession.last_activity.desc()).all()
 
-        result = await db.execute(query)
-        return result.scalars().all()
+        return sessions
 
-    async def count_active_sessions(
-        self,
-        db: AsyncSession,
-        user_id: str
-    ) -> int:
+    def count_active_sessions(self, user: User) -> int:
         """
         Count active sessions for a user.
 
         Args:
-            db: Database session
-            user_id: User ID
+            user: User instance
 
         Returns:
             Number of active sessions
         """
-        sessions = await self.get_active_sessions(db, user_id)
-        return len(sessions)
+        return len(self.get_active_sessions(user))
 
-    async def enforce_concurrent_limit(
-        self,
-        db: AsyncSession,
-        user_id: str
-    ) -> int:
+    def enforce_concurrent_limit(self, user: User) -> int:
         """
         Enforce concurrent session limit by revoking oldest sessions.
 
         Args:
-            db: Database session
-            user_id: User ID
+            user: User instance
 
         Returns:
             Number of sessions revoked
         """
-        if self.policy.max_concurrent == 0:
+        max_concurrent = self.security_config.get_config("session_max_concurrent", user.tenant_id) or 0
+
+        if max_concurrent == 0:
             return 0  # Unlimited sessions
 
-        sessions = await self.get_active_sessions(db, user_id)
+        sessions = self.get_active_sessions(user)
 
-        if len(sessions) > self.policy.max_concurrent:
+        if len(sessions) > max_concurrent:
             # Revoke oldest sessions (keep the most recent max_concurrent)
-            to_revoke = sessions[self.policy.max_concurrent:]
+            to_revoke = sessions[max_concurrent:]
             revoked_count = 0
 
             for session in to_revoke:
-                session.revoked_at = datetime.now(timezone.utc)
+                session.revoked_at = datetime.utcnow()
                 revoked_count += 1
 
-            await db.commit()
+            self.db.commit()
             return revoked_count
 
         return 0
 
-    async def revoke_session(
-        self,
-        db: AsyncSession,
-        jti: str
-    ) -> bool:
+    def revoke_session(self, jti: str, reason: Optional[str] = None) -> bool:
         """
         Revoke a specific session by JWT ID.
 
         Args:
-            db: Database session
             jti: JWT ID to revoke
+            reason: Optional reason for revocation
 
         Returns:
             True if session was found and revoked
         """
-        query = select(UserSession).where(UserSession.jti == jti)
-        result = await db.execute(query)
-        session = result.scalars().first()
+        session = self.db.query(UserSession).filter(UserSession.jti == jti).first()
 
         if session:
-            session.revoked_at = datetime.now(timezone.utc)
-            await db.commit()
+            session.revoked_at = datetime.utcnow()
+            self.db.commit()
             return True
 
         return False
 
-    async def revoke_all_sessions(
+    def revoke_all_user_sessions(
         self,
-        db: AsyncSession,
-        user_id: str,
-        except_jti: Optional[str] = None
+        user: User,
+        except_jti: Optional[str] = None,
+        reason: Optional[str] = None
     ) -> int:
         """
         Revoke all active sessions for a user.
 
         Args:
-            db: Database session
-            user_id: User ID
+            user: User instance
             except_jti: Optional JTI to exclude from revocation (current session)
+            reason: Optional reason for revocation
 
         Returns:
             Number of sessions revoked
         """
-        now = datetime.now(timezone.utc)
+        now = datetime.utcnow()
 
-        query = select(UserSession).where(
-            and_(
-                UserSession.user_id == user_id,
-                UserSession.revoked_at == None,
-                UserSession.expires_at > now
-            )
+        query = self.db.query(UserSession).filter(
+            UserSession.user_id == str(user.id),
+            UserSession.revoked_at == None,
+            UserSession.expires_at > now
         )
 
         if except_jti:
-            query = query.where(UserSession.jti != except_jti)
+            query = query.filter(UserSession.jti != except_jti)
 
-        result = await db.execute(query)
-        sessions = result.scalars().all()
+        sessions = query.all()
 
         revoked_count = 0
         for session in sessions:
             session.revoked_at = now
             revoked_count += 1
 
-        await db.commit()
+        self.db.commit()
         return revoked_count
 
-    async def update_activity(
-        self,
-        db: AsyncSession,
-        jti: str
-    ) -> bool:
+    def update_activity(self, jti: str) -> bool:
         """
         Update last activity timestamp for a session.
 
         Args:
-            db: Database session
             jti: JWT ID
 
         Returns:
             True if session was found and updated
         """
-        query = select(UserSession).where(UserSession.jti == jti)
-        result = await db.execute(query)
-        session = result.scalars().first()
+        session = self.db.query(UserSession).filter(UserSession.jti == jti).first()
 
         if session:
-            session.last_activity = datetime.now(timezone.utc)
-            await db.commit()
+            session.last_activity = datetime.utcnow()
+            self.db.commit()
             return True
 
         return False
 
-    async def cleanup_expired_sessions(
-        self,
-        db: AsyncSession,
-        older_than_hours: int = 24
-    ) -> int:
+    def cleanup_expired_sessions(self, older_than_hours: int = 24) -> int:
         """
         Delete expired sessions older than specified hours.
 
         Args:
-            db: Database session
             older_than_hours: Delete sessions expired this many hours ago
 
         Returns:
             Number of sessions deleted
         """
-        cutoff = datetime.now(timezone.utc) - timedelta(hours=older_than_hours)
+        cutoff = datetime.utcnow() - timedelta(hours=older_than_hours)
 
-        result = await db.execute(
-            delete(UserSession).where(UserSession.expires_at < cutoff)
-        )
-        await db.commit()
-        return result.rowcount
+        count = self.db.query(UserSession).filter(
+            UserSession.expires_at < cutoff
+        ).delete()
 
-    async def get_session_by_jti(
-        self,
-        db: AsyncSession,
-        jti: str
-    ) -> Optional[UserSession]:
+        self.db.commit()
+        return count
+
+    def get_session_by_jti(self, jti: str) -> Optional[UserSession]:
         """
         Get session by JWT ID.
 
         Args:
-            db: Database session
             jti: JWT ID
 
         Returns:
             UserSession if found, None otherwise
         """
-        query = select(UserSession).where(UserSession.jti == jti)
-        result = await db.execute(query)
-        return result.scalars().first()
+        return self.db.query(UserSession).filter(UserSession.jti == jti).first()
 
-    async def is_session_valid(
-        self,
-        db: AsyncSession,
-        jti: str
-    ) -> bool:
+    def is_session_valid(self, jti: str) -> bool:
         """
         Check if a session is valid (exists, not revoked, not expired).
 
         Args:
-            db: Database session
             jti: JWT ID
 
         Returns:
             True if session is valid
         """
-        session = await self.get_session_by_jti(db, jti)
+        session = self.get_session_by_jti(jti)
 
         if not session:
             return False
@@ -305,30 +271,7 @@ class SessionManager:
         if session.revoked_at:
             return False
 
-        if session.expires_at < datetime.now(timezone.utc):
+        if session.expires_at < datetime.utcnow():
             return False
 
         return True
-
-
-async def revoke_all_user_sessions(
-    db: AsyncSession,
-    user_id: str,
-    policy: SessionSecurityConfig,
-    except_jti: Optional[str] = None
-) -> int:
-    """
-    Convenience function to revoke all sessions for a user.
-    Used when password is changed and policy requires session termination.
-
-    Args:
-        db: Database session
-        user_id: User ID
-        policy: Session security policy
-        except_jti: Optional current session to preserve
-
-    Returns:
-        Number of sessions revoked
-    """
-    manager = SessionManager(policy)
-    return await manager.revoke_all_sessions(db, user_id, except_jti)
