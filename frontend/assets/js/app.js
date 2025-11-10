@@ -411,7 +411,7 @@ function createSubmenuItem(item, level = 1) {
     // Position popup on hover
     parent.addEventListener('mouseenter', () => {
       const rect = parent.getBoundingClientRect();
-      popup.style.left = `${rect.right + 8}px`;
+      popup.style.left = `${rect.right + 2}px`;
       popup.style.top = `${rect.top}px`;
       popup.classList.remove('hidden');
     });
@@ -425,7 +425,7 @@ function createSubmenuItem(item, level = 1) {
           if (!popup.matches(':hover')) {
             popup.classList.add('hidden');
           }
-        }, 100);
+        }, 150);
       }
     });
 
@@ -589,7 +589,7 @@ function createCollapsedSubmenuPopup(item) {
           });
 
           const rect = nestedTrigger.getBoundingClientRect();
-          nestedPopup.style.left = `${rect.right + 8}px`;
+          nestedPopup.style.left = `${rect.right + 2}px`;
           nestedPopup.style.top = `${rect.top}px`;
           nestedPopup.classList.remove('hidden');
           nestedPopup.isActive = true;
