@@ -9,16 +9,18 @@ Provides endpoints for managing:
 - Notification configuration
 """
 from typing import List, Optional
-from datetime import datetime, timezone
+from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_, or_, desc
+from sqlalchemy.orm import Session
 
-from app.core.dependencies import get_db, require_permissions
-from app.models import (
-    SecurityPolicy, AccountLockout, UserSession, LoginAttempt,
-    NotificationConfig, NotificationQueue, User
-)
+from app.core.dependencies import get_db, has_permission, get_current_user
+from app.models.security_policy import SecurityPolicy
+from app.models.account_lockout import AccountLockout
+from app.models.user_session import UserSession
+from app.models.login_attempt import LoginAttempt
+from app.models.notification_config import NotificationConfig
+from app.models.notification_queue import NotificationQueue
+from app.models.user import User
 from app.schemas.security import (
     SecurityPolicyResponse, SecurityPolicyCreate, SecurityPolicyUpdate,
     LockedAccountResponse, UnlockAccountRequest,
@@ -34,39 +36,37 @@ router = APIRouter(prefix="/admin/security", tags=["admin", "security"])
 # ==================== Security Policies ====================
 
 @router.get("/policies", response_model=List[SecurityPolicyResponse])
-async def list_security_policies(
-    db: AsyncSession = Depends(get_db),
-    _: dict = Depends(require_permissions(["security_policy:read:all"]))
+def list_security_policies(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(has_permission("security_policy:read:all"))
 ):
     """
     List all security policies (system default and tenant-specific).
 
     Requires: security_policy:read:all
     """
-    query = select(SecurityPolicy).where(SecurityPolicy.is_active == True).order_by(
-        SecurityPolicy.tenant_id.asc().nullsfirst(),
+    policies = db.query(SecurityPolicy).filter(
+        SecurityPolicy.is_active == True
+    ).order_by(
+        SecurityPolicy.tenant_id.asc(),
         SecurityPolicy.created_at.desc()
-    )
-    result = await db.execute(query)
-    policies = result.scalars().all()
+    ).all()
 
     return policies
 
 
 @router.get("/policies/{policy_id}", response_model=SecurityPolicyResponse)
-async def get_security_policy(
+def get_security_policy(
     policy_id: str,
-    db: AsyncSession = Depends(get_db),
-    _: dict = Depends(require_permissions(["security_policy:read:all"]))
+    db: Session = Depends(get_db),
+    current_user: User = Depends(has_permission("security_policy:read:all"))
 ):
     """
     Get a specific security policy by ID.
 
     Requires: security_policy:read:all
     """
-    query = select(SecurityPolicy).where(SecurityPolicy.id == policy_id)
-    result = await db.execute(query)
-    policy = result.scalars().first()
+    policy = db.query(SecurityPolicy).filter(SecurityPolicy.id == policy_id).first()
 
     if not policy:
         raise HTTPException(status_code=404, detail="Security policy not found")
@@ -75,10 +75,10 @@ async def get_security_policy(
 
 
 @router.post("/policies", response_model=SecurityPolicyResponse, status_code=201)
-async def create_security_policy(
+def create_security_policy(
     policy_data: SecurityPolicyCreate,
-    db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(require_permissions(["security_policy:write:all"]))
+    db: Session = Depends(get_db),
+    current_user: User = Depends(has_permission("security_policy:write:all"))
 ):
     """
     Create a new security policy (system default or tenant-specific).
@@ -88,12 +88,10 @@ async def create_security_policy(
     Note: Only one policy per tenant. If tenant_id is NULL, creates system default.
     """
     # Check if policy already exists for this tenant
-    query = select(SecurityPolicy).where(
+    existing = db.query(SecurityPolicy).filter(
         SecurityPolicy.tenant_id == policy_data.tenant_id,
         SecurityPolicy.is_active == True
-    )
-    result = await db.execute(query)
-    existing = result.scalars().first()
+    ).first()
 
     if existing:
         tenant_str = f"tenant {policy_data.tenant_id}" if policy_data.tenant_id else "system default"
@@ -104,30 +102,28 @@ async def create_security_policy(
 
     policy = SecurityPolicy(
         **policy_data.dict(exclude={'created_by'}),
-        created_by=current_user["user_id"]
+        created_by=str(current_user.id)
     )
     db.add(policy)
-    await db.commit()
-    await db.refresh(policy)
+    db.commit()
+    db.refresh(policy)
 
     return policy
 
 
 @router.put("/policies/{policy_id}", response_model=SecurityPolicyResponse)
-async def update_security_policy(
+def update_security_policy(
     policy_id: str,
     policy_data: SecurityPolicyUpdate,
-    db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(require_permissions(["security_policy:write:all"]))
+    db: Session = Depends(get_db),
+    current_user: User = Depends(has_permission("security_policy:write:all"))
 ):
     """
     Update an existing security policy.
 
     Requires: security_policy:write:all
     """
-    query = select(SecurityPolicy).where(SecurityPolicy.id == policy_id)
-    result = await db.execute(query)
-    policy = result.scalars().first()
+    policy = db.query(SecurityPolicy).filter(SecurityPolicy.id == policy_id).first()
 
     if not policy:
         raise HTTPException(status_code=404, detail="Security policy not found")
@@ -136,18 +132,18 @@ async def update_security_policy(
     for field, value in policy_data.dict(exclude_unset=True, exclude={'updated_by'}).items():
         setattr(policy, field, value)
 
-    policy.updated_by = current_user["user_id"]
-    await db.commit()
-    await db.refresh(policy)
+    policy.updated_by = str(current_user.id)
+    db.commit()
+    db.refresh(policy)
 
     return policy
 
 
 @router.delete("/policies/{policy_id}", status_code=204)
-async def delete_security_policy(
+def delete_security_policy(
     policy_id: str,
-    db: AsyncSession = Depends(get_db),
-    _: dict = Depends(require_permissions(["security_policy:delete:all"]))
+    db: Session = Depends(get_db),
+    current_user: User = Depends(has_permission("security_policy:delete:all"))
 ):
     """
     Delete (deactivate) a security policy.
@@ -156,9 +152,7 @@ async def delete_security_policy(
 
     Note: Cannot delete system default policy (tenant_id = NULL).
     """
-    query = select(SecurityPolicy).where(SecurityPolicy.id == policy_id)
-    result = await db.execute(query)
-    policy = result.scalars().first()
+    policy = db.query(SecurityPolicy).filter(SecurityPolicy.id == policy_id).first()
 
     if not policy:
         raise HTTPException(status_code=404, detail="Security policy not found")
@@ -170,89 +164,76 @@ async def delete_security_policy(
         )
 
     policy.is_active = False
-    await db.commit()
+    db.commit()
 
 
 # ==================== Locked Accounts ====================
 
 @router.get("/locked-accounts", response_model=List[LockedAccountResponse])
-async def list_locked_accounts(
+def list_locked_accounts(
     tenant_id: Optional[str] = Query(None),
-    db: AsyncSession = Depends(get_db),
-    _: dict = Depends(require_permissions(["security:view_locked_accounts:all"]))
+    db: Session = Depends(get_db),
+    current_user: User = Depends(has_permission("security:view_locked_accounts:all"))
 ):
     """
     List all currently locked accounts.
 
     Requires: security:view_locked_accounts:all
     """
-    now = datetime.now(timezone.utc)
+    now = datetime.utcnow()
 
-    query = select(User).where(
-        and_(
-            User.locked_until != None,
-            User.locked_until > now
-        )
+    query = db.query(User).filter(
+        User.locked_until != None,
+        User.locked_until > now
     )
 
     if tenant_id:
-        query = query.where(User.tenant_id == tenant_id)
+        query = query.filter(User.tenant_id == tenant_id)
 
-    query = query.order_by(desc(User.locked_until))
-
-    result = await db.execute(query)
-    users = result.scalars().all()
+    users = query.order_by(User.locked_until.desc()).all()
 
     return [
-        {
-            "user_id": str(user.id),
-            "email": user.email,
-            "full_name": user.full_name,
-            "tenant_id": str(user.tenant_id),
-            "locked_until": user.locked_until,
-            "failed_attempts": user.failed_login_attempts,
-            "is_active": user.is_active
-        }
+        LockedAccountResponse(
+            user_id=str(user.id),
+            email=user.email,
+            full_name=user.full_name,
+            tenant_id=str(user.tenant_id) if user.tenant_id else None,
+            locked_until=user.locked_until,
+            failed_attempts=user.failed_login_attempts or 0,
+            is_active=user.is_active
+        )
         for user in users
     ]
 
 
 @router.post("/unlock-account", status_code=200)
-async def unlock_account(
+def unlock_account(
     unlock_data: UnlockAccountRequest,
-    db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(require_permissions(["security:unlock_account:all"]))
+    db: Session = Depends(get_db),
+    current_user: User = Depends(has_permission("security:unlock_account:all"))
 ):
     """
     Manually unlock a locked user account.
 
     Requires: security:unlock_account:all
     """
-    from app.core.security_config import get_lockout_policy
     from app.core.lockout_manager import LockoutManager
 
     # Get user
-    query = select(User).where(User.id == unlock_data.user_id)
-    result = await db.execute(query)
-    user = result.scalars().first()
+    user = db.query(User).filter(User.id == unlock_data.user_id).first()
 
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
     # Check if actually locked
-    is_locked, locked_until = await LockoutManager(
-        await get_lockout_policy(db, str(user.tenant_id))
-    ).is_account_locked(db, user)
-
-    if not is_locked:
+    lockout_manager = LockoutManager(db)
+    if not lockout_manager.is_account_locked(user):
         raise HTTPException(status_code=400, detail="Account is not locked")
 
     # Unlock
-    policy = await get_lockout_policy(db, str(user.tenant_id))
-    manager = LockoutManager(policy)
-    await manager.unlock_account(
-        db, user,
-        unlocked_by_id=current_user["user_id"],
+    lockout_manager.unlock_account(
+        user=user,
+        unlocked_by_id=str(current_user.id),
         reason=unlock_data.reason or "Manual unlock by administrator"
     )
 
@@ -266,45 +247,42 @@ async def unlock_account(
 # ==================== Active Sessions ====================
 
 @router.get("/sessions", response_model=List[UserSessionResponse])
-async def list_active_sessions(
+def list_active_sessions(
     user_id: Optional[str] = Query(None),
     tenant_id: Optional[str] = Query(None),
     limit: int = Query(100, ge=1, le=500),
-    db: AsyncSession = Depends(get_db),
-    _: dict = Depends(require_permissions(["security:view_sessions:all"]))
+    db: Session = Depends(get_db),
+    current_user: User = Depends(has_permission("security:view_sessions:all"))
 ):
     """
     List active user sessions.
 
     Requires: security:view_sessions:all
     """
-    now = datetime.now(timezone.utc)
+    now = datetime.utcnow()
 
-    query = select(UserSession).where(
-        and_(
-            UserSession.revoked_at == None,
-            UserSession.expires_at > now
-        )
-    ).order_by(desc(UserSession.last_activity)).limit(limit)
+    query = db.query(UserSession).filter(
+        UserSession.revoked_at == None,
+        UserSession.expires_at > now
+    ).order_by(UserSession.last_activity.desc()).limit(limit)
 
     if user_id:
-        query = query.where(UserSession.user_id == user_id)
+        query = query.filter(UserSession.user_id == user_id)
 
     if tenant_id:
         # Join with User to filter by tenant
-        query = query.join(User).where(User.tenant_id == tenant_id)
+        query = query.join(User).filter(User.tenant_id == tenant_id)
 
-    result = await db.execute(query)
-    sessions = result.scalars().all()
+    sessions = query.all()
 
     return sessions
 
 
 @router.post("/sessions/revoke", status_code=200)
-async def revoke_session(
+def revoke_session(
     revoke_data: RevokeSessionRequest,
-    db: AsyncSession = Depends(get_db),
-    _: dict = Depends(require_permissions(["security:revoke_session:all"]))
+    db: Session = Depends(get_db),
+    current_user: User = Depends(has_permission("security:revoke_session:all"))
 ):
     """
     Revoke a user session.
@@ -312,20 +290,16 @@ async def revoke_session(
     Requires: security:revoke_session:all
     """
     from app.core.session_manager import SessionManager
-    from app.core.security_config import get_session_policy
 
     # Get session
-    query = select(UserSession).where(UserSession.id == revoke_data.session_id)
-    result = await db.execute(query)
-    session = result.scalars().first()
+    session = db.query(UserSession).filter(UserSession.id == revoke_data.session_id).first()
 
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
 
     # Revoke
-    policy = await get_session_policy(db, None)  # System default
-    manager = SessionManager(policy)
-    await manager.revoke_session(db, session.jti)
+    session_manager = SessionManager(db)
+    session_manager.revoke_session(session.jti, reason="Admin revocation")
 
     return {
         "message": "Session revoked successfully",
@@ -335,29 +309,26 @@ async def revoke_session(
 
 
 @router.post("/sessions/revoke-all/{user_id}", status_code=200)
-async def revoke_all_user_sessions(
+def revoke_all_user_sessions(
     user_id: str,
-    db: AsyncSession = Depends(get_db),
-    _: dict = Depends(require_permissions(["security:revoke_session:all"]))
+    db: Session = Depends(get_db),
+    current_user: User = Depends(has_permission("security:revoke_session:all"))
 ):
     """
     Revoke all active sessions for a user.
 
     Requires: security:revoke_session:all
     """
-    from app.core.session_manager import revoke_all_user_sessions as revoke_all
-    from app.core.security_config import get_session_policy
+    from app.core.session_manager import SessionManager
 
     # Verify user exists
-    query = select(User).where(User.id == user_id)
-    result = await db.execute(query)
-    user = result.scalars().first()
+    user = db.query(User).filter(User.id == user_id).first()
 
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    policy = await get_session_policy(db, str(user.tenant_id))
-    count = await revoke_all(db, user_id, policy)
+    session_manager = SessionManager(db)
+    count = session_manager.revoke_all_user_sessions(user=user, reason="Admin bulk revocation")
 
     return {
         "message": f"Revoked {count} active sessions",
@@ -369,28 +340,27 @@ async def revoke_all_user_sessions(
 # ==================== Login Attempts ====================
 
 @router.get("/login-attempts", response_model=List[LoginAttemptResponse])
-async def list_login_attempts(
+def list_login_attempts(
     email: Optional[str] = Query(None),
     success: Optional[bool] = Query(None),
     limit: int = Query(100, ge=1, le=500),
-    db: AsyncSession = Depends(get_db),
-    _: dict = Depends(require_permissions(["security:view_login_attempts:all"]))
+    db: Session = Depends(get_db),
+    current_user: User = Depends(has_permission("security:view_login_attempts:all"))
 ):
     """
     List login attempts for audit.
 
     Requires: security:view_login_attempts:all
     """
-    query = select(LoginAttempt).order_by(desc(LoginAttempt.created_at)).limit(limit)
+    query = db.query(LoginAttempt).order_by(LoginAttempt.created_at.desc()).limit(limit)
 
     if email:
-        query = query.where(LoginAttempt.email == email)
+        query = query.filter(LoginAttempt.email == email)
 
     if success is not None:
-        query = query.where(LoginAttempt.success == success)
+        query = query.filter(LoginAttempt.success == success)
 
-    result = await db.execute(query)
-    attempts = result.scalars().all()
+    attempts = query.all()
 
     return attempts
 
@@ -398,47 +368,41 @@ async def list_login_attempts(
 # ==================== Notification Configuration ====================
 
 @router.get("/notification-config", response_model=List[NotificationConfigResponse])
-async def list_notification_configs(
+def list_notification_configs(
     tenant_id: Optional[str] = Query(None),
-    db: AsyncSession = Depends(get_db),
-    _: dict = Depends(require_permissions(["notification_config:read:all"]))
+    db: Session = Depends(get_db),
+    current_user: User = Depends(has_permission("notification_config:read:all"))
 ):
     """
     List notification configurations.
 
     Requires: notification_config:read:all
     """
-    query = select(NotificationConfig).where(NotificationConfig.is_active == True)
+    query = db.query(NotificationConfig).filter(NotificationConfig.is_active == True)
 
     if tenant_id:
-        query = query.where(
-            or_(
-                NotificationConfig.tenant_id == tenant_id,
-                NotificationConfig.tenant_id == None
-            )
+        query = query.filter(
+            (NotificationConfig.tenant_id == tenant_id) | (NotificationConfig.tenant_id == None)
         )
 
-    result = await db.execute(query)
-    configs = result.scalars().all()
+    configs = query.all()
 
     return configs
 
 
 @router.put("/notification-config/{config_id}", response_model=NotificationConfigResponse)
-async def update_notification_config(
+def update_notification_config(
     config_id: str,
     config_data: NotificationConfigUpdate,
-    db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(require_permissions(["notification_config:write:all"]))
+    db: Session = Depends(get_db),
+    current_user: User = Depends(has_permission("notification_config:write:all"))
 ):
     """
     Update notification configuration.
 
     Requires: notification_config:write:all
     """
-    query = select(NotificationConfig).where(NotificationConfig.id == config_id)
-    result = await db.execute(query)
-    config = result.scalars().first()
+    config = db.query(NotificationConfig).filter(NotificationConfig.id == config_id).first()
 
     if not config:
         raise HTTPException(status_code=404, detail="Notification config not found")
@@ -447,38 +411,37 @@ async def update_notification_config(
     for field, value in config_data.dict(exclude_unset=True, exclude={'updated_by'}).items():
         setattr(config, field, value)
 
-    config.updated_by = current_user["user_id"]
-    await db.commit()
-    await db.refresh(config)
+    config.updated_by = str(current_user.id)
+    db.commit()
+    db.refresh(config)
 
     return config
 
 
 @router.get("/notification-queue", response_model=List[NotificationQueueResponse])
-async def list_notification_queue(
+def list_notification_queue(
     status: Optional[str] = Query(None),
     notification_type: Optional[str] = Query(None),
     limit: int = Query(100, ge=1, le=500),
-    db: AsyncSession = Depends(get_db),
-    _: dict = Depends(require_permissions(["notification_queue:read:all"]))
+    db: Session = Depends(get_db),
+    current_user: User = Depends(has_permission("notification_queue:read:all"))
 ):
     """
     List notification queue for monitoring.
 
     Requires: notification_queue:read:all
     """
-    query = select(NotificationQueue).order_by(
+    query = db.query(NotificationQueue).order_by(
         NotificationQueue.priority.asc(),
         NotificationQueue.created_at.asc()
     ).limit(limit)
 
     if status:
-        query = query.where(NotificationQueue.status == status)
+        query = query.filter(NotificationQueue.status == status)
 
     if notification_type:
-        query = query.where(NotificationQueue.notification_type == notification_type)
+        query = query.filter(NotificationQueue.notification_type == notification_type)
 
-    result = await db.execute(query)
-    notifications = result.scalars().all()
+    notifications = query.all()
 
     return notifications
