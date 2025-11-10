@@ -3,57 +3,56 @@ Password History Service
 
 Manages password history tracking to prevent password reuse.
 """
-from datetime import datetime, timezone
-from typing import Optional
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, delete
+from datetime import datetime
+from typing import List
+from sqlalchemy.orm import Session
 
-from app.models import PasswordHistory, User
-from app.core.auth import get_password_hash
-from app.core.security_config import PasswordPolicyConfig
+from app.models.password_history import PasswordHistory
+from app.models.user import User
+from app.core.auth import verify_password
+from app.core.security_config import SecurityConfig
 
 
 class PasswordHistoryService:
     """Service for managing password history"""
 
-    @staticmethod
-    async def add_to_history(
-        db: AsyncSession,
-        user_id: str,
-        hashed_password: str
-    ) -> PasswordHistory:
+    def __init__(self, db: Session):
+        """Initialize the service with database session"""
+        self.db = db
+
+    def add_password_to_history(self, user: User, hashed_password: str) -> PasswordHistory:
         """
         Add a password to user's history.
 
         Args:
-            db: Database session
-            user_id: User ID
+            user: User instance
             hashed_password: Hashed password to store
 
         Returns:
             PasswordHistory instance
         """
         history_entry = PasswordHistory(
-            user_id=user_id,
+            user_id=str(user.id),
             hashed_password=hashed_password
         )
-        db.add(history_entry)
-        await db.commit()
-        await db.refresh(history_entry)
+        self.db.add(history_entry)
+
+        # Get security config to determine history limit
+        security_config = SecurityConfig(self.db)
+        history_count = security_config.get_config("password_history_count", user.tenant_id) or 5
+
+        # Clean up old history entries beyond the limit
+        if history_count > 0:
+            self.cleanup_old_history(user, history_count)
+
         return history_entry
 
-    @staticmethod
-    async def cleanup_old_history(
-        db: AsyncSession,
-        user_id: str,
-        keep_count: int
-    ) -> int:
+    def cleanup_old_history(self, user: User, keep_count: int) -> int:
         """
         Remove old password history entries beyond the configured limit.
 
         Args:
-            db: Database session
-            user_id: User ID
+            user: User instance
             keep_count: Number of recent passwords to keep
 
         Returns:
@@ -61,86 +60,97 @@ class PasswordHistoryService:
         """
         if keep_count == 0:
             # Delete all history
-            result = await db.execute(
-                delete(PasswordHistory).where(PasswordHistory.user_id == user_id)
-            )
-            await db.commit()
-            return result.rowcount
+            deleted = self.db.query(PasswordHistory).filter(
+                PasswordHistory.user_id == str(user.id)
+            ).delete()
+            return deleted
 
         # Get all history entries for user, ordered by date
-        query = select(PasswordHistory).where(
-            PasswordHistory.user_id == user_id
-        ).order_by(PasswordHistory.created_at.desc())
-
-        result = await db.execute(query)
-        all_history = result.scalars().all()
+        all_history = self.db.query(PasswordHistory).filter(
+            PasswordHistory.user_id == str(user.id)
+        ).order_by(PasswordHistory.created_at.desc()).all()
 
         # Delete entries beyond keep_count
         if len(all_history) > keep_count:
             to_delete = all_history[keep_count:]
+            deleted_count = 0
             for entry in to_delete:
-                await db.delete(entry)
-            await db.commit()
-            return len(to_delete)
+                self.db.delete(entry)
+                deleted_count += 1
+            return deleted_count
 
         return 0
 
-    @staticmethod
-    async def record_password_change(
-        db: AsyncSession,
-        user: User,
-        new_password_hash: str,
-        policy: PasswordPolicyConfig
-    ) -> None:
+    def get_password_history(self, user: User, limit: int = None) -> List[PasswordHistory]:
         """
-        Record a password change:
-        1. Add current password to history
-        2. Update user's password_changed_at timestamp
-        3. Calculate and set password expiration
-        4. Clean up old history beyond policy limit
+        Get password history for a user.
 
         Args:
-            db: Database session
             user: User instance
-            new_password_hash: New hashed password
-            policy: Password policy configuration
+            limit: Optional limit on number of entries to return
+
+        Returns:
+            List of PasswordHistory entries
         """
-        # Add to history
-        await PasswordHistoryService.add_to_history(db, str(user.id), new_password_hash)
+        query = self.db.query(PasswordHistory).filter(
+            PasswordHistory.user_id == str(user.id)
+        ).order_by(PasswordHistory.created_at.desc())
 
-        # Update user timestamps
-        now = datetime.now(timezone.utc)
-        user.password_changed_at = now
+        if limit:
+            query = query.limit(limit)
 
-        # Calculate expiration if policy requires it
-        if policy.expiration_days > 0:
-            from datetime import timedelta
-            user.password_expires_at = now + timedelta(days=policy.expiration_days)
-        else:
-            user.password_expires_at = None
+        return query.all()
 
-        # Reset grace logins
-        user.grace_logins_remaining = policy.grace_logins
-        user.require_password_change = False
+    def is_password_allowed(self, user: User, plain_password: str) -> bool:
+        """
+        Check if a password is allowed based on history.
+        Returns False if the password matches any in the history.
 
-        await db.commit()
+        Args:
+            user: User instance
+            plain_password: Plain text password to check
 
-        # Clean up old history
-        if policy.history_count > 0:
-            await PasswordHistoryService.cleanup_old_history(
-                db,
-                str(user.id),
-                policy.history_count
-            )
+        Returns:
+            True if password is allowed (not in history), False otherwise
+        """
+        # Get security config to determine how many passwords to check
+        security_config = SecurityConfig(self.db)
+        history_count = security_config.get_config("password_history_count", user.tenant_id)
 
+        # If history checking is disabled, allow any password
+        if not history_count or history_count == 0:
+            return True
 
-async def record_password_change(
-    db: AsyncSession,
-    user: User,
-    new_password_hash: str,
-    policy: PasswordPolicyConfig
-) -> None:
-    """
-    Convenience function to record a password change.
-    """
-    await PasswordHistoryService.record_password_change(db, user, new_password_hash, policy)
+        # Get recent password history
+        history_entries = self.get_password_history(user, limit=history_count)
+
+        # Check if the new password matches any in history
+        for entry in history_entries:
+            if verify_password(plain_password, entry.hashed_password):
+                return False
+
+        return True
+
+    def check_password_in_history(self, user: User, plain_password: str, check_count: int = None) -> bool:
+        """
+        Check if a password exists in the user's history.
+
+        Args:
+            user: User instance
+            plain_password: Plain text password to check
+            check_count: Number of history entries to check (defaults to policy setting)
+
+        Returns:
+            True if password found in history, False otherwise
+        """
+        if check_count is None:
+            security_config = SecurityConfig(self.db)
+            check_count = security_config.get_config("password_history_count", user.tenant_id) or 5
+
+        history_entries = self.get_password_history(user, limit=check_count)
+
+        for entry in history_entries:
+            if verify_password(plain_password, entry.hashed_password):
+                return True
+
+        return False
