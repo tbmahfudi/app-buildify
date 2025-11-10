@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 
 from app.models.user_session import UserSession
 from app.models.user import User
-from app.core.security_config import SecurityConfig
+from app.core.security_config import SecurityConfigService
 from app.core.config import ACCESS_TOKEN_EXPIRE_MIN
 
 
@@ -28,7 +28,7 @@ class SessionManager:
             db: Database session
         """
         self.db = db
-        self.security_config = SecurityConfig(db)
+        self.security_config = SecurityConfigService(db)
 
     def create_session(
         self,

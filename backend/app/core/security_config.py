@@ -273,3 +273,116 @@ async def get_reset_policy(db, tenant_id: Optional[str] = None) -> PasswordReset
     """Get password reset policy for a tenant"""
     config = await get_security_config(db, tenant_id)
     return config.reset
+
+
+# ==================== Synchronous Service Class ====================
+
+class SecurityConfigService:
+    """
+    Synchronous service for accessing security configuration.
+    Provides a simple get_config() method with hierarchical fallback.
+    """
+
+    def __init__(self, db):
+        """
+        Initialize with database session.
+
+        Args:
+            db: SQLAlchemy database session (sync)
+        """
+        self.db = db
+        self._cache = {}
+
+    def get_config(self, key: str, tenant_id: Optional[str] = None) -> Any:
+        """
+        Get a security configuration value with hierarchical fallback.
+
+        Lookup order:
+        1. Tenant-specific policy (from database)
+        2. System default policy (from database, tenant_id=NULL)
+        3. Environment variables
+        4. Code defaults
+
+        Args:
+            key: Configuration key (e.g., "password_min_length", "login_max_attempts")
+            tenant_id: Optional tenant ID
+
+        Returns:
+            Configuration value
+        """
+        from app.models.security_policy import SecurityPolicy
+
+        # Try tenant-specific policy first
+        if tenant_id:
+            cache_key = f"{tenant_id}:{key}"
+            if cache_key in self._cache:
+                return self._cache[cache_key]
+
+            policy = self.db.query(SecurityPolicy).filter(
+                SecurityPolicy.tenant_id == tenant_id,
+                SecurityPolicy.is_active == True
+            ).first()
+
+            if policy:
+                value = getattr(policy, key, None)
+                if value is not None:
+                    self._cache[cache_key] = value
+                    return value
+
+        # Try system default policy (tenant_id = NULL)
+        system_cache_key = f"system:{key}"
+        if system_cache_key in self._cache:
+            return self._cache[system_cache_key]
+
+        system_policy = self.db.query(SecurityPolicy).filter(
+            SecurityPolicy.tenant_id == None,
+            SecurityPolicy.is_active == True
+        ).first()
+
+        if system_policy:
+            value = getattr(system_policy, key, None)
+            if value is not None:
+                self._cache[system_cache_key] = value
+                return value
+
+        # Fall back to environment/defaults
+        default_config = get_default_security_config()
+
+        # Map keys to config paths
+        key_mappings = {
+            # Password policy
+            "password_min_length": default_config.password.min_length,
+            "password_max_length": default_config.password.max_length,
+            "password_require_uppercase": default_config.password.require_uppercase,
+            "password_require_lowercase": default_config.password.require_lowercase,
+            "password_require_digit": default_config.password.require_digit,
+            "password_require_special_char": default_config.password.require_special_char,
+            "password_min_unique_chars": default_config.password.min_unique_chars,
+            "password_max_repeating_chars": default_config.password.max_repeating_chars,
+            "password_allow_common": default_config.password.allow_common,
+            "password_allow_username": default_config.password.allow_username,
+            "password_history_count": default_config.password.history_count,
+            "password_expiration_days": default_config.password.expiration_days,
+            "password_expiration_warning_days": default_config.password.expiration_warning_days,
+            "password_grace_logins": default_config.password.grace_logins,
+
+            # Lockout policy
+            "login_max_attempts": default_config.lockout.max_attempts,
+            "login_lockout_duration_min": default_config.lockout.lockout_duration_min,
+            "login_lockout_type": default_config.lockout.lockout_type,
+            "login_reset_attempts_after_min": default_config.lockout.reset_attempts_after_min,
+            "login_notify_user_on_lockout": default_config.lockout.notify_user_on_lockout,
+
+            # Session policy
+            "session_timeout_minutes": default_config.session.timeout_minutes,
+            "session_absolute_timeout_hours": default_config.session.absolute_timeout_hours,
+            "session_max_concurrent": default_config.session.max_concurrent,
+            "session_terminate_on_password_change": default_config.session.terminate_on_password_change,
+
+            # Reset policy
+            "password_reset_token_expire_hours": default_config.reset.token_expire_hours,
+            "password_reset_max_attempts": default_config.reset.max_attempts_per_hour,
+            "password_reset_notify_user": default_config.reset.notify_user,
+        }
+
+        return key_mappings.get(key)
