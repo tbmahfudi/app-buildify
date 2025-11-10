@@ -913,7 +913,13 @@ async function loadRoute(route) {
     }
 
     const html = await response.text();
-    content.innerHTML = html;
+
+    // Parse HTML to extract only body content and avoid CSP meta tag issues
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+    const bodyContent = doc.body?.innerHTML || html;
+
+    content.innerHTML = bodyContent;
 
     // Dispatch event for route-specific JS
     document.dispatchEvent(new CustomEvent('route:loaded', {
