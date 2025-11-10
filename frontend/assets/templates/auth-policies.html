@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Auth Policies</title>
+</head>
+<body>
+    <div id="security-admin-container" class="h-full"></div>
+
+    <script type="module">
+        import '/components/security-admin.js';
+
+        // Wait for DOM to be ready and route to be fully loaded
+        document.addEventListener('route:loaded', async (event) => {
+            if (event.detail.route === 'auth-policies') {
+                // Initialize SecurityAdmin component
+                const securityAdmin = new SecurityAdmin();
+                await securityAdmin.init('security-admin-container');
+
+                // Make it globally accessible for internal component methods
+                window.securityAdmin = securityAdmin;
+            }
+        });
+
+        // Also try immediate initialization (in case route:loaded already fired)
+        if (window.location.hash === '#auth-policies') {
+            setTimeout(async () => {
+                if (!window.securityAdmin) {
+                    const securityAdmin = new SecurityAdmin();
+                    await securityAdmin.init('security-admin-container');
+                    window.securityAdmin = securityAdmin;
+                }
+            }, 100);
+        }
+    </script>
+</body>
+</html>
