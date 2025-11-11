@@ -853,6 +853,9 @@ function updateActiveMenuItem() {
 }
 
 async function loadRoute(route) {
+  // Normalize route - remove leading slashes
+  route = route.replace(/^\/+/, '');
+
   appState.currentRoute = route;
   updateActiveMenuItem();
 

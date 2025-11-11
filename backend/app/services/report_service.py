@@ -281,8 +281,8 @@ class ReportService:
         # Build FROM clause
         from_clause = f"{base_entity}"
 
-        # Build WHERE clause
-        where_conditions = [f"tenant_id = {tenant_id}"]
+        # Build WHERE clause - use parameterized query for tenant_id
+        where_conditions = ["tenant_id = :tenant_id"]
 
         # Add filter conditions from query config
         if query_config.get('filters'):
@@ -323,8 +323,8 @@ class ReportService:
             {limit_clause}
         """
 
-        # Execute query
-        result = db.execute(text(sql))
+        # Execute query with parameterized tenant_id
+        result = db.execute(text(sql), {"tenant_id": str(tenant_id)})
         rows = result.fetchall()
 
         # Convert to list of dicts
@@ -467,31 +467,38 @@ class ReportService:
         display_field = request.display_field
         value_field = request.value_field
 
-        # Build query
+        # Build query with parameterized tenant_id
         sql = f"""
             SELECT DISTINCT {value_field} as value, {display_field} as label
             FROM {entity}
-            WHERE tenant_id = {tenant_id}
+            WHERE tenant_id = :tenant_id
         """
+
+        params = {"tenant_id": str(tenant_id)}
 
         # Add search filter
         if request.search:
-            sql += f" AND {display_field} LIKE '%{request.search}%'"
+            sql += f" AND {display_field} LIKE :search"
+            params["search"] = f"%{request.search}%"
 
         # Add custom filter conditions
         if request.filter_conditions:
-            for field, value in request.filter_conditions.items():
-                sql += f" AND {field} = '{value}'"
+            for i, (field, value) in enumerate(request.filter_conditions.items()):
+                param_name = f"filter_{i}"
+                sql += f" AND {field} = :{param_name}"
+                params[param_name] = value
 
         # Add parent value filter for cascading
         if request.parent_value:
             # Assuming parent field naming convention
-            sql += f" AND parent_id = '{request.parent_value}'"
+            sql += " AND parent_id = :parent_value"
+            params["parent_value"] = request.parent_value
 
-        sql += f" ORDER BY {display_field} LIMIT {request.limit}"
+        sql += f" ORDER BY {display_field} LIMIT :limit"
+        params["limit"] = request.limit
 
-        # Execute query
-        result = db.execute(text(sql))
+        # Execute query with parameters
+        result = db.execute(text(sql), params)
         rows = result.fetchall()
 
         items = [{'value': row[0], 'label': row[1]} for row in rows]
