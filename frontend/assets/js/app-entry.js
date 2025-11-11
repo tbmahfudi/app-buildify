@@ -10,5 +10,7 @@ import './modules.js';
 import './rbac-page.js';
 import './auth-policies-page.js';
 import './sample-reports-dashboards-page.js';
+import './report-designer-page.js';
+import './dashboard-designer-page.js';
 
 initApp();
