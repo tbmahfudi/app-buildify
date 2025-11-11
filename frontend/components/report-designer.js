@@ -12,6 +12,7 @@
 
 import { reportService } from '../assets/js/report-service.js';
 import { dataService } from '../assets/js/data-service.js';
+import { metadataService } from '../assets/js/metadata-service.js';
 import { showNotification } from '../assets/js/notifications.js';
 
 export class ReportDesigner {
@@ -21,6 +22,7 @@ export class ReportDesigner {
         this.reportData = this._getDefaultReportData();
         this.currentStep = 1;
         this.totalSteps = 5;
+        this.availableFields = []; // Store fields from selected entity
     }
 
     _getDefaultReportData() {
@@ -268,13 +270,23 @@ export class ReportDesigner {
     }
 
     _renderColumnConfig(column, index) {
+        // Build field dropdown options
+        const fieldOptions = this.availableFields.length > 0
+            ? this.availableFields.map(field =>
+                `<option value="${field.name}" ${column.name === field.name ? 'selected' : ''}>${field.label || field.name}</option>`
+              ).join('')
+            : `<option value="${column.name}">${column.name || 'Select entity first'}</option>`;
+
         return `
             <div class="column-config border rounded p-4 bg-gray-50" data-index="${index}">
                 <div class="grid grid-cols-3 gap-4">
                     <div>
                         <label class="block text-sm font-medium mb-1">Field Name</label>
-                        <input type="text" class="input-field column-name" value="${column.name}"
-                            placeholder="field_name">
+                        <select class="input-field column-name" ${this.availableFields.length === 0 ? 'disabled' : ''}>
+                            <option value="">Select a field...</option>
+                            ${fieldOptions}
+                        </select>
+                        ${this.availableFields.length === 0 ? '<p class="text-xs text-amber-600 mt-1">Select a base entity first</p>' : ''}
                     </div>
                     <div>
                         <label class="block text-sm font-medium mb-1">Display Label</label>
@@ -515,8 +527,33 @@ export class ReportDesigner {
                 allowed_roles: loadedData.allowed_roles || [],
                 allowed_users: loadedData.allowed_users || []
             };
+
+            // Load entity fields if base entity is set
+            if (this.reportData.base_entity) {
+                await this.loadEntityFields(this.reportData.base_entity);
+            }
         } catch (error) {
             showNotification('Failed to load report: ' + error.message, 'error');
+        }
+    }
+
+    async loadEntityFields(entityName) {
+        try {
+            const metadata = await metadataService.getMetadata(entityName);
+
+            // Extract fields from metadata
+            this.availableFields = metadata.fields || [];
+
+            // If we're on step 3 (columns), re-render to update dropdowns
+            if (this.currentStep === 3) {
+                this._renderCurrentStep();
+            }
+
+            showNotification(`Loaded ${this.availableFields.length} fields from ${entityName}`, 'success');
+        } catch (error) {
+            console.error('Failed to load entity fields:', error);
+            showNotification('Failed to load entity fields: ' + error.message, 'error');
+            this.availableFields = [];
         }
     }
 
@@ -550,11 +587,43 @@ export class ReportDesigner {
             });
         }
 
+        // Step 2: Data Source - Base Entity change
+        const baseEntity = document.getElementById('base-entity');
+        if (baseEntity) {
+            baseEntity.addEventListener('change', async (e) => {
+                this.reportData.base_entity = e.target.value;
+                if (e.target.value) {
+                    await this.loadEntityFields(e.target.value);
+                }
+            });
+        }
+
         // Step 3: Columns
         const addColumnBtn = document.getElementById('add-column-btn');
         if (addColumnBtn) {
             addColumnBtn.addEventListener('click', () => this._addColumn());
         }
+
+        // Load fields if base entity is already selected (for step 3)
+        if (this.currentStep === 3 && this.reportData.base_entity && this.availableFields.length === 0) {
+            this.loadEntityFields(this.reportData.base_entity);
+        }
+
+        // Add event listeners for column field dropdowns
+        document.querySelectorAll('.column-name').forEach((select, index) => {
+            select.addEventListener('change', (e) => {
+                const fieldName = e.target.value;
+                const field = this.availableFields.find(f => f.name === fieldName);
+
+                if (field) {
+                    // Auto-populate label if empty
+                    const labelInput = e.target.closest('.column-config').querySelector('.column-label');
+                    if (labelInput && !labelInput.value) {
+                        labelInput.value = field.label || field.name;
+                    }
+                }
+            });
+        });
 
         // Step 4: Parameters
         const addParameterBtn = document.getElementById('add-parameter-btn');
