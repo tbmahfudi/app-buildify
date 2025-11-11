@@ -107,13 +107,12 @@ class ReportService:
 
         # Filter by permissions (show public or user's accessible reports)
         if user_id:
-            # Convert UUID to string for JSON comparison
-            user_id_str = str(user_id)
+            # For now, filter by public or created_by only
+            # TODO: Implement proper JSONB containment check for allowed_users
             query = query.filter(
                 or_(
                     ReportDefinition.is_public == True,
-                    ReportDefinition.created_by == user_id,
-                    ReportDefinition.allowed_users.contains([user_id_str])
+                    ReportDefinition.created_by == user_id
                 )
             )
 

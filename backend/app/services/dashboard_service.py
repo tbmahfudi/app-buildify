@@ -123,13 +123,12 @@ class DashboardService:
 
         # Filter by permissions
         if user_id:
-            # Convert UUID to string for JSON comparison
-            user_id_str = str(user_id)
+            # For now, filter by public or created_by only
+            # TODO: Implement proper JSONB containment check for allowed_users
             query = query.filter(
                 or_(
                     Dashboard.is_public == True,
-                    Dashboard.created_by == user_id,
-                    Dashboard.allowed_users.contains([user_id_str])
+                    Dashboard.created_by == user_id
                 )
             )
 
