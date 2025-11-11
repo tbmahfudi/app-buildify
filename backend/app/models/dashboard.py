@@ -70,13 +70,13 @@ class Dashboard(Base):
     tags = Column(JSON, nullable=True)  # List of tags for categorization
 
     # Layout
-    layout_type = Column(SQLEnum(DashboardLayout), default=DashboardLayout.GRID)
+    layout_type = Column(String(50), default="grid")
     theme = Column(String(50), default="light")  # light, dark, custom
 
     # Global settings
     global_parameters = Column(JSON, nullable=True)  # Shared parameters across widgets
     global_filters = Column(JSON, nullable=True)  # Global filter configuration
-    refresh_interval = Column(SQLEnum(RefreshInterval), default=RefreshInterval.NONE)
+    refresh_interval = Column(String(20), default="none")
 
     # Permissions
     is_public = Column(Boolean, default=False)
@@ -141,7 +141,7 @@ class DashboardWidget(Base):
     # Widget info
     title = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
-    widget_type = Column(SQLEnum(WidgetType), nullable=False)
+    widget_type = Column(String(50), nullable=False)
 
     # Data source
     report_definition_id = Column(Integer, nullable=True)  # Link to report if applicable
@@ -163,7 +163,7 @@ class DashboardWidget(Base):
 
     # Refresh settings
     auto_refresh = Column(Boolean, default=False)
-    refresh_interval = Column(SQLEnum(RefreshInterval), default=RefreshInterval.NONE)
+    refresh_interval = Column(String(20), default="none")
 
     # Metadata
     created_at = Column(DateTime, default=datetime.utcnow)

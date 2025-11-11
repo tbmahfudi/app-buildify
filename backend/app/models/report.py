@@ -61,7 +61,7 @@ class ReportDefinition(Base):
     name = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
     category = Column(String(100), nullable=True)
-    report_type = Column(SQLEnum(ReportType), default=ReportType.TABULAR)
+    report_type = Column(String(50), default="tabular")
 
     # Data source
     base_entity = Column(String(100), nullable=False)  # Main table/entity
@@ -116,7 +116,7 @@ class ReportExecution(Base):
     error_message = Column(Text, nullable=True)
 
     # Export
-    export_format = Column(SQLEnum(ExportFormat), nullable=True)
+    export_format = Column(String(50), nullable=True)
     export_file_path = Column(String(500), nullable=True)
     export_file_size = Column(Integer, nullable=True)
 
@@ -144,7 +144,7 @@ class ReportSchedule(Base):
     default_parameters = Column(JSON, nullable=True)
 
     # Delivery
-    export_format = Column(SQLEnum(ExportFormat), default=ExportFormat.PDF)
+    export_format = Column(String(50), default="pdf")
     email_recipients = Column(JSON, nullable=True)  # List of email addresses
     webhook_url = Column(String(500), nullable=True)
     storage_path = Column(String(500), nullable=True)  # Cloud storage path
