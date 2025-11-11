@@ -7,6 +7,7 @@ from datetime import datetime
 import enum
 
 from app.models import Base
+from app.models.base import GUID
 
 
 class ParameterType(str, enum.Enum):
@@ -54,7 +55,7 @@ class ReportDefinition(Base):
     __tablename__ = "report_definitions"
 
     id = Column(Integer, primary_key=True, index=True)
-    tenant_id = Column(Integer, nullable=False, index=True)
+    tenant_id = Column(GUID, nullable=False, index=True)
 
     # Basic info
     name = Column(String(255), nullable=False)
@@ -84,7 +85,7 @@ class ReportDefinition(Base):
     allowed_users = Column(JSON, nullable=True)  # List of user IDs
 
     # Metadata
-    created_by = Column(Integer, nullable=False)
+    created_by = Column(GUID, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     is_active = Column(Boolean, default=True)
@@ -100,11 +101,11 @@ class ReportExecution(Base):
     __tablename__ = "report_executions"
 
     id = Column(Integer, primary_key=True, index=True)
-    tenant_id = Column(Integer, nullable=False, index=True)
+    tenant_id = Column(GUID, nullable=False, index=True)
     report_definition_id = Column(Integer, ForeignKey("report_definitions.id"), nullable=False)
 
     # Execution details
-    executed_by = Column(Integer, nullable=False)
+    executed_by = Column(GUID, nullable=False)
     executed_at = Column(DateTime, default=datetime.utcnow)
     parameters_used = Column(JSON, nullable=True)  # Parameter values used
 
@@ -128,7 +129,7 @@ class ReportSchedule(Base):
     __tablename__ = "report_schedules"
 
     id = Column(Integer, primary_key=True, index=True)
-    tenant_id = Column(Integer, nullable=False, index=True)
+    tenant_id = Column(GUID, nullable=False, index=True)
     report_definition_id = Column(Integer, ForeignKey("report_definitions.id"), nullable=False)
 
     # Schedule details
@@ -149,7 +150,7 @@ class ReportSchedule(Base):
     storage_path = Column(String(500), nullable=True)  # Cloud storage path
 
     # Metadata
-    created_by = Column(Integer, nullable=False)
+    created_by = Column(GUID, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     last_run_at = Column(DateTime, nullable=True)
@@ -189,7 +190,7 @@ class ReportCache(Base):
     __tablename__ = "report_cache"
 
     id = Column(Integer, primary_key=True, index=True)
-    tenant_id = Column(Integer, nullable=False, index=True)
+    tenant_id = Column(GUID, nullable=False, index=True)
     report_definition_id = Column(Integer, ForeignKey("report_definitions.id"), nullable=False)
 
     # Cache key (hash of parameters)
