@@ -7,7 +7,7 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from sqlalchemy.orm import Session
-from app.database import get_db
+from app.core.db import SessionLocal
 from app.models.report import ReportDefinition, ReportType
 from app.models.dashboard import Dashboard, DashboardPage, DashboardWidget, WidgetType, DashboardLayout
 from datetime import datetime
@@ -172,7 +172,7 @@ def main():
     print("\n=== Creating Sample Reports and Dashboards ===\n")
 
     # Get database session
-    db = next(get_db())
+    db = SessionLocal()
 
     try:
         # You need to replace these with actual values from your database
