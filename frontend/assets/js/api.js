@@ -80,6 +80,12 @@ async function apiFetch(path, opts = {}) {
   const headers = opts.headers ? { ...opts.headers } : {};
   if (tokens.access) headers["Authorization"] = `Bearer ${tokens.access}`;
   if (tenantId) headers["X-Tenant-Id"] = tenantId;
+
+  // Automatically set Content-Type for requests with a body
+  if (opts.body && typeof opts.body === 'string' && !headers["Content-Type"]) {
+    headers["Content-Type"] = "application/json";
+  }
+
   const res = await fetch(withBase(path), { ...opts, headers });
   if (res.status === 401 && tokens.refresh) {
     const r = await fetch(withBase('/auth/refresh'), {
