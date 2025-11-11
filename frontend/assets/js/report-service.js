@@ -9,14 +9,14 @@
  * - Report templates
  */
 
-import { authService } from './auth-service.js';
+import { apiFetch } from './api.js';
 
 class ReportService {
     constructor() {
         if (ReportService.instance) {
             return ReportService.instance;
         }
-        this.baseUrl = '/api/v1/reports';
+        this.baseUrl = '/reports';
         ReportService.instance = this;
     }
 
@@ -24,21 +24,7 @@ class ReportService {
      * Helper method to make authenticated API calls
      */
     async _fetchWithAuth(endpoint, options = {}) {
-        const token = authService.getToken();
-        if (!token) {
-            throw new Error('Not authenticated');
-        }
-
-        const headers = {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-            ...options.headers
-        };
-
-        const response = await fetch(endpoint, {
-            ...options,
-            headers
-        });
+        const response = await apiFetch(endpoint, options);
 
         if (!response.ok) {
             const error = await response.json().catch(() => ({ detail: 'Request failed' }));
@@ -57,21 +43,7 @@ class ReportService {
      * Helper method for file downloads
      */
     async _downloadFile(endpoint, options = {}) {
-        const token = authService.getToken();
-        if (!token) {
-            throw new Error('Not authenticated');
-        }
-
-        const headers = {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-            ...options.headers
-        };
-
-        const response = await fetch(endpoint, {
-            ...options,
-            headers
-        });
+        const response = await apiFetch(endpoint, options);
 
         if (!response.ok) {
             throw new Error(`Download failed: HTTP ${response.status}`);

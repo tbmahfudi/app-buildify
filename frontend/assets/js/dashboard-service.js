@@ -9,14 +9,14 @@
  * - Dashboard sharing and snapshots
  */
 
-import { authService } from './auth-service.js';
+import { apiFetch } from './api.js';
 
 class DashboardService {
     constructor() {
         if (DashboardService.instance) {
             return DashboardService.instance;
         }
-        this.baseUrl = '/api/v1/dashboards';
+        this.baseUrl = '/dashboards';
         DashboardService.instance = this;
     }
 
@@ -24,21 +24,7 @@ class DashboardService {
      * Helper method to make authenticated API calls
      */
     async _fetchWithAuth(endpoint, options = {}) {
-        const token = authService.getToken();
-        if (!token) {
-            throw new Error('Not authenticated');
-        }
-
-        const headers = {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-            ...options.headers
-        };
-
-        const response = await fetch(endpoint, {
-            ...options,
-            headers
-        });
+        const response = await apiFetch(endpoint, options);
 
         if (!response.ok) {
             const error = await response.json().catch(() => ({ detail: 'Request failed' }));
