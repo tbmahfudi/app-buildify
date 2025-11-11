@@ -8,8 +8,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from sqlalchemy.orm import Session
 from app.core.db import SessionLocal
-from app.models.report import ReportDefinition, ReportType
-from app.models.dashboard import Dashboard, DashboardPage, DashboardWidget, WidgetType, DashboardLayout
+from app.models.report import ReportDefinition
+from app.models.dashboard import Dashboard, DashboardPage, DashboardWidget
 from datetime import datetime
 import uuid
 
@@ -22,7 +22,7 @@ def create_sample_reports(db: Session, tenant_id: uuid.UUID, user_id: uuid.UUID)
             "name": "Sales Summary Report",
             "description": "Overview of sales performance with key metrics",
             "category": "Sales",
-            "report_type": ReportType.TABULAR,
+            "report_type": "tabular",
             "base_entity": "sales",
             "is_public": True,
             "tenant_id": tenant_id,
@@ -32,7 +32,7 @@ def create_sample_reports(db: Session, tenant_id: uuid.UUID, user_id: uuid.UUID)
             "name": "Monthly Revenue Analysis",
             "description": "Detailed breakdown of monthly revenue by product category",
             "category": "Financial",
-            "report_type": ReportType.CHART,
+            "report_type": "chart",
             "base_entity": "revenue",
             "is_public": True,
             "tenant_id": tenant_id,
@@ -42,7 +42,7 @@ def create_sample_reports(db: Session, tenant_id: uuid.UUID, user_id: uuid.UUID)
             "name": "Customer Activity Report",
             "description": "Track customer engagement and activity patterns",
             "category": "Marketing",
-            "report_type": ReportType.TABULAR,
+            "report_type": "tabular",
             "base_entity": "customers",
             "is_public": True,
             "tenant_id": tenant_id,
@@ -52,7 +52,7 @@ def create_sample_reports(db: Session, tenant_id: uuid.UUID, user_id: uuid.UUID)
             "name": "Inventory Status",
             "description": "Current stock levels and inventory movement",
             "category": "Operations",
-            "report_type": ReportType.SUMMARY,
+            "report_type": "summary",
             "base_entity": "inventory",
             "is_public": True,
             "tenant_id": tenant_id,
@@ -62,7 +62,7 @@ def create_sample_reports(db: Session, tenant_id: uuid.UUID, user_id: uuid.UUID)
             "name": "Employee Performance Dashboard",
             "description": "Key performance indicators for team members",
             "category": "HR",
-            "report_type": ReportType.DASHBOARD,
+            "report_type": "dashboard",
             "base_entity": "employees",
             "is_public": True,
             "tenant_id": tenant_id,
@@ -89,7 +89,7 @@ def create_sample_dashboards(db: Session, tenant_id: uuid.UUID, user_id: uuid.UU
             "name": "Executive Overview",
             "description": "High-level view of company performance metrics",
             "category": "Executive",
-            "layout_type": DashboardLayout.GRID,
+            "layout_type": "grid",
             "is_public": True,
             "show_header": True,
             "show_filters": True,
@@ -100,7 +100,7 @@ def create_sample_dashboards(db: Session, tenant_id: uuid.UUID, user_id: uuid.UU
             "name": "Sales Analytics",
             "description": "Comprehensive sales performance tracking",
             "category": "Sales",
-            "layout_type": DashboardLayout.GRID,
+            "layout_type": "grid",
             "is_public": True,
             "show_header": True,
             "show_filters": True,
@@ -111,7 +111,7 @@ def create_sample_dashboards(db: Session, tenant_id: uuid.UUID, user_id: uuid.UU
             "name": "Marketing Metrics",
             "description": "Campaign performance and customer acquisition",
             "category": "Marketing",
-            "layout_type": DashboardLayout.RESPONSIVE,
+            "layout_type": "responsive",
             "is_public": True,
             "show_header": True,
             "show_filters": False,
@@ -122,7 +122,7 @@ def create_sample_dashboards(db: Session, tenant_id: uuid.UUID, user_id: uuid.UU
             "name": "Operations Dashboard",
             "description": "Real-time operational metrics and KPIs",
             "category": "Operations",
-            "layout_type": DashboardLayout.GRID,
+            "layout_type": "grid",
             "is_public": True,
             "show_header": True,
             "show_filters": True,
@@ -154,7 +154,7 @@ def create_sample_dashboards(db: Session, tenant_id: uuid.UUID, user_id: uuid.UU
             page_id=page.id,
             tenant_id=tenant_id,
             title="Sample Metric",
-            widget_type=WidgetType.KPI_CARD,
+            widget_type="kpi_card",
             position={"x": 0, "y": 0, "w": 4, "h": 2},
             order=0
         )
