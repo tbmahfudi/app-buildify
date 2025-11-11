@@ -1,7 +1,7 @@
 """Convert report and dashboard tenant_id and user IDs to UUID
 
 Revision ID: pg_r3
-Revises: pg_merge_module_fk_and_dashboard
+Revises: pg_merge_module_fk_dashboard
 Create Date: 2025-11-11 15:30:00.000000
 
 """
@@ -11,7 +11,7 @@ from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision = 'pg_r3'
-down_revision = 'pg_merge_module_fk_and_dashboard'
+down_revision = 'pg_merge_module_fk_dashboard'
 branch_labels = None
 depends_on = None
 
