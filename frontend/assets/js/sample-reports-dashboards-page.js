@@ -6,8 +6,8 @@
 
 import { reportService } from './report-service.js';
 import { dashboardService } from './dashboard-service.js';
-import { ReportViewer } from '../components/report-viewer.js';
-import { DashboardViewer } from '../components/dashboard-viewer.js';
+import { ReportViewer } from '../../components/report-viewer.js';
+import { DashboardViewer } from '../../components/dashboard-viewer.js';
 import { showNotification } from './notifications.js';
 
 // Page loads when route is accessed
