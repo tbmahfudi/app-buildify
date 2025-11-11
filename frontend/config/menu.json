@@ -55,6 +55,13 @@
       ]
     },
     {
+      "title": "Reports & Analytics",
+      "icon": "ph-duotone ph-chart-bar",
+      "submenu": [
+        { "title": "Sample Reports & Dashboards", "route": "sample-reports-dashboards", "icon": "ph-duotone ph-presentation-chart" }
+      ]
+    },
+    {
       "title": "Developer Tools",
       "icon": "ph-duotone ph-code",
       "submenu": [
