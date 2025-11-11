@@ -739,6 +739,27 @@ class NotificationSystem {
 // Create singleton instance
 const notifications = new NotificationSystem();
 
+/**
+ * Helper function for simple notification usage
+ * @param {string} message - The notification message
+ * @param {string} type - Type: 'success', 'error', 'warning', 'info'
+ * @param {object} options - Additional options
+ */
+export function showNotification(message, type = 'info', options = {}) {
+  switch (type) {
+    case 'success':
+      return notifications.success(message, options);
+    case 'error':
+      return notifications.error(message, options);
+    case 'warning':
+      return notifications.warning(message, options);
+    case 'info':
+      return notifications.info(message, options);
+    default:
+      return notifications.toast(message, { ...options, type });
+  }
+}
+
 // Export for use
 export default notifications;
 export { notifications };
