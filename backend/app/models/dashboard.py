@@ -10,6 +10,7 @@ from datetime import datetime
 import enum
 
 from app.models import Base
+from app.models.base import GUID
 
 
 class DashboardLayout(str, enum.Enum):
@@ -60,7 +61,7 @@ class Dashboard(Base):
     __tablename__ = "dashboards"
 
     id = Column(Integer, primary_key=True, index=True)
-    tenant_id = Column(Integer, nullable=False, index=True)
+    tenant_id = Column(GUID, nullable=False, index=True)
 
     # Basic info
     name = Column(String(255), nullable=False)
@@ -88,7 +89,7 @@ class Dashboard(Base):
     full_screen_mode = Column(Boolean, default=False)
 
     # Metadata
-    created_by = Column(Integer, nullable=False)
+    created_by = Column(GUID, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     is_active = Column(Boolean, default=True)
@@ -105,7 +106,7 @@ class DashboardPage(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     dashboard_id = Column(Integer, ForeignKey("dashboards.id"), nullable=False)
-    tenant_id = Column(Integer, nullable=False, index=True)
+    tenant_id = Column(GUID, nullable=False, index=True)
 
     # Page info
     name = Column(String(255), nullable=False)
@@ -135,7 +136,7 @@ class DashboardWidget(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     page_id = Column(Integer, ForeignKey("dashboard_pages.id"), nullable=False)
-    tenant_id = Column(Integer, nullable=False, index=True)
+    tenant_id = Column(GUID, nullable=False, index=True)
 
     # Widget info
     title = Column(String(255), nullable=False)
@@ -178,10 +179,10 @@ class DashboardShare(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     dashboard_id = Column(Integer, ForeignKey("dashboards.id"), nullable=False)
-    tenant_id = Column(Integer, nullable=False, index=True)
+    tenant_id = Column(GUID, nullable=False, index=True)
 
     # Share info
-    shared_with_user_id = Column(Integer, nullable=True)  # Specific user
+    shared_with_user_id = Column(GUID, nullable=True)  # Specific user
     shared_with_role_id = Column(Integer, nullable=True)  # Specific role
     share_token = Column(String(255), nullable=True, unique=True)  # Public share token
 
@@ -194,7 +195,7 @@ class DashboardShare(Base):
     expires_at = Column(DateTime, nullable=True)
 
     # Metadata
-    created_by = Column(Integer, nullable=False)
+    created_by = Column(GUID, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     # Relationships
@@ -207,7 +208,7 @@ class DashboardSnapshot(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     dashboard_id = Column(Integer, ForeignKey("dashboards.id"), nullable=False)
-    tenant_id = Column(Integer, nullable=False, index=True)
+    tenant_id = Column(GUID, nullable=False, index=True)
 
     # Snapshot info
     name = Column(String(255), nullable=False)
@@ -218,7 +219,7 @@ class DashboardSnapshot(Base):
     parameters_used = Column(JSON, nullable=True)  # Parameter values at snapshot time
 
     # Metadata
-    created_by = Column(Integer, nullable=False)
+    created_by = Column(GUID, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
@@ -228,7 +229,7 @@ class WidgetDataCache(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     widget_id = Column(Integer, ForeignKey("dashboard_widgets.id"), nullable=False)
-    tenant_id = Column(Integer, nullable=False, index=True)
+    tenant_id = Column(GUID, nullable=False, index=True)
 
     # Cache key
     cache_key = Column(String(255), nullable=False, unique=True, index=True)
