@@ -9,7 +9,7 @@ import logging
 
 from app.core.dependencies import get_db
 from app.core.auth import decode_token
-from app.core.security_config import SecurityConfig
+from app.core.security_config import SecurityConfigService
 from app.models.user import User
 from app.models.user_session import UserSession
 
@@ -77,7 +77,7 @@ class SecurityMiddleware:
                 return await call_next(request)
 
             # Initialize security config
-            security_config = SecurityConfig(db)
+            security_config = SecurityConfigService(db)
 
             # Check if session exists and is valid
             session = db.query(UserSession).filter(
