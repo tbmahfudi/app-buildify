@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field, validator
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 from enum import Enum
+from uuid import UUID
 
 
 class ParameterType(str, Enum):
@@ -197,8 +198,8 @@ class ReportDefinitionUpdate(BaseModel):
 class ReportDefinitionResponse(ReportDefinitionBase):
     """Report definition response schema."""
     id: int
-    tenant_id: int
-    created_by: int
+    tenant_id: UUID
+    created_by: UUID
     created_at: datetime
     updated_at: datetime
     is_active: bool
@@ -222,7 +223,7 @@ class ReportExecutionResponse(BaseModel):
     id: int
     report_definition_id: int
     status: str
-    executed_by: int
+    executed_by: UUID
     executed_at: datetime
     parameters_used: Optional[Dict[str, Any]]
     row_count: Optional[int]
@@ -273,8 +274,8 @@ class ReportScheduleUpdate(BaseModel):
 class ReportScheduleResponse(ReportScheduleBase):
     """Report schedule response schema."""
     id: int
-    tenant_id: int
-    created_by: int
+    tenant_id: UUID
+    created_by: UUID
     created_at: datetime
     updated_at: datetime
     last_run_at: Optional[datetime]

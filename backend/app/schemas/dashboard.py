@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 from enum import Enum
+from uuid import UUID
 
 
 class DashboardLayout(str, Enum):
@@ -152,7 +153,7 @@ class DashboardWidgetResponse(DashboardWidgetBase):
     """Dashboard widget response schema."""
     id: int
     page_id: int
-    tenant_id: int
+    tenant_id: UUID
     created_at: datetime
     updated_at: datetime
 
@@ -201,7 +202,7 @@ class DashboardPageResponse(DashboardPageBase):
     """Dashboard page response schema."""
     id: int
     dashboard_id: int
-    tenant_id: int
+    tenant_id: UUID
     created_at: datetime
     updated_at: datetime
     widgets: List[DashboardWidgetResponse] = []
@@ -268,8 +269,8 @@ class DashboardUpdate(BaseModel):
 class DashboardResponse(DashboardBase):
     """Dashboard response schema."""
     id: int
-    tenant_id: int
-    created_by: int
+    tenant_id: UUID
+    created_by: UUID
     created_at: datetime
     updated_at: datetime
     is_active: bool
@@ -289,7 +290,7 @@ class DashboardSummary(BaseModel):
     tags: Optional[List[str]]
     is_public: bool
     is_favorite: bool
-    created_by: int
+    created_by: UUID
     created_at: datetime
     updated_at: datetime
     page_count: int = 0
@@ -333,14 +334,14 @@ class DashboardShareResponse(BaseModel):
     """Dashboard share response."""
     id: int
     dashboard_id: int
-    shared_with_user_id: Optional[int]
+    shared_with_user_id: Optional[UUID]
     shared_with_role_id: Optional[int]
     share_token: Optional[str]
     can_view: bool
     can_edit: bool
     can_share: bool
     expires_at: Optional[datetime]
-    created_by: int
+    created_by: UUID
     created_at: datetime
 
     class Config:
@@ -365,7 +366,7 @@ class DashboardSnapshotResponse(BaseModel):
     description: Optional[str]
     snapshot_data: Dict[str, Any]
     parameters_used: Optional[Dict[str, Any]]
-    created_by: int
+    created_by: UUID
     created_at: datetime
 
     class Config:
