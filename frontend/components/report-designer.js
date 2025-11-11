@@ -498,7 +498,23 @@ export class ReportDesigner {
 
     async loadReport() {
         try {
-            this.reportData = await reportService.getReportDefinition(this.reportId);
+            const loadedData = await reportService.getReportDefinition(this.reportId);
+
+            // Merge with defaults to ensure all required properties exist
+            this.reportData = {
+                ...this._getDefaultReportData(),
+                ...loadedData,
+                // Ensure nested objects are properly merged
+                query_config: {
+                    ...this._getDefaultReportData().query_config,
+                    ...(loadedData.query_config || {})
+                },
+                columns_config: loadedData.columns_config || [],
+                parameters: loadedData.parameters || [],
+                formatting_rules: loadedData.formatting_rules || [],
+                allowed_roles: loadedData.allowed_roles || [],
+                allowed_users: loadedData.allowed_users || []
+            };
         } catch (error) {
             showNotification('Failed to load report: ' + error.message, 'error');
         }
