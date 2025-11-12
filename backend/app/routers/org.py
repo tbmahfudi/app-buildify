@@ -14,9 +14,9 @@ from app.core.crud_helpers import (
 from app.core.dependencies import get_current_user, get_db, has_role
 from app.core.exceptions_helpers import (
     duplicate_exception,
-    invalid_reference_exception,
     not_found_exception,
     permission_denied_exception,
+    relationship_violation_exception,
 )
 from app.core.response_builders import build_list_response
 from app.models.branch import Branch
@@ -426,7 +426,7 @@ def create_department(
         branch = validate_parent_exists(db, Branch, department.branch_id, "Branch")
         # Ensure branch belongs to the same company
         if branch.company_id != department.company_id:
-            raise invalid_reference_exception("Branch", "Company", "Branch does not belong to this company")
+            raise relationship_violation_exception("Company", "Branch", "Branch does not belong to this company")
 
     # Check for duplicate code within company
     check_duplicate_code(db, Department, department.code, "company_id", department.company_id)
@@ -471,7 +471,7 @@ def update_department(
         if department.branch_id:  # Not setting to None
             branch = validate_parent_exists(db, Branch, department.branch_id, "Branch")
             if branch.company_id != db_dept.company_id:
-                raise invalid_reference_exception("Branch", "Company", "Branch does not belong to this company")
+                raise relationship_violation_exception("Company", "Branch", "Branch does not belong to this company")
 
     if department.branch_id is not None:
         db_dept.branch_id = department.branch_id
