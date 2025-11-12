@@ -10,7 +10,7 @@ from app.core.exceptions import register_exception_handlers
 from app.core.rate_limiter import setup_rate_limiting
 from app.core.db import SessionLocal
 from app.core.security_middleware import SecurityMiddleware
-from app.routers import org, auth, metadata, data, audit, settings, modules, rbac, reports, dashboards
+from app.routers import org, auth, metadata, data, audit, settings, modules, rbac, reports, dashboards, scheduler
 from app.routers.admin import security as admin_security
 from app.core.module_system.registry import ModuleRegistryService
 from pathlib import Path
@@ -124,7 +124,7 @@ async def module_access_middleware(request: Request, call_next):
             potential_module = path_parts[3]
 
             # Skip core endpoints
-            core_endpoints = ["auth", "org", "metadata", "data", "audit", "settings", "modules", "rbac", "health", "healthz", "system"]
+            core_endpoints = ["auth", "org", "metadata", "data", "audit", "settings", "modules", "rbac", "reports", "dashboards", "scheduler", "health", "healthz", "system"]
             if potential_module not in core_endpoints:
                 # This might be a module endpoint
                 # Check if module exists and is enabled
@@ -160,6 +160,7 @@ app.include_router(modules.router, prefix="/api/v1")
 app.include_router(rbac.router, prefix="/api/v1")
 app.include_router(reports.router, prefix="/api/v1")
 app.include_router(dashboards.router, prefix="/api/v1")
+app.include_router(scheduler.router, prefix="/api/v1")
 app.include_router(admin_security.router, prefix="/api/v1")
 
 # Also maintain backward compatibility with old endpoints (deprecated)
@@ -252,7 +253,8 @@ async def system_info():
             "account-lockout",
             "session-management",
             "password-expiration",
-            "login-attempt-tracking"
+            "login-attempt-tracking",
+            "hierarchical-scheduler"
         ],
         "loaded_modules": module_registry.get_module_count() if module_registry else 0
     }
