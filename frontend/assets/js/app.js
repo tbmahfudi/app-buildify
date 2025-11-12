@@ -906,42 +906,117 @@ async function loadRoute(route) {
       return;
     }
 
-    // Not a module route - try loading core template
-    const response = await fetch(`/assets/templates/${route}.html`);
+    // Not a module route - try loading core template with enhanced error handling
+    // Use resource loader if available
+    if (window.resourceLoader) {
+      try {
+        const bodyContent = await window.resourceLoader.loadTemplate(route);
+        content.innerHTML = bodyContent;
 
-    if (!response.ok) {
-      throw new Error('Template not found');
+        // Try to load route-specific JavaScript if it exists
+        try {
+          await window.resourceLoader.loadScript(`${route}.js`, { retry: false });
+        } catch (scriptError) {
+          // Script not found or failed to load - this is optional, so just log it
+          console.log(`No route-specific script for ${route} or failed to load:`, scriptError.message);
+        }
+
+        // Dispatch event for route-specific JS
+        document.dispatchEvent(new CustomEvent('route:loaded', {
+          detail: { route, isModule: false }
+        }));
+
+      } catch (error) {
+        // Use enhanced error display
+        if (window.ErrorDisplay) {
+          window.ErrorDisplay.showTemplateError(route, error, content);
+        } else {
+          throw error; // Fallback to old error handling
+        }
+      }
+    } else {
+      // Fallback to original fetch method if resource loader not available
+      const response = await fetch(`/assets/templates/${route}.html`);
+
+      if (!response.ok) {
+        throw new Error('Template not found');
+      }
+
+      const html = await response.text();
+
+      // Parse HTML to extract only body content and avoid CSP meta tag issues
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, 'text/html');
+      const bodyContent = doc.body?.innerHTML || html;
+
+      content.innerHTML = bodyContent;
+
+      // Dispatch event for route-specific JS
+      document.dispatchEvent(new CustomEvent('route:loaded', {
+        detail: { route, isModule: false }
+      }));
     }
-
-    const html = await response.text();
-
-    // Parse HTML to extract only body content and avoid CSP meta tag issues
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(html, 'text/html');
-    const bodyContent = doc.body?.innerHTML || html;
-
-    content.innerHTML = bodyContent;
-
-    // Dispatch event for route-specific JS
-    document.dispatchEvent(new CustomEvent('route:loaded', {
-      detail: { route, isModule: false }
-    }));
 
   } catch (error) {
     console.error(`Error loading route ${route}:`, error);
+
+    // Enhanced error display with network detection
+    const isNetworkError = !navigator.onLine || error.message.includes('network') || error.message.includes('fetch');
+    const is404 = error.message.includes('404') || error.message.includes('not found');
+
     content.innerHTML = `
-      <div class="max-w-md mx-auto mt-20">
-        <div class="bg-yellow-50 border-l-4 border-yellow-500 p-6 rounded-lg shadow-sm">
-          <div class="flex items-start gap-3">
-            <i class="ph-duotone ph-warning text-yellow-500 text-3xl"></i>
-            <div>
-              <h3 class="text-lg font-semibold text-yellow-800 mb-2">Page Not Found</h3>
-              <p class="text-yellow-700 mb-4">The page "${route}" could not be loaded.</p>
-              <button
-                onclick="window.location.hash = 'dashboard'"
-                class="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition flex items-center gap-2">
-                <i class="ph ph-house"></i> Go to Dashboard
-              </button>
+      <div class="max-w-2xl mx-auto mt-20">
+        <div class="bg-red-50 border-l-4 border-red-500 p-6 rounded-lg shadow-lg">
+          <div class="flex items-start gap-4">
+            <i class="ph-duotone ph-${is404 ? 'file-x' : isNetworkError ? 'wifi-slash' : 'warning-circle'} text-red-500 text-4xl flex-shrink-0"></i>
+            <div class="flex-1">
+              <h3 class="text-xl font-bold text-red-800 mb-2">
+                ${is404 ? 'Page Not Found' : isNetworkError ? 'Connection Error' : 'Failed to Load Page'}
+              </h3>
+              <p class="text-red-700 mb-4">
+                ${is404
+                  ? `The page "${route}" does not exist or has been removed.`
+                  : isNetworkError
+                  ? 'Unable to connect to the server. Please check your internet connection.'
+                  : `An error occurred while loading "${route}".`
+                }
+              </p>
+
+              ${!is404 && !isNetworkError ? `
+                <details class="mb-4">
+                  <summary class="cursor-pointer text-red-600 hover:text-red-700 font-medium">
+                    Technical Details
+                  </summary>
+                  <div class="mt-2 p-3 bg-red-100 rounded border border-red-200 text-sm font-mono text-red-900 overflow-x-auto">
+                    ${error.message}
+                  </div>
+                </details>
+              ` : ''}
+
+              <div class="flex gap-3 flex-wrap">
+                <button
+                  onclick="window.location.hash = 'dashboard'"
+                  class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition flex items-center gap-2 shadow">
+                  <i class="ph ph-house"></i>
+                  Go to Dashboard
+                </button>
+
+                ${isNetworkError || !is404 ? `
+                  <button
+                    onclick="window.location.reload()"
+                    class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition flex items-center gap-2">
+                    <i class="ph ph-arrow-clockwise"></i>
+                    Retry
+                  </button>
+                ` : ''}
+
+                <button
+                  onclick="history.back()"
+                  class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition flex items-center gap-2">
+                  <i class="ph ph-arrow-left"></i>
+                  Go Back
+                </button>
+              </div>
             </div>
           </div>
         </div>
