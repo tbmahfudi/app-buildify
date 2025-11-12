@@ -1,9 +1,11 @@
-import jwt
 import uuid
 from datetime import datetime, timedelta
+from typing import Dict, Optional
+
+import jwt
 from passlib.context import CryptContext
-from typing import Optional, Dict
-from .config import SECRET_KEY, ACCESS_TOKEN_EXPIRE_MIN, REFRESH_TOKEN_EXPIRE_DAYS
+
+from .config import ACCESS_TOKEN_EXPIRE_MIN, REFRESH_TOKEN_EXPIRE_DAYS, SECRET_KEY
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 

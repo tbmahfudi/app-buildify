@@ -6,10 +6,11 @@ Provides configurable security policies with:
 - Database-level overrides (tenant-specific)
 - Hierarchical fallback (tenant -> system default -> env vars -> code defaults)
 """
-from pydantic import BaseModel, Field
-from typing import Optional, Dict, Any
-from functools import lru_cache
 import os
+from functools import lru_cache
+from typing import Any, Dict, Optional
+
+from pydantic import BaseModel, Field
 
 
 class PasswordPolicyConfig(BaseModel):
@@ -221,6 +222,7 @@ async def get_security_config(db, tenant_id: Optional[str] = None) -> SecurityCo
         SecurityConfig instance
     """
     from sqlalchemy import select
+
     from app.models import SecurityPolicy
 
     # Try tenant-specific policy first

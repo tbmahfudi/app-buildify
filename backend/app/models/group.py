@@ -1,6 +1,17 @@
-from sqlalchemy import Column, String, Boolean, DateTime, func, ForeignKey, Text, Index, UniqueConstraint
+from sqlalchemy import (
+    Boolean,
+    Column,
+    DateTime,
+    ForeignKey,
+    Index,
+    String,
+    Text,
+    UniqueConstraint,
+    func,
+)
 from sqlalchemy.orm import relationship
-from .base import Base, GUID, generate_uuid
+
+from .base import GUID, Base, generate_uuid
 
 
 class Group(Base):

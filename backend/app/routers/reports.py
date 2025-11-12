@@ -1,35 +1,39 @@
 """
 Report API router.
 """
-from fastapi import APIRouter, Depends, HTTPException, status, Response
-from fastapi.responses import StreamingResponse
-from sqlalchemy.orm import Session
-from typing import List, Optional
 import io
+import logging
 import os
 from datetime import datetime
+from typing import List, Optional
 
-from app.core.dependencies import get_db, get_current_user
+from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi.responses import StreamingResponse
+from sqlalchemy.orm import Session
+
+from app.core.dependencies import get_current_user, get_db
+from app.core.exceptions_helpers import not_found_exception
+from app.core.response_builders import build_list_response
 from app.models.user import User
 from app.schemas.report import (
+    ExportFormat,
+    LookupDataRequest,
+    LookupDataResponse,
     ReportDefinitionCreate,
-    ReportDefinitionUpdate,
     ReportDefinitionResponse,
+    ReportDefinitionUpdate,
     ReportExecutionRequest,
     ReportExecutionResponse,
     ReportScheduleCreate,
-    ReportScheduleUpdate,
     ReportScheduleResponse,
+    ReportScheduleUpdate,
     ReportTemplateResponse,
-    LookupDataRequest,
-    LookupDataResponse,
-    ExportFormat
 )
-from app.services.report_service import ReportService
 from app.services.report_export import ReportExporter
-
+from app.services.report_service import ReportService
 
 router = APIRouter(prefix="/reports", tags=["reports"])
+logger = logging.getLogger(__name__)
 
 
 # Report Definition Endpoints
@@ -88,7 +92,7 @@ def get_report_definition(
     )
 
     if not report:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Report not found")
+        raise not_found_exception("Report", str(report_id))
 
     return report
 
@@ -109,7 +113,7 @@ def update_report_definition(
     )
 
     if not report:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Report not found")
+        raise not_found_exception("Report", str(report_id))
 
     return report
 
@@ -128,7 +132,7 @@ def delete_report_definition(
     )
 
     if not success:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Report not found")
+        raise not_found_exception("Report", str(report_id))
 
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
@@ -173,7 +177,7 @@ def execute_and_export_report(
         )
 
         if not report_def:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Report not found")
+            raise not_found_exception("Report", str(request.report_definition_id))
 
         # Build and execute query
         query_result = ReportService._build_and_execute_query(
@@ -289,7 +293,7 @@ def create_report_schedule(
     )
 
     if not report:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Report not found")
+        raise not_found_exception("Report", str(schedule_data.report_definition_id))
 
     # Create schedule
     db_schedule = ReportSchedule(
@@ -342,7 +346,7 @@ def update_report_schedule(
     ).first()
 
     if not db_schedule:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Schedule not found")
+        raise not_found_exception("Schedule", str(schedule_id))
 
     update_data = schedule_data.model_dump(exclude_unset=True)
     for field, value in update_data.items():
@@ -368,7 +372,7 @@ def delete_report_schedule(
     ).first()
 
     if not db_schedule:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Schedule not found")
+        raise not_found_exception("Schedule", str(schedule_id))
 
     db.delete(db_schedule)
     db.commit()
@@ -405,12 +409,12 @@ def create_from_template(
     current_user: User = Depends(get_current_user)
 ):
     """Create a new report from a template."""
-    from app.models.report import ReportTemplate, ReportDefinition
+    from app.models.report import ReportDefinition, ReportTemplate
 
     template = db.query(ReportTemplate).filter(ReportTemplate.id == template_id).first()
 
     if not template:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Template not found")
+        raise not_found_exception("Template", str(template_id))
 
     # Create report from template config
     template_config = template.template_config

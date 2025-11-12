@@ -1,6 +1,16 @@
-from sqlalchemy import Column, String, Boolean, DateTime, Integer, func, ForeignKey, Text
+from sqlalchemy import (
+    Boolean,
+    Column,
+    DateTime,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    func,
+)
 from sqlalchemy.orm import relationship
-from .base import Base, GUID, generate_uuid
+
+from .base import GUID, Base, generate_uuid
 
 
 class User(Base):

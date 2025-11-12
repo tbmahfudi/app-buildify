@@ -1,6 +1,7 @@
-from pydantic import field_validator, ValidationInfo
 import re
 from typing import Any
+
+from pydantic import ValidationInfo, field_validator
 
 
 class ValidationRules:

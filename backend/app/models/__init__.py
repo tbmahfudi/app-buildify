@@ -8,78 +8,78 @@ All models use GUID (UUID) for primary keys, with support for:
 - SQLite: String(36)
 """
 
-from .base import Base, GUID, generate_uuid
-
-# Core entities
-from .tenant import Tenant
-from .company import Company
-from .branch import Branch
-from .department import Department
-from .user import User
-
-# Multi-company access
-from .user_company_access import UserCompanyAccess
-
-# RBAC entities
-from .permission import Permission
-from .role import Role
-from .group import Group
-
-# RBAC junction tables
-from .rbac_junctions import (
-    RolePermission,
-    UserRole,
-    UserGroup,
-    GroupRole,
-)
+from .account_lockout import AccountLockout
 
 # Audit and settings
 from .audit import AuditLog
-from .settings import UserSettings, TenantSettings
-from .metadata import EntityMetadata
-
-# Token revocation
-from .token_blacklist import TokenBlacklist
-
-# Module system
-from .module_registry import ModuleRegistry, TenantModule
-
-# Report system
-from .report import (
-    ReportDefinition,
-    ReportExecution,
-    ReportSchedule,
-    ReportTemplate,
-    ReportCache
-)
+from .base import GUID, Base, generate_uuid
+from .branch import Branch
+from .company import Company
 
 # Dashboard system
 from .dashboard import (
     Dashboard,
     DashboardPage,
-    DashboardWidget,
     DashboardShare,
     DashboardSnapshot,
-    WidgetDataCache
+    DashboardWidget,
+    WidgetDataCache,
 )
+from .department import Department
+from .group import Group
+from .login_attempt import LoginAttempt
+from .metadata import EntityMetadata
+
+# Module system
+from .module_registry import ModuleRegistry, TenantModule
+from .notification_config import NotificationConfig
+from .notification_queue import NotificationQueue
 
 # Security system
 from .password_history import PasswordHistory
-from .login_attempt import LoginAttempt
-from .account_lockout import AccountLockout
-from .user_session import UserSession
-from .security_policy import SecurityPolicy
-from .notification_queue import NotificationQueue
-from .notification_config import NotificationConfig
 from .password_reset_token import PasswordResetToken
+
+# RBAC entities
+from .permission import Permission
+
+# RBAC junction tables
+from .rbac_junctions import (
+    GroupRole,
+    RolePermission,
+    UserGroup,
+    UserRole,
+)
+
+# Report system
+from .report import (
+    ReportCache,
+    ReportDefinition,
+    ReportExecution,
+    ReportSchedule,
+    ReportTemplate,
+)
+from .role import Role
 
 # Scheduler system
 from .scheduler import (
     SchedulerConfig,
     SchedulerJob,
     SchedulerJobExecution,
-    SchedulerJobLog
+    SchedulerJobLog,
 )
+from .security_policy import SecurityPolicy
+from .settings import TenantSettings, UserSettings
+
+# Core entities
+from .tenant import Tenant
+
+# Token revocation
+from .token_blacklist import TokenBlacklist
+from .user import User
+
+# Multi-company access
+from .user_company_access import UserCompanyAccess
+from .user_session import UserSession
 
 # Export all models
 __all__ = [

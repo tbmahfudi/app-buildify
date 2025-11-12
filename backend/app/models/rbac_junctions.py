@@ -1,6 +1,7 @@
-from sqlalchemy import Column, ForeignKey, DateTime, func, UniqueConstraint
+from sqlalchemy import Column, DateTime, ForeignKey, UniqueConstraint, func
 from sqlalchemy.orm import relationship
-from .base import Base, GUID, generate_uuid
+
+from .base import GUID, Base, generate_uuid
 
 
 class RolePermission(Base):

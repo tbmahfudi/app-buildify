@@ -1,9 +1,11 @@
-from fastapi import Request, status
-from fastapi.responses import JSONResponse
-from fastapi.exceptions import RequestValidationError
-from sqlalchemy.exc import IntegrityError, SQLAlchemyError
-from pydantic import ValidationError
 import traceback
+
+from fastapi import Request, status
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
+from pydantic import ValidationError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
+
 from .logging_config import get_logger
 
 logger = get_logger(__name__)

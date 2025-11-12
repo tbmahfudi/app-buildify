@@ -8,26 +8,32 @@ Provides endpoints for managing:
 - Login attempts audit
 - Notification configuration
 """
-from typing import List, Optional
 from datetime import datetime
+from typing import List, Optional
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
-from app.core.dependencies import get_db, has_permission, get_current_user
-from app.models.security_policy import SecurityPolicy
+from app.core.dependencies import get_current_user, get_db, has_permission
 from app.models.account_lockout import AccountLockout
-from app.models.user_session import UserSession
 from app.models.login_attempt import LoginAttempt
 from app.models.notification_config import NotificationConfig
 from app.models.notification_queue import NotificationQueue
+from app.models.security_policy import SecurityPolicy
 from app.models.user import User
+from app.models.user_session import UserSession
 from app.schemas.security import (
-    SecurityPolicyResponse, SecurityPolicyCreate, SecurityPolicyUpdate,
-    LockedAccountResponse, UnlockAccountRequest,
-    UserSessionResponse, RevokeSessionRequest,
+    LockedAccountResponse,
     LoginAttemptResponse,
-    NotificationConfigResponse, NotificationConfigUpdate,
-    NotificationQueueResponse
+    NotificationConfigResponse,
+    NotificationConfigUpdate,
+    NotificationQueueResponse,
+    RevokeSessionRequest,
+    SecurityPolicyCreate,
+    SecurityPolicyResponse,
+    SecurityPolicyUpdate,
+    UnlockAccountRequest,
+    UserSessionResponse,
 )
 
 router = APIRouter(prefix="/admin/security", tags=["admin", "security"])
@@ -69,12 +75,12 @@ def get_security_policy(
     policy = db.query(SecurityPolicy).filter(SecurityPolicy.id == policy_id).first()
 
     if not policy:
-        raise HTTPException(status_code=404, detail="Security policy not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Security policy not found")
 
     return policy
 
 
-@router.post("/policies", response_model=SecurityPolicyResponse, status_code=201)
+@router.post("/policies", response_model=SecurityPolicyResponse, status_code=status.HTTP_201_CREATED)
 def create_security_policy(
     policy_data: SecurityPolicyCreate,
     db: Session = Depends(get_db),
@@ -96,7 +102,7 @@ def create_security_policy(
     if existing:
         tenant_str = f"tenant {policy_data.tenant_id}" if policy_data.tenant_id else "system default"
         raise HTTPException(
-            status_code=400,
+            status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Security policy already exists for {tenant_str}. Use PUT to update."
         )
 
@@ -126,7 +132,7 @@ def update_security_policy(
     policy = db.query(SecurityPolicy).filter(SecurityPolicy.id == policy_id).first()
 
     if not policy:
-        raise HTTPException(status_code=404, detail="Security policy not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Security policy not found")
 
     # Update fields
     for field, value in policy_data.dict(exclude_unset=True, exclude={'updated_by'}).items():
@@ -139,7 +145,7 @@ def update_security_policy(
     return policy
 
 
-@router.delete("/policies/{policy_id}", status_code=204)
+@router.delete("/policies/{policy_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_security_policy(
     policy_id: str,
     db: Session = Depends(get_db),
@@ -155,11 +161,11 @@ def delete_security_policy(
     policy = db.query(SecurityPolicy).filter(SecurityPolicy.id == policy_id).first()
 
     if not policy:
-        raise HTTPException(status_code=404, detail="Security policy not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Security policy not found")
 
     if policy.tenant_id is None:
         raise HTTPException(
-            status_code=400,
+            status_code=status.HTTP_400_BAD_REQUEST,
             detail="Cannot delete system default policy. Update it instead."
         )
 
@@ -206,7 +212,7 @@ def list_locked_accounts(
     ]
 
 
-@router.post("/unlock-account", status_code=200)
+@router.post("/unlock-account", status_code=status.HTTP_200_OK)
 def unlock_account(
     unlock_data: UnlockAccountRequest,
     db: Session = Depends(get_db),
@@ -223,7 +229,7 @@ def unlock_account(
     user = db.query(User).filter(User.id == unlock_data.user_id).first()
 
     if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
     # Check if actually locked
     lockout_manager = LockoutManager(db)
@@ -278,7 +284,7 @@ def list_active_sessions(
     return sessions
 
 
-@router.post("/sessions/revoke", status_code=200)
+@router.post("/sessions/revoke", status_code=status.HTTP_200_OK)
 def revoke_session(
     revoke_data: RevokeSessionRequest,
     db: Session = Depends(get_db),
@@ -295,7 +301,7 @@ def revoke_session(
     session = db.query(UserSession).filter(UserSession.id == revoke_data.session_id).first()
 
     if not session:
-        raise HTTPException(status_code=404, detail="Session not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
 
     # Revoke
     session_manager = SessionManager(db)
@@ -308,7 +314,7 @@ def revoke_session(
     }
 
 
-@router.post("/sessions/revoke-all/{user_id}", status_code=200)
+@router.post("/sessions/revoke-all/{user_id}", status_code=status.HTTP_200_OK)
 def revoke_all_user_sessions(
     user_id: str,
     db: Session = Depends(get_db),
@@ -325,7 +331,7 @@ def revoke_all_user_sessions(
     user = db.query(User).filter(User.id == user_id).first()
 
     if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
     session_manager = SessionManager(db)
     count = session_manager.revoke_all_user_sessions(user=user, reason="Admin bulk revocation")
@@ -405,7 +411,7 @@ def update_notification_config(
     config = db.query(NotificationConfig).filter(NotificationConfig.id == config_id).first()
 
     if not config:
-        raise HTTPException(status_code=404, detail="Notification config not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Notification config not found")
 
     # Update fields
     for field, value in config_data.dict(exclude_unset=True, exclude={'updated_by'}).items():

@@ -1,22 +1,46 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Request
-from sqlalchemy.orm import Session
+import logging
 from typing import List
-import uuid
 
-from app.core.dependencies import get_db, get_current_user, has_role
-from app.core.audit import create_audit_log, compute_diff
-from app.models.user import User
-from app.models.company import Company
-from app.models.branch import Branch
-from app.models.department import Department
-from app.schemas.org import (
-    CompanyCreate, CompanyUpdate, CompanyResponse, CompanyListResponse,
-    BranchCreate, BranchUpdate, BranchResponse, BranchListResponse,
-    DepartmentCreate, DepartmentUpdate, DepartmentResponse, DepartmentListResponse
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from sqlalchemy.orm import Session
+
+from app.core.audit import compute_diff, create_audit_log
+from app.core.crud_helpers import (
+    check_duplicate_code,
+    create_entity_with_uuid,
+    get_entity_by_id,
+    validate_parent_exists,
 )
+from app.core.dependencies import get_current_user, get_db, has_role
+from app.core.exceptions_helpers import (
+    duplicate_exception,
+    invalid_reference_exception,
+    not_found_exception,
+    permission_denied_exception,
+)
+from app.core.response_builders import build_list_response
+from app.models.branch import Branch
+from app.models.company import Company
+from app.models.department import Department
+from app.models.user import User
 from app.schemas.auth import UserResponse
+from app.schemas.org import (
+    BranchCreate,
+    BranchListResponse,
+    BranchResponse,
+    BranchUpdate,
+    CompanyCreate,
+    CompanyListResponse,
+    CompanyResponse,
+    CompanyUpdate,
+    DepartmentCreate,
+    DepartmentListResponse,
+    DepartmentResponse,
+    DepartmentUpdate,
+)
 
 router = APIRouter(prefix="/org", tags=["org"])
+logger = logging.getLogger(__name__)
 
 # ============= COMPANIES =============
 
@@ -27,11 +51,34 @@ def list_companies(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """List all companies"""
+    """
+    List all companies with pagination.
+
+    Retrieves a paginated list of all companies in the system.
+    Requires authentication but no specific role.
+
+    Args:
+        skip: Number of records to skip (default: 0)
+        limit: Maximum number of records to return (default: 100, max: 1000)
+        db: Database session (injected)
+        current_user: Authenticated user (injected)
+
+    Returns:
+        CompanyListResponse: Object containing:
+            - items: List of Company objects
+            - total: Total count of companies in database
+
+    Example Response:
+        {
+            "items": [
+                {"id": "uuid...", "code": "ACME", "name": "Acme Corp"},
+                {"id": "uuid...", "code": "INITECH", "name": "Initech Inc"}
+            ],
+            "total": 2
+        }
+    """
     query = db.query(Company)
-    total = query.count()
-    items = query.offset(skip).limit(limit).all()
-    return CompanyListResponse(items=items, total=total)
+    return build_list_response(query, skip, limit)
 
 @router.get("/companies/{company_id}", response_model=CompanyResponse)
 def get_company(
@@ -39,11 +86,33 @@ def get_company(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Get a specific company"""
-    company = db.query(Company).filter(Company.id == company_id).first()
-    if not company:
-        raise HTTPException(status_code=404, detail="Company not found")
-    return company
+    """
+    Get a specific company by ID.
+
+    Retrieves detailed information for a single company.
+    Requires authentication but no specific role.
+
+    Args:
+        company_id: UUID of the company to retrieve
+        db: Database session (injected)
+        current_user: Authenticated user (injected)
+
+    Returns:
+        CompanyResponse: Company object with all fields
+
+    Raises:
+        HTTPException 404: Company not found
+        HTTPException 401: Not authenticated
+
+    Example Response:
+        {
+            "id": "550e8400-e29b-41d4-a716-446655440000",
+            "code": "ACME",
+            "name": "Acme Corporation",
+            "created_at": "2023-11-12T10:30:00Z"
+        }
+    """
+    return get_entity_by_id(db, Company, company_id, "Company")
 
 @router.post("/companies", response_model=CompanyResponse, status_code=status.HTTP_201_CREATED)
 def create_company(
@@ -52,20 +121,52 @@ def create_company(
     db: Session = Depends(get_db),
     current_user: User = Depends(has_role("admin"))
 ):
-    """Create a new company (admin only)"""
-    # Check for duplicate code
-    existing = db.query(Company).filter(Company.code == company.code).first()
-    if existing:
-        raise HTTPException(status_code=400, detail="Company code already exists")
+    """
+    Create a new company (admin only).
 
-    db_company = Company(
-        id=str(uuid.uuid4()),
-        code=company.code,
-        name=company.name
-    )
-    db.add(db_company)
-    db.commit()
-    db.refresh(db_company)
+    Creates a new company record in the system. Automatically generates
+    a UUID for the company and creates an audit log entry.
+
+    Permissions Required:
+        - Role: admin
+
+    Args:
+        company: Company creation data
+            - code: Unique company code (required)
+            - name: Company name (required)
+        request: HTTP request object (injected, for audit logging)
+        db: Database session (injected)
+        current_user: Authenticated admin user (injected)
+
+    Returns:
+        CompanyResponse: Newly created company object
+
+    Raises:
+        HTTPException 400: Company code already exists
+        HTTPException 403: User does not have admin role
+        HTTPException 401: Not authenticated
+        HTTPException 422: Validation error (invalid data)
+
+    Example Request:
+        POST /api/org/companies
+        {
+            "code": "ACME",
+            "name": "Acme Corporation"
+        }
+
+    Example Response (201 Created):
+        {
+            "id": "550e8400-e29b-41d4-a716-446655440000",
+            "code": "ACME",
+            "name": "Acme Corporation",
+            "created_at": "2023-11-12T10:30:00Z"
+        }
+    """
+    # Check for duplicate code
+    check_duplicate_code(db, Company, company.code)
+
+    # Create company
+    db_company = create_entity_with_uuid(db, Company, company.dict())
 
     # Audit company creation
     create_audit_log(
@@ -90,18 +191,14 @@ def update_company(
     current_user: User = Depends(has_role("admin"))
 ):
     """Update a company (admin only)"""
-    db_company = db.query(Company).filter(Company.id == company_id).first()
-    if not db_company:
-        raise HTTPException(status_code=404, detail="Company not found")
+    db_company = get_entity_by_id(db, Company, company_id, "Company")
 
     # Capture before state
     before = {"code": db_company.code, "name": db_company.name}
 
     # Check for duplicate code if changing
     if company.code and company.code != db_company.code:
-        existing = db.query(Company).filter(Company.code == company.code).first()
-        if existing:
-            raise HTTPException(status_code=400, detail="Company code already exists")
+        check_duplicate_code(db, Company, company.code)
 
     if company.code is not None:
         db_company.code = company.code
@@ -136,9 +233,7 @@ def delete_company(
     current_user: User = Depends(has_role("admin"))
 ):
     """Delete a company (admin only)"""
-    db_company = db.query(Company).filter(Company.id == company_id).first()
-    if not db_company:
-        raise HTTPException(status_code=404, detail="Company not found")
+    db_company = get_entity_by_id(db, Company, company_id, "Company")
 
     company_name = db_company.name
 
@@ -173,9 +268,7 @@ def list_branches(
     query = db.query(Branch)
     if company_id:
         query = query.filter(Branch.company_id == company_id)
-    total = query.count()
-    items = query.offset(skip).limit(limit).all()
-    return BranchListResponse(items=items, total=total)
+    return build_list_response(query, skip, limit)
 
 @router.get("/branches/{branch_id}", response_model=BranchResponse)
 def get_branch(
@@ -184,10 +277,7 @@ def get_branch(
     current_user: User = Depends(get_current_user)
 ):
     """Get a specific branch"""
-    branch = db.query(Branch).filter(Branch.id == branch_id).first()
-    if not branch:
-        raise HTTPException(status_code=404, detail="Branch not found")
-    return branch
+    return get_entity_by_id(db, Branch, branch_id, "Branch")
 
 @router.post("/branches", response_model=BranchResponse, status_code=status.HTTP_201_CREATED)
 def create_branch(
@@ -198,27 +288,13 @@ def create_branch(
 ):
     """Create a new branch (admin only)"""
     # Verify company exists
-    company = db.query(Company).filter(Company.id == branch.company_id).first()
-    if not company:
-        raise HTTPException(status_code=404, detail="Company not found")
+    validate_parent_exists(db, Company, branch.company_id, "Company")
 
     # Check for duplicate code within company
-    existing = db.query(Branch).filter(
-        Branch.company_id == branch.company_id,
-        Branch.code == branch.code
-    ).first()
-    if existing:
-        raise HTTPException(status_code=400, detail="Branch code already exists in this company")
+    check_duplicate_code(db, Branch, branch.code, "company_id", branch.company_id)
 
-    db_branch = Branch(
-        id=str(uuid.uuid4()),
-        company_id=branch.company_id,
-        code=branch.code,
-        name=branch.name
-    )
-    db.add(db_branch)
-    db.commit()
-    db.refresh(db_branch)
+    # Create branch
+    db_branch = create_entity_with_uuid(db, Branch, branch.dict())
 
     # Audit branch creation
     create_audit_log(
@@ -243,21 +319,14 @@ def update_branch(
     current_user: User = Depends(has_role("admin"))
 ):
     """Update a branch (admin only)"""
-    db_branch = db.query(Branch).filter(Branch.id == branch_id).first()
-    if not db_branch:
-        raise HTTPException(status_code=404, detail="Branch not found")
+    db_branch = get_entity_by_id(db, Branch, branch_id, "Branch")
 
     # Capture before state
     before = {"code": db_branch.code, "name": db_branch.name}
 
     # Check for duplicate code if changing
     if branch.code and branch.code != db_branch.code:
-        existing = db.query(Branch).filter(
-            Branch.company_id == db_branch.company_id,
-            Branch.code == branch.code
-        ).first()
-        if existing:
-            raise HTTPException(status_code=400, detail="Branch code already exists in this company")
+        check_duplicate_code(db, Branch, branch.code, "company_id", db_branch.company_id)
 
     if branch.code is not None:
         db_branch.code = branch.code
@@ -292,9 +361,7 @@ def delete_branch(
     current_user: User = Depends(has_role("admin"))
 ):
     """Delete a branch (admin only)"""
-    db_branch = db.query(Branch).filter(Branch.id == branch_id).first()
-    if not db_branch:
-        raise HTTPException(status_code=404, detail="Branch not found")
+    db_branch = get_entity_by_id(db, Branch, branch_id, "Branch")
 
     branch_name = db_branch.name
 
@@ -332,9 +399,7 @@ def list_departments(
         query = query.filter(Department.company_id == company_id)
     if branch_id:
         query = query.filter(Department.branch_id == branch_id)
-    total = query.count()
-    items = query.offset(skip).limit(limit).all()
-    return DepartmentListResponse(items=items, total=total)
+    return build_list_response(query, skip, limit)
 
 @router.get("/departments/{department_id}", response_model=DepartmentResponse)
 def get_department(
@@ -343,10 +408,7 @@ def get_department(
     current_user: User = Depends(get_current_user)
 ):
     """Get a specific department"""
-    dept = db.query(Department).filter(Department.id == department_id).first()
-    if not dept:
-        raise HTTPException(status_code=404, detail="Department not found")
-    return dept
+    return get_entity_by_id(db, Department, department_id, "Department")
 
 @router.post("/departments", response_model=DepartmentResponse, status_code=status.HTTP_201_CREATED)
 def create_department(
@@ -357,37 +419,20 @@ def create_department(
 ):
     """Create a new department (admin only)"""
     # Verify company exists
-    company = db.query(Company).filter(Company.id == department.company_id).first()
-    if not company:
-        raise HTTPException(status_code=404, detail="Company not found")
+    validate_parent_exists(db, Company, department.company_id, "Company")
 
     # Verify branch exists if provided
     if department.branch_id:
-        branch = db.query(Branch).filter(Branch.id == department.branch_id).first()
-        if not branch:
-            raise HTTPException(status_code=404, detail="Branch not found")
+        branch = validate_parent_exists(db, Branch, department.branch_id, "Branch")
         # Ensure branch belongs to the same company
         if branch.company_id != department.company_id:
-            raise HTTPException(status_code=400, detail="Branch does not belong to this company")
+            raise invalid_reference_exception("Branch", "Company", "Branch does not belong to this company")
 
     # Check for duplicate code within company
-    existing = db.query(Department).filter(
-        Department.company_id == department.company_id,
-        Department.code == department.code
-    ).first()
-    if existing:
-        raise HTTPException(status_code=400, detail="Department code already exists in this company")
+    check_duplicate_code(db, Department, department.code, "company_id", department.company_id)
 
-    db_dept = Department(
-        id=str(uuid.uuid4()),
-        company_id=department.company_id,
-        branch_id=department.branch_id,
-        code=department.code,
-        name=department.name
-    )
-    db.add(db_dept)
-    db.commit()
-    db.refresh(db_dept)
+    # Create department
+    db_dept = create_entity_with_uuid(db, Department, department.dict())
 
     # Audit department creation
     create_audit_log(
@@ -412,30 +457,21 @@ def update_department(
     current_user: User = Depends(has_role("admin"))
 ):
     """Update a department (admin only)"""
-    db_dept = db.query(Department).filter(Department.id == department_id).first()
-    if not db_dept:
-        raise HTTPException(status_code=404, detail="Department not found")
+    db_dept = get_entity_by_id(db, Department, department_id, "Department")
 
     # Capture before state
     before = {"code": db_dept.code, "name": db_dept.name, "branch_id": db_dept.branch_id}
 
     # Check for duplicate code if changing
     if department.code and department.code != db_dept.code:
-        existing = db.query(Department).filter(
-            Department.company_id == db_dept.company_id,
-            Department.code == department.code
-        ).first()
-        if existing:
-            raise HTTPException(status_code=400, detail="Department code already exists in this company")
+        check_duplicate_code(db, Department, department.code, "company_id", db_dept.company_id)
 
     # Verify branch if changing
     if department.branch_id is not None and department.branch_id != db_dept.branch_id:
         if department.branch_id:  # Not setting to None
-            branch = db.query(Branch).filter(Branch.id == department.branch_id).first()
-            if not branch:
-                raise HTTPException(status_code=404, detail="Branch not found")
+            branch = validate_parent_exists(db, Branch, department.branch_id, "Branch")
             if branch.company_id != db_dept.company_id:
-                raise HTTPException(status_code=400, detail="Branch does not belong to this company")
+                raise invalid_reference_exception("Branch", "Company", "Branch does not belong to this company")
 
     if department.branch_id is not None:
         db_dept.branch_id = department.branch_id
@@ -472,9 +508,7 @@ def delete_department(
     current_user: User = Depends(has_role("admin"))
 ):
     """Delete a department (admin only)"""
-    db_dept = db.query(Department).filter(Department.id == department_id).first()
-    if not db_dept:
-        raise HTTPException(status_code=404, detail="Department not found")
+    db_dept = get_entity_by_id(db, Department, department_id, "Department")
 
     dept_name = db_dept.name
 
@@ -508,14 +542,14 @@ def list_tenants(
     """List all tenants - superuser only"""
     # Only superusers can list tenants
     if not current_user.is_superuser:
-        raise HTTPException(status_code=403, detail="Only superusers can list tenants")
+        raise permission_denied_exception("list", "tenants")
 
     from app.models.tenant import Tenant
 
     query = db.query(Tenant)
-    total = query.count()
-    items = query.offset(skip).limit(limit).all()
+    result = build_list_response(query, skip, limit)
 
+    # Format items for response
     return {
         "items": [
             {
@@ -524,9 +558,9 @@ def list_tenants(
                 "is_active": t.is_active,
                 "created_at": t.created_at.isoformat() if t.created_at else None
             }
-            for t in items
+            for t in result["items"]
         ],
-        "total": total
+        "total": result["total"]
     }
 
 
@@ -550,9 +584,9 @@ def list_users(
             # Non-superuser without tenant - return empty
             return {"items": [], "total": 0}
 
-    total = query.count()
-    items = query.offset(skip).limit(limit).all()
+    result = build_list_response(query, skip, limit)
 
+    # Format items for response
     return {
         "items": [
             {
@@ -564,7 +598,7 @@ def list_users(
                 "tenant_id": str(u.tenant_id) if u.tenant_id else None,
                 "created_at": u.created_at.isoformat() if u.created_at else None
             }
-            for u in items
+            for u in result["items"]
         ],
-        "total": total
+        "total": result["total"]
     }

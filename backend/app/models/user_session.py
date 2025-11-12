@@ -1,6 +1,7 @@
-from sqlalchemy import Column, String, DateTime, func, ForeignKey
+from sqlalchemy import Column, DateTime, ForeignKey, String, func
 from sqlalchemy.orm import relationship
-from .base import Base, GUID, generate_uuid
+
+from .base import GUID, Base, generate_uuid
 
 
 class UserSession(Base):

@@ -1,5 +1,7 @@
-from sqlalchemy import Column, String, DateTime, func, Index
+from sqlalchemy import Column, DateTime, Index, String, func
+
 from .base import Base
+
 
 class TokenBlacklist(Base):
     """

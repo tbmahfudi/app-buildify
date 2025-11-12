@@ -1,6 +1,7 @@
-from sqlalchemy import Column, String, Boolean, DateTime, Text, JSON, ForeignKey, func
+from sqlalchemy import JSON, Boolean, Column, DateTime, ForeignKey, String, Text, func
 from sqlalchemy.orm import relationship
-from .base import Base, GUID, generate_uuid
+
+from .base import GUID, Base, generate_uuid
 
 
 class ModuleRegistry(Base):

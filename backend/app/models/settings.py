@@ -1,5 +1,6 @@
-from sqlalchemy import Column, String, Text, DateTime, func, UniqueConstraint
-from .base import Base, GUID, generate_uuid
+from sqlalchemy import Column, DateTime, String, Text, UniqueConstraint, func
+
+from .base import GUID, Base, generate_uuid
 
 
 class UserSettings(Base):

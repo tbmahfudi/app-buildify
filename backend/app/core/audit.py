@@ -1,11 +1,14 @@
-import uuid
 import json
+import uuid
 from datetime import datetime
-from typing import Optional, Dict, Any
-from sqlalchemy.orm import Session
+from typing import Any, Dict, Optional
+
 from fastapi import Request
+from sqlalchemy.orm import Session
+
 from app.models.audit import AuditLog
 from app.models.user import User
+
 
 def create_audit_log(
     db: Session,

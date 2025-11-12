@@ -1,5 +1,6 @@
-from sqlalchemy import Column, String, Text, DateTime, func, Index
-from .base import Base, GUID, generate_uuid
+from sqlalchemy import Column, DateTime, Index, String, Text, func
+
+from .base import GUID, Base, generate_uuid
 
 
 class AuditLog(Base):

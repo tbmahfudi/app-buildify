@@ -1,5 +1,6 @@
-from sqlalchemy import Column, String, Text, Integer, Boolean, DateTime, func
-from .base import Base, GUID, generate_uuid
+from sqlalchemy import Boolean, Column, DateTime, Integer, String, Text, func
+
+from .base import GUID, Base, generate_uuid
 
 
 class EntityMetadata(Base):

@@ -9,12 +9,13 @@ Manages account lockouts based on failed login attempts with support for:
 """
 from datetime import datetime, timedelta
 from typing import Optional, Tuple
+
 from sqlalchemy.orm import Session
 
-from app.models.user import User
-from app.models.login_attempt import LoginAttempt
-from app.models.account_lockout import AccountLockout
 from app.core.security_config import SecurityConfigService
+from app.models.account_lockout import AccountLockout
+from app.models.login_attempt import LoginAttempt
+from app.models.user import User
 
 
 class LockoutManager:

@@ -11,12 +11,13 @@ Supports checking against:
 """
 import re
 from typing import List, Optional, Tuple
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
 
-from app.core.security_config import PasswordPolicyConfig
-from app.core.common_passwords import is_common_password
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.core.auth import verify_password
+from app.core.common_passwords import is_common_password
+from app.core.security_config import PasswordPolicyConfig
 
 
 class PasswordValidationError(Exception):
