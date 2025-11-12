@@ -12,6 +12,8 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.core.dependencies import get_current_user, get_db
+from app.core.exceptions_helpers import not_found_exception
+from app.core.response_builders import build_list_response
 from app.models.user import User
 from app.schemas.report import (
     ExportFormat,
@@ -90,7 +92,7 @@ def get_report_definition(
     )
 
     if not report:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Report not found")
+        raise not_found_exception("Report", str(report_id))
 
     return report
 
@@ -111,7 +113,7 @@ def update_report_definition(
     )
 
     if not report:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Report not found")
+        raise not_found_exception("Report", str(report_id))
 
     return report
 
@@ -130,7 +132,7 @@ def delete_report_definition(
     )
 
     if not success:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Report not found")
+        raise not_found_exception("Report", str(report_id))
 
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
@@ -175,7 +177,7 @@ def execute_and_export_report(
         )
 
         if not report_def:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Report not found")
+            raise not_found_exception("Report", str(request.report_definition_id))
 
         # Build and execute query
         query_result = ReportService._build_and_execute_query(
@@ -291,7 +293,7 @@ def create_report_schedule(
     )
 
     if not report:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Report not found")
+        raise not_found_exception("Report", str(schedule_data.report_definition_id))
 
     # Create schedule
     db_schedule = ReportSchedule(
@@ -344,7 +346,7 @@ def update_report_schedule(
     ).first()
 
     if not db_schedule:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Schedule not found")
+        raise not_found_exception("Schedule", str(schedule_id))
 
     update_data = schedule_data.model_dump(exclude_unset=True)
     for field, value in update_data.items():
@@ -370,7 +372,7 @@ def delete_report_schedule(
     ).first()
 
     if not db_schedule:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Schedule not found")
+        raise not_found_exception("Schedule", str(schedule_id))
 
     db.delete(db_schedule)
     db.commit()
@@ -412,7 +414,7 @@ def create_from_template(
     template = db.query(ReportTemplate).filter(ReportTemplate.id == template_id).first()
 
     if not template:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Template not found")
+        raise not_found_exception("Template", str(template_id))
 
     # Create report from template config
     template_config = template.template_config

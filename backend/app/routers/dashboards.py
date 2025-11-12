@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.orm import Session
 
 from app.core.dependencies import get_current_user, get_db
+from app.core.exceptions_helpers import not_found_exception
 from app.models.user import User
 from app.schemas.dashboard import (
     BulkWidgetUpdateRequest,
@@ -111,7 +112,7 @@ def get_dashboard(
     )
 
     if not dashboard:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Dashboard not found")
+        raise not_found_exception("Dashboard", str(dashboard_id))
 
     return dashboard
 
@@ -132,7 +133,7 @@ def update_dashboard(
     )
 
     if not dashboard:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Dashboard not found")
+        raise not_found_exception("Dashboard", str(dashboard_id))
 
     return dashboard
 
@@ -151,7 +152,7 @@ def delete_dashboard(
     )
 
     if not success:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Dashboard not found")
+        raise not_found_exception("Dashboard", str(dashboard_id))
 
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
@@ -173,7 +174,7 @@ def clone_dashboard(
     )
 
     if not dashboard:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Dashboard not found")
+        raise not_found_exception("Dashboard", str(dashboard_id))
 
     return dashboard
 
@@ -214,7 +215,7 @@ def update_page(
     )
 
     if not page:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Page not found")
+        raise not_found_exception("Page", str(page_id))
 
     return page
 
@@ -233,7 +234,7 @@ def delete_page(
     )
 
     if not success:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Page not found")
+        raise not_found_exception("Page", str(page_id))
 
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
@@ -274,7 +275,7 @@ def update_widget(
     )
 
     if not widget:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Widget not found")
+        raise not_found_exception("Widget", str(widget_id))
 
     return widget
 
@@ -293,7 +294,7 @@ def delete_widget(
     )
 
     if not success:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Widget not found")
+        raise not_found_exception("Widget", str(widget_id))
 
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
