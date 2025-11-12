@@ -46,6 +46,16 @@ class ResourceLoader {
           throw new Error('Empty template received');
         }
 
+        // Check if we received index.html instead of the actual template
+        // This can happen if nginx falls back to index.html for missing files
+        const htmlLower = html.toLowerCase();
+        if (htmlLower.includes('<!doctype html>') ||
+            (htmlLower.includes('<html') && htmlLower.includes('<head>')) ||
+            htmlLower.includes('nocode platform') ||
+            htmlLower.includes('content-security-policy')) {
+          throw new Error('HTTP 404: Template not found (index.html was served instead)');
+        }
+
         // Parse HTML to extract body content and avoid CSP issues
         const parser = new DOMParser();
         const doc = parser.parseFromString(html, 'text/html');
