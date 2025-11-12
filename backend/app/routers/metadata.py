@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from typing import List
 import uuid
 import json
+import logging
 
 from app.core.dependencies import get_db, get_current_user, has_role
 from app.models.user import User
@@ -14,6 +15,7 @@ from app.schemas.metadata import (
 from app.core.audit import create_audit_log
 
 router = APIRouter(prefix="/metadata", tags=["metadata"])
+logger = logging.getLogger(__name__)
 
 @router.get("/entities", response_model=EntityListResponse)
 def list_entities(

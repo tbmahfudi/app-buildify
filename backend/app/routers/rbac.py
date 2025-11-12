@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import or_, and_, func
 from typing import List, Optional
 from uuid import UUID
+import logging
 
 from app.core.dependencies import get_db, get_current_user, has_permission
 from app.models.user import User
@@ -22,6 +23,7 @@ from app.models.department import Department
 from app.core.audit import create_audit_log
 
 router = APIRouter(prefix="/rbac", tags=["RBAC Management"])
+logger = logging.getLogger(__name__)
 
 
 # ============================================================================

@@ -4,6 +4,7 @@ Dashboard API router.
 from fastapi import APIRouter, Depends, HTTPException, status, Response
 from sqlalchemy.orm import Session
 from typing import List, Optional
+import logging
 
 from app.core.dependencies import get_db, get_current_user
 from app.models.user import User
@@ -31,6 +32,7 @@ from app.services.dashboard_service import DashboardService
 
 
 router = APIRouter(prefix="/dashboards", tags=["dashboards"])
+logger = logging.getLogger(__name__)
 
 
 # ==================== Dashboard Endpoints ====================

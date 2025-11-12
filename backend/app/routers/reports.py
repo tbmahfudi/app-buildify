@@ -8,6 +8,7 @@ from typing import List, Optional
 import io
 import os
 from datetime import datetime
+import logging
 
 from app.core.dependencies import get_db, get_current_user
 from app.models.user import User
@@ -30,6 +31,7 @@ from app.services.report_export import ReportExporter
 
 
 router = APIRouter(prefix="/reports", tags=["reports"])
+logger = logging.getLogger(__name__)
 
 
 # Report Definition Endpoints

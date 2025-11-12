@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from typing import List
 import uuid
+import logging
 
 from app.core.dependencies import get_db, get_current_user, has_role
 from app.core.audit import create_audit_log, compute_diff
@@ -17,6 +18,7 @@ from app.schemas.org import (
 from app.schemas.auth import UserResponse
 
 router = APIRouter(prefix="/org", tags=["org"])
+logger = logging.getLogger(__name__)
 
 # ============= COMPANIES =============
 

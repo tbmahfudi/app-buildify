@@ -57,7 +57,7 @@ class SchedulerConfig(Base):
     """
     __tablename__ = "scheduler_configs"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(GUID, primary_key=True, index=True)
 
     # Hierarchy identifiers
     config_level = Column(SQLEnum(ConfigLevel), nullable=False, default=ConfigLevel.SYSTEM)
@@ -122,10 +122,10 @@ class SchedulerJob(Base):
     """
     __tablename__ = "scheduler_jobs"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(GUID, primary_key=True, index=True)
 
     # Configuration reference
-    config_id = Column(Integer, ForeignKey("scheduler_configs.id"), nullable=False)
+    config_id = Column(GUID, ForeignKey("scheduler_configs.id"), nullable=False)
 
     # Hierarchy context (for filtering/scoping)
     tenant_id = Column(GUID, nullable=True, index=True)
@@ -190,8 +190,8 @@ class SchedulerJobExecution(Base):
     """
     __tablename__ = "scheduler_job_executions"
 
-    id = Column(Integer, primary_key=True, index=True)
-    job_id = Column(Integer, ForeignKey("scheduler_jobs.id"), nullable=False)
+    id = Column(GUID, primary_key=True, index=True)
+    job_id = Column(GUID, ForeignKey("scheduler_jobs.id"), nullable=False)
 
     # Execution context
     tenant_id = Column(GUID, nullable=True, index=True)
@@ -238,8 +238,8 @@ class SchedulerJobLog(Base):
     """
     __tablename__ = "scheduler_job_logs"
 
-    id = Column(Integer, primary_key=True, index=True)
-    execution_id = Column(Integer, ForeignKey("scheduler_job_executions.id"), nullable=False)
+    id = Column(GUID, primary_key=True, index=True)
+    execution_id = Column(GUID, ForeignKey("scheduler_job_executions.id"), nullable=False)
 
     # Log details
     log_level = Column(String(20), default="INFO")  # DEBUG, INFO, WARNING, ERROR, CRITICAL

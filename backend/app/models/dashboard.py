@@ -60,7 +60,7 @@ class Dashboard(Base):
     """Dashboard model - container for multiple pages."""
     __tablename__ = "dashboards"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(GUID, primary_key=True, index=True)
     tenant_id = Column(GUID, nullable=False, index=True)
 
     # Basic info
@@ -104,8 +104,8 @@ class DashboardPage(Base):
     """Dashboard page - a single page within a dashboard."""
     __tablename__ = "dashboard_pages"
 
-    id = Column(Integer, primary_key=True, index=True)
-    dashboard_id = Column(Integer, ForeignKey("dashboards.id"), nullable=False)
+    id = Column(GUID, primary_key=True, index=True)
+    dashboard_id = Column(GUID, ForeignKey("dashboards.id"), nullable=False)
     tenant_id = Column(GUID, nullable=False, index=True)
 
     # Page info
@@ -134,8 +134,8 @@ class DashboardWidget(Base):
     """Dashboard widget - individual visualization component."""
     __tablename__ = "dashboard_widgets"
 
-    id = Column(Integer, primary_key=True, index=True)
-    page_id = Column(Integer, ForeignKey("dashboard_pages.id"), nullable=False)
+    id = Column(GUID, primary_key=True, index=True)
+    page_id = Column(GUID, ForeignKey("dashboard_pages.id"), nullable=False)
     tenant_id = Column(GUID, nullable=False, index=True)
 
     # Widget info
@@ -144,7 +144,7 @@ class DashboardWidget(Base):
     widget_type = Column(String(50), nullable=False)
 
     # Data source
-    report_definition_id = Column(Integer, nullable=True)  # Link to report if applicable
+    report_definition_id = Column(GUID, nullable=True)  # Link to report if applicable
     data_source_config = Column(JSON, nullable=True)  # Custom data source configuration
 
     # Widget configuration
@@ -177,13 +177,13 @@ class DashboardShare(Base):
     """Dashboard sharing and collaboration."""
     __tablename__ = "dashboard_shares"
 
-    id = Column(Integer, primary_key=True, index=True)
-    dashboard_id = Column(Integer, ForeignKey("dashboards.id"), nullable=False)
+    id = Column(GUID, primary_key=True, index=True)
+    dashboard_id = Column(GUID, ForeignKey("dashboards.id"), nullable=False)
     tenant_id = Column(GUID, nullable=False, index=True)
 
     # Share info
     shared_with_user_id = Column(GUID, nullable=True)  # Specific user
-    shared_with_role_id = Column(Integer, nullable=True)  # Specific role
+    shared_with_role_id = Column(GUID, nullable=True)  # Specific role
     share_token = Column(String(255), nullable=True, unique=True)  # Public share token
 
     # Permissions
@@ -206,8 +206,8 @@ class DashboardSnapshot(Base):
     """Dashboard snapshot - saved state at a point in time."""
     __tablename__ = "dashboard_snapshots"
 
-    id = Column(Integer, primary_key=True, index=True)
-    dashboard_id = Column(Integer, ForeignKey("dashboards.id"), nullable=False)
+    id = Column(GUID, primary_key=True, index=True)
+    dashboard_id = Column(GUID, ForeignKey("dashboards.id"), nullable=False)
     tenant_id = Column(GUID, nullable=False, index=True)
 
     # Snapshot info
@@ -227,8 +227,8 @@ class WidgetDataCache(Base):
     """Cache for widget data."""
     __tablename__ = "widget_data_cache"
 
-    id = Column(Integer, primary_key=True, index=True)
-    widget_id = Column(Integer, ForeignKey("dashboard_widgets.id"), nullable=False)
+    id = Column(GUID, primary_key=True, index=True)
+    widget_id = Column(GUID, ForeignKey("dashboard_widgets.id"), nullable=False)
     tenant_id = Column(GUID, nullable=False, index=True)
 
     # Cache key

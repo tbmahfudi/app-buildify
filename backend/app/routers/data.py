@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_, desc, asc
 from typing import Dict, Any
 import uuid
+import logging
 
 from app.core.dependencies import get_db, get_current_user
 from app.models.user import User
@@ -16,6 +17,7 @@ from app.schemas.data import (
 from app.core.audit import create_audit_log, compute_diff
 
 router = APIRouter(prefix="/data", tags=["data"])
+logger = logging.getLogger(__name__)
 
 # Entity registry - maps entity names to SQLAlchemy models
 ENTITY_REGISTRY = {

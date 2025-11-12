@@ -54,7 +54,7 @@ class ReportDefinition(Base):
     """Report definition model."""
     __tablename__ = "report_definitions"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(GUID, primary_key=True, index=True)
     tenant_id = Column(GUID, nullable=False, index=True)
 
     # Basic info
@@ -100,9 +100,9 @@ class ReportExecution(Base):
     """Report execution history."""
     __tablename__ = "report_executions"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(GUID, primary_key=True, index=True)
     tenant_id = Column(GUID, nullable=False, index=True)
-    report_definition_id = Column(Integer, ForeignKey("report_definitions.id"), nullable=False)
+    report_definition_id = Column(GUID, ForeignKey("report_definitions.id"), nullable=False)
 
     # Execution details
     executed_by = Column(GUID, nullable=False)
@@ -128,9 +128,9 @@ class ReportSchedule(Base):
     """Report scheduling configuration."""
     __tablename__ = "report_schedules"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(GUID, primary_key=True, index=True)
     tenant_id = Column(GUID, nullable=False, index=True)
-    report_definition_id = Column(Integer, ForeignKey("report_definitions.id"), nullable=False)
+    report_definition_id = Column(GUID, ForeignKey("report_definitions.id"), nullable=False)
 
     # Schedule details
     name = Column(String(255), nullable=False)
@@ -164,7 +164,7 @@ class ReportTemplate(Base):
     """Pre-built report templates."""
     __tablename__ = "report_templates"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(GUID, primary_key=True, index=True)
 
     # Template info
     name = Column(String(255), nullable=False)
@@ -189,9 +189,9 @@ class ReportCache(Base):
     """Cache for report results."""
     __tablename__ = "report_cache"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(GUID, primary_key=True, index=True)
     tenant_id = Column(GUID, nullable=False, index=True)
-    report_definition_id = Column(Integer, ForeignKey("report_definitions.id"), nullable=False)
+    report_definition_id = Column(GUID, ForeignKey("report_definitions.id"), nullable=False)
 
     # Cache key (hash of parameters)
     cache_key = Column(String(255), nullable=False, index=True, unique=True)

@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from uuid import UUID
+import logging
 
 from app.core.dependencies import get_db, get_current_user
 from app.models.user import User
@@ -29,6 +30,7 @@ from app.services.scheduler_service import SchedulerService
 
 
 router = APIRouter(prefix="/scheduler", tags=["scheduler"])
+logger = logging.getLogger(__name__)
 
 
 # ========== Configuration Endpoints ==========
