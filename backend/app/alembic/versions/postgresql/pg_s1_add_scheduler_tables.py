@@ -11,7 +11,7 @@ from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision = 'pg_s1_add_scheduler_tables'
-down_revision = 'pg_merge_display_and_r3'
+down_revision = 'pg_merge_display_r3'
 branch_labels = None
 depends_on = None
 
