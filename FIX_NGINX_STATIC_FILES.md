@@ -1,6 +1,8 @@
-# Fix: Nginx Static File 404 Handling
+# Fix: Nginx Configuration Issues
 
-## Problem
+## Fix #1: Static File 404 Handling
+
+### Problem
 
 When the application tried to load a missing JavaScript file (e.g., `/assets/js/settings-security.js`), nginx was serving the root `index.html` file instead of returning a 404 error. This caused JavaScript syntax errors because the browser tried to parse HTML as JavaScript.
 
@@ -85,6 +87,57 @@ After deploying this change, you need to:
 - The route-specific JavaScript loading in `app.js:918` is optional, so missing files won't break the application
 - The resource loader already has error handling for 404s (see `resource-loader.js:74` and `resource-loader.js:121`)
 
+## Fix #2: API Proxy Path Preservation
+
+### Problem
+
+After fixing the frontend components to use `/api/v1` prefix, requests were still returning 404:
+```
+GET http://localhost:8080/api/v1/admin/security/policies 404 (Not Found)
+```
+
+### Root Cause
+
+The nginx proxy configuration was **stripping** the `/api/` prefix:
+
+```nginx
+location /api/ {
+  proxy_pass http://backend:8000/;  # ← Strips /api/
+}
+```
+
+**Flow:**
+1. Frontend sends: `/api/v1/admin/security/policies`
+2. Nginx strips `/api/` → sends `/v1/admin/security/policies` to backend
+3. Backend expects: `/api/v1/admin/security/policies` (routers mounted with `/api/v1` prefix)
+4. Result: 404 Not Found ❌
+
+### Solution
+
+Updated nginx to **preserve** the `/api/` prefix:
+
+```nginx
+location /api/ {
+  proxy_pass http://backend:8000/api/;  # ← Preserves /api/
+}
+```
+
+**Now:**
+1. Frontend sends: `/api/v1/admin/security/policies`
+2. Nginx proxies to: `http://backend:8000/api/v1/admin/security/policies`
+3. Backend receives: `/api/v1/admin/security/policies`
+4. Result: 200 OK ✅
+
+### Why This Matters
+
+In Nginx:
+- `proxy_pass http://backend:8000/;` → Strips the matched location prefix
+- `proxy_pass http://backend:8000/api/;` → Replaces matched prefix with `/api/`
+
+Since our FastAPI app mounts all routers with `/api/v1` prefix, we need nginx to preserve the full path.
+
 ## Files Modified
 
-- `infra/nginx/app.conf` - Updated nginx configuration with static file handling
+- `infra/nginx/app.conf` - Updated nginx configuration with:
+  - Static file 404 handling
+  - API proxy path preservation
