@@ -3,7 +3,7 @@ Base schemas with common utilities for UUID serialization.
 """
 from typing import Optional, Any
 from uuid import UUID
-from pydantic import BaseModel, field_serializer
+from pydantic import BaseModel, field_validator, field_serializer
 
 
 def serialize_uuid_field(value: Any) -> Optional[str]:
@@ -31,8 +31,12 @@ class UUIDMixin:
     """
     Mixin to add UUID serialization for common ID fields.
 
-    Automatically serializes 'id', 'user_id', 'tenant_id', 'created_by', 'updated_by'
-    to strings for JSON serialization.
+    Automatically converts UUID objects to strings for 'id', 'user_id',
+    'tenant_id', 'created_by', 'updated_by' fields.
+
+    Uses field_validator with mode='before' to convert UUIDs to strings
+    before Pydantic validates the type. This prevents validation errors
+    when ORM returns UUID objects.
 
     Usage:
         class MyResponse(UUIDMixin, BaseModel):
@@ -41,9 +45,10 @@ class UUIDMixin:
             ...
     """
 
-    @field_serializer('id', 'user_id', 'tenant_id', 'created_by', 'updated_by', check_fields=False)
-    def serialize_common_uuid_fields(self, value: Any, _info) -> Optional[str]:
-        """Serialize common UUID fields to strings."""
+    @field_validator('id', 'user_id', 'tenant_id', 'created_by', 'updated_by', mode='before', check_fields=False)
+    @classmethod
+    def convert_uuid_to_str(cls, value: Any) -> Optional[str]:
+        """Convert UUID fields to strings before validation."""
         return serialize_uuid_field(value)
 
 
