@@ -1,6 +1,7 @@
-from sqlalchemy import Column, String, Boolean, Integer, DateTime, func, Text
+from sqlalchemy import Boolean, Column, DateTime, Integer, String, Text, func
 from sqlalchemy.orm import relationship
-from .base import Base, GUID, generate_uuid
+
+from .base import GUID, Base, generate_uuid
 
 
 class Tenant(Base):

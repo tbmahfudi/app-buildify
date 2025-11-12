@@ -1,6 +1,7 @@
-from sqlalchemy import Column, String, Boolean, DateTime, func, Text, Index
+from sqlalchemy import Boolean, Column, DateTime, Index, String, Text, func
 from sqlalchemy.orm import relationship
-from .base import Base, GUID, generate_uuid
+
+from .base import GUID, Base, generate_uuid
 
 
 class Permission(Base):

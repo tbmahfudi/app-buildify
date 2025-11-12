@@ -1,6 +1,8 @@
-from typing import Optional
-import redis
 from datetime import timedelta
+from typing import Optional
+
+import redis
+
 from .config import get_settings
 from .logging_config import get_logger
 

@@ -1,34 +1,34 @@
 """
 Report API router.
 """
-from fastapi import APIRouter, Depends, HTTPException, status, Response
-from fastapi.responses import StreamingResponse
-from sqlalchemy.orm import Session
-from typing import List, Optional
 import io
+import logging
 import os
 from datetime import datetime
-import logging
+from typing import List, Optional
 
-from app.core.dependencies import get_db, get_current_user
+from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi.responses import StreamingResponse
+from sqlalchemy.orm import Session
+
+from app.core.dependencies import get_current_user, get_db
 from app.models.user import User
 from app.schemas.report import (
+    ExportFormat,
+    LookupDataRequest,
+    LookupDataResponse,
     ReportDefinitionCreate,
-    ReportDefinitionUpdate,
     ReportDefinitionResponse,
+    ReportDefinitionUpdate,
     ReportExecutionRequest,
     ReportExecutionResponse,
     ReportScheduleCreate,
-    ReportScheduleUpdate,
     ReportScheduleResponse,
+    ReportScheduleUpdate,
     ReportTemplateResponse,
-    LookupDataRequest,
-    LookupDataResponse,
-    ExportFormat
 )
-from app.services.report_service import ReportService
 from app.services.report_export import ReportExporter
-
+from app.services.report_service import ReportService
 
 router = APIRouter(prefix="/reports", tags=["reports"])
 logger = logging.getLogger(__name__)
@@ -407,7 +407,7 @@ def create_from_template(
     current_user: User = Depends(get_current_user)
 ):
     """Create a new report from a template."""
-    from app.models.report import ReportTemplate, ReportDefinition
+    from app.models.report import ReportDefinition, ReportTemplate
 
     template = db.query(ReportTemplate).filter(ReportTemplate.id == template_id).first()
 

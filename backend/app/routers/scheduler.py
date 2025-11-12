@@ -1,33 +1,33 @@
 """
 Scheduler API router.
 """
-from fastapi import APIRouter, Depends, HTTPException, status, Query
-from sqlalchemy.orm import Session
+import logging
 from typing import List, Optional
 from uuid import UUID
-import logging
 
-from app.core.dependencies import get_db, get_current_user
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy.orm import Session
+
+from app.core.dependencies import get_current_user, get_db
+from app.models.scheduler import JobStatus, JobType
 from app.models.user import User
-from app.models.scheduler import JobType, JobStatus
 from app.schemas.scheduler import (
-    SchedulerConfigCreate,
-    SchedulerConfigUpdate,
-    SchedulerConfigResponse,
-    SchedulerConfigListResponse,
-    SchedulerJobCreate,
-    SchedulerJobUpdate,
-    SchedulerJobResponse,
-    SchedulerJobListResponse,
-    SchedulerJobExecutionResponse,
-    SchedulerJobExecutionListResponse,
-    SchedulerJobLogResponse,
-    SchedulerJobLogListResponse,
     JobExecuteRequest,
-    JobExecuteResponse
+    JobExecuteResponse,
+    SchedulerConfigCreate,
+    SchedulerConfigListResponse,
+    SchedulerConfigResponse,
+    SchedulerConfigUpdate,
+    SchedulerJobCreate,
+    SchedulerJobExecutionListResponse,
+    SchedulerJobExecutionResponse,
+    SchedulerJobListResponse,
+    SchedulerJobLogListResponse,
+    SchedulerJobLogResponse,
+    SchedulerJobResponse,
+    SchedulerJobUpdate,
 )
 from app.services.scheduler_service import SchedulerService
-
 
 router = APIRouter(prefix="/scheduler", tags=["scheduler"])
 logger = logging.getLogger(__name__)

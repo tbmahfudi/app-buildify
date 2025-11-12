@@ -1,20 +1,26 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Request
-from sqlalchemy.orm import Session
-from sqlalchemy import and_, or_, desc, asc
-from typing import Dict, Any
-import uuid
 import logging
+import uuid
+from typing import Any, Dict
 
-from app.core.dependencies import get_db, get_current_user
-from app.models.user import User
-from app.models.company import Company
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from sqlalchemy import and_, asc, desc, or_
+from sqlalchemy.orm import Session
+
+from app.core.audit import compute_diff, create_audit_log
+from app.core.dependencies import get_current_user, get_db
 from app.models.branch import Branch
+from app.models.company import Company
 from app.models.department import Department
+from app.models.user import User
 from app.schemas.data import (
-    DataSearchRequest, DataSearchResponse, DataCreateRequest,
-    DataUpdateRequest, DataResponse, BulkOperationRequest, BulkOperationResponse
+    BulkOperationRequest,
+    BulkOperationResponse,
+    DataCreateRequest,
+    DataResponse,
+    DataSearchRequest,
+    DataSearchResponse,
+    DataUpdateRequest,
 )
-from app.core.audit import create_audit_log, compute_diff
 
 router = APIRouter(prefix="/data", tags=["data"])
 logger = logging.getLogger(__name__)

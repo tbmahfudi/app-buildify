@@ -1,6 +1,7 @@
-from sqlalchemy import TypeDecorator, String
-from sqlalchemy.orm import declarative_base
 import uuid
+
+from sqlalchemy import String, TypeDecorator
+from sqlalchemy.orm import declarative_base
 
 # Try to import PostgreSQL UUID type
 try:

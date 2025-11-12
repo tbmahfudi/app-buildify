@@ -1,33 +1,46 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Request
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from sqlalchemy.orm import Session
+import logging
+import secrets
 from datetime import datetime, timedelta
 from typing import Optional
-import logging
-from sqlalchemy.orm.exc import StaleDataError
-import secrets
 
-from app.core.dependencies import get_db, get_current_user
-from app.core.auth import verify_password, create_access_token, create_refresh_token, decode_token, hash_password
-from app.core.config import ACCESS_TOKEN_EXPIRE_MIN
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from sqlalchemy.orm import Session
+from sqlalchemy.orm.exc import StaleDataError
+
 from app.core.audit import create_audit_log
-from app.models.user import User
-from app.models.token_blacklist import TokenBlacklist
-from app.schemas.auth import (
-    LoginRequest, TokenResponse, RefreshRequest, UserResponse,
-    ProfileUpdate, PasswordChangeRequest, PasswordResetRequest, PasswordResetConfirm
+from app.core.auth import (
+    create_access_token,
+    create_refresh_token,
+    decode_token,
+    hash_password,
+    verify_password,
 )
-from app.schemas.security import PasswordPolicyRequirements, PasswordStrengthCheck
+from app.core.config import ACCESS_TOKEN_EXPIRE_MIN
+from app.core.dependencies import get_current_user, get_db
+from app.core.lockout_manager import LockoutManager
+from app.core.notification_service import NotificationService
+from app.core.password_history import PasswordHistoryService
+from app.core.password_validator import PasswordValidator
 
 # Import security services
 from app.core.security_config import SecurityConfigService
-from app.core.password_validator import PasswordValidator
-from app.core.password_history import PasswordHistoryService
-from app.core.lockout_manager import LockoutManager
 from app.core.session_manager import SessionManager
-from app.core.notification_service import NotificationService
 from app.models.login_attempt import LoginAttempt
 from app.models.password_reset_token import PasswordResetToken
+from app.models.token_blacklist import TokenBlacklist
+from app.models.user import User
+from app.schemas.auth import (
+    LoginRequest,
+    PasswordChangeRequest,
+    PasswordResetConfirm,
+    PasswordResetRequest,
+    ProfileUpdate,
+    RefreshRequest,
+    TokenResponse,
+    UserResponse,
+)
+from app.schemas.security import PasswordPolicyRequirements, PasswordStrengthCheck
 
 security = HTTPBearer()
 

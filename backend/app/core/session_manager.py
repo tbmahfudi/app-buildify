@@ -9,12 +9,13 @@ Manages user sessions with support for:
 """
 from datetime import datetime, timedelta
 from typing import List, Optional
+
 from sqlalchemy.orm import Session
 
-from app.models.user_session import UserSession
-from app.models.user import User
-from app.core.security_config import SecurityConfigService
 from app.core.config import ACCESS_TOKEN_EXPIRE_MIN
+from app.core.security_config import SecurityConfigService
+from app.models.user import User
+from app.models.user_session import UserSession
 
 
 class SessionManager:

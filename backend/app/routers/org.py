@@ -1,21 +1,31 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Request
-from sqlalchemy.orm import Session
-from typing import List
-import uuid
 import logging
+import uuid
+from typing import List
 
-from app.core.dependencies import get_db, get_current_user, has_role
-from app.core.audit import create_audit_log, compute_diff
-from app.models.user import User
-from app.models.company import Company
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from sqlalchemy.orm import Session
+
+from app.core.audit import compute_diff, create_audit_log
+from app.core.dependencies import get_current_user, get_db, has_role
 from app.models.branch import Branch
+from app.models.company import Company
 from app.models.department import Department
-from app.schemas.org import (
-    CompanyCreate, CompanyUpdate, CompanyResponse, CompanyListResponse,
-    BranchCreate, BranchUpdate, BranchResponse, BranchListResponse,
-    DepartmentCreate, DepartmentUpdate, DepartmentResponse, DepartmentListResponse
-)
+from app.models.user import User
 from app.schemas.auth import UserResponse
+from app.schemas.org import (
+    BranchCreate,
+    BranchListResponse,
+    BranchResponse,
+    BranchUpdate,
+    CompanyCreate,
+    CompanyListResponse,
+    CompanyResponse,
+    CompanyUpdate,
+    DepartmentCreate,
+    DepartmentListResponse,
+    DepartmentResponse,
+    DepartmentUpdate,
+)
 
 router = APIRouter(prefix="/org", tags=["org"])
 logger = logging.getLogger(__name__)
@@ -29,7 +39,32 @@ def list_companies(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """List all companies"""
+    """
+    List all companies with pagination.
+
+    Retrieves a paginated list of all companies in the system.
+    Requires authentication but no specific role.
+
+    Args:
+        skip: Number of records to skip (default: 0)
+        limit: Maximum number of records to return (default: 100, max: 1000)
+        db: Database session (injected)
+        current_user: Authenticated user (injected)
+
+    Returns:
+        CompanyListResponse: Object containing:
+            - items: List of Company objects
+            - total: Total count of companies in database
+
+    Example Response:
+        {
+            "items": [
+                {"id": "uuid...", "code": "ACME", "name": "Acme Corp"},
+                {"id": "uuid...", "code": "INITECH", "name": "Initech Inc"}
+            ],
+            "total": 2
+        }
+    """
     query = db.query(Company)
     total = query.count()
     items = query.offset(skip).limit(limit).all()
@@ -41,7 +76,32 @@ def get_company(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Get a specific company"""
+    """
+    Get a specific company by ID.
+
+    Retrieves detailed information for a single company.
+    Requires authentication but no specific role.
+
+    Args:
+        company_id: UUID of the company to retrieve
+        db: Database session (injected)
+        current_user: Authenticated user (injected)
+
+    Returns:
+        CompanyResponse: Company object with all fields
+
+    Raises:
+        HTTPException 404: Company not found
+        HTTPException 401: Not authenticated
+
+    Example Response:
+        {
+            "id": "550e8400-e29b-41d4-a716-446655440000",
+            "code": "ACME",
+            "name": "Acme Corporation",
+            "created_at": "2023-11-12T10:30:00Z"
+        }
+    """
     company = db.query(Company).filter(Company.id == company_id).first()
     if not company:
         raise HTTPException(status_code=404, detail="Company not found")
@@ -54,7 +114,47 @@ def create_company(
     db: Session = Depends(get_db),
     current_user: User = Depends(has_role("admin"))
 ):
-    """Create a new company (admin only)"""
+    """
+    Create a new company (admin only).
+
+    Creates a new company record in the system. Automatically generates
+    a UUID for the company and creates an audit log entry.
+
+    Permissions Required:
+        - Role: admin
+
+    Args:
+        company: Company creation data
+            - code: Unique company code (required)
+            - name: Company name (required)
+        request: HTTP request object (injected, for audit logging)
+        db: Database session (injected)
+        current_user: Authenticated admin user (injected)
+
+    Returns:
+        CompanyResponse: Newly created company object
+
+    Raises:
+        HTTPException 400: Company code already exists
+        HTTPException 403: User does not have admin role
+        HTTPException 401: Not authenticated
+        HTTPException 422: Validation error (invalid data)
+
+    Example Request:
+        POST /api/org/companies
+        {
+            "code": "ACME",
+            "name": "Acme Corporation"
+        }
+
+    Example Response (201 Created):
+        {
+            "id": "550e8400-e29b-41d4-a716-446655440000",
+            "code": "ACME",
+            "name": "Acme Corporation",
+            "created_at": "2023-11-12T10:30:00Z"
+        }
+    """
     # Check for duplicate code
     existing = db.query(Company).filter(Company.code == company.code).first()
     if existing:

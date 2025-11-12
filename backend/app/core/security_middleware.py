@@ -1,14 +1,15 @@
 """
 Security middleware for enforcing session timeouts and password expiration.
 """
-from fastapi import Request, HTTPException, status
+import logging
+from datetime import datetime
+
+from fastapi import HTTPException, Request, status
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
-from datetime import datetime
-import logging
 
-from app.core.dependencies import get_db
 from app.core.auth import decode_token
+from app.core.dependencies import get_db
 from app.core.security_config import SecurityConfigService
 from app.models.user import User
 from app.models.user_session import UserSession

@@ -7,10 +7,13 @@ Supports hierarchical configuration at:
 - Company level (applies to specific company within tenant)
 - Branch level (applies to specific branch within company)
 """
-from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime, ForeignKey, JSON, Enum as SQLEnum, Index
-from sqlalchemy.orm import relationship
-from datetime import datetime
 import enum
+from datetime import datetime
+
+from sqlalchemy import JSON, Boolean, Column, DateTime
+from sqlalchemy import Enum as SQLEnum
+from sqlalchemy import ForeignKey, Index, Integer, String, Text
+from sqlalchemy.orm import relationship
 
 from app.models import Base
 from app.models.base import GUID

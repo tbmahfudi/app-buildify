@@ -1,18 +1,23 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
-from typing import List
-import uuid
 import json
 import logging
+import uuid
+from typing import List
 
-from app.core.dependencies import get_db, get_current_user, has_role
-from app.models.user import User
-from app.models.metadata import EntityMetadata
-from app.schemas.metadata import (
-    EntityMetadataResponse, EntityMetadataCreate, EntityMetadataUpdate,
-    EntityListResponse, TableConfig, FormConfig
-)
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.orm import Session
+
 from app.core.audit import create_audit_log
+from app.core.dependencies import get_current_user, get_db, has_role
+from app.models.metadata import EntityMetadata
+from app.models.user import User
+from app.schemas.metadata import (
+    EntityListResponse,
+    EntityMetadataCreate,
+    EntityMetadataResponse,
+    EntityMetadataUpdate,
+    FormConfig,
+    TableConfig,
+)
 
 router = APIRouter(prefix="/metadata", tags=["metadata"])
 logger = logging.getLogger(__name__)

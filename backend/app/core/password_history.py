@@ -5,12 +5,13 @@ Manages password history tracking to prevent password reuse.
 """
 from datetime import datetime
 from typing import List
+
 from sqlalchemy.orm import Session
 
-from app.models.password_history import PasswordHistory
-from app.models.user import User
 from app.core.auth import verify_password
 from app.core.security_config import SecurityConfigService
+from app.models.password_history import PasswordHistory
+from app.models.user import User
 
 
 class PasswordHistoryService:

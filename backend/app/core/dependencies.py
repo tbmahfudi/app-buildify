@@ -1,11 +1,13 @@
+from typing import List, Optional
+
 from fastapi import Depends, HTTPException, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
-from typing import Optional, List
-from .db import SessionLocal
-from .auth import decode_token
-from ..models.user import User
+
 from ..models.token_blacklist import TokenBlacklist
+from ..models.user import User
+from .auth import decode_token
+from .db import SessionLocal
 
 security = HTTPBearer()
 

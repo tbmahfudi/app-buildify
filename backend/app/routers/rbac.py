@@ -3,24 +3,25 @@ RBAC Management Router
 Provides comprehensive endpoints for managing roles, permissions, groups, and user assignments.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.orm import Session, joinedload
-from sqlalchemy import or_, and_, func
+import logging
 from typing import List, Optional
 from uuid import UUID
-import logging
 
-from app.core.dependencies import get_db, get_current_user, has_permission
-from app.models.user import User
-from app.models.role import Role
-from app.models.permission import Permission
-from app.models.group import Group
-from app.models.rbac_junctions import UserRole, RolePermission, GroupRole, UserGroup
-from app.models.tenant import Tenant
-from app.models.company import Company
-from app.models.branch import Branch
-from app.models.department import Department
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import and_, func, or_
+from sqlalchemy.orm import Session, joinedload
+
 from app.core.audit import create_audit_log
+from app.core.dependencies import get_current_user, get_db, has_permission
+from app.models.branch import Branch
+from app.models.company import Company
+from app.models.department import Department
+from app.models.group import Group
+from app.models.permission import Permission
+from app.models.rbac_junctions import GroupRole, RolePermission, UserGroup, UserRole
+from app.models.role import Role
+from app.models.tenant import Tenant
+from app.models.user import User
 
 router = APIRouter(prefix="/rbac", tags=["RBAC Management"])
 logger = logging.getLogger(__name__)

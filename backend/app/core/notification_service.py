@@ -5,11 +5,12 @@ Queue-based notification system with configurable delivery methods.
 Supports email, SMS, webhook, and push notifications.
 """
 from datetime import datetime, timedelta, timezone
-from typing import Optional, Dict, Any, List
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_
+from typing import Any, Dict, List, Optional
 
-from app.models import NotificationQueue, NotificationConfig
+from sqlalchemy import and_, select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models import NotificationConfig, NotificationQueue
 
 
 class NotificationService:

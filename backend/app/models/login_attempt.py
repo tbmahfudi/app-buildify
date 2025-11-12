@@ -1,6 +1,7 @@
-from sqlalchemy import Column, String, Boolean, DateTime, func, ForeignKey
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, String, func
 from sqlalchemy.orm import relationship
-from .base import Base, GUID, generate_uuid
+
+from .base import GUID, Base, generate_uuid
 
 
 class LoginAttempt(Base):

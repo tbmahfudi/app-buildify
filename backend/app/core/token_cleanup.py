@@ -6,10 +6,12 @@ Run this periodically (e.g., via cron job or background task) to prevent the bla
 from growing indefinitely.
 """
 
-from datetime import datetime
-from sqlalchemy.orm import Session
-from ..models.token_blacklist import TokenBlacklist
 import logging
+from datetime import datetime
+
+from sqlalchemy.orm import Session
+
+from ..models.token_blacklist import TokenBlacklist
 
 logger = logging.getLogger(__name__)
 

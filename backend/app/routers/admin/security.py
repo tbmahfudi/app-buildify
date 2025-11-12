@@ -8,26 +8,32 @@ Provides endpoints for managing:
 - Login attempts audit
 - Notification configuration
 """
-from typing import List, Optional
 from datetime import datetime
+from typing import List, Optional
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
-from app.core.dependencies import get_db, has_permission, get_current_user
-from app.models.security_policy import SecurityPolicy
+from app.core.dependencies import get_current_user, get_db, has_permission
 from app.models.account_lockout import AccountLockout
-from app.models.user_session import UserSession
 from app.models.login_attempt import LoginAttempt
 from app.models.notification_config import NotificationConfig
 from app.models.notification_queue import NotificationQueue
+from app.models.security_policy import SecurityPolicy
 from app.models.user import User
+from app.models.user_session import UserSession
 from app.schemas.security import (
-    SecurityPolicyResponse, SecurityPolicyCreate, SecurityPolicyUpdate,
-    LockedAccountResponse, UnlockAccountRequest,
-    UserSessionResponse, RevokeSessionRequest,
+    LockedAccountResponse,
     LoginAttemptResponse,
-    NotificationConfigResponse, NotificationConfigUpdate,
-    NotificationQueueResponse
+    NotificationConfigResponse,
+    NotificationConfigUpdate,
+    NotificationQueueResponse,
+    RevokeSessionRequest,
+    SecurityPolicyCreate,
+    SecurityPolicyResponse,
+    SecurityPolicyUpdate,
+    UnlockAccountRequest,
+    UserSessionResponse,
 )
 
 router = APIRouter(prefix="/admin/security", tags=["admin", "security"])
