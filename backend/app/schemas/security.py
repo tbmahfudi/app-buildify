@@ -1,9 +1,10 @@
 """
 Pydantic schemas for security administration.
 """
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_serializer
 from typing import Optional, List, Dict, Any
 from datetime import datetime
+from uuid import UUID
 
 
 # ==================== Security Policy Schemas ====================
@@ -98,6 +99,11 @@ class SecurityPolicyResponse(SecurityPolicyBase):
     created_by: Optional[str]
     updated_by: Optional[str]
 
+    @field_serializer('id', 'created_by', 'updated_by')
+    def serialize_uuid(self, value: UUID, _info) -> Optional[str]:
+        """Convert UUID to string for JSON serialization."""
+        return str(value) if value else None
+
     class Config:
         from_attributes = True
 
@@ -134,6 +140,11 @@ class UserSessionResponse(BaseModel):
     expires_at: datetime
     revoked_at: Optional[datetime]
 
+    @field_serializer('id', 'user_id')
+    def serialize_uuid(self, value: UUID, _info) -> str:
+        """Convert UUID to string for JSON serialization."""
+        return str(value) if value else None
+
     class Config:
         from_attributes = True
 
@@ -153,6 +164,11 @@ class LoginAttemptResponse(BaseModel):
     success: bool
     failure_reason: Optional[str]
     created_at: datetime
+
+    @field_serializer('id', 'user_id')
+    def serialize_uuid(self, value: UUID, _info) -> Optional[str]:
+        """Convert UUID to string for JSON serialization."""
+        return str(value) if value else None
 
     class Config:
         from_attributes = True
@@ -247,6 +263,11 @@ class NotificationConfigResponse(NotificationConfigBase):
     created_by: Optional[str]
     updated_by: Optional[str]
 
+    @field_serializer('id', 'created_by', 'updated_by')
+    def serialize_uuid(self, value: UUID, _info) -> Optional[str]:
+        """Convert UUID to string for JSON serialization."""
+        return str(value) if value else None
+
     class Config:
         from_attributes = True
 
@@ -272,6 +293,11 @@ class NotificationQueueResponse(BaseModel):
     sent_at: Optional[datetime]
     created_at: datetime
     updated_at: Optional[datetime]
+
+    @field_serializer('id', 'tenant_id', 'user_id')
+    def serialize_uuid(self, value: UUID, _info) -> Optional[str]:
+        """Convert UUID to string for JSON serialization."""
+        return str(value) if value else None
 
     class Config:
         from_attributes = True
