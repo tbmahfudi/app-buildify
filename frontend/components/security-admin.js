@@ -10,7 +10,8 @@
 
 class SecurityAdmin {
   constructor() {
-    this.apiBase = 'http://localhost:8000';
+    // Use /api/v1 prefix to work with nginx proxy
+    this.apiBase = '/api/v1';
     this.currentTab = 'policies';
     this.data = {
       policies: [],
@@ -28,7 +29,9 @@ class SecurityAdmin {
   }
 
   async loadAllData() {
-    const token = localStorage.getItem('access_token');
+    // Get token from localStorage (stored by api.js)
+    const tokens = JSON.parse(localStorage.getItem('tokens') || '{}');
+    const token = tokens.access;
     const headers = { 'Authorization': `Bearer ${token}` };
 
     try {
@@ -362,11 +365,12 @@ class SecurityAdmin {
     if (!reason) return;
 
     try {
+      const tokens = JSON.parse(localStorage.getItem('tokens') || '{}');
       const response = await fetch(`${this.apiBase}/admin/security/unlock-account`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+          'Authorization': `Bearer ${tokens.access}`
         },
         body: JSON.stringify({ user_id: userId, reason })
       });
@@ -387,11 +391,12 @@ class SecurityAdmin {
     if (!confirm('Are you sure you want to revoke this session?')) return;
 
     try {
+      const tokens = JSON.parse(localStorage.getItem('tokens') || '{}');
       const response = await fetch(`${this.apiBase}/admin/security/sessions/revoke`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+          'Authorization': `Bearer ${tokens.access}`
         },
         body: JSON.stringify({ session_id: sessionId })
       });
@@ -422,10 +427,11 @@ class SecurityAdmin {
     if (!confirm('Are you sure you want to delete this policy?')) return;
 
     try {
+      const tokens = JSON.parse(localStorage.getItem('tokens') || '{}');
       const response = await fetch(`${this.apiBase}/admin/security/policies/${policyId}`, {
         method: 'DELETE',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+          'Authorization': `Bearer ${tokens.access}`
         }
       });
 

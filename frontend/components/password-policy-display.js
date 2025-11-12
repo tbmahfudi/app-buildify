@@ -7,7 +7,8 @@
 
 class PasswordPolicyDisplay {
   constructor() {
-    this.apiBase = 'http://localhost:8000';
+    // Use /api/v1 prefix to work with nginx proxy
+    this.apiBase = '/api/v1';
     this.policy = null;
   }
 
