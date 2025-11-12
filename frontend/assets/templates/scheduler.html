@@ -1,0 +1,326 @@
+<div class="space-y-6">
+  <!-- Header -->
+  <div class="flex justify-between items-center">
+    <div>
+      <h2 class="text-2xl font-bold text-gray-900">Scheduler Management</h2>
+      <p class="text-gray-600 text-sm mt-1">Configure and manage scheduled jobs at system, tenant, company, or branch level</p>
+    </div>
+    <div class="flex gap-3">
+      <button id="btn-create-config" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center gap-2">
+        <i class="ph-duotone ph-gear"></i>
+        New Configuration
+      </button>
+      <button id="btn-create-job" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition flex items-center gap-2">
+        <i class="ph-duotone ph-plus"></i>
+        New Job
+      </button>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="border-b border-gray-200">
+    <nav class="flex space-x-8">
+      <button class="scheduler-tab-btn py-4 px-1 border-b-2 border-blue-600 text-blue-600 font-medium" data-tab="configurations">
+        Configurations
+      </button>
+      <button class="scheduler-tab-btn py-4 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 font-medium" data-tab="jobs">
+        Scheduled Jobs
+      </button>
+      <button class="scheduler-tab-btn py-4 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 font-medium" data-tab="executions">
+        Execution History
+      </button>
+    </nav>
+  </div>
+
+  <!-- Configurations Tab -->
+  <div id="tab-configurations" class="scheduler-tab-content">
+    <div class="bg-white rounded-lg shadow-sm">
+      <div class="p-6 border-b border-gray-200">
+        <div class="flex justify-between items-center">
+          <h3 class="text-lg font-semibold text-gray-900">Configuration Hierarchy</h3>
+          <div class="flex gap-2">
+            <select id="filter-config-level" class="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option value="">All Levels</option>
+              <option value="system">System</option>
+              <option value="tenant">Tenant</option>
+              <option value="company">Company</option>
+              <option value="branch">Branch</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full">
+          <thead class="bg-gray-50">
+            <tr>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Level</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Max Jobs</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Retries</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="configurations-table-body" class="bg-white divide-y divide-gray-200">
+            <!-- Configurations will be loaded here -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Jobs Tab -->
+  <div id="tab-jobs" class="scheduler-tab-content hidden">
+    <div class="bg-white rounded-lg shadow-sm">
+      <div class="p-6 border-b border-gray-200">
+        <div class="flex justify-between items-center">
+          <h3 class="text-lg font-semibold text-gray-900">Scheduled Jobs</h3>
+          <div class="flex gap-2">
+            <select id="filter-job-type" class="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option value="">All Types</option>
+              <option value="report_generation">Report Generation</option>
+              <option value="data_sync">Data Sync</option>
+              <option value="notification_batch">Notification Batch</option>
+              <option value="backup">Backup</option>
+              <option value="cleanup">Cleanup</option>
+              <option value="webhook">Webhook</option>
+              <option value="api_call">API Call</option>
+              <option value="custom">Custom</option>
+            </select>
+            <select id="filter-job-status" class="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option value="">All Status</option>
+              <option value="true">Active</option>
+              <option value="false">Inactive</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full">
+          <thead class="bg-gray-50">
+            <tr>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Schedule</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Run</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Next Run</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Success/Fail</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="jobs-table-body" class="bg-white divide-y divide-gray-200">
+            <!-- Jobs will be loaded here -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Executions Tab -->
+  <div id="tab-executions" class="scheduler-tab-content hidden">
+    <div class="bg-white rounded-lg shadow-sm">
+      <div class="p-6 border-b border-gray-200">
+        <div class="flex justify-between items-center">
+          <h3 class="text-lg font-semibold text-gray-900">Execution History</h3>
+          <div class="flex gap-2">
+            <select id="filter-execution-job" class="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option value="">All Jobs</option>
+              <!-- Jobs will be populated here -->
+            </select>
+            <select id="filter-execution-status" class="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option value="">All Status</option>
+              <option value="pending">Pending</option>
+              <option value="running">Running</option>
+              <option value="completed">Completed</option>
+              <option value="failed">Failed</option>
+              <option value="cancelled">Cancelled</option>
+              <option value="skipped">Skipped</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full">
+          <thead class="bg-gray-50">
+            <tr>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Job</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Scheduled</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Started</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Duration</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Retries</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="executions-table-body" class="bg-white divide-y divide-gray-200">
+            <!-- Executions will be loaded here -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Create/Edit Configuration -->
+<div id="modal-config" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+  <div class="bg-white rounded-lg max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+    <div class="p-6 border-b border-gray-200">
+      <h3 class="text-xl font-semibold text-gray-900" id="modal-config-title">Create Configuration</h3>
+    </div>
+    <form id="form-config" class="p-6 space-y-4">
+      <input type="hidden" id="config-id">
+
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">Configuration Level</label>
+          <select id="config-level" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="system">System</option>
+            <option value="tenant">Tenant</option>
+            <option value="company">Company</option>
+            <option value="branch">Branch</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">Name</label>
+          <input type="text" id="config-name" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-2">Description</label>
+        <textarea id="config-description" rows="2" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+      </div>
+
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">Max Concurrent Jobs</label>
+          <input type="number" id="config-max-jobs" value="5" min="1" max="100" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">Default Timezone</label>
+          <input type="text" id="config-timezone" value="UTC" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+        </div>
+      </div>
+
+      <div class="grid grid-cols-3 gap-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">Max Retries</label>
+          <input type="number" id="config-max-retries" value="3" min="0" max="10" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">Retry Delay (seconds)</label>
+          <input type="number" id="config-retry-delay" value="300" min="0" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">Job Timeout (seconds)</label>
+          <input type="number" id="config-timeout" value="3600" min="60" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+        </div>
+      </div>
+
+      <div class="flex items-center gap-6">
+        <label class="flex items-center gap-2">
+          <input type="checkbox" id="config-enabled" checked class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+          <span class="text-sm text-gray-700">Enabled</span>
+        </label>
+        <label class="flex items-center gap-2">
+          <input type="checkbox" id="config-notify-failure" checked class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+          <span class="text-sm text-gray-700">Notify on Failure</span>
+        </label>
+        <label class="flex items-center gap-2">
+          <input type="checkbox" id="config-notify-success" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+          <span class="text-sm text-gray-700">Notify on Success</span>
+        </label>
+      </div>
+
+      <div class="flex justify-end gap-3 pt-4 border-t border-gray-200">
+        <button type="button" id="btn-cancel-config" class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition">
+          Cancel
+        </button>
+        <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+          Save Configuration
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal: Create/Edit Job -->
+<div id="modal-job" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+  <div class="bg-white rounded-lg max-w-3xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+    <div class="p-6 border-b border-gray-200">
+      <h3 class="text-xl font-semibold text-gray-900" id="modal-job-title">Create Scheduled Job</h3>
+    </div>
+    <form id="form-job" class="p-6 space-y-4">
+      <input type="hidden" id="job-id">
+
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">Job Name</label>
+          <input type="text" id="job-name" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">Job Type</label>
+          <select id="job-type" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="report_generation">Report Generation</option>
+            <option value="data_sync">Data Sync</option>
+            <option value="notification_batch">Notification Batch</option>
+            <option value="backup">Backup</option>
+            <option value="cleanup">Cleanup</option>
+            <option value="webhook">Webhook</option>
+            <option value="api_call">API Call</option>
+            <option value="custom">Custom</option>
+          </select>
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-2">Description</label>
+        <textarea id="job-description" rows="2" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+      </div>
+
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">Configuration</label>
+          <select id="job-config-id" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <!-- Configurations will be loaded here -->
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">Timezone</label>
+          <input type="text" id="job-timezone" value="UTC" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-2">CRON Expression</label>
+        <input type="text" id="job-cron" placeholder="e.g., 0 9 * * 1 (every Monday at 9 AM)" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+        <p class="text-xs text-gray-500 mt-1">Leave empty for interval-based scheduling</p>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-2">Interval (seconds)</label>
+        <input type="number" id="job-interval" min="60" placeholder="e.g., 3600 for every hour" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+        <p class="text-xs text-gray-500 mt-1">Alternative to CRON expression</p>
+      </div>
+
+      <div class="flex items-center gap-4">
+        <label class="flex items-center gap-2">
+          <input type="checkbox" id="job-active" checked class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+          <span class="text-sm text-gray-700">Active</span>
+        </label>
+      </div>
+
+      <div class="flex justify-end gap-3 pt-4 border-t border-gray-200">
+        <button type="button" id="btn-cancel-job" class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition">
+          Cancel
+        </button>
+        <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition">
+          Save Job
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="/assets/js/scheduler.js"></script>

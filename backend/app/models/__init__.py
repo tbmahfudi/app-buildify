@@ -73,6 +73,14 @@ from .notification_queue import NotificationQueue
 from .notification_config import NotificationConfig
 from .password_reset_token import PasswordResetToken
 
+# Scheduler system
+from .scheduler import (
+    SchedulerConfig,
+    SchedulerJob,
+    SchedulerJobExecution,
+    SchedulerJobLog
+)
+
 # Export all models
 __all__ = [
     # Base
@@ -138,4 +146,10 @@ __all__ = [
     "NotificationQueue",
     "NotificationConfig",
     "PasswordResetToken",
+
+    # Scheduler system
+    "SchedulerConfig",
+    "SchedulerJob",
+    "SchedulerJobExecution",
+    "SchedulerJobLog",
 ]

@@ -28,6 +28,10 @@ structlog
 redis
 hiredis
 
+# Scheduler
+APScheduler>=3.10.0
+requests
+
 # Error Tracking (Optional)
 sentry-sdk[fastapi]
 
