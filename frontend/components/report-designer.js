@@ -541,8 +541,26 @@ export class ReportDesigner {
         try {
             const metadata = await metadataService.getMetadata(entityName);
 
-            // Extract fields from metadata
-            this.availableFields = metadata.fields || [];
+            // Extract fields from metadata - try form.fields first, then table.columns
+            const formFields = metadata.form?.fields || [];
+            const tableColumns = metadata.table?.columns || [];
+
+            // Prefer form fields as they have more complete information
+            if (formFields.length > 0) {
+                this.availableFields = formFields.map(field => ({
+                    name: field.field,
+                    label: field.title,
+                    type: field.type
+                }));
+            } else if (tableColumns.length > 0) {
+                this.availableFields = tableColumns.map(col => ({
+                    name: col.field,
+                    label: col.title,
+                    type: 'string'
+                }));
+            } else {
+                this.availableFields = [];
+            }
 
             // If we're on step 3 (columns), re-render to update dropdowns
             if (this.currentStep === 3) {
