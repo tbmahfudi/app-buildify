@@ -13,37 +13,61 @@ document.addEventListener('route:loaded', async (event) => {
   if (route === 'auth-policies') {
     console.log('Initializing Security Administration...');
     try {
-      // Load SecurityAdmin component script
-      const loadSecurityAdmin = () => {
+      // Function to wait for SecurityAdmin to be available
+      const waitForSecurityAdmin = () => {
         return new Promise((resolve, reject) => {
-          // Check if script is already loaded
-          if (document.querySelector('script[src="/components/security-admin.js"]')) {
-            resolve();
+          // Check if already loaded
+          if (window.securityAdmin) {
+            resolve(window.securityAdmin);
             return;
           }
 
-          const script = document.createElement('script');
-          script.src = '/components/security-admin.js';
-          script.type = 'text/javascript';
+          // Try to load the script if not present
+          if (!document.querySelector('script[src="/components/security-admin.js"]')) {
+            const script = document.createElement('script');
+            script.src = '/components/security-admin.js';
+            script.type = 'text/javascript';
 
-          script.onload = () => resolve();
-          script.onerror = () => reject(new Error('Failed to load SecurityAdmin script'));
+            script.onload = () => {
+              // Wait a bit for script to execute
+              setTimeout(() => {
+                if (window.securityAdmin) {
+                  resolve(window.securityAdmin);
+                } else {
+                  reject(new Error('SecurityAdmin script loaded but window.securityAdmin not found'));
+                }
+              }, 100);
+            };
 
-          document.head.appendChild(script);
+            script.onerror = () => {
+              reject(new Error('Failed to load SecurityAdmin script from /components/security-admin.js'));
+            };
+
+            document.head.appendChild(script);
+          } else {
+            // Script tag exists, wait for window.securityAdmin
+            let attempts = 0;
+            const checkInterval = setInterval(() => {
+              attempts++;
+              if (window.securityAdmin) {
+                clearInterval(checkInterval);
+                resolve(window.securityAdmin);
+              } else if (attempts > 20) {
+                // Waited 2 seconds
+                clearInterval(checkInterval);
+                reject(new Error('SecurityAdmin script tag exists but window.securityAdmin not initialized'));
+              }
+            }, 100);
+          }
         });
       };
 
-      // Load the script
-      await loadSecurityAdmin();
+      // Wait for SecurityAdmin to be available
+      const securityAdmin = await waitForSecurityAdmin();
 
-      // Access the global SecurityAdmin instance
-      if (window.securityAdmin) {
-        // Re-initialize for this container
-        await window.securityAdmin.init('security-admin-container');
-        console.log('Security Administration initialized successfully');
-      } else {
-        throw new Error('SecurityAdmin not found on window object');
-      }
+      // Initialize for this container
+      await securityAdmin.init('security-admin-container');
+      console.log('Security Administration initialized successfully');
     } catch (error) {
       console.error('Failed to initialize Security Administration:', error);
 

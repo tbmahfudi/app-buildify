@@ -68,12 +68,8 @@ class SecurityAdmin {
 
         <!-- Tabs -->
         <div class="bg-white border-b px-6">
-          <div class="flex gap-6">
-            ${this.renderTab('policies', 'shield-check', 'Policies', this.data.policies.length)}
-            ${this.renderTab('locked', 'lock', 'Locked Accounts', this.data.lockedAccounts.length)}
-            ${this.renderTab('sessions', 'devices', 'Active Sessions', this.data.sessions.length)}
-            ${this.renderTab('attempts', 'list-checks', 'Login Attempts', this.data.loginAttempts.length)}
-            ${this.renderTab('notifications', 'bell', 'Notifications', 0)}
+          <div id="tabButtons" class="flex gap-6">
+            ${this.renderTabButtons()}
           </div>
         </div>
 
@@ -355,8 +351,20 @@ class SecurityAdmin {
     `;
   }
 
+  renderTabButtons() {
+    return `
+      ${this.renderTab('policies', 'shield-check', 'Policies', this.data.policies.length)}
+      ${this.renderTab('locked', 'lock', 'Locked Accounts', this.data.lockedAccounts.length)}
+      ${this.renderTab('sessions', 'devices', 'Active Sessions', this.data.sessions.length)}
+      ${this.renderTab('attempts', 'list-checks', 'Login Attempts', this.data.loginAttempts.length)}
+      ${this.renderTab('notifications', 'bell', 'Notifications', 0)}
+    `;
+  }
+
   switchTab(tab) {
     this.currentTab = tab;
+    // Update both tab buttons and content
+    document.getElementById('tabButtons').innerHTML = this.renderTabButtons();
     document.getElementById('tabContent').innerHTML = this.renderTabContent();
   }
 
