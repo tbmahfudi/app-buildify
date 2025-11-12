@@ -1,8 +1,10 @@
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, field_serializer
 from typing import Optional, List, Dict, Any, Literal
 from datetime import datetime
 
-class AuditLogResponse(BaseModel):
+from .base import BaseResponse
+
+class AuditLogResponse(BaseResponse):
     """Audit log entry response"""
     id: str = Field(..., description="Audit log unique identifier")
     user_id: Optional[str] = Field(None, description="User ID who performed the action")
@@ -20,7 +22,11 @@ class AuditLogResponse(BaseModel):
     duration_ms: Optional[float] = Field(None, description="Operation duration in milliseconds")
     created_at: datetime = Field(..., description="Timestamp of the action")
 
-    model_config = ConfigDict(from_attributes=True)
+    @field_serializer('entity_id')
+    def serialize_entity_id(self, value, _info):
+        """Serialize entity_id which might be UUID."""
+        from .base import serialize_uuid_field
+        return serialize_uuid_field(value)
 
 class AuditLogCreate(BaseModel):
     """Create audit log entry"""

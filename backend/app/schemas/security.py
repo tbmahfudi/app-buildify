@@ -6,6 +6,8 @@ from typing import Optional, List, Dict, Any
 from datetime import datetime
 from uuid import UUID
 
+from .base import BaseResponse, serialize_uuid_field
+
 
 # ==================== Security Policy Schemas ====================
 
@@ -91,21 +93,13 @@ class SecurityPolicyUpdate(BaseModel):
     is_active: Optional[bool] = None
 
 
-class SecurityPolicyResponse(SecurityPolicyBase):
+class SecurityPolicyResponse(SecurityPolicyBase, BaseResponse):
     id: str
     is_active: bool
     created_at: datetime
     updated_at: Optional[datetime]
     created_by: Optional[str]
     updated_by: Optional[str]
-
-    @field_serializer('id', 'created_by', 'updated_by')
-    def serialize_uuid(self, value: UUID, _info) -> Optional[str]:
-        """Convert UUID to string for JSON serialization."""
-        return str(value) if value else None
-
-    class Config:
-        from_attributes = True
 
 
 # ==================== Locked Account Schemas ====================
@@ -127,7 +121,7 @@ class UnlockAccountRequest(BaseModel):
 
 # ==================== Session Schemas ====================
 
-class UserSessionResponse(BaseModel):
+class UserSessionResponse(BaseResponse):
     id: str
     user_id: str
     jti: str
@@ -140,14 +134,6 @@ class UserSessionResponse(BaseModel):
     expires_at: datetime
     revoked_at: Optional[datetime]
 
-    @field_serializer('id', 'user_id')
-    def serialize_uuid(self, value: UUID, _info) -> str:
-        """Convert UUID to string for JSON serialization."""
-        return str(value) if value else None
-
-    class Config:
-        from_attributes = True
-
 
 class RevokeSessionRequest(BaseModel):
     session_id: str
@@ -155,7 +141,7 @@ class RevokeSessionRequest(BaseModel):
 
 # ==================== Login Attempt Schemas ====================
 
-class LoginAttemptResponse(BaseModel):
+class LoginAttemptResponse(BaseResponse):
     id: str
     user_id: Optional[str]
     email: str
@@ -164,14 +150,6 @@ class LoginAttemptResponse(BaseModel):
     success: bool
     failure_reason: Optional[str]
     created_at: datetime
-
-    @field_serializer('id', 'user_id')
-    def serialize_uuid(self, value: UUID, _info) -> Optional[str]:
-        """Convert UUID to string for JSON serialization."""
-        return str(value) if value else None
-
-    class Config:
-        from_attributes = True
 
 
 # ==================== Notification Config Schemas ====================
@@ -255,7 +233,7 @@ class NotificationConfigUpdate(BaseModel):
     is_active: Optional[bool] = None
 
 
-class NotificationConfigResponse(NotificationConfigBase):
+class NotificationConfigResponse(NotificationConfigBase, BaseResponse):
     id: str
     is_active: bool
     created_at: datetime
@@ -263,18 +241,10 @@ class NotificationConfigResponse(NotificationConfigBase):
     created_by: Optional[str]
     updated_by: Optional[str]
 
-    @field_serializer('id', 'created_by', 'updated_by')
-    def serialize_uuid(self, value: UUID, _info) -> Optional[str]:
-        """Convert UUID to string for JSON serialization."""
-        return str(value) if value else None
-
-    class Config:
-        from_attributes = True
-
 
 # ==================== Notification Queue Schemas ====================
 
-class NotificationQueueResponse(BaseModel):
+class NotificationQueueResponse(BaseResponse):
     id: str
     tenant_id: Optional[str]
     user_id: Optional[str]
@@ -293,14 +263,6 @@ class NotificationQueueResponse(BaseModel):
     sent_at: Optional[datetime]
     created_at: datetime
     updated_at: Optional[datetime]
-
-    @field_serializer('id', 'tenant_id', 'user_id')
-    def serialize_uuid(self, value: UUID, _info) -> Optional[str]:
-        """Convert UUID to string for JSON serialization."""
-        return str(value) if value else None
-
-    class Config:
-        from_attributes = True
 
 
 # ==================== Password Policy Display (for users) ====================

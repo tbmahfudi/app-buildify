@@ -2,6 +2,8 @@ from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional, List
 from datetime import datetime
 
+from .base import BaseResponse
+
 # Company Schemas
 class CompanyBase(BaseModel):
     """Base company schema"""
@@ -24,13 +26,11 @@ class CompanyUpdate(BaseModel):
     code: Optional[str] = Field(None, max_length=32, description="Company code")
     name: Optional[str] = Field(None, max_length=255, description="Company name")
 
-class CompanyResponse(CompanyBase):
+class CompanyResponse(CompanyBase, BaseResponse):
     """Company response"""
     id: str = Field(..., description="Company unique identifier")
     created_at: datetime = Field(..., description="Creation timestamp")
     updated_at: Optional[datetime] = Field(None, description="Last update timestamp")
-
-    model_config = ConfigDict(from_attributes=True)
 
 # Branch Schemas
 class BranchBase(BaseModel):
@@ -56,13 +56,11 @@ class BranchUpdate(BaseModel):
     code: Optional[str] = Field(None, max_length=32, description="Branch code")
     name: Optional[str] = Field(None, max_length=255, description="Branch name")
 
-class BranchResponse(BranchBase):
+class BranchResponse(BranchBase, BaseResponse):
     """Branch response"""
     id: str = Field(..., description="Branch unique identifier")
     created_at: datetime = Field(..., description="Creation timestamp")
     updated_at: Optional[datetime] = Field(None, description="Last update timestamp")
-
-    model_config = ConfigDict(from_attributes=True)
 
 # Department Schemas
 class DepartmentBase(BaseModel):
@@ -91,13 +89,11 @@ class DepartmentUpdate(BaseModel):
     code: Optional[str] = Field(None, max_length=32, description="Department code")
     name: Optional[str] = Field(None, max_length=255, description="Department name")
 
-class DepartmentResponse(DepartmentBase):
+class DepartmentResponse(DepartmentBase, BaseResponse):
     """Department response"""
     id: str = Field(..., description="Department unique identifier")
     created_at: datetime = Field(..., description="Creation timestamp")
     updated_at: Optional[datetime] = Field(None, description="Last update timestamp")
-
-    model_config = ConfigDict(from_attributes=True)
 
 # List responses
 class CompanyListResponse(BaseModel):
