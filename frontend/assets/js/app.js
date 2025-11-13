@@ -330,6 +330,7 @@ async function loadMenuFromStatic() {
 /**
  * Convert backend menu format to frontend format
  * Backend uses 'children', frontend expects 'submenu'
+ * Preserves permission and role information for potential client-side checks
  */
 function convertBackendMenuFormat(menuItems) {
   return menuItems.map(item => {
@@ -340,6 +341,19 @@ function convertBackendMenuFormat(menuItems) {
       order: item.order,
       target: item.target || '_self'
     };
+
+    // Preserve RBAC information (already filtered by backend, but useful for client-side checks)
+    if (item.permission) {
+      converted.permission = item.permission;
+    }
+    if (item.required_roles) {
+      converted.roles = item.required_roles;  // Map to 'roles' for consistency with static menu format
+    }
+
+    // Preserve extra_data if present
+    if (item.extra_data) {
+      converted.extra_data = item.extra_data;
+    }
 
     // Convert children to submenu
     if (item.children && item.children.length > 0) {

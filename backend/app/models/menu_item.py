@@ -52,8 +52,8 @@ class MenuItem(Base):
     module_code = Column(String(100), nullable=True, index=True)  # e.g., "financial", "inventory"
     is_system = Column(Boolean, default=True, nullable=False)  # System vs custom menu
 
-    # Extensible metadata
-    metadata = Column(JSONB, nullable=True)  # Additional properties (badges, notifications, etc.)
+    # Extensible metadata (renamed to avoid DB keyword conflicts)
+    extra_data = Column(JSONB, nullable=True)  # Additional properties (badges, notifications, etc.)
 
     # Timestamps
     created_at = Column(DateTime, server_default=func.now(), nullable=False)
@@ -85,7 +85,7 @@ class MenuItem(Base):
             'target': self.target,
             'permission': self.permission,
             'required_roles': self.required_roles,
-            'metadata': self.metadata,
+            'extra_data': self.extra_data,
         }
 
         if include_children:

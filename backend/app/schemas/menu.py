@@ -20,7 +20,7 @@ class MenuItemBase(BaseModel):
     target: str = Field("_self", description="Link target (_self, _blank, modal)", max_length=50)
     is_active: bool = Field(True, description="Is menu item active")
     is_visible: bool = Field(True, description="Is menu item visible")
-    metadata: Optional[Dict[str, Any]] = Field(None, description="Additional metadata")
+    extra_data: Optional[Dict[str, Any]] = Field(None, description="Additional metadata and custom properties")
 
 
 class MenuItemCreate(MenuItemBase):
@@ -44,7 +44,7 @@ class MenuItemUpdate(BaseModel):
     parent_id: Optional[str] = None
     is_active: Optional[bool] = None
     is_visible: Optional[bool] = None
-    metadata: Optional[Dict[str, Any]] = None
+    extra_data: Optional[Dict[str, Any]] = None
 
 
 class MenuItemResponse(MenuItemBase):
@@ -71,7 +71,7 @@ class MenuItemTree(BaseModel):
     route: Optional[str] = None
     order: int
     target: str
-    metadata: Optional[Dict[str, Any]] = None
+    extra_data: Optional[Dict[str, Any]] = None
     children: Optional[List['MenuItemTree']] = Field(default_factory=list)
 
     class Config:

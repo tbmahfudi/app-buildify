@@ -54,8 +54,8 @@ def upgrade():
         sa.Column('module_code', sa.String(100), nullable=True, index=True),
         sa.Column('is_system', sa.Boolean(), nullable=False, default=True),
 
-        # Extensible metadata
-        sa.Column('metadata', sa.JSON(), nullable=True),
+        # Extensible metadata (extra_data to avoid DB keyword conflicts)
+        sa.Column('extra_data', sa.JSON(), nullable=True),
 
         # Timestamps
         sa.Column('created_at', sa.DateTime(), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),

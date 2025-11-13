@@ -239,9 +239,15 @@ class MenuService:
             'children': []
         }
 
-        # Add metadata if present
-        if item.metadata:
-            result['metadata'] = item.metadata
+        # Include RBAC information (useful for client-side checks and UI state)
+        if item.permission:
+            result['permission'] = item.permission
+        if item.required_roles:
+            result['required_roles'] = item.required_roles
+
+        # Add extra_data if present
+        if item.extra_data:
+            result['extra_data'] = item.extra_data
 
         # Add children
         children = []
