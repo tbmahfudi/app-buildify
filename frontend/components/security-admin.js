@@ -223,6 +223,9 @@ class SecurityAdmin {
   }
 
   renderPoliciesTab() {
+    // Defensive check to ensure policies is always an array
+    const policies = Array.isArray(this.data.policies) ? this.data.policies : [];
+
     return `
       <div>
         <div class="flex justify-between items-center mb-4">
@@ -235,7 +238,12 @@ class SecurityAdmin {
         </div>
 
         <div class="grid gap-4">
-          ${this.data.policies.map(policy => `
+          ${policies.length === 0 ? `
+            <div class="text-center py-12 text-gray-500">
+              <i class="ph-duotone ph-shield-star text-6xl mb-4"></i>
+              <p>No security policies configured</p>
+            </div>
+          ` : policies.map(policy => `
             <div class="bg-white rounded-lg shadow-sm border p-6">
               <div class="flex justify-between items-start mb-4">
                 <div>
@@ -281,11 +289,14 @@ class SecurityAdmin {
   }
 
   renderLockedAccountsTab() {
+    // Defensive check to ensure lockedAccounts is always an array
+    const lockedAccounts = Array.isArray(this.data.lockedAccounts) ? this.data.lockedAccounts : [];
+
     return `
       <div>
         <h2 class="text-xl font-semibold text-gray-900 mb-4">Locked User Accounts</h2>
 
-        ${this.data.lockedAccounts.length === 0 ? `
+        ${lockedAccounts.length === 0 ? `
           <div class="text-center py-12 text-gray-500">
             <i class="ph-duotone ph-lock-open text-6xl mb-4"></i>
             <p>No locked accounts</p>
@@ -303,7 +314,7 @@ class SecurityAdmin {
                 </tr>
               </thead>
               <tbody class="divide-y">
-                ${this.data.lockedAccounts.map(account => `
+                ${lockedAccounts.map(account => `
                   <tr>
                     <td class="px-6 py-4">${account.full_name || 'N/A'}</td>
                     <td class="px-6 py-4">${account.email}</td>
@@ -326,11 +337,14 @@ class SecurityAdmin {
   }
 
   renderSessionsTab() {
+    // Defensive check to ensure sessions is always an array
+    const sessions = Array.isArray(this.data.sessions) ? this.data.sessions : [];
+
     return `
       <div>
         <h2 class="text-xl font-semibold text-gray-900 mb-4">Active User Sessions</h2>
 
-        ${this.data.sessions.length === 0 ? `
+        ${sessions.length === 0 ? `
           <div class="text-center py-12 text-gray-500">
             <i class="ph-duotone ph-devices text-6xl mb-4"></i>
             <p>No active sessions</p>
@@ -348,7 +362,7 @@ class SecurityAdmin {
                 </tr>
               </thead>
               <tbody class="divide-y">
-                ${this.data.sessions.map(session => `
+                ${sessions.map(session => `
                   <tr>
                     <td class="px-6 py-4">
                       <div class="flex items-center gap-2">
@@ -376,23 +390,32 @@ class SecurityAdmin {
   }
 
   renderAttemptsTab() {
+    // Defensive check to ensure loginAttempts is always an array
+    const loginAttempts = Array.isArray(this.data.loginAttempts) ? this.data.loginAttempts : [];
+
     return `
       <div>
         <h2 class="text-xl font-semibold text-gray-900 mb-4">Recent Login Attempts</h2>
 
-        <div class="bg-white rounded-lg shadow-sm border">
-          <table class="w-full">
-            <thead class="bg-gray-50 border-b">
-              <tr>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">IP Address</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Reason</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Time</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y">
-              ${this.data.loginAttempts.map(attempt => `
+        ${loginAttempts.length === 0 ? `
+          <div class="text-center py-12 text-gray-500">
+            <i class="ph-duotone ph-list-checks text-6xl mb-4"></i>
+            <p>No login attempts recorded</p>
+          </div>
+        ` : `
+          <div class="bg-white rounded-lg shadow-sm border">
+            <table class="w-full">
+              <thead class="bg-gray-50 border-b">
+                <tr>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">IP Address</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Reason</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Time</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y">
+                ${loginAttempts.map(attempt => `
                 <tr>
                   <td class="px-6 py-4">${attempt.email}</td>
                   <td class="px-6 py-4 text-sm text-gray-600">${attempt.ip_address || 'N/A'}</td>
@@ -406,9 +429,10 @@ class SecurityAdmin {
                   <td class="px-6 py-4 text-sm text-gray-600">${new Date(attempt.created_at).toLocaleString()}</td>
                 </tr>
               `).join('')}
-            </tbody>
-          </table>
-        </div>
+              </tbody>
+            </table>
+          </div>
+        `}
       </div>
     `;
   }
@@ -457,11 +481,17 @@ class SecurityAdmin {
   }
 
   renderTabButtons() {
+    // Defensive checks to ensure all data properties are arrays
+    const policies = Array.isArray(this.data.policies) ? this.data.policies : [];
+    const lockedAccounts = Array.isArray(this.data.lockedAccounts) ? this.data.lockedAccounts : [];
+    const sessions = Array.isArray(this.data.sessions) ? this.data.sessions : [];
+    const loginAttempts = Array.isArray(this.data.loginAttempts) ? this.data.loginAttempts : [];
+
     return `
-      ${this.renderTab('policies', 'shield-check', 'Policies', this.data.policies.length)}
-      ${this.renderTab('locked', 'lock', 'Locked Accounts', this.data.lockedAccounts.length)}
-      ${this.renderTab('sessions', 'devices', 'Active Sessions', this.data.sessions.length)}
-      ${this.renderTab('attempts', 'list-checks', 'Login Attempts', this.data.loginAttempts.length)}
+      ${this.renderTab('policies', 'shield-check', 'Policies', policies.length)}
+      ${this.renderTab('locked', 'lock', 'Locked Accounts', lockedAccounts.length)}
+      ${this.renderTab('sessions', 'devices', 'Active Sessions', sessions.length)}
+      ${this.renderTab('attempts', 'list-checks', 'Login Attempts', loginAttempts.length)}
       ${this.renderTab('notifications', 'bell', 'Notifications', 0)}
     `;
   }
