@@ -10,6 +10,7 @@ class PasswordPolicyDisplay {
     // Use /api/v1 prefix to work with nginx proxy
     this.apiBase = '/api/v1';
     this.policy = null;
+    this.loadError = null;
   }
 
   /**
@@ -29,22 +30,47 @@ class PasswordPolicyDisplay {
     try {
       // In a real implementation, fetch policy for current user's tenant
       const response = await fetch(`${this.apiBase}/auth/password-policy`);
-      if (response.ok) {
-        this.policy = await response.json();
+
+      if (!response.ok) {
+        // Handle specific error codes
+        if (response.status === 403) {
+          this.loadError = 'Access forbidden - you don\'t have permission to access password policy settings';
+        } else if (response.status === 401) {
+          this.loadError = 'Unauthorized - please log in again';
+        } else if (response.status === 404) {
+          this.loadError = 'Password policy not found';
+        } else {
+          this.loadError = `HTTP ${response.status}: ${response.statusText}`;
+        }
+        console.warn('Failed to load password policy:', this.loadError);
+        // Use sensible defaults if fetch fails
+        this.policy = this.getDefaultPolicy();
+        return;
       }
+
+      this.policy = await response.json();
+      this.loadError = null;
     } catch (error) {
       console.error('Failed to load password policy:', error);
+      this.loadError = error.message || 'Failed to load password policy';
       // Use sensible defaults if fetch fails
-      this.policy = {
-        min_length: 12,
-        require_uppercase: true,
-        require_lowercase: true,
-        require_digit: true,
-        require_special_char: true,
-        expiration_days: 90,
-        history_count: 5
-      };
+      this.policy = this.getDefaultPolicy();
     }
+  }
+
+  /**
+   * Get default password policy
+   */
+  getDefaultPolicy() {
+    return {
+      min_length: 12,
+      require_uppercase: true,
+      require_lowercase: true,
+      require_digit: true,
+      require_special_char: true,
+      expiration_days: 90,
+      history_count: 5
+    };
   }
 
   /**
@@ -56,7 +82,22 @@ class PasswordPolicyDisplay {
 
     const requirements = this.buildRequirements();
 
+    // Show warning if policy was loaded with an error
+    const warningBanner = this.loadError ? `
+      <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-3">
+        <div class="flex items-start gap-2">
+          <i class="ph ph-warning text-yellow-600 text-lg flex-shrink-0 mt-0.5"></i>
+          <div class="flex-1">
+            <p class="text-sm text-yellow-800">
+              <strong>Note:</strong> ${this.loadError}. Showing default password requirements.
+            </p>
+          </div>
+        </div>
+      </div>
+    ` : '';
+
     container.innerHTML = `
+      ${warningBanner}
       <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
         <div class="flex items-start gap-3">
           <i class="ph-duotone ph-info text-blue-600 text-2xl flex-shrink-0"></i>

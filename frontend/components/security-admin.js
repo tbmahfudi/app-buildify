@@ -20,6 +20,7 @@ class SecurityAdmin {
       loginAttempts: [],
       notificationConfig: null
     };
+    this.loadError = null; // Track if there was a load error
   }
 
   async init(containerId) {
@@ -34,27 +35,131 @@ class SecurityAdmin {
     const token = tokens.access;
     const headers = { 'Authorization': `Bearer ${token}` };
 
+    // Helper to fetch and handle errors properly
+    const fetchWithErrorHandling = async (url) => {
+      try {
+        const response = await fetch(url, { headers });
+
+        // Check if response is ok before parsing
+        if (!response.ok) {
+          // Handle specific error codes
+          if (response.status === 403) {
+            throw new Error('Access forbidden - you don\'t have permission to access this resource');
+          } else if (response.status === 401) {
+            throw new Error('Unauthorized - please log in again');
+          } else if (response.status === 404) {
+            throw new Error('Resource not found');
+          } else {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          }
+        }
+
+        return await response.json();
+      } catch (error) {
+        console.error(`Failed to fetch ${url}:`, error.message);
+        throw error; // Re-throw to be caught by outer try-catch
+      }
+    };
+
     try {
+      this.loadError = null; // Clear any previous errors
+
       const [policies, locked, sessions, attempts, notifConfig] = await Promise.all([
-        fetch(`${this.apiBase}/admin/security/policies`, { headers }).then(r => r.json()).catch(() => []),
-        fetch(`${this.apiBase}/admin/security/locked-accounts`, { headers }).then(r => r.json()).catch(() => []),
-        fetch(`${this.apiBase}/admin/security/sessions?limit=50`, { headers }).then(r => r.json()).catch(() => []),
-        fetch(`${this.apiBase}/admin/security/login-attempts?limit=50`, { headers }).then(r => r.json()).catch(() => []),
-        fetch(`${this.apiBase}/admin/security/notification-config`, { headers }).then(r => r.json()).catch(() => [])
+        fetchWithErrorHandling(`${this.apiBase}/admin/security/policies`),
+        fetchWithErrorHandling(`${this.apiBase}/admin/security/locked-accounts`),
+        fetchWithErrorHandling(`${this.apiBase}/admin/security/sessions?limit=50`),
+        fetchWithErrorHandling(`${this.apiBase}/admin/security/login-attempts?limit=50`),
+        fetchWithErrorHandling(`${this.apiBase}/admin/security/notification-config`)
       ]);
 
-      this.data.policies = policies;
-      this.data.lockedAccounts = locked;
-      this.data.sessions = sessions;
-      this.data.loginAttempts = attempts;
-      this.data.notificationConfig = notifConfig[0] || null;
+      this.data.policies = Array.isArray(policies) ? policies : [];
+      this.data.lockedAccounts = Array.isArray(locked) ? locked : [];
+      this.data.sessions = Array.isArray(sessions) ? sessions : [];
+      this.data.loginAttempts = Array.isArray(attempts) ? attempts : [];
+      this.data.notificationConfig = Array.isArray(notifConfig) ? (notifConfig[0] || null) : (notifConfig || null);
     } catch (error) {
       console.error('Failed to load security data:', error);
+      this.loadError = error.message || 'Failed to load security data';
+
+      // Set default empty values to prevent rendering errors
+      this.data.policies = [];
+      this.data.lockedAccounts = [];
+      this.data.sessions = [];
+      this.data.loginAttempts = [];
+      this.data.notificationConfig = null;
     }
   }
 
   render() {
     const container = document.getElementById(this.containerId);
+
+    // Show error state if data failed to load
+    if (this.loadError) {
+      const is403 = this.loadError.toLowerCase().includes('forbidden');
+      const is401 = this.loadError.toLowerCase().includes('unauthorized');
+
+      container.innerHTML = `
+        <div class="h-full flex items-center justify-center bg-gray-50 p-6">
+          <div class="max-w-2xl w-full">
+            <div class="bg-red-50 border-l-4 border-red-500 p-6 rounded-lg shadow-lg">
+              <div class="flex items-start gap-4">
+                <i class="ph-duotone ph-${is403 ? 'lock' : is401 ? 'sign-in' : 'warning-circle'} text-red-500 text-4xl flex-shrink-0"></i>
+                <div class="flex-1">
+                  <h3 class="text-xl font-bold text-red-800 mb-2">
+                    ${is403 ? 'Access Forbidden' : is401 ? 'Authentication Required' : 'Failed to Load Security Data'}
+                  </h3>
+
+                  <p class="text-red-700 mb-4">
+                    ${this.loadError}
+                  </p>
+
+                  ${is403 ? `
+                    <p class="text-sm text-red-600 mb-4">
+                      You need administrator privileges to access security administration features.
+                      Please contact your system administrator if you believe you should have access.
+                    </p>
+                  ` : ''}
+
+                  ${is401 ? `
+                    <p class="text-sm text-red-600 mb-4">
+                      Your session may have expired. Please log in again to continue.
+                    </p>
+                  ` : ''}
+
+                  <div class="flex gap-3">
+                    <button
+                      onclick="window.location.hash = 'dashboard'"
+                      class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition flex items-center gap-2 shadow">
+                      <i class="ph ph-house"></i>
+                      Go to Dashboard
+                    </button>
+
+                    ${!is403 ? `
+                      <button
+                        onclick="window.location.reload()"
+                        class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition flex items-center gap-2 shadow">
+                        <i class="ph ph-arrow-clockwise"></i>
+                        Retry
+                      </button>
+                    ` : ''}
+
+                    <button
+                      onclick="history.back()"
+                      class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition flex items-center gap-2">
+                      <i class="ph ph-arrow-left"></i>
+                      Go Back
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+      return;
+    }
+
+    // Normal render when data loaded successfully
     container.innerHTML = `
       <div class="h-full flex flex-col bg-gray-50">
         <!-- Header -->
