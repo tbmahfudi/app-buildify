@@ -9,7 +9,7 @@ import './settings.js';
 import './profile-page.js';
 import './audit-enhanced.js';
 import './showcase.js';
-import './modules.js';
+import './module-page.js';
 import './rbac-page.js';
 import './auth-policies-page.js';
 import './sample-reports-dashboards-page.js';
