@@ -1,0 +1,183 @@
+================================================================================
+                    APP-BUILDIFY CODEBASE - FILE INDEX
+================================================================================
+
+DOCUMENTATION FILES
+====================
+/home/user/app-buildify/docs/README.md
+/home/user/app-buildify/docs/ARCHITECTURE.md
+/home/user/app-buildify/docs/FUNCTIONAL_SPECIFICATION.md
+/home/user/app-buildify/docs/TECHNICAL_SPECIFICATION.md
+/home/user/app-buildify/docs/MODULE_DEVELOPMENT_GUIDE.md
+/home/user/app-buildify/docs/CHANGELOG.md
+/home/user/app-buildify/docs/DATABASE_MIGRATIONS.md
+
+GENERATED ANALYSIS DOCUMENTS
+=============================
+/home/user/app-buildify/CODEBASE_ANALYSIS.md (2800+ lines - COMPREHENSIVE)
+/home/user/app-buildify/MENU_RBAC_QUICK_REFERENCE.md (500+ lines - QUICK LOOKUP)
+/home/user/app-buildify/FILE_INDEX.txt (THIS FILE)
+
+FRONTEND - MENU & NAVIGATION
+=============================
+/home/user/app-buildify/frontend/config/menu.json
+/home/user/app-buildify/frontend/assets/js/app.js
+/home/user/app-buildify/frontend/assets/js/rbac.js
+/home/user/app-buildify/frontend/assets/js/layout/flex-sidebar.js
+/home/user/app-buildify/frontend/assets/js/router.js
+
+FRONTEND - MODULE SYSTEM
+========================
+/home/user/app-buildify/frontend/assets/js/core/module-system/base-module.js
+/home/user/app-buildify/frontend/assets/js/core/module-system/module-loader.js
+/home/user/app-buildify/frontend/assets/js/core/module-system/module-registry.js
+/home/user/app-buildify/frontend/assets/js/module-manager.js
+/home/user/app-buildify/frontend/assets/js/module-manager-enhanced.js
+
+FRONTEND - FINANCIAL MODULE
+===========================
+/home/user/app-buildify/frontend/modules/financial/module.js
+/home/user/app-buildify/frontend/modules/financial/manifest.json
+
+FRONTEND - UI UTILITIES
+=======================
+/home/user/app-buildify/frontend/assets/js/auth-service.js
+/home/user/app-buildify/frontend/assets/js/api.js
+/home/user/app-buildify/frontend/assets/js/ui-utils.js (toast, loading, etc)
+
+BACKEND - RBAC & PERMISSIONS
+=============================
+/home/user/app-buildify/backend/app/routers/rbac.py (1058 lines)
+/home/user/app-buildify/backend/app/routers/auth.py (600+ lines)
+/home/user/app-buildify/backend/app/routers/modules.py (300+ lines)
+/home/user/app-buildify/backend/app/routers/admin/security.py
+/home/user/app-buildify/backend/app/core/dependencies.py (185 lines)
+/home/user/app-buildify/backend/app/core/auth.py
+/home/user/app-buildify/backend/app/core/config.py (settings)
+
+BACKEND - DATA MODELS
+=====================
+/home/user/app-buildify/backend/app/models/role.py
+/home/user/app-buildify/backend/app/models/permission.py
+/home/user/app-buildify/backend/app/models/group.py
+/home/user/app-buildify/backend/app/models/rbac_junctions.py (RolePermission, UserRole, UserGroup, GroupRole)
+/home/user/app-buildify/backend/app/models/user.py
+/home/user/app-buildify/backend/app/models/tenant.py
+/home/user/app-buildify/backend/app/models/company.py
+/home/user/app-buildify/backend/app/models/branch.py
+/home/user/app-buildify/backend/app/models/department.py
+/home/user/app-buildify/backend/app/models/base.py
+/home/user/app-buildify/backend/app/models/__init__.py
+
+BACKEND - SCHEMAS
+=================
+/home/user/app-buildify/backend/app/schemas/auth.py (UserResponse, LoginRequest, etc)
+/home/user/app-buildify/backend/app/schemas/security.py
+
+BACKEND - PERMISSIONS & INITIALIZATION
+=======================================
+/home/user/app-buildify/backend/app/scripts/seed_security_permissions.py
+/home/user/app-buildify/backend/modules/financial/permissions.py
+/home/user/app-buildify/backend/modules/financial/routers/accounts.py
+/home/user/app-buildify/backend/modules/financial/routers/invoices.py
+
+BACKEND - MODULE SYSTEM
+=======================
+/home/user/app-buildify/backend/app/core/module_system/ (backend module management)
+/home/user/app-buildify/backend/app/models/module_registry.py
+/home/user/app-buildify/backend/modules/financial/manifest.json
+
+================================================================================
+                           QUICK REFERENCE
+================================================================================
+
+WHERE TO FIND:
+  Menu configuration       → /frontend/config/menu.json
+  Menu loading logic       → /frontend/assets/js/app.js (lines 228-273)
+  RBAC functions           → /frontend/assets/js/rbac.js
+  RBAC API endpoints       → /backend/app/routers/rbac.py
+  Auth endpoints           → /backend/app/routers/auth.py
+  Permission model         → /backend/app/models/permission.py
+  Role model               → /backend/app/models/role.py
+  Permission checking      → /backend/app/core/dependencies.py
+  User model               → /backend/app/models/user.py
+  Module manifests         → /frontend/modules/{name}/manifest.json
+
+PERMISSION FORMAT:
+  resource:action:scope
+  Examples:
+    - financial:accounts:read:company
+    - users:create:tenant
+    - audit:export:tenant
+    - security_policy:manage:all
+
+MENU ITEM PROPERTIES:
+  title        - Display label (required)
+  route        - Hash route like "dashboard" (required)
+  icon         - Phosphor icon class (optional)
+  roles        - Array of required roles (optional)
+  permission   - Permission code required (optional)
+  submenu      - Array of child items (optional)
+
+KEY RBAC ENDPOINTS:
+  GET /rbac/roles
+  GET /rbac/permissions
+  GET /rbac/users/{user_id}/permissions
+  GET /rbac/users/{user_id}/roles
+  POST /rbac/users/{user_id}/roles
+  GET /rbac/organization-structure
+
+KEY FRONTEND FUNCTIONS:
+  hasPermission(code)      - Check permission
+  hasRole(role)            - Check role
+  filterMenuByRole(items)  - Filter menu items
+  canViewField(meta)       - Field visibility
+  canEditField(meta)       - Field editability
+
+================================================================================
+                         HOW TO USE THIS INDEX
+================================================================================
+
+1. For detailed documentation:
+   → Read CODEBASE_ANALYSIS.md (comprehensive overview)
+
+2. For quick lookups:
+   → Use MENU_RBAC_QUICK_REFERENCE.md (cheat sheet)
+
+3. To understand menu loading:
+   → Start at /frontend/config/menu.json, then /frontend/assets/js/app.js
+
+4. To understand RBAC:
+   → Check /backend/app/models/ for models
+   → Check /backend/app/routers/rbac.py for API
+   → Check /frontend/assets/js/rbac.js for frontend
+
+5. To add new permissions:
+   → Create permission in database
+   → Assign to roles via /rbac endpoints
+   → Add checks to frontend (hasPermission)
+   → Add checks to backend (has_permission dependency)
+
+6. To modify menu:
+   → Edit /frontend/config/menu.json for core menu
+   → Edit manifest.json for module menus
+   → Menus auto-filter at runtime based on permissions
+
+================================================================================
+                           FILE STATISTICS
+================================================================================
+
+Total Frontend Files Analyzed:        15+
+Total Backend Files Analyzed:         20+
+Total Documentation Files:             7
+Total Generated Analysis Documents:    2
+Total Lines of Code Reviewed:          5000+
+
+Key Statistics:
+  - /rbac.py: 1058 lines (RBAC API)
+  - /app.js: 900+ lines (Menu loading + App logic)
+  - /auth.py: 600+ lines (Authentication)
+  - /rbac.js: 306 lines (Frontend RBAC)
+  - /menu.json: 85 lines (Core menu)
+
+================================================================================
