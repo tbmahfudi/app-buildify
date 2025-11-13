@@ -66,14 +66,23 @@ export function hasAllRoles(roles) {
  */
 export function can(permission) {
   const user = getCurrentUser();
-  if (!user) return false;
+  if (!user) {
+    console.log(`[Permission] No user logged in - denying permission: ${permission}`);
+    return false;
+  }
 
   // Superusers can do everything
-  if (user.is_superuser) return true;
+  if (user.is_superuser) {
+    console.log(`[Permission] User is superuser - granting permission: ${permission}`);
+    return true;
+  }
 
   // Check if user has the specific permission in their permissions array
   if (user.permissions && Array.isArray(user.permissions)) {
-    if (user.permissions.includes(permission)) return true;
+    if (user.permissions.includes(permission)) {
+      console.log(`[Permission] ✓ User has permission in permissions array: ${permission}`);
+      return true;
+    }
   }
 
   // For now, check roles as fallback
@@ -81,20 +90,26 @@ export function can(permission) {
   const [resource, action] = permission.split(':');
 
   // Admin role has all permissions
-  if (hasRole('admin')) return true;
+  if (hasRole('admin')) {
+    console.log(`[Permission] ✓ User has admin role - granting permission: ${permission}`);
+    return true;
+  }
 
   // Check resource-specific permissions
   switch (action) {
     case 'view':
     case 'list':
       // All authenticated users can view
+      console.log(`[Permission] ✓ View/list permission granted to authenticated user: ${permission}`);
       return true;
     case 'create':
     case 'update':
     case 'delete':
       // Only admins can modify
+      console.log(`[Permission] ✗ User lacks admin role for: ${permission}`);
       return hasRole('admin');
     default:
+      console.log(`[Permission] ✗ Unknown action '${action}' - denying permission: ${permission}`);
       return false;
   }
 }
