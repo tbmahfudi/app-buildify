@@ -63,6 +63,10 @@ class ModuleUninstallRequest(BaseModel):
 class ModuleEnableRequest(BaseModel):
     """Request to enable a module for a tenant"""
     module_name: str = Field(..., description="Name of module to enable")
+    tenant_id: Optional[str] = Field(
+        None,
+        description="Tenant ID to enable module for (superuser only, defaults to current user's tenant)"
+    )
     configuration: Optional[Dict[str, Any]] = Field(
         None,
         description="Tenant-specific configuration (optional)"

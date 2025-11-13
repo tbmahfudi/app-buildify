@@ -331,22 +331,45 @@ async def enable_module(
     registry: ModuleRegistryService = Depends(get_module_registry)
 ):
     """
-    Enable a module for current tenant.
+    Enable a module for a tenant.
 
-    User must have appropriate permissions for their tenant.
+    If tenant_id is provided in request, it will be used (superuser only).
+    Otherwise, module will be enabled for current user's tenant.
 
     Args:
-        request_data: Module enable request with optional configuration
+        request_data: Module enable request with optional tenant_id and configuration
 
     Returns:
         Operation result
     """
-    # TODO: Add permission check for tenant-level module management
-    # For now, require superuser or tenant admin
+    # Determine which tenant to enable for
+    target_tenant_id = request_data.tenant_id
+
+    # If tenant_id is provided and differs from current user's tenant
+    if target_tenant_id and target_tenant_id != current_user.tenant_id:
+        # Only superusers can enable modules for other tenants
+        if not current_user.is_superuser:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Only superusers can enable modules for other tenants"
+            )
+    else:
+        # Use current user's tenant
+        target_tenant_id = current_user.tenant_id
+
+    # Verify tenant exists if enabling for a different tenant
+    if target_tenant_id != current_user.tenant_id:
+        from app.models.tenant import Tenant
+        tenant = db.query(Tenant).filter(Tenant.id == target_tenant_id).first()
+        if not tenant:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Tenant with ID '{target_tenant_id}' not found"
+            )
 
     success, error = registry.enable_module_for_tenant(
         request_data.module_name,
-        current_user.tenant_id,
+        target_tenant_id,
         current_user.id,
         request_data.configuration
     )
@@ -359,7 +382,7 @@ async def enable_module(
             user=current_user,
             entity_type="module",
             entity_id=request_data.module_name,
-            context_info={"tenant_id": current_user.tenant_id},
+            context_info={"tenant_id": target_tenant_id},
             request=http_request,
             status="failure",
             error_message=error
@@ -376,7 +399,7 @@ async def enable_module(
         user=current_user,
         entity_type="module",
         entity_id=request_data.module_name,
-        context_info={"tenant_id": current_user.tenant_id},
+        context_info={"tenant_id": target_tenant_id},
         request=http_request,
         status="success"
     )
