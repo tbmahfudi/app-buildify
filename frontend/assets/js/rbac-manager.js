@@ -258,11 +258,23 @@ async function loadDashboard() {
 
     console.log('API responses received:', { rolesRes, permissionsRes, groupsRes, usersRes });
 
-    // Check if responses are OK
-    if (!rolesRes.ok) throw new Error(`Roles API error: ${rolesRes.status}`);
-    if (!permissionsRes.ok) throw new Error(`Permissions API error: ${permissionsRes.status}`);
-    if (!groupsRes.ok) throw new Error(`Groups API error: ${groupsRes.status}`);
-    if (!usersRes.ok) throw new Error(`Users API error: ${usersRes.status}`);
+    // Check if responses are OK with specific error messages
+    const checkResponse = (res, name) => {
+      if (!res.ok) {
+        if (res.status === 403) {
+          throw new Error(`Access forbidden - you don't have permission to access ${name}`);
+        } else if (res.status === 401) {
+          throw new Error('Unauthorized - please log in again');
+        } else {
+          throw new Error(`${name} API error: HTTP ${res.status}`);
+        }
+      }
+    };
+
+    checkResponse(rolesRes, 'Roles');
+    checkResponse(permissionsRes, 'Permissions');
+    checkResponse(groupsRes, 'Groups');
+    checkResponse(usersRes, 'Users');
 
     const rolesData = await rolesRes.json();
     const permissionsData = await permissionsRes.json();
@@ -304,7 +316,7 @@ async function loadDashboard() {
 
   } catch (error) {
     console.error('Error loading dashboard:', error);
-    showToast('Failed to load dashboard', 'error');
+    showToast(error.message || 'Failed to load dashboard', 'error');
   }
 }
 
