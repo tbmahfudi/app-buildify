@@ -18,7 +18,7 @@ from sqlalchemy import text
 
 # revision identifiers, used by Alembic.
 revision = 'pg_r4'
-down_revision = 'pg_s1_add_scheduler_tables'
+down_revision = 'pg_s1'
 branch_labels = None
 depends_on = None
 
