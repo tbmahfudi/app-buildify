@@ -29,7 +29,9 @@ from app.schemas.module import (
     ModuleOperationResponse,
     AvailableModulesResponse,
     EnabledModulesResponse,
+    AllTenantsModulesResponse,
     TenantModuleInfo,
+    TenantModuleInfoWithTenant,
     ModuleManifest,
 )
 from pathlib import Path
@@ -135,6 +137,53 @@ async def list_enabled_module_names(
         List of module names
     """
     return registry.get_enabled_modules_for_tenant(current_user.tenant_id)
+
+
+@router.get("/enabled/all-tenants", response_model=AllTenantsModulesResponse)
+async def list_all_tenants_modules(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_superuser)
+):
+    """
+    List all enabled modules across all tenants (superuser only).
+
+    This endpoint is useful for system administrators to see which modules
+    are enabled for which tenants.
+
+    Returns:
+        List of enabled modules with tenant information
+    """
+    from app.models.tenant import Tenant
+
+    # Get all enabled modules with tenant information
+    tenant_modules = db.query(TenantModule, Tenant).join(
+        ModuleRegistry, TenantModule.module_id == ModuleRegistry.id
+    ).join(
+        Tenant, TenantModule.tenant_id == Tenant.id
+    ).filter(
+        TenantModule.is_enabled == True,
+        ModuleRegistry.is_installed == True
+    ).all()
+
+    return AllTenantsModulesResponse(
+        modules=[
+            TenantModuleInfoWithTenant(
+                module_name=tm.module.name,
+                display_name=tm.module.display_name,
+                version=tm.module.version,
+                is_enabled=tm.is_enabled,
+                is_configured=tm.is_configured,
+                configuration=tm.configuration,
+                enabled_at=tm.enabled_at,
+                last_used_at=tm.last_used_at,
+                tenant_id=str(tenant.id),
+                tenant_name=tenant.name,
+                tenant_code=tenant.code
+            )
+            for tm, tenant in tenant_modules
+        ],
+        total=len(tenant_modules)
+    )
 
 
 @router.get("/{module_name}", response_model=ModuleInfo)

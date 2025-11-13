@@ -98,6 +98,24 @@ class TenantModuleInfo(BaseModel):
         from_attributes = True
 
 
+class TenantModuleInfoWithTenant(BaseModel):
+    """Information about a module enabled for a tenant (includes tenant info for superuser)"""
+    module_name: str
+    display_name: str
+    version: str
+    is_enabled: bool
+    is_configured: bool
+    configuration: Optional[Dict[str, Any]] = None
+    enabled_at: Optional[datetime] = None
+    last_used_at: Optional[datetime] = None
+    tenant_id: str
+    tenant_name: str
+    tenant_code: str
+
+    class Config:
+        from_attributes = True
+
+
 class ModuleOperationResponse(BaseModel):
     """Response from module operation"""
     success: bool
@@ -115,6 +133,12 @@ class AvailableModulesResponse(BaseModel):
 class EnabledModulesResponse(BaseModel):
     """Response containing list of enabled modules for tenant"""
     modules: List[TenantModuleInfo]
+    total: int
+
+
+class AllTenantsModulesResponse(BaseModel):
+    """Response containing list of enabled modules across all tenants (superuser only)"""
+    modules: List[TenantModuleInfoWithTenant]
     total: int
 
 
