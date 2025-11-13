@@ -119,7 +119,7 @@ Updated `loadMenu()` function with:
 ### 5. Data Migration
 
 #### Seeder Script
-**File**: `/backend/app/scripts/seed_menu_items.py`
+**File**: `/backend/app/seeds/seed_menu_items.py`
 
 Script to import current `menu.json` into database:
 
@@ -179,8 +179,12 @@ This creates the `menu_items` table.
 
 ```bash
 cd /home/user/app-buildify/backend
-python -m app.scripts.seed_menu_items
+python -m app.seeds.seed_menu_items
 ```
+
+**Options**:
+- Default: Skip existing menu items (safe for re-runs)
+- `--clear` or `-c`: Delete existing menu items before seeding (fresh start)
 
 This will:
 1. Create menu management permissions
@@ -189,27 +193,52 @@ This will:
 
 **Expected Output**:
 ```
-============================================================
-Menu System Seeder
-============================================================
+🚀 Starting Menu System Seed...
+================================================================================
 
-🔐 Seeding menu management permissions...
-✨ Created permission: menu:read:tenant
-✨ Created permission: menu:create:tenant
-✨ Created permission: menu:update:tenant
-✨ Created permission: menu:delete:tenant
-✨ Created permission: menu:manage:tenant
-✅ Successfully seeded 5 menu permissions
+================================================================================
+MENU MANAGEMENT PERMISSIONS SETUP
+================================================================================
 
-🍔 Seeding menu items from menu.json...
-✨ Created menu item: dashboard (ID: ...)
-✨ Created menu item: administration (ID: ...)
-...
-✅ Successfully seeded 40 menu items
+📋 Step 1: Registering Menu Management permissions...
+  ✓ Created permission: menu:read:tenant
+  ✓ Created permission: menu:create:tenant
+  ✓ Created permission: menu:update:tenant
+  ✓ Created permission: menu:delete:tenant
+  ✓ Created permission: menu:manage:tenant
 
-============================================================
-✅ Menu system seeding complete!
-============================================================
+✓ Created 5 new permissions
+✓ Found 0 existing permissions
+
+================================================================================
+MENU ITEMS SEED
+================================================================================
+
+📋 Step 1: Loading menu.json...
+  ✓ Loaded 6 top-level menu items from menu.json
+
+📋 Step 2: Creating menu items...
+  ✓ Created menu item: dashboard (ID: ...)
+  ✓ Created menu item: administration (ID: ...)
+  ...
+
+✓ Successfully seeded 40 menu items
+
+================================================================================
+
+================================================================================
+✅ MENU SYSTEM SEED COMPLETE!
+================================================================================
+
+Summary:
+  • Permissions created: 5
+  • Menu items created: 40
+
+Next steps:
+  1. Assign 'menu:manage:tenant' permission to admin roles
+  2. Restart backend application
+  3. Test menu API: GET /api/v1/menu
+================================================================================
 ```
 
 ### Step 3: Assign Permissions to Roles
@@ -614,7 +643,7 @@ curl -X POST \
 - `/backend/app/routers/menu.py` - API endpoints
 - `/backend/app/alembic/versions/postgresql/pg_create_menu_items.py` - PostgreSQL migration
 - `/backend/app/alembic/versions/mysql/mysql_create_menu_items.py` - MySQL migration
-- `/backend/app/scripts/seed_menu_items.py` - Seeder script
+- `/backend/app/seeds/seed_menu_items.py` - Seeder script
 
 **Modified**:
 - `/backend/app/models/__init__.py` - Added MenuItem import
