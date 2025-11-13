@@ -165,6 +165,17 @@ def upgrade():
     op.alter_column('report_cache', 'report_definition_id_uuid', new_column_name='report_definition_id')
     op.create_primary_key('PRIMARY', 'report_cache', ['id'])
 
+    # Drop dashboard_widgets FK to report_definitions BEFORE dropping report_definitions PK
+    # This prevents constraint dependency errors
+    try:
+        # Try common MySQL FK naming patterns
+        op.drop_constraint('dashboard_widgets_ibfk_2', 'dashboard_widgets', type_='foreignkey')
+    except Exception:
+        try:
+            op.drop_constraint('fk_dashboard_widgets_report_definition', 'dashboard_widgets', type_='foreignkey')
+        except Exception as e:
+            print(f"Note: dashboard_widgets FK to report_definitions may not exist or has different name: {e}")
+
     # ReportDefinition
     op.drop_constraint('PRIMARY', 'report_definitions', type_='primary')
     op.drop_column('report_definitions', 'id')
@@ -332,6 +343,10 @@ def upgrade():
     op.create_foreign_key('dashboard_widgets_ibfk_1',
                          'dashboard_widgets', 'dashboard_pages',
                          ['page_id'], ['id'])
+    # Recreate dashboard_widgets -> report_definitions FK (dropped earlier to avoid constraint conflict)
+    op.create_foreign_key('dashboard_widgets_ibfk_2',
+                         'dashboard_widgets', 'report_definitions',
+                         ['report_definition_id'], ['id'])
     op.create_foreign_key('dashboard_shares_ibfk_1',
                          'dashboard_shares', 'dashboards',
                          ['dashboard_id'], ['id'])

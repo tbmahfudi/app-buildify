@@ -171,6 +171,13 @@ def upgrade():
     op.alter_column('report_cache', 'report_definition_id_uuid', new_column_name='report_definition_id')
     op.create_primary_key('report_cache_pkey', 'report_cache', ['id'])
 
+    # Drop dashboard_widgets FK to report_definitions BEFORE dropping report_definitions PK
+    # This prevents "constraint depends on index" error
+    try:
+        op.drop_constraint('dashboard_widgets_report_definition_id_fkey', 'dashboard_widgets', type_='foreignkey')
+    except Exception as e:
+        print(f"Note: dashboard_widgets_report_definition_id_fkey may not exist: {e}")
+
     # ReportDefinition (no FK dependencies now)
     op.drop_constraint('report_definitions_pkey', 'report_definitions', type_='primary')
     op.drop_column('report_definitions', 'id')
@@ -344,6 +351,10 @@ def upgrade():
     op.create_foreign_key('dashboard_widgets_page_id_fkey',
                          'dashboard_widgets', 'dashboard_pages',
                          ['page_id'], ['id'])
+    # Recreate dashboard_widgets -> report_definitions FK (dropped earlier to avoid constraint conflict)
+    op.create_foreign_key('dashboard_widgets_report_definition_id_fkey',
+                         'dashboard_widgets', 'report_definitions',
+                         ['report_definition_id'], ['id'])
     op.create_foreign_key('dashboard_shares_dashboard_id_fkey',
                          'dashboard_shares', 'dashboards',
                          ['dashboard_id'], ['id'])
