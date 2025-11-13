@@ -37,6 +37,17 @@ export async function initApp() {
 
     appState.user = await response.json();
 
+    // Log user info for debugging
+    console.log('[User] Current user:', {
+      email: appState.user.email,
+      name: appState.user.name,
+      is_superuser: appState.user.is_superuser,
+      tenant_id: appState.user.tenant_id,
+      roles: appState.user.roles || [],
+      permissions_count: appState.user.permissions?.length || 0,
+      permissions: appState.user.permissions || []
+    });
+
     // Update UI with user info
     updateUserInfo();
 

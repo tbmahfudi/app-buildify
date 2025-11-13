@@ -137,9 +137,12 @@ class ModuleRegistry {
   async getAccessibleMenuItems() {
     const accessibleItems = [];
 
+    console.log(`[Menu Filter] Checking ${this.menuItems.length} menu items for permissions`);
+
     for (const item of this.menuItems) {
       // If no permission required, include it
       if (!item.permission) {
+        console.log(`[Menu Filter] ✓ "${item.menu?.label || item.name}" - no permission required`);
         accessibleItems.push(item);
         continue;
       }
@@ -147,10 +150,14 @@ class ModuleRegistry {
       // Check permission
       const hasAccess = await hasPermission(item.permission);
       if (hasAccess) {
+        console.log(`[Menu Filter] ✓ "${item.menu?.label || item.name}" - has permission: ${item.permission}`);
         accessibleItems.push(item);
+      } else {
+        console.log(`[Menu Filter] ✗ "${item.menu?.label || item.name}" - missing permission: ${item.permission}`);
       }
     }
 
+    console.log(`[Menu Filter] Result: ${accessibleItems.length}/${this.menuItems.length} items accessible`);
     return accessibleItems;
   }
 
