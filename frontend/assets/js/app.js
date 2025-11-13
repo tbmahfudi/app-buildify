@@ -238,34 +238,27 @@ async function handleLogout() {
 
 async function loadMenu() {
   try {
-    const response = await fetch('/config/menu.json');
-    const menu = await response.json();
+    // Feature flag: Use backend-driven menu system
+    const useDynamicMenu = window.APP_CONFIG?.useDynamicMenu !== false; // Default to true
 
-    // Get menu items from loaded modules
-    const moduleMenuItems = await moduleRegistry.getAccessibleMenuItems();
+    let menuItems;
 
-    // Convert module menu items to core menu format
-    const moduleMenuFormatted = moduleMenuItems.map(item => ({
-      title: item.menu?.label || item.name,
-      route: item.path.replace('#/', ''),
-      icon: item.menu?.icon || 'bi-circle',
-      permission: item.permission
-    }));
-
-    // Merge core menu with module menu items
-    const allMenuItems = [...menu.items, ...moduleMenuFormatted];
-
-    // Filter menu items based on user roles and permissions
-    const filteredItems = filterMenuByRole(allMenuItems);
+    if (useDynamicMenu) {
+      // NEW: Backend-driven RBAC menu system
+      menuItems = await loadMenuFromBackend();
+    } else {
+      // LEGACY: Static JSON menu with client-side filtering
+      menuItems = await loadMenuFromStatic();
+    }
 
     const navContainer = document.getElementById('sidebar-nav');
     if (!navContainer) return;
 
     navContainer.innerHTML = '';
 
-    filteredItems.forEach(item => {
-      // If item has submenu, create an expandable menu
-      if (item.submenu && item.submenu.length > 0) {
+    menuItems.forEach(item => {
+      // If item has submenu/children, create an expandable menu
+      if ((item.submenu && item.submenu.length > 0) || (item.children && item.children.length > 0)) {
         const menuGroup = createSubmenuItem(item);
         navContainer.appendChild(menuGroup);
       } else {
@@ -281,6 +274,80 @@ async function loadMenu() {
     console.error('Failed to load menu:', error);
     showToast('Failed to load menu', 'error');
   }
+}
+
+/**
+ * Load menu from backend API (NEW - RBAC filtered on server)
+ */
+async function loadMenuFromBackend() {
+  try {
+    const response = await api.get('/menu?include_modules=true');
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch menu: ${response.status}`);
+    }
+
+    const menuData = await response.json();
+
+    // Backend returns pre-filtered menu based on user's RBAC
+    // Convert 'children' to 'submenu' for compatibility with existing rendering
+    return convertBackendMenuFormat(menuData);
+
+  } catch (error) {
+    console.error('Error loading menu from backend:', error);
+
+    // Fallback to static menu if backend fails
+    console.warn('Falling back to static menu');
+    return await loadMenuFromStatic();
+  }
+}
+
+/**
+ * Load menu from static JSON (LEGACY - with client-side filtering)
+ */
+async function loadMenuFromStatic() {
+  const response = await fetch('/config/menu.json');
+  const menu = await response.json();
+
+  // Get menu items from loaded modules
+  const moduleMenuItems = await moduleRegistry.getAccessibleMenuItems();
+
+  // Convert module menu items to core menu format
+  const moduleMenuFormatted = moduleMenuItems.map(item => ({
+    title: item.menu?.label || item.name,
+    route: item.path.replace('#/', ''),
+    icon: item.menu?.icon || 'bi-circle',
+    permission: item.permission
+  }));
+
+  // Merge core menu with module menu items
+  const allMenuItems = [...menu.items, ...moduleMenuFormatted];
+
+  // Filter menu items based on user roles and permissions
+  return filterMenuByRole(allMenuItems);
+}
+
+/**
+ * Convert backend menu format to frontend format
+ * Backend uses 'children', frontend expects 'submenu'
+ */
+function convertBackendMenuFormat(menuItems) {
+  return menuItems.map(item => {
+    const converted = {
+      title: item.title,
+      route: item.route,
+      icon: item.icon,
+      order: item.order,
+      target: item.target || '_self'
+    };
+
+    // Convert children to submenu
+    if (item.children && item.children.length > 0) {
+      converted.submenu = convertBackendMenuFormat(item.children);
+    }
+
+    return converted;
+  });
 }
 
 // Helper function to get icon color based on menu category
