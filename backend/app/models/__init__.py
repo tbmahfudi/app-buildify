@@ -28,6 +28,7 @@ from .dashboard import (
 from .department import Department
 from .group import Group
 from .login_attempt import LoginAttempt
+from .menu_item import MenuItem
 from .metadata import EntityMetadata
 
 # Module system
@@ -121,6 +122,9 @@ __all__ = [
     # Module system
     "ModuleRegistry",
     "TenantModule",
+
+    # Menu system
+    "MenuItem",
 
     # Report system
     "ReportDefinition",
