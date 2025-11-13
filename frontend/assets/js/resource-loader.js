@@ -48,11 +48,17 @@ class ResourceLoader {
 
         // Check if we received index.html instead of the actual template
         // This can happen if nginx falls back to index.html for missing files
+        // We need multiple indicators to avoid false positives
         const htmlLower = html.toLowerCase();
-        if (htmlLower.includes('<!doctype html>') ||
-            (htmlLower.includes('<html') && htmlLower.includes('<head>')) ||
-            htmlLower.includes('nocode platform') ||
-            htmlLower.includes('content-security-policy')) {
+        const hasDoctype = htmlLower.includes('<!doctype html>');
+        const hasFullHtmlStructure = htmlLower.includes('<html') && htmlLower.includes('<head>') && htmlLower.includes('<body>');
+        const hasCSP = htmlLower.includes('content-security-policy');
+        const hasMainAppDiv = htmlLower.includes('id="app"') || htmlLower.includes("id='app'");
+
+        // Count indicators - if we have 2+ indicators, it's likely index.html
+        const indicators = [hasDoctype, hasFullHtmlStructure, hasCSP, hasMainAppDiv].filter(Boolean).length;
+
+        if (indicators >= 2) {
           throw new Error('HTTP 404: Template not found (index.html was served instead)');
         }
 
