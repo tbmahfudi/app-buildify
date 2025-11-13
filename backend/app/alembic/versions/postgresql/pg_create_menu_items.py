@@ -1,7 +1,7 @@
 """Create menu_items table for backend-driven RBAC menu system
 
 Revision ID: pg_create_menu_items
-Revises: pg_add_department_fields
+Revises: pg_r4
 Create Date: 2025-11-13
 
 """
@@ -11,7 +11,7 @@ from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision = 'pg_create_menu_items'
-down_revision = 'pg_add_department_fields'
+down_revision = 'pg_r4'
 branch_labels = None
 depends_on = None
 

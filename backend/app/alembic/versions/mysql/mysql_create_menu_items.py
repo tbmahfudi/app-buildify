@@ -1,7 +1,7 @@
 """Create menu_items table for backend-driven RBAC menu system
 
 Revision ID: mysql_create_menu_items
-Revises: mysql_security_policy_system
+Revises: mysql_r4
 Create Date: 2025-11-13
 
 """
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = 'mysql_create_menu_items'
-down_revision = 'mysql_security_policy_system'
+down_revision = 'mysql_r4'
 branch_labels = None
 depends_on = None
 
