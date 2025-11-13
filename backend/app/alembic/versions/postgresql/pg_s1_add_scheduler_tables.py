@@ -10,7 +10,7 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision = 'pg_s1'
+revision = 'pg_s1_add_scheduler_tables'
 down_revision = 'pg_merge_display_r3'
 branch_labels = None
 depends_on = None
