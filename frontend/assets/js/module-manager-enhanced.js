@@ -337,14 +337,20 @@ export class ModuleManager {
     try {
       // Superusers see all tenant modules, regular users see only their tenant's modules
       const endpoint = isSuperUser ? '/modules/enabled/all-tenants' : '/modules/enabled';
+      console.log(`Loading enabled modules from endpoint: ${endpoint} (superuser: ${isSuperUser})`);
+
       const response = await apiFetch(endpoint);
 
       if (!response.ok) {
-        throw new Error('Failed to load enabled modules');
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Failed to load enabled modules:', response.status, errorData);
+        throw new Error(errorData.detail || 'Failed to load enabled modules');
       }
 
       const data = await response.json();
+      console.log('Enabled modules response:', data);
       this.enabledModules = data.modules || [];
+      console.log(`Loaded ${this.enabledModules.length} enabled modules`);
 
       // Hide loading, show list
       loading.classList.add('hidden');
