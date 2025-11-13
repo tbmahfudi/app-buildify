@@ -134,3 +134,88 @@ export function debounce(func, wait = 300) {
     timeout = setTimeout(later, wait);
   };
 }
+
+/**
+ * Handle API errors with specific messages for common HTTP status codes
+ * @param {Response} response - The fetch response object
+ * @param {string} defaultMessage - Default error message if no specific handling
+ * @returns {Promise<Error>} - A promise that rejects with an appropriate error
+ */
+export async function handleApiError(response, defaultMessage = 'An error occurred') {
+  let errorMessage = defaultMessage;
+  let errorDetail = null;
+
+  try {
+    // Try to parse error body
+    const errorData = await response.json();
+    errorDetail = errorData.detail || errorData.message || null;
+  } catch {
+    // If JSON parsing fails, ignore and use status-based messages
+  }
+
+  // Handle specific HTTP status codes
+  switch (response.status) {
+    case 400:
+      errorMessage = errorDetail || 'Bad request - please check your input';
+      break;
+    case 401:
+      errorMessage = 'Unauthorized - please log in again';
+      break;
+    case 403:
+      errorMessage = errorDetail || 'Access forbidden - you don\'t have permission to access this resource';
+      break;
+    case 404:
+      errorMessage = errorDetail || 'Resource not found';
+      break;
+    case 409:
+      errorMessage = errorDetail || 'Conflict - the resource already exists or there\'s a conflict';
+      break;
+    case 422:
+      errorMessage = errorDetail || 'Validation error - please check your input';
+      break;
+    case 429:
+      errorMessage = 'Too many requests - please slow down';
+      break;
+    case 500:
+      errorMessage = errorDetail || 'Internal server error - please try again later';
+      break;
+    case 502:
+      errorMessage = 'Bad gateway - the server is temporarily unavailable';
+      break;
+    case 503:
+      errorMessage = 'Service unavailable - please try again later';
+      break;
+    case 504:
+      errorMessage = 'Gateway timeout - the request took too long';
+      break;
+    default:
+      errorMessage = errorDetail || `${defaultMessage} (HTTP ${response.status})`;
+  }
+
+  return new Error(errorMessage);
+}
+
+/**
+ * Wrapper for fetch with better error handling
+ * @param {string} url - The URL to fetch
+ * @param {object} options - Fetch options
+ * @returns {Promise<Response>} - The fetch response
+ */
+export async function fetchWithErrorHandling(url, options = {}) {
+  try {
+    const response = await fetch(url, options);
+
+    if (!response.ok) {
+      const error = await handleApiError(response, 'Request failed');
+      throw error;
+    }
+
+    return response;
+  } catch (error) {
+    // Re-throw with context if it's a network error
+    if (error.name === 'TypeError' && error.message.includes('fetch')) {
+      throw new Error('Network error - please check your connection');
+    }
+    throw error;
+  }
+}

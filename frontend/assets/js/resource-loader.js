@@ -36,7 +36,31 @@ class ResourceLoader {
         });
 
         if (!response.ok) {
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          // Provide specific error messages for common HTTP status codes
+          let errorMessage;
+          switch (response.status) {
+            case 401:
+              errorMessage = 'Unauthorized - please log in again';
+              break;
+            case 403:
+              errorMessage = 'Access forbidden - you don\'t have permission to access this resource';
+              break;
+            case 404:
+              errorMessage = 'HTTP 404: Not found';
+              break;
+            case 500:
+              errorMessage = 'Internal server error';
+              break;
+            case 502:
+              errorMessage = 'Bad gateway - server temporarily unavailable';
+              break;
+            case 503:
+              errorMessage = 'Service unavailable';
+              break;
+            default:
+              errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+          }
+          throw new Error(errorMessage);
         }
 
         const html = await response.text();
@@ -308,29 +332,50 @@ class ErrorDisplay {
   static showTemplateError(templateName, error, container) {
     const errorDetails = error instanceof ResourceLoadError ? error : new ResourceLoadError('template', templateName, error);
 
-    const isNetworkError = !navigator.onLine || error.message.includes('network') || error.message.includes('fetch');
-    const is404Error = error.message.includes('404') || error.message.includes('not found');
+    const messageLower = error.message.toLowerCase();
+    const isNetworkError = !navigator.onLine || messageLower.includes('network') || messageLower.includes('fetch');
+    const is404Error = error.message.includes('404') || messageLower.includes('not found');
+    const is403Error = error.message.includes('403') || messageLower.includes('forbidden');
+    const is401Error = error.message.includes('401') || messageLower.includes('unauthorized');
+
+    // Determine icon and title based on error type
+    let icon = 'warning-circle';
+    let title = 'Failed to Load Page';
+    let message = `An error occurred while loading "${templateName}".`;
+
+    if (is404Error) {
+      icon = 'file-x';
+      title = 'Page Not Found';
+      message = `The template "${templateName}" does not exist or has been removed.`;
+    } else if (is403Error) {
+      icon = 'lock';
+      title = 'Access Forbidden';
+      message = `You don't have permission to access "${templateName}".`;
+    } else if (is401Error) {
+      icon = 'sign-in';
+      title = 'Authentication Required';
+      message = 'Please log in to access this page.';
+    } else if (isNetworkError) {
+      icon = 'wifi-slash';
+      title = 'Connection Error';
+      message = 'Unable to connect to the server. Please check your internet connection.';
+    }
 
     container.innerHTML = `
       <div class="max-w-2xl mx-auto mt-20">
         <div class="bg-red-50 border-l-4 border-red-500 p-6 rounded-lg shadow-lg">
           <div class="flex items-start gap-4">
-            <i class="ph-duotone ph-${is404Error ? 'file-x' : isNetworkError ? 'wifi-slash' : 'warning-circle'} text-red-500 text-4xl flex-shrink-0"></i>
+            <i class="ph-duotone ph-${icon} text-red-500 text-4xl flex-shrink-0"></i>
             <div class="flex-1">
               <h3 class="text-xl font-bold text-red-800 mb-2">
-                ${is404Error ? 'Page Not Found' : isNetworkError ? 'Connection Error' : 'Failed to Load Page'}
+                ${title}
               </h3>
 
               <p class="text-red-700 mb-4">
-                ${is404Error
-                  ? `The template "${templateName}" does not exist or has been removed.`
-                  : isNetworkError
-                  ? 'Unable to connect to the server. Please check your internet connection.'
-                  : `An error occurred while loading "${templateName}".`
-                }
+                ${message}
               </p>
 
-              ${!is404Error && !isNetworkError ? `
+              ${!is404Error && !isNetworkError && !is403Error && !is401Error ? `
                 <details class="mb-4">
                   <summary class="cursor-pointer text-red-600 hover:text-red-700 font-medium">
                     Technical Details
