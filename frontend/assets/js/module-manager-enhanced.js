@@ -332,9 +332,12 @@ export class ModuleManager {
   async loadEnabledModules() {
     const loading = document.getElementById('enabled-modules-loading');
     const list = document.getElementById('enabled-modules-list');
+    const isSuperUser = isSuperuser();
 
     try {
-      const response = await apiFetch('/modules/enabled');
+      // Superusers see all tenant modules, regular users see only their tenant's modules
+      const endpoint = isSuperUser ? '/modules/enabled/all-tenants' : '/modules/enabled';
+      const response = await apiFetch(endpoint);
 
       if (!response.ok) {
         throw new Error('Failed to load enabled modules');
@@ -372,6 +375,8 @@ export class ModuleManager {
     const list = document.getElementById('enabled-modules-list');
     if (!list) return;
 
+    const isSuperUser = isSuperuser();
+
     if (this.enabledModules.length === 0) {
       list.innerHTML = `
         <div class="text-center py-16">
@@ -393,8 +398,14 @@ export class ModuleManager {
                 <i class="ph ph-check-circle"></i>
                 Enabled
               </span>
+              ${module.tenant_name ? `
+                <span class="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded-md">
+                  <i class="ph ph-building"></i>
+                  ${module.tenant_name}
+                </span>
+              ` : ''}
             </div>
-            <div class="flex items-center gap-4 text-sm text-gray-600 mb-3">
+            <div class="flex items-center gap-4 text-sm text-gray-600 mb-3 flex-wrap">
               <span class="flex items-center gap-1">
                 <i class="ph ph-git-branch"></i>
                 Version ${module.version}
@@ -403,6 +414,12 @@ export class ModuleManager {
                 <i class="ph ph-calendar"></i>
                 Enabled ${new Date(module.enabled_at).toLocaleDateString()}
               </span>
+              ${module.tenant_code ? `
+                <span class="flex items-center gap-1">
+                  <i class="ph ph-tag"></i>
+                  ${module.tenant_code}
+                </span>
+              ` : ''}
             </div>
           </div>
           <div class="flex gap-2">
@@ -412,7 +429,7 @@ export class ModuleManager {
               Configure
             </button>
             <button class="flex items-center gap-2 px-4 py-2 bg-yellow-100 text-yellow-700 rounded-lg hover:bg-yellow-200 transition text-sm font-medium"
-                    onclick="moduleManager.disableModule('${module.module_name}')">
+                    onclick="moduleManager.disableModule('${module.module_name}', '${module.tenant_id || ''}')">
               <i class="ph ph-power"></i>
               Disable
             </button>
