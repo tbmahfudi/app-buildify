@@ -39,13 +39,25 @@ class GUID(TypeDecorator):
             if isinstance(value, uuid.UUID):
                 return value
             else:
-                return uuid.UUID(value) if value else None
+                # Validate the string is a valid UUID before converting
+                try:
+                    return uuid.UUID(value) if value else None
+                except (ValueError, AttributeError, TypeError):
+                    # If the value is not a valid UUID string, return None
+                    # This handles cases where non-UUID strings (like module names or emails)
+                    # are passed to UUID fields
+                    return None
         else:
             # MySQL and SQLite need string
             if isinstance(value, uuid.UUID):
                 return str(value)
             else:
-                return str(uuid.UUID(value)) if value else None
+                # Validate the string is a valid UUID before converting
+                try:
+                    return str(uuid.UUID(value)) if value else None
+                except (ValueError, AttributeError, TypeError):
+                    # If the value is not a valid UUID string, return None
+                    return None
 
     def process_result_value(self, value, dialect):
         """Convert database value to UUID."""
