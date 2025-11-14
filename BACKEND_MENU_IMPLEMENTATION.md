@@ -643,6 +643,82 @@ curl -X POST \
 
 **Solution**: Check backend logs and verify deployment steps completed
 
+### Module menus not appearing
+
+**Error**: Module is loaded but menu items don't appear in the backend menu API
+
+**Symptoms**:
+- Frontend console shows: `Registered module: financial`
+- Frontend console shows: `Updated menu items: 5 total`
+- But financial menu doesn't appear in the sidebar
+- Backend menu API (`/api/v1/menu?include_modules=true`) doesn't include module items
+
+**Root Cause**:
+The module's manifest in the database is missing the `routes` array with menu configurations.
+
+**Diagnosis**:
+Run the debug script to check:
+```bash
+docker exec -it app_buildify_backend python debug_module_menus.py
+```
+
+Look for output like:
+```
+Module: financial
+  Routes in manifest: 0
+  Routes with menu config: 0
+```
+
+**Solution**:
+
+**Step 1**: Ensure backend manifest has routes
+
+Check `backend/modules/[module_name]/manifest.json` has a `routes` array:
+
+```json
+{
+  "name": "financial",
+  "routes": [
+    {
+      "path": "#/financial/dashboard",
+      "name": "Financial Dashboard",
+      "permission": "financial:accounts:read:company",
+      "menu": {
+        "label": "Financial",
+        "icon": "ph-duotone ph-currency-circle-dollar",
+        "order": 5,
+        "parent": null
+      }
+    }
+  ]
+}
+```
+
+**Step 2**: Resync module manifest to database
+
+```bash
+docker exec -it app_buildify_backend python resync_module_manifest.py
+```
+
+**Step 3**: Restart backend
+
+```bash
+docker restart app_buildify_backend
+```
+
+**Step 4**: Verify
+
+Check the menu API response now includes module items:
+- Open DevTools → Network tab
+- Refresh page
+- Look at `/api/v1/menu?include_modules=true` response
+
+**Prevention**:
+Use the module manifest validator before registering modules:
+```bash
+docker exec -it app_buildify_backend python validate_module_manifest.py financial
+```
+
 ### Docker: Seeder cannot find menu.json
 
 **Error**: `❌ ERROR: menu.json not found!`

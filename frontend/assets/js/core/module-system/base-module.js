@@ -131,7 +131,9 @@ export class BaseModule {
         throw new Error(`No default export found in ${fullPath}`);
       }
 
-      return new PageClass();
+      // Return the class itself, not an instance
+      // The caller (app.js) will instantiate it
+      return PageClass;
     } catch (error) {
       console.error(`Error loading page ${componentPath}:`, error);
       return null;
