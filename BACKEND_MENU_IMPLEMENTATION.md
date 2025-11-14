@@ -177,18 +177,56 @@ This creates the `menu_items` table.
 
 ### Step 2: Run Seeder Script
 
+#### Local Development
+
 ```bash
 cd /home/user/app-buildify/backend
 python -m app.seeds.seed_menu_items
 ```
 
+#### Docker Environment
+
+The seeder script needs access to `menu.json` from the frontend. Ensure your `docker-compose.dev.yml` includes the frontend volume mount:
+
+```yaml
+backend:
+  volumes:
+    - ../backend:/app
+    - ../frontend:/frontend:ro  # This line is required for seeder
+```
+
+Then run the seeder inside the container:
+
+```bash
+# Enter backend container
+docker exec -it app_buildify_backend bash
+
+# Run seeder
+python -m app.seeds.seed_menu_items
+```
+
+The seeder will automatically search for `menu.json` in these locations:
+1. `/frontend/config/menu.json` (Docker with frontend volume mounted)
+2. `/app/frontend/config/menu.json` (Docker with frontend in app directory)
+3. `../frontend/config/menu.json` (Local development)
+4. `frontend/config/menu.json` (Working directory)
+5. `backend/app/config/menu.json` (Backend fallback)
+
+**Custom Path Option**:
+If your setup is different, you can specify a custom path:
+
+```bash
+python -m app.seeds.seed_menu_items --path /custom/path/to/menu.json
+```
+
 **Options**:
 - Default: Skip existing menu items (safe for re-runs)
 - `--clear` or `-c`: Delete existing menu items before seeding (fresh start)
+- `--path` or `-p`: Specify custom path to menu.json
 
 This will:
 1. Create menu management permissions
-2. Import all menu items from `/frontend/config/menu.json`
+2. Import all menu items from menu.json
 3. Display progress and summary
 
 **Expected Output**:
@@ -575,7 +613,7 @@ curl -X POST \
 ### Menu items not showing
 
 **Check**:
-1. Run seeder script: `python -m app.scripts.seed_menu_items`
+1. Run seeder script: `python -m app.seeds.seed_menu_items`
 2. Verify permissions assigned to user's roles
 3. Check `/api/v1/menu` response in browser DevTools
 4. Verify `useDynamicMenu` is not set to false
@@ -604,6 +642,51 @@ curl -X POST \
 4. Authentication token invalid
 
 **Solution**: Check backend logs and verify deployment steps completed
+
+### Docker: Seeder cannot find menu.json
+
+**Error**: `❌ ERROR: menu.json not found!`
+
+**Causes**:
+1. Frontend volume not mounted in backend container
+2. Frontend is in a separate container without shared volume
+
+**Solutions**:
+
+**Option 1 - Mount Frontend Volume (Recommended)**:
+Update `docker-compose.dev.yml` to include frontend volume in backend service:
+
+```yaml
+backend:
+  volumes:
+    - ../backend:/app
+    - ../frontend:/frontend:ro  # Add this line
+```
+
+Then restart containers:
+```bash
+cd infra
+docker-compose down
+docker-compose up -d
+```
+
+**Option 2 - Copy menu.json to Backend**:
+```bash
+# Copy menu.json to backend config directory
+mkdir -p backend/app/config
+cp frontend/config/menu.json backend/app/config/
+
+# In container, use custom path
+docker exec -it app_buildify_backend bash
+python -m app.seeds.seed_menu_items --path /app/app/config/menu.json
+```
+
+**Option 3 - Specify Custom Path**:
+If you've mounted frontend at a different location, specify the path:
+```bash
+docker exec -it app_buildify_backend bash
+python -m app.seeds.seed_menu_items --path /your/custom/path/menu.json
+```
 
 ---
 

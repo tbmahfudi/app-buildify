@@ -195,12 +195,13 @@ def create_menu_item_recursive(
     return items_created
 
 
-def seed_menu_items(clear_existing: bool = False) -> int:
+def seed_menu_items(clear_existing: bool = False, menu_json_path: str = None) -> int:
     """
-    Import menu items from /frontend/config/menu.json into database.
+    Import menu items from menu.json into database.
 
     Args:
         clear_existing: If True, delete existing menu items before seeding
+        menu_json_path: Optional path to menu.json file. If not provided, will search common locations.
 
     Returns:
         Number of menu items created
@@ -214,15 +215,51 @@ def seed_menu_items(clear_existing: bool = False) -> int:
 
         print("📋 Step 1: Loading menu.json...")
 
-        # Load menu.json
-        menu_json_path = Path(__file__).parent.parent.parent.parent / "frontend" / "config" / "menu.json"
+        # Try to find menu.json in multiple locations
+        if menu_json_path:
+            # Use provided path
+            menu_json_file = Path(menu_json_path)
+        else:
+            # Try common locations
+            possible_paths = [
+                # Docker: frontend mounted separately or in app/frontend
+                Path("/app/frontend/config/menu.json"),
+                # Docker: frontend at root
+                Path("/frontend/config/menu.json"),
+                # Development: relative to backend
+                Path(__file__).parent.parent.parent.parent / "frontend" / "config" / "menu.json",
+                # Development: from working directory
+                Path("frontend/config/menu.json"),
+                # Backend directory fallback
+                Path(__file__).parent.parent / "config" / "menu.json",
+            ]
 
-        if not menu_json_path.exists():
-            print(f"❌ ERROR: menu.json not found at {menu_json_path}")
+            menu_json_file = None
+            for path in possible_paths:
+                if path.exists():
+                    menu_json_file = path
+                    print(f"  ✓ Found menu.json at: {path}")
+                    break
+
+        if not menu_json_file or not menu_json_file.exists():
+            print(f"\n❌ ERROR: menu.json not found!")
+            print("\nSearched in:")
+            for path in possible_paths if not menu_json_path else [Path(menu_json_path)]:
+                print(f"  - {path}")
+            print("\n💡 Solutions:")
+            print("  1. Copy menu.json to backend:")
+            print("     mkdir -p backend/app/config")
+            print("     cp frontend/config/menu.json backend/app/config/")
+            print("\n  2. Mount frontend in docker-compose.yml backend service:")
+            print("     volumes:")
+            print("       - ../backend:/app")
+            print("       - ../frontend:/frontend:ro")
+            print("\n  3. Provide custom path:")
+            print("     python -m app.seeds.seed_menu_items --path /path/to/menu.json")
             return 0
 
         try:
-            with open(menu_json_path, 'r', encoding='utf-8') as f:
+            with open(menu_json_file, 'r', encoding='utf-8') as f:
                 menu_data = json.load(f)
         except Exception as e:
             print(f"❌ ERROR: Failed to load menu.json: {e}")
@@ -275,12 +312,13 @@ def seed_menu_items(clear_existing: bool = False) -> int:
         db.close()
 
 
-def main(clear_existing: bool = False):
+def main(clear_existing: bool = False, menu_json_path: str = None):
     """
     Main entry point for seeding menu system.
 
     Args:
         clear_existing: If True, delete existing menu items before seeding
+        menu_json_path: Optional path to menu.json file
     """
     print("\n🚀 Starting Menu System Seed...")
     print("="*80)
@@ -291,7 +329,7 @@ def main(clear_existing: bool = False):
         perms_created = seed_menu_permissions(db)
 
         # Step 2: Seed menu items
-        items_created = seed_menu_items(clear_existing=clear_existing)
+        items_created = seed_menu_items(clear_existing=clear_existing, menu_json_path=menu_json_path)
 
         print("\n" + "="*80)
         print("✅ MENU SYSTEM SEED COMPLETE!")
@@ -315,6 +353,13 @@ if __name__ == "__main__":
     # Check if --clear flag provided
     clear_existing = '--clear' in sys.argv or '-c' in sys.argv
 
+    # Check if --path argument provided
+    menu_json_path = None
+    for i, arg in enumerate(sys.argv):
+        if arg in ['--path', '-p'] and i + 1 < len(sys.argv):
+            menu_json_path = sys.argv[i + 1]
+            break
+
     if clear_existing:
         print("\n⚠️  Running with --clear flag: Will delete existing menu items!")
         response = input("Are you sure you want to continue? (yes/no): ")
@@ -322,4 +367,4 @@ if __name__ == "__main__":
             print("❌ Seeding cancelled")
             sys.exit(0)
 
-    main(clear_existing=clear_existing)
+    main(clear_existing=clear_existing, menu_json_path=menu_json_path)
