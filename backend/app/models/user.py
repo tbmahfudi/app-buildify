@@ -129,6 +129,29 @@ class User(Base):
         """Get list of companies this user can access."""
         return [access.company for access in self.company_accesses if access.company]
 
+    def get_roles(self):
+        """
+        Get all role names for this user from direct roles and group roles.
+
+        Returns:
+            Set of role names
+        """
+        roles = set()
+
+        # Get direct user roles
+        for user_role in self.user_roles:
+            if user_role.role and user_role.role.is_active:
+                roles.add(user_role.role.name)
+
+        # Get roles from groups
+        for user_group in self.user_groups:
+            if user_group.group and user_group.group.is_active:
+                for group_role in user_group.group.group_roles:
+                    if group_role.role and group_role.role.is_active:
+                        roles.add(group_role.role.name)
+
+        return roles
+
     def get_permissions(self):
         """
         Get all permissions for this user from direct roles and group roles.

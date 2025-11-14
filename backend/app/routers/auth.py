@@ -374,8 +374,8 @@ def refresh(refresh_req: RefreshRequest, db: Session = Depends(get_db)):
 @router.get("/me", response_model=UserResponse)
 def get_me(current_user: User = Depends(get_current_user)):
     """Get current user profile"""
-    # Get user permissions from RBAC system
-    # For backward compatibility with UserResponse schema, convert permissions to roles list
+    # Get user roles and permissions from RBAC system
+    roles = list(current_user.get_roles()) if hasattr(current_user, 'get_roles') else []
     permissions = list(current_user.get_permissions()) if hasattr(current_user, 'get_permissions') else []
 
     return UserResponse(
@@ -390,7 +390,8 @@ def get_me(current_user: User = Depends(get_current_user)):
         default_company_id=str(current_user.default_company_id) if current_user.default_company_id else None,
         branch_id=str(current_user.branch_id) if current_user.branch_id else None,
         department_id=str(current_user.department_id) if current_user.department_id else None,
-        roles=permissions,  # Using permissions instead of deprecated roles field
+        roles=roles,
+        permissions=permissions,
         created_at=current_user.created_at,
         updated_at=current_user.updated_at,
         last_login=current_user.last_login

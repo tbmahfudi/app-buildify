@@ -281,7 +281,7 @@ async function loadMenu() {
  */
 async function loadMenuFromBackend() {
   try {
-    const response = await api.get('/menu?include_modules=true');
+    const response = await apiFetch('/menu?include_modules=true');
 
     if (!response.ok) {
       throw new Error(`Failed to fetch menu: ${response.status}`);
