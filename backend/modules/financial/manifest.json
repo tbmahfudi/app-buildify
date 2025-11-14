@@ -162,6 +162,69 @@
     }
   ],
 
+  "routes": [
+    {
+      "path": "#/financial/dashboard",
+      "name": "Financial Dashboard",
+      "component": "pages/dashboard-page.js",
+      "permission": "financial:accounts:read:company",
+      "menu": {
+        "label": "Financial",
+        "icon": "ph-duotone ph-currency-circle-dollar",
+        "order": 5,
+        "parent": null
+      }
+    },
+    {
+      "path": "#/financial/accounts",
+      "name": "Chart of Accounts",
+      "component": "pages/accounts-page.js",
+      "permission": "financial:accounts:read:company",
+      "menu": {
+        "label": "Chart of Accounts",
+        "icon": "ph-duotone ph-chart-line",
+        "order": 10,
+        "parent": "financial"
+      }
+    },
+    {
+      "path": "#/financial/invoices",
+      "name": "Invoices",
+      "component": "pages/invoices-page.js",
+      "permission": "financial:invoices:read:company",
+      "menu": {
+        "label": "Invoices",
+        "icon": "ph-duotone ph-file-text",
+        "order": 20,
+        "parent": "financial"
+      }
+    },
+    {
+      "path": "#/financial/payments",
+      "name": "Payments",
+      "component": "pages/payments-page.js",
+      "permission": "financial:payments:read:company",
+      "menu": {
+        "label": "Payments",
+        "icon": "ph-duotone ph-credit-card",
+        "order": 30,
+        "parent": "financial"
+      }
+    },
+    {
+      "path": "#/financial/reports",
+      "name": "Financial Reports",
+      "component": "pages/reports-page.js",
+      "permission": "financial:reports:read:company",
+      "menu": {
+        "label": "Financial Reports",
+        "icon": "ph-duotone ph-chart-bar",
+        "order": 40,
+        "parent": "financial"
+      }
+    }
+  ],
+
   "default_roles": {
     "Financial Manager": [
       "financial:*:company"
