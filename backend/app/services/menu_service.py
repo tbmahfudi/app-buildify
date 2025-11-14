@@ -156,8 +156,11 @@ class MenuService:
         module_menu_items = []
 
         for tenant_module in tenant_modules:
-            # Get module manifest
-            manifest = tenant_module.config if hasattr(tenant_module, 'config') else {}
+            # Get module manifest from the module registry
+            if not tenant_module.module or not hasattr(tenant_module.module, 'manifest'):
+                continue
+
+            manifest = tenant_module.module.manifest if tenant_module.module.manifest else {}
 
             if not manifest or 'routes' not in manifest:
                 continue
@@ -173,14 +176,15 @@ class MenuService:
                     continue
 
                 # Create virtual MenuItem for module route
+                module_code = tenant_module.module.name
                 menu_item = MenuItem(
-                    code=f"module_{tenant_module.module_code}_{route.get('path', '').replace('#/', '').replace('/', '_')}",
+                    code=f"module_{module_code}_{route.get('path', '').replace('#/', '').replace('/', '_')}",
                     title=route['menu'].get('label', route.get('name', 'Unknown')),
                     icon=route['menu'].get('icon', 'ph-duotone ph-square'),
                     route=route.get('path', '').replace('#/', ''),
                     permission=route_permission,
                     order=route['menu'].get('order', 999),
-                    module_code=tenant_module.module_code,
+                    module_code=module_code,
                     is_system=False,
                     parent_id=None,  # Module menus are top-level for now
                     is_active=True,
