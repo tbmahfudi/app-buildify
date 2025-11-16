@@ -20,7 +20,7 @@
             { "title": "Groups", "route": "groups", "icon": "ph-duotone ph-user-circle-gear" },
             { "title": "Roles & Permissions", "route": "rbac", "icon": "ph-duotone ph-shield-check", "roles": ["admin"] },
             { "title": "Auth Policies", "route": "auth-policies", "icon": "ph-duotone ph-lock-key" },
-            { "title": "Menu Management", "route": "menu-management", "icon": "ph-duotone ph-list-tree", "permission": "menu:manage:tenant" }
+            { "title": "Menu Management", "route": "menu-management", "icon": "ph-duotone ph-list-dashes", "permission": "menu:manage:tenant" }
           ]
         },
         {
