@@ -13,6 +13,7 @@
           "title": "Administration",
           "icon": "ph-duotone ph-buildings",
           "submenu": [
+            { "title": "Tenants", "route": "tenants", "icon": "ph-duotone ph-globe", "roles": ["superuser"] },
             { "title": "Companies", "route": "companies", "icon": "ph-duotone ph-building" },
             { "title": "Branches", "route": "branches", "icon": "ph-duotone ph-tree-structure" },
             { "title": "Departments", "route": "departments", "icon": "ph-duotone ph-users-three" },
