@@ -53,19 +53,41 @@ class UUIDMixin:
 
         This validator inspects all values in the incoming data and converts
         any UUID objects to strings, regardless of field name.
+
+        Handles both dict data and ORM objects (from SQLAlchemy).
         """
-        if not isinstance(data, dict):
-            return data
+        # Handle dict data
+        if isinstance(data, dict):
+            converted_data = {}
+            for key, value in data.items():
+                if isinstance(value, UUID):
+                    converted_data[key] = str(value)
+                else:
+                    converted_data[key] = value
+            return converted_data
 
-        # Create a new dict with converted values
-        converted_data = {}
-        for key, value in data.items():
-            if isinstance(value, UUID):
-                converted_data[key] = str(value)
-            else:
-                converted_data[key] = value
+        # Handle ORM objects - convert to dict first
+        if hasattr(data, '__dict__'):
+            converted_data = {}
+            for key in dir(data):
+                # Skip private attributes and methods
+                if key.startswith('_'):
+                    continue
+                try:
+                    value = getattr(data, key)
+                    # Skip methods and SQLAlchemy internal attributes
+                    if callable(value) or key in ('metadata', 'registry'):
+                        continue
+                    if isinstance(value, UUID):
+                        converted_data[key] = str(value)
+                    else:
+                        converted_data[key] = value
+                except Exception:
+                    continue
+            return converted_data
 
-        return converted_data
+        # Return as-is if we can't handle it
+        return data
 
 
 class BaseResponse(UUIDMixin, BaseModel):
