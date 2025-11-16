@@ -10,6 +10,8 @@ class CompanyBase(BaseModel):
     code: str = Field(..., max_length=32, description="Company code")
     name: str = Field(..., max_length=255, description="Company name")
 
+    model_config = ConfigDict(from_attributes=True)
+
 class CompanyCreate(CompanyBase):
     """Create company request"""
     model_config = ConfigDict(
@@ -40,6 +42,8 @@ class BranchBase(BaseModel):
     company_id: str = Field(..., description="Company ID")
     code: str = Field(..., max_length=32, description="Branch code")
     name: str = Field(..., max_length=255, description="Branch name")
+
+    model_config = ConfigDict(from_attributes=True)
 
 class BranchCreate(BranchBase):
     """Create branch request"""
@@ -73,6 +77,8 @@ class DepartmentBase(BaseModel):
     branch_id: Optional[str] = Field(None, description="Branch ID (optional)")
     code: str = Field(..., max_length=32, description="Department code")
     name: str = Field(..., max_length=255, description="Department name")
+
+    model_config = ConfigDict(from_attributes=True)
 
 class DepartmentCreate(DepartmentBase):
     """Create department request"""
