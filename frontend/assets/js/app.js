@@ -30,15 +30,10 @@ async function loadMainTemplate() {
 
     const html = await response.text();
 
-    // Parse to extract body content only
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(html, 'text/html');
-    const bodyContent = doc.body?.innerHTML || html;
-
-    // Inject into root
+    // Inject template directly into root
     const root = document.getElementById('root');
     if (root) {
-      root.innerHTML = bodyContent;
+      root.innerHTML = html;
     }
 
     // Hide the loader
@@ -50,9 +45,16 @@ async function loadMainTemplate() {
     console.log('✓ Main application template loaded');
   } catch (error) {
     console.error('Failed to load main template:', error);
+
+    // Hide the loader before showing error
+    const loader = document.getElementById('app-loader');
+    if (loader) {
+      loader.style.display = 'none';
+    }
+
     document.getElementById('root').innerHTML = `
-      <div class="flex items-center justify-center h-screen">
-        <div class="text-center">
+      <div class="flex items-center justify-center h-screen bg-gray-50">
+        <div class="text-center p-8">
           <i class="ph-duotone ph-warning-circle text-6xl text-red-500 mb-4"></i>
           <h1 class="text-2xl font-bold text-gray-900 mb-2">Failed to Load Application</h1>
           <p class="text-gray-600 mb-4">Please refresh the page to try again</p>
@@ -186,6 +188,65 @@ function setupEventListeners() {
   if (sidebarToggle) {
     sidebarToggle.addEventListener('click', toggleSidebar);
   }
+
+  // Setup dropdown menus
+  setupDropdownMenus();
+}
+
+/**
+ * Setup dropdown menu interactions for navbar
+ */
+function setupDropdownMenus() {
+  // Only target dropdown containers in the navbar to avoid interfering with sidebar
+  const navbar = document.querySelector('nav');
+  if (!navbar) return;
+
+  const dropdowns = navbar.querySelectorAll('.group');
+
+  dropdowns.forEach(dropdown => {
+    const button = dropdown.querySelector('button');
+    const menu = dropdown.querySelector('[role="menu"]');
+
+    if (button && menu) {
+      // Add click event as fallback
+      button.addEventListener('click', function(e) {
+        e.stopPropagation();
+
+        // Close other navbar dropdowns
+        navbar.querySelectorAll('[role="menu"]').forEach(m => {
+          if (m !== menu) {
+            m.classList.add('opacity-0', 'invisible');
+            m.classList.remove('opacity-100', 'visible');
+          }
+        });
+
+        // Toggle current dropdown
+        menu.classList.toggle('opacity-0');
+        menu.classList.toggle('invisible');
+        menu.classList.toggle('opacity-100');
+        menu.classList.toggle('visible');
+      });
+
+      // Ensure hover works too
+      dropdown.addEventListener('mouseenter', function() {
+        menu.classList.remove('opacity-0', 'invisible');
+        menu.classList.add('opacity-100', 'visible');
+      });
+
+      dropdown.addEventListener('mouseleave', function() {
+        menu.classList.add('opacity-0', 'invisible');
+        menu.classList.remove('opacity-100', 'visible');
+      });
+    }
+  });
+
+  // Close dropdowns when clicking outside
+  document.addEventListener('click', function() {
+    navbar.querySelectorAll('[role="menu"]').forEach(menu => {
+      menu.classList.add('opacity-0', 'invisible');
+      menu.classList.remove('opacity-100', 'visible');
+    });
+  });
 }
 
 /**
