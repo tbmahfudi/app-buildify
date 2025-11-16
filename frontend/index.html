@@ -71,10 +71,24 @@
     <nav class="navbar bg-gradient-to-r from-gray-900 to-gray-800 text-white px-4 py-2 shadow-lg">
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-3">
+          <!-- Position: before-logo -->
+          <div id="toggle-position-before-logo" class="hidden" data-position="before-logo"></div>
+
           <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center shadow-md transform hover:scale-105 transition-transform">
             <span class="text-white font-bold text-lg">NP</span>
           </div>
+
+          <!-- Position: between-logo-title -->
+          <div id="toggle-position-between" class="hidden" data-position="between"></div>
+
           <span class="text-xl font-semibold">NoCode Platform</span>
+
+          <!-- Position: after-title (default) -->
+          <div id="toggle-position-after-title" data-position="after-title">
+            <button id="sidebar-toggle" class="p-2 rounded-lg bg-gray-700/50 hover:bg-gray-600 transition-colors border border-gray-600" aria-label="Toggle sidebar">
+              <i class="ph-duotone ph-sidebar text-xl"></i>
+            </button>
+          </div>
         </div>
 
         <div class="flex items-center gap-4">
@@ -209,12 +223,8 @@
              role="navigation"
              aria-label="Main navigation"
              data-collapsed="false">
-        <!-- Sidebar Header -->
-        <div class="sidebar-header p-4 border-b border-gray-200 flex items-center justify-center">
-          <button id="sidebar-toggle" class="p-1.5 rounded-lg hover:bg-gray-100 text-gray-600 hover:text-blue-600 transition-colors" aria-label="Toggle sidebar">
-            <i class="ph-duotone ph-sidebar-simple text-lg"></i>
-          </button>
-        </div>
+        <!-- Position: sidebar-header -->
+        <div id="toggle-position-sidebar-header" class="hidden p-4 border-b border-gray-200 bg-gray-50" data-position="sidebar-header"></div>
 
         <div class="sidebar-content p-2 pb-20 flex-1 overflow-y-auto">
           <nav id="sidebar-nav" class="space-y-1" role="menu">
