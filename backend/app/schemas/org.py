@@ -2,7 +2,7 @@ from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional, List
 from datetime import datetime
 
-from .base import BaseResponse
+from .base import BaseResponse, UUIDMixin
 
 # Company Schemas
 class CompanyBase(BaseModel):
@@ -37,7 +37,7 @@ class CompanyResponse(CompanyBase, BaseResponse):
     model_config = ConfigDict(from_attributes=True)
 
 # Branch Schemas
-class BranchBase(BaseModel):
+class BranchBase(UUIDMixin, BaseModel):
     """Base branch schema"""
     company_id: str = Field(..., description="Company ID")
     code: str = Field(..., max_length=32, description="Branch code")
@@ -71,7 +71,7 @@ class BranchResponse(BranchBase, BaseResponse):
     model_config = ConfigDict(from_attributes=True)
 
 # Department Schemas
-class DepartmentBase(BaseModel):
+class DepartmentBase(UUIDMixin, BaseModel):
     """Base department schema"""
     company_id: str = Field(..., description="Company ID")
     branch_id: Optional[str] = Field(None, description="Branch ID (optional)")

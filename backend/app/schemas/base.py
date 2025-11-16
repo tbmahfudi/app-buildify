@@ -32,7 +32,7 @@ class UUIDMixin:
     Mixin to add UUID serialization for common ID fields.
 
     Automatically converts UUID objects to strings for 'id', 'user_id',
-    'tenant_id', 'created_by', 'updated_by' fields.
+    'tenant_id', 'company_id', 'branch_id', 'created_by', 'updated_by' fields.
 
     Uses field_validator with mode='before' to convert UUIDs to strings
     before Pydantic validates the type. This prevents validation errors
@@ -45,7 +45,7 @@ class UUIDMixin:
             ...
     """
 
-    @field_validator('id', 'user_id', 'tenant_id', 'created_by', 'updated_by', mode='before', check_fields=False)
+    @field_validator('id', 'user_id', 'tenant_id', 'company_id', 'branch_id', 'created_by', 'updated_by', mode='before', check_fields=False)
     @classmethod
     def convert_uuid_to_str(cls, value: Any) -> Optional[str]:
         """Convert UUID fields to strings before validation."""
