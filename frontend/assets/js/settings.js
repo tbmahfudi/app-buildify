@@ -1,4 +1,5 @@
 import { apiFetch } from './api.js';
+import { positionSidebarToggle } from './app.js';
 
 // Initialize settings on app load
 document.addEventListener('DOMContentLoaded', () => {
@@ -99,6 +100,10 @@ async function loadUserSettings() {
     const sidebarState = localStorage.getItem('sidebarDefaultState') || 'expanded';
     setSelectValue('setting-sidebar-state', sidebarState, 'expanded');
 
+    // Load sidebar toggle position from localStorage
+    const togglePosition = localStorage.getItem('sidebarTogglePosition') || 'after-title';
+    setSelectValue('setting-toggle-position', togglePosition, 'after-title');
+
     updatePreview();
 
     // Apply loaded settings to the site
@@ -136,8 +141,16 @@ async function handleUserFormSubmit(event) {
   const sidebarState = getSelectValue('setting-sidebar-state');
   localStorage.setItem('sidebarDefaultState', sidebarState);
 
+  // Save sidebar toggle position to localStorage (not sent to server)
+  const togglePosition = getSelectValue('setting-toggle-position');
+  localStorage.setItem('sidebarTogglePosition', togglePosition);
+
+  // Apply toggle position immediately
+  positionSidebarToggle();
+
   console.log('Settings: Saving user settings with payload:', payload);
   console.log('Settings: Sidebar default state saved to localStorage:', sidebarState);
+  console.log('Settings: Sidebar toggle position saved to localStorage:', togglePosition);
 
   try {
     const response = await apiFetch('/settings/user', {
@@ -234,6 +247,9 @@ function updatePreview() {
 
   const sidebarSelect = document.getElementById('setting-sidebar-state');
   setTextContent('preview-sidebar-state', sidebarSelect?.selectedOptions[0]?.text || 'Expanded');
+
+  const togglePositionSelect = document.getElementById('setting-toggle-position');
+  setTextContent('preview-toggle-position', togglePositionSelect?.selectedOptions[0]?.text || 'After Platform Title');
 
   const languageSelect = document.getElementById('setting-language');
   setTextContent('preview-language', languageSelect?.selectedOptions[0]?.text || '');
