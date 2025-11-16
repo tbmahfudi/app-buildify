@@ -203,6 +203,22 @@ function renderTenants(tenants) {
     dateCell.className = 'px-6 py-4 text-sm text-gray-600';
     dateCell.textContent = formatDate(tenant.created_at);
 
+    // Organization cell
+    const orgCell = document.createElement('td');
+    orgCell.className = 'px-6 py-4 text-sm text-center';
+
+    const orgBtn = document.createElement('button');
+    orgBtn.className = 'inline-flex items-center gap-1 px-3 py-1.5 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition';
+    orgBtn.innerHTML = '<i class="ph ph-tree-structure"></i> View';
+    orgBtn.title = 'View Organization Hierarchy';
+    orgBtn.addEventListener('click', () => {
+      if (window.orgHierarchy) {
+        window.orgHierarchy.open(tenant.id, tenant.name);
+      }
+    });
+
+    orgCell.appendChild(orgBtn);
+
     // Actions cell
     const actionsCell = document.createElement('td');
     actionsCell.className = 'px-6 py-4 text-sm text-right';
@@ -232,6 +248,7 @@ function renderTenants(tenants) {
     row.appendChild(statusCell);
     row.appendChild(usageCell);
     row.appendChild(dateCell);
+    row.appendChild(orgCell);
     row.appendChild(actionsCell);
 
     tbody.appendChild(row);
