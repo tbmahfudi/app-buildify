@@ -32,6 +32,8 @@ class CompanyResponse(CompanyBase, BaseResponse):
     created_at: datetime = Field(..., description="Creation timestamp")
     updated_at: Optional[datetime] = Field(None, description="Last update timestamp")
 
+    model_config = ConfigDict(from_attributes=True)
+
 # Branch Schemas
 class BranchBase(BaseModel):
     """Base branch schema"""
@@ -61,6 +63,8 @@ class BranchResponse(BranchBase, BaseResponse):
     id: str = Field(..., description="Branch unique identifier")
     created_at: datetime = Field(..., description="Creation timestamp")
     updated_at: Optional[datetime] = Field(None, description="Last update timestamp")
+
+    model_config = ConfigDict(from_attributes=True)
 
 # Department Schemas
 class DepartmentBase(BaseModel):
@@ -94,6 +98,8 @@ class DepartmentResponse(DepartmentBase, BaseResponse):
     id: str = Field(..., description="Department unique identifier")
     created_at: datetime = Field(..., description="Creation timestamp")
     updated_at: Optional[datetime] = Field(None, description="Last update timestamp")
+
+    model_config = ConfigDict(from_attributes=True)
 
 # List responses
 class CompanyListResponse(BaseModel):
@@ -195,6 +201,8 @@ class TenantResponse(BaseResponse):
     primary_color: Optional[str] = Field(None, description="Primary brand color")
     created_at: datetime = Field(..., description="Creation timestamp")
     updated_at: Optional[datetime] = Field(None, description="Last update timestamp")
+
+    model_config = ConfigDict(from_attributes=True)
 
 class TenantListResponse(BaseModel):
     """List of tenants response"""
