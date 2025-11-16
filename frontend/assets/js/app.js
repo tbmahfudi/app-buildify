@@ -915,6 +915,7 @@ function createNestedPopup(item, parentPopup) {
 function getMenuIcon(route) {
   const icons = {
     'dashboard': 'ph-duotone ph-gauge',
+    'tenants': 'ph-duotone ph-globe',
     'companies': 'ph-duotone ph-buildings',
     'branches': 'ph-duotone ph-tree-structure',
     'departments': 'ph-duotone ph-users-three',
