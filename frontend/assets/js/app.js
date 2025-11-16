@@ -66,6 +66,9 @@ export async function initApp() {
   // Load and apply saved sidebar state
   loadSidebarState();
 
+  // Position toggle button based on user preference
+  positionSidebarToggle();
+
   // Load enabled modules
   try {
     console.log('Loading enabled modules...');
@@ -161,6 +164,40 @@ function toggleSidebar() {
 
   // Reload menu to update tooltips and popup menus
   loadMenu();
+}
+
+/**
+ * Position the sidebar toggle button based on user preference
+ */
+export function positionSidebarToggle() {
+  const toggleButton = document.getElementById('sidebar-toggle');
+  if (!toggleButton) return;
+
+  // Get user preference (default: after-title)
+  const position = localStorage.getItem('sidebarTogglePosition') || 'after-title';
+
+  // All possible position containers
+  const positions = {
+    'sidebar-header': document.getElementById('toggle-position-sidebar-header'),
+    'before-logo': document.getElementById('toggle-position-before-logo'),
+    'between': document.getElementById('toggle-position-between'),
+    'after-title': document.getElementById('toggle-position-after-title')
+  };
+
+  // Hide all position containers
+  Object.values(positions).forEach(container => {
+    if (container) {
+      container.classList.add('hidden');
+      container.innerHTML = '';
+    }
+  });
+
+  // Move button to selected position
+  const targetContainer = positions[position];
+  if (targetContainer) {
+    targetContainer.classList.remove('hidden');
+    targetContainer.appendChild(toggleButton);
+  }
 }
 
 /**
