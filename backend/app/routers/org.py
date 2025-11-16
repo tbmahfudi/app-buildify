@@ -37,6 +37,10 @@ from app.schemas.org import (
     DepartmentListResponse,
     DepartmentResponse,
     DepartmentUpdate,
+    TenantCreate,
+    TenantListResponse,
+    TenantResponse,
+    TenantUpdate,
 )
 
 router = APIRouter(prefix="/org", tags=["org"])
@@ -532,7 +536,7 @@ def delete_department(
 
 # ============= TENANTS =============
 
-@router.get("/tenants", response_model=schemas.TenantListResponse)
+@router.get("/tenants", response_model=TenantListResponse)
 def list_tenants(
     skip: int = 0,
     limit: int = 100,
@@ -583,7 +587,7 @@ def list_tenants(
     }
 
 
-@router.get("/tenants/{tenant_id}", response_model=schemas.TenantResponse)
+@router.get("/tenants/{tenant_id}", response_model=TenantResponse)
 def get_tenant(
     tenant_id: str,
     db: Session = Depends(get_db),
@@ -636,9 +640,9 @@ def get_tenant(
     }
 
 
-@router.post("/tenants", response_model=schemas.TenantResponse, status_code=201)
+@router.post("/tenants", response_model=TenantResponse, status_code=201)
 def create_tenant(
-    tenant: schemas.TenantCreate,
+    tenant: TenantCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -706,10 +710,10 @@ def create_tenant(
     }
 
 
-@router.put("/tenants/{tenant_id}", response_model=schemas.TenantResponse)
+@router.put("/tenants/{tenant_id}", response_model=TenantResponse)
 def update_tenant(
     tenant_id: str,
-    tenant_update: schemas.TenantUpdate,
+    tenant_update: TenantUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
