@@ -153,6 +153,7 @@ export async function initApp() {
 
 function updateUserInfo() {
   const userNameEl = document.getElementById('user-name');
+  const userRoleEl = document.getElementById('user-role');
   const userEmailDropdown = document.getElementById('user-email-dropdown');
 
   if (appState.user) {
@@ -161,6 +162,20 @@ function updateUserInfo() {
 
     if (userNameEl) {
       userNameEl.textContent = displayName;
+    }
+
+    // Display user role
+    if (userRoleEl) {
+      let roleText = 'User';
+
+      if (appState.user.is_superuser) {
+        roleText = 'Super Administrator';
+      } else if (appState.user.roles && appState.user.roles.length > 0) {
+        // Get the first role and capitalize it
+        roleText = appState.user.roles[0].charAt(0).toUpperCase() + appState.user.roles[0].slice(1);
+      }
+
+      userRoleEl.textContent = roleText;
     }
 
     if (userEmailDropdown) {
