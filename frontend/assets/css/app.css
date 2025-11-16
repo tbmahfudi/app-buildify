@@ -1301,43 +1301,8 @@ body.density-compact .navbar .gap-2 {
 }
 
 /* ============================================
-   SIDEBAR COLLAPSE BUTTON
+   SIDEBAR TOOLTIPS
    ============================================ */
-
-/* Collapse button styling */
-.sidebar-collapse-button {
-  position: absolute;
-  bottom: 5rem;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 10;
-}
-
-/* Hide collapse button when sidebar is collapsed */
-.sidebar-collapsed .sidebar-collapse-button {
-  left: 50%;
-  transform: translateX(-50%);
-}
-
-/* Rotate icon on hover for visual feedback */
-.sidebar-collapse-button:hover i {
-  transform: scale(1.1);
-}
-
-/* Tooltip for collapse button */
-.sidebar-collapse-tooltip {
-  position: absolute;
-  left: 100%;
-  top: 50%;
-  transform: translateY(-50%);
-  margin-left: 0.5rem;
-  pointer-events: none;
-}
-
-/* Hide tooltip when sidebar is collapsed (will use existing tooltip system) */
-.sidebar-collapsed .sidebar-collapse-tooltip {
-  display: block !important;
-}
 
 /* Footer tooltip styling */
 .sidebar-footer-tooltip {
