@@ -3,6 +3,7 @@ import './resource-loader.js';
 
 import { initApp } from './app.js';
 import './tenants.js';
+import './organization-hierarchy.js';
 import './companies.js';
 import './generic-entity-page.js';
 import './users.js';
