@@ -73,13 +73,19 @@ show_help() {
     echo "  stats       - Show resource usage"
     echo ""
     echo "Database Management:"
-    echo "  migrate     - Run database migrations"
-    echo "  seed        - Seed database with test data"
-    echo "  quick-seed  - Quick seed with minimal data (users only)"
-    echo "  db-reset    - Reset database (drops all data)"
-    echo "  backup      - Backup database to SQL file"
-    echo "  restore     - Restore database from backup file"
-    echo "  db-shell    - Open database shell"
+    echo "  migrate        - Run database migrations"
+    echo "  seed           - Seed database with test data"
+    echo "  quick-seed     - Quick seed with minimal data (users only)"
+    echo "  db-reset       - Reset database (drops all data)"
+    echo "  backup         - Backup database to SQL file"
+    echo "  restore        - Restore database from backup file"
+    echo "  db-shell       - Open database shell"
+    echo ""
+    echo "Seed Scripts (RBAC & Menu):"
+    echo "  seed-menu      - Seed menu items from frontend/config/menu.json"
+    echo "  seed-menu-rbac [TENANT] - Seed menu management RBAC for tenant"
+    echo "  seed-module-rbac [TENANT] - Seed module management RBAC for tenant"
+    echo "  seed-financial-rbac [TENANT] - Seed financial module RBAC for tenant"
     echo ""
     echo "Development:"
     echo "  setup       - Complete initial setup (build + start + migrate + seed)"
@@ -101,6 +107,8 @@ show_help() {
     echo "  $0 setup postgres              # Complete initial setup"
     echo "  $0 start postgres              # Start services"
     echo "  $0 migrate mysql               # Run migrations"
+    echo "  $0 seed-menu                   # Seed menu items"
+    echo "  $0 seed-menu-rbac FASHIONHUB   # Setup menu RBAC for FASHIONHUB tenant"
     echo "  $0 logs backend                # View backend logs only"
     echo "  $0 status                      # Check health status"
     echo "  $0 db-reset                    # Reset database"
@@ -465,6 +473,91 @@ exec_service() {
     docker compose -f "$COMPOSE_FULL_PATH" exec "$SERVICE" "$@"
 }
 
+# Function to seed menu items
+seed_menu_items() {
+    print_info "Seeding menu items from frontend/config/menu.json..."
+
+    if docker compose -f "$COMPOSE_FULL_PATH" exec -T backend python -m app.seeds.seed_menu_items; then
+        print_info "Menu items seeded successfully"
+        echo ""
+        print_info "Next steps:"
+        print_info "  1. Setup menu RBAC: $0 seed-menu-rbac [TENANT_CODE]"
+        print_info "  2. Or manually assign permissions: docker compose -f $COMPOSE_FULL_PATH exec backend python assign_menu_permissions.py"
+    else
+        print_error "Menu seeding failed"
+        exit 1
+    fi
+}
+
+# Function to seed menu management RBAC
+seed_menu_rbac() {
+    TENANT_CODE=$3
+
+    if [ -z "$TENANT_CODE" ]; then
+        print_warning "No tenant code provided. Listing available tenants..."
+        docker compose -f "$COMPOSE_FULL_PATH" exec -T backend python -m app.seeds.seed_menu_management_rbac
+        echo ""
+        print_info "Usage: $0 seed-menu-rbac [database_type] [TENANT_CODE]"
+        print_info "Example: $0 seed-menu-rbac postgres FASHIONHUB"
+        exit 0
+    fi
+
+    print_info "Setting up menu management RBAC for tenant: $TENANT_CODE..."
+
+    if docker compose -f "$COMPOSE_FULL_PATH" exec -T backend python -m app.seeds.seed_menu_management_rbac "$TENANT_CODE"; then
+        print_info "Menu RBAC setup completed successfully for tenant: $TENANT_CODE"
+    else
+        print_error "Menu RBAC setup failed"
+        exit 1
+    fi
+}
+
+# Function to seed module management RBAC
+seed_module_rbac() {
+    TENANT_CODE=$3
+
+    if [ -z "$TENANT_CODE" ]; then
+        print_warning "No tenant code provided. Listing available tenants..."
+        docker compose -f "$COMPOSE_FULL_PATH" exec -T backend python -m app.seeds.seed_module_management_rbac
+        echo ""
+        print_info "Usage: $0 seed-module-rbac [database_type] [TENANT_CODE]"
+        print_info "Example: $0 seed-module-rbac postgres FASHIONHUB"
+        exit 0
+    fi
+
+    print_info "Setting up module management RBAC for tenant: $TENANT_CODE..."
+
+    if docker compose -f "$COMPOSE_FULL_PATH" exec -T backend python -m app.seeds.seed_module_management_rbac "$TENANT_CODE"; then
+        print_info "Module RBAC setup completed successfully for tenant: $TENANT_CODE"
+    else
+        print_error "Module RBAC setup failed"
+        exit 1
+    fi
+}
+
+# Function to seed financial RBAC
+seed_financial_rbac() {
+    TENANT_CODE=$3
+
+    if [ -z "$TENANT_CODE" ]; then
+        print_warning "No tenant code provided. Listing available tenants..."
+        docker compose -f "$COMPOSE_FULL_PATH" exec -T backend python -m app.seeds.seed_financial_rbac
+        echo ""
+        print_info "Usage: $0 seed-financial-rbac [database_type] [TENANT_CODE]"
+        print_info "Example: $0 seed-financial-rbac postgres FASHIONHUB"
+        exit 0
+    fi
+
+    print_info "Setting up financial module RBAC for tenant: $TENANT_CODE..."
+
+    if docker compose -f "$COMPOSE_FULL_PATH" exec -T backend python -m app.seeds.seed_financial_rbac "$TENANT_CODE"; then
+        print_info "Financial RBAC setup completed successfully for tenant: $TENANT_CODE"
+    else
+        print_error "Financial RBAC setup failed"
+        exit 1
+    fi
+}
+
 # Main script logic
 case $COMMAND in
     start)
@@ -546,6 +639,22 @@ case $COMMAND in
     test)
         check_services_running
         run_tests
+        ;;
+    seed-menu)
+        check_services_running
+        seed_menu_items
+        ;;
+    seed-menu-rbac)
+        check_services_running
+        seed_menu_rbac "$@"
+        ;;
+    seed-module-rbac)
+        check_services_running
+        seed_module_rbac "$@"
+        ;;
+    seed-financial-rbac)
+        check_services_running
+        seed_financial_rbac "$@"
         ;;
     help|--help|-h)
         show_help
