@@ -1018,12 +1018,15 @@ async function loadRoute(route) {
         const bodyContent = await window.resourceLoader.loadTemplate(route);
         content.innerHTML = bodyContent;
 
-        // Try to load route-specific JavaScript if it exists
+        // Try to load route-specific JavaScript if it exists (optional)
         try {
           await window.resourceLoader.loadScript(`${route}.js`, { retry: false });
         } catch (scriptError) {
-          // Script not found or failed to load - this is optional, so just log it
-          console.log(`No route-specific script for ${route} or failed to load:`, scriptError.message);
+          // Script not found - this is optional and expected for many routes
+          // Only log if it's not a 404 error
+          if (!scriptError.message.includes('404')) {
+            console.warn(`Optional route script ${route}.js failed to load:`, scriptError.message);
+          }
         }
 
         // Dispatch event for route-specific JS
