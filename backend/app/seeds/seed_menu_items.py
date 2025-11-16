@@ -338,9 +338,12 @@ def main(clear_existing: bool = False, menu_json_path: str = None):
         print(f"  • Permissions created: {perms_created}")
         print(f"  • Menu items created: {items_created}")
         print("\nNext steps:")
-        print("  1. Assign 'menu:manage:tenant' permission to admin roles")
-        print("  2. Restart backend application")
-        print("  3. Test menu API: GET /api/v1/menu")
+        print("  1. Create menu management roles and groups:")
+        print("     python -m app.seeds.seed_menu_management_rbac [TENANT_CODE]")
+        print("  2. Or manually assign 'menu:manage:tenant' permission to admin roles:")
+        print("     python assign_menu_permissions.py [ROLE_CODE] [TENANT_CODE]")
+        print("  3. Restart backend application (if needed)")
+        print("  4. Test menu API: GET /api/v1/menu")
         print("="*80 + "\n")
 
     finally:
