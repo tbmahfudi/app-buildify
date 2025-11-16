@@ -532,7 +532,7 @@ def delete_department(
 
 # ============= TENANTS =============
 
-@router.get("/tenants")
+@router.get("/tenants", response_model=schemas.TenantListResponse)
 def list_tenants(
     skip: int = 0,
     limit: int = 100,
@@ -546,7 +546,7 @@ def list_tenants(
 
     from app.models.tenant import Tenant
 
-    query = db.query(Tenant)
+    query = db.query(Tenant).filter(Tenant.deleted_at.is_(None))
     result = build_list_response(query, skip, limit)
 
     # Format items for response
@@ -555,13 +555,260 @@ def list_tenants(
             {
                 "id": str(t.id),
                 "name": t.name,
+                "code": t.code,
+                "description": t.description,
+                "subscription_tier": t.subscription_tier,
+                "subscription_status": t.subscription_status,
+                "subscription_start": t.subscription_start,
+                "subscription_end": t.subscription_end,
+                "max_companies": t.max_companies,
+                "max_users": t.max_users,
+                "max_storage_gb": t.max_storage_gb,
+                "current_companies": t.current_companies,
+                "current_users": t.current_users,
+                "current_storage_gb": t.current_storage_gb,
                 "is_active": t.is_active,
-                "created_at": t.created_at.isoformat() if t.created_at else None
+                "is_trial": t.is_trial,
+                "contact_name": t.contact_name,
+                "contact_email": t.contact_email,
+                "contact_phone": t.contact_phone,
+                "logo_url": t.logo_url,
+                "primary_color": t.primary_color,
+                "created_at": t.created_at,
+                "updated_at": t.updated_at
             }
             for t in result["items"]
         ],
         "total": result["total"]
     }
+
+
+@router.get("/tenants/{tenant_id}", response_model=schemas.TenantResponse)
+def get_tenant(
+    tenant_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Get a specific tenant - superuser only"""
+    if not current_user.is_superuser:
+        raise permission_denied_exception("view", "tenant")
+
+    from app.models.tenant import Tenant
+    from uuid import UUID
+
+    try:
+        tenant_uuid = UUID(tenant_id)
+    except ValueError:
+        raise not_found_exception("Tenant")
+
+    tenant = db.query(Tenant).filter(
+        Tenant.id == tenant_uuid,
+        Tenant.deleted_at.is_(None)
+    ).first()
+
+    if not tenant:
+        raise not_found_exception("Tenant")
+
+    return {
+        "id": str(tenant.id),
+        "name": tenant.name,
+        "code": tenant.code,
+        "description": tenant.description,
+        "subscription_tier": tenant.subscription_tier,
+        "subscription_status": tenant.subscription_status,
+        "subscription_start": tenant.subscription_start,
+        "subscription_end": tenant.subscription_end,
+        "max_companies": tenant.max_companies,
+        "max_users": tenant.max_users,
+        "max_storage_gb": tenant.max_storage_gb,
+        "current_companies": tenant.current_companies,
+        "current_users": tenant.current_users,
+        "current_storage_gb": tenant.current_storage_gb,
+        "is_active": tenant.is_active,
+        "is_trial": tenant.is_trial,
+        "contact_name": tenant.contact_name,
+        "contact_email": tenant.contact_email,
+        "contact_phone": tenant.contact_phone,
+        "logo_url": tenant.logo_url,
+        "primary_color": tenant.primary_color,
+        "created_at": tenant.created_at,
+        "updated_at": tenant.updated_at
+    }
+
+
+@router.post("/tenants", response_model=schemas.TenantResponse, status_code=201)
+def create_tenant(
+    tenant: schemas.TenantCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Create a new tenant - superuser only"""
+    if not current_user.is_superuser:
+        raise permission_denied_exception("create", "tenant")
+
+    from app.models.tenant import Tenant
+
+    # Check if code already exists
+    existing = db.query(Tenant).filter(Tenant.code == tenant.code).first()
+    if existing:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Tenant with code '{tenant.code}' already exists"
+        )
+
+    # Create new tenant
+    new_tenant = Tenant(
+        name=tenant.name,
+        code=tenant.code,
+        description=tenant.description,
+        subscription_tier=tenant.subscription_tier or "free",
+        subscription_status=tenant.subscription_status or "active",
+        max_companies=tenant.max_companies or 10,
+        max_users=tenant.max_users or 500,
+        max_storage_gb=tenant.max_storage_gb or 10,
+        is_active=tenant.is_active if tenant.is_active is not None else True,
+        is_trial=tenant.is_trial or False,
+        contact_name=tenant.contact_name,
+        contact_email=tenant.contact_email,
+        contact_phone=tenant.contact_phone,
+        logo_url=tenant.logo_url,
+        primary_color=tenant.primary_color
+    )
+
+    db.add(new_tenant)
+    db.commit()
+    db.refresh(new_tenant)
+
+    return {
+        "id": str(new_tenant.id),
+        "name": new_tenant.name,
+        "code": new_tenant.code,
+        "description": new_tenant.description,
+        "subscription_tier": new_tenant.subscription_tier,
+        "subscription_status": new_tenant.subscription_status,
+        "subscription_start": new_tenant.subscription_start,
+        "subscription_end": new_tenant.subscription_end,
+        "max_companies": new_tenant.max_companies,
+        "max_users": new_tenant.max_users,
+        "max_storage_gb": new_tenant.max_storage_gb,
+        "current_companies": new_tenant.current_companies,
+        "current_users": new_tenant.current_users,
+        "current_storage_gb": new_tenant.current_storage_gb,
+        "is_active": new_tenant.is_active,
+        "is_trial": new_tenant.is_trial,
+        "contact_name": new_tenant.contact_name,
+        "contact_email": new_tenant.contact_email,
+        "contact_phone": new_tenant.contact_phone,
+        "logo_url": new_tenant.logo_url,
+        "primary_color": new_tenant.primary_color,
+        "created_at": new_tenant.created_at,
+        "updated_at": new_tenant.updated_at
+    }
+
+
+@router.put("/tenants/{tenant_id}", response_model=schemas.TenantResponse)
+def update_tenant(
+    tenant_id: str,
+    tenant_update: schemas.TenantUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Update a tenant - superuser only"""
+    if not current_user.is_superuser:
+        raise permission_denied_exception("update", "tenant")
+
+    from app.models.tenant import Tenant
+    from uuid import UUID
+
+    try:
+        tenant_uuid = UUID(tenant_id)
+    except ValueError:
+        raise not_found_exception("Tenant")
+
+    tenant = db.query(Tenant).filter(
+        Tenant.id == tenant_uuid,
+        Tenant.deleted_at.is_(None)
+    ).first()
+
+    if not tenant:
+        raise not_found_exception("Tenant")
+
+    # Check if code is being changed and if it conflicts
+    if tenant_update.code and tenant_update.code != tenant.code:
+        existing = db.query(Tenant).filter(Tenant.code == tenant_update.code).first()
+        if existing:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Tenant with code '{tenant_update.code}' already exists"
+            )
+
+    # Update fields
+    update_data = tenant_update.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(tenant, field, value)
+
+    db.commit()
+    db.refresh(tenant)
+
+    return {
+        "id": str(tenant.id),
+        "name": tenant.name,
+        "code": tenant.code,
+        "description": tenant.description,
+        "subscription_tier": tenant.subscription_tier,
+        "subscription_status": tenant.subscription_status,
+        "subscription_start": tenant.subscription_start,
+        "subscription_end": tenant.subscription_end,
+        "max_companies": tenant.max_companies,
+        "max_users": tenant.max_users,
+        "max_storage_gb": tenant.max_storage_gb,
+        "current_companies": tenant.current_companies,
+        "current_users": tenant.current_users,
+        "current_storage_gb": tenant.current_storage_gb,
+        "is_active": tenant.is_active,
+        "is_trial": tenant.is_trial,
+        "contact_name": tenant.contact_name,
+        "contact_email": tenant.contact_email,
+        "contact_phone": tenant.contact_phone,
+        "logo_url": tenant.logo_url,
+        "primary_color": tenant.primary_color,
+        "created_at": tenant.created_at,
+        "updated_at": tenant.updated_at
+    }
+
+
+@router.delete("/tenants/{tenant_id}", status_code=204)
+def delete_tenant(
+    tenant_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Delete a tenant (soft delete) - superuser only"""
+    if not current_user.is_superuser:
+        raise permission_denied_exception("delete", "tenant")
+
+    from app.models.tenant import Tenant
+    from uuid import UUID
+    from datetime import datetime
+
+    try:
+        tenant_uuid = UUID(tenant_id)
+    except ValueError:
+        raise not_found_exception("Tenant")
+
+    tenant = db.query(Tenant).filter(
+        Tenant.id == tenant_uuid,
+        Tenant.deleted_at.is_(None)
+    ).first()
+
+    if not tenant:
+        raise not_found_exception("Tenant")
+
+    # Soft delete
+    tenant.deleted_at = datetime.utcnow()
+    db.commit()
+
+    return None
 
 
 # ============= USERS =============
