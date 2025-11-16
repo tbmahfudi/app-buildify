@@ -349,7 +349,13 @@ body.density-compact label {
 /* Fix search input icon overlap in compact mode */
 body.density-compact input[id^="search-"],
 body.density-compact input[id*="filter-search"] {
-  padding-left: 2.75rem !important;
+  padding-left: 2rem !important;
+}
+
+/* Reduce search icon position in compact mode */
+body.density-compact .bi-search {
+  left: 0.5rem !important;
+  font-size: 0.75rem !important;
 }
 
 /* Compact mode for spacing utilities */
