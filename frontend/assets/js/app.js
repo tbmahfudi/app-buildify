@@ -18,6 +18,53 @@ export function getCurrentUser() {
   return appState.user;
 }
 
+/**
+ * Load the main application template into #root
+ */
+async function loadMainTemplate() {
+  try {
+    const response = await fetch('/assets/templates/main.html');
+    if (!response.ok) {
+      throw new Error('Failed to load main template');
+    }
+
+    const html = await response.text();
+
+    // Parse to extract body content only
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+    const bodyContent = doc.body?.innerHTML || html;
+
+    // Inject into root
+    const root = document.getElementById('root');
+    if (root) {
+      root.innerHTML = bodyContent;
+    }
+
+    // Hide the loader
+    const loader = document.getElementById('app-loader');
+    if (loader) {
+      loader.style.display = 'none';
+    }
+
+    console.log('✓ Main application template loaded');
+  } catch (error) {
+    console.error('Failed to load main template:', error);
+    document.getElementById('root').innerHTML = `
+      <div class="flex items-center justify-center h-screen">
+        <div class="text-center">
+          <i class="ph-duotone ph-warning-circle text-6xl text-red-500 mb-4"></i>
+          <h1 class="text-2xl font-bold text-gray-900 mb-2">Failed to Load Application</h1>
+          <p class="text-gray-600 mb-4">Please refresh the page to try again</p>
+          <button onclick="location.reload()" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+            Reload
+          </button>
+        </div>
+      </div>
+    `;
+  }
+}
+
 export async function initApp() {
   // Check if logged in
   const tokensStr = localStorage.getItem('tokens');
@@ -26,6 +73,9 @@ export async function initApp() {
     window.location.href = '/assets/templates/login.html';
     return;
   }
+
+  // Load main application template
+  await loadMainTemplate();
 
   showLoading();
 
