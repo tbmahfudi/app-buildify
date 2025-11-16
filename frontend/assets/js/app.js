@@ -164,29 +164,6 @@ function toggleSidebar() {
 }
 
 /**
- * Update the collapse button icon direction
- */
-function updateCollapseButtonIcon(isCollapsed) {
-  const collapseBtn = document.getElementById('sidebar-collapse-btn');
-  if (!collapseBtn) return;
-
-  const icon = collapseBtn.querySelector('i');
-  const tooltip = collapseBtn.querySelector('.sidebar-collapse-tooltip');
-
-  if (isCollapsed) {
-    // Show right arrow (expand)
-    icon.className = 'ph-duotone ph-caret-right text-xl transition-transform duration-300';
-    if (tooltip) tooltip.textContent = 'Expand sidebar';
-    collapseBtn.setAttribute('title', 'Expand sidebar');
-  } else {
-    // Show left arrow (collapse)
-    icon.className = 'ph-duotone ph-caret-left text-xl transition-transform duration-300';
-    if (tooltip) tooltip.textContent = 'Collapse sidebar';
-    collapseBtn.setAttribute('title', 'Collapse sidebar');
-  }
-}
-
-/**
  * Load sidebar state from localStorage
  */
 function loadSidebarState() {
@@ -211,12 +188,10 @@ function loadSidebarState() {
     sidebar.setAttribute('data-collapsed', 'true');
     sidebar.classList.add('sidebar-collapsed');
     sidebar.classList.remove('w-64');
-    updateCollapseButtonIcon(true);
   } else {
     sidebar.setAttribute('data-collapsed', 'false');
     sidebar.classList.remove('sidebar-collapsed');
     sidebar.classList.add('w-64');
-    updateCollapseButtonIcon(false);
   }
 }
 
