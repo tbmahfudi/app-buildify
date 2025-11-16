@@ -6,22 +6,22 @@
       "icon": "ph-duotone ph-gauge"
     },
     {
-      "title": "Administration",
-      "icon": "ph-duotone ph-buildings",
-      "submenu": [
-        { "title": "Companies", "route": "companies", "icon": "ph-duotone ph-building" },
-        { "title": "Branches", "route": "branches", "icon": "ph-duotone ph-tree-structure" },
-        { "title": "Departments", "route": "departments", "icon": "ph-duotone ph-users-three" },
-        { "title": "Users", "route": "users", "icon": "ph-duotone ph-users", "roles": ["admin"] },
-        { "title": "Groups", "route": "groups", "icon": "ph-duotone ph-user-circle-gear" },
-        { "title": "Roles & Permissions", "route": "rbac", "icon": "ph-duotone ph-shield-check", "roles": ["admin"] },
-        { "title": "Auth Policies", "route": "auth-policies", "icon": "ph-duotone ph-lock-key" }
-      ]
-    },
-    {
       "title": "System Management",
       "icon": "ph-duotone ph-gear-six",
       "submenu": [
+        {
+          "title": "Administration",
+          "icon": "ph-duotone ph-buildings",
+          "submenu": [
+            { "title": "Companies", "route": "companies", "icon": "ph-duotone ph-building" },
+            { "title": "Branches", "route": "branches", "icon": "ph-duotone ph-tree-structure" },
+            { "title": "Departments", "route": "departments", "icon": "ph-duotone ph-users-three" },
+            { "title": "Users", "route": "users", "icon": "ph-duotone ph-users", "roles": ["admin"] },
+            { "title": "Groups", "route": "groups", "icon": "ph-duotone ph-user-circle-gear" },
+            { "title": "Roles & Permissions", "route": "rbac", "icon": "ph-duotone ph-shield-check", "roles": ["admin"] },
+            { "title": "Auth Policies", "route": "auth-policies", "icon": "ph-duotone ph-lock-key" }
+          ]
+        },
         {
           "title": "System Settings",
           "icon": "ph-duotone ph-gear",
@@ -55,30 +55,24 @@
       ]
     },
     {
-      "title": "Reports & Analytics",
-      "icon": "ph-duotone ph-chart-bar",
-      "submenu": [
-        { "title": "Sample Reports & Dashboards", "route": "sample-reports-dashboards", "icon": "ph-duotone ph-presentation-chart" }
-      ]
-    },
-    {
-      "title": "Developer Tools",
-      "icon": "ph-duotone ph-code",
-      "submenu": [
-        { "title": "Components", "route": "components-showcase", "icon": "ph-duotone ph-squares-four" },
-        { "title": "Schema Designer", "route": "schema-designer", "icon": "ph-duotone ph-database" },
-        { "title": "API Playground", "route": "api-playground", "icon": "ph-duotone ph-terminal-window" },
-        { "title": "Code Generator", "route": "code-generator", "icon": "ph-duotone ph-brackets-curly" }
-      ]
-    },
-    {
       "title": "Help & Support",
       "icon": "ph-duotone ph-lifebuoy",
       "submenu": [
         { "title": "User Guide", "route": "user-guide", "icon": "ph-duotone ph-book-open" },
         { "title": "API Docs", "route": "api-docs", "icon": "ph-duotone ph-file-code" },
         { "title": "Contact Support", "route": "contact-support", "icon": "ph-duotone ph-headset" },
-        { "title": "Changelog", "route": "changelog", "icon": "ph-duotone ph-git-diff" }
+        { "title": "Changelog", "route": "changelog", "icon": "ph-duotone ph-git-diff" },
+        {
+          "title": "Developer Tools",
+          "icon": "ph-duotone ph-code",
+          "submenu": [
+            { "title": "Sample Reports & Dashboards", "route": "sample-reports-dashboards", "icon": "ph-duotone ph-presentation-chart" },
+            { "title": "Components", "route": "components-showcase", "icon": "ph-duotone ph-squares-four" },
+            { "title": "Schema Designer", "route": "schema-designer", "icon": "ph-duotone ph-database" },
+            { "title": "API Playground", "route": "api-playground", "icon": "ph-duotone ph-terminal-window" },
+            { "title": "Code Generator", "route": "code-generator", "icon": "ph-duotone ph-brackets-curly" }
+          ]
+        }
       ]
     }
   ]
