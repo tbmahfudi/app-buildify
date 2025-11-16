@@ -180,7 +180,7 @@ class ResourceLoader {
     return new Promise((resolve, reject) => {
       const script = document.createElement('script');
       script.src = src;
-      script.type = 'text/javascript';
+      script.type = 'module';
       script.async = true;
 
       const timeoutId = setTimeout(() => {
