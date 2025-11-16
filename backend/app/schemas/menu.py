@@ -2,9 +2,10 @@
 Pydantic schemas for menu management with RBAC
 """
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_serializer
 from typing import Optional, List, Dict, Any
 from datetime import datetime
+from uuid import UUID
 
 
 class MenuItemBase(BaseModel):
@@ -25,8 +26,8 @@ class MenuItemBase(BaseModel):
 
 class MenuItemCreate(MenuItemBase):
     """Schema for creating a menu item"""
-    parent_id: Optional[str] = Field(None, description="Parent menu item ID (for submenus)")
-    tenant_id: Optional[str] = Field(None, description="Tenant ID (null for system menus, auto-set for non-superusers)")
+    parent_id: Optional[UUID | str] = Field(None, description="Parent menu item ID (for submenus)")
+    tenant_id: Optional[UUID | str] = Field(None, description="Tenant ID (null for system menus, auto-set for non-superusers)")
     module_code: Optional[str] = Field(None, description="Module code if menu is from a module", max_length=100)
     is_system: bool = Field(True, description="Is this a system menu item")
 
@@ -41,7 +42,7 @@ class MenuItemUpdate(BaseModel):
     required_roles: Optional[List[str]] = None
     order: Optional[int] = None
     target: Optional[str] = Field(None, max_length=50)
-    parent_id: Optional[str] = None
+    parent_id: Optional[UUID | str] = None
     is_active: Optional[bool] = None
     is_visible: Optional[bool] = None
     extra_data: Optional[Dict[str, Any]] = None
@@ -49,14 +50,21 @@ class MenuItemUpdate(BaseModel):
 
 class MenuItemResponse(MenuItemBase):
     """Schema for menu item response"""
-    id: str
-    parent_id: Optional[str] = None
-    tenant_id: Optional[str] = None
+    id: UUID | str
+    parent_id: Optional[UUID | str] = None
+    tenant_id: Optional[UUID | str] = None
     module_code: Optional[str] = None
     is_system: bool
     created_at: datetime
     updated_at: Optional[datetime] = None
     children: Optional[List['MenuItemResponse']] = Field(default_factory=list, description="Child menu items")
+
+    @field_serializer('id', 'parent_id', 'tenant_id')
+    def serialize_uuid(self, value: UUID | str | None) -> str | None:
+        """Convert UUID to string for JSON serialization"""
+        if value is None:
+            return None
+        return str(value)
 
     class Config:
         from_attributes = True
@@ -64,7 +72,7 @@ class MenuItemResponse(MenuItemBase):
 
 class MenuItemTree(BaseModel):
     """Schema for menu item in tree structure (for end users)"""
-    id: str
+    id: UUID | str
     code: str
     title: str
     icon: Optional[str] = None
@@ -74,13 +82,18 @@ class MenuItemTree(BaseModel):
     extra_data: Optional[Dict[str, Any]] = None
     children: Optional[List['MenuItemTree']] = Field(default_factory=list)
 
+    @field_serializer('id')
+    def serialize_uuid(self, value: UUID | str) -> str:
+        """Convert UUID to string for JSON serialization"""
+        return str(value)
+
     class Config:
         from_attributes = True
 
 
 class MenuReorderItem(BaseModel):
     """Schema for reordering menu items"""
-    id: str = Field(..., description="Menu item ID")
+    id: UUID | str = Field(..., description="Menu item ID")
     order: int = Field(..., description="New order position")
 
 
