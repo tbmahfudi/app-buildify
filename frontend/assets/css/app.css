@@ -346,6 +346,12 @@ body.density-compact label {
   margin-bottom: calc(0.35rem) !important;
 }
 
+/* Fix search input icon overlap in compact mode */
+body.density-compact input[id^="search-"],
+body.density-compact input[id*="filter-search"] {
+  padding-left: 2.75rem !important;
+}
+
 /* Compact mode for spacing utilities */
 body.density-compact .space-y-6 > * + *,
 body.density-compact .space-y-5 > * + *,
