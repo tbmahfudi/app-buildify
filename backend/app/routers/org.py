@@ -50,6 +50,7 @@ logger = logging.getLogger(__name__)
 
 @router.get("/companies", response_model=CompanyListResponse)
 def list_companies(
+    tenant_id: str = None,
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
@@ -62,6 +63,7 @@ def list_companies(
     Requires authentication but no specific role.
 
     Args:
+        tenant_id: Optional tenant UUID to filter by
         skip: Number of records to skip (default: 0)
         limit: Maximum number of records to return (default: 100, max: 1000)
         db: Database session (injected)
@@ -82,6 +84,8 @@ def list_companies(
         }
     """
     query = db.query(Company)
+    if tenant_id:
+        query = query.filter(Company.tenant_id == tenant_id)
     return build_list_response(query, skip, limit)
 
 @router.get("/companies/{company_id}", response_model=CompanyResponse)
@@ -262,14 +266,17 @@ def delete_company(
 
 @router.get("/branches", response_model=BranchListResponse)
 def list_branches(
+    tenant_id: str = None,
     company_id: str = None,
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """List branches, optionally filtered by company"""
+    """List branches, optionally filtered by tenant and/or company"""
     query = db.query(Branch)
+    if tenant_id:
+        query = query.filter(Branch.tenant_id == tenant_id)
     if company_id:
         query = query.filter(Branch.company_id == company_id)
     return build_list_response(query, skip, limit)
@@ -390,6 +397,7 @@ def delete_branch(
 
 @router.get("/departments", response_model=DepartmentListResponse)
 def list_departments(
+    tenant_id: str = None,
     company_id: str = None,
     branch_id: str = None,
     skip: int = 0,
@@ -397,8 +405,10 @@ def list_departments(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """List departments, optionally filtered by company/branch"""
+    """List departments, optionally filtered by tenant, company, and/or branch"""
     query = db.query(Department)
+    if tenant_id:
+        query = query.filter(Department.tenant_id == tenant_id)
     if company_id:
         query = query.filter(Department.company_id == company_id)
     if branch_id:

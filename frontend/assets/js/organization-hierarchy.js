@@ -37,11 +37,11 @@ export async function openOrganizationHierarchy(tenantId, tenantName) {
  */
 async function loadOrganizationData() {
   try {
-    // Load companies, branches, and departments in parallel
+    // Load companies, branches, and departments in parallel - filtered by tenant
     const [companiesRes, branchesRes, departmentsRes] = await Promise.all([
-      apiFetch('/org/companies'),
-      apiFetch('/org/branches'),
-      apiFetch('/org/departments')
+      apiFetch(`/org/companies?tenant_id=${currentTenantId}`),
+      apiFetch(`/org/branches?tenant_id=${currentTenantId}`),
+      apiFetch(`/org/departments?tenant_id=${currentTenantId}`)
     ]);
 
     orgData.companies = await companiesRes.json();
@@ -472,6 +472,34 @@ document.addEventListener('DOMContentLoaded', () => {
     e.preventDefault();
     const formData = new FormData(e.target);
     await saveEntity(formData);
+  });
+
+  // Handle overlay click - close org hierarchy modal if it's open
+  const overlay = document.getElementById('modal-overlay');
+  if (overlay) {
+    overlay.addEventListener('click', (e) => {
+      const orgModal = document.getElementById('org-hierarchy-modal');
+      const entityModal = document.getElementById('org-entity-modal');
+
+      // If org hierarchy modal is visible, close it
+      if (orgModal && !orgModal.classList.contains('hidden')) {
+        closeOrgHierarchyModal();
+        e.stopPropagation();
+      }
+      // If entity modal is visible, close it
+      else if (entityModal && !entityModal.classList.contains('hidden')) {
+        closeEntityModal();
+        e.stopPropagation();
+      }
+    });
+  }
+
+  // Prevent modal content clicks from closing the modal
+  document.getElementById('org-hierarchy-modal')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+  });
+  document.getElementById('org-entity-modal')?.addEventListener('click', (e) => {
+    e.stopPropagation();
   });
 });
 
