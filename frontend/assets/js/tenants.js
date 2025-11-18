@@ -3,7 +3,6 @@ import { showToast } from './ui-utils.js';
 
 let currentTenants = [];
 let editingTenantId = null;
-let expandedTenantId = null;
 
 document.addEventListener('route:loaded', (event) => {
   if (event.detail.route === 'tenants') {
@@ -131,8 +130,6 @@ function renderTenants(tenants) {
 }
 
 function renderTenantCard(tenant) {
-  const isExpanded = expandedTenantId === tenant.id;
-
   return `
     <div class="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-200 hover:shadow-md transition-shadow">
       <!-- Card Header -->
@@ -168,86 +165,62 @@ function renderTenantCard(tenant) {
               class="p-2 text-red-600 hover:bg-red-50 rounded-lg transition" title="Delete Tenant">
               <i class="bi bi-trash text-lg"></i>
             </button>
-            <button onclick="toggleTenantExpand('${tenant.id}')"
-              class="p-2 text-gray-600 hover:bg-gray-50 rounded-lg transition ${isExpanded ? 'bg-gray-100' : ''}"
-              title="${isExpanded ? 'Collapse' : 'Expand'}">
-              <i class="bi bi-chevron-${isExpanded ? 'up' : 'down'} text-lg"></i>
-            </button>
           </div>
         </div>
 
-        <!-- Usage Stats -->
-        <div class="grid grid-cols-3 gap-4 mt-6 pt-6 border-t border-gray-200">
-          <div class="text-center">
-            <div class="text-sm text-gray-500 mb-1">Companies</div>
-            <div class="text-lg font-semibold ${tenant.current_companies >= tenant.max_companies ? 'text-red-600' : 'text-gray-900'}">
-              ${tenant.current_companies}/${tenant.max_companies}
-            </div>
-            <div class="w-full bg-gray-200 rounded-full h-1.5 mt-2">
-              <div class="bg-blue-600 h-1.5 rounded-full" style="width: ${Math.min(100, (tenant.current_companies / tenant.max_companies) * 100)}%"></div>
-            </div>
+        <!-- Compact Usage Stats -->
+        <div class="flex items-center gap-6 mt-4 pt-4 border-t border-gray-200 text-sm">
+          <div class="flex items-center gap-2 ${tenant.current_companies >= tenant.max_companies ? 'text-red-600' : 'text-gray-700'}">
+            <i class="bi bi-building text-lg"></i>
+            <span class="font-semibold">${tenant.current_companies}/${tenant.max_companies}</span>
+            <span class="text-gray-500 text-xs">Companies</span>
           </div>
-          <div class="text-center">
-            <div class="text-sm text-gray-500 mb-1">Users</div>
-            <div class="text-lg font-semibold ${tenant.current_users >= tenant.max_users ? 'text-red-600' : 'text-gray-900'}">
-              ${tenant.current_users}/${tenant.max_users}
-            </div>
-            <div class="w-full bg-gray-200 rounded-full h-1.5 mt-2">
-              <div class="bg-green-600 h-1.5 rounded-full" style="width: ${Math.min(100, (tenant.current_users / tenant.max_users) * 100)}%"></div>
-            </div>
+          <div class="flex items-center gap-2 ${tenant.current_users >= tenant.max_users ? 'text-red-600' : 'text-gray-700'}">
+            <i class="bi bi-people text-lg"></i>
+            <span class="font-semibold">${tenant.current_users}/${tenant.max_users}</span>
+            <span class="text-gray-500 text-xs">Users</span>
           </div>
-          <div class="text-center">
-            <div class="text-sm text-gray-500 mb-1">Storage</div>
-            <div class="text-lg font-semibold ${tenant.current_storage_gb >= tenant.max_storage_gb ? 'text-red-600' : 'text-gray-900'}">
-              ${tenant.current_storage_gb}/${tenant.max_storage_gb} GB
-            </div>
-            <div class="w-full bg-gray-200 rounded-full h-1.5 mt-2">
-              <div class="bg-purple-600 h-1.5 rounded-full" style="width: ${Math.min(100, (tenant.current_storage_gb / tenant.max_storage_gb) * 100)}%"></div>
-            </div>
+          <div class="flex items-center gap-2 ${tenant.current_storage_gb >= tenant.max_storage_gb ? 'text-red-600' : 'text-gray-700'}">
+            <i class="bi bi-hdd text-lg"></i>
+            <span class="font-semibold">${tenant.current_storage_gb}/${tenant.max_storage_gb} GB</span>
+            <span class="text-gray-500 text-xs">Storage</span>
           </div>
         </div>
       </div>
 
-      <!-- Expandable Content -->
-      <div id="tenant-expand-${tenant.id}" class="${isExpanded ? '' : 'hidden'} bg-gray-50 border-t border-gray-200">
-        <!-- Tabs -->
-        <div class="flex border-b border-gray-200 bg-white px-6">
-          <button class="tenant-tab active px-4 py-3 text-sm font-medium border-b-2 border-blue-600 text-blue-600"
-            data-tab="details" data-tenant-id="${tenant.id}">
-            <i class="bi bi-info-circle mr-2"></i>Details
-          </button>
-          <button class="tenant-tab px-4 py-3 text-sm font-medium border-b-2 border-transparent text-gray-600 hover:text-gray-900"
-            data-tab="organization" data-tenant-id="${tenant.id}">
-            <i class="bi bi-diagram-3 mr-2"></i>Organization
-          </button>
-          <button class="tenant-tab px-4 py-3 text-sm font-medium border-b-2 border-transparent text-gray-600 hover:text-gray-900"
-            data-tab="settings" data-tenant-id="${tenant.id}">
-            <i class="bi bi-gear mr-2"></i>Settings
-          </button>
+      <!-- Always Visible Content Sections -->
+      <div class="bg-gray-50 border-t border-gray-200">
+        <!-- Details Section -->
+        <div class="px-6 py-4 border-b border-gray-200 bg-white">
+          <h4 class="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+            <i class="bi bi-info-circle text-blue-600"></i>
+            Details
+          </h4>
+          ${renderDetailsTab(tenant)}
         </div>
 
-        <!-- Tab Content -->
-        <div class="p-6">
-          <!-- Details Tab -->
-          <div class="tab-content" data-tab="details" data-tenant-id="${tenant.id}">
-            ${renderDetailsTab(tenant)}
+        <!-- Organization Section -->
+        <div class="px-6 py-4 border-b border-gray-200 bg-white">
+          <h4 class="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+            <i class="bi bi-diagram-3 text-green-600"></i>
+            Organization Structure
+          </h4>
+          <div class="text-center py-4">
+            <button onclick="viewOrganization('${tenant.id}', '${escapeHtml(tenant.name)}')"
+              class="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+              <i class="bi bi-diagram-3"></i>
+              View Organization Hierarchy
+            </button>
           </div>
+        </div>
 
-          <!-- Organization Tab -->
-          <div class="tab-content hidden" data-tab="organization" data-tenant-id="${tenant.id}">
-            <div class="text-center py-8">
-              <button onclick="viewOrganization('${tenant.id}', '${escapeHtml(tenant.name)}')"
-                class="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
-                <i class="bi bi-diagram-3"></i>
-                View Organization Hierarchy
-              </button>
-            </div>
-          </div>
-
-          <!-- Settings Tab -->
-          <div class="tab-content hidden" data-tab="settings" data-tenant-id="${tenant.id}">
-            ${renderSettingsTab(tenant)}
-          </div>
+        <!-- Settings Section -->
+        <div class="px-6 py-4 bg-white">
+          <h4 class="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+            <i class="bi bi-gear text-purple-600"></i>
+            Settings
+          </h4>
+          ${renderSettingsTab(tenant)}
         </div>
       </div>
     </div>
@@ -532,55 +505,6 @@ async function deleteTenant(tenantId, tenantName) {
   }
 }
 
-function toggleTenantExpand(tenantId) {
-  const expandDiv = document.getElementById(`tenant-expand-${tenantId}`);
-
-  if (expandedTenantId === tenantId) {
-    expandedTenantId = null;
-    expandDiv?.classList.add('hidden');
-  } else {
-    // Collapse any other expanded tenant
-    if (expandedTenantId) {
-      document.getElementById(`tenant-expand-${expandedTenantId}`)?.classList.add('hidden');
-    }
-    expandedTenantId = tenantId;
-    expandDiv?.classList.remove('hidden');
-
-    // Setup tab switching
-    setupTabs(tenantId);
-  }
-
-  // Re-render to update chevron icon
-  renderTenants(currentTenants);
-}
-
-function setupTabs(tenantId) {
-  const tabs = document.querySelectorAll(`.tenant-tab[data-tenant-id="${tenantId}"]`);
-  const contents = document.querySelectorAll(`.tab-content[data-tenant-id="${tenantId}"]`);
-
-  tabs.forEach(tab => {
-    tab.addEventListener('click', () => {
-      const tabName = tab.dataset.tab;
-
-      // Update tab styles
-      tabs.forEach(t => {
-        t.classList.remove('active', 'border-blue-600', 'text-blue-600');
-        t.classList.add('border-transparent', 'text-gray-600');
-      });
-      tab.classList.add('active', 'border-blue-600', 'text-blue-600');
-      tab.classList.remove('border-transparent', 'text-gray-600');
-
-      // Show/hide content
-      contents.forEach(content => {
-        if (content.dataset.tab === tabName) {
-          content.classList.remove('hidden');
-        } else {
-          content.classList.add('hidden');
-        }
-      });
-    });
-  });
-}
 
 function viewOrganization(tenantId, tenantName) {
   if (window.orgHierarchy) {
@@ -611,5 +535,4 @@ function escapeHtml(text) {
 // Export functions for global access
 window.editTenant = editTenant;
 window.deleteTenant = deleteTenant;
-window.toggleTenantExpand = toggleTenantExpand;
 window.viewOrganization = viewOrganization;
