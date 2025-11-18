@@ -188,39 +188,58 @@ function renderTenantCard(tenant) {
         </div>
       </div>
 
-      <!-- Always Visible Content Sections -->
+      <!-- Tab Navigation -->
       <div class="bg-gray-50 border-t border-gray-200">
-        <!-- Details Section -->
-        <div class="px-6 py-4 border-b border-gray-200 bg-white">
-          <h4 class="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
-            <i class="bi bi-info-circle text-blue-600"></i>
-            Details
-          </h4>
-          ${renderDetailsTab(tenant)}
+        <div class="flex border-b border-gray-200">
+          <button onclick="switchTab('${tenant.id}', 'details')"
+            class="tenant-tab flex-1 px-6 py-3 text-sm font-medium text-blue-600 bg-white hover:text-blue-600 hover:bg-white transition border-b-2 border-blue-600"
+            data-tenant-id="${tenant.id}"
+            data-tab="details"
+            data-active="true">
+            <i class="bi bi-info-circle mr-2"></i>Details
+          </button>
+          <button onclick="switchTab('${tenant.id}', 'organization')"
+            class="tenant-tab flex-1 px-6 py-3 text-sm font-medium text-gray-700 hover:text-blue-600 hover:bg-white transition border-b-2 border-transparent"
+            data-tenant-id="${tenant.id}"
+            data-tab="organization">
+            <i class="bi bi-diagram-3 mr-2"></i>Organization
+          </button>
+          <button onclick="switchTab('${tenant.id}', 'settings')"
+            class="tenant-tab flex-1 px-6 py-3 text-sm font-medium text-gray-700 hover:text-blue-600 hover:bg-white transition border-b-2 border-transparent"
+            data-tenant-id="${tenant.id}"
+            data-tab="settings">
+            <i class="bi bi-gear mr-2"></i>Settings
+          </button>
         </div>
 
-        <!-- Organization Section -->
-        <div class="px-6 py-4 border-b border-gray-200 bg-white">
-          <h4 class="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
-            <i class="bi bi-diagram-3 text-green-600"></i>
-            Organization Structure
-          </h4>
-          <div class="text-center py-4">
-            <button onclick="viewOrganization('${tenant.id}', '${escapeHtml(tenant.name)}')"
-              class="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
-              <i class="bi bi-diagram-3"></i>
-              View Organization Hierarchy
-            </button>
+        <!-- Tab Content -->
+        <div id="tenant-tab-content-${tenant.id}">
+          <!-- Details Tab -->
+          <div class="tenant-tab-panel px-6 py-4 bg-white"
+            data-tenant-id="${tenant.id}"
+            data-tab="details"
+            data-active="true">
+            ${renderDetailsTab(tenant)}
           </div>
-        </div>
 
-        <!-- Settings Section -->
-        <div class="px-6 py-4 bg-white">
-          <h4 class="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
-            <i class="bi bi-gear text-purple-600"></i>
-            Settings
-          </h4>
-          ${renderSettingsTab(tenant)}
+          <!-- Organization Tab -->
+          <div class="tenant-tab-panel px-6 py-4 bg-white hidden"
+            data-tenant-id="${tenant.id}"
+            data-tab="organization">
+            <div id="org-structure-${tenant.id}" class="org-loading">
+              <div class="flex items-center justify-center py-8">
+                <div class="inline-block w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mr-3"></div>
+                <span class="text-gray-500">Loading organization structure...</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Settings Tab -->
+          <div class="tenant-tab-panel px-6 py-4 bg-white hidden"
+            data-tenant-id="${tenant.id}"
+            data-tab="settings">
+            ${renderSettingsTab(tenant)}
+          </div>
         </div>
       </div>
     </div>
@@ -512,6 +531,189 @@ function viewOrganization(tenantId, tenantName) {
   }
 }
 
+async function switchTab(tenantId, tabName) {
+  // Update tab buttons
+  const tabs = document.querySelectorAll(`.tenant-tab[data-tenant-id="${tenantId}"]`);
+  tabs.forEach(tab => {
+    const isActive = tab.dataset.tab === tabName;
+    tab.dataset.active = isActive;
+    if (isActive) {
+      tab.classList.add('text-blue-600', 'bg-white', 'border-blue-600');
+      tab.classList.remove('text-gray-700', 'border-transparent');
+    } else {
+      tab.classList.remove('text-blue-600', 'bg-white', 'border-blue-600');
+      tab.classList.add('text-gray-700', 'border-transparent');
+    }
+  });
+
+  // Update tab panels
+  const panels = document.querySelectorAll(`.tenant-tab-panel[data-tenant-id="${tenantId}"]`);
+  panels.forEach(panel => {
+    const isActive = panel.dataset.tab === tabName;
+    panel.dataset.active = isActive;
+    if (isActive) {
+      panel.classList.remove('hidden');
+    } else {
+      panel.classList.add('hidden');
+    }
+  });
+
+  // Load organization structure if organization tab is clicked
+  if (tabName === 'organization') {
+    const orgContainer = document.getElementById(`org-structure-${tenantId}`);
+    if (orgContainer && orgContainer.classList.contains('org-loading')) {
+      await loadOrganizationStructure(tenantId);
+    }
+  }
+}
+
+async function loadOrganizationStructure(tenantId) {
+  const container = document.getElementById(`org-structure-${tenantId}`);
+  if (!container) return;
+
+  try {
+    // Load companies, branches, and departments in parallel - filtered by tenant
+    const [companiesRes, branchesRes, departmentsRes] = await Promise.all([
+      apiFetch(`/org/companies?tenant_id=${tenantId}`),
+      apiFetch(`/org/branches?tenant_id=${tenantId}`),
+      apiFetch(`/org/departments?tenant_id=${tenantId}`)
+    ]);
+
+    const companies = await companiesRes.json();
+    const branches = await branchesRes.json();
+    const departments = await departmentsRes.json();
+
+    // Remove loading class
+    container.classList.remove('org-loading');
+
+    // Render organization structure
+    container.innerHTML = renderOrganizationStructure(tenantId, companies, branches, departments);
+  } catch (error) {
+    console.error('Failed to load organization structure:', error);
+    container.innerHTML = `
+      <div class="text-center py-8">
+        <i class="bi bi-exclamation-triangle text-4xl text-red-500 mb-2"></i>
+        <p class="text-red-600">Failed to load organization structure</p>
+      </div>
+    `;
+  }
+}
+
+function renderOrganizationStructure(tenantId, companiesData, branchesData, departmentsData) {
+  const companies = companiesData.items || companiesData;
+  const branches = branchesData.items || branchesData;
+  const departments = departmentsData.items || departmentsData;
+
+  if (!companies || companies.length === 0) {
+    return `
+      <div class="text-center py-8">
+        <i class="bi bi-building text-5xl text-gray-300 mb-4"></i>
+        <p class="text-gray-500 mb-4">No companies in this tenant yet</p>
+        <button onclick="viewOrganization('${tenantId}', '')"
+          class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+          <i class="bi bi-plus-lg"></i>
+          Add First Company
+        </button>
+      </div>
+    `;
+  }
+
+  let html = '<div class="space-y-4">';
+
+  companies.forEach(company => {
+    const companyBranches = branches.filter(b => b.company_id === company.id);
+    const companyDepartments = departments.filter(d => d.company_id === company.id);
+
+    html += `
+      <div class="bg-white rounded-lg border border-gray-200 overflow-hidden">
+        <!-- Company Header -->
+        <div class="flex items-center justify-between p-4 bg-blue-50 border-b border-blue-100">
+          <div class="flex items-center gap-3">
+            <i class="bi bi-building text-2xl text-blue-600"></i>
+            <div>
+              <h4 class="font-semibold text-gray-900">${escapeHtml(company.name)}</h4>
+              <p class="text-sm text-gray-500">Code: ${escapeHtml(company.code)}</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Company Body (Branches & Departments) -->
+        <div class="p-4 space-y-3">
+          ${companyBranches.length > 0 ? `
+            <div>
+              <h5 class="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                <i class="bi bi-geo-alt text-green-600"></i>
+                Branches (${companyBranches.length})
+              </h5>
+              <div class="space-y-2 ml-6">
+                ${companyBranches.map(branch => renderBranchInline(branch, companyDepartments)).join('')}
+              </div>
+            </div>
+          ` : ''}
+
+          ${companyDepartments.filter(d => !d.branch_id).length > 0 ? `
+            <div>
+              <h5 class="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                <i class="bi bi-people text-purple-600"></i>
+                Company-Wide Departments (${companyDepartments.filter(d => !d.branch_id).length})
+              </h5>
+              <div class="space-y-1 ml-6">
+                ${companyDepartments.filter(d => !d.branch_id).map(dept => renderDepartmentInline(dept)).join('')}
+              </div>
+            </div>
+          ` : ''}
+
+          ${companyBranches.length === 0 && companyDepartments.length === 0 ? `
+            <p class="text-sm text-gray-400 italic">No branches or departments yet</p>
+          ` : ''}
+        </div>
+      </div>
+    `;
+  });
+
+  html += '</div>';
+  html += `
+    <div class="mt-4 text-center">
+      <button onclick="viewOrganization('${tenantId}', '')"
+        class="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition">
+        <i class="bi bi-pencil"></i>
+        Manage Organization Structure
+      </button>
+    </div>
+  `;
+
+  return html;
+}
+
+function renderBranchInline(branch, allDepartments) {
+  const branchDepartments = allDepartments.filter(d => d.branch_id === branch.id);
+
+  return `
+    <div class="bg-green-50 rounded-lg p-3 border border-green-100">
+      <div class="flex items-center gap-2 mb-2">
+        <i class="bi bi-geo-alt-fill text-green-600"></i>
+        <span class="font-medium text-gray-900 text-sm">${escapeHtml(branch.name)}</span>
+        <span class="text-xs text-gray-500">(${escapeHtml(branch.code)})</span>
+      </div>
+      ${branchDepartments.length > 0 ? `
+        <div class="ml-4 space-y-1 mt-2">
+          ${branchDepartments.map(dept => renderDepartmentInline(dept)).join('')}
+        </div>
+      ` : ''}
+    </div>
+  `;
+}
+
+function renderDepartmentInline(dept) {
+  return `
+    <div class="bg-purple-50 rounded px-3 py-2 border border-purple-100 flex items-center gap-2 text-sm">
+      <i class="bi bi-diagram-3 text-purple-600"></i>
+      <span class="text-gray-900">${escapeHtml(dept.name)}</span>
+      <span class="text-xs text-gray-500">(${escapeHtml(dept.code)})</span>
+    </div>
+  `;
+}
+
 function capitalizeFirst(str) {
   return str.charAt(0).toUpperCase() + str.slice(1);
 }
@@ -536,3 +738,4 @@ function escapeHtml(text) {
 window.editTenant = editTenant;
 window.deleteTenant = deleteTenant;
 window.viewOrganization = viewOrganization;
+window.switchTab = switchTab;
