@@ -1,7 +1,9 @@
 import { apiFetch } from './api.js';
+import { showToast } from './ui-utils.js';
 
 let currentTenants = [];
 let editingTenantId = null;
+let expandedTenantId = null;
 
 document.addEventListener('route:loaded', (event) => {
   if (event.detail.route === 'tenants') {
@@ -10,21 +12,49 @@ document.addEventListener('route:loaded', (event) => {
 });
 
 async function initTenantsPage() {
-  const addButton = document.getElementById('btn-add-tenant');
-  const refreshButton = document.getElementById('btn-refresh');
+  setupEventListeners();
+  await loadTenants();
+}
+
+function setupEventListeners() {
+  // Add tenant button
+  const addBtn = document.getElementById('btn-add-tenant');
+  if (addBtn && !addBtn.dataset.initialized) {
+    addBtn.addEventListener('click', () => openFormPanel());
+    addBtn.dataset.initialized = 'true';
+  }
+
+  // Form panel close buttons
+  const closePanelBtn = document.getElementById('btn-close-form-panel');
+  const cancelBtn = document.getElementById('btn-cancel-form');
+  const backdrop = document.getElementById('form-panel-backdrop');
+
+  if (closePanelBtn && !closePanelBtn.dataset.initialized) {
+    closePanelBtn.addEventListener('click', closeFormPanel);
+    closePanelBtn.dataset.initialized = 'true';
+  }
+
+  if (cancelBtn && !cancelBtn.dataset.initialized) {
+    cancelBtn.addEventListener('click', closeFormPanel);
+    cancelBtn.dataset.initialized = 'true';
+  }
+
+  if (backdrop && !backdrop.dataset.initialized) {
+    backdrop.addEventListener('click', closeFormPanel);
+    backdrop.dataset.initialized = 'true';
+  }
+
+  // Form submission
+  const form = document.getElementById('tenant-form');
+  if (form && !form.dataset.initialized) {
+    form.addEventListener('submit', handleFormSubmit);
+    form.dataset.initialized = 'true';
+  }
+
+  // Search and filters
   const searchInput = document.getElementById('search-tenants');
   const filterSubscription = document.getElementById('filter-subscription');
   const filterStatus = document.getElementById('filter-status');
-
-  if (addButton && !addButton.dataset.initialized) {
-    addButton.addEventListener('click', () => openModal());
-    addButton.dataset.initialized = 'true';
-  }
-
-  if (refreshButton && !refreshButton.dataset.initialized) {
-    refreshButton.addEventListener('click', () => loadTenants());
-    refreshButton.dataset.initialized = 'true';
-  }
 
   if (searchInput && !searchInput.dataset.initialized) {
     searchInput.addEventListener('input', filterTenants);
@@ -41,40 +71,10 @@ async function initTenantsPage() {
     filterStatus.dataset.initialized = 'true';
   }
 
-  initModal();
-  await loadTenants();
-}
-
-function initModal() {
-  const modal = document.getElementById('tenant-modal');
-  const overlay = document.getElementById('modal-overlay');
-  const closeButton = document.getElementById('btn-close-modal');
-  const cancelButton = document.getElementById('btn-cancel');
-  const form = document.getElementById('tenant-form');
+  // Color picker sync
   const colorInput = document.getElementById('primary-color');
   const colorTextInput = document.getElementById('primary-color-text');
 
-  if (closeButton && !closeButton.dataset.initialized) {
-    closeButton.addEventListener('click', closeModal);
-    closeButton.dataset.initialized = 'true';
-  }
-
-  if (cancelButton && !cancelButton.dataset.initialized) {
-    cancelButton.addEventListener('click', closeModal);
-    cancelButton.dataset.initialized = 'true';
-  }
-
-  if (overlay && !overlay.dataset.initialized) {
-    overlay.addEventListener('click', closeModal);
-    overlay.dataset.initialized = 'true';
-  }
-
-  if (form && !form.dataset.initialized) {
-    form.addEventListener('submit', handleFormSubmit);
-    form.dataset.initialized = 'true';
-  }
-
-  // Sync color picker with text input
   if (colorInput && colorTextInput && !colorInput.dataset.initialized) {
     colorInput.addEventListener('input', (e) => {
       colorTextInput.value = e.target.value;
@@ -90,23 +90,269 @@ function initModal() {
 }
 
 async function loadTenants() {
-  const tbody = document.getElementById('tenants-tbody');
+  const container = document.getElementById('tenants-container');
+  const loadingState = document.getElementById('loading-state');
   const emptyState = document.getElementById('empty-state');
 
-  if (!tbody) return;
+  if (!container) return;
 
-  tbody.innerHTML = renderLoadingState();
-  if (emptyState) emptyState.classList.add('hidden');
+  // Show loading
+  loadingState?.classList.remove('hidden');
+  container.classList.add('hidden');
+  emptyState?.classList.add('hidden');
 
   try {
     const response = await apiFetch('/org/tenants');
     const payload = await response.json();
     currentTenants = payload.items || [];
-    renderTenants(currentTenants);
+
+    // Hide loading
+    loadingState?.classList.add('hidden');
+
+    if (currentTenants.length === 0) {
+      emptyState?.classList.remove('hidden');
+    } else {
+      container.classList.remove('hidden');
+      renderTenants(currentTenants);
+      updateStats(currentTenants);
+    }
   } catch (error) {
-    tbody.innerHTML = renderErrorState('Failed to load tenants');
+    loadingState?.classList.add('hidden');
     console.error('Failed to load tenants:', error);
+    showToast('Failed to load tenants', 'error');
   }
+}
+
+function renderTenants(tenants) {
+  const container = document.getElementById('tenants-container');
+  if (!container) return;
+
+  container.innerHTML = tenants.map(tenant => renderTenantCard(tenant)).join('');
+}
+
+function renderTenantCard(tenant) {
+  const isExpanded = expandedTenantId === tenant.id;
+
+  return `
+    <div class="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-200 hover:shadow-md transition-shadow">
+      <!-- Card Header -->
+      <div class="p-6">
+        <div class="flex items-start justify-between">
+          <!-- Tenant Info -->
+          <div class="flex-1">
+            <div class="flex items-center gap-3 mb-2">
+              <h3 class="text-xl font-semibold text-gray-900">${escapeHtml(tenant.name)}</h3>
+              ${renderTierBadge(tenant.subscription_tier)}
+              ${renderStatusBadge(tenant.subscription_status, tenant.is_active)}
+            </div>
+            <div class="flex items-center gap-4 text-sm text-gray-600">
+              <span class="flex items-center gap-1">
+                <i class="bi bi-code-square"></i>
+                <strong>Code:</strong> ${escapeHtml(tenant.code)}
+              </span>
+              <span class="flex items-center gap-1">
+                <i class="bi bi-calendar3"></i>
+                ${formatDate(tenant.created_at)}
+              </span>
+            </div>
+            ${tenant.description ? `<p class="mt-2 text-sm text-gray-600">${escapeHtml(tenant.description)}</p>` : ''}
+          </div>
+
+          <!-- Actions -->
+          <div class="flex items-center gap-2 ml-4">
+            <button onclick="editTenant('${tenant.id}')"
+              class="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition" title="Edit Tenant">
+              <i class="bi bi-pencil text-lg"></i>
+            </button>
+            <button onclick="deleteTenant('${tenant.id}', '${escapeHtml(tenant.name)}')"
+              class="p-2 text-red-600 hover:bg-red-50 rounded-lg transition" title="Delete Tenant">
+              <i class="bi bi-trash text-lg"></i>
+            </button>
+            <button onclick="toggleTenantExpand('${tenant.id}')"
+              class="p-2 text-gray-600 hover:bg-gray-50 rounded-lg transition ${isExpanded ? 'bg-gray-100' : ''}"
+              title="${isExpanded ? 'Collapse' : 'Expand'}">
+              <i class="bi bi-chevron-${isExpanded ? 'up' : 'down'} text-lg"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Usage Stats -->
+        <div class="grid grid-cols-3 gap-4 mt-6 pt-6 border-t border-gray-200">
+          <div class="text-center">
+            <div class="text-sm text-gray-500 mb-1">Companies</div>
+            <div class="text-lg font-semibold ${tenant.current_companies >= tenant.max_companies ? 'text-red-600' : 'text-gray-900'}">
+              ${tenant.current_companies}/${tenant.max_companies}
+            </div>
+            <div class="w-full bg-gray-200 rounded-full h-1.5 mt-2">
+              <div class="bg-blue-600 h-1.5 rounded-full" style="width: ${Math.min(100, (tenant.current_companies / tenant.max_companies) * 100)}%"></div>
+            </div>
+          </div>
+          <div class="text-center">
+            <div class="text-sm text-gray-500 mb-1">Users</div>
+            <div class="text-lg font-semibold ${tenant.current_users >= tenant.max_users ? 'text-red-600' : 'text-gray-900'}">
+              ${tenant.current_users}/${tenant.max_users}
+            </div>
+            <div class="w-full bg-gray-200 rounded-full h-1.5 mt-2">
+              <div class="bg-green-600 h-1.5 rounded-full" style="width: ${Math.min(100, (tenant.current_users / tenant.max_users) * 100)}%"></div>
+            </div>
+          </div>
+          <div class="text-center">
+            <div class="text-sm text-gray-500 mb-1">Storage</div>
+            <div class="text-lg font-semibold ${tenant.current_storage_gb >= tenant.max_storage_gb ? 'text-red-600' : 'text-gray-900'}">
+              ${tenant.current_storage_gb}/${tenant.max_storage_gb} GB
+            </div>
+            <div class="w-full bg-gray-200 rounded-full h-1.5 mt-2">
+              <div class="bg-purple-600 h-1.5 rounded-full" style="width: ${Math.min(100, (tenant.current_storage_gb / tenant.max_storage_gb) * 100)}%"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Expandable Content -->
+      <div id="tenant-expand-${tenant.id}" class="${isExpanded ? '' : 'hidden'} bg-gray-50 border-t border-gray-200">
+        <!-- Tabs -->
+        <div class="flex border-b border-gray-200 bg-white px-6">
+          <button class="tenant-tab active px-4 py-3 text-sm font-medium border-b-2 border-blue-600 text-blue-600"
+            data-tab="details" data-tenant-id="${tenant.id}">
+            <i class="bi bi-info-circle mr-2"></i>Details
+          </button>
+          <button class="tenant-tab px-4 py-3 text-sm font-medium border-b-2 border-transparent text-gray-600 hover:text-gray-900"
+            data-tab="organization" data-tenant-id="${tenant.id}">
+            <i class="bi bi-diagram-3 mr-2"></i>Organization
+          </button>
+          <button class="tenant-tab px-4 py-3 text-sm font-medium border-b-2 border-transparent text-gray-600 hover:text-gray-900"
+            data-tab="settings" data-tenant-id="${tenant.id}">
+            <i class="bi bi-gear mr-2"></i>Settings
+          </button>
+        </div>
+
+        <!-- Tab Content -->
+        <div class="p-6">
+          <!-- Details Tab -->
+          <div class="tab-content" data-tab="details" data-tenant-id="${tenant.id}">
+            ${renderDetailsTab(tenant)}
+          </div>
+
+          <!-- Organization Tab -->
+          <div class="tab-content hidden" data-tab="organization" data-tenant-id="${tenant.id}">
+            <div class="text-center py-8">
+              <button onclick="viewOrganization('${tenant.id}', '${escapeHtml(tenant.name)}')"
+                class="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+                <i class="bi bi-diagram-3"></i>
+                View Organization Hierarchy
+              </button>
+            </div>
+          </div>
+
+          <!-- Settings Tab -->
+          <div class="tab-content hidden" data-tab="settings" data-tenant-id="${tenant.id}">
+            ${renderSettingsTab(tenant)}
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderDetailsTab(tenant) {
+  return `
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div>
+        <h4 class="text-sm font-semibold text-gray-700 mb-3">Contact Information</h4>
+        <dl class="space-y-2 text-sm">
+          <div class="flex justify-between">
+            <dt class="text-gray-600">Name:</dt>
+            <dd class="font-medium text-gray-900">${tenant.contact_name || 'Not set'}</dd>
+          </div>
+          <div class="flex justify-between">
+            <dt class="text-gray-600">Email:</dt>
+            <dd class="font-medium text-gray-900">${tenant.contact_email || 'Not set'}</dd>
+          </div>
+          <div class="flex justify-between">
+            <dt class="text-gray-600">Phone:</dt>
+            <dd class="font-medium text-gray-900">${tenant.contact_phone || 'Not set'}</dd>
+          </div>
+        </dl>
+      </div>
+      <div>
+        <h4 class="text-sm font-semibold text-gray-700 mb-3">Subscription Details</h4>
+        <dl class="space-y-2 text-sm">
+          <div class="flex justify-between">
+            <dt class="text-gray-600">Tier:</dt>
+            <dd class="font-medium text-gray-900">${capitalizeFirst(tenant.subscription_tier)}</dd>
+          </div>
+          <div class="flex justify-between">
+            <dt class="text-gray-600">Status:</dt>
+            <dd class="font-medium text-gray-900">${capitalizeFirst(tenant.subscription_status)}</dd>
+          </div>
+          <div class="flex justify-between">
+            <dt class="text-gray-600">Trial:</dt>
+            <dd class="font-medium text-gray-900">${tenant.is_trial ? 'Yes' : 'No'}</dd>
+          </div>
+        </dl>
+      </div>
+    </div>
+  `;
+}
+
+function renderSettingsTab(tenant) {
+  return `
+    <div class="space-y-4">
+      <div class="flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200">
+        <div>
+          <h4 class="font-medium text-gray-900">Primary Color</h4>
+          <p class="text-sm text-gray-600">${tenant.primary_color || 'Not set'}</p>
+        </div>
+        ${tenant.primary_color ? `<div class="w-12 h-12 rounded-lg border border-gray-300" style="background-color: ${tenant.primary_color}"></div>` : ''}
+      </div>
+      <div class="flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200">
+        <div>
+          <h4 class="font-medium text-gray-900">Logo URL</h4>
+          <p class="text-sm text-gray-600 truncate max-w-md">${tenant.logo_url || 'Not set'}</p>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderTierBadge(tier) {
+  const colors = {
+    trial: 'bg-yellow-100 text-yellow-700',
+    free: 'bg-gray-100 text-gray-700',
+    basic: 'bg-blue-100 text-blue-700',
+    premium: 'bg-purple-100 text-purple-700',
+    enterprise: 'bg-orange-100 text-orange-700'
+  };
+
+  return `<span class="px-3 py-1 text-xs font-semibold rounded-full ${colors[tier] || colors.free}">${capitalizeFirst(tier)}</span>`;
+}
+
+function renderStatusBadge(status, isActive) {
+  const colors = {
+    active: 'bg-green-100 text-green-700',
+    suspended: 'bg-orange-100 text-orange-700',
+    cancelled: 'bg-red-100 text-red-700'
+  };
+
+  let badges = `<span class="px-3 py-1 text-xs font-semibold rounded-full ${colors[status] || colors.active}">${capitalizeFirst(status)}</span>`;
+
+  if (!isActive) {
+    badges += `<span class="px-3 py-1 text-xs font-semibold rounded-full bg-gray-200 text-gray-700">Inactive</span>`;
+  }
+
+  return badges;
+}
+
+function updateStats(tenants) {
+  const total = tenants.length;
+  const active = tenants.filter(t => t.is_active).length;
+  const trial = tenants.filter(t => t.is_trial).length;
+  const premium = tenants.filter(t => ['premium', 'enterprise'].includes(t.subscription_tier)).length;
+
+  document.getElementById('stat-total').textContent = total;
+  document.getElementById('stat-active').textContent = active;
+  document.getElementById('stat-trial').textContent = trial;
+  document.getElementById('stat-premium').textContent = premium;
 }
 
 function filterTenants() {
@@ -117,7 +363,8 @@ function filterTenants() {
   const filtered = currentTenants.filter(tenant => {
     const matchesSearch = !searchValue ||
       tenant.name.toLowerCase().includes(searchValue) ||
-      tenant.code.toLowerCase().includes(searchValue);
+      tenant.code.toLowerCase().includes(searchValue) ||
+      (tenant.contact_email && tenant.contact_email.toLowerCase().includes(searchValue));
 
     const matchesSubscription = !subscriptionFilter ||
       tenant.subscription_tier === subscriptionFilter;
@@ -129,234 +376,46 @@ function filterTenants() {
   });
 
   renderTenants(filtered);
+  updateStats(filtered);
 }
 
-function renderTenants(tenants) {
-  const tbody = document.getElementById('tenants-tbody');
-  const emptyState = document.getElementById('empty-state');
-  const tenantCount = document.getElementById('tenant-count');
-
-  if (!tbody) return;
-
-  tbody.innerHTML = '';
-
-  if (tenantCount) {
-    tenantCount.textContent = `${tenants.length} tenant${tenants.length !== 1 ? 's' : ''}`;
-  }
-
-  if (!tenants.length) {
-    if (emptyState) emptyState.classList.remove('hidden');
-    tbody.innerHTML = '';
-    return;
-  }
-
-  if (emptyState) emptyState.classList.add('hidden');
-
-  tenants.forEach((tenant) => {
-    const row = document.createElement('tr');
-    row.className = 'hover:bg-gray-50 transition';
-
-    // Code cell
-    const codeCell = document.createElement('td');
-    codeCell.className = 'px-6 py-4 text-sm font-semibold text-gray-900';
-    codeCell.textContent = tenant.code;
-
-    // Name cell
-    const nameCell = document.createElement('td');
-    nameCell.className = 'px-6 py-4 text-sm text-gray-900';
-    nameCell.textContent = tenant.name;
-
-    // Subscription cell
-    const subscriptionCell = document.createElement('td');
-    subscriptionCell.className = 'px-6 py-4 text-sm';
-    const tierBadge = document.createElement('span');
-    tierBadge.className = getTierBadgeClass(tenant.subscription_tier);
-    tierBadge.textContent = capitalizeFirst(tenant.subscription_tier);
-    subscriptionCell.appendChild(tierBadge);
-
-    // Status cell
-    const statusCell = document.createElement('td');
-    statusCell.className = 'px-6 py-4 text-sm';
-    const statusBadge = document.createElement('span');
-    statusBadge.className = getStatusBadgeClass(tenant.subscription_status);
-    statusBadge.textContent = capitalizeFirst(tenant.subscription_status);
-    if (!tenant.is_active) {
-      const inactiveBadge = document.createElement('span');
-      inactiveBadge.className = 'ml-2 px-2 py-0.5 text-xs font-medium rounded-full bg-gray-200 text-gray-700';
-      inactiveBadge.textContent = 'Inactive';
-      statusCell.appendChild(inactiveBadge);
-    }
-    statusCell.appendChild(statusBadge);
-
-    // Usage cell
-    const usageCell = document.createElement('td');
-    usageCell.className = 'px-6 py-4 text-sm text-gray-600';
-    usageCell.innerHTML = `
-      <div class="text-xs space-y-1">
-        <div>Users: ${tenant.current_users}/${tenant.max_users}</div>
-        <div>Companies: ${tenant.current_companies}/${tenant.max_companies}</div>
-      </div>
-    `;
-
-    // Date cell
-    const dateCell = document.createElement('td');
-    dateCell.className = 'px-6 py-4 text-sm text-gray-600';
-    dateCell.textContent = formatDate(tenant.created_at);
-
-    // Organization cell
-    const orgCell = document.createElement('td');
-    orgCell.className = 'px-6 py-4 text-sm text-center';
-
-    const orgBtn = document.createElement('button');
-    orgBtn.className = 'inline-flex items-center gap-1 px-3 py-1.5 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition';
-    orgBtn.innerHTML = '<i class="ph ph-tree-structure"></i> View';
-    orgBtn.title = 'View Organization Hierarchy';
-    orgBtn.addEventListener('click', () => {
-      if (window.orgHierarchy) {
-        window.orgHierarchy.open(tenant.id, tenant.name);
-      }
-    });
-
-    orgCell.appendChild(orgBtn);
-
-    // Actions cell
-    const actionsCell = document.createElement('td');
-    actionsCell.className = 'px-6 py-4 text-sm text-right';
-
-    const actionsDiv = document.createElement('div');
-    actionsDiv.className = 'flex items-center justify-end gap-2';
-
-    const editBtn = document.createElement('button');
-    editBtn.className = 'p-2 text-blue-600 hover:bg-blue-50 rounded transition';
-    editBtn.innerHTML = '<i class="bi bi-pencil"></i>';
-    editBtn.title = 'Edit';
-    editBtn.addEventListener('click', () => editTenant(tenant.id));
-
-    const deleteBtn = document.createElement('button');
-    deleteBtn.className = 'p-2 text-red-600 hover:bg-red-50 rounded transition';
-    deleteBtn.innerHTML = '<i class="bi bi-trash"></i>';
-    deleteBtn.title = 'Delete';
-    deleteBtn.addEventListener('click', () => deleteTenant(tenant.id, tenant.name));
-
-    actionsDiv.appendChild(editBtn);
-    actionsDiv.appendChild(deleteBtn);
-    actionsCell.appendChild(actionsDiv);
-
-    row.appendChild(codeCell);
-    row.appendChild(nameCell);
-    row.appendChild(subscriptionCell);
-    row.appendChild(statusCell);
-    row.appendChild(usageCell);
-    row.appendChild(dateCell);
-    row.appendChild(orgCell);
-    row.appendChild(actionsCell);
-
-    tbody.appendChild(row);
-  });
-}
-
-function getTierBadgeClass(tier) {
-  const baseClass = 'px-2 py-0.5 text-xs font-medium rounded-full';
-  switch (tier) {
-    case 'free':
-      return `${baseClass} bg-gray-100 text-gray-700`;
-    case 'basic':
-      return `${baseClass} bg-blue-100 text-blue-700`;
-    case 'premium':
-      return `${baseClass} bg-purple-100 text-purple-700`;
-    case 'enterprise':
-      return `${baseClass} bg-yellow-100 text-yellow-700`;
-    default:
-      return `${baseClass} bg-gray-100 text-gray-700`;
-  }
-}
-
-function getStatusBadgeClass(status) {
-  const baseClass = 'px-2 py-0.5 text-xs font-medium rounded-full';
-  switch (status) {
-    case 'active':
-      return `${baseClass} bg-green-100 text-green-700`;
-    case 'suspended':
-      return `${baseClass} bg-orange-100 text-orange-700`;
-    case 'cancelled':
-      return `${baseClass} bg-red-100 text-red-700`;
-    default:
-      return `${baseClass} bg-gray-100 text-gray-700`;
-  }
-}
-
-function capitalizeFirst(str) {
-  return str.charAt(0).toUpperCase() + str.slice(1);
-}
-
-function formatDate(dateString) {
-  if (!dateString) return 'N/A';
-  const date = new Date(dateString);
-  return date.toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric'
-  });
-}
-
-function renderLoadingState() {
-  return `
-    <tr>
-      <td colspan="7" class="px-6 py-12 text-center text-gray-500">
-        <div class="flex items-center justify-center gap-2">
-          <span class="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></span>
-          Loading tenants...
-        </div>
-      </td>
-    </tr>
-  `;
-}
-
-function renderErrorState(message) {
-  return `
-    <tr>
-      <td colspan="7" class="px-6 py-12 text-center text-red-500">
-        <i class="bi bi-exclamation-circle text-2xl block mb-2"></i>
-        <p>${message}</p>
-      </td>
-    </tr>
-  `;
-}
-
-function openModal(tenant = null) {
-  const modal = document.getElementById('tenant-modal');
-  const overlay = document.getElementById('modal-overlay');
-  const modalTitle = document.getElementById('modal-title');
+function openFormPanel(tenant = null) {
+  const panel = document.getElementById('tenant-form-panel');
+  const backdrop = document.getElementById('form-panel-backdrop');
+  const title = document.getElementById('form-panel-title');
   const form = document.getElementById('tenant-form');
-
-  if (!modal || !overlay || !form) return;
 
   editingTenantId = tenant?.id || null;
 
   if (tenant) {
-    modalTitle.textContent = 'Edit Tenant';
+    title.textContent = 'Edit Tenant';
     populateForm(tenant);
   } else {
-    modalTitle.textContent = 'Add Tenant';
+    title.textContent = 'Add New Tenant';
     form.reset();
     document.getElementById('is-active').checked = true;
     document.getElementById('subscription-tier').value = 'free';
     document.getElementById('subscription-status').value = 'active';
   }
 
-  modal.classList.remove('hidden');
-  overlay.classList.remove('hidden');
+  // Slide in panel
+  panel.classList.remove('translate-x-full');
+  backdrop.classList.remove('hidden');
+  backdrop.classList.add('opacity-100');
 }
 
-function closeModal() {
-  const modal = document.getElementById('tenant-modal');
-  const overlay = document.getElementById('modal-overlay');
+function closeFormPanel() {
+  const panel = document.getElementById('tenant-form-panel');
+  const backdrop = document.getElementById('form-panel-backdrop');
   const form = document.getElementById('tenant-form');
 
-  if (modal) modal.classList.add('hidden');
-  if (overlay) overlay.classList.add('hidden');
-  if (form) form.reset();
+  panel.classList.add('translate-x-full');
+  backdrop.classList.remove('opacity-100');
+  setTimeout(() => {
+    backdrop.classList.add('hidden');
+  }, 300);
 
+  form.reset();
   editingTenantId = null;
 }
 
@@ -366,9 +425,9 @@ function populateForm(tenant) {
   document.getElementById('tenant-description').value = tenant.description || '';
   document.getElementById('subscription-tier').value = tenant.subscription_tier || 'free';
   document.getElementById('subscription-status').value = tenant.subscription_status || 'active';
-  document.getElementById('max-companies').value = tenant.max_companies || 10;
-  document.getElementById('max-users').value = tenant.max_users || 500;
-  document.getElementById('max-storage').value = tenant.max_storage_gb || 10;
+  document.getElementById('max-companies').value = tenant.max_companies || 1;
+  document.getElementById('max-users').value = tenant.max_users || 5;
+  document.getElementById('max-storage').value = tenant.max_storage_gb || 1;
   document.getElementById('contact-name').value = tenant.contact_name || '';
   document.getElementById('contact-email').value = tenant.contact_email || '';
   document.getElementById('contact-phone').value = tenant.contact_phone || '';
@@ -422,19 +481,16 @@ async function handleFormSubmit(event) {
     }
 
     if (response.ok) {
-      closeModal();
+      closeFormPanel();
       await loadTenants();
-      showNotification(
-        editingTenantId ? 'Tenant updated successfully' : 'Tenant created successfully',
-        'success'
-      );
+      showToast(editingTenantId ? 'Tenant updated successfully' : 'Tenant created successfully', 'success');
     } else {
       const error = await response.json();
-      showNotification(error.detail || 'Failed to save tenant', 'error');
+      showToast(error.detail || 'Failed to save tenant', 'error');
     }
   } catch (error) {
     console.error('Failed to save tenant:', error);
-    showNotification('Failed to save tenant', 'error');
+    showToast('Failed to save tenant', 'error');
   }
 }
 
@@ -443,18 +499,18 @@ async function editTenant(tenantId) {
     const response = await apiFetch(`/org/tenants/${tenantId}`);
     if (response.ok) {
       const tenant = await response.json();
-      openModal(tenant);
+      openFormPanel(tenant);
     } else {
-      showNotification('Failed to load tenant details', 'error');
+      showToast('Failed to load tenant details', 'error');
     }
   } catch (error) {
     console.error('Failed to load tenant:', error);
-    showNotification('Failed to load tenant details', 'error');
+    showToast('Failed to load tenant details', 'error');
   }
 }
 
 async function deleteTenant(tenantId, tenantName) {
-  if (!confirm(`Are you sure you want to delete the tenant "${tenantName}"? This action cannot be undone and will delete all associated data.`)) {
+  if (!confirm(`Are you sure you want to delete "${tenantName}"? This action cannot be undone.`)) {
     return;
   }
 
@@ -465,23 +521,95 @@ async function deleteTenant(tenantId, tenantName) {
 
     if (response.ok) {
       await loadTenants();
-      showNotification('Tenant deleted successfully', 'success');
+      showToast('Tenant deleted successfully', 'success');
     } else {
       const error = await response.json();
-      showNotification(error.detail || 'Failed to delete tenant', 'error');
+      showToast(error.detail || 'Failed to delete tenant', 'error');
     }
   } catch (error) {
     console.error('Failed to delete tenant:', error);
-    showNotification('Failed to delete tenant', 'error');
+    showToast('Failed to delete tenant', 'error');
   }
 }
 
-function showNotification(message, type = 'info') {
-  // Check if notification system exists
-  if (window.showToast) {
-    window.showToast(message, type);
+function toggleTenantExpand(tenantId) {
+  const expandDiv = document.getElementById(`tenant-expand-${tenantId}`);
+
+  if (expandedTenantId === tenantId) {
+    expandedTenantId = null;
+    expandDiv?.classList.add('hidden');
   } else {
-    // Fallback to alert
-    alert(message);
+    // Collapse any other expanded tenant
+    if (expandedTenantId) {
+      document.getElementById(`tenant-expand-${expandedTenantId}`)?.classList.add('hidden');
+    }
+    expandedTenantId = tenantId;
+    expandDiv?.classList.remove('hidden');
+
+    // Setup tab switching
+    setupTabs(tenantId);
+  }
+
+  // Re-render to update chevron icon
+  renderTenants(currentTenants);
+}
+
+function setupTabs(tenantId) {
+  const tabs = document.querySelectorAll(`.tenant-tab[data-tenant-id="${tenantId}"]`);
+  const contents = document.querySelectorAll(`.tab-content[data-tenant-id="${tenantId}"]`);
+
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      const tabName = tab.dataset.tab;
+
+      // Update tab styles
+      tabs.forEach(t => {
+        t.classList.remove('active', 'border-blue-600', 'text-blue-600');
+        t.classList.add('border-transparent', 'text-gray-600');
+      });
+      tab.classList.add('active', 'border-blue-600', 'text-blue-600');
+      tab.classList.remove('border-transparent', 'text-gray-600');
+
+      // Show/hide content
+      contents.forEach(content => {
+        if (content.dataset.tab === tabName) {
+          content.classList.remove('hidden');
+        } else {
+          content.classList.add('hidden');
+        }
+      });
+    });
+  });
+}
+
+function viewOrganization(tenantId, tenantName) {
+  if (window.orgHierarchy) {
+    window.orgHierarchy.open(tenantId, tenantName);
   }
 }
+
+function capitalizeFirst(str) {
+  return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
+function formatDate(dateString) {
+  if (!dateString) return 'N/A';
+  const date = new Date(dateString);
+  return date.toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric'
+  });
+}
+
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+// Export functions for global access
+window.editTenant = editTenant;
+window.deleteTenant = deleteTenant;
+window.toggleTenantExpand = toggleTenantExpand;
+window.viewOrganization = viewOrganization;
