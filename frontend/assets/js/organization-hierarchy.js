@@ -431,15 +431,20 @@ async function saveEntity(formData) {
     });
 
     if (response.ok) {
+      console.log('[DEBUG] saveEntity successful. Entity type:', entityType, 'isEdit:', isEdit, 'tenantId:', tenantId);
       showToast(`${entityType.charAt(0).toUpperCase() + entityType.slice(1)} ${isEdit ? 'updated' : 'created'} successfully`, 'success');
       closeEntityModal();
 
       // Reload organization data in modal
       await loadOrganizationData();
+      console.log('[DEBUG] Modal organization data reloaded');
 
       // Also reload inline organization view if it exists and is visible
       if (tenantId && window.refreshInlineOrgView) {
+        console.log('[DEBUG] Calling refreshInlineOrgView with tenantId:', tenantId);
         await window.refreshInlineOrgView(tenantId);
+      } else {
+        console.log('[DEBUG] Not refreshing inline view. tenantId:', tenantId, 'refreshInlineOrgView exists:', !!window.refreshInlineOrgView);
       }
     } else {
       const error = await response.json();

@@ -586,8 +586,12 @@ async function switchTab(tenantId, tabName) {
 }
 
 async function loadOrganizationStructure(tenantId) {
+  console.log('[DEBUG] loadOrganizationStructure called with tenantId:', tenantId);
   const container = document.getElementById(`org-structure-${tenantId}`);
-  if (!container) return;
+  if (!container) {
+    console.log('[DEBUG] Container not found!');
+    return;
+  }
 
   try {
     // Load companies, branches, and departments in parallel - filtered by tenant
@@ -601,11 +605,17 @@ async function loadOrganizationStructure(tenantId) {
     const branches = await branchesRes.json();
     const departments = await departmentsRes.json();
 
+    console.log('[DEBUG] Fetched data:');
+    console.log('  - Companies:', companies);
+    console.log('  - Branches:', branches);
+    console.log('  - Departments:', departments);
+
     // Remove loading class
     container.classList.remove('org-loading');
 
     // Render organization structure
     container.innerHTML = renderOrganizationStructure(tenantId, companies, branches, departments);
+    console.log('[DEBUG] Organization structure rendered');
   } catch (error) {
     console.error('Failed to load organization structure:', error);
     container.innerHTML = `
@@ -621,6 +631,11 @@ function renderOrganizationStructure(tenantId, companiesData, branchesData, depa
   const companies = companiesData.items || companiesData;
   const branches = branchesData.items || branchesData;
   const departments = departmentsData.items || departmentsData;
+
+  console.log('[DEBUG] renderOrganizationStructure:');
+  console.log('  - Companies array:', companies);
+  console.log('  - Branches array:', branches);
+  console.log('  - Departments array:', departments);
 
   if (!companies || companies.length === 0) {
     return `
@@ -828,10 +843,15 @@ function escapeHtml(text) {
 
 // Function to refresh inline organization view after save
 async function refreshInlineOrgView(tenantId) {
+  console.log('[DEBUG] refreshInlineOrgView called with tenantId:', tenantId);
   const orgContainer = document.getElementById(`org-structure-${tenantId}`);
+
+  console.log('[DEBUG] orgContainer found:', !!orgContainer);
+  console.log('[DEBUG] orgContainer has org-loading:', orgContainer?.classList.contains('org-loading'));
 
   // Only refresh if the organization tab is currently visible
   if (orgContainer && !orgContainer.classList.contains('org-loading')) {
+    console.log('[DEBUG] Refreshing organization structure...');
     // Show loading indicator
     orgContainer.innerHTML = `
       <div class="flex items-center justify-center py-8">
@@ -842,6 +862,9 @@ async function refreshInlineOrgView(tenantId) {
 
     // Reload the organization structure
     await loadOrganizationStructure(tenantId);
+    console.log('[DEBUG] Organization structure reloaded');
+  } else {
+    console.log('[DEBUG] Skipping refresh - container not found or still loading');
   }
 }
 
