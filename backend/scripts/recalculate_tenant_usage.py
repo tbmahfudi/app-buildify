@@ -16,7 +16,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from sqlalchemy import func
-from app.core.database import SessionLocal
+from app.core.db import SessionLocal
 from app.models.tenant import Tenant
 from app.models.company import Company
 from app.models.user import User
