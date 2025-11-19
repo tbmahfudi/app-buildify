@@ -457,26 +457,53 @@ function escapeHtml(text) {
 /**
  * Initialize event listeners
  */
-document.addEventListener('DOMContentLoaded', () => {
+function initializeOrgHierarchyListeners() {
   // Close buttons
-  document.getElementById('btn-close-org-modal')?.addEventListener('click', closeOrgHierarchyModal);
-  document.getElementById('btn-close-org-hierarchy')?.addEventListener('click', closeOrgHierarchyModal);
-  document.getElementById('btn-close-org-entity-modal')?.addEventListener('click', closeEntityModal);
-  document.getElementById('btn-cancel-org-entity')?.addEventListener('click', closeEntityModal);
+  const closeOrgModalBtn = document.getElementById('btn-close-org-modal');
+  const closeOrgHierarchyBtn = document.getElementById('btn-close-org-hierarchy');
+  const closeEntityModalBtn = document.getElementById('btn-close-org-entity-modal');
+  const cancelEntityBtn = document.getElementById('btn-cancel-org-entity');
+  const addCompanyBtn = document.getElementById('btn-add-company-from-hierarchy');
+  const entityForm = document.getElementById('org-entity-form');
 
-  // Add company from hierarchy modal
-  document.getElementById('btn-add-company-from-hierarchy')?.addEventListener('click', addCompany);
+  if (closeOrgModalBtn && !closeOrgModalBtn.dataset.listenerAttached) {
+    closeOrgModalBtn.addEventListener('click', closeOrgHierarchyModal);
+    closeOrgModalBtn.dataset.listenerAttached = 'true';
+  }
+
+  if (closeOrgHierarchyBtn && !closeOrgHierarchyBtn.dataset.listenerAttached) {
+    closeOrgHierarchyBtn.addEventListener('click', closeOrgHierarchyModal);
+    closeOrgHierarchyBtn.dataset.listenerAttached = 'true';
+  }
+
+  if (closeEntityModalBtn && !closeEntityModalBtn.dataset.listenerAttached) {
+    closeEntityModalBtn.addEventListener('click', closeEntityModal);
+    closeEntityModalBtn.dataset.listenerAttached = 'true';
+  }
+
+  if (cancelEntityBtn && !cancelEntityBtn.dataset.listenerAttached) {
+    cancelEntityBtn.addEventListener('click', closeEntityModal);
+    cancelEntityBtn.dataset.listenerAttached = 'true';
+  }
+
+  if (addCompanyBtn && !addCompanyBtn.dataset.listenerAttached) {
+    addCompanyBtn.addEventListener('click', addCompany);
+    addCompanyBtn.dataset.listenerAttached = 'true';
+  }
 
   // Entity form submission
-  document.getElementById('org-entity-form')?.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const formData = new FormData(e.target);
-    await saveEntity(formData);
-  });
+  if (entityForm && !entityForm.dataset.listenerAttached) {
+    entityForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const formData = new FormData(e.target);
+      await saveEntity(formData);
+    });
+    entityForm.dataset.listenerAttached = 'true';
+  }
 
   // Handle overlay click - close org hierarchy modal if it's open
   const overlay = document.getElementById('modal-overlay');
-  if (overlay) {
+  if (overlay && !overlay.dataset.listenerAttached) {
     overlay.addEventListener('click', (e) => {
       const orgModal = document.getElementById('org-hierarchy-modal');
       const entityModal = document.getElementById('org-entity-modal');
@@ -492,20 +519,37 @@ document.addEventListener('DOMContentLoaded', () => {
         e.stopPropagation();
       }
     });
+    overlay.dataset.listenerAttached = 'true';
   }
 
   // Prevent modal content clicks from closing the modal
-  document.getElementById('org-hierarchy-modal')?.addEventListener('click', (e) => {
-    e.stopPropagation();
-  });
-  document.getElementById('org-entity-modal')?.addEventListener('click', (e) => {
-    e.stopPropagation();
-  });
-});
+  const orgModal = document.getElementById('org-hierarchy-modal');
+  const entityModal = document.getElementById('org-entity-modal');
+
+  if (orgModal && !orgModal.dataset.listenerAttached) {
+    orgModal.addEventListener('click', (e) => {
+      e.stopPropagation();
+    });
+    orgModal.dataset.listenerAttached = 'true';
+  }
+
+  if (entityModal && !entityModal.dataset.listenerAttached) {
+    entityModal.addEventListener('click', (e) => {
+      e.stopPropagation();
+    });
+    entityModal.dataset.listenerAttached = 'true';
+  }
+}
+
+document.addEventListener('DOMContentLoaded', initializeOrgHierarchyListeners);
+
+// Also expose initializeOrgHierarchyListeners for manual initialization after template load
+export { initializeOrgHierarchyListeners };
 
 // Export functions for global access
 window.orgHierarchy = {
   open: openOrganizationHierarchy,
+  init: initializeOrgHierarchyListeners,
   addCompany,
   editCompany,
   deleteCompany,
