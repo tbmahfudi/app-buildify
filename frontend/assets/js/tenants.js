@@ -137,53 +137,50 @@ function renderTenantCard(tenant) {
         <div class="flex items-start justify-between">
           <!-- Tenant Info -->
           <div class="flex-1">
-            <div class="flex items-center gap-3 mb-2">
+            <div class="flex items-center gap-3 mb-3">
               <h3 class="text-xl font-semibold text-gray-900">${escapeHtml(tenant.name)}</h3>
               ${renderTierBadge(tenant.subscription_tier)}
               ${renderStatusBadge(tenant.subscription_status, tenant.is_active)}
             </div>
-            <div class="flex items-center gap-4 text-sm text-gray-600">
-              <span class="flex items-center gap-1">
-                <i class="bi bi-code-square"></i>
+
+            <!-- Code, Date, and Usage Stats in One Line -->
+            <div class="flex items-center gap-6 text-sm text-gray-600 flex-wrap">
+              <span class="flex items-center gap-1.5">
+                <i class="ph-duotone ph-code text-lg"></i>
                 <strong>Code:</strong> ${escapeHtml(tenant.code)}
               </span>
-              <span class="flex items-center gap-1">
-                <i class="bi bi-calendar3"></i>
+              <span class="flex items-center gap-1.5">
+                <i class="ph-duotone ph-calendar-blank text-lg"></i>
                 ${formatDate(tenant.created_at)}
               </span>
+              <span class="h-4 w-px bg-gray-300"></span>
+              <span class="flex items-center gap-1.5 ${tenant.current_companies >= tenant.max_companies ? 'text-red-600' : 'text-gray-700'}">
+                <i class="ph-duotone ph-buildings text-lg"></i>
+                <strong>${tenant.current_companies}/${tenant.max_companies}</strong> Companies
+              </span>
+              <span class="flex items-center gap-1.5 ${tenant.current_users >= tenant.max_users ? 'text-red-600' : 'text-gray-700'}">
+                <i class="ph-duotone ph-users-three text-lg"></i>
+                <strong>${tenant.current_users}/${tenant.max_users}</strong> Users
+              </span>
+              <span class="flex items-center gap-1.5 ${tenant.current_storage_gb >= tenant.max_storage_gb ? 'text-red-600' : 'text-gray-700'}">
+                <i class="ph-duotone ph-hard-drives text-lg"></i>
+                <strong>${tenant.current_storage_gb}/${tenant.max_storage_gb} GB</strong>
+              </span>
             </div>
-            ${tenant.description ? `<p class="mt-2 text-sm text-gray-600">${escapeHtml(tenant.description)}</p>` : ''}
+
+            ${tenant.description ? `<p class="mt-3 text-sm text-gray-600">${escapeHtml(tenant.description)}</p>` : ''}
           </div>
 
           <!-- Actions -->
           <div class="flex items-center gap-2 ml-4">
             <button onclick="editTenant('${tenant.id}')"
               class="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition" title="Edit Tenant">
-              <i class="bi bi-pencil text-lg"></i>
+              <i class="ph-duotone ph-pencil-simple text-xl"></i>
             </button>
             <button onclick="deleteTenant('${tenant.id}', '${escapeHtml(tenant.name)}')"
               class="p-2 text-red-600 hover:bg-red-50 rounded-lg transition" title="Delete Tenant">
-              <i class="bi bi-trash text-lg"></i>
+              <i class="ph-duotone ph-trash text-xl"></i>
             </button>
-          </div>
-        </div>
-
-        <!-- Compact Usage Stats -->
-        <div class="flex items-center gap-6 mt-4 pt-4 border-t border-gray-200 text-sm">
-          <div class="flex items-center gap-2 ${tenant.current_companies >= tenant.max_companies ? 'text-red-600' : 'text-gray-700'}">
-            <i class="bi bi-building text-lg"></i>
-            <span class="font-semibold">${tenant.current_companies}/${tenant.max_companies}</span>
-            <span class="text-gray-500 text-xs">Companies</span>
-          </div>
-          <div class="flex items-center gap-2 ${tenant.current_users >= tenant.max_users ? 'text-red-600' : 'text-gray-700'}">
-            <i class="bi bi-people text-lg"></i>
-            <span class="font-semibold">${tenant.current_users}/${tenant.max_users}</span>
-            <span class="text-gray-500 text-xs">Users</span>
-          </div>
-          <div class="flex items-center gap-2 ${tenant.current_storage_gb >= tenant.max_storage_gb ? 'text-red-600' : 'text-gray-700'}">
-            <i class="bi bi-hdd text-lg"></i>
-            <span class="font-semibold">${tenant.current_storage_gb}/${tenant.max_storage_gb} GB</span>
-            <span class="text-gray-500 text-xs">Storage</span>
           </div>
         </div>
       </div>
@@ -196,19 +193,19 @@ function renderTenantCard(tenant) {
             data-tenant-id="${tenant.id}"
             data-tab="details"
             data-active="true">
-            <i class="bi bi-info-circle mr-2"></i>Details
+            <i class="ph-duotone ph-info mr-2"></i>Details
           </button>
           <button onclick="switchTab('${tenant.id}', 'organization')"
             class="tenant-tab flex-1 px-6 py-3 text-sm font-medium text-gray-700 hover:text-blue-600 hover:bg-white transition border-b-2 border-transparent"
             data-tenant-id="${tenant.id}"
             data-tab="organization">
-            <i class="bi bi-diagram-3 mr-2"></i>Organization
+            <i class="ph-duotone ph-tree-structure mr-2"></i>Organization
           </button>
           <button onclick="switchTab('${tenant.id}', 'settings')"
             class="tenant-tab flex-1 px-6 py-3 text-sm font-medium text-gray-700 hover:text-blue-600 hover:bg-white transition border-b-2 border-transparent"
             data-tenant-id="${tenant.id}"
             data-tab="settings">
-            <i class="bi bi-gear mr-2"></i>Settings
+            <i class="ph-duotone ph-gear mr-2"></i>Settings
           </button>
         </div>
 
@@ -250,35 +247,41 @@ function renderDetailsTab(tenant) {
   return `
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
       <div>
-        <h4 class="text-sm font-semibold text-gray-700 mb-3">Contact Information</h4>
-        <dl class="space-y-2 text-sm">
-          <div class="flex justify-between">
-            <dt class="text-gray-600">Name:</dt>
-            <dd class="font-medium text-gray-900">${tenant.contact_name || 'Not set'}</dd>
+        <h4 class="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+          <i class="ph-duotone ph-user text-blue-600"></i>
+          Contact Information
+        </h4>
+        <dl class="space-y-3 text-sm">
+          <div>
+            <dt class="text-gray-500 text-xs uppercase tracking-wide mb-1">Name</dt>
+            <dd class="font-medium text-gray-900">${tenant.contact_name || '<span class="text-gray-400 italic">Not set</span>'}</dd>
           </div>
-          <div class="flex justify-between">
-            <dt class="text-gray-600">Email:</dt>
-            <dd class="font-medium text-gray-900">${tenant.contact_email || 'Not set'}</dd>
+          <div>
+            <dt class="text-gray-500 text-xs uppercase tracking-wide mb-1">Email</dt>
+            <dd class="font-medium text-gray-900">${tenant.contact_email || '<span class="text-gray-400 italic">Not set</span>'}</dd>
           </div>
-          <div class="flex justify-between">
-            <dt class="text-gray-600">Phone:</dt>
-            <dd class="font-medium text-gray-900">${tenant.contact_phone || 'Not set'}</dd>
+          <div>
+            <dt class="text-gray-500 text-xs uppercase tracking-wide mb-1">Phone</dt>
+            <dd class="font-medium text-gray-900">${tenant.contact_phone || '<span class="text-gray-400 italic">Not set</span>'}</dd>
           </div>
         </dl>
       </div>
       <div>
-        <h4 class="text-sm font-semibold text-gray-700 mb-3">Subscription Details</h4>
-        <dl class="space-y-2 text-sm">
-          <div class="flex justify-between">
-            <dt class="text-gray-600">Tier:</dt>
+        <h4 class="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+          <i class="ph-duotone ph-credit-card text-green-600"></i>
+          Subscription Details
+        </h4>
+        <dl class="space-y-3 text-sm">
+          <div>
+            <dt class="text-gray-500 text-xs uppercase tracking-wide mb-1">Tier</dt>
             <dd class="font-medium text-gray-900">${capitalizeFirst(tenant.subscription_tier)}</dd>
           </div>
-          <div class="flex justify-between">
-            <dt class="text-gray-600">Status:</dt>
+          <div>
+            <dt class="text-gray-500 text-xs uppercase tracking-wide mb-1">Status</dt>
             <dd class="font-medium text-gray-900">${capitalizeFirst(tenant.subscription_status)}</dd>
           </div>
-          <div class="flex justify-between">
-            <dt class="text-gray-600">Trial:</dt>
+          <div>
+            <dt class="text-gray-500 text-xs uppercase tracking-wide mb-1">Trial</dt>
             <dd class="font-medium text-gray-900">${tenant.is_trial ? 'Yes' : 'No'}</dd>
           </div>
         </dl>
@@ -291,16 +294,22 @@ function renderSettingsTab(tenant) {
   return `
     <div class="space-y-4">
       <div class="flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200">
-        <div>
-          <h4 class="font-medium text-gray-900">Primary Color</h4>
-          <p class="text-sm text-gray-600">${tenant.primary_color || 'Not set'}</p>
+        <div class="flex items-center gap-3">
+          <i class="ph-duotone ph-palette text-2xl text-purple-600"></i>
+          <div>
+            <h4 class="font-medium text-gray-900">Primary Color</h4>
+            <p class="text-sm text-gray-600">${tenant.primary_color || '<span class="text-gray-400 italic">Not set</span>'}</p>
+          </div>
         </div>
-        ${tenant.primary_color ? `<div class="w-12 h-12 rounded-lg border border-gray-300" style="background-color: ${tenant.primary_color}"></div>` : ''}
+        ${tenant.primary_color ? `<div class="w-12 h-12 rounded-lg border border-gray-300 shadow-sm" style="background-color: ${tenant.primary_color}"></div>` : ''}
       </div>
       <div class="flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200">
-        <div>
-          <h4 class="font-medium text-gray-900">Logo URL</h4>
-          <p class="text-sm text-gray-600 truncate max-w-md">${tenant.logo_url || 'Not set'}</p>
+        <div class="flex items-center gap-3">
+          <i class="ph-duotone ph-image text-2xl text-orange-600"></i>
+          <div>
+            <h4 class="font-medium text-gray-900">Logo URL</h4>
+            <p class="text-sm text-gray-600 truncate max-w-md">${tenant.logo_url || '<span class="text-gray-400 italic">Not set</span>'}</p>
+          </div>
         </div>
       </div>
     </div>
@@ -592,7 +601,7 @@ async function loadOrganizationStructure(tenantId) {
     console.error('Failed to load organization structure:', error);
     container.innerHTML = `
       <div class="text-center py-8">
-        <i class="bi bi-exclamation-triangle text-4xl text-red-500 mb-2"></i>
+        <i class="ph-duotone ph-warning-circle text-5xl text-red-500 mb-2"></i>
         <p class="text-red-600">Failed to load organization structure</p>
       </div>
     `;
@@ -607,11 +616,11 @@ function renderOrganizationStructure(tenantId, companiesData, branchesData, depa
   if (!companies || companies.length === 0) {
     return `
       <div class="text-center py-8">
-        <i class="bi bi-building text-5xl text-gray-300 mb-4"></i>
+        <i class="ph-duotone ph-buildings text-6xl text-gray-300 mb-4"></i>
         <p class="text-gray-500 mb-4">No companies in this tenant yet</p>
         <button onclick="viewOrganization('${tenantId}', '')"
           class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
-          <i class="bi bi-plus-lg"></i>
+          <i class="ph ph-plus"></i>
           Add First Company
         </button>
       </div>
@@ -629,11 +638,17 @@ function renderOrganizationStructure(tenantId, companiesData, branchesData, depa
         <!-- Company Header -->
         <div class="flex items-center justify-between p-4 bg-blue-50 border-b border-blue-100">
           <div class="flex items-center gap-3">
-            <i class="bi bi-building text-2xl text-blue-600"></i>
+            <i class="ph-duotone ph-buildings text-2xl text-blue-600"></i>
             <div>
               <h4 class="font-semibold text-gray-900">${escapeHtml(company.name)}</h4>
               <p class="text-sm text-gray-500">Code: ${escapeHtml(company.code)}</p>
             </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="window.orgHierarchy.editCompany('${company.id}')"
+              class="p-1.5 text-blue-600 hover:bg-blue-100 rounded-lg transition" title="Edit Company">
+              <i class="ph ph-pencil-simple text-lg"></i>
+            </button>
           </div>
         </div>
 
@@ -641,31 +656,71 @@ function renderOrganizationStructure(tenantId, companiesData, branchesData, depa
         <div class="p-4 space-y-3">
           ${companyBranches.length > 0 ? `
             <div>
-              <h5 class="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
-                <i class="bi bi-geo-alt text-green-600"></i>
-                Branches (${companyBranches.length})
-              </h5>
+              <div class="flex items-center justify-between mb-2">
+                <h5 class="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                  <i class="ph-duotone ph-map-pin text-green-600"></i>
+                  Branches (${companyBranches.length})
+                </h5>
+                <button onclick="window.orgHierarchy.addBranch('${company.id}')"
+                  class="inline-flex items-center gap-1 px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 transition">
+                  <i class="ph ph-plus"></i>
+                  Add Branch
+                </button>
+              </div>
               <div class="space-y-2 ml-6">
-                ${companyBranches.map(branch => renderBranchInline(branch, companyDepartments)).join('')}
+                ${companyBranches.map(branch => renderBranchInline(branch, companyDepartments, company.id)).join('')}
               </div>
             </div>
-          ` : ''}
+          ` : `
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <h5 class="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                  <i class="ph-duotone ph-map-pin text-green-600"></i>
+                  Branches (0)
+                </h5>
+                <button onclick="window.orgHierarchy.addBranch('${company.id}')"
+                  class="inline-flex items-center gap-1 px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 transition">
+                  <i class="ph ph-plus"></i>
+                  Add Branch
+                </button>
+              </div>
+              <p class="text-sm text-gray-400 italic ml-6">No branches yet</p>
+            </div>
+          `}
 
           ${companyDepartments.filter(d => !d.branch_id).length > 0 ? `
             <div>
-              <h5 class="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
-                <i class="bi bi-people text-purple-600"></i>
-                Company-Wide Departments (${companyDepartments.filter(d => !d.branch_id).length})
-              </h5>
+              <div class="flex items-center justify-between mb-2">
+                <h5 class="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                  <i class="ph-duotone ph-users-three text-purple-600"></i>
+                  Company-Wide Departments (${companyDepartments.filter(d => !d.branch_id).length})
+                </h5>
+                <button onclick="window.orgHierarchy.addDepartment('${company.id}')"
+                  class="inline-flex items-center gap-1 px-2 py-1 text-xs bg-purple-600 text-white rounded hover:bg-purple-700 transition">
+                  <i class="ph ph-plus"></i>
+                  Add Department
+                </button>
+              </div>
               <div class="space-y-1 ml-6">
                 ${companyDepartments.filter(d => !d.branch_id).map(dept => renderDepartmentInline(dept)).join('')}
               </div>
             </div>
-          ` : ''}
-
-          ${companyBranches.length === 0 && companyDepartments.length === 0 ? `
-            <p class="text-sm text-gray-400 italic">No branches or departments yet</p>
-          ` : ''}
+          ` : `
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <h5 class="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                  <i class="ph-duotone ph-users-three text-purple-600"></i>
+                  Company-Wide Departments (0)
+                </h5>
+                <button onclick="window.orgHierarchy.addDepartment('${company.id}')"
+                  class="inline-flex items-center gap-1 px-2 py-1 text-xs bg-purple-600 text-white rounded hover:bg-purple-700 transition">
+                  <i class="ph ph-plus"></i>
+                  Add Department
+                </button>
+              </div>
+              <p class="text-sm text-gray-400 italic ml-6">No company-wide departments yet</p>
+            </div>
+          `}
         </div>
       </div>
     `;
@@ -676,8 +731,8 @@ function renderOrganizationStructure(tenantId, companiesData, branchesData, depa
     <div class="mt-4 text-center">
       <button onclick="viewOrganization('${tenantId}', '')"
         class="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition">
-        <i class="bi bi-pencil"></i>
-        Manage Organization Structure
+        <i class="ph-duotone ph-tree-structure"></i>
+        Open Full Organization Manager
       </button>
     </div>
   `;
@@ -685,31 +740,59 @@ function renderOrganizationStructure(tenantId, companiesData, branchesData, depa
   return html;
 }
 
-function renderBranchInline(branch, allDepartments) {
+function renderBranchInline(branch, allDepartments, companyId) {
   const branchDepartments = allDepartments.filter(d => d.branch_id === branch.id);
 
   return `
     <div class="bg-green-50 rounded-lg p-3 border border-green-100">
-      <div class="flex items-center gap-2 mb-2">
-        <i class="bi bi-geo-alt-fill text-green-600"></i>
-        <span class="font-medium text-gray-900 text-sm">${escapeHtml(branch.name)}</span>
-        <span class="text-xs text-gray-500">(${escapeHtml(branch.code)})</span>
+      <div class="flex items-center justify-between mb-2">
+        <div class="flex items-center gap-2">
+          <i class="ph-duotone ph-map-pin text-green-600 text-lg"></i>
+          <span class="font-medium text-gray-900 text-sm">${escapeHtml(branch.name)}</span>
+          <span class="text-xs text-gray-500">(${escapeHtml(branch.code)})</span>
+        </div>
+        <div class="flex items-center gap-1">
+          <button onclick="window.orgHierarchy.addDepartment('${companyId}', '${branch.id}')"
+            class="p-1 text-xs text-purple-600 hover:bg-purple-100 rounded transition" title="Add Department to Branch">
+            <i class="ph ph-plus-circle text-base"></i>
+          </button>
+          <button onclick="window.orgHierarchy.editBranch('${branch.id}')"
+            class="p-1 text-xs text-blue-600 hover:bg-blue-100 rounded transition" title="Edit Branch">
+            <i class="ph ph-pencil-simple-line text-base"></i>
+          </button>
+          <button onclick="window.orgHierarchy.deleteBranch('${branch.id}', '${escapeHtml(branch.name)}')"
+            class="p-1 text-xs text-red-600 hover:bg-red-100 rounded transition" title="Delete Branch">
+            <i class="ph ph-trash text-base"></i>
+          </button>
+        </div>
       </div>
       ${branchDepartments.length > 0 ? `
         <div class="ml-4 space-y-1 mt-2">
           ${branchDepartments.map(dept => renderDepartmentInline(dept)).join('')}
         </div>
-      ` : ''}
+      ` : '<p class="text-xs text-gray-400 italic ml-4">No departments in this branch</p>'}
     </div>
   `;
 }
 
 function renderDepartmentInline(dept) {
   return `
-    <div class="bg-purple-50 rounded px-3 py-2 border border-purple-100 flex items-center gap-2 text-sm">
-      <i class="bi bi-diagram-3 text-purple-600"></i>
-      <span class="text-gray-900">${escapeHtml(dept.name)}</span>
-      <span class="text-xs text-gray-500">(${escapeHtml(dept.code)})</span>
+    <div class="bg-purple-50 rounded px-3 py-2 border border-purple-100 flex items-center justify-between text-sm">
+      <div class="flex items-center gap-2">
+        <i class="ph-duotone ph-identification-badge text-purple-600"></i>
+        <span class="text-gray-900">${escapeHtml(dept.name)}</span>
+        <span class="text-xs text-gray-500">(${escapeHtml(dept.code)})</span>
+      </div>
+      <div class="flex items-center gap-1">
+        <button onclick="window.orgHierarchy.editDepartment('${dept.id}')"
+          class="p-1 text-xs text-blue-600 hover:bg-blue-100 rounded transition" title="Edit Department">
+          <i class="ph ph-pencil-simple-line text-base"></i>
+        </button>
+        <button onclick="window.orgHierarchy.deleteDepartment('${dept.id}', '${escapeHtml(dept.name)}')"
+          class="p-1 text-xs text-red-600 hover:bg-red-100 rounded transition" title="Delete Department">
+          <i class="ph ph-trash text-base"></i>
+        </button>
+      </div>
     </div>
   `;
 }
