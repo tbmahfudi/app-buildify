@@ -245,44 +245,47 @@ function renderTenantCard(tenant) {
 
 function renderDetailsTab(tenant) {
   return `
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-      <div>
-        <h4 class="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-          <i class="ph-duotone ph-user text-blue-600"></i>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <!-- Contact Information Panel -->
+      <div class="bg-gradient-to-br from-blue-50 to-white border border-blue-100 rounded-lg p-4">
+        <h4 class="text-sm font-semibold text-gray-800 mb-3 flex items-center gap-2">
+          <i class="ph-duotone ph-user text-xl text-blue-600"></i>
           Contact Information
         </h4>
-        <dl class="space-y-3 text-sm">
-          <div>
-            <dt class="text-gray-500 text-xs uppercase tracking-wide mb-1">Name</dt>
-            <dd class="font-medium text-gray-900">${tenant.contact_name || '<span class="text-gray-400 italic">Not set</span>'}</dd>
+        <dl class="space-y-2.5 text-sm">
+          <div class="flex items-center justify-between py-1.5 border-b border-blue-100/50">
+            <dt class="text-gray-600 font-medium">Name:</dt>
+            <dd class="text-gray-900 font-semibold">${tenant.contact_name || '<span class="text-gray-400 italic">Not set</span>'}</dd>
           </div>
-          <div>
-            <dt class="text-gray-500 text-xs uppercase tracking-wide mb-1">Email</dt>
-            <dd class="font-medium text-gray-900">${tenant.contact_email || '<span class="text-gray-400 italic">Not set</span>'}</dd>
+          <div class="flex items-center justify-between py-1.5 border-b border-blue-100/50">
+            <dt class="text-gray-600 font-medium">Email:</dt>
+            <dd class="text-gray-900 font-semibold">${tenant.contact_email || '<span class="text-gray-400 italic">Not set</span>'}</dd>
           </div>
-          <div>
-            <dt class="text-gray-500 text-xs uppercase tracking-wide mb-1">Phone</dt>
-            <dd class="font-medium text-gray-900">${tenant.contact_phone || '<span class="text-gray-400 italic">Not set</span>'}</dd>
+          <div class="flex items-center justify-between py-1.5">
+            <dt class="text-gray-600 font-medium">Phone:</dt>
+            <dd class="text-gray-900 font-semibold">${tenant.contact_phone || '<span class="text-gray-400 italic">Not set</span>'}</dd>
           </div>
         </dl>
       </div>
-      <div>
-        <h4 class="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-          <i class="ph-duotone ph-credit-card text-green-600"></i>
+
+      <!-- Subscription Details Panel -->
+      <div class="bg-gradient-to-br from-green-50 to-white border border-green-100 rounded-lg p-4">
+        <h4 class="text-sm font-semibold text-gray-800 mb-3 flex items-center gap-2">
+          <i class="ph-duotone ph-credit-card text-xl text-green-600"></i>
           Subscription Details
         </h4>
-        <dl class="space-y-3 text-sm">
-          <div>
-            <dt class="text-gray-500 text-xs uppercase tracking-wide mb-1">Tier</dt>
-            <dd class="font-medium text-gray-900">${capitalizeFirst(tenant.subscription_tier)}</dd>
+        <dl class="space-y-2.5 text-sm">
+          <div class="flex items-center justify-between py-1.5 border-b border-green-100/50">
+            <dt class="text-gray-600 font-medium">Tier:</dt>
+            <dd class="text-gray-900 font-semibold">${capitalizeFirst(tenant.subscription_tier)}</dd>
           </div>
-          <div>
-            <dt class="text-gray-500 text-xs uppercase tracking-wide mb-1">Status</dt>
-            <dd class="font-medium text-gray-900">${capitalizeFirst(tenant.subscription_status)}</dd>
+          <div class="flex items-center justify-between py-1.5 border-b border-green-100/50">
+            <dt class="text-gray-600 font-medium">Status:</dt>
+            <dd class="text-gray-900 font-semibold">${capitalizeFirst(tenant.subscription_status)}</dd>
           </div>
-          <div>
-            <dt class="text-gray-500 text-xs uppercase tracking-wide mb-1">Trial</dt>
-            <dd class="font-medium text-gray-900">${tenant.is_trial ? 'Yes' : 'No'}</dd>
+          <div class="flex items-center justify-between py-1.5">
+            <dt class="text-gray-600 font-medium">Trial:</dt>
+            <dd class="text-gray-900 font-semibold">${tenant.is_trial ? 'Yes' : 'No'}</dd>
           </div>
         </dl>
       </div>
@@ -292,20 +295,20 @@ function renderDetailsTab(tenant) {
 
 function renderSettingsTab(tenant) {
   return `
-    <div class="space-y-4">
-      <div class="flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200">
+    <div class="space-y-3">
+      <div class="flex items-center justify-between p-4 bg-gradient-to-br from-purple-50 to-white rounded-lg border border-purple-100">
         <div class="flex items-center gap-3">
-          <i class="ph-duotone ph-palette text-2xl text-purple-600"></i>
+          <i class="ph-duotone ph-palette text-3xl text-purple-600"></i>
           <div>
             <h4 class="font-medium text-gray-900">Primary Color</h4>
             <p class="text-sm text-gray-600">${tenant.primary_color || '<span class="text-gray-400 italic">Not set</span>'}</p>
           </div>
         </div>
-        ${tenant.primary_color ? `<div class="w-12 h-12 rounded-lg border border-gray-300 shadow-sm" style="background-color: ${tenant.primary_color}"></div>` : ''}
+        ${tenant.primary_color ? `<div class="w-14 h-14 rounded-lg border-2 border-white shadow-md ring-1 ring-gray-200" style="background-color: ${tenant.primary_color}"></div>` : ''}
       </div>
-      <div class="flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200">
+      <div class="flex items-center justify-between p-4 bg-gradient-to-br from-orange-50 to-white rounded-lg border border-orange-100">
         <div class="flex items-center gap-3">
-          <i class="ph-duotone ph-image text-2xl text-orange-600"></i>
+          <i class="ph-duotone ph-image text-3xl text-orange-600"></i>
           <div>
             <h4 class="font-medium text-gray-900">Logo URL</h4>
             <p class="text-sm text-gray-600 truncate max-w-md">${tenant.logo_url || '<span class="text-gray-400 italic">Not set</span>'}</p>

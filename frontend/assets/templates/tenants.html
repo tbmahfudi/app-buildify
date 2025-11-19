@@ -1,40 +1,41 @@
 <div class="min-h-screen bg-gray-50">
   <!-- Header -->
   <div class="bg-white border-b border-gray-200 sticky top-0 z-30 shadow-sm">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 class="text-3xl font-bold text-gray-900 flex items-center gap-3">
-            <i class="bi bi-globe text-blue-600"></i>
-            Tenant Management
-          </h1>
-          <p class="text-gray-600 text-sm mt-1">Comprehensive tenant, subscription, and organization management</p>
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
+      <div class="flex items-center justify-between gap-4">
+        <div class="flex items-center gap-3">
+          <i class="ph-duotone ph-globe text-3xl text-blue-600"></i>
+          <div>
+            <h1 class="text-xl font-bold text-gray-900">Tenant Management</h1>
+            <p class="text-gray-500 text-xs">Manage tenants, subscriptions, and organizations</p>
+          </div>
         </div>
-        <button id="btn-add-tenant" class="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 active:bg-blue-800 shadow-sm hover:shadow-md transition-all font-medium">
-          <i class="bi bi-plus-lg"></i>
-          Add New Tenant
+        <button id="btn-add-tenant" class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all font-medium text-sm">
+          <i class="ph ph-plus"></i>
+          Add Tenant
         </button>
       </div>
     </div>
   </div>
 
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-    <!-- Filters and Search Bar -->
-    <div class="bg-white rounded-xl shadow-sm p-6 mb-6">
-      <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+    <!-- Compact Filters and Stats -->
+    <div class="bg-white rounded-lg shadow-sm p-4 mb-4">
+      <!-- Search and Filters Row -->
+      <div class="flex items-center gap-3 mb-4">
         <!-- Search -->
-        <div class="md:col-span-2 relative">
-          <i class="bi bi-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
+        <div class="flex-1 relative">
+          <i class="ph-duotone ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-lg"></i>
           <input
             type="text"
             id="search-tenants"
-            placeholder="Search by name, code, or email..."
-            class="w-full pl-11 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+            placeholder="Search tenants..."
+            class="w-full pl-10 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
         </div>
 
         <!-- Subscription Filter -->
-        <div>
-          <select id="filter-subscription" class="w-full px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none bg-white cursor-pointer">
+        <div class="w-40">
+          <select id="filter-subscription" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none bg-white cursor-pointer">
             <option value="">All Tiers</option>
             <option value="trial">Trial</option>
             <option value="free">Free</option>
@@ -45,8 +46,8 @@
         </div>
 
         <!-- Status Filter -->
-        <div>
-          <select id="filter-status" class="w-full px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none bg-white cursor-pointer">
+        <div class="w-40">
+          <select id="filter-status" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none bg-white cursor-pointer">
             <option value="">All Statuses</option>
             <option value="active">Active</option>
             <option value="suspended">Suspended</option>
@@ -55,23 +56,35 @@
         </div>
       </div>
 
-      <!-- Stats Bar -->
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6 pt-6 border-t border-gray-200">
-        <div class="text-center">
-          <div class="text-2xl font-bold text-gray-900" id="stat-total">0</div>
-          <div class="text-sm text-gray-500">Total Tenants</div>
+      <!-- Compact Stats Row -->
+      <div class="flex items-center gap-6 text-sm border-t border-gray-100 pt-3">
+        <div class="flex items-center gap-2">
+          <i class="ph-duotone ph-database text-xl text-gray-600"></i>
+          <div>
+            <span class="font-bold text-gray-900" id="stat-total">0</span>
+            <span class="text-gray-500 ml-1">Total</span>
+          </div>
         </div>
-        <div class="text-center">
-          <div class="text-2xl font-bold text-green-600" id="stat-active">0</div>
-          <div class="text-sm text-gray-500">Active</div>
+        <div class="flex items-center gap-2">
+          <i class="ph-duotone ph-check-circle text-xl text-green-600"></i>
+          <div>
+            <span class="font-bold text-green-600" id="stat-active">0</span>
+            <span class="text-gray-500 ml-1">Active</span>
+          </div>
         </div>
-        <div class="text-center">
-          <div class="text-2xl font-bold text-blue-600" id="stat-trial">0</div>
-          <div class="text-sm text-gray-500">On Trial</div>
+        <div class="flex items-center gap-2">
+          <i class="ph-duotone ph-flask text-xl text-blue-600"></i>
+          <div>
+            <span class="font-bold text-blue-600" id="stat-trial">0</span>
+            <span class="text-gray-500 ml-1">Trial</span>
+          </div>
         </div>
-        <div class="text-center">
-          <div class="text-2xl font-bold text-purple-600" id="stat-premium">0</div>
-          <div class="text-sm text-gray-500">Premium+</div>
+        <div class="flex items-center gap-2">
+          <i class="ph-duotone ph-crown text-xl text-purple-600"></i>
+          <div>
+            <span class="font-bold text-purple-600" id="stat-premium">0</span>
+            <span class="text-gray-500 ml-1">Premium+</span>
+          </div>
         </div>
       </div>
     </div>
@@ -83,13 +96,13 @@
 
     <!-- Empty State -->
     <div id="empty-state" class="hidden bg-white rounded-xl shadow-sm p-12 text-center">
-      <div class="w-24 h-24 mx-auto bg-gray-100 rounded-full flex items-center justify-center mb-6">
-        <i class="bi bi-inbox text-5xl text-gray-400"></i>
+      <div class="w-24 h-24 mx-auto bg-gradient-to-br from-blue-50 to-purple-50 rounded-full flex items-center justify-center mb-6">
+        <i class="ph-duotone ph-buildings text-6xl text-blue-500"></i>
       </div>
       <h3 class="text-xl font-semibold text-gray-900 mb-2">No tenants found</h3>
       <p class="text-gray-500 mb-6">Get started by creating your first tenant organization</p>
       <button onclick="document.getElementById('btn-add-tenant').click()" class="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium">
-        <i class="bi bi-plus-lg"></i>
+        <i class="ph ph-plus"></i>
         Add Your First Tenant
       </button>
     </div>
@@ -107,7 +120,7 @@
   <div class="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between z-10">
     <h2 id="form-panel-title" class="text-xl font-semibold text-gray-900">Add New Tenant</h2>
     <button id="btn-close-form-panel" class="text-gray-400 hover:text-gray-600 transition">
-      <i class="bi bi-x-lg text-2xl"></i>
+      <i class="ph ph-x text-2xl"></i>
     </button>
   </div>
 
@@ -115,7 +128,7 @@
     <!-- Basic Information -->
     <div class="bg-gray-50 rounded-lg p-6">
       <h3 class="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-        <i class="bi bi-info-circle text-blue-600"></i>
+        <i class="ph-duotone ph-info text-xl text-blue-600"></i>
         Basic Information
       </h3>
       <div class="space-y-4">
@@ -162,7 +175,7 @@
     <!-- Subscription -->
     <div class="bg-gray-50 rounded-lg p-6">
       <h3 class="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-        <i class="bi bi-credit-card text-green-600"></i>
+        <i class="ph-duotone ph-credit-card text-xl text-green-600"></i>
         Subscription & Limits
       </h3>
       <div class="space-y-4">
@@ -241,7 +254,7 @@
     <!-- Contact Information -->
     <div class="bg-gray-50 rounded-lg p-6">
       <h3 class="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-        <i class="bi bi-person text-purple-600"></i>
+        <i class="ph-duotone ph-user text-xl text-purple-600"></i>
         Contact Information
       </h3>
       <div class="space-y-4">
@@ -286,7 +299,7 @@
     <!-- Branding & Settings -->
     <div class="bg-gray-50 rounded-lg p-6">
       <h3 class="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-        <i class="bi bi-palette text-orange-600"></i>
+        <i class="ph-duotone ph-palette text-xl text-orange-600"></i>
         Branding & Settings
       </h3>
       <div class="space-y-4">
@@ -356,7 +369,7 @@
         type="submit"
         id="btn-save-tenant"
         class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium inline-flex items-center gap-2">
-        <i class="bi bi-check-lg"></i>
+        <i class="ph ph-check"></i>
         Save Tenant
       </button>
     </div>
