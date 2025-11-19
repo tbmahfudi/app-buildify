@@ -22,6 +22,7 @@ from app.core.response_builders import build_list_response
 from app.models.branch import Branch
 from app.models.company import Company
 from app.models.department import Department
+from app.models.tenant import Tenant
 from app.models.user import User
 from app.schemas.auth import UserResponse
 from app.schemas.org import (
@@ -176,6 +177,17 @@ def create_company(
     # Create company
     db_company = create_entity_with_uuid(db, Company, company.dict())
 
+    # Update tenant's current_companies count
+    if db_company.tenant_id:
+        tenant = db.query(Tenant).filter(Tenant.id == db_company.tenant_id).first()
+        if tenant:
+            tenant.current_companies = db.query(Company).filter(
+                Company.tenant_id == tenant.id,
+                Company.deleted_at.is_(None)
+            ).count()
+            db.commit()
+            db.refresh(tenant)
+
     # Audit company creation
     create_audit_log(
         db=db,
@@ -244,9 +256,21 @@ def delete_company(
     db_company = get_entity_by_id(db, Company, company_id, "Company")
 
     company_name = db_company.name
+    tenant_id = db_company.tenant_id
 
     db.delete(db_company)
     db.commit()
+
+    # Update tenant's current_companies count
+    if tenant_id:
+        tenant = db.query(Tenant).filter(Tenant.id == tenant_id).first()
+        if tenant:
+            tenant.current_companies = db.query(Company).filter(
+                Company.tenant_id == tenant.id,
+                Company.deleted_at.is_(None)
+            ).count()
+            db.commit()
+            db.refresh(tenant)
 
     # Audit company deletion
     create_audit_log(
