@@ -9,16 +9,21 @@ class CompanyBase(BaseModel):
     """Base company schema"""
     code: str = Field(..., max_length=32, description="Company code")
     name: str = Field(..., max_length=255, description="Company name")
+    description: Optional[str] = Field(None, description="Company description")
 
     model_config = ConfigDict(from_attributes=True)
 
 class CompanyCreate(CompanyBase):
     """Create company request"""
+    tenant_id: str = Field(..., description="Tenant ID")
+
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
+                "tenant_id": "123e4567-e89b-12d3-a456-426614174000",
                 "code": "COMP001",
-                "name": "Example Company"
+                "name": "Example Company",
+                "description": "Main company"
             }
         }
     )
@@ -27,10 +32,12 @@ class CompanyUpdate(BaseModel):
     """Update company request"""
     code: Optional[str] = Field(None, max_length=32, description="Company code")
     name: Optional[str] = Field(None, max_length=255, description="Company name")
+    description: Optional[str] = Field(None, description="Company description")
 
 class CompanyResponse(CompanyBase, BaseResponse):
     """Company response"""
     id: str = Field(..., description="Company unique identifier")
+    tenant_id: str = Field(..., description="Tenant ID")
     created_at: datetime = Field(..., description="Creation timestamp")
     updated_at: Optional[datetime] = Field(None, description="Last update timestamp")
 
@@ -42,6 +49,7 @@ class BranchBase(UUIDMixin, BaseModel):
     company_id: str = Field(..., description="Company ID")
     code: str = Field(..., max_length=32, description="Branch code")
     name: str = Field(..., max_length=255, description="Branch name")
+    description: Optional[str] = Field(None, description="Branch description")
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -61,10 +69,12 @@ class BranchUpdate(BaseModel):
     """Update branch request"""
     code: Optional[str] = Field(None, max_length=32, description="Branch code")
     name: Optional[str] = Field(None, max_length=255, description="Branch name")
+    description: Optional[str] = Field(None, description="Branch description")
 
 class BranchResponse(BranchBase, BaseResponse):
     """Branch response"""
     id: str = Field(..., description="Branch unique identifier")
+    tenant_id: str = Field(..., description="Tenant ID")
     created_at: datetime = Field(..., description="Creation timestamp")
     updated_at: Optional[datetime] = Field(None, description="Last update timestamp")
 
@@ -77,6 +87,7 @@ class DepartmentBase(UUIDMixin, BaseModel):
     branch_id: Optional[str] = Field(None, description="Branch ID (optional)")
     code: str = Field(..., max_length=32, description="Department code")
     name: str = Field(..., max_length=255, description="Department name")
+    description: Optional[str] = Field(None, description="Department description")
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -98,10 +109,12 @@ class DepartmentUpdate(BaseModel):
     branch_id: Optional[str] = Field(None, description="Branch ID")
     code: Optional[str] = Field(None, max_length=32, description="Department code")
     name: Optional[str] = Field(None, max_length=255, description="Department name")
+    description: Optional[str] = Field(None, description="Department description")
 
 class DepartmentResponse(DepartmentBase, BaseResponse):
     """Department response"""
     id: str = Field(..., description="Department unique identifier")
+    tenant_id: str = Field(..., description="Tenant ID")
     created_at: datetime = Field(..., description="Creation timestamp")
     updated_at: Optional[datetime] = Field(None, description="Last update timestamp")
 
