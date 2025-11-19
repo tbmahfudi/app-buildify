@@ -464,8 +464,8 @@ def create_department(
     # Verify branch exists if provided
     if department.branch_id:
         branch = validate_parent_exists(db, Branch, department.branch_id, "Branch")
-        # Ensure branch belongs to the same company
-        if branch.company_id != department.company_id:
+        # Ensure branch belongs to the same company (convert to strings for comparison)
+        if str(branch.company_id) != str(department.company_id):
             raise relationship_violation_exception("Company", "Branch", "Branch does not belong to this company")
 
     # Check for duplicate code within company
