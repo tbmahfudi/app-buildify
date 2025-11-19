@@ -410,6 +410,11 @@ async function saveEntity(formData) {
     description: formData.get('description') || null
   };
 
+  // Add tenant_id for companies
+  if (entityType === 'company' && tenantId) {
+    payload.tenant_id = tenantId;
+  }
+
   if (entityType === 'branch' || entityType === 'department') {
     payload.company_id = formData.get('company_id');
   }
@@ -423,6 +428,8 @@ async function saveEntity(formData) {
     if (isEdit) {
       endpoint += `/${entityId}`;
     }
+
+    console.log('[DEBUG] Saving entity. Type:', entityType, 'Payload:', payload);
 
     const response = await apiFetch(endpoint, {
       method: isEdit ? 'PUT' : 'POST',
