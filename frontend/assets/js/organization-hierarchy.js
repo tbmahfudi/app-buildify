@@ -250,6 +250,11 @@ export async function deleteCompany(companyId, companyName) {
     if (response.ok) {
       showToast('Company deleted successfully', 'success');
       await loadOrganizationData();
+
+      // Also refresh inline view if visible
+      if (currentTenantId && window.refreshInlineOrgView) {
+        await window.refreshInlineOrgView(currentTenantId);
+      }
     } else {
       throw new Error('Delete failed');
     }
@@ -291,6 +296,11 @@ export async function deleteBranch(branchId, branchName) {
     if (response.ok) {
       showToast('Branch deleted successfully', 'success');
       await loadOrganizationData();
+
+      // Also refresh inline view if visible
+      if (currentTenantId && window.refreshInlineOrgView) {
+        await window.refreshInlineOrgView(currentTenantId);
+      }
     } else {
       throw new Error('Delete failed');
     }
@@ -332,6 +342,11 @@ export async function deleteDepartment(departmentId, departmentName) {
     if (response.ok) {
       showToast('Department deleted successfully', 'success');
       await loadOrganizationData();
+
+      // Also refresh inline view if visible
+      if (currentTenantId && window.refreshInlineOrgView) {
+        await window.refreshInlineOrgView(currentTenantId);
+      }
     } else {
       throw new Error('Delete failed');
     }
@@ -387,6 +402,7 @@ async function saveEntity(formData) {
   const entityType = formData.get('entity_type');
   const entityId = formData.get('entity_id');
   const isEdit = !!entityId;
+  const tenantId = formData.get('tenant_id');
 
   const payload = {
     code: formData.get('code'),
@@ -417,7 +433,14 @@ async function saveEntity(formData) {
     if (response.ok) {
       showToast(`${entityType.charAt(0).toUpperCase() + entityType.slice(1)} ${isEdit ? 'updated' : 'created'} successfully`, 'success');
       closeEntityModal();
+
+      // Reload organization data in modal
       await loadOrganizationData();
+
+      // Also reload inline organization view if it exists and is visible
+      if (tenantId && window.refreshInlineOrgView) {
+        await window.refreshInlineOrgView(tenantId);
+      }
     } else {
       const error = await response.json();
       throw new Error(error.detail || 'Save failed');
