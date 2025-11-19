@@ -7,6 +7,12 @@ let editingTenantId = null;
 document.addEventListener('route:loaded', (event) => {
   if (event.detail.route === 'tenants') {
     initTenantsPage();
+    // Initialize organization hierarchy event listeners after template is loaded
+    setTimeout(() => {
+      if (window.orgHierarchy && window.orgHierarchy.init) {
+        window.orgHierarchy.init();
+      }
+    }, 100);
   }
 });
 
