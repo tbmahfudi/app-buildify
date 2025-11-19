@@ -146,24 +146,24 @@ function renderTenantCard(tenant) {
             <!-- Code, Date, and Usage Stats in One Line -->
             <div class="flex items-center gap-6 text-sm text-gray-600 flex-wrap">
               <span class="flex items-center gap-1.5">
-                <i class="ph-duotone ph-code text-lg"></i>
+                <i class="ph-duotone ph-code text-lg text-indigo-600"></i>
                 <strong>Code:</strong> ${escapeHtml(tenant.code)}
               </span>
               <span class="flex items-center gap-1.5">
-                <i class="ph-duotone ph-calendar-blank text-lg"></i>
+                <i class="ph-duotone ph-calendar-blank text-lg text-gray-600"></i>
                 ${formatDate(tenant.created_at)}
               </span>
               <span class="h-4 w-px bg-gray-300"></span>
               <span class="flex items-center gap-1.5 ${tenant.current_companies >= tenant.max_companies ? 'text-red-600' : 'text-gray-700'}">
-                <i class="ph-duotone ph-buildings text-lg"></i>
+                <i class="ph-duotone ph-buildings text-lg ${tenant.current_companies >= tenant.max_companies ? 'text-red-600' : 'text-blue-600'}"></i>
                 <strong>${tenant.current_companies}/${tenant.max_companies}</strong> Companies
               </span>
               <span class="flex items-center gap-1.5 ${tenant.current_users >= tenant.max_users ? 'text-red-600' : 'text-gray-700'}">
-                <i class="ph-duotone ph-users-three text-lg"></i>
+                <i class="ph-duotone ph-users-three text-lg ${tenant.current_users >= tenant.max_users ? 'text-red-600' : 'text-green-600'}"></i>
                 <strong>${tenant.current_users}/${tenant.max_users}</strong> Users
               </span>
               <span class="flex items-center gap-1.5 ${tenant.current_storage_gb >= tenant.max_storage_gb ? 'text-red-600' : 'text-gray-700'}">
-                <i class="ph-duotone ph-hard-drives text-lg"></i>
+                <i class="ph-duotone ph-hard-drives text-lg ${tenant.current_storage_gb >= tenant.max_storage_gb ? 'text-red-600' : 'text-purple-600'}"></i>
                 <strong>${tenant.current_storage_gb}/${tenant.max_storage_gb} GB</strong>
               </span>
             </div>
