@@ -654,8 +654,8 @@ function renderOrganizationStructure(tenantId, companiesData, branchesData, depa
   let html = '<div class="space-y-4">';
 
   companies.forEach(company => {
-    const companyBranches = branches.filter(b => b.company_id === company.id);
-    const companyDepartments = departments.filter(d => d.company_id === company.id);
+    const companyBranches = branches.filter(b => String(b.company_id) === String(company.id));
+    const companyDepartments = departments.filter(d => String(d.company_id) === String(company.id));
 
     html += `
       <div class="bg-white rounded-lg border border-gray-200 overflow-hidden">
@@ -765,7 +765,7 @@ function renderOrganizationStructure(tenantId, companiesData, branchesData, depa
 }
 
 function renderBranchInline(branch, allDepartments, companyId) {
-  const branchDepartments = allDepartments.filter(d => d.branch_id === branch.id);
+  const branchDepartments = allDepartments.filter(d => String(d.branch_id) === String(branch.id));
 
   return `
     <div class="bg-green-50 rounded-lg p-3 border border-green-100">
