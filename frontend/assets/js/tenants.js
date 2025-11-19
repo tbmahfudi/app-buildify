@@ -826,8 +826,28 @@ function escapeHtml(text) {
   return div.innerHTML;
 }
 
+// Function to refresh inline organization view after save
+async function refreshInlineOrgView(tenantId) {
+  const orgContainer = document.getElementById(`org-structure-${tenantId}`);
+
+  // Only refresh if the organization tab is currently visible
+  if (orgContainer && !orgContainer.classList.contains('org-loading')) {
+    // Show loading indicator
+    orgContainer.innerHTML = `
+      <div class="flex items-center justify-center py-8">
+        <div class="inline-block w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mr-3"></div>
+        <span class="text-gray-500">Refreshing...</span>
+      </div>
+    `;
+
+    // Reload the organization structure
+    await loadOrganizationStructure(tenantId);
+  }
+}
+
 // Export functions for global access
 window.editTenant = editTenant;
 window.deleteTenant = deleteTenant;
 window.viewOrganization = viewOrganization;
 window.switchTab = switchTab;
+window.refreshInlineOrgView = refreshInlineOrgView;
