@@ -156,7 +156,7 @@ function renderTenantCard(tenant) {
                 <strong>Code:</strong> ${escapeHtml(tenant.code)}
               </span>
               <span class="flex items-center gap-1.5">
-                <i class="ph-duotone ph-calendar-blank text-lg text-gray-600"></i>
+                <i class="ph-duotone ph-calendar-blank text-lg text-teal-600"></i>
                 ${formatDate(tenant.created_at)}
               </span>
               <span class="h-4 w-px bg-gray-300"></span>

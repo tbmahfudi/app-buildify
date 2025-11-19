@@ -513,6 +513,7 @@ function getIconColor(title, route) {
     'Help & Support': 'text-pink-600',
 
     // Administration submenu
+    'Tenants': 'text-blue-600',
     'Tenant Management': 'text-blue-600',
     'Companies': 'text-blue-500',
     'Branches': 'text-cyan-600',
