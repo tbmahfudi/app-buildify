@@ -322,14 +322,16 @@ def create_branch(
     current_user: User = Depends(has_role("admin"))
 ):
     """Create a new branch (admin only)"""
-    # Verify company exists
-    validate_parent_exists(db, Company, branch.company_id, "Company")
+    # Verify company exists and get tenant_id from it
+    company = validate_parent_exists(db, Company, branch.company_id, "Company")
 
     # Check for duplicate code within company
     check_duplicate_code(db, Branch, branch.code, "company_id", branch.company_id)
 
-    # Create branch
-    db_branch = create_entity_with_uuid(db, Branch, branch.dict())
+    # Create branch with tenant_id from parent company
+    branch_data = branch.dict()
+    branch_data['tenant_id'] = company.tenant_id
+    db_branch = create_entity_with_uuid(db, Branch, branch_data)
 
     # Audit branch creation
     create_audit_log(
@@ -456,8 +458,8 @@ def create_department(
     current_user: User = Depends(has_role("admin"))
 ):
     """Create a new department (admin only)"""
-    # Verify company exists
-    validate_parent_exists(db, Company, department.company_id, "Company")
+    # Verify company exists and get tenant_id from it
+    company = validate_parent_exists(db, Company, department.company_id, "Company")
 
     # Verify branch exists if provided
     if department.branch_id:
@@ -469,8 +471,10 @@ def create_department(
     # Check for duplicate code within company
     check_duplicate_code(db, Department, department.code, "company_id", department.company_id)
 
-    # Create department
-    db_dept = create_entity_with_uuid(db, Department, department.dict())
+    # Create department with tenant_id from parent company
+    dept_data = department.dict()
+    dept_data['tenant_id'] = company.tenant_id
+    db_dept = create_entity_with_uuid(db, Department, dept_data)
 
     # Audit department creation
     create_audit_log(

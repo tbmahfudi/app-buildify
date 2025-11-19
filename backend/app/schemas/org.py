@@ -74,6 +74,7 @@ class BranchUpdate(BaseModel):
 class BranchResponse(BranchBase, BaseResponse):
     """Branch response"""
     id: str = Field(..., description="Branch unique identifier")
+    tenant_id: str = Field(..., description="Tenant ID")
     created_at: datetime = Field(..., description="Creation timestamp")
     updated_at: Optional[datetime] = Field(None, description="Last update timestamp")
 
@@ -113,6 +114,7 @@ class DepartmentUpdate(BaseModel):
 class DepartmentResponse(DepartmentBase, BaseResponse):
     """Department response"""
     id: str = Field(..., description="Department unique identifier")
+    tenant_id: str = Field(..., description="Tenant ID")
     created_at: datetime = Field(..., description="Creation timestamp")
     updated_at: Optional[datetime] = Field(None, description="Last update timestamp")
 
