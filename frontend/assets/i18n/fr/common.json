@@ -1,0 +1,59 @@
+{
+  "app": {
+    "name": "Buildify",
+    "title": "Plateforme Buildify"
+  },
+  "common": {
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "delete": "Supprimer",
+    "edit": "Modifier",
+    "add": "Ajouter",
+    "remove": "Retirer",
+    "search": "Rechercher",
+    "filter": "Filtrer",
+    "actions": "Actions",
+    "status": "Statut",
+    "active": "Actif",
+    "inactive": "Inactif",
+    "loading": "Chargement...",
+    "error": "Erreur",
+    "success": "Succès",
+    "warning": "Avertissement",
+    "info": "Information",
+    "yes": "Oui",
+    "no": "Non",
+    "ok": "OK",
+    "close": "Fermer",
+    "back": "Retour",
+    "next": "Suivant",
+    "previous": "Précédent",
+    "submit": "Soumettre",
+    "confirm": "Confirmer",
+    "view": "Voir",
+    "details": "Détails",
+    "name": "Nom",
+    "description": "Description",
+    "type": "Type",
+    "created": "Créé",
+    "updated": "Mis à jour",
+    "all": "Tous"
+  },
+  "time": {
+    "today": "Aujourd'hui",
+    "yesterday": "Hier",
+    "tomorrow": "Demain",
+    "week": "Semaine",
+    "month": "Mois",
+    "year": "Année"
+  },
+  "messages": {
+    "saveSuccess": "Modifications enregistrées avec succès",
+    "saveError": "Échec de l'enregistrement des modifications",
+    "deleteSuccess": "Supprimé avec succès",
+    "deleteError": "Échec de la suppression",
+    "confirmDelete": "Êtes-vous sûr de vouloir supprimer ceci?",
+    "noData": "Aucune donnée disponible",
+    "loadingError": "Échec du chargement des données"
+  }
+}

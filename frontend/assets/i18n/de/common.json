@@ -1,0 +1,59 @@
+{
+  "app": {
+    "name": "Buildify",
+    "title": "Buildify Plattform"
+  },
+  "common": {
+    "save": "Speichern",
+    "cancel": "Abbrechen",
+    "delete": "Löschen",
+    "edit": "Bearbeiten",
+    "add": "Hinzufügen",
+    "remove": "Entfernen",
+    "search": "Suchen",
+    "filter": "Filtern",
+    "actions": "Aktionen",
+    "status": "Status",
+    "active": "Aktiv",
+    "inactive": "Inaktiv",
+    "loading": "Laden...",
+    "error": "Fehler",
+    "success": "Erfolg",
+    "warning": "Warnung",
+    "info": "Information",
+    "yes": "Ja",
+    "no": "Nein",
+    "ok": "OK",
+    "close": "Schließen",
+    "back": "Zurück",
+    "next": "Weiter",
+    "previous": "Vorherige",
+    "submit": "Absenden",
+    "confirm": "Bestätigen",
+    "view": "Ansehen",
+    "details": "Details",
+    "name": "Name",
+    "description": "Beschreibung",
+    "type": "Typ",
+    "created": "Erstellt",
+    "updated": "Aktualisiert",
+    "all": "Alle"
+  },
+  "time": {
+    "today": "Heute",
+    "yesterday": "Gestern",
+    "tomorrow": "Morgen",
+    "week": "Woche",
+    "month": "Monat",
+    "year": "Jahr"
+  },
+  "messages": {
+    "saveSuccess": "Änderungen erfolgreich gespeichert",
+    "saveError": "Fehler beim Speichern der Änderungen",
+    "deleteSuccess": "Erfolgreich gelöscht",
+    "deleteError": "Fehler beim Löschen",
+    "confirmDelete": "Sind Sie sicher, dass Sie dies löschen möchten?",
+    "noData": "Keine Daten verfügbar",
+    "loadingError": "Fehler beim Laden der Daten"
+  }
+}

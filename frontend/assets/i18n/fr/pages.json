@@ -1,0 +1,152 @@
+{
+  "dashboard": {
+    "title": "Tableau de Bord",
+    "description": "Vue d'ensemble de votre système"
+  },
+  "accessControl": {
+    "title": "Contrôle d'Accès",
+    "description": "Gérer les rôles, permissions, groupes et accès utilisateurs",
+    "selectTenant": "Sélectionner le Locataire",
+    "tabs": {
+      "dashboard": "Tableau de Bord",
+      "organization": "Organisation",
+      "roles": "Rôles",
+      "permissions": "Permissions",
+      "groups": "Groupes",
+      "userAccess": "Accès Utilisateur"
+    },
+    "stats": {
+      "totalRoles": "Total des Rôles",
+      "totalPermissions": "Total des Permissions",
+      "activeGroups": "Groupes Actifs",
+      "totalUsers": "Total des Utilisateurs"
+    },
+    "charts": {
+      "rolesByType": "Rôles par Type",
+      "permissionsByCategory": "Permissions par Catégorie"
+    },
+    "organization": {
+      "title": "Hiérarchie Organisationnelle"
+    },
+    "rolesManagement": {
+      "title": "Gestion des Rôles",
+      "searchPlaceholder": "Rechercher des rôles...",
+      "allTypes": "Tous les Types",
+      "allStatus": "Tous les Statuts",
+      "system": "Système",
+      "default": "Par Défaut",
+      "custom": "Personnalisé",
+      "table": {
+        "role": "Rôle",
+        "type": "Type",
+        "permissions": "Permissions",
+        "users": "Utilisateurs",
+        "groups": "Groupes",
+        "status": "Statut",
+        "actions": "Actions"
+      },
+      "pagination": {
+        "showing": "Affichage",
+        "to": "à",
+        "of": "sur",
+        "roles": "rôles"
+      }
+    },
+    "permissionsManagement": {
+      "title": "Gestion des Permissions",
+      "searchPlaceholder": "Rechercher des permissions...",
+      "allCategories": "Toutes les Catégories",
+      "table": {
+        "code": "Code",
+        "name": "Nom",
+        "category": "Catégorie",
+        "roles": "Rôles",
+        "system": "Système",
+        "status": "Statut",
+        "actions": "Actions"
+      },
+      "pagination": {
+        "showing": "Affichage",
+        "to": "à",
+        "of": "sur",
+        "permissions": "permissions"
+      }
+    },
+    "groupsManagement": {
+      "title": "Gestion des Groupes",
+      "searchPlaceholder": "Rechercher des groupes...",
+      "types": {
+        "team": "Équipe",
+        "department": "Département",
+        "project": "Projet",
+        "custom": "Personnalisé"
+      },
+      "table": {
+        "name": "Nom",
+        "type": "Type",
+        "members": "Membres",
+        "roles": "Rôles",
+        "status": "Statut",
+        "actions": "Actions"
+      },
+      "pagination": {
+        "showing": "Affichage",
+        "to": "à",
+        "of": "sur",
+        "groups": "groupes"
+      }
+    },
+    "userAccessManagement": {
+      "title": "Gestion de l'Accès Utilisateur",
+      "selectUser": "Sélectionner l'Utilisateur",
+      "chooseUser": "Choisir un utilisateur...",
+      "directRoles": "Rôles Directs",
+      "groupMemberships": "Appartenances aux Groupes",
+      "effectivePermissions": "Permissions Effectives",
+      "assign": "Attribuer",
+      "add": "Ajouter"
+    },
+    "modals": {
+      "roleDetails": "Détails du Rôle",
+      "permissionDetails": "Détails de la Permission",
+      "groupDetails": "Détails du Groupe"
+    }
+  },
+  "settings": {
+    "title": "Paramètres",
+    "description": "Gérez vos préférences et paramètres de compte",
+    "userPreferences": "Préférences Utilisateur",
+    "theme": "Thème",
+    "themeLight": "Clair",
+    "themeDark": "Sombre",
+    "density": "Densité",
+    "densityComfortable": "Confortable",
+    "densityNormal": "Normale",
+    "densityCompact": "Compacte",
+    "sidebarState": "État par Défaut de la Barre Latérale",
+    "sidebarStateDesc": "La barre latérale s'ouvrira dans cet état lorsque vous vous connecterez",
+    "sidebarExpanded": "Étendue (Menu complet)",
+    "sidebarCollapsed": "Réduite (Icônes uniquement)",
+    "togglePosition": "Position du Bouton de Barre Latérale",
+    "togglePositionDesc": "Position du bouton de réduction/expansion de la barre latérale",
+    "togglePositions": {
+      "sidebarHeader": "En-tête de Barre Latérale",
+      "beforeLogo": "Avant le Logo",
+      "between": "Entre Logo et Titre",
+      "afterTitle": "Après le Titre de la Plateforme"
+    },
+    "language": "Langue",
+    "timezone": "Fuseau Horaire",
+    "lastUpdated": "Dernière mise à jour",
+    "savePreferences": "Enregistrer les Préférences",
+    "preview": {
+      "title": "Aperçu",
+      "theme": "Thème",
+      "density": "Densité",
+      "sidebarState": "État de la Barre Latérale",
+      "togglePosition": "Position du Bouton",
+      "language": "Langue",
+      "timezone": "Fuseau Horaire"
+    }
+  }
+}

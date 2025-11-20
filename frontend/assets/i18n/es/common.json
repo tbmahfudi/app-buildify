@@ -1,0 +1,59 @@
+{
+  "app": {
+    "name": "Buildify",
+    "title": "Plataforma Buildify"
+  },
+  "common": {
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "add": "Agregar",
+    "remove": "Quitar",
+    "search": "Buscar",
+    "filter": "Filtrar",
+    "actions": "Acciones",
+    "status": "Estado",
+    "active": "Activo",
+    "inactive": "Inactivo",
+    "loading": "Cargando...",
+    "error": "Error",
+    "success": "Éxito",
+    "warning": "Advertencia",
+    "info": "Información",
+    "yes": "Sí",
+    "no": "No",
+    "ok": "OK",
+    "close": "Cerrar",
+    "back": "Atrás",
+    "next": "Siguiente",
+    "previous": "Anterior",
+    "submit": "Enviar",
+    "confirm": "Confirmar",
+    "view": "Ver",
+    "details": "Detalles",
+    "name": "Nombre",
+    "description": "Descripción",
+    "type": "Tipo",
+    "created": "Creado",
+    "updated": "Actualizado",
+    "all": "Todos"
+  },
+  "time": {
+    "today": "Hoy",
+    "yesterday": "Ayer",
+    "tomorrow": "Mañana",
+    "week": "Semana",
+    "month": "Mes",
+    "year": "Año"
+  },
+  "messages": {
+    "saveSuccess": "Cambios guardados exitosamente",
+    "saveError": "Error al guardar cambios",
+    "deleteSuccess": "Eliminado exitosamente",
+    "deleteError": "Error al eliminar",
+    "confirmDelete": "¿Está seguro de que desea eliminar esto?",
+    "noData": "No hay datos disponibles",
+    "loadingError": "Error al cargar datos"
+  }
+}

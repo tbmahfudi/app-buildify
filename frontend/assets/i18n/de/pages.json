@@ -1,0 +1,152 @@
+{
+  "dashboard": {
+    "title": "Dashboard",
+    "description": "Übersicht über Ihr System"
+  },
+  "accessControl": {
+    "title": "Zugriffskontrolle",
+    "description": "Rollen, Berechtigungen, Gruppen und Benutzerzugriff verwalten",
+    "selectTenant": "Mandant auswählen",
+    "tabs": {
+      "dashboard": "Dashboard",
+      "organization": "Organisation",
+      "roles": "Rollen",
+      "permissions": "Berechtigungen",
+      "groups": "Gruppen",
+      "userAccess": "Benutzerzugriff"
+    },
+    "stats": {
+      "totalRoles": "Gesamt Rollen",
+      "totalPermissions": "Gesamt Berechtigungen",
+      "activeGroups": "Aktive Gruppen",
+      "totalUsers": "Gesamt Benutzer"
+    },
+    "charts": {
+      "rolesByType": "Rollen nach Typ",
+      "permissionsByCategory": "Berechtigungen nach Kategorie"
+    },
+    "organization": {
+      "title": "Organisationshierarchie"
+    },
+    "rolesManagement": {
+      "title": "Rollenverwaltung",
+      "searchPlaceholder": "Rollen suchen...",
+      "allTypes": "Alle Typen",
+      "allStatus": "Alle Status",
+      "system": "System",
+      "default": "Standard",
+      "custom": "Benutzerdefiniert",
+      "table": {
+        "role": "Rolle",
+        "type": "Typ",
+        "permissions": "Berechtigungen",
+        "users": "Benutzer",
+        "groups": "Gruppen",
+        "status": "Status",
+        "actions": "Aktionen"
+      },
+      "pagination": {
+        "showing": "Zeige",
+        "to": "bis",
+        "of": "von",
+        "roles": "Rollen"
+      }
+    },
+    "permissionsManagement": {
+      "title": "Berechtigungsverwaltung",
+      "searchPlaceholder": "Berechtigungen suchen...",
+      "allCategories": "Alle Kategorien",
+      "table": {
+        "code": "Code",
+        "name": "Name",
+        "category": "Kategorie",
+        "roles": "Rollen",
+        "system": "System",
+        "status": "Status",
+        "actions": "Aktionen"
+      },
+      "pagination": {
+        "showing": "Zeige",
+        "to": "bis",
+        "of": "von",
+        "permissions": "Berechtigungen"
+      }
+    },
+    "groupsManagement": {
+      "title": "Gruppenverwaltung",
+      "searchPlaceholder": "Gruppen suchen...",
+      "types": {
+        "team": "Team",
+        "department": "Abteilung",
+        "project": "Projekt",
+        "custom": "Benutzerdefiniert"
+      },
+      "table": {
+        "name": "Name",
+        "type": "Typ",
+        "members": "Mitglieder",
+        "roles": "Rollen",
+        "status": "Status",
+        "actions": "Aktionen"
+      },
+      "pagination": {
+        "showing": "Zeige",
+        "to": "bis",
+        "of": "von",
+        "groups": "Gruppen"
+      }
+    },
+    "userAccessManagement": {
+      "title": "Benutzerzugriffsverwaltung",
+      "selectUser": "Benutzer auswählen",
+      "chooseUser": "Wählen Sie einen Benutzer...",
+      "directRoles": "Direkte Rollen",
+      "groupMemberships": "Gruppenmitgliedschaften",
+      "effectivePermissions": "Effektive Berechtigungen",
+      "assign": "Zuweisen",
+      "add": "Hinzufügen"
+    },
+    "modals": {
+      "roleDetails": "Rollendetails",
+      "permissionDetails": "Berechtigungsdetails",
+      "groupDetails": "Gruppendetails"
+    }
+  },
+  "settings": {
+    "title": "Einstellungen",
+    "description": "Verwalten Sie Ihre Einstellungen und Kontoeinstellungen",
+    "userPreferences": "Benutzereinstellungen",
+    "theme": "Thema",
+    "themeLight": "Hell",
+    "themeDark": "Dunkel",
+    "density": "Dichte",
+    "densityComfortable": "Bequem",
+    "densityNormal": "Normal",
+    "densityCompact": "Kompakt",
+    "sidebarState": "Standard-Seitenleistenstatus",
+    "sidebarStateDesc": "Die Seitenleiste wird in diesem Zustand geöffnet, wenn Sie sich anmelden",
+    "sidebarExpanded": "Erweitert (Vollständiges Menü)",
+    "sidebarCollapsed": "Zusammengeklappt (Nur Symbole)",
+    "togglePosition": "Seitenleisten-Schaltflächenposition",
+    "togglePositionDesc": "Position der Schaltfläche zum Zusammenklappen/Erweitern der Seitenleiste",
+    "togglePositions": {
+      "sidebarHeader": "Seitenleisten-Header",
+      "beforeLogo": "Vor dem Logo",
+      "between": "Zwischen Logo und Titel",
+      "afterTitle": "Nach dem Plattformtitel"
+    },
+    "language": "Sprache",
+    "timezone": "Zeitzone",
+    "lastUpdated": "Zuletzt aktualisiert",
+    "savePreferences": "Einstellungen speichern",
+    "preview": {
+      "title": "Vorschau",
+      "theme": "Thema",
+      "density": "Dichte",
+      "sidebarState": "Seitenleistenstatus",
+      "togglePosition": "Schaltflächenposition",
+      "language": "Sprache",
+      "timezone": "Zeitzone"
+    }
+  }
+}

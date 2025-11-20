@@ -1,0 +1,152 @@
+{
+  "dashboard": {
+    "title": "Dashboard",
+    "description": "Overview of your system"
+  },
+  "accessControl": {
+    "title": "Access Control",
+    "description": "Manage roles, permissions, groups, and user access",
+    "selectTenant": "Select Tenant",
+    "tabs": {
+      "dashboard": "Dashboard",
+      "organization": "Organization",
+      "roles": "Roles",
+      "permissions": "Permissions",
+      "groups": "Groups",
+      "userAccess": "User Access"
+    },
+    "stats": {
+      "totalRoles": "Total Roles",
+      "totalPermissions": "Total Permissions",
+      "activeGroups": "Active Groups",
+      "totalUsers": "Total Users"
+    },
+    "charts": {
+      "rolesByType": "Roles by Type",
+      "permissionsByCategory": "Permissions by Category"
+    },
+    "organization": {
+      "title": "Organization Hierarchy"
+    },
+    "rolesManagement": {
+      "title": "Roles Management",
+      "searchPlaceholder": "Search roles...",
+      "allTypes": "All Types",
+      "allStatus": "All Status",
+      "system": "System",
+      "default": "Default",
+      "custom": "Custom",
+      "table": {
+        "role": "Role",
+        "type": "Type",
+        "permissions": "Permissions",
+        "users": "Users",
+        "groups": "Groups",
+        "status": "Status",
+        "actions": "Actions"
+      },
+      "pagination": {
+        "showing": "Showing",
+        "to": "to",
+        "of": "of",
+        "roles": "roles"
+      }
+    },
+    "permissionsManagement": {
+      "title": "Permissions Management",
+      "searchPlaceholder": "Search permissions...",
+      "allCategories": "All Categories",
+      "table": {
+        "code": "Code",
+        "name": "Name",
+        "category": "Category",
+        "roles": "Roles",
+        "system": "System",
+        "status": "Status",
+        "actions": "Actions"
+      },
+      "pagination": {
+        "showing": "Showing",
+        "to": "to",
+        "of": "of",
+        "permissions": "permissions"
+      }
+    },
+    "groupsManagement": {
+      "title": "Groups Management",
+      "searchPlaceholder": "Search groups...",
+      "types": {
+        "team": "Team",
+        "department": "Department",
+        "project": "Project",
+        "custom": "Custom"
+      },
+      "table": {
+        "name": "Name",
+        "type": "Type",
+        "members": "Members",
+        "roles": "Roles",
+        "status": "Status",
+        "actions": "Actions"
+      },
+      "pagination": {
+        "showing": "Showing",
+        "to": "to",
+        "of": "of",
+        "groups": "groups"
+      }
+    },
+    "userAccessManagement": {
+      "title": "User Access Management",
+      "selectUser": "Select User",
+      "chooseUser": "Choose a user...",
+      "directRoles": "Direct Roles",
+      "groupMemberships": "Group Memberships",
+      "effectivePermissions": "Effective Permissions",
+      "assign": "Assign",
+      "add": "Add"
+    },
+    "modals": {
+      "roleDetails": "Role Details",
+      "permissionDetails": "Permission Details",
+      "groupDetails": "Group Details"
+    }
+  },
+  "settings": {
+    "title": "Settings",
+    "description": "Manage your preferences and account settings",
+    "userPreferences": "User Preferences",
+    "theme": "Theme",
+    "themeLight": "Light",
+    "themeDark": "Dark",
+    "density": "Density",
+    "densityComfortable": "Comfortable",
+    "densityNormal": "Normal",
+    "densityCompact": "Compact",
+    "sidebarState": "Default Sidebar State",
+    "sidebarStateDesc": "The sidebar will open in this state when you login",
+    "sidebarExpanded": "Expanded (Full menu)",
+    "sidebarCollapsed": "Collapsed (Icons only)",
+    "togglePosition": "Sidebar Toggle Position",
+    "togglePositionDesc": "Position of the sidebar collapse/expand button",
+    "togglePositions": {
+      "sidebarHeader": "Sidebar Header",
+      "beforeLogo": "Before Logo",
+      "between": "Between Logo & Title",
+      "afterTitle": "After Platform Title"
+    },
+    "language": "Language",
+    "timezone": "Timezone",
+    "lastUpdated": "Last updated",
+    "savePreferences": "Save Preferences",
+    "preview": {
+      "title": "Preview",
+      "theme": "Theme",
+      "density": "Density",
+      "sidebarState": "Sidebar State",
+      "togglePosition": "Toggle Position",
+      "language": "Language",
+      "timezone": "Timezone"
+    }
+  }
+}

@@ -1,0 +1,59 @@
+{
+  "app": {
+    "name": "Buildify",
+    "title": "Platform Buildify"
+  },
+  "common": {
+    "save": "Simpan",
+    "cancel": "Batal",
+    "delete": "Hapus",
+    "edit": "Ubah",
+    "add": "Tambah",
+    "remove": "Hapus",
+    "search": "Cari",
+    "filter": "Filter",
+    "actions": "Aksi",
+    "status": "Status",
+    "active": "Aktif",
+    "inactive": "Tidak Aktif",
+    "loading": "Memuat...",
+    "error": "Kesalahan",
+    "success": "Berhasil",
+    "warning": "Peringatan",
+    "info": "Informasi",
+    "yes": "Ya",
+    "no": "Tidak",
+    "ok": "OK",
+    "close": "Tutup",
+    "back": "Kembali",
+    "next": "Selanjutnya",
+    "previous": "Sebelumnya",
+    "submit": "Kirim",
+    "confirm": "Konfirmasi",
+    "view": "Lihat",
+    "details": "Detail",
+    "name": "Nama",
+    "description": "Deskripsi",
+    "type": "Tipe",
+    "created": "Dibuat",
+    "updated": "Diperbarui",
+    "all": "Semua"
+  },
+  "time": {
+    "today": "Hari Ini",
+    "yesterday": "Kemarin",
+    "tomorrow": "Besok",
+    "week": "Minggu",
+    "month": "Bulan",
+    "year": "Tahun"
+  },
+  "messages": {
+    "saveSuccess": "Perubahan berhasil disimpan",
+    "saveError": "Gagal menyimpan perubahan",
+    "deleteSuccess": "Berhasil dihapus",
+    "deleteError": "Gagal menghapus",
+    "confirmDelete": "Apakah Anda yakin ingin menghapus ini?",
+    "noData": "Tidak ada data tersedia",
+    "loadingError": "Gagal memuat data"
+  }
+}
