@@ -119,7 +119,7 @@ class I18nManager {
 
   /**
    * Translate a key
-   * @param {string} key - Translation key (e.g., 'menu.dashboard')
+   * @param {string} key - Translation key (e.g., 'menu.dashboard' or 'pages.settings.title')
    * @param {object} options - Interpolation options
    * @returns {string} - Translated text
    */
@@ -128,7 +128,21 @@ class I18nManager {
       console.warn('i18n not initialized, returning key');
       return key;
     }
-    return this.i18next.t(key, options);
+
+    // Auto-detect namespace from key
+    // If key starts with known namespace (common, menu, pages), format it correctly
+    const namespaces = ['common', 'menu', 'pages'];
+    let formattedKey = key;
+
+    for (const ns of namespaces) {
+      if (key.startsWith(ns + '.')) {
+        // Convert 'pages.settings.title' to 'pages:settings.title'
+        formattedKey = key.replace(ns + '.', ns + ':');
+        break;
+      }
+    }
+
+    return this.i18next.t(formattedKey, options);
   }
 
   /**
