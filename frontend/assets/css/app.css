@@ -9,10 +9,42 @@
 
 #app > nav {
   margin: 0 !important;
+  margin-bottom: 0 !important;
+  margin-top: 0 !important;
 }
 
 #app > div {
   margin: 0 !important;
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+}
+
+/* Force remove any gaps from flex-col layout */
+#app.flex-col,
+div.flex-col {
+  gap: 0 !important;
+}
+
+/* Target the navbar/header specifically */
+.app-header,
+nav,
+header {
+  margin: 0 !important;
+  margin-block: 0 !important;
+}
+
+/* Target main content area */
+.app-main,
+main {
+  margin: 0 !important;
+  margin-block-start: 0 !important;
+  padding-top: 0 !important;
+}
+
+/* Remove any vertical spacing in app container */
+#app > * {
+  margin-block-start: 0 !important;
+  margin-block-end: 0 !important;
 }
 
 /* ============================================
@@ -183,12 +215,23 @@ body.density-comfortable {
 }
 
 /* Remove gap between navbar and content for comfortable mode */
-body.density-comfortable nav {
-  margin-bottom: 0;
+body.density-comfortable nav,
+body.density-comfortable .app-header,
+body.density-comfortable header {
+  margin: 0 !important;
+  margin-bottom: 0 !important;
+  margin-top: 0 !important;
 }
 
-body.density-comfortable #app > div:nth-child(2) {
-  margin-top: 0;
+body.density-comfortable #app > div:nth-child(2),
+body.density-comfortable .app-main,
+body.density-comfortable main {
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+}
+
+body.density-comfortable #app {
+  gap: 0 !important;
 }
 
 body.density-comfortable .app-sidebar {
@@ -225,12 +268,23 @@ body.density-normal {
 }
 
 /* Remove gap between navbar and content for normal mode */
-body.density-normal nav {
-  margin-bottom: 0;
+body.density-normal nav,
+body.density-normal .app-header,
+body.density-normal header {
+  margin: 0 !important;
+  margin-bottom: 0 !important;
+  margin-top: 0 !important;
 }
 
-body.density-normal #app > div:nth-child(2) {
-  margin-top: 0;
+body.density-normal #app > div:nth-child(2),
+body.density-normal .app-main,
+body.density-normal main {
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+}
+
+body.density-normal #app {
+  gap: 0 !important;
 }
 
 /* Compact Mode (0.6x spacing - minimal) */
@@ -240,12 +294,23 @@ body.density-compact {
 }
 
 /* Remove gap between navbar and content for compact mode */
-body.density-compact nav {
-  margin-bottom: 0;
+body.density-compact nav,
+body.density-compact .app-header,
+body.density-compact header {
+  margin: 0 !important;
+  margin-bottom: 0 !important;
+  margin-top: 0 !important;
 }
 
-body.density-compact #app > div:nth-child(2) {
-  margin-top: 0;
+body.density-compact #app > div:nth-child(2),
+body.density-compact .app-main,
+body.density-compact main {
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+}
+
+body.density-compact #app {
+  gap: 0 !important;
 }
 
 body.density-compact .app-sidebar {

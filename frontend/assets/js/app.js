@@ -760,8 +760,11 @@ function createSubmenuItem(item, level = 1) {
     const submenu = document.createElement('div');
     submenu.className = 'submenu hidden ml-4 mt-1 space-y-1';
 
-    item.submenu.forEach(subitem => {
-      if (subitem.submenu && subitem.submenu.length > 0) {
+    // Support both submenu and children properties
+    const submenuItems = item.submenu || item.children || [];
+    submenuItems.forEach(subitem => {
+      const subitemChildren = subitem.submenu || subitem.children || [];
+      if (subitemChildren.length > 0) {
         // Nested submenu - recursively create
         const nestedSubmenuItem = createSubmenuItem(subitem, level + 1);
         submenu.appendChild(nestedSubmenuItem);
@@ -837,7 +840,9 @@ function createCollapsedSubmenuPopup(item) {
     // Grid layout for final items - big icons with text below
     popupContent.className = 'p-4 grid grid-cols-2 gap-3';
 
-    item.submenu.forEach(subitem => {
+    // Support both submenu and children properties
+    const submenuItems = item.submenu || item.children || [];
+    submenuItems.forEach(subitem => {
       const gridItem = document.createElement('a');
       gridItem.className = 'flex flex-col items-center gap-2 p-3 rounded-lg text-gray-600 hover:bg-blue-50 hover:text-blue-600 transition-colors cursor-pointer';
       gridItem.href = `#${subitem.route}`;
@@ -866,8 +871,11 @@ function createCollapsedSubmenuPopup(item) {
     popupContent.className = 'py-1';
     const childPopups = [];
 
-    item.submenu.forEach(subitem => {
-      if (subitem.submenu && subitem.submenu.length > 0) {
+    // Support both submenu and children properties
+    const submenuItems = item.submenu || item.children || [];
+    submenuItems.forEach(subitem => {
+      const subitemChildren = subitem.submenu || subitem.children || [];
+      if (subitemChildren.length > 0) {
         // Nested submenu - create item that shows another popup on hover
         const nestedContainer = document.createElement('div');
         nestedContainer.className = 'relative';
@@ -1036,9 +1044,18 @@ function createNestedPopup(item, parentPopup) {
     const nestedContent = document.createElement('div');
     nestedContent.className = 'p-4 grid grid-cols-2 gap-3';
 
-    item.submenu.forEach(nestedItem => {
+    // Support both submenu and children properties
+    const nestedItems = item.submenu || item.children || [];
+    nestedItems.forEach(nestedItem => {
       const gridItem = document.createElement('a');
-      gridItem.className = 'flex flex-col items-center gap-2 p-3 rounded-lg text-gray-600 hover:bg-blue-50 hover:text-blue-600 transition-colors cursor-pointer';
+      const nestedIcon = nestedItem.icon || 'ph-duotone ph-circle';
+      const nestedIconColor = getIconColor(nestedItem.title, nestedItem.route);
+      const nestedI18nKey = getMenuI18nKey(nestedItem.title);
+      const nestedI18nAttr = nestedI18nKey ? `data-i18n="${nestedI18nKey}"` : '';
+      gridItem.innerHTML = `
+        <i class="${nestedIcon} text-4xl ${nestedIconColor}"></i>
+        <span class="text-xs text-center font-medium leading-tight" ${nestedI18nAttr}>${nestedItem.title}</span>
+      `;
       gridItem.href = `#${nestedItem.route}`;
 
       const nestedIcon = nestedItem.icon || 'ph-duotone ph-circle';
@@ -1072,7 +1089,9 @@ function createNestedPopup(item, parentPopup) {
     const nestedContent = document.createElement('div');
     nestedContent.className = 'py-1';
 
-    item.submenu.forEach(nestedItem => {
+    // Support both submenu and children properties
+    const nestedItems = item.submenu || item.children || [];
+    nestedItems.forEach(nestedItem => {
       const nestedLink = document.createElement('a');
       nestedLink.className = 'flex items-center gap-3 px-4 py-2 text-gray-600 hover:bg-blue-50 hover:text-blue-600 transition-colors text-sm';
       nestedLink.href = `#${nestedItem.route}`;
