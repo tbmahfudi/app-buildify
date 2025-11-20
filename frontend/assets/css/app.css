@@ -1302,11 +1302,6 @@ body.density-compact .navbar .gap-2 {
   color: #2563eb;
 }
 
-/* Icon colors */
-.sidebar-menu-item i {
-  color: currentColor;
-}
-
 /* Phosphor icon duotone colors */
 .ph-duotone {
   --ph-duotone-primary-opacity: 0.2;
