@@ -287,8 +287,13 @@ function applyLanguage(language) {
   // Set HTML lang attribute
   document.documentElement.lang = language;
 
-  // Store for future i18n implementation
+  // Store for persistence
   localStorage.setItem('preferredLanguage', language);
+
+  // Change i18next language if initialized
+  if (window.i18n && window.i18n.isInitialized) {
+    window.i18n.changeLanguage(language);
+  }
 
   console.log(`Settings: Language set to ${language}`);
 }

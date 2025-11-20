@@ -520,7 +520,7 @@ function getIconColor(title, route) {
     'Departments': 'text-sky-600',
     'Users': 'text-indigo-600',
     'Groups': 'text-violet-600',
-    'Roles & Permissions': 'text-purple-600',
+    'Access Control': 'text-purple-600',
     'Auth Policies': 'text-fuchsia-600',
 
     // System Settings submenu

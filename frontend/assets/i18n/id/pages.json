@@ -1,0 +1,152 @@
+{
+  "dashboard": {
+    "title": "Dasbor",
+    "description": "Ringkasan sistem Anda"
+  },
+  "accessControl": {
+    "title": "Kontrol Akses",
+    "description": "Kelola peran, izin, grup, dan akses pengguna",
+    "selectTenant": "Pilih Tenant",
+    "tabs": {
+      "dashboard": "Dasbor",
+      "organization": "Organisasi",
+      "roles": "Peran",
+      "permissions": "Izin",
+      "groups": "Grup",
+      "userAccess": "Akses Pengguna"
+    },
+    "stats": {
+      "totalRoles": "Total Peran",
+      "totalPermissions": "Total Izin",
+      "activeGroups": "Grup Aktif",
+      "totalUsers": "Total Pengguna"
+    },
+    "charts": {
+      "rolesByType": "Peran berdasarkan Tipe",
+      "permissionsByCategory": "Izin berdasarkan Kategori"
+    },
+    "organization": {
+      "title": "Hierarki Organisasi"
+    },
+    "rolesManagement": {
+      "title": "Manajemen Peran",
+      "searchPlaceholder": "Cari peran...",
+      "allTypes": "Semua Tipe",
+      "allStatus": "Semua Status",
+      "system": "Sistem",
+      "default": "Default",
+      "custom": "Kustom",
+      "table": {
+        "role": "Peran",
+        "type": "Tipe",
+        "permissions": "Izin",
+        "users": "Pengguna",
+        "groups": "Grup",
+        "status": "Status",
+        "actions": "Aksi"
+      },
+      "pagination": {
+        "showing": "Menampilkan",
+        "to": "sampai",
+        "of": "dari",
+        "roles": "peran"
+      }
+    },
+    "permissionsManagement": {
+      "title": "Manajemen Izin",
+      "searchPlaceholder": "Cari izin...",
+      "allCategories": "Semua Kategori",
+      "table": {
+        "code": "Kode",
+        "name": "Nama",
+        "category": "Kategori",
+        "roles": "Peran",
+        "system": "Sistem",
+        "status": "Status",
+        "actions": "Aksi"
+      },
+      "pagination": {
+        "showing": "Menampilkan",
+        "to": "sampai",
+        "of": "dari",
+        "permissions": "izin"
+      }
+    },
+    "groupsManagement": {
+      "title": "Manajemen Grup",
+      "searchPlaceholder": "Cari grup...",
+      "types": {
+        "team": "Tim",
+        "department": "Departemen",
+        "project": "Proyek",
+        "custom": "Kustom"
+      },
+      "table": {
+        "name": "Nama",
+        "type": "Tipe",
+        "members": "Anggota",
+        "roles": "Peran",
+        "status": "Status",
+        "actions": "Aksi"
+      },
+      "pagination": {
+        "showing": "Menampilkan",
+        "to": "sampai",
+        "of": "dari",
+        "groups": "grup"
+      }
+    },
+    "userAccessManagement": {
+      "title": "Manajemen Akses Pengguna",
+      "selectUser": "Pilih Pengguna",
+      "chooseUser": "Pilih pengguna...",
+      "directRoles": "Peran Langsung",
+      "groupMemberships": "Keanggotaan Grup",
+      "effectivePermissions": "Izin Efektif",
+      "assign": "Tetapkan",
+      "add": "Tambah"
+    },
+    "modals": {
+      "roleDetails": "Detail Peran",
+      "permissionDetails": "Detail Izin",
+      "groupDetails": "Detail Grup"
+    }
+  },
+  "settings": {
+    "title": "Pengaturan",
+    "description": "Kelola preferensi dan pengaturan akun Anda",
+    "userPreferences": "Preferensi Pengguna",
+    "theme": "Tema",
+    "themeLight": "Terang",
+    "themeDark": "Gelap",
+    "density": "Kepadatan",
+    "densityComfortable": "Nyaman",
+    "densityNormal": "Normal",
+    "densityCompact": "Kompak",
+    "sidebarState": "Status Default Sidebar",
+    "sidebarStateDesc": "Sidebar akan terbuka dalam status ini saat Anda login",
+    "sidebarExpanded": "Diperluas (Menu lengkap)",
+    "sidebarCollapsed": "Diperkecil (Hanya ikon)",
+    "togglePosition": "Posisi Tombol Sidebar",
+    "togglePositionDesc": "Posisi tombol perkecil/perluas sidebar",
+    "togglePositions": {
+      "sidebarHeader": "Header Sidebar",
+      "beforeLogo": "Sebelum Logo",
+      "between": "Antara Logo & Judul",
+      "afterTitle": "Setelah Judul Platform"
+    },
+    "language": "Bahasa",
+    "timezone": "Zona Waktu",
+    "lastUpdated": "Terakhir diperbarui",
+    "savePreferences": "Simpan Preferensi",
+    "preview": {
+      "title": "Pratinjau",
+      "theme": "Tema",
+      "density": "Kepadatan",
+      "sidebarState": "Status Sidebar",
+      "togglePosition": "Posisi Tombol",
+      "language": "Bahasa",
+      "timezone": "Zona Waktu"
+    }
+  }
+}

@@ -1,0 +1,152 @@
+{
+  "dashboard": {
+    "title": "Panel de Control",
+    "description": "Vista general de su sistema"
+  },
+  "accessControl": {
+    "title": "Control de Acceso",
+    "description": "Gestionar roles, permisos, grupos y acceso de usuarios",
+    "selectTenant": "Seleccionar Inquilino",
+    "tabs": {
+      "dashboard": "Panel de Control",
+      "organization": "Organización",
+      "roles": "Roles",
+      "permissions": "Permisos",
+      "groups": "Grupos",
+      "userAccess": "Acceso de Usuario"
+    },
+    "stats": {
+      "totalRoles": "Total de Roles",
+      "totalPermissions": "Total de Permisos",
+      "activeGroups": "Grupos Activos",
+      "totalUsers": "Total de Usuarios"
+    },
+    "charts": {
+      "rolesByType": "Roles por Tipo",
+      "permissionsByCategory": "Permisos por Categoría"
+    },
+    "organization": {
+      "title": "Jerarquía Organizacional"
+    },
+    "rolesManagement": {
+      "title": "Gestión de Roles",
+      "searchPlaceholder": "Buscar roles...",
+      "allTypes": "Todos los Tipos",
+      "allStatus": "Todos los Estados",
+      "system": "Sistema",
+      "default": "Predeterminado",
+      "custom": "Personalizado",
+      "table": {
+        "role": "Rol",
+        "type": "Tipo",
+        "permissions": "Permisos",
+        "users": "Usuarios",
+        "groups": "Grupos",
+        "status": "Estado",
+        "actions": "Acciones"
+      },
+      "pagination": {
+        "showing": "Mostrando",
+        "to": "a",
+        "of": "de",
+        "roles": "roles"
+      }
+    },
+    "permissionsManagement": {
+      "title": "Gestión de Permisos",
+      "searchPlaceholder": "Buscar permisos...",
+      "allCategories": "Todas las Categorías",
+      "table": {
+        "code": "Código",
+        "name": "Nombre",
+        "category": "Categoría",
+        "roles": "Roles",
+        "system": "Sistema",
+        "status": "Estado",
+        "actions": "Acciones"
+      },
+      "pagination": {
+        "showing": "Mostrando",
+        "to": "a",
+        "of": "de",
+        "permissions": "permisos"
+      }
+    },
+    "groupsManagement": {
+      "title": "Gestión de Grupos",
+      "searchPlaceholder": "Buscar grupos...",
+      "types": {
+        "team": "Equipo",
+        "department": "Departamento",
+        "project": "Proyecto",
+        "custom": "Personalizado"
+      },
+      "table": {
+        "name": "Nombre",
+        "type": "Tipo",
+        "members": "Miembros",
+        "roles": "Roles",
+        "status": "Estado",
+        "actions": "Acciones"
+      },
+      "pagination": {
+        "showing": "Mostrando",
+        "to": "a",
+        "of": "de",
+        "groups": "grupos"
+      }
+    },
+    "userAccessManagement": {
+      "title": "Gestión de Acceso de Usuarios",
+      "selectUser": "Seleccionar Usuario",
+      "chooseUser": "Elegir un usuario...",
+      "directRoles": "Roles Directos",
+      "groupMemberships": "Membresías de Grupo",
+      "effectivePermissions": "Permisos Efectivos",
+      "assign": "Asignar",
+      "add": "Agregar"
+    },
+    "modals": {
+      "roleDetails": "Detalles del Rol",
+      "permissionDetails": "Detalles del Permiso",
+      "groupDetails": "Detalles del Grupo"
+    }
+  },
+  "settings": {
+    "title": "Configuración",
+    "description": "Gestione sus preferencias y configuración de cuenta",
+    "userPreferences": "Preferencias de Usuario",
+    "theme": "Tema",
+    "themeLight": "Claro",
+    "themeDark": "Oscuro",
+    "density": "Densidad",
+    "densityComfortable": "Cómoda",
+    "densityNormal": "Normal",
+    "densityCompact": "Compacta",
+    "sidebarState": "Estado Predeterminado de la Barra Lateral",
+    "sidebarStateDesc": "La barra lateral se abrirá en este estado cuando inicie sesión",
+    "sidebarExpanded": "Expandida (Menú completo)",
+    "sidebarCollapsed": "Colapsada (Solo iconos)",
+    "togglePosition": "Posición del Botón de Barra Lateral",
+    "togglePositionDesc": "Posición del botón de colapsar/expandir de la barra lateral",
+    "togglePositions": {
+      "sidebarHeader": "Encabezado de Barra Lateral",
+      "beforeLogo": "Antes del Logo",
+      "between": "Entre Logo y Título",
+      "afterTitle": "Después del Título de la Plataforma"
+    },
+    "language": "Idioma",
+    "timezone": "Zona Horaria",
+    "lastUpdated": "Última actualización",
+    "savePreferences": "Guardar Preferencias",
+    "preview": {
+      "title": "Vista Previa",
+      "theme": "Tema",
+      "density": "Densidad",
+      "sidebarState": "Estado de Barra Lateral",
+      "togglePosition": "Posición del Botón",
+      "language": "Idioma",
+      "timezone": "Zona Horaria"
+    }
+  }
+}
