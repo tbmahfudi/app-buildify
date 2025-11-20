@@ -149,6 +149,23 @@ export async function initApp() {
     const route = window.location.hash.slice(1) || 'dashboard';
     loadRoute(route);
   });
+
+  // Setup i18n translation hooks
+  if (window.i18n && window.i18n.isInitialized) {
+    // Translate page content after route loads
+    document.addEventListener('route:loaded', () => {
+      setTimeout(() => {
+        window.i18n.translatePage();
+      }, 50);
+    });
+
+    // Re-translate everything when language changes
+    window.addEventListener('languageChanged', async () => {
+      // Reload menu with new language
+      await loadMenu();
+      // Current page is already translated by i18n.changeLanguage()
+    });
+  }
 }
 
 function updateUserInfo() {
@@ -408,6 +425,13 @@ async function loadMenu() {
     // Set initial active state
     updateActiveMenuItem();
 
+    // Translate menu items after rendering
+    if (window.i18n && window.i18n.isInitialized) {
+      setTimeout(() => {
+        window.i18n.translatePage();
+      }, 50);
+    }
+
   } catch (error) {
     console.error('Failed to load menu:', error);
     showToast('Failed to load menu', 'error');
@@ -500,6 +524,50 @@ function convertBackendMenuFormat(menuItems) {
 
     return converted;
   });
+}
+
+// Helper function to convert menu title to i18n key
+function getMenuI18nKey(title) {
+  const keyMap = {
+    'Dashboard': 'menu.dashboard',
+    'System Management': 'menu.systemManagement',
+    'Administration': 'menu.administration',
+    'Tenants': 'menu.tenants',
+    'Users': 'menu.users',
+    'Groups': 'menu.groups',
+    'Access Control': 'menu.accessControl',
+    'Roles & Permissions': 'menu.rolesPermissions',
+    'Auth Policies': 'menu.authPolicies',
+    'Menu Management': 'menu.menuManagement',
+    'System Settings': 'menu.systemSettings',
+    'General': 'menu.general',
+    'Integration': 'menu.integration',
+    'Security': 'menu.security',
+    'Notifications': 'menu.notifications',
+    'Module Management': 'menu.moduleManagement',
+    'Installed Modules': 'menu.installedModules',
+    'Marketplace': 'menu.marketplace',
+    'Updates': 'menu.updates',
+    'Builder': 'menu.builder',
+    'Monitoring & Audit': 'menu.monitoringAudit',
+    'Audit Trail': 'menu.auditTrail',
+    'System Logs': 'menu.systemLogs',
+    'API Activity': 'menu.apiActivity',
+    'Usage Analytics': 'menu.usageAnalytics',
+    'Help & Support': 'menu.helpSupport',
+    'User Guide': 'menu.userGuide',
+    'API Docs': 'menu.apiDocs',
+    'Contact Support': 'menu.contactSupport',
+    'Changelog': 'menu.changelog',
+    'Developer Tools': 'menu.developerTools',
+    'Sample Reports & Dashboards': 'menu.sampleReportsDashboards',
+    'Components': 'menu.components',
+    'Schema Designer': 'menu.schemaDesigner',
+    'API Playground': 'menu.apiPlayground',
+    'Code Generator': 'menu.codeGenerator'
+  };
+
+  return keyMap[title] || null;
 }
 
 // Helper function to get icon color based on menu category
@@ -600,9 +668,12 @@ function createMenuItem(item) {
       tooltip.classList.add('hidden');
     });
   } else {
+    const i18nKey = getMenuI18nKey(item.title);
+    const i18nAttr = i18nKey ? `data-i18n="${i18nKey}"` : '';
+
     link.innerHTML = `
       <i class="${icon} text-xl flex-shrink-0 ${iconColor}"></i>
-      <span class="sidebar-menu-label font-medium">${item.title}</span>
+      <span class="sidebar-menu-label font-medium" ${i18nAttr}>${item.title}</span>
     `;
   }
 
@@ -674,10 +745,13 @@ function createSubmenuItem(item, level = 1) {
 
     const icon = item.icon || getMenuIcon(item.route);
     const iconColor = getIconColor(item.title, item.route);
+    const i18nKey = getMenuI18nKey(item.title);
+    const i18nAttr = i18nKey ? `data-i18n="${i18nKey}"` : '';
+
     parent.innerHTML = `
       <div class="flex items-center gap-3">
         <i class="${icon} text-xl flex-shrink-0 ${iconColor}"></i>
-        <span class="font-medium sidebar-menu-label">${item.title}</span>
+        <span class="font-medium sidebar-menu-label" ${i18nAttr}>${item.title}</span>
       </div>
       <i class="ph ph-caret-down text-sm transition-transform submenu-arrow"></i>
     `;
@@ -699,9 +773,12 @@ function createSubmenuItem(item, level = 1) {
 
         const subicon = subitem.icon || 'ph-duotone ph-square';
         const subiconColor = getIconColor(subitem.title, subitem.route);
+        const subI18nKey = getMenuI18nKey(subitem.title);
+        const subI18nAttr = subI18nKey ? `data-i18n="${subI18nKey}"` : '';
+
         sublink.innerHTML = `
           <i class="${subicon} text-lg flex-shrink-0 ${subiconColor}"></i>
-          <span>${subitem.title}</span>
+          <span ${subI18nAttr}>${subitem.title}</span>
         `;
 
         sublink.onclick = (e) => {
@@ -745,7 +822,9 @@ function createCollapsedSubmenuPopup(item) {
   // Add title header
   const popupHeader = document.createElement('div');
   popupHeader.className = 'px-4 py-2 bg-gray-100 border-b border-gray-200';
-  popupHeader.innerHTML = `<span class="font-semibold text-gray-900 text-sm">${item.title}</span>`;
+  const headerI18nKey = getMenuI18nKey(item.title);
+  const headerI18nAttr = headerI18nKey ? `data-i18n="${headerI18nKey}"` : '';
+  popupHeader.innerHTML = `<span class="font-semibold text-gray-900 text-sm" ${headerI18nAttr}>${item.title}</span>`;
   popup.appendChild(popupHeader);
 
   // Check if all items are final (no submenu) - use grid layout
@@ -765,9 +844,12 @@ function createCollapsedSubmenuPopup(item) {
 
       const subicon = subitem.icon || 'ph-duotone ph-square';
       const subiconColor = getIconColor(subitem.title, subitem.route);
+      const gridI18nKey = getMenuI18nKey(subitem.title);
+      const gridI18nAttr = gridI18nKey ? `data-i18n="${gridI18nKey}"` : '';
+
       gridItem.innerHTML = `
         <i class="${subicon} text-4xl ${subiconColor}"></i>
-        <span class="text-xs text-center font-medium leading-tight">${subitem.title}</span>
+        <span class="text-xs text-center font-medium leading-tight" ${gridI18nAttr}>${subitem.title}</span>
       `;
 
       gridItem.onclick = (e) => {
@@ -795,10 +877,13 @@ function createCollapsedSubmenuPopup(item) {
 
         const subicon = subitem.icon || 'ph-duotone ph-folder';
         const subiconColor = getIconColor(subitem.title, subitem.route);
+        const nestedI18nKey = getMenuI18nKey(subitem.title);
+        const nestedI18nAttr = nestedI18nKey ? `data-i18n="${nestedI18nKey}"` : '';
+
         nestedTrigger.innerHTML = `
           <div class="flex items-center gap-3">
             <i class="${subicon} text-lg ${subiconColor}"></i>
-            <span class="text-sm font-medium">${subitem.title}</span>
+            <span class="text-sm font-medium" ${nestedI18nAttr}>${subitem.title}</span>
           </div>
           <i class="ph ph-caret-right text-xs"></i>
         `;
@@ -862,9 +947,12 @@ function createCollapsedSubmenuPopup(item) {
 
         const subicon = subitem.icon || 'ph-duotone ph-square';
         const subiconColor = getIconColor(subitem.title, subitem.route);
+        const sublinkI18nKey = getMenuI18nKey(subitem.title);
+        const sublinkI18nAttr = sublinkI18nKey ? `data-i18n="${sublinkI18nKey}"` : '';
+
         sublink.innerHTML = `
           <i class="${subicon} text-lg ${subiconColor}"></i>
-          <span>${subitem.title}</span>
+          <span ${sublinkI18nAttr}>${subitem.title}</span>
         `;
 
         sublink.onclick = (e) => {
