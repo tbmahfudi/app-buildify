@@ -1058,13 +1058,6 @@ function createNestedPopup(item, parentPopup) {
       `;
       gridItem.href = `#${nestedItem.route}`;
 
-      const nestedIcon = nestedItem.icon || 'ph-duotone ph-circle';
-      const nestedIconColor = getIconColor(nestedItem.title, nestedItem.route);
-      gridItem.innerHTML = `
-        <i class="${nestedIcon} text-4xl ${nestedIconColor}"></i>
-        <span class="text-xs text-center font-medium leading-tight">${nestedItem.title}</span>
-      `;
-
       gridItem.onclick = (e) => {
         e.preventDefault();
         parentPopup.classList.add('hidden');
@@ -1098,9 +1091,11 @@ function createNestedPopup(item, parentPopup) {
 
       const nestedIcon = nestedItem.icon || 'ph-duotone ph-circle';
       const nestedIconColor = getIconColor(nestedItem.title, nestedItem.route);
+      const nestedI18nKey = getMenuI18nKey(nestedItem.title);
+      const nestedI18nAttr = nestedI18nKey ? `data-i18n="${nestedI18nKey}"` : '';
       nestedLink.innerHTML = `
         <i class="${nestedIcon} text-base ${nestedIconColor}"></i>
-        <span>${nestedItem.title}</span>
+        <span ${nestedI18nAttr}>${nestedItem.title}</span>
       `;
 
       nestedLink.onclick = (e) => {
