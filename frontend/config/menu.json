@@ -14,9 +14,6 @@
           "icon": "ph-duotone ph-buildings",
           "submenu": [
             { "title": "Tenants", "route": "tenants", "icon": "ph-duotone ph-globe", "roles": ["superuser"] },
-            { "title": "Companies", "route": "companies", "icon": "ph-duotone ph-building" },
-            { "title": "Branches", "route": "branches", "icon": "ph-duotone ph-tree-structure" },
-            { "title": "Departments", "route": "departments", "icon": "ph-duotone ph-users-three" },
             { "title": "Users", "route": "users", "icon": "ph-duotone ph-users", "roles": ["admin"] },
             { "title": "Groups", "route": "groups", "icon": "ph-duotone ph-user-circle-gear" },
             { "title": "Roles & Permissions", "route": "rbac", "icon": "ph-duotone ph-shield-check", "roles": ["admin"] },

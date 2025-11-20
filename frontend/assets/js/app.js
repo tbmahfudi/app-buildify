@@ -738,14 +738,14 @@ function createSubmenuItem(item, level = 1) {
 // Helper function to create collapsed popup menu (supports nested submenus)
 function createCollapsedSubmenuPopup(item) {
   const popup = document.createElement('div');
-  popup.className = 'fixed hidden bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl min-w-[220px] max-w-[280px] overflow-hidden';
+  popup.className = 'fixed hidden bg-white border border-gray-200 rounded-xl shadow-xl min-w-[220px] max-w-[280px] overflow-hidden';
   popup.style.zIndex = '99999';
   popup.dataset.popupLevel = '1';
 
   // Add title header
   const popupHeader = document.createElement('div');
-  popupHeader.className = 'px-4 py-2 bg-gray-100 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700';
-  popupHeader.innerHTML = `<span class="font-semibold text-gray-900 dark:text-gray-100 text-sm">${item.title}</span>`;
+  popupHeader.className = 'px-4 py-2 bg-gray-100 border-b border-gray-200';
+  popupHeader.innerHTML = `<span class="font-semibold text-gray-900 text-sm">${item.title}</span>`;
   popup.appendChild(popupHeader);
 
   // Check if all items are final (no submenu) - use grid layout
@@ -760,7 +760,7 @@ function createCollapsedSubmenuPopup(item) {
 
     item.submenu.forEach(subitem => {
       const gridItem = document.createElement('a');
-      gridItem.className = 'flex flex-col items-center gap-2 p-3 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer';
+      gridItem.className = 'flex flex-col items-center gap-2 p-3 rounded-lg text-gray-600 hover:bg-blue-50 hover:text-blue-600 transition-colors cursor-pointer';
       gridItem.href = `#${subitem.route}`;
 
       const subicon = subitem.icon || 'ph-duotone ph-square';
@@ -770,14 +770,11 @@ function createCollapsedSubmenuPopup(item) {
         <span class="text-xs text-center font-medium leading-tight">${subitem.title}</span>
       `;
 
-      gridItem.onclick = () => {
-        document.querySelectorAll('#sidebar-nav a').forEach(l => {
-          l.classList.remove('bg-blue-50', 'text-blue-600');
-          l.classList.add('text-gray-600');
-        });
-        gridItem.classList.add('bg-blue-50', 'text-blue-600');
-        gridItem.classList.remove('text-gray-600');
+      gridItem.onclick = (e) => {
+        e.preventDefault();
         popup.classList.add('hidden');
+        // Navigate to route
+        window.location.hash = subitem.route;
       };
 
       popupContent.appendChild(gridItem);
@@ -794,7 +791,7 @@ function createCollapsedSubmenuPopup(item) {
         nestedContainer.className = 'relative';
 
         const nestedTrigger = document.createElement('div');
-        nestedTrigger.className = 'flex items-center justify-between px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer transition-colors';
+        nestedTrigger.className = 'flex items-center justify-between px-4 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600 cursor-pointer transition-colors';
 
         const subicon = subitem.icon || 'ph-duotone ph-folder';
         const subiconColor = getIconColor(subitem.title, subitem.route);
@@ -860,7 +857,7 @@ function createCollapsedSubmenuPopup(item) {
       } else {
         // Regular link
         const sublink = document.createElement('a');
-        sublink.className = 'flex items-center gap-3 px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 hover:text-blue-600 dark:hover:text-blue-400 transition-colors text-sm';
+        sublink.className = 'flex items-center gap-3 px-4 py-2 text-gray-600 hover:bg-blue-50 hover:text-blue-600 transition-colors text-sm';
         sublink.href = `#${subitem.route}`;
 
         const subicon = subitem.icon || 'ph-duotone ph-square';
@@ -871,13 +868,10 @@ function createCollapsedSubmenuPopup(item) {
         `;
 
         sublink.onclick = (e) => {
-          document.querySelectorAll('#sidebar-nav a').forEach(l => {
-            l.classList.remove('bg-blue-50', 'text-blue-600');
-            l.classList.add('text-gray-600');
-          });
-          sublink.classList.add('bg-blue-50', 'text-blue-600');
-          sublink.classList.remove('text-gray-600');
+          e.preventDefault();
           popup.classList.add('hidden');
+          // Navigate to route
+          window.location.hash = subitem.route;
         };
 
         popupContent.appendChild(sublink);
@@ -948,7 +942,7 @@ function createNestedPopup(item, parentPopup) {
 
   if (allItemsFinal) {
     // Grid layout for final items
-    nestedPopup.className = 'fixed hidden bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl min-w-[280px] overflow-hidden';
+    nestedPopup.className = 'fixed hidden bg-white border border-gray-200 rounded-xl shadow-xl min-w-[280px] overflow-hidden';
     nestedPopup.style.zIndex = '100000';
 
     const nestedContent = document.createElement('div');
@@ -956,7 +950,7 @@ function createNestedPopup(item, parentPopup) {
 
     item.submenu.forEach(nestedItem => {
       const gridItem = document.createElement('a');
-      gridItem.className = 'flex flex-col items-center gap-2 p-3 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer';
+      gridItem.className = 'flex flex-col items-center gap-2 p-3 rounded-lg text-gray-600 hover:bg-blue-50 hover:text-blue-600 transition-colors cursor-pointer';
       gridItem.href = `#${nestedItem.route}`;
 
       const nestedIcon = nestedItem.icon || 'ph-duotone ph-circle';
@@ -966,19 +960,16 @@ function createNestedPopup(item, parentPopup) {
         <span class="text-xs text-center font-medium leading-tight">${nestedItem.title}</span>
       `;
 
-      gridItem.onclick = () => {
-        document.querySelectorAll('#sidebar-nav a').forEach(l => {
-          l.classList.remove('bg-blue-50', 'text-blue-600');
-          l.classList.add('text-gray-600');
-        });
-        gridItem.classList.add('bg-blue-50', 'text-blue-600');
-        gridItem.classList.remove('text-gray-600');
+      gridItem.onclick = (e) => {
+        e.preventDefault();
         parentPopup.classList.add('hidden');
         nestedPopup.classList.add('hidden');
         // Also hide parent's parent if it exists
         if (parentPopup.parentPopup) {
           parentPopup.parentPopup.classList.add('hidden');
         }
+        // Navigate to route
+        window.location.hash = nestedItem.route;
       };
 
       nestedContent.appendChild(gridItem);
@@ -987,7 +978,7 @@ function createNestedPopup(item, parentPopup) {
     nestedPopup.appendChild(nestedContent);
   } else {
     // List layout
-    nestedPopup.className = 'fixed hidden bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl min-w-[200px] overflow-hidden';
+    nestedPopup.className = 'fixed hidden bg-white border border-gray-200 rounded-xl shadow-xl min-w-[200px] overflow-hidden';
     nestedPopup.style.zIndex = '100000';
 
     const nestedContent = document.createElement('div');
@@ -995,7 +986,7 @@ function createNestedPopup(item, parentPopup) {
 
     item.submenu.forEach(nestedItem => {
       const nestedLink = document.createElement('a');
-      nestedLink.className = 'flex items-center gap-3 px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 hover:text-blue-600 dark:hover:text-blue-400 transition-colors text-sm';
+      nestedLink.className = 'flex items-center gap-3 px-4 py-2 text-gray-600 hover:bg-blue-50 hover:text-blue-600 transition-colors text-sm';
       nestedLink.href = `#${nestedItem.route}`;
 
       const nestedIcon = nestedItem.icon || 'ph-duotone ph-circle';
@@ -1005,19 +996,16 @@ function createNestedPopup(item, parentPopup) {
         <span>${nestedItem.title}</span>
       `;
 
-      nestedLink.onclick = () => {
-        document.querySelectorAll('#sidebar-nav a').forEach(l => {
-          l.classList.remove('bg-blue-50', 'text-blue-600');
-          l.classList.add('text-gray-600');
-        });
-        nestedLink.classList.add('bg-blue-50', 'text-blue-600');
-        nestedLink.classList.remove('text-gray-600');
+      nestedLink.onclick = (e) => {
+        e.preventDefault();
         parentPopup.classList.add('hidden');
         nestedPopup.classList.add('hidden');
         // Also hide parent's parent if it exists
         if (parentPopup.parentPopup) {
           parentPopup.parentPopup.classList.add('hidden');
         }
+        // Navigate to route
+        window.location.hash = nestedItem.route;
       };
 
       nestedContent.appendChild(nestedLink);
