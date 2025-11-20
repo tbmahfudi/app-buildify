@@ -2,6 +2,19 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Remove gaps between navbar and main content for all layouts */
+#app {
+  gap: 0 !important;
+}
+
+#app > nav {
+  margin: 0 !important;
+}
+
+#app > div {
+  margin: 0 !important;
+}
+
 /* ============================================
    CSS CUSTOM PROPERTIES (VARIABLES)
    ============================================ */
@@ -169,6 +182,15 @@ body.density-comfortable {
   --font-scale: 1.1;
 }
 
+/* Remove gap between navbar and content for comfortable mode */
+body.density-comfortable nav {
+  margin-bottom: 0;
+}
+
+body.density-comfortable #app > div:nth-child(2) {
+  margin-top: 0;
+}
+
 body.density-comfortable .app-sidebar {
   width: 320px;
 }
@@ -202,10 +224,28 @@ body.density-normal {
   --font-scale: 1;
 }
 
+/* Remove gap between navbar and content for normal mode */
+body.density-normal nav {
+  margin-bottom: 0;
+}
+
+body.density-normal #app > div:nth-child(2) {
+  margin-top: 0;
+}
+
 /* Compact Mode (0.6x spacing - minimal) */
 body.density-compact {
   --spacing-scale: 0.6;
   --font-scale: 0.85;
+}
+
+/* Remove gap between navbar and content for compact mode */
+body.density-compact nav {
+  margin-bottom: 0;
+}
+
+body.density-compact #app > div:nth-child(2) {
+  margin-top: 0;
 }
 
 body.density-compact .app-sidebar {
