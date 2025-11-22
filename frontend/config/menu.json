@@ -3,15 +3,18 @@
     {
       "title": "Dashboard",
       "route": "dashboard",
-      "icon": "ph-duotone ph-gauge"
+      "icon": "ph-duotone ph-gauge",
+      "iconColor": "text-purple-600"
     },
     {
       "title": "System Management",
       "icon": "ph-duotone ph-gear-six",
+      "iconColor": "text-orange-600",
       "submenu": [
         {
           "title": "Administration",
           "icon": "ph-duotone ph-buildings",
+          "iconColor": "text-blue-600",
           "submenu": [
             { "title": "Tenants & Organizations", "route": "tenants", "icon": "ph-duotone ph-globe", "iconColor": "text-blue-600", "roles": ["superuser"] },
             { "title": "Users & Access Control", "route": "rbac", "icon": "ph-duotone ph-shield-check", "iconColor": "text-purple-600", "roles": ["admin"] }
@@ -20,32 +23,35 @@
         {
           "title": "System Settings",
           "icon": "ph-duotone ph-gear",
+          "iconColor": "text-orange-500",
           "submenu": [
-            { "title": "General", "route": "settings", "icon": "ph-duotone ph-sliders" },
-            { "title": "Integration", "route": "settings-integration", "icon": "ph-duotone ph-plugs-connected" },
-            { "title": "Security", "route": "settings-security", "icon": "ph-duotone ph-shield-checkered" },
-            { "title": "Notifications", "route": "settings-notifications", "icon": "ph-duotone ph-bell-ringing" },
-            { "title": "Menu Management", "route": "menu-management", "icon": "ph-duotone ph-list-dashes", "permission": "menu:manage:tenant" }
+            { "title": "General", "route": "settings", "icon": "ph-duotone ph-sliders", "iconColor": "text-amber-600" },
+            { "title": "Integration", "route": "settings-integration", "icon": "ph-duotone ph-plugs-connected", "iconColor": "text-cyan-600" },
+            { "title": "Security", "route": "settings-security", "icon": "ph-duotone ph-shield-checkered", "iconColor": "text-red-600" },
+            { "title": "Notifications", "route": "settings-notifications", "icon": "ph-duotone ph-bell-ringing", "iconColor": "text-indigo-600" },
+            { "title": "Menu Management", "route": "menu-management", "icon": "ph-duotone ph-list-dashes", "iconColor": "text-emerald-600", "permission": "menu:manage:tenant" }
           ]
         },
         {
           "title": "Module Management",
           "icon": "ph-duotone ph-package",
+          "iconColor": "text-orange-500",
           "submenu": [
-            { "title": "Installed Modules", "route": "modules", "icon": "ph-duotone ph-squares-four", "permission": "modules:manage:tenant" },
-            { "title": "Marketplace", "route": "modules-marketplace", "icon": "ph-duotone ph-storefront" },
-            { "title": "Updates", "route": "modules-updates", "icon": "ph-duotone ph-download-simple" },
-            { "title": "Builder", "route": "modules-builder", "icon": "ph-duotone ph-code-block" }
+            { "title": "Installed Modules", "route": "modules", "icon": "ph-duotone ph-squares-four", "iconColor": "text-violet-600", "permission": "modules:manage:tenant" },
+            { "title": "Marketplace", "route": "modules-marketplace", "icon": "ph-duotone ph-storefront", "iconColor": "text-emerald-600" },
+            { "title": "Updates", "route": "modules-updates", "icon": "ph-duotone ph-download-simple", "iconColor": "text-sky-600" },
+            { "title": "Builder", "route": "modules-builder", "icon": "ph-duotone ph-code-block", "iconColor": "text-teal-600" }
           ]
         },
         {
           "title": "Monitoring & Audit",
           "icon": "ph-duotone ph-chart-line-up",
+          "iconColor": "text-orange-500",
           "submenu": [
-            { "title": "Audit Trail", "route": "audit", "icon": "ph-duotone ph-clock-counter-clockwise" },
-            { "title": "System Logs", "route": "system-logs", "icon": "ph-duotone ph-file-text" },
-            { "title": "API Activity", "route": "api-activity", "icon": "ph-duotone ph-plugs" },
-            { "title": "Usage Analytics", "route": "usage-analytics", "icon": "ph-duotone ph-chart-bar" }
+            { "title": "Audit Trail", "route": "audit", "icon": "ph-duotone ph-clock-counter-clockwise", "iconColor": "text-amber-600" },
+            { "title": "System Logs", "route": "system-logs", "icon": "ph-duotone ph-file-text", "iconColor": "text-slate-600" },
+            { "title": "API Activity", "route": "api-activity", "icon": "ph-duotone ph-plugs", "iconColor": "text-fuchsia-600" },
+            { "title": "Usage Analytics", "route": "usage-analytics", "icon": "ph-duotone ph-chart-bar", "iconColor": "text-lime-600" }
           ]
         }
       ]
@@ -53,20 +59,22 @@
     {
       "title": "Help & Support",
       "icon": "ph-duotone ph-lifebuoy",
+      "iconColor": "text-pink-600",
       "submenu": [
-        { "title": "User Guide", "route": "user-guide", "icon": "ph-duotone ph-book-open" },
-        { "title": "API Docs", "route": "api-docs", "icon": "ph-duotone ph-file-code" },
-        { "title": "Contact Support", "route": "contact-support", "icon": "ph-duotone ph-headset" },
-        { "title": "Changelog", "route": "changelog", "icon": "ph-duotone ph-git-diff" },
+        { "title": "User Guide", "route": "user-guide", "icon": "ph-duotone ph-book-open", "iconColor": "text-pink-500" },
+        { "title": "API Docs", "route": "api-docs", "icon": "ph-duotone ph-file-code", "iconColor": "text-rose-600" },
+        { "title": "Contact Support", "route": "contact-support", "icon": "ph-duotone ph-headset", "iconColor": "text-pink-600" },
+        { "title": "Changelog", "route": "changelog", "icon": "ph-duotone ph-git-diff", "iconColor": "text-fuchsia-600" },
         {
           "title": "Developer Tools",
           "icon": "ph-duotone ph-code",
+          "iconColor": "text-green-600",
           "submenu": [
-            { "title": "Sample Reports & Dashboards", "route": "sample-reports-dashboards", "icon": "ph-duotone ph-presentation-chart" },
-            { "title": "Components", "route": "components-showcase", "icon": "ph-duotone ph-squares-four" },
-            { "title": "Schema Designer", "route": "schema-designer", "icon": "ph-duotone ph-database" },
-            { "title": "API Playground", "route": "api-playground", "icon": "ph-duotone ph-terminal-window" },
-            { "title": "Code Generator", "route": "code-generator", "icon": "ph-duotone ph-brackets-curly" }
+            { "title": "Sample Reports & Dashboards", "route": "sample-reports-dashboards", "icon": "ph-duotone ph-presentation-chart", "iconColor": "text-blue-600" },
+            { "title": "Components", "route": "components-showcase", "icon": "ph-duotone ph-squares-four", "iconColor": "text-green-500" },
+            { "title": "Schema Designer", "route": "schema-designer", "icon": "ph-duotone ph-database", "iconColor": "text-emerald-600" },
+            { "title": "API Playground", "route": "api-playground", "icon": "ph-duotone ph-terminal-window", "iconColor": "text-teal-600" },
+            { "title": "Code Generator", "route": "code-generator", "icon": "ph-duotone ph-brackets-curly", "iconColor": "text-lime-600" }
           ]
         }
       ]

@@ -845,17 +845,43 @@ function createCollapsedSubmenuPopup(item) {
 
   if (allItemsFinal) {
     // Grid layout for final items - big icons with text below
-    popupContent.className = 'p-4 grid grid-cols-2 gap-3';
-
-    // Support both submenu and children properties
+    // Vertical-priority layout: items flow vertically first, then horizontally
     const submenuItems = item.submenu || item.children || [];
+    const itemCount = submenuItems.length;
+
+    // Calculate grid layout based on item count (vertical priority)
+    // 1-2 items: 1 column (all vertical)
+    // 3-4 items: 2 rows, 2 columns
+    // 5-6 items: 3 rows, 2 columns
+    // 7-9 items: 3 rows, 3 columns
+    // etc.
+    let gridRows, gridCols;
+    if (itemCount <= 2) {
+      gridRows = itemCount;
+      gridCols = 1;
+    } else if (itemCount <= 4) {
+      gridRows = 2;
+      gridCols = 2;
+    } else if (itemCount <= 6) {
+      gridRows = 3;
+      gridCols = 2;
+    } else {
+      gridRows = 3;
+      gridCols = Math.ceil(itemCount / 3);
+    }
+
+    popupContent.className = 'p-4 grid gap-3';
+    popupContent.style.gridTemplateRows = `repeat(${gridRows}, minmax(0, 1fr))`;
+    popupContent.style.gridTemplateColumns = `repeat(${gridCols}, minmax(0, 1fr))`;
+    popupContent.style.gridAutoFlow = 'column'; // Fill columns first (vertical priority)
+
     submenuItems.forEach(subitem => {
       const gridItem = document.createElement('a');
       gridItem.className = 'flex flex-col items-center gap-2 p-3 rounded-lg text-gray-600 hover:bg-blue-50 hover:text-blue-600 transition-colors cursor-pointer';
       gridItem.href = `#${subitem.route}`;
 
       const subicon = subitem.icon || 'ph-duotone ph-square';
-      const subiconColor = getIconColor(subitem.title, subitem.route);
+      const subiconColor = getIconColor(subitem.title, subitem.route, subitem);
       const gridI18nKey = getMenuI18nKey(subitem.title);
       const gridI18nAttr = gridI18nKey ? `data-i18n="${gridI18nKey}"` : '';
 
@@ -891,7 +917,7 @@ function createCollapsedSubmenuPopup(item) {
         nestedTrigger.className = 'flex items-center justify-between px-4 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600 cursor-pointer transition-colors';
 
         const subicon = subitem.icon || 'ph-duotone ph-folder';
-        const subiconColor = getIconColor(subitem.title, subitem.route);
+        const subiconColor = getIconColor(subitem.title, subitem.route, subitem);
         const nestedI18nKey = getMenuI18nKey(subitem.title);
         const nestedI18nAttr = nestedI18nKey ? `data-i18n="${nestedI18nKey}"` : '';
 
@@ -961,7 +987,7 @@ function createCollapsedSubmenuPopup(item) {
         sublink.href = `#${subitem.route}`;
 
         const subicon = subitem.icon || 'ph-duotone ph-square';
-        const subiconColor = getIconColor(subitem.title, subitem.route);
+        const subiconColor = getIconColor(subitem.title, subitem.route, subitem);
         const sublinkI18nKey = getMenuI18nKey(subitem.title);
         const sublinkI18nAttr = sublinkI18nKey ? `data-i18n="${sublinkI18nKey}"` : '';
 
@@ -1044,19 +1070,42 @@ function createNestedPopup(item, parentPopup) {
   const allItemsFinal = item.submenu.every(subitem => !subitem.submenu || subitem.submenu.length === 0);
 
   if (allItemsFinal) {
-    // Grid layout for final items
+    // Grid layout for final items - vertical priority
     nestedPopup.className = 'fixed hidden bg-white border border-gray-200 rounded-xl shadow-xl min-w-[280px] overflow-hidden';
     nestedPopup.style.zIndex = '100000';
 
     const nestedContent = document.createElement('div');
-    nestedContent.className = 'p-4 grid grid-cols-2 gap-3';
 
     // Support both submenu and children properties
     const nestedItems = item.submenu || item.children || [];
+    const itemCount = nestedItems.length;
+
+    // Calculate grid layout based on item count (vertical priority)
+    let gridRows, gridCols;
+    if (itemCount <= 2) {
+      gridRows = itemCount;
+      gridCols = 1;
+    } else if (itemCount <= 4) {
+      gridRows = 2;
+      gridCols = 2;
+    } else if (itemCount <= 6) {
+      gridRows = 3;
+      gridCols = 2;
+    } else {
+      gridRows = 3;
+      gridCols = Math.ceil(itemCount / 3);
+    }
+
+    nestedContent.className = 'p-4 grid gap-3';
+    nestedContent.style.gridTemplateRows = `repeat(${gridRows}, minmax(0, 1fr))`;
+    nestedContent.style.gridTemplateColumns = `repeat(${gridCols}, minmax(0, 1fr))`;
+    nestedContent.style.gridAutoFlow = 'column'; // Fill columns first (vertical priority)
+
     nestedItems.forEach(nestedItem => {
       const gridItem = document.createElement('a');
+      gridItem.className = 'flex flex-col items-center gap-2 p-3 rounded-lg text-gray-600 hover:bg-blue-50 hover:text-blue-600 transition-colors cursor-pointer';
       const nestedIcon = nestedItem.icon || 'ph-duotone ph-circle';
-      const nestedIconColor = getIconColor(nestedItem.title, nestedItem.route);
+      const nestedIconColor = getIconColor(nestedItem.title, nestedItem.route, nestedItem);
       const nestedI18nKey = getMenuI18nKey(nestedItem.title);
       const nestedI18nAttr = nestedI18nKey ? `data-i18n="${nestedI18nKey}"` : '';
       gridItem.innerHTML = `
@@ -1097,7 +1146,7 @@ function createNestedPopup(item, parentPopup) {
       nestedLink.href = `#${nestedItem.route}`;
 
       const nestedIcon = nestedItem.icon || 'ph-duotone ph-circle';
-      const nestedIconColor = getIconColor(nestedItem.title, nestedItem.route);
+      const nestedIconColor = getIconColor(nestedItem.title, nestedItem.route, nestedItem);
       const nestedI18nKey = getMenuI18nKey(nestedItem.title);
       const nestedI18nAttr = nestedI18nKey ? `data-i18n="${nestedI18nKey}"` : '';
       nestedLink.innerHTML = `
