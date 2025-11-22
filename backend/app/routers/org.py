@@ -859,11 +859,21 @@ def delete_tenant(
 def list_users(
     skip: int = 0,
     limit: int = 100,
+    include_roles: bool = True,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """List all users - superusers see all, regular users see their tenant"""
+    from sqlalchemy.orm import joinedload
+
     query = db.query(User)
+
+    # Eager load roles and groups if requested
+    if include_roles:
+        query = query.options(
+            joinedload(User.user_roles).joinedload('role'),
+            joinedload(User.user_groups).joinedload('group')
+        )
 
     # Filter by tenant for non-superusers
     if not current_user.is_superuser:
@@ -876,18 +886,45 @@ def list_users(
     result = build_list_response(query, skip, limit)
 
     # Format items for response
+    items = []
+    for u in result["items"]:
+        user_data = {
+            "id": str(u.id),
+            "email": u.email,
+            "full_name": u.full_name,
+            "is_active": u.is_active,
+            "is_superuser": u.is_superuser,
+            "tenant_id": str(u.tenant_id) if u.tenant_id else None,
+            "created_at": u.created_at.isoformat() if u.created_at else None
+        }
+
+        # Add roles and groups if requested
+        if include_roles:
+            # Get direct roles
+            direct_roles = [
+                {
+                    "id": str(ur.role.id),
+                    "name": ur.role.name,
+                    "code": ur.role.code
+                }
+                for ur in u.user_roles if ur.role and ur.role.is_active
+            ]
+
+            # Get groups
+            groups = [
+                {
+                    "id": str(ug.group.id),
+                    "name": ug.group.name
+                }
+                for ug in u.user_groups if ug.group and ug.group.is_active
+            ]
+
+            user_data["roles"] = direct_roles
+            user_data["groups"] = groups
+
+        items.append(user_data)
+
     return {
-        "items": [
-            {
-                "id": str(u.id),
-                "email": u.email,
-                "full_name": u.full_name,
-                "is_active": u.is_active,
-                "is_superuser": u.is_superuser,
-                "tenant_id": str(u.tenant_id) if u.tenant_id else None,
-                "created_at": u.created_at.isoformat() if u.created_at else None
-            }
-            for u in result["items"]
-        ],
+        "items": items,
         "total": result["total"]
     }

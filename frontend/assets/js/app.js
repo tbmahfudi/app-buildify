@@ -870,6 +870,18 @@ function createCollapsedSubmenuPopup(item) {
       gridCols = Math.ceil(itemCount / 3);
     }
 
+    // Adjust popup width based on number of columns
+    if (gridCols === 1) {
+      popup.style.minWidth = '180px';
+      popup.style.maxWidth = '200px';
+    } else if (gridCols === 2) {
+      popup.style.minWidth = '280px';
+      popup.style.maxWidth = '320px';
+    } else {
+      popup.style.minWidth = '380px';
+      popup.style.maxWidth = '420px';
+    }
+
     popupContent.className = 'p-4 grid gap-3';
     popupContent.style.gridTemplateRows = `repeat(${gridRows}, minmax(0, 1fr))`;
     popupContent.style.gridTemplateColumns = `repeat(${gridCols}, minmax(0, 1fr))`;
@@ -1071,7 +1083,7 @@ function createNestedPopup(item, parentPopup) {
 
   if (allItemsFinal) {
     // Grid layout for final items - vertical priority
-    nestedPopup.className = 'fixed hidden bg-white border border-gray-200 rounded-xl shadow-xl min-w-[280px] overflow-hidden';
+    nestedPopup.className = 'fixed hidden bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden';
     nestedPopup.style.zIndex = '100000';
 
     const nestedContent = document.createElement('div');
@@ -1094,6 +1106,18 @@ function createNestedPopup(item, parentPopup) {
     } else {
       gridRows = 3;
       gridCols = Math.ceil(itemCount / 3);
+    }
+
+    // Adjust nested popup width based on number of columns
+    if (gridCols === 1) {
+      nestedPopup.style.minWidth = '180px';
+      nestedPopup.style.maxWidth = '200px';
+    } else if (gridCols === 2) {
+      nestedPopup.style.minWidth = '280px';
+      nestedPopup.style.maxWidth = '320px';
+    } else {
+      nestedPopup.style.minWidth = '380px';
+      nestedPopup.style.maxWidth = '420px';
     }
 
     nestedContent.className = 'p-4 grid gap-3';

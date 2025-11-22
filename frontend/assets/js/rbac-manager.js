@@ -231,6 +231,9 @@ async function loadTabData(tabId) {
         await loadGroups();
         break;
       case 'users':
+        await loadUsers();
+        break;
+      case 'user-access':
         await loadUsersForAccess();
         break;
     }
@@ -765,6 +768,86 @@ async function loadGroups() {
 }
 
 /**
+ * Load users table for user management
+ */
+async function loadUsers() {
+  try {
+    const response = await apiFetch('/org/users?limit=1000');
+    const data = await response.json();
+
+    state.users = data.items || [];
+
+    const tbody = document.getElementById('users-table-body');
+    const emptyState = document.getElementById('users-empty-state');
+    if (!tbody) return;
+
+    // Update showing/total counts
+    const showing = document.getElementById('users-showing');
+    const total = document.getElementById('users-total');
+    if (showing) showing.textContent = state.users.length;
+    if (total) total.textContent = state.users.length;
+
+    if (state.users.length === 0) {
+      tbody.classList.add('hidden');
+      emptyState?.classList.remove('hidden');
+      return;
+    }
+
+    tbody.classList.remove('hidden');
+    emptyState?.classList.add('hidden');
+
+    tbody.innerHTML = state.users.map(user => {
+      const createdDate = user.created_at ? new Date(user.created_at).toLocaleDateString() : 'N/A';
+      const userRoles = user.roles ? user.roles.map(r => r.name || r).join(', ') : 'None';
+
+      return `
+        <tr class="hover:bg-gray-50">
+          <td class="px-4 py-3">
+            <div class="flex items-center gap-2">
+              <div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
+                <i class="ph ph-user text-blue-600"></i>
+              </div>
+              <div>
+                <div class="font-medium text-gray-900">${user.full_name || 'N/A'}</div>
+                ${user.is_superuser ? '<span class="text-xs text-purple-600 font-semibold">Superuser</span>' : ''}
+              </div>
+            </div>
+          </td>
+          <td class="px-4 py-3">
+            <div class="text-sm text-gray-900">${user.email}</div>
+          </td>
+          <td class="px-4 py-3">
+            <div class="text-sm text-gray-600">${userRoles}</div>
+          </td>
+          <td class="px-4 py-3">
+            ${user.is_active
+              ? '<span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">Active</span>'
+              : '<span class="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">Inactive</span>'}
+          </td>
+          <td class="px-4 py-3">
+            <div class="text-sm text-gray-600">${createdDate}</div>
+          </td>
+          <td class="px-4 py-3 text-right">
+            <div class="flex items-center justify-end gap-2">
+              <button class="text-blue-600 hover:text-blue-800" onclick="rbacManager.editUser('${user.id}')" title="Edit user">
+                <i class="ph ph-pencil"></i>
+              </button>
+              <button class="text-red-600 hover:text-red-800" onclick="rbacManager.deleteUser('${user.id}')" title="Delete user">
+                <i class="ph ph-trash"></i>
+              </button>
+            </div>
+          </td>
+        </tr>
+      `;
+    }).join('');
+
+  } catch (error) {
+    console.error('Error loading users:', error);
+    showToast('Failed to load users', 'error');
+  }
+}
+
+/**
  * Load users for access management
  */
 async function loadUsersForAccess() {
@@ -1255,12 +1338,51 @@ function debounce(func, wait) {
   };
 }
 
+/**
+ * Edit user
+ */
+async function editUser(userId) {
+  // TODO: Implement edit user functionality
+  console.log('Edit user:', userId);
+  showToast('Edit user functionality coming soon', 'info');
+}
+
+/**
+ * Delete user
+ */
+async function deleteUser(userId) {
+  if (!confirm('Are you sure you want to delete this user?')) {
+    return;
+  }
+
+  try {
+    showLoading();
+    const response = await apiFetch(`/org/users/${userId}`, {
+      method: 'DELETE'
+    });
+
+    if (response.ok) {
+      showToast('User deleted successfully', 'success');
+      await loadUsers();
+    } else {
+      throw new Error('Failed to delete user');
+    }
+  } catch (error) {
+    console.error('Error deleting user:', error);
+    showToast('Failed to delete user', 'error');
+  } finally {
+    hideLoading();
+  }
+}
+
 // Export functions to window for onclick handlers
 window.rbacManager = {
   viewRoleDetails,
   viewPermissionDetails,
   viewGroupDetails,
-  removeUserRole
+  removeUserRole,
+  editUser,
+  deleteUser
 };
 
 export default {
@@ -1268,5 +1390,7 @@ export default {
   viewRoleDetails,
   viewPermissionDetails,
   viewGroupDetails,
-  removeUserRole
+  removeUserRole,
+  editUser,
+  deleteUser
 };
