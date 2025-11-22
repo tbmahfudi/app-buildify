@@ -10,6 +10,7 @@ from app.core.exceptions import register_exception_handlers
 from app.core.rate_limiter import setup_rate_limiting
 from app.core.db import SessionLocal
 from app.core.security_middleware import SecurityMiddleware
+from app.core.startup import ensure_default_security_policy
 from app.routers import org, auth, metadata, data, audit, settings, modules, rbac, reports, dashboards, scheduler, menu
 from app.routers.admin import security as admin_security
 from app.core.module_system.registry import ModuleRegistryService
@@ -34,10 +35,21 @@ async def lifespan(app: FastAPI):
     # Startup
     logger.info("Starting application", app_name=settings_instance.APP_NAME, environment=settings_instance.ENVIRONMENT)
 
+    # Initialize database session for startup tasks
+    db = SessionLocal()
+
+    try:
+        # Ensure default security policy exists
+        logger.info("Checking default security policy...")
+        ensure_default_security_policy(db)
+        logger.info("Security policy check complete")
+    except Exception as e:
+        logger.warning(f"Failed to ensure default security policy: {e}", exc_info=True)
+        # Continue even if this fails
+
     # Initialize module system
     try:
         logger.info("Initializing module system...")
-        db = SessionLocal()
         modules_path = Path(__file__).parent.parent / "modules"
         module_registry = ModuleRegistryService(db, modules_path)
 
@@ -57,6 +69,8 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error(f"Failed to initialize module system: {e}", exc_info=True)
         # Continue even if module system fails to initialize
+    finally:
+        db.close()
 
     # Initialize Sentry if configured
     if settings_instance.SENTRY_DSN:
