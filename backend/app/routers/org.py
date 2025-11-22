@@ -22,7 +22,9 @@ from app.core.response_builders import build_list_response
 from app.models.branch import Branch
 from app.models.company import Company
 from app.models.department import Department
-from app.models.rbac import Group, Role, UserGroup, UserRole
+from app.models.group import Group
+from app.models.rbac_junctions import UserGroup, UserRole
+from app.models.role import Role
 from app.models.tenant import Tenant
 from app.models.user import User
 from app.schemas.auth import UserResponse
