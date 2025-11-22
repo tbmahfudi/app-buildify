@@ -22,6 +22,7 @@ from app.core.response_builders import build_list_response
 from app.models.branch import Branch
 from app.models.company import Company
 from app.models.department import Department
+from app.models.rbac import Group, Role, UserGroup, UserRole
 from app.models.tenant import Tenant
 from app.models.user import User
 from app.schemas.auth import UserResponse
@@ -871,8 +872,8 @@ def list_users(
     # Eager load roles and groups if requested
     if include_roles:
         query = query.options(
-            joinedload(User.user_roles).joinedload('role'),
-            joinedload(User.user_groups).joinedload('group')
+            joinedload(User.user_roles).joinedload(UserRole.role),
+            joinedload(User.user_groups).joinedload(UserGroup.group)
         )
 
     # Filter by tenant for non-superusers

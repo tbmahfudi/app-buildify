@@ -13,6 +13,7 @@
       "roles": "Peran",
       "permissions": "Izin",
       "groups": "Grup",
+      "users": "Pengguna",
       "userAccess": "Akses Pengguna"
     },
     "stats": {

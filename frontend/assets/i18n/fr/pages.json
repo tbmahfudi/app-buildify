@@ -13,6 +13,7 @@
       "roles": "Rôles",
       "permissions": "Permissions",
       "groups": "Groupes",
+      "users": "Utilisateurs",
       "userAccess": "Accès Utilisateur"
     },
     "stats": {
