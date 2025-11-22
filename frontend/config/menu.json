@@ -13,11 +13,8 @@
           "title": "Administration",
           "icon": "ph-duotone ph-buildings",
           "submenu": [
-            { "title": "Tenants", "route": "tenants", "icon": "ph-duotone ph-globe", "roles": ["superuser"] },
-            { "title": "Users", "route": "users", "icon": "ph-duotone ph-users", "roles": ["admin"] },
-            { "title": "Groups", "route": "groups", "icon": "ph-duotone ph-user-circle-gear" },
-            { "title": "Access Control", "route": "rbac", "icon": "ph-duotone ph-shield-check", "roles": ["admin"] },
-            { "title": "Auth Policies", "route": "auth-policies", "icon": "ph-duotone ph-lock-key" },
+            { "title": "Tenants & Organizations", "route": "tenants", "icon": "ph-duotone ph-globe", "roles": ["superuser"] },
+            { "title": "Users & Access Control", "route": "rbac", "icon": "ph-duotone ph-shield-check", "roles": ["admin"] },
             { "title": "Menu Management", "route": "menu-management", "icon": "ph-duotone ph-list-dashes", "permission": "menu:manage:tenant" }
           ]
         },
