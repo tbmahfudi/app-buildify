@@ -54,7 +54,7 @@ Creates a system-wide default security policy that serves as the fallback for al
 **Run**:
 ```bash
 cd /home/user/app-buildify/backend
-python app/scripts/seed_default_security_policy.py
+python app/seeds/seed_default_security_policy.py
 ```
 
 ## Quick Start (Run All Seeds)
@@ -68,7 +68,7 @@ cd /home/user/app-buildify/backend
 python app/scripts/seed_security_permissions.py
 
 # 2. Seed default security policy
-python app/scripts/seed_default_security_policy.py
+python app/seeds/seed_default_security_policy.py
 ```
 
 ## What Each Script Does
@@ -123,7 +123,22 @@ Ensure:
 
 ## Customizing Default Policy
 
-To customize the default policy settings, edit `seed_default_security_policy.py` and modify the policy values before running, or use the web UI to update the policy after creation.
+To customize the default policy settings, edit `app/seeds/seed_default_security_policy.py` and modify the policy values before running, or use the web UI to update the policy after creation.
+
+## SQL Alternative
+
+For direct database seeding without Python:
+
+```bash
+# SQLite
+sqlite3 app.db < app/seeds/seed_policy.sql
+
+# PostgreSQL
+psql -d appdb -f app/seeds/seed_policy.sql
+
+# MySQL
+mysql -u user -p appdb < app/seeds/seed_policy.sql
+```
 
 ## Related Documentation
 
