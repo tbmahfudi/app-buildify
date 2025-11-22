@@ -193,6 +193,24 @@ function setupEventListeners() {
     }
   });
 
+  // User management
+  document.getElementById('btn-add-user')?.addEventListener('click', () => {
+    showUserModal();
+  });
+
+  document.getElementById('user-modal-close')?.addEventListener('click', () => {
+    closeUserModal();
+  });
+
+  document.getElementById('user-cancel-btn')?.addEventListener('click', () => {
+    closeUserModal();
+  });
+
+  document.getElementById('user-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    await saveUser();
+  });
+
   // Modal close buttons
   document.getElementById('role-modal-close')?.addEventListener('click', () => {
     document.getElementById('role-modal').classList.add('hidden');
@@ -829,6 +847,9 @@ async function loadUsers() {
           </td>
           <td class="px-4 py-3 text-right">
             <div class="flex items-center justify-end gap-2">
+              <button class="text-purple-600 hover:text-purple-800" onclick="rbacManager.manageUserAccess('${user.id}')" title="Manage roles & permissions">
+                <i class="ph ph-shield-check"></i>
+              </button>
               <button class="text-blue-600 hover:text-blue-800" onclick="rbacManager.editUser('${user.id}')" title="Edit user">
                 <i class="ph ph-pencil"></i>
               </button>
@@ -1339,19 +1360,141 @@ function debounce(func, wait) {
 }
 
 /**
+ * Show user modal for create/edit
+ */
+function showUserModal(userId = null) {
+  const modal = document.getElementById('user-modal');
+  const title = document.getElementById('user-modal-title');
+  const form = document.getElementById('user-form');
+  const passwordSection = document.getElementById('password-section');
+
+  if (!modal || !form) return;
+
+  // Reset form
+  form.reset();
+  document.getElementById('user-id').value = '';
+
+  if (userId) {
+    // Edit mode
+    title.textContent = 'Edit User';
+    passwordSection.querySelector('label').textContent = 'Password';
+    passwordSection.querySelector('p').classList.remove('hidden');
+    document.getElementById('user-password').required = false;
+
+    // Load user data
+    const user = state.users.find(u => u.id === userId);
+    if (user) {
+      document.getElementById('user-id').value = user.id;
+      document.getElementById('user-email').value = user.email;
+      document.getElementById('user-fullname').value = user.full_name || '';
+      document.getElementById('user-is-active').value = user.is_active ? 'true' : 'false';
+      document.getElementById('user-is-superuser').checked = user.is_superuser || false;
+    }
+  } else {
+    // Create mode
+    title.textContent = 'Add User';
+    passwordSection.querySelector('label').textContent = 'Password *';
+    passwordSection.querySelector('p').classList.add('hidden');
+    document.getElementById('user-password').required = true;
+  }
+
+  modal.classList.remove('hidden');
+}
+
+/**
+ * Close user modal
+ */
+function closeUserModal() {
+  const modal = document.getElementById('user-modal');
+  if (modal) {
+    modal.classList.add('hidden');
+  }
+}
+
+/**
+ * Save user (create or update)
+ */
+async function saveUser() {
+  const userId = document.getElementById('user-id').value;
+  const email = document.getElementById('user-email').value;
+  const fullName = document.getElementById('user-fullname').value;
+  const password = document.getElementById('user-password').value;
+  const isActive = document.getElementById('user-is-active').value === 'true';
+  const isSuperuser = document.getElementById('user-is-superuser').checked;
+
+  if (!email) {
+    showToast('Email is required', 'error');
+    return;
+  }
+
+  if (!userId && !password) {
+    showToast('Password is required for new users', 'error');
+    return;
+  }
+
+  try {
+    showLoading();
+
+    const userData = {
+      email,
+      full_name: fullName || null,
+      is_active: isActive,
+      is_superuser: isSuperuser
+    };
+
+    // Only include password if provided
+    if (password) {
+      userData.password = password;
+    }
+
+    let response;
+    if (userId) {
+      // Update existing user
+      response = await apiFetch(`/org/users/${userId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(userData)
+      });
+    } else {
+      // Create new user
+      response = await apiFetch('/org/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(userData)
+      });
+    }
+
+    if (response.ok) {
+      showToast(userId ? 'User updated successfully' : 'User created successfully', 'success');
+      closeUserModal();
+      await loadUsers();
+    } else {
+      const error = await response.json();
+      throw new Error(error.detail || 'Failed to save user');
+    }
+  } catch (error) {
+    console.error('Error saving user:', error);
+    showToast(error.message || 'Failed to save user', 'error');
+  } finally {
+    hideLoading();
+  }
+}
+
+/**
  * Edit user
  */
 async function editUser(userId) {
-  // TODO: Implement edit user functionality
-  console.log('Edit user:', userId);
-  showToast('Edit user functionality coming soon', 'info');
+  showUserModal(userId);
 }
 
 /**
  * Delete user
  */
 async function deleteUser(userId) {
-  if (!confirm('Are you sure you want to delete this user?')) {
+  const user = state.users.find(u => u.id === userId);
+  const userName = user ? (user.full_name || user.email) : 'this user';
+
+  if (!confirm(`Are you sure you want to delete ${userName}?`)) {
     return;
   }
 
@@ -1375,6 +1518,27 @@ async function deleteUser(userId) {
   }
 }
 
+/**
+ * Switch to User Access tab and load user's RBAC settings
+ */
+async function manageUserAccess(userId) {
+  // Switch to User Access tab
+  const userAccessTab = document.getElementById('tab-user-access');
+  if (userAccessTab) {
+    userAccessTab.click();
+
+    // Wait a bit for tab to switch
+    setTimeout(async () => {
+      const userSelect = document.getElementById('user-select');
+      if (userSelect) {
+        userSelect.value = userId;
+        // Trigger change event to load user access
+        await loadUserAccess(userId);
+      }
+    }, 100);
+  }
+}
+
 // Export functions to window for onclick handlers
 window.rbacManager = {
   viewRoleDetails,
@@ -1382,7 +1546,8 @@ window.rbacManager = {
   viewGroupDetails,
   removeUserRole,
   editUser,
-  deleteUser
+  deleteUser,
+  manageUserAccess
 };
 
 export default {
@@ -1392,5 +1557,6 @@ export default {
   viewGroupDetails,
   removeUserRole,
   editUser,
-  deleteUser
+  deleteUser,
+  manageUserAccess
 };
