@@ -13,9 +13,8 @@
           "title": "Administration",
           "icon": "ph-duotone ph-buildings",
           "submenu": [
-            { "title": "Tenants & Organizations", "route": "tenants", "icon": "ph-duotone ph-globe", "roles": ["superuser"] },
-            { "title": "Users & Access Control", "route": "rbac", "icon": "ph-duotone ph-shield-check", "roles": ["admin"] },
-            { "title": "Menu Management", "route": "menu-management", "icon": "ph-duotone ph-list-dashes", "permission": "menu:manage:tenant" }
+            { "title": "Tenants & Organizations", "route": "tenants", "icon": "ph-duotone ph-globe", "iconColor": "text-blue-600", "roles": ["superuser"] },
+            { "title": "Users & Access Control", "route": "rbac", "icon": "ph-duotone ph-shield-check", "iconColor": "text-purple-600", "roles": ["admin"] }
           ]
         },
         {
@@ -25,7 +24,8 @@
             { "title": "General", "route": "settings", "icon": "ph-duotone ph-sliders" },
             { "title": "Integration", "route": "settings-integration", "icon": "ph-duotone ph-plugs-connected" },
             { "title": "Security", "route": "settings-security", "icon": "ph-duotone ph-shield-checkered" },
-            { "title": "Notifications", "route": "settings-notifications", "icon": "ph-duotone ph-bell-ringing" }
+            { "title": "Notifications", "route": "settings-notifications", "icon": "ph-duotone ph-bell-ringing" },
+            { "title": "Menu Management", "route": "menu-management", "icon": "ph-duotone ph-list-dashes", "permission": "menu:manage:tenant" }
           ]
         },
         {

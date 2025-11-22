@@ -571,7 +571,12 @@ function getMenuI18nKey(title) {
 }
 
 // Helper function to get icon color based on menu category
-function getIconColor(title, route) {
+function getIconColor(title, route, item = null) {
+  // Check if item has custom iconColor property first
+  if (item && item.iconColor) {
+    return item.iconColor;
+  }
+
   const colorMap = {
     // Main menu items - vibrant colors
     'Dashboard': 'text-purple-600',
@@ -582,6 +587,7 @@ function getIconColor(title, route) {
 
     // Administration submenu
     'Tenants': 'text-blue-600',
+    'Tenants & Organizations': 'text-blue-600',
     'Tenant Management': 'text-blue-600',
     'Companies': 'text-blue-500',
     'Branches': 'text-cyan-600',
@@ -589,6 +595,7 @@ function getIconColor(title, route) {
     'Users': 'text-indigo-600',
     'Groups': 'text-violet-600',
     'Access Control': 'text-purple-600',
+    'Users & Access Control': 'text-purple-600',
     'Auth Policies': 'text-fuchsia-600',
 
     // System Settings submenu
@@ -640,7 +647,7 @@ function createMenuItem(item) {
 
   // Use icon from menu item or fallback to getMenuIcon
   const icon = item.icon || getMenuIcon(item.route);
-  const iconColor = getIconColor(item.title, item.route);
+  const iconColor = getIconColor(item.title, item.route, item);
 
   if (isCollapsed) {
     link.innerHTML = `
@@ -703,7 +710,7 @@ function createSubmenuItem(item, level = 1) {
     parent.className = 'flex items-center justify-center px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 cursor-pointer transition-colors relative';
 
     const icon = item.icon || getMenuIcon(item.route);
-    const iconColor = getIconColor(item.title, item.route);
+    const iconColor = getIconColor(item.title, item.route, item);
     parent.innerHTML = `
       <i class="${icon} text-2xl ${iconColor}"></i>
     `;
@@ -744,7 +751,7 @@ function createSubmenuItem(item, level = 1) {
     parent.className = 'flex items-center justify-between px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 cursor-pointer transition-colors';
 
     const icon = item.icon || getMenuIcon(item.route);
-    const iconColor = getIconColor(item.title, item.route);
+    const iconColor = getIconColor(item.title, item.route, item);
     const i18nKey = getMenuI18nKey(item.title);
     const i18nAttr = i18nKey ? `data-i18n="${i18nKey}"` : '';
 
@@ -775,7 +782,7 @@ function createSubmenuItem(item, level = 1) {
         sublink.href = `#${subitem.route}`;
 
         const subicon = subitem.icon || 'ph-duotone ph-square';
-        const subiconColor = getIconColor(subitem.title, subitem.route);
+        const subiconColor = getIconColor(subitem.title, subitem.route, subitem);
         const subI18nKey = getMenuI18nKey(subitem.title);
         const subI18nAttr = subI18nKey ? `data-i18n="${subI18nKey}"` : '';
 
