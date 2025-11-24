@@ -123,7 +123,7 @@ class RBACManager {
   }
 
   initializeTables() {
-    // Roles Table
+    // Roles Table - Simplified columns
     this.tables.roles = new TableController({
       name: 'roles',
       endpoint: '/rbac/roles',
@@ -132,46 +132,54 @@ class RBACManager {
         {
           field: 'name',
           render: (role) => `
-            <div class="font-medium text-gray-900">${role.name}</div>
-            <div class="text-sm text-gray-500">${role.code}</div>
-            ${role.description ? `<div class="text-xs text-gray-400 mt-1">${role.description}</div>` : ''}
-          `
-        },
-        {
-          field: 'role_type',
-          render: (role) => `
-            <span class="px-2 py-1 text-xs font-semibold rounded-full
-              ${role.role_type === 'system' ? 'bg-red-100 text-red-800' : ''}
-              ${role.role_type === 'default' ? 'bg-blue-100 text-blue-800' : ''}
-              ${role.role_type === 'custom' ? 'bg-purple-100 text-purple-800' : ''}">
-              ${role.role_type}
-            </span>
-            ${role.is_system ? '<i class="ph ph-lock-simple text-gray-400 ml-1"></i>' : ''}
+            <div class="flex items-start gap-3">
+              <div class="flex-1">
+                <div class="flex items-center gap-2 mb-1">
+                  <span class="font-semibold text-gray-900">${role.name}</span>
+                  <span class="px-2 py-0.5 text-xs font-medium rounded-full
+                    ${role.role_type === 'system' ? 'bg-red-100 text-red-700' : ''}
+                    ${role.role_type === 'default' ? 'bg-blue-100 text-blue-700' : ''}
+                    ${role.role_type === 'custom' ? 'bg-purple-100 text-purple-700' : ''}">
+                    ${role.role_type}
+                  </span>
+                  ${role.is_active
+                    ? '<span class="px-2 py-0.5 text-xs font-medium rounded-full bg-green-100 text-green-700">Active</span>'
+                    : '<span class="px-2 py-0.5 text-xs font-medium rounded-full bg-gray-100 text-gray-600">Inactive</span>'}
+                  ${role.is_system ? '<i class="ph ph-lock-simple text-gray-400"></i>' : ''}
+                </div>
+                <div class="text-sm text-gray-600 font-mono">${role.code}</div>
+                ${role.description ? `<div class="text-xs text-gray-500 mt-1 line-clamp-2">${role.description}</div>` : ''}
+              </div>
+            </div>
           `
         },
         {
           field: 'permissions_count',
-          render: (role) => `<span class="text-gray-700">${role.permissions?.length || 0}</span>`
+          render: (role) => `
+            <div class="flex items-center justify-center">
+              <span class="inline-flex items-center gap-1 px-3 py-1 text-sm font-semibold rounded-full bg-blue-50 text-blue-700">
+                <i class="ph ph-shield-check"></i>
+                ${role.permissions?.length || 0}
+              </span>
+            </div>
+          `
         },
         {
-          field: 'users_count',
-          render: (role) => `<span class="text-gray-700">${role.users?.length || 0}</span>`
-        },
-        {
-          field: 'is_active',
-          render: (role) => role.is_active
-            ? '<span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">Active</span>'
-            : '<span class="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">Inactive</span>'
+          field: 'actions',
+          render: (role) => `
+            <div class="flex items-center justify-end gap-2">
+              <button onclick="rbacManager.manageRolePermissions('${role.id}'); event.stopPropagation();"
+                class="px-3 py-1.5 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                <i class="ph ph-gear"></i> Configure
+              </button>
+            </div>
+          `
         }
       ],
       filters: [
         { id: 'type', label: 'Type' },
         { id: 'status', label: 'Status' }
       ],
-      actions: [
-        { icon: 'eye', label: 'View', handler: 'viewRoleDetails', color: 'blue' }
-      ],
-      onRowClick: (role) => this.viewRoleDetails(role.id),
       bulkActions: true
     });
 
@@ -435,11 +443,11 @@ class RBACManager {
   }
 
   manageRolePermissions(roleId) {
-    permissionGrid.openInline(roleId);
+    permissionGrid.openCard(roleId);
   }
 
-  closeInlinePermissions() {
-    permissionGrid.closeInline();
+  closePermissionCard() {
+    permissionGrid.closeCard();
   }
 
   async manageUserAccess(userId) {
