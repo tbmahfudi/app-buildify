@@ -1,0 +1,338 @@
+<!-- RBAC Management Dashboard - Refactored -->
+<div class="h-full flex flex-col">
+  <!-- Page Header -->
+  <div class="flex items-center justify-between mb-6">
+    <div>
+      <h1 class="text-3xl font-bold text-gray-900 flex items-center gap-3">
+        <i class="ph ph-shield-check text-blue-600"></i>
+        <span>Access Control</span>
+      </h1>
+      <p class="text-gray-600 mt-1">Manage users, roles, and permissions</p>
+      <kbd class="text-xs text-gray-500 mt-1">Press <strong>Shift+?</strong> for keyboard shortcuts</kbd>
+    </div>
+
+    <!-- Tenant Selector (Superuser Only) -->
+    <div id="tenant-selector-container" class="hidden">
+      <label class="block text-sm font-medium text-gray-700 mb-2">
+        <i class="ph ph-buildings mr-1"></i>Select Tenant
+      </label>
+      <select id="tenant-selector" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 min-w-[250px]">
+        <option value="">All Tenants</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Tab Navigation - Simplified from 7 to 5 tabs -->
+  <div class="border-b border-gray-200 mb-6">
+    <nav class="flex gap-4" role="tablist">
+      <button id="tab-dashboard" class="rbac-tab active px-4 py-3 text-sm font-medium border-b-2 border-blue-600 text-blue-600">
+        <i class="ph ph-chart-line-up mr-2"></i>Dashboard
+      </button>
+      <button id="tab-roles" class="rbac-tab px-4 py-3 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700">
+        <i class="ph ph-user-gear mr-2"></i>Roles & Permissions
+      </button>
+      <button id="tab-users" class="rbac-tab px-4 py-3 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700">
+        <i class="ph ph-users mr-2"></i>Users & Access
+      </button>
+      <button id="tab-groups" class="rbac-tab px-4 py-3 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700">
+        <i class="ph ph-users-three mr-2"></i>Groups
+      </button>
+      <button id="tab-organization" class="rbac-tab px-4 py-3 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700">
+        <i class="ph ph-building mr-2"></i>Organization
+      </button>
+    </nav>
+  </div>
+
+  <!-- Tab Content -->
+  <div class="flex-1 overflow-auto">
+    <!-- Dashboard Tab -->
+    <div id="content-dashboard" class="rbac-content">
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+        <!-- Stat Cards -->
+        <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg p-6 text-white">
+          <div class="flex items-center justify-between mb-2">
+            <div class="text-2xl font-bold" id="stat-roles">0</div>
+            <i class="ph-fill ph-user-gear text-3xl opacity-80"></i>
+          </div>
+          <div class="text-blue-100 text-sm">Total Roles</div>
+        </div>
+
+        <div class="bg-gradient-to-br from-green-500 to-green-600 rounded-xl shadow-lg p-6 text-white">
+          <div class="flex items-center justify-between mb-2">
+            <div class="text-2xl font-bold" id="stat-permissions">0</div>
+            <i class="ph-fill ph-key text-3xl opacity-80"></i>
+          </div>
+          <div class="text-green-100 text-sm">Total Permissions</div>
+        </div>
+
+        <div class="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl shadow-lg p-6 text-white">
+          <div class="flex items-center justify-between mb-2">
+            <div class="text-2xl font-bold" id="stat-groups">0</div>
+            <i class="ph-fill ph-users-three text-3xl opacity-80"></i>
+          </div>
+          <div class="text-purple-100 text-sm">Active Groups</div>
+        </div>
+
+        <div class="bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl shadow-lg p-6 text-white">
+          <div class="flex items-center justify-between mb-2">
+            <div class="text-2xl font-bold" id="stat-users">0</div>
+            <i class="ph-fill ph-users text-3xl opacity-80"></i>
+          </div>
+          <div class="text-orange-100 text-sm">Total Users</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Organization Tab -->
+    <div id="content-organization" class="rbac-content hidden">
+      <div class="bg-white rounded-xl shadow p-6">
+        <h3 class="text-lg font-semibold text-gray-900 mb-4">Organization Hierarchy</h3>
+        <div id="org-structure-tree" class="space-y-4"></div>
+      </div>
+    </div>
+
+    <!-- Generic Table Container (used by Roles, Groups, Users) -->
+    <!-- This single template replaces 3 duplicate table structures -->
+    <div id="content-roles" class="rbac-content hidden">
+      <div class="bg-white rounded-xl shadow">
+        <!-- Bulk Action Bar (initially hidden) -->
+        <div id="roles-bulk-actions" class="hidden p-4 bg-blue-50 border-b flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <i class="ph ph-check-square text-blue-600"></i>
+            <span class="text-sm font-medium"><span class="selection-count">0</span> selected</span>
+          </div>
+          <div class="flex gap-2">
+            <button class="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700">
+              Bulk Action
+            </button>
+            <button onclick="rbacManager.tables.roles.clearSelection()" class="px-3 py-1 text-sm border rounded hover:bg-gray-50">
+              Clear
+            </button>
+          </div>
+        </div>
+
+        <!-- Header with Filters -->
+        <div class="p-6 border-b border-gray-200">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-semibold text-gray-900">Roles Management</h3>
+          </div>
+
+          <div class="flex gap-3">
+            <input type="text" id="roles-search" placeholder="Search roles..."
+              class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+            <select id="roles-type-filter" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+              <option value="">All Types</option>
+              <option value="system">System</option>
+              <option value="default">Default</option>
+              <option value="custom">Custom</option>
+            </select>
+            <select id="roles-status-filter" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+              <option value="">All Status</option>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Table -->
+        <div class="overflow-x-auto">
+          <table class="w-full">
+            <thead class="bg-gray-50 border-b border-gray-200">
+              <tr>
+                <th class="px-6 py-3 text-left">
+                  <input type="checkbox" id="roles-select-all" class="w-4 h-4 text-blue-600 rounded">
+                </th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Role</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Permissions</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Users</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="roles-table-body" class="bg-white divide-y divide-gray-200"></tbody>
+          </table>
+        </div>
+
+        <!-- Pagination -->
+        <div class="p-4 border-t border-gray-200 flex items-center justify-between">
+          <div class="text-sm text-gray-700">
+            Showing <span id="roles-showing-start">0</span> to <span id="roles-showing-end">0</span> of <span id="roles-total">0</span> roles
+          </div>
+          <div class="flex gap-2">
+            <button id="roles-prev-page" class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">Previous</button>
+            <button id="roles-next-page" class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">Next</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Groups Tab (similar structure, omitted for brevity) -->
+    <div id="content-groups" class="rbac-content hidden">
+      <div class="bg-white rounded-xl shadow">
+        <div id="groups-bulk-actions" class="hidden p-4 bg-blue-50 border-b flex items-center justify-between">
+          <span class="text-sm"><span class="selection-count">0</span> selected</span>
+        </div>
+        <div class="p-6 border-b">
+          <h3 class="text-lg font-semibold mb-4">Groups Management</h3>
+          <div class="flex gap-3">
+            <input type="text" id="groups-search" placeholder="Search groups..." class="flex-1 px-4 py-2 border rounded-lg">
+            <select id="groups-type-filter" class="px-4 py-2 border rounded-lg">
+              <option value="">All Types</option>
+            </select>
+            <select id="groups-status-filter" class="px-4 py-2 border rounded-lg">
+              <option value="">All Status</option>
+              <option value="active">Active</option>
+            </select>
+          </div>
+        </div>
+        <table class="w-full">
+          <thead class="bg-gray-50 border-b">
+            <tr>
+              <th class="px-6 py-3"><input type="checkbox" id="groups-select-all" class="w-4 h-4"></th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Members</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Roles</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="groups-table-body" class="divide-y"></tbody>
+        </table>
+        <div class="p-4 border-t flex items-center justify-between">
+          <span class="text-sm text-gray-700">
+            Showing <span id="groups-showing-start">0</span> to <span id="groups-showing-end">0</span> of <span id="groups-total">0</span>
+          </span>
+          <div class="flex gap-2">
+            <button id="groups-prev-page" class="px-4 py-2 border rounded-lg">Previous</button>
+            <button id="groups-next-page" class="px-4 py-2 border rounded-lg">Next</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Users Tab (merged with User Access functionality) -->
+    <div id="content-users" class="rbac-content hidden">
+      <div class="bg-white rounded-xl shadow">
+        <div id="users-bulk-actions" class="hidden p-4 bg-blue-50 border-b flex items-center justify-between">
+          <span class="text-sm"><span class="selection-count">0</span> selected</span>
+          <button class="px-3 py-1 text-sm bg-blue-600 text-white rounded">Assign to Group</button>
+        </div>
+        <div class="p-6 border-b">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-semibold">Users & Access Management</h3>
+            <button id="btn-add-user" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+              <i class="ph ph-plus"></i> Add User
+            </button>
+          </div>
+          <div class="flex gap-3">
+            <input type="text" id="users-search" placeholder="Search users..." class="flex-1 px-4 py-2 border rounded-lg">
+            <select id="users-status-filter" class="px-4 py-2 border rounded-lg">
+              <option value="">All Status</option>
+              <option value="active">Active</option>
+            </select>
+          </div>
+        </div>
+        <table class="w-full">
+          <thead class="bg-gray-50 border-b">
+            <tr>
+              <th class="px-6 py-3"><input type="checkbox" id="users-select-all" class="w-4 h-4"></th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">User</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Roles</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Created</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="users-table-body" class="divide-y"></tbody>
+        </table>
+        <div class="p-4 border-t flex items-center justify-between">
+          <span class="text-sm text-gray-700">
+            Showing <span id="users-showing-start">0</span> to <span id="users-showing-end">0</span> of <span id="users-total">0</span>
+          </span>
+          <div class="flex gap-2">
+            <button id="users-prev-page" class="px-4 py-2 border rounded-lg">Previous</button>
+            <button id="users-next-page" class="px-4 py-2 border rounded-lg">Next</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Unified Modal (replaces 3 separate modal types) -->
+<div id="role-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center">
+  <div class="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+    <div class="p-6 border-b flex items-center justify-between">
+      <h3 class="text-xl font-semibold text-gray-900" id="role-modal-title">Details</h3>
+      <button id="role-modal-close" class="text-gray-400 hover:text-gray-600">
+        <i class="ph ph-x text-2xl"></i>
+      </button>
+    </div>
+    <div class="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
+      <div id="role-modal-content"></div>
+    </div>
+  </div>
+</div>
+
+<div id="group-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center">
+  <div class="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+    <div class="p-6 border-b flex items-center justify-between">
+      <h3 class="text-xl font-semibold" id="group-modal-title">Details</h3>
+      <button id="group-modal-close" class="text-gray-400 hover:text-gray-600">
+        <i class="ph ph-x text-2xl"></i>
+      </button>
+    </div>
+    <div class="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
+      <div id="group-modal-content"></div>
+    </div>
+  </div>
+</div>
+
+<div id="user-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center">
+  <div class="bg-white rounded-xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-hidden">
+    <div class="p-6 border-b bg-gradient-to-r from-blue-600 to-blue-700 flex items-center justify-between">
+      <h3 class="text-xl font-semibold text-white" id="user-modal-title">User Details</h3>
+      <button id="user-modal-close" class="text-white hover:text-gray-200">
+        <i class="ph ph-x text-2xl"></i>
+      </button>
+    </div>
+    <div class="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
+      <div id="user-modal-content"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Permission Management Modal -->
+<div id="permission-management-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center p-4">
+  <div class="bg-white rounded-xl shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden">
+    <div class="p-6 border-b bg-gradient-to-r from-blue-600 to-blue-700 flex items-center justify-between">
+      <h3 class="text-xl font-semibold text-white flex items-center gap-2">
+        <i class="ph ph-key"></i>
+        <span id="permission-management-title">Manage Permissions</span>
+      </h3>
+      <button onclick="rbacManager.closePermissionManagement?.()" class="text-white hover:text-gray-200">
+        <i class="ph ph-x text-2xl"></i>
+      </button>
+    </div>
+    <div class="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
+      <div id="permission-management-content"></div>
+    </div>
+  </div>
+</div>
+
+<style>
+.rbac-tab.active {
+  border-bottom-color: rgb(37, 99, 235);
+  color: rgb(37, 99, 235);
+}
+
+.rbac-tab {
+  transition: all 0.2s;
+}
+
+.rbac-tab:hover {
+  color: rgb(55, 65, 81);
+}
+</style>
