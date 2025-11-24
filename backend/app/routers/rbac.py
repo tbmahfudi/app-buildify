@@ -88,47 +88,6 @@ async def list_permissions(
     }
 
 
-@router.get("/permissions/{permission_id}")
-async def get_permission(
-    permission_id: UUID,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    """Get permission details including which roles have it"""
-    permission = db.query(Permission).filter(Permission.id == permission_id).first()
-    if not permission:
-        raise HTTPException(status_code=404, detail="Permission not found")
-
-    # Get roles that have this permission
-    role_permissions = (
-        db.query(RolePermission)
-        .filter(RolePermission.permission_id == permission_id)
-        .options(joinedload(RolePermission.role))
-        .all()
-    )
-
-    return {
-        "id": str(permission.id),
-        "code": permission.code,
-        "name": permission.name,
-        "description": permission.description,
-        "category": permission.category,
-        "is_system": permission.is_system,
-        "is_active": permission.is_active,
-        "roles": [
-            {
-                "id": str(rp.role.id),
-                "code": rp.role.code,
-                "name": rp.role.name,
-                "is_active": rp.role.is_active
-            }
-            for rp in role_permissions if rp.role
-        ],
-        "created_at": permission.created_at.isoformat() if permission.created_at else None,
-        "updated_at": permission.updated_at.isoformat() if permission.updated_at else None
-    }
-
-
 @router.get("/permissions/grouped")
 async def get_grouped_permissions(
     db: Session = Depends(get_db),
@@ -208,6 +167,47 @@ async def get_grouped_permissions(
         "groups": result,
         "total_resources": len(result),
         "role_id": role_id
+    }
+
+
+@router.get("/permissions/{permission_id}")
+async def get_permission(
+    permission_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Get permission details including which roles have it"""
+    permission = db.query(Permission).filter(Permission.id == permission_id).first()
+    if not permission:
+        raise HTTPException(status_code=404, detail="Permission not found")
+
+    # Get roles that have this permission
+    role_permissions = (
+        db.query(RolePermission)
+        .filter(RolePermission.permission_id == permission_id)
+        .options(joinedload(RolePermission.role))
+        .all()
+    )
+
+    return {
+        "id": str(permission.id),
+        "code": permission.code,
+        "name": permission.name,
+        "description": permission.description,
+        "category": permission.category,
+        "is_system": permission.is_system,
+        "is_active": permission.is_active,
+        "roles": [
+            {
+                "id": str(rp.role.id),
+                "code": rp.role.code,
+                "name": rp.role.name,
+                "is_active": rp.role.is_active
+            }
+            for rp in role_permissions if rp.role
+        ],
+        "created_at": permission.created_at.isoformat() if permission.created_at else None,
+        "updated_at": permission.updated_at.isoformat() if permission.updated_at else None
     }
 
 
