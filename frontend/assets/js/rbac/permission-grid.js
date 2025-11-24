@@ -20,6 +20,7 @@ export class PermissionGrid {
         search: ''
       }
     };
+    this.mode = 'modal'; // 'modal' or 'inline'
   }
 
   async open(roleId) {
@@ -65,6 +66,70 @@ export class PermissionGrid {
     } finally {
       hideLoading();
     }
+  }
+
+  async openInline(roleId) {
+    try {
+      this.mode = 'inline';
+      showLoading();
+
+      // Get role details
+      const role = await rbacAPI.getRole(roleId);
+
+      // Get grouped permissions with role assignments
+      const permsData = await rbacAPI.getGroupedPermissions({ role_id: roleId });
+
+      // Initialize state
+      this.state.currentRoleId = roleId;
+      this.state.groupedPermissions = permsData.groups || [];
+      this.state.originalPermissions = new Set();
+      this.state.currentPermissions = new Set();
+
+      // Collect all currently granted permissions
+      permsData.groups.forEach(group => {
+        ['standard_actions', 'special_actions'].forEach(actionType => {
+          Object.values(group[actionType]).forEach(perm => {
+            if (perm.granted) {
+              this.state.originalPermissions.add(perm.id);
+              this.state.currentPermissions.add(perm.id);
+            }
+          });
+        });
+      });
+
+      // Show inline container
+      const container = document.getElementById('inline-permission-management');
+      const titleEl = document.getElementById('inline-permission-title');
+      const subtitleEl = document.getElementById('inline-permission-subtitle');
+      const contentEl = document.getElementById('inline-permission-content');
+
+      if (container && contentEl) {
+        container.classList.remove('hidden');
+        if (titleEl) titleEl.textContent = `Manage Permissions: ${role.name}`;
+        if (subtitleEl) subtitleEl.textContent = `Configure permissions for ${role.name}`;
+        contentEl.innerHTML = this.render();
+
+        // Setup event listeners after rendering
+        this.setupEventListeners();
+
+        // Scroll to the permission section
+        container.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+
+    } catch (error) {
+      console.error('Error loading permission management:', error);
+      showToast('Failed to load permission management', 'error');
+    } finally {
+      hideLoading();
+    }
+  }
+
+  closeInline() {
+    const container = document.getElementById('inline-permission-management');
+    if (container) {
+      container.classList.add('hidden');
+    }
+    this.mode = 'modal';
   }
 
   render() {
@@ -259,11 +324,15 @@ export class PermissionGrid {
   }
 
   setupEventListeners() {
-    const modal = document.getElementById('permission-management-modal');
-    if (!modal) return;
+    // Get the correct container based on mode
+    const container = this.mode === 'inline'
+      ? document.getElementById('inline-permission-content')
+      : document.getElementById('permission-management-modal');
 
-    // Delegate all clicks to modal
-    modal.addEventListener('click', (e) => {
+    if (!container) return;
+
+    // Delegate all clicks to container
+    container.addEventListener('click', (e) => {
       const action = e.target.closest('[data-action]')?.dataset.action;
       if (!action) return;
 
@@ -293,29 +362,33 @@ export class PermissionGrid {
           this.save();
           break;
         case 'cancel':
-          modalManager.close('permission-management-modal');
+          if (this.mode === 'inline') {
+            this.closeInline();
+          } else {
+            modalManager.close('permission-management-modal');
+          }
           break;
       }
     });
 
     // Filter changes
-    modal.querySelector('#perm-search')?.addEventListener('input', this.debounce((e) => {
+    container.querySelector('#perm-search')?.addEventListener('input', this.debounce((e) => {
       this.state.filters.search = e.target.value;
       this.refresh();
     }, 300));
 
-    modal.querySelector('#perm-category-filter')?.addEventListener('change', (e) => {
+    container.querySelector('#perm-category-filter')?.addEventListener('change', (e) => {
       this.state.filters.category = e.target.value;
       this.refresh();
     });
 
-    modal.querySelector('#perm-scope-filter')?.addEventListener('change', (e) => {
+    container.querySelector('#perm-scope-filter')?.addEventListener('change', (e) => {
       this.state.filters.scope = e.target.value;
       this.refresh();
     });
 
     // Checkbox changes
-    modal.querySelectorAll('.perm-checkbox').forEach(checkbox => {
+    container.querySelectorAll('.perm-checkbox').forEach(checkbox => {
       checkbox.addEventListener('change', (e) => {
         const permId = e.target.dataset.permId;
         if (e.target.checked) {
@@ -470,7 +543,13 @@ export class PermissionGrid {
       );
 
       showToast(`Successfully updated permissions: ${result.granted} granted, ${result.revoked} revoked`, 'success');
-      modalManager.close('permission-management-modal');
+
+      // Close based on mode
+      if (this.mode === 'inline') {
+        this.closeInline();
+      } else {
+        modalManager.close('permission-management-modal');
+      }
 
       // Trigger refresh if handler exists
       if (window.rbacManager?.refreshCurrentView) {
@@ -486,7 +565,10 @@ export class PermissionGrid {
   }
 
   refresh() {
-    const content = document.getElementById('permission-management-content');
+    const contentId = this.mode === 'inline'
+      ? 'inline-permission-content'
+      : 'permission-management-content';
+    const content = document.getElementById(contentId);
     if (content) {
       content.innerHTML = this.render();
       this.setupEventListeners();

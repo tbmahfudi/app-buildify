@@ -435,7 +435,11 @@ class RBACManager {
   }
 
   manageRolePermissions(roleId) {
-    permissionGrid.open(roleId);
+    permissionGrid.openInline(roleId);
+  }
+
+  closeInlinePermissions() {
+    permissionGrid.closeInline();
   }
 
   async manageUserAccess(userId) {

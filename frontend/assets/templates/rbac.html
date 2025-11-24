@@ -165,6 +165,23 @@
           </div>
         </div>
       </div>
+
+      <!-- Inline Permission Management (initially hidden) -->
+      <div id="inline-permission-management" class="hidden mt-6 bg-white rounded-xl shadow">
+        <div class="p-6 border-b border-gray-200 flex items-center justify-between">
+          <div>
+            <h3 class="text-lg font-semibold text-gray-900" id="inline-permission-title">Manage Permissions</h3>
+            <p class="text-sm text-gray-600 mt-1" id="inline-permission-subtitle">Configure permissions for this role</p>
+          </div>
+          <button onclick="rbacManager.closeInlinePermissions()"
+            class="px-4 py-2 text-sm text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors">
+            <i class="ph ph-x"></i> Close
+          </button>
+        </div>
+        <div id="inline-permission-content" class="p-6">
+          <!-- Permission grid will be rendered here -->
+        </div>
+      </div>
     </div>
 
     <!-- Groups Tab (similar structure, omitted for brevity) -->
