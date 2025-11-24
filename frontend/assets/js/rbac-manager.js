@@ -1026,7 +1026,13 @@ async function viewRoleDetails(roleId) {
 
         <!-- Permissions -->
         <div>
-          <h4 class="font-semibold text-gray-900 mb-2">Permissions (${role.permissions?.length || 0})</h4>
+          <div class="flex items-center justify-between mb-2">
+            <h4 class="font-semibold text-gray-900">Permissions (${role.permissions?.length || 0})</h4>
+            <button onclick="rbacManager.manageRolePermissions('${role.id}')"
+              class="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+              <i class="ph ph-gear"></i> Manage Permissions
+            </button>
+          </div>
           <div class="flex flex-wrap gap-2">
             ${role.permissions?.length > 0
               ? role.permissions.map(p => `
@@ -1539,6 +1545,518 @@ async function manageUserAccess(userId) {
   }
 }
 
+/**
+ * State for permission management
+ */
+const permissionState = {
+  currentRoleId: null,
+  originalPermissions: new Set(),
+  currentPermissions: new Set(),
+  groupedPermissions: [],
+  filters: {
+    category: '',
+    scope: '',
+    search: ''
+  }
+};
+
+/**
+ * Show permission management modal for a role
+ */
+async function manageRolePermissions(roleId) {
+  try {
+    showLoading();
+
+    // Get role details
+    const roleResponse = await apiFetch(`/rbac/roles/${roleId}`);
+    const role = await roleResponse.json();
+
+    // Get grouped permissions with role assignments
+    const params = new URLSearchParams({ role_id: roleId });
+    const permsResponse = await apiFetch(`/rbac/permissions/grouped?${params}`);
+    const permsData = await permsResponse.json();
+
+    // Initialize permission state
+    permissionState.currentRoleId = roleId;
+    permissionState.groupedPermissions = permsData.groups || [];
+    permissionState.originalPermissions = new Set();
+    permissionState.currentPermissions = new Set();
+
+    // Collect all currently granted permissions
+    permsData.groups.forEach(group => {
+      ['standard_actions', 'special_actions'].forEach(actionType => {
+        Object.values(group[actionType]).forEach(perm => {
+          if (perm.granted) {
+            permissionState.originalPermissions.add(perm.id);
+            permissionState.currentPermissions.add(perm.id);
+          }
+        });
+      });
+    });
+
+    // Show modal
+    const modal = document.getElementById('permission-management-modal');
+    const title = document.getElementById('permission-management-title');
+    const content = document.getElementById('permission-management-content');
+
+    title.textContent = `Manage Permissions: ${role.name}`;
+
+    // Render permission grid
+    renderPermissionGrid(content);
+
+    modal.classList.remove('hidden');
+
+  } catch (error) {
+    console.error('Error loading permission management:', error);
+    showToast('Failed to load permission management', 'error');
+  } finally {
+    hideLoading();
+  }
+}
+
+/**
+ * Render the permission management grid
+ */
+function renderPermissionGrid(container) {
+  const { groupedPermissions, filters } = permissionState;
+
+  // Apply filters
+  let filteredGroups = groupedPermissions;
+  if (filters.category) {
+    filteredGroups = filteredGroups.filter(g => g.category === filters.category);
+  }
+  if (filters.scope) {
+    filteredGroups = filteredGroups.filter(g => g.scope === filters.scope);
+  }
+  if (filters.search) {
+    const search = filters.search.toLowerCase();
+    filteredGroups = filteredGroups.filter(g =>
+      g.resource.toLowerCase().includes(search) ||
+      g.category?.toLowerCase().includes(search)
+    );
+  }
+
+  // Get unique categories and scopes for filters
+  const categories = [...new Set(groupedPermissions.map(g => g.category).filter(Boolean))];
+  const scopes = [...new Set(groupedPermissions.map(g => g.scope))];
+
+  // Group by category
+  const byCategory = {};
+  filteredGroups.forEach(group => {
+    const cat = group.category || 'Other';
+    if (!byCategory[cat]) byCategory[cat] = [];
+    byCategory[cat].push(group);
+  });
+
+  container.innerHTML = `
+    <div class="space-y-6">
+      <!-- Filters and Quick Actions -->
+      <div class="bg-gray-50 p-4 rounded-lg space-y-3">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Search Resources</label>
+            <input type="text" id="perm-search" placeholder="Search..."
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              value="${filters.search}">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Category</label>
+            <select id="perm-category-filter"
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+              <option value="">All Categories</option>
+              ${categories.map(cat => `<option value="${cat}" ${filters.category === cat ? 'selected' : ''}>${cat}</option>`).join('')}
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Scope</label>
+            <select id="perm-scope-filter"
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+              <option value="">All Scopes</option>
+              ${scopes.map(scope => `<option value="${scope}" ${filters.scope === scope ? 'selected' : ''}>${scope}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+
+        <div class="flex gap-2 flex-wrap">
+          <button onclick="rbacManager.selectAllCRUD()"
+            class="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+            <i class="ph ph-check-square"></i> Select All CRUD
+          </button>
+          <button onclick="rbacManager.deselectAllCRUD()"
+            class="px-3 py-1.5 text-sm bg-gray-600 text-white rounded-lg hover:bg-gray-700">
+            <i class="ph ph-square"></i> Deselect All CRUD
+          </button>
+          <button onclick="rbacManager.applyTemplate('viewer')"
+            class="px-3 py-1.5 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700">
+            <i class="ph ph-eye"></i> Viewer Template
+          </button>
+          <button onclick="rbacManager.applyTemplate('editor')"
+            class="px-3 py-1.5 text-sm bg-purple-600 text-white rounded-lg hover:bg-purple-700">
+            <i class="ph ph-pencil"></i> Editor Template
+          </button>
+          <button onclick="rbacManager.applyTemplate('manager')"
+            class="px-3 py-1.5 text-sm bg-orange-600 text-white rounded-lg hover:bg-orange-700">
+            <i class="ph ph-crown"></i> Manager Template
+          </button>
+        </div>
+      </div>
+
+      <!-- Permission Groups -->
+      <div class="space-y-6 max-h-[60vh] overflow-y-auto">
+        ${Object.entries(byCategory).map(([category, groups]) => `
+          <div>
+            <h3 class="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
+              <i class="ph ph-folder text-blue-600"></i>
+              ${category.toUpperCase()}
+            </h3>
+            <div class="space-y-3">
+              ${groups.map(group => renderPermissionGroup(group)).join('')}
+            </div>
+          </div>
+        `).join('')}
+      </div>
+
+      <!-- Save/Cancel Actions -->
+      <div class="flex justify-between items-center border-t pt-4">
+        <div class="text-sm text-gray-600">
+          <span id="changes-indicator" class="font-medium"></span>
+        </div>
+        <div class="flex gap-2">
+          <button onclick="rbacManager.closePermissionManagement()"
+            class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
+            Cancel
+          </button>
+          <button onclick="rbacManager.savePermissions()"
+            class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+            <i class="ph ph-floppy-disk"></i> Save Changes
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // Setup event listeners
+  setupPermissionEventListeners();
+  updateChangesIndicator();
+}
+
+/**
+ * Render a single permission group (resource)
+ */
+function renderPermissionGroup(group) {
+  const standardActions = ['read', 'create', 'update', 'delete'];
+
+  return `
+    <div class="border border-gray-200 rounded-lg p-4 bg-white hover:shadow-sm transition-shadow">
+      <div class="flex items-start justify-between mb-3">
+        <div>
+          <h4 class="font-semibold text-gray-900">${formatResourceName(group.resource)}</h4>
+          <p class="text-sm text-gray-500">Scope: <span class="font-mono text-xs bg-gray-100 px-2 py-0.5 rounded">${group.scope}</span></p>
+        </div>
+        <button onclick="rbacManager.toggleAllForResource('${group.key}')"
+          class="text-sm text-blue-600 hover:text-blue-800">
+          <i class="ph ph-check-square"></i> Toggle All
+        </button>
+      </div>
+
+      <!-- Standard CRUD Actions -->
+      <div class="mb-3">
+        <div class="text-xs font-medium text-gray-500 mb-2">Standard Actions</div>
+        <div class="flex flex-wrap gap-2">
+          ${standardActions.map(action => {
+            const perm = group.standard_actions[action];
+            if (!perm) return '';
+
+            const isChecked = permissionState.currentPermissions.has(perm.id);
+            return `
+              <label class="flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition-all
+                ${isChecked ? 'bg-blue-50 border-blue-300' : 'bg-gray-50 border-gray-300 hover:border-gray-400'}">
+                <input type="checkbox"
+                  class="perm-checkbox w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                  data-perm-id="${perm.id}"
+                  ${isChecked ? 'checked' : ''}>
+                <span class="text-sm font-medium ${isChecked ? 'text-blue-900' : 'text-gray-700'}">
+                  ${action.charAt(0).toUpperCase() + action.slice(1)}
+                </span>
+              </label>
+            `;
+          }).join('')}
+        </div>
+      </div>
+
+      <!-- Special Actions -->
+      ${Object.keys(group.special_actions).length > 0 ? `
+        <div>
+          <div class="text-xs font-medium text-gray-500 mb-2">Special Actions</div>
+          <div class="flex flex-wrap gap-2">
+            ${Object.entries(group.special_actions).map(([action, perm]) => {
+              const isActive = permissionState.currentPermissions.has(perm.id);
+              return `
+                <button
+                  onclick="rbacManager.togglePermission('${perm.id}')"
+                  class="px-3 py-1.5 rounded-lg text-sm font-medium transition-all
+                    ${isActive
+                      ? 'bg-green-100 text-green-800 border-2 border-green-400 hover:bg-green-200'
+                      : 'bg-gray-100 text-gray-600 border-2 border-gray-300 hover:bg-gray-200'}">
+                  <i class="ph ${isActive ? 'ph-check-circle' : 'ph-circle'}"></i>
+                  ${action.charAt(0).toUpperCase() + action.slice(1)}
+                </button>
+              `;
+            }).join('')}
+          </div>
+        </div>
+      ` : ''}
+    </div>
+  `;
+}
+
+/**
+ * Format resource name for display
+ */
+function formatResourceName(resource) {
+  return resource.split('_')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+}
+
+/**
+ * Setup event listeners for permission management
+ */
+function setupPermissionEventListeners() {
+  // Search filter
+  document.getElementById('perm-search')?.addEventListener('input', debounce((e) => {
+    permissionState.filters.search = e.target.value;
+    const content = document.getElementById('permission-management-content');
+    renderPermissionGrid(content);
+  }, 300));
+
+  // Category filter
+  document.getElementById('perm-category-filter')?.addEventListener('change', (e) => {
+    permissionState.filters.category = e.target.value;
+    const content = document.getElementById('permission-management-content');
+    renderPermissionGrid(content);
+  });
+
+  // Scope filter
+  document.getElementById('perm-scope-filter')?.addEventListener('change', (e) => {
+    permissionState.filters.scope = e.target.value;
+    const content = document.getElementById('permission-management-content');
+    renderPermissionGrid(content);
+  });
+
+  // Checkbox changes
+  document.querySelectorAll('.perm-checkbox').forEach(checkbox => {
+    checkbox.addEventListener('change', (e) => {
+      const permId = e.target.dataset.permId;
+      if (e.target.checked) {
+        permissionState.currentPermissions.add(permId);
+      } else {
+        permissionState.currentPermissions.delete(permId);
+      }
+      updateChangesIndicator();
+    });
+  });
+}
+
+/**
+ * Toggle a single permission (for badges)
+ */
+function togglePermission(permId) {
+  if (permissionState.currentPermissions.has(permId)) {
+    permissionState.currentPermissions.delete(permId);
+  } else {
+    permissionState.currentPermissions.add(permId);
+  }
+
+  const content = document.getElementById('permission-management-content');
+  renderPermissionGrid(content);
+}
+
+/**
+ * Toggle all permissions for a resource
+ */
+function toggleAllForResource(resourceKey) {
+  const group = permissionState.groupedPermissions.find(g => g.key === resourceKey);
+  if (!group) return;
+
+  // Collect all permission IDs for this resource
+  const allPerms = [
+    ...Object.values(group.standard_actions),
+    ...Object.values(group.special_actions)
+  ].map(p => p.id);
+
+  // Check if all are currently selected
+  const allSelected = allPerms.every(id => permissionState.currentPermissions.has(id));
+
+  // Toggle: if all selected, deselect all; otherwise, select all
+  if (allSelected) {
+    allPerms.forEach(id => permissionState.currentPermissions.delete(id));
+  } else {
+    allPerms.forEach(id => permissionState.currentPermissions.add(id));
+  }
+
+  const content = document.getElementById('permission-management-content');
+  renderPermissionGrid(content);
+}
+
+/**
+ * Select all CRUD permissions
+ */
+function selectAllCRUD() {
+  permissionState.groupedPermissions.forEach(group => {
+    ['read', 'create', 'update', 'delete'].forEach(action => {
+      if (group.standard_actions[action]) {
+        permissionState.currentPermissions.add(group.standard_actions[action].id);
+      }
+    });
+  });
+
+  const content = document.getElementById('permission-management-content');
+  renderPermissionGrid(content);
+}
+
+/**
+ * Deselect all CRUD permissions
+ */
+function deselectAllCRUD() {
+  permissionState.groupedPermissions.forEach(group => {
+    ['read', 'create', 'update', 'delete'].forEach(action => {
+      if (group.standard_actions[action]) {
+        permissionState.currentPermissions.delete(group.standard_actions[action].id);
+      }
+    });
+  });
+
+  const content = document.getElementById('permission-management-content');
+  renderPermissionGrid(content);
+}
+
+/**
+ * Apply permission template
+ */
+function applyTemplate(templateName) {
+  if (templateName === 'viewer') {
+    // Only read permissions
+    permissionState.groupedPermissions.forEach(group => {
+      if (group.standard_actions.read) {
+        permissionState.currentPermissions.add(group.standard_actions.read.id);
+      }
+    });
+  } else if (templateName === 'editor') {
+    // Read, create, update
+    permissionState.groupedPermissions.forEach(group => {
+      ['read', 'create', 'update'].forEach(action => {
+        if (group.standard_actions[action]) {
+          permissionState.currentPermissions.add(group.standard_actions[action].id);
+        }
+      });
+    });
+  } else if (templateName === 'manager') {
+    // All CRUD + common special actions
+    permissionState.groupedPermissions.forEach(group => {
+      Object.values(group.standard_actions).forEach(perm => {
+        permissionState.currentPermissions.add(perm.id);
+      });
+      // Add export if available
+      if (group.special_actions.export) {
+        permissionState.currentPermissions.add(group.special_actions.export.id);
+      }
+      if (group.special_actions.manage) {
+        permissionState.currentPermissions.add(group.special_actions.manage.id);
+      }
+    });
+  }
+
+  const content = document.getElementById('permission-management-content');
+  renderPermissionGrid(content);
+}
+
+/**
+ * Update changes indicator
+ */
+function updateChangesIndicator() {
+  const indicator = document.getElementById('changes-indicator');
+  if (!indicator) return;
+
+  const added = [...permissionState.currentPermissions].filter(
+    id => !permissionState.originalPermissions.has(id)
+  );
+  const removed = [...permissionState.originalPermissions].filter(
+    id => !permissionState.currentPermissions.has(id)
+  );
+
+  if (added.length === 0 && removed.length === 0) {
+    indicator.textContent = 'No changes';
+    indicator.className = 'font-medium text-gray-600';
+  } else {
+    indicator.innerHTML = `
+      <span class="text-green-600">+${added.length}</span> /
+      <span class="text-red-600">-${removed.length}</span> changes
+    `;
+    indicator.className = 'font-medium';
+  }
+}
+
+/**
+ * Save permission changes
+ */
+async function savePermissions() {
+  try {
+    showLoading();
+
+    const added = [...permissionState.currentPermissions].filter(
+      id => !permissionState.originalPermissions.has(id)
+    );
+    const removed = [...permissionState.originalPermissions].filter(
+      id => !permissionState.currentPermissions.has(id)
+    );
+
+    const response = await apiFetch(
+      `/rbac/roles/${permissionState.currentRoleId}/permissions/bulk`,
+      {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          grant_ids: added,
+          revoke_ids: removed
+        })
+      }
+    );
+
+    if (response.ok) {
+      const result = await response.json();
+      showToast(`Successfully updated permissions: ${result.granted} granted, ${result.revoked} revoked`, 'success');
+      closePermissionManagement();
+
+      // Reload roles to reflect changes
+      await loadRoles();
+    } else {
+      throw new Error('Failed to save permissions');
+    }
+
+  } catch (error) {
+    console.error('Error saving permissions:', error);
+    showToast('Failed to save permissions', 'error');
+  } finally {
+    hideLoading();
+  }
+}
+
+/**
+ * Close permission management modal
+ */
+function closePermissionManagement() {
+  const modal = document.getElementById('permission-management-modal');
+  modal.classList.add('hidden');
+
+  // Reset state
+  permissionState.currentRoleId = null;
+  permissionState.originalPermissions.clear();
+  permissionState.currentPermissions.clear();
+  permissionState.groupedPermissions = [];
+  permissionState.filters = { category: '', scope: '', search: '' };
+}
+
 // Export functions to window for onclick handlers
 window.rbacManager = {
   viewRoleDetails,
@@ -1547,12 +2065,21 @@ window.rbacManager = {
   removeUserRole,
   editUser,
   deleteUser,
-  manageUserAccess
+  manageUserAccess,
+  manageRolePermissions,
+  togglePermission,
+  toggleAllForResource,
+  selectAllCRUD,
+  deselectAllCRUD,
+  applyTemplate,
+  savePermissions,
+  closePermissionManagement
 };
 
 export default {
   initRBACManager,
   viewRoleDetails,
+  manageRolePermissions,
   viewPermissionDetails,
   viewGroupDetails,
   removeUserRole,

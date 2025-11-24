@@ -564,6 +564,26 @@
   </div>
 </div>
 
+<!-- Permission Management Modal -->
+<div id="permission-management-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center p-4">
+  <div class="bg-white rounded-xl shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden">
+    <div class="p-6 border-b border-gray-200 flex items-center justify-between bg-gradient-to-r from-blue-600 to-blue-700">
+      <h3 class="text-xl font-semibold text-white flex items-center gap-2">
+        <i class="ph ph-key"></i>
+        <span id="permission-management-title">Manage Permissions</span>
+      </h3>
+      <button onclick="rbacManager.closePermissionManagement()" class="text-white hover:text-gray-200">
+        <i class="ph ph-x text-2xl"></i>
+      </button>
+    </div>
+    <div class="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
+      <div id="permission-management-content">
+        <!-- Content will be dynamically generated -->
+      </div>
+    </div>
+  </div>
+</div>
+
 <style>
 .rbac-tab.active {
   border-bottom-color: rgb(37, 99, 235);

@@ -129,6 +129,88 @@ async def get_permission(
     }
 
 
+@router.get("/permissions/grouped")
+async def get_grouped_permissions(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    role_id: Optional[str] = None,
+    category: Optional[str] = None,
+    scope: Optional[str] = None
+):
+    """
+    Get permissions grouped by resource for easy permission management.
+    Returns permissions organized by resource with standard CRUD actions and special actions.
+
+    If role_id is provided, includes whether each permission is granted to that role.
+    """
+    query = db.query(Permission).filter(Permission.is_active == True)
+
+    # Apply filters
+    if category:
+        query = query.filter(Permission.category == category)
+    if scope:
+        query = query.filter(Permission.scope == scope)
+
+    permissions = query.all()
+
+    # Get role permissions if role_id provided
+    role_permission_ids = set()
+    if role_id:
+        role_perms = db.query(RolePermission.permission_id).filter(
+            RolePermission.role_id == role_id
+        ).all()
+        role_permission_ids = {str(p[0]) for p in role_perms}
+
+    # Standard CRUD actions
+    standard_actions = {'read', 'create', 'update', 'delete'}
+
+    # Group by resource and scope
+    grouped = {}
+    for perm in permissions:
+        # Create a key combining resource and scope
+        key = f"{perm.resource}:{perm.scope}"
+
+        if key not in grouped:
+            grouped[key] = {
+                "resource": perm.resource,
+                "scope": perm.scope,
+                "category": perm.category,
+                "standard_actions": {},
+                "special_actions": {}
+            }
+
+        perm_data = {
+            "id": str(perm.id),
+            "code": perm.code,
+            "name": perm.name,
+            "description": perm.description,
+            "granted": str(perm.id) in role_permission_ids if role_id else False
+        }
+
+        # Categorize as standard or special
+        if perm.action in standard_actions:
+            grouped[key]["standard_actions"][perm.action] = perm_data
+        else:
+            grouped[key]["special_actions"][perm.action] = perm_data
+
+    # Convert to list and sort
+    result = []
+    for key, data in grouped.items():
+        result.append({
+            "key": key,
+            **data
+        })
+
+    # Sort by category, then resource
+    result.sort(key=lambda x: (x["category"] or "", x["resource"]))
+
+    return {
+        "groups": result,
+        "total_resources": len(result),
+        "role_id": role_id
+    }
+
+
 # ============================================================================
 # ROLE ENDPOINTS
 # ============================================================================
@@ -380,6 +462,88 @@ async def remove_permission_from_role(
     )
 
     return {"message": "Permission removed from role"}
+
+
+@router.patch("/roles/{role_id}/permissions/bulk")
+async def bulk_update_role_permissions(
+    role_id: UUID,
+    grant_ids: List[UUID],
+    revoke_ids: List[UUID],
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Bulk update role permissions - grant and revoke in a single transaction.
+    This is more efficient than multiple individual calls.
+
+    Parameters:
+    - grant_ids: List of permission IDs to grant
+    - revoke_ids: List of permission IDs to revoke
+    """
+    role = db.query(Role).filter(Role.id == role_id).first()
+    if not role:
+        raise HTTPException(status_code=404, detail="Role not found")
+
+    if role.is_system and not current_user.is_superuser:
+        raise HTTPException(status_code=403, detail="Cannot modify system role")
+
+    # Get existing assignments
+    existing = db.query(RolePermission.permission_id).filter(
+        RolePermission.role_id == role_id
+    ).all()
+    existing_ids = {str(p[0]) for p in existing}
+
+    # Grant new permissions
+    granted = []
+    for perm_id in grant_ids:
+        if str(perm_id) not in existing_ids:
+            # Verify permission exists
+            perm = db.query(Permission).filter(Permission.id == perm_id).first()
+            if not perm:
+                continue
+
+            role_perm = RolePermission(
+                role_id=role_id,
+                permission_id=perm_id,
+                granted_by_id=current_user.id
+            )
+            db.add(role_perm)
+            granted.append(str(perm_id))
+
+    # Revoke permissions
+    revoked = []
+    for perm_id in revoke_ids:
+        if str(perm_id) in existing_ids:
+            role_perm = db.query(RolePermission).filter(
+                RolePermission.role_id == role_id,
+                RolePermission.permission_id == perm_id
+            ).first()
+            if role_perm:
+                db.delete(role_perm)
+                revoked.append(str(perm_id))
+
+    db.commit()
+
+    create_audit_log(
+        db,
+        action="bulk_update_role_permissions",
+        entity_type="Role",
+        entity_id=role_id,
+        user=current_user,
+        changes={
+            "role_code": role.code,
+            "granted": granted,
+            "revoked": revoked
+        }
+    )
+
+    return {
+        "message": "Permissions updated successfully",
+        "granted": len(granted),
+        "revoked": len(revoked),
+        "granted_ids": granted,
+        "revoked_ids": revoked
+    }
 
 
 # ============================================================================
