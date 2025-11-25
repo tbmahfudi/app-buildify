@@ -132,6 +132,67 @@ export class PermissionGrid {
     this.mode = 'modal';
   }
 
+  async openCard(roleId) {
+    try {
+      this.mode = 'card';
+      showLoading();
+
+      // Get role details
+      const role = await rbacAPI.getRole(roleId);
+
+      // Get grouped permissions with role assignments
+      const permsData = await rbacAPI.getGroupedPermissions({ role_id: roleId });
+
+      // Initialize state
+      this.state.currentRoleId = roleId;
+      this.state.groupedPermissions = permsData.groups || [];
+      this.state.originalPermissions = new Set();
+      this.state.currentPermissions = new Set();
+
+      // Collect all currently granted permissions
+      permsData.groups.forEach(group => {
+        ['standard_actions', 'special_actions'].forEach(actionType => {
+          Object.values(group[actionType]).forEach(perm => {
+            if (perm.granted) {
+              this.state.originalPermissions.add(perm.id);
+              this.state.currentPermissions.add(perm.id);
+            }
+          });
+        });
+      });
+
+      // Show card container
+      const card = document.getElementById('permission-card');
+      const titleEl = document.getElementById('permission-card-title');
+      const subtitleEl = document.getElementById('permission-card-subtitle');
+      const contentEl = document.getElementById('permission-card-content');
+
+      if (card && contentEl) {
+        card.classList.remove('hidden');
+        if (titleEl) titleEl.textContent = `${role.name}`;
+        if (subtitleEl) subtitleEl.textContent = `Configure permissions for this role`;
+        contentEl.innerHTML = this.render();
+
+        // Setup event listeners after rendering
+        this.setupEventListeners();
+      }
+
+    } catch (error) {
+      console.error('Error loading permission management:', error);
+      showToast('Failed to load permission management', 'error');
+    } finally {
+      hideLoading();
+    }
+  }
+
+  closeCard() {
+    const card = document.getElementById('permission-card');
+    if (card) {
+      card.classList.add('hidden');
+    }
+    this.mode = 'modal';
+  }
+
   render() {
     const { groupedPermissions, filters } = this.state;
 
@@ -325,9 +386,14 @@ export class PermissionGrid {
 
   setupEventListeners() {
     // Get the correct container based on mode
-    const container = this.mode === 'inline'
-      ? document.getElementById('inline-permission-content')
-      : document.getElementById('permission-management-modal');
+    let container;
+    if (this.mode === 'card') {
+      container = document.getElementById('permission-card-content');
+    } else if (this.mode === 'inline') {
+      container = document.getElementById('inline-permission-content');
+    } else {
+      container = document.getElementById('permission-management-modal');
+    }
 
     if (!container) return;
 
@@ -362,7 +428,9 @@ export class PermissionGrid {
           this.save();
           break;
         case 'cancel':
-          if (this.mode === 'inline') {
+          if (this.mode === 'card') {
+            this.closeCard();
+          } else if (this.mode === 'inline') {
             this.closeInline();
           } else {
             modalManager.close('permission-management-modal');
@@ -545,7 +613,9 @@ export class PermissionGrid {
       showToast(`Successfully updated permissions: ${result.granted} granted, ${result.revoked} revoked`, 'success');
 
       // Close based on mode
-      if (this.mode === 'inline') {
+      if (this.mode === 'card') {
+        this.closeCard();
+      } else if (this.mode === 'inline') {
         this.closeInline();
       } else {
         modalManager.close('permission-management-modal');
@@ -565,9 +635,14 @@ export class PermissionGrid {
   }
 
   refresh() {
-    const contentId = this.mode === 'inline'
-      ? 'inline-permission-content'
-      : 'permission-management-content';
+    let contentId;
+    if (this.mode === 'card') {
+      contentId = 'permission-card-content';
+    } else if (this.mode === 'inline') {
+      contentId = 'inline-permission-content';
+    } else {
+      contentId = 'permission-management-content';
+    }
     const content = document.getElementById(contentId);
     if (content) {
       content.innerHTML = this.render();

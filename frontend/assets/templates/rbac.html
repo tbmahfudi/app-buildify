@@ -91,95 +91,94 @@
       </div>
     </div>
 
-    <!-- Generic Table Container (used by Roles, Groups, Users) -->
-    <!-- This single template replaces 3 duplicate table structures -->
+    <!-- Roles Tab with Split View -->
     <div id="content-roles" class="rbac-content hidden">
-      <div class="bg-white rounded-xl shadow">
-        <!-- Bulk Action Bar (initially hidden) -->
-        <div id="roles-bulk-actions" class="hidden p-4 bg-blue-50 border-b flex items-center justify-between">
-          <div class="flex items-center gap-2">
-            <i class="ph ph-check-square text-blue-600"></i>
-            <span class="text-sm font-medium"><span class="selection-count">0</span> selected</span>
+      <div class="flex gap-6 h-full">
+        <!-- Left Side: Roles Table (grows to fill space) -->
+        <div class="flex-1 bg-white rounded-xl shadow flex flex-col">
+          <!-- Bulk Action Bar (initially hidden) -->
+          <div id="roles-bulk-actions" class="hidden p-4 bg-blue-50 border-b flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <i class="ph ph-check-square text-blue-600"></i>
+              <span class="text-sm font-medium"><span class="selection-count">0</span> selected</span>
+            </div>
+            <div class="flex gap-2">
+              <button class="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700">
+                Bulk Action
+              </button>
+              <button onclick="rbacManager.tables.roles.clearSelection()" class="px-3 py-1 text-sm border rounded hover:bg-gray-50">
+                Clear
+              </button>
+            </div>
           </div>
-          <div class="flex gap-2">
-            <button class="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700">
-              Bulk Action
+
+          <!-- Header with Filters -->
+          <div class="p-6 border-b border-gray-200">
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="text-lg font-semibold text-gray-900">Roles Management</h3>
+            </div>
+
+            <div class="flex gap-3">
+              <input type="text" id="roles-search" placeholder="Search roles..."
+                class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+              <select id="roles-type-filter" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                <option value="">All Types</option>
+                <option value="system">System</option>
+                <option value="default">Default</option>
+                <option value="custom">Custom</option>
+              </select>
+              <select id="roles-status-filter" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                <option value="">All Status</option>
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Table -->
+          <div class="flex-1 overflow-x-auto">
+            <table class="w-full">
+              <thead class="bg-gray-50 border-b border-gray-200 sticky top-0">
+                <tr>
+                  <th class="px-6 py-3 text-left w-12">
+                    <input type="checkbox" id="roles-select-all" class="w-4 h-4 text-blue-600 rounded">
+                  </th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Role</th>
+                  <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase w-32">Permissions</th>
+                  <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase w-40">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="roles-table-body" class="bg-white divide-y divide-gray-200"></tbody>
+            </table>
+          </div>
+
+          <!-- Pagination -->
+          <div class="p-4 border-t border-gray-200 flex items-center justify-between">
+            <div class="text-sm text-gray-700">
+              Showing <span id="roles-showing-start">0</span> to <span id="roles-showing-end">0</span> of <span id="roles-total">0</span> roles
+            </div>
+            <div class="flex gap-2">
+              <button id="roles-prev-page" class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">Previous</button>
+              <button id="roles-next-page" class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">Next</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Side: Permission Card (fixed width, initially hidden) -->
+        <div id="permission-card" class="hidden w-[600px] bg-white rounded-xl shadow flex flex-col max-h-[calc(100vh-240px)]">
+          <div class="p-6 border-b border-gray-200 flex items-center justify-between flex-shrink-0">
+            <div>
+              <h3 class="text-lg font-semibold text-gray-900" id="permission-card-title">Manage Permissions</h3>
+              <p class="text-sm text-gray-600 mt-1" id="permission-card-subtitle">Configure permissions for this role</p>
+            </div>
+            <button onclick="rbacManager.closePermissionCard()"
+              class="px-3 py-2 text-sm text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors">
+              <i class="ph ph-x"></i>
             </button>
-            <button onclick="rbacManager.tables.roles.clearSelection()" class="px-3 py-1 text-sm border rounded hover:bg-gray-50">
-              Clear
-            </button>
           </div>
-        </div>
-
-        <!-- Header with Filters -->
-        <div class="p-6 border-b border-gray-200">
-          <div class="flex items-center justify-between mb-4">
-            <h3 class="text-lg font-semibold text-gray-900">Roles Management</h3>
+          <div id="permission-card-content" class="flex-1 p-6 overflow-y-auto">
+            <!-- Permission grid will be rendered here -->
           </div>
-
-          <div class="flex gap-3">
-            <input type="text" id="roles-search" placeholder="Search roles..."
-              class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-            <select id="roles-type-filter" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-              <option value="">All Types</option>
-              <option value="system">System</option>
-              <option value="default">Default</option>
-              <option value="custom">Custom</option>
-            </select>
-            <select id="roles-status-filter" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-              <option value="">All Status</option>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-            </select>
-          </div>
-        </div>
-
-        <!-- Table -->
-        <div class="overflow-x-auto">
-          <table class="w-full">
-            <thead class="bg-gray-50 border-b border-gray-200">
-              <tr>
-                <th class="px-6 py-3 text-left">
-                  <input type="checkbox" id="roles-select-all" class="w-4 h-4 text-blue-600 rounded">
-                </th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Role</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Permissions</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Users</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
-              </tr>
-            </thead>
-            <tbody id="roles-table-body" class="bg-white divide-y divide-gray-200"></tbody>
-          </table>
-        </div>
-
-        <!-- Pagination -->
-        <div class="p-4 border-t border-gray-200 flex items-center justify-between">
-          <div class="text-sm text-gray-700">
-            Showing <span id="roles-showing-start">0</span> to <span id="roles-showing-end">0</span> of <span id="roles-total">0</span> roles
-          </div>
-          <div class="flex gap-2">
-            <button id="roles-prev-page" class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">Previous</button>
-            <button id="roles-next-page" class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">Next</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Inline Permission Management (initially hidden) -->
-      <div id="inline-permission-management" class="hidden mt-6 bg-white rounded-xl shadow">
-        <div class="p-6 border-b border-gray-200 flex items-center justify-between">
-          <div>
-            <h3 class="text-lg font-semibold text-gray-900" id="inline-permission-title">Manage Permissions</h3>
-            <p class="text-sm text-gray-600 mt-1" id="inline-permission-subtitle">Configure permissions for this role</p>
-          </div>
-          <button onclick="rbacManager.closeInlinePermissions()"
-            class="px-4 py-2 text-sm text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors">
-            <i class="ph ph-x"></i> Close
-          </button>
-        </div>
-        <div id="inline-permission-content" class="p-6">
-          <!-- Permission grid will be rendered here -->
         </div>
       </div>
     </div>
