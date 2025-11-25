@@ -161,16 +161,21 @@ export class PermissionGrid {
         });
       });
 
-      // Show card container
-      const card = document.getElementById('permission-card');
+      // Update card content (card is always visible)
       const titleEl = document.getElementById('permission-card-title');
       const subtitleEl = document.getElementById('permission-card-subtitle');
       const contentEl = document.getElementById('permission-card-content');
+      const emptyState = document.getElementById('permission-card-empty');
 
-      if (card && contentEl) {
-        card.classList.remove('hidden');
+      if (contentEl) {
+        // Hide empty state
+        if (emptyState) emptyState.classList.add('hidden');
+
+        // Update title and subtitle
         if (titleEl) titleEl.textContent = `${role.name}`;
         if (subtitleEl) subtitleEl.textContent = `Configure permissions for this role`;
+
+        // Render permission grid
         contentEl.innerHTML = this.render();
 
         // Setup event listeners after rendering
@@ -186,10 +191,29 @@ export class PermissionGrid {
   }
 
   closeCard() {
-    const card = document.getElementById('permission-card');
-    if (card) {
-      card.classList.add('hidden');
+    // Reset to empty state (card stays visible)
+    const titleEl = document.getElementById('permission-card-title');
+    const subtitleEl = document.getElementById('permission-card-subtitle');
+    const contentEl = document.getElementById('permission-card-content');
+    const emptyState = document.getElementById('permission-card-empty');
+
+    if (titleEl) titleEl.textContent = 'Permissions';
+    if (subtitleEl) subtitleEl.textContent = 'Select a role to configure permissions';
+
+    if (contentEl) {
+      contentEl.innerHTML = `
+        <div id="permission-card-empty" class="flex flex-col items-center justify-center py-12 text-center">
+          <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+            <i class="ph ph-shield-check text-3xl text-gray-400"></i>
+          </div>
+          <h4 class="text-lg font-semibold text-gray-900 mb-2">No Role Selected</h4>
+          <p class="text-sm text-gray-600 max-w-sm">
+            Click the <strong>Configure</strong> button on any role to manage its permissions
+          </p>
+        </div>
+      `;
     }
+
     this.mode = 'modal';
   }
 
