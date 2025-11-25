@@ -92,10 +92,10 @@
     </div>
 
     <!-- Roles Tab with Split View -->
-    <div id="content-roles" class="rbac-content hidden">
-      <div class="flex gap-6 h-full">
+    <div id="content-roles" class="rbac-content hidden overflow-auto">
+      <div class="flex gap-6 min-h-full">
         <!-- Left Side: Roles Table (grows to fill space) -->
-        <div class="flex-1 bg-white rounded-xl shadow flex flex-col">
+        <div class="flex-1 bg-white rounded-xl shadow flex flex-col min-h-fit">
           <!-- Bulk Action Bar (initially hidden) -->
           <div id="roles-bulk-actions" class="hidden p-4 bg-blue-50 border-b flex items-center justify-between">
             <div class="flex items-center gap-2">
@@ -164,20 +164,23 @@
           </div>
         </div>
 
-        <!-- Right Side: Permission Card (fixed width, initially hidden) -->
-        <div id="permission-card" class="hidden w-[600px] bg-white rounded-xl shadow flex flex-col max-h-[calc(100vh-240px)]">
-          <div class="p-6 border-b border-gray-200 flex items-center justify-between flex-shrink-0">
-            <div>
-              <h3 class="text-lg font-semibold text-gray-900" id="permission-card-title">Manage Permissions</h3>
-              <p class="text-sm text-gray-600 mt-1" id="permission-card-subtitle">Configure permissions for this role</p>
-            </div>
-            <button onclick="rbacManager.closePermissionCard()"
-              class="px-3 py-2 text-sm text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors">
-              <i class="ph ph-x"></i>
-            </button>
+        <!-- Right Side: Permission Card (fixed width, always visible) -->
+        <div id="permission-card" class="w-[600px] bg-white rounded-xl shadow flex flex-col min-h-fit">
+          <div class="p-6 border-b border-gray-200 flex-shrink-0">
+            <h3 class="text-lg font-semibold text-gray-900" id="permission-card-title">Permissions</h3>
+            <p class="text-sm text-gray-600 mt-1" id="permission-card-subtitle">Select a role to configure permissions</p>
           </div>
-          <div id="permission-card-content" class="flex-1 p-6 overflow-y-auto">
-            <!-- Permission grid will be rendered here -->
+          <div id="permission-card-content" class="flex-1 p-6">
+            <!-- Empty state by default -->
+            <div id="permission-card-empty" class="flex flex-col items-center justify-center py-12 text-center">
+              <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                <i class="ph ph-shield-check text-3xl text-gray-400"></i>
+              </div>
+              <h4 class="text-lg font-semibold text-gray-900 mb-2">No Role Selected</h4>
+              <p class="text-sm text-gray-600 max-w-sm">
+                Click the <strong>Configure</strong> button on any role to manage its permissions
+              </p>
+            </div>
           </div>
         </div>
       </div>
