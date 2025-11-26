@@ -244,12 +244,12 @@ export class PermissionGrid {
 
     // Map scopes to icons
     const scopeIcons = {
-      'tenant': 'ph-buildings',
-      'company': 'ph-building-office',
-      'branch': 'ph-git-branch',
-      'department': 'ph-users-three',
-      'own': 'ph-user-circle',
-      'user': 'ph-user'
+      'tenant': 'ph-duotone ph-buildings',
+      'company': 'ph-duotone ph-building-office',
+      'branch': 'ph-duotone ph-git-branch',
+      'department': 'ph-duotone ph-users-three',
+      'own': 'ph-duotone ph-user-circle',
+      'user': 'ph-duotone ph-user'
     };
 
     return `
@@ -276,17 +276,17 @@ export class PermissionGrid {
                 title="All Scopes"
                 class="px-3 py-2 rounded-lg text-sm font-medium transition-all
                   ${filters.scope === '' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'}">
-                <i class="ph ph-stack"></i>
+                <i class="ph-duotone ph-stack"></i>
               </button>
               ${scopes.map(scope => {
-                const icon = scopeIcons[scope.toLowerCase()] || 'ph-circle';
+                const icon = scopeIcons[scope.toLowerCase()] || 'ph-duotone ph-circle';
                 const isActive = filters.scope === scope;
                 return `
                   <button data-action="filter-scope" data-scope="${scope}"
                     title="${scope.charAt(0).toUpperCase() + scope.slice(1)}"
                     class="px-3 py-2 rounded-lg text-sm font-medium transition-all
                       ${isActive ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'}">
-                    <i class="ph ${icon}"></i>
+                    <i class="${icon}"></i>
                   </button>
                 `;
               }).join('')}
@@ -299,33 +299,33 @@ export class PermissionGrid {
             <button data-action="select-all-crud"
               title="Select All CRUD"
               class="p-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-              <i class="ph ph-check-square text-lg"></i>
+              <i class="ph-duotone ph-check-square text-lg"></i>
             </button>
             <button data-action="deselect-all-crud"
               title="Deselect All CRUD"
               class="p-2 text-sm bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors">
-              <i class="ph ph-square text-lg"></i>
+              <i class="ph-duotone ph-square text-lg"></i>
             </button>
             <button data-action="template-viewer"
               title="Viewer Template"
               class="p-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
-              <i class="ph ph-eye text-lg"></i>
+              <i class="ph-duotone ph-eye text-lg"></i>
             </button>
             <button data-action="template-editor"
               title="Editor Template"
               class="p-2 text-sm bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">
-              <i class="ph ph-pencil text-lg"></i>
+              <i class="ph-duotone ph-pencil text-lg"></i>
             </button>
             <button data-action="template-manager"
               title="Manager Template"
               class="p-2 text-sm bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors">
-              <i class="ph ph-crown text-lg"></i>
+              <i class="ph-duotone ph-crown text-lg"></i>
             </button>
           </div>
           <button data-action="new-permission"
             title="New Permission"
             class="p-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors">
-            <i class="ph ph-plus-circle text-lg"></i>
+            <i class="ph-duotone ph-plus-circle text-lg"></i>
           </button>
         </div>
       </div>
@@ -338,7 +338,7 @@ export class PermissionGrid {
         ${Object.entries(byCategory).map(([category, groups]) => `
           <div>
             <h3 class="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
-              <i class="ph ph-folder text-blue-600"></i>
+              <i class="ph-duotone ph-folder text-blue-600"></i>
               ${category.toUpperCase()}
             </h3>
             <div class="space-y-3">
@@ -353,10 +353,10 @@ export class PermissionGrid {
   renderPermissionGroup(group) {
     const standardActions = ['read', 'create', 'update', 'delete'];
     const actionIcons = {
-      read: 'ph-eye',
-      create: 'ph-plus-circle',
-      update: 'ph-pencil-simple',
-      delete: 'ph-trash'
+      read: 'ph-duotone ph-eye',
+      create: 'ph-duotone ph-plus-circle',
+      update: 'ph-duotone ph-pencil-simple',
+      delete: 'ph-duotone ph-trash'
     };
 
     return `
@@ -385,7 +385,7 @@ export class PermissionGrid {
                     ${isGranted
                       ? 'bg-green-100 text-green-700 hover:bg-green-200'
                       : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}">
-                  <i class="ph ${actionIcons[action]} text-lg"></i>
+                  <i class="${actionIcons[action]} text-lg"></i>
                 </button>
               `;
             }).join('')}
@@ -415,7 +415,7 @@ export class PermissionGrid {
           <button data-action="toggle-resource" data-key="${group.key}"
             title="Toggle all permissions"
             class="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-blue-600 transition-all">
-            <i class="ph ph-check-square text-lg"></i>
+            <i class="ph-duotone ph-check-square text-lg"></i>
           </button>
         </div>
       </div>
@@ -535,11 +535,11 @@ export class PermissionGrid {
         <div class="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden">
           <div class="p-6 border-b bg-gradient-to-r from-indigo-600 to-indigo-700 flex items-center justify-between">
             <h3 class="text-xl font-semibold text-white flex items-center gap-2">
-              <i class="ph ph-plus-circle"></i>
+              <i class="ph-duotone ph-plus-circle"></i>
               <span>Create New Permission</span>
             </h3>
             <button data-action="close-new-permission" class="text-white hover:text-gray-200">
-              <i class="ph ph-x text-2xl"></i>
+              <i class="ph-duotone ph-x text-2xl"></i>
             </button>
           </div>
 
@@ -603,7 +603,7 @@ export class PermissionGrid {
 
               <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
                 <div class="flex items-start gap-2">
-                  <i class="ph ph-info text-blue-600 text-lg"></i>
+                  <i class="ph-duotone ph-info text-blue-600 text-lg"></i>
                   <div class="text-sm text-blue-800">
                     <p class="font-medium mb-1">Permission Code Format</p>
                     <p>Code will be generated as: <span class="font-mono bg-white px-2 py-0.5 rounded">{resource}:{action}:{scope}</span></p>
@@ -621,7 +621,7 @@ export class PermissionGrid {
             </button>
             <button data-action="save-new-permission"
               class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors flex items-center gap-2">
-              <i class="ph ph-floppy-disk"></i> Create Permission
+              <i class="ph-duotone ph-floppy-disk"></i> Create Permission
             </button>
           </div>
         </div>
