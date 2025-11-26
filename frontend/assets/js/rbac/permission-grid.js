@@ -294,26 +294,32 @@ export class PermissionGrid {
           </div>
         </div>
 
-        <div class="flex gap-2 flex-wrap">
-          <button data-action="select-all-crud"
-            class="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-            <i class="ph ph-check-square"></i> Select All CRUD
-          </button>
-          <button data-action="deselect-all-crud"
-            class="px-3 py-1.5 text-sm bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors">
-            <i class="ph ph-square"></i> Deselect All CRUD
-          </button>
-          <button data-action="template-viewer"
-            class="px-3 py-1.5 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
-            <i class="ph ph-eye"></i> Viewer Template
-          </button>
-          <button data-action="template-editor"
-            class="px-3 py-1.5 text-sm bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">
-            <i class="ph ph-pencil"></i> Editor Template
-          </button>
-          <button data-action="template-manager"
-            class="px-3 py-1.5 text-sm bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors">
-            <i class="ph ph-crown"></i> Manager Template
+        <div class="flex justify-between items-center gap-2">
+          <div class="flex gap-2 flex-wrap">
+            <button data-action="select-all-crud"
+              class="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+              <i class="ph ph-check-square"></i> Select All CRUD
+            </button>
+            <button data-action="deselect-all-crud"
+              class="px-3 py-1.5 text-sm bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors">
+              <i class="ph ph-square"></i> Deselect All CRUD
+            </button>
+            <button data-action="template-viewer"
+              class="px-3 py-1.5 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+              <i class="ph ph-eye"></i> Viewer Template
+            </button>
+            <button data-action="template-editor"
+              class="px-3 py-1.5 text-sm bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">
+              <i class="ph ph-pencil"></i> Editor Template
+            </button>
+            <button data-action="template-manager"
+              class="px-3 py-1.5 text-sm bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors">
+              <i class="ph ph-crown"></i> Manager Template
+            </button>
+          </div>
+          <button data-action="new-permission"
+            class="px-4 py-1.5 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors flex items-center gap-2">
+            <i class="ph ph-plus-circle"></i> New Permission
           </button>
         </div>
       </div>
@@ -476,6 +482,9 @@ export class PermissionGrid {
           this.state.filters.scope = e.target.closest('[data-scope]').dataset.scope;
           this.refresh();
           break;
+        case 'new-permission':
+          this.showNewPermissionDialog();
+          break;
         case 'toggle-resource':
           this.toggleAllForResource(e.target.closest('[data-key]').dataset.key);
           break;
@@ -508,6 +517,188 @@ export class PermissionGrid {
       this.state.filters.category = e.target.value;
       this.refresh();
     });
+  }
+
+  showNewPermissionDialog() {
+    const categories = [...new Set(this.state.groupedPermissions.map(g => g.category).filter(Boolean))];
+    const scopes = ['tenant', 'company', 'branch', 'department', 'own'];
+    const actions = ['read', 'create', 'update', 'delete', 'export', 'import', 'manage', 'approve', 'execute'];
+
+    const dialogHtml = `
+      <div id="new-permission-modal" class="fixed inset-0 bg-black bg-opacity-50 z-[60] flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden">
+          <div class="p-6 border-b bg-gradient-to-r from-indigo-600 to-indigo-700 flex items-center justify-between">
+            <h3 class="text-xl font-semibold text-white flex items-center gap-2">
+              <i class="ph ph-plus-circle"></i>
+              <span>Create New Permission</span>
+            </h3>
+            <button data-action="close-new-permission" class="text-white hover:text-gray-200">
+              <i class="ph ph-x text-2xl"></i>
+            </button>
+          </div>
+
+          <div class="p-6 overflow-y-auto max-h-[calc(90vh-180px)]">
+            <form id="new-permission-form" class="space-y-4">
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">
+                    Resource Name <span class="text-red-500">*</span>
+                  </label>
+                  <input type="text" name="resource" required
+                    placeholder="e.g., users, projects, invoices"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                  <p class="text-xs text-gray-500 mt-1">Lowercase, singular noun</p>
+                </div>
+
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">
+                    Action <span class="text-red-500">*</span>
+                  </label>
+                  <select name="action" required
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                    <option value="">Select action...</option>
+                    ${actions.map(action => `<option value="${action}">${action.charAt(0).toUpperCase() + action.slice(1)}</option>`).join('')}
+                  </select>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">
+                    Scope <span class="text-red-500">*</span>
+                  </label>
+                  <select name="scope" required
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                    ${scopes.map(scope => `<option value="${scope}">${scope.charAt(0).toUpperCase() + scope.slice(1)}</option>`).join('')}
+                  </select>
+                </div>
+
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">
+                    Category
+                  </label>
+                  <input list="categories" name="category"
+                    placeholder="e.g., core, financial, hr"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                  <datalist id="categories">
+                    ${categories.map(cat => `<option value="${cat}">`).join('')}
+                  </datalist>
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">
+                  Description
+                </label>
+                <textarea name="description" rows="3"
+                  placeholder="Describe what this permission allows..."
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"></textarea>
+              </div>
+
+              <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div class="flex items-start gap-2">
+                  <i class="ph ph-info text-blue-600 text-lg"></i>
+                  <div class="text-sm text-blue-800">
+                    <p class="font-medium mb-1">Permission Code Format</p>
+                    <p>Code will be generated as: <span class="font-mono bg-white px-2 py-0.5 rounded">{resource}:{action}:{scope}</span></p>
+                    <p class="text-xs mt-1">Example: <span class="font-mono">users:read:tenant</span> or <span class="font-mono">invoices:approve:company</span></p>
+                  </div>
+                </div>
+              </div>
+            </form>
+          </div>
+
+          <div class="p-6 border-t bg-gray-50 flex justify-end gap-3">
+            <button data-action="close-new-permission"
+              class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors">
+              Cancel
+            </button>
+            <button data-action="save-new-permission"
+              class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors flex items-center gap-2">
+              <i class="ph ph-floppy-disk"></i> Create Permission
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    // Add modal to body
+    document.body.insertAdjacentHTML('beforeend', dialogHtml);
+
+    // Setup event listeners for modal
+    const modal = document.getElementById('new-permission-modal');
+
+    modal.addEventListener('click', (e) => {
+      const action = e.target.closest('[data-action]')?.dataset.action;
+
+      if (action === 'close-new-permission') {
+        modal.remove();
+      } else if (action === 'save-new-permission') {
+        this.saveNewPermission();
+      }
+    });
+
+    // Close on backdrop click
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        modal.remove();
+      }
+    });
+  }
+
+  async saveNewPermission() {
+    const form = document.getElementById('new-permission-form');
+
+    if (!form.checkValidity()) {
+      form.reportValidity();
+      return;
+    }
+
+    try {
+      showLoading();
+
+      const formData = new FormData(form);
+      const resource = formData.get('resource').trim().toLowerCase();
+      const action = formData.get('action');
+      const scope = formData.get('scope');
+      const category = formData.get('category')?.trim() || null;
+      const description = formData.get('description')?.trim() || null;
+
+      // Generate permission code
+      const code = `${resource}:${action}:${scope}`;
+
+      const permissionData = {
+        code,
+        name: `${action.charAt(0).toUpperCase() + action.slice(1)} ${resource}`,
+        resource,
+        action,
+        scope,
+        category,
+        description,
+        is_active: true
+      };
+
+      await rbacAPI.createPermission(permissionData);
+
+      showToast('Permission created successfully', 'success');
+
+      // Close modal
+      document.getElementById('new-permission-modal')?.remove();
+
+      // Reload permissions if we're managing a role
+      if (this.state.currentRoleId) {
+        const role = await rbacAPI.getRole(this.state.currentRoleId);
+        const permsData = await rbacAPI.getGroupedPermissions({ role_id: this.state.currentRoleId });
+        this.state.groupedPermissions = permsData.groups || [];
+        this.refresh();
+      }
+
+    } catch (error) {
+      console.error('Error creating permission:', error);
+      showToast(error.message || 'Failed to create permission', 'error');
+    } finally {
+      hideLoading();
+    }
   }
 
   // Helper methods

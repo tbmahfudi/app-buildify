@@ -47,6 +47,31 @@ export const rbacAPI = {
     return response.json();
   },
 
+  async createPermission(permissionData) {
+    const response = await apiFetch('/rbac/permissions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(permissionData)
+    });
+    return response.json();
+  },
+
+  async updatePermission(permissionId, permissionData) {
+    const response = await apiFetch(`/rbac/permissions/${permissionId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(permissionData)
+    });
+    return response.json();
+  },
+
+  async deletePermission(permissionId) {
+    const response = await apiFetch(`/rbac/permissions/${permissionId}`, {
+      method: 'DELETE'
+    });
+    return response.json();
+  },
+
   // ============================================================================
   // ROLE PERMISSIONS
   // ============================================================================
