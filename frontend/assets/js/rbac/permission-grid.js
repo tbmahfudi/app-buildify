@@ -242,6 +242,16 @@ export class PermissionGrid {
   renderFiltersAndActions(categories, scopes) {
     const { filters } = this.state;
 
+    // Map scopes to icons
+    const scopeIcons = {
+      'tenant': 'ph-buildings',
+      'company': 'ph-building-office',
+      'branch': 'ph-git-branch',
+      'department': 'ph-users-three',
+      'own': 'ph-user-circle',
+      'user': 'ph-user'
+    };
+
     return `
       <div class="bg-gray-50 p-4 rounded-lg space-y-3">
         <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -261,11 +271,26 @@ export class PermissionGrid {
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Scope</label>
-            <select id="perm-scope-filter"
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-              <option value="">All Scopes</option>
-              ${scopes.map(scope => `<option value="${scope}" ${filters.scope === scope ? 'selected' : ''}>${scope}</option>`).join('')}
-            </select>
+            <div class="flex gap-2 flex-wrap">
+              <button data-action="filter-scope" data-scope=""
+                title="All Scopes"
+                class="px-3 py-2 rounded-lg text-sm font-medium transition-all
+                  ${filters.scope === '' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'}">
+                <i class="ph ph-stack"></i>
+              </button>
+              ${scopes.map(scope => {
+                const icon = scopeIcons[scope.toLowerCase()] || 'ph-circle';
+                const isActive = filters.scope === scope;
+                return `
+                  <button data-action="filter-scope" data-scope="${scope}"
+                    title="${scope.charAt(0).toUpperCase() + scope.slice(1)}"
+                    class="px-3 py-2 rounded-lg text-sm font-medium transition-all
+                      ${isActive ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'}">
+                    <i class="ph ${icon}"></i>
+                  </button>
+                `;
+              }).join('')}
+            </div>
           </div>
         </div>
 
@@ -447,6 +472,10 @@ export class PermissionGrid {
         case 'template-manager':
           this.applyTemplate('manager');
           break;
+        case 'filter-scope':
+          this.state.filters.scope = e.target.closest('[data-scope]').dataset.scope;
+          this.refresh();
+          break;
         case 'toggle-resource':
           this.toggleAllForResource(e.target.closest('[data-key]').dataset.key);
           break;
@@ -477,11 +506,6 @@ export class PermissionGrid {
 
     container.querySelector('#perm-category-filter')?.addEventListener('change', (e) => {
       this.state.filters.category = e.target.value;
-      this.refresh();
-    });
-
-    container.querySelector('#perm-scope-filter')?.addEventListener('change', (e) => {
-      this.state.filters.scope = e.target.value;
       this.refresh();
     });
   }
