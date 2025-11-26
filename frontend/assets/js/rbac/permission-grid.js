@@ -297,29 +297,35 @@ export class PermissionGrid {
         <div class="flex justify-between items-center gap-2">
           <div class="flex gap-2 flex-wrap">
             <button data-action="select-all-crud"
-              class="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-              <i class="ph ph-check-square"></i> Select All CRUD
+              title="Select All CRUD"
+              class="p-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+              <i class="ph ph-check-square text-lg"></i>
             </button>
             <button data-action="deselect-all-crud"
-              class="px-3 py-1.5 text-sm bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors">
-              <i class="ph ph-square"></i> Deselect All CRUD
+              title="Deselect All CRUD"
+              class="p-2 text-sm bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors">
+              <i class="ph ph-square text-lg"></i>
             </button>
             <button data-action="template-viewer"
-              class="px-3 py-1.5 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
-              <i class="ph ph-eye"></i> Viewer Template
+              title="Viewer Template"
+              class="p-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+              <i class="ph ph-eye text-lg"></i>
             </button>
             <button data-action="template-editor"
-              class="px-3 py-1.5 text-sm bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">
-              <i class="ph ph-pencil"></i> Editor Template
+              title="Editor Template"
+              class="p-2 text-sm bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">
+              <i class="ph ph-pencil text-lg"></i>
             </button>
             <button data-action="template-manager"
-              class="px-3 py-1.5 text-sm bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors">
-              <i class="ph ph-crown"></i> Manager Template
+              title="Manager Template"
+              class="p-2 text-sm bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors">
+              <i class="ph ph-crown text-lg"></i>
             </button>
           </div>
           <button data-action="new-permission"
-            class="px-4 py-1.5 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors flex items-center gap-2">
-            <i class="ph ph-plus-circle"></i> New Permission
+            title="New Permission"
+            class="p-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors">
+            <i class="ph ph-plus-circle text-lg"></i>
           </button>
         </div>
       </div>
