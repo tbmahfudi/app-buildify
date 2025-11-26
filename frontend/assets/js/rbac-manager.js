@@ -133,6 +133,7 @@ class RBACManager {
           field: 'name',
           render: (role) => `
             <div class="flex items-start gap-3">
+              <input type="checkbox" class="row-checkbox w-4 h-4 text-blue-600 rounded mt-1" data-id="${role.id}">
               <div class="flex-1">
                 <div class="flex items-center gap-2 mb-1">
                   <span class="font-semibold text-gray-900">${role.name}</span>
@@ -176,7 +177,8 @@ class RBACManager {
         { id: 'type', label: 'Type' },
         { id: 'status', label: 'Status' }
       ],
-      bulkActions: true
+      bulkActions: true,
+      onRowClick: (role) => this.manageRolePermissions(role.id)
     });
 
     // Groups Table
