@@ -148,8 +148,15 @@ class RBACManager {
                   ${role.is_system ? '<i class="ph ph-lock-simple text-gray-400"></i>' : ''}
                 </div>
                 <div class="text-sm text-gray-600 font-mono">${role.code}</div>
-                ${role.description ? `<div class="text-xs text-gray-500 mt-1 line-clamp-2">${role.description}</div>` : ''}
               </div>
+            </div>
+          `
+        },
+        {
+          field: 'description',
+          render: (role) => `
+            <div class="text-sm text-gray-600">
+              ${role.description || '<span class="text-gray-400 italic">No description</span>'}
             </div>
           `
         },
@@ -161,17 +168,6 @@ class RBACManager {
                 <i class="ph ph-shield-check"></i>
                 ${role.permissions?.length || 0}
               </span>
-            </div>
-          `
-        },
-        {
-          field: 'actions',
-          render: (role) => `
-            <div class="flex items-center justify-end gap-2">
-              <button onclick="rbacManager.manageRolePermissions('${role.id}'); event.stopPropagation();"
-                class="px-3 py-1.5 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-                <i class="ph ph-gear"></i> Configure
-              </button>
             </div>
           `
         }

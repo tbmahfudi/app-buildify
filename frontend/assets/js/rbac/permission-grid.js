@@ -297,7 +297,7 @@ export class PermissionGrid {
 
   renderPermissionGroups(byCategory) {
     return `
-      <div class="space-y-6 max-h-[60vh] overflow-y-auto">
+      <div class="space-y-6">
         ${Object.entries(byCategory).map(([category, groups]) => `
           <div>
             <h3 class="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
