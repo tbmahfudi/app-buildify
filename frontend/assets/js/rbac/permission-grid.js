@@ -315,67 +315,72 @@ export class PermissionGrid {
 
   renderPermissionGroup(group) {
     const standardActions = ['read', 'create', 'update', 'delete'];
+    const actionIcons = {
+      read: 'ph-eye',
+      create: 'ph-plus-circle',
+      update: 'ph-pencil-simple',
+      delete: 'ph-trash'
+    };
 
     return `
-      <div class="border border-gray-200 rounded-lg p-4 bg-white hover:shadow-sm transition-shadow">
-        <div class="flex items-start justify-between mb-3">
-          <div>
-            <h4 class="font-semibold text-gray-900">${this.formatResourceName(group.resource)}</h4>
-            <p class="text-sm text-gray-500">Scope: <span class="font-mono text-xs bg-gray-100 px-2 py-0.5 rounded">${group.scope}</span></p>
+      <div class="border border-gray-200 rounded-lg bg-white hover:border-blue-300 transition-all">
+        <div class="px-4 py-2 flex items-center gap-4">
+          <!-- Resource Name -->
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2">
+              <span class="font-medium text-gray-900 text-sm">${this.formatResourceName(group.resource)}</span>
+              <span class="font-mono text-xs bg-gray-100 px-2 py-0.5 rounded text-gray-600">${group.scope}</span>
+            </div>
           </div>
-          <button data-action="toggle-resource" data-key="${group.key}"
-            class="text-sm text-blue-600 hover:text-blue-800">
-            <i class="ph ph-check-square"></i> Toggle All
-          </button>
-        </div>
 
-        <!-- Standard CRUD Actions -->
-        <div class="mb-3">
-          <div class="text-xs font-medium text-gray-500 mb-2">Standard Actions</div>
-          <div class="flex flex-wrap gap-2">
+          <!-- Standard CRUD Actions as Icons -->
+          <div class="flex items-center gap-1">
             ${standardActions.map(action => {
               const perm = group.standard_actions[action];
-              if (!perm) return '';
+              if (!perm) return `<div class="w-8 h-8"></div>`;
 
-              const isChecked = this.state.currentPermissions.has(perm.id);
+              const isGranted = this.state.currentPermissions.has(perm.id);
               return `
-                <label class="flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition-all
-                  ${isChecked ? 'bg-blue-50 border-blue-300' : 'bg-gray-50 border-gray-300 hover:border-gray-400'}">
-                  <input type="checkbox"
-                    class="perm-checkbox w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
-                    data-perm-id="${perm.id}"
-                    ${isChecked ? 'checked' : ''}>
-                  <span class="text-sm font-medium ${isChecked ? 'text-blue-900' : 'text-gray-700'}">
-                    ${action.charAt(0).toUpperCase() + action.slice(1)}
-                  </span>
-                </label>
+                <button
+                  data-action="toggle-icon" data-perm-id="${perm.id}"
+                  title="${action.charAt(0).toUpperCase() + action.slice(1)}"
+                  class="w-8 h-8 flex items-center justify-center rounded-lg transition-all
+                    ${isGranted
+                      ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                      : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}">
+                  <i class="ph ${actionIcons[action]} text-lg"></i>
+                </button>
               `;
             }).join('')}
           </div>
-        </div>
 
-        <!-- Special Actions -->
-        ${Object.keys(group.special_actions).length > 0 ? `
-          <div>
-            <div class="text-xs font-medium text-gray-500 mb-2">Special Actions</div>
-            <div class="flex flex-wrap gap-2">
+          <!-- Special Actions as Compact Badges -->
+          ${Object.keys(group.special_actions).length > 0 ? `
+            <div class="flex items-center gap-1">
               ${Object.entries(group.special_actions).map(([action, perm]) => {
                 const isActive = this.state.currentPermissions.has(perm.id);
                 return `
                   <button
                     data-action="toggle-badge" data-perm-id="${perm.id}"
-                    class="px-3 py-1.5 rounded-lg text-sm font-medium transition-all
+                    title="${action.charAt(0).toUpperCase() + action.slice(1)}"
+                    class="px-2 py-1 rounded text-xs font-medium transition-all
                       ${isActive
-                        ? 'bg-green-100 text-green-800 border-2 border-green-400 hover:bg-green-200'
-                        : 'bg-gray-100 text-gray-600 border-2 border-gray-300 hover:bg-gray-200'}">
-                    <i class="ph ${isActive ? 'ph-check-circle' : 'ph-circle'}"></i>
-                    ${action.charAt(0).toUpperCase() + action.slice(1)}
+                        ? 'bg-purple-100 text-purple-700 hover:bg-purple-200'
+                        : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}">
+                    ${action.charAt(0).toUpperCase()}
                   </button>
                 `;
               }).join('')}
             </div>
-          </div>
-        ` : ''}
+          ` : ''}
+
+          <!-- Toggle All Button -->
+          <button data-action="toggle-resource" data-key="${group.key}"
+            title="Toggle all permissions"
+            class="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-blue-600 transition-all">
+            <i class="ph ph-check-square text-lg"></i>
+          </button>
+        </div>
       </div>
     `;
   }
@@ -445,6 +450,7 @@ export class PermissionGrid {
         case 'toggle-resource':
           this.toggleAllForResource(e.target.closest('[data-key]').dataset.key);
           break;
+        case 'toggle-icon':
         case 'toggle-badge':
           this.togglePermission(e.target.closest('[data-perm-id]').dataset.permId);
           break;
@@ -477,19 +483,6 @@ export class PermissionGrid {
     container.querySelector('#perm-scope-filter')?.addEventListener('change', (e) => {
       this.state.filters.scope = e.target.value;
       this.refresh();
-    });
-
-    // Checkbox changes
-    container.querySelectorAll('.perm-checkbox').forEach(checkbox => {
-      checkbox.addEventListener('change', (e) => {
-        const permId = e.target.dataset.permId;
-        if (e.target.checked) {
-          this.state.currentPermissions.add(permId);
-        } else {
-          this.state.currentPermissions.delete(permId);
-        }
-        this.refresh();
-      });
     });
   }
 
