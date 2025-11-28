@@ -7,7 +7,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.orm import Session
 
-from app.core.dependencies import get_current_user, get_db
+from app.core.dependencies import get_current_user, get_db, has_permission
 from app.core.exceptions_helpers import not_found_exception
 from app.models.user import User
 from app.schemas.dashboard import (
@@ -42,9 +42,9 @@ logger = logging.getLogger(__name__)
 def create_dashboard(
     dashboard_data: DashboardCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(has_permission("dashboards:create:tenant"))
 ):
-    """Create a new dashboard."""
+    """Create a new dashboard - requires dashboards:create:tenant"""
     try:
         dashboard = DashboardService.create_dashboard(
             db=db,
@@ -64,9 +64,9 @@ def list_dashboards(
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(has_permission("dashboards:read:tenant"))
 ):
-    """List all accessible dashboards."""
+    """List all accessible dashboards - requires dashboards:read:tenant"""
     dashboards = DashboardService.list_dashboards(
         db=db,
         tenant_id=current_user.tenant_id,
@@ -101,9 +101,9 @@ def list_dashboards(
 def get_dashboard(
     dashboard_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(has_permission("dashboards:read:tenant"))
 ):
-    """Get a specific dashboard with all pages and widgets."""
+    """Get a specific dashboard with all pages and widgets - requires dashboards:read:tenant"""
     dashboard = DashboardService.get_dashboard(
         db=db,
         tenant_id=current_user.tenant_id,
@@ -122,9 +122,9 @@ def update_dashboard(
     dashboard_id: int,
     dashboard_data: DashboardUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(has_permission("dashboards:update:own"))
 ):
-    """Update a dashboard."""
+    """Update a dashboard - requires dashboards:update:own"""
     dashboard = DashboardService.update_dashboard(
         db=db,
         tenant_id=current_user.tenant_id,
@@ -142,9 +142,9 @@ def update_dashboard(
 def delete_dashboard(
     dashboard_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(has_permission("dashboards:delete:own"))
 ):
-    """Delete a dashboard (soft delete)."""
+    """Delete a dashboard (soft delete) - requires dashboards:delete:own"""
     success = DashboardService.delete_dashboard(
         db=db,
         tenant_id=current_user.tenant_id,
@@ -162,9 +162,9 @@ def clone_dashboard(
     dashboard_id: int,
     clone_request: DashboardCloneRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(has_permission("dashboards:clone:tenant"))
 ):
-    """Clone an existing dashboard."""
+    """Clone an existing dashboard - requires dashboards:clone:tenant"""
     dashboard = DashboardService.clone_dashboard(
         db=db,
         tenant_id=current_user.tenant_id,
@@ -185,9 +185,9 @@ def clone_dashboard(
 def create_page(
     page_data: DashboardPageCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(has_permission("dashboards:create_page:tenant"))
 ):
-    """Create a new dashboard page."""
+    """Create a new dashboard page - requires dashboards:create_page:tenant"""
     try:
         page = DashboardService.create_page(
             db=db,
@@ -204,9 +204,9 @@ def update_page(
     page_id: int,
     page_data: DashboardPageUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(has_permission("dashboards:update_page:own"))
 ):
-    """Update a dashboard page."""
+    """Update a dashboard page - requires dashboards:update_page:own"""
     page = DashboardService.update_page(
         db=db,
         tenant_id=current_user.tenant_id,
@@ -224,9 +224,9 @@ def update_page(
 def delete_page(
     page_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(has_permission("dashboards:delete_page:own"))
 ):
-    """Delete a dashboard page."""
+    """Delete a dashboard page - requires dashboards:delete_page:own"""
     success = DashboardService.delete_page(
         db=db,
         tenant_id=current_user.tenant_id,
@@ -245,9 +245,9 @@ def delete_page(
 def create_widget(
     widget_data: DashboardWidgetCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(has_permission("dashboards:create_widget:tenant"))
 ):
-    """Create a new dashboard widget."""
+    """Create a new dashboard widget - requires dashboards:create_widget:tenant"""
     try:
         widget = DashboardService.create_widget(
             db=db,
@@ -264,9 +264,9 @@ def update_widget(
     widget_id: int,
     widget_data: DashboardWidgetUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(has_permission("dashboards:update_widget:own"))
 ):
-    """Update a dashboard widget."""
+    """Update a dashboard widget - requires dashboards:update_widget:own"""
     widget = DashboardService.update_widget(
         db=db,
         tenant_id=current_user.tenant_id,
@@ -284,9 +284,9 @@ def update_widget(
 def delete_widget(
     widget_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(has_permission("dashboards:delete_widget:own"))
 ):
-    """Delete a dashboard widget."""
+    """Delete a dashboard widget - requires dashboards:delete_widget:own"""
     success = DashboardService.delete_widget(
         db=db,
         tenant_id=current_user.tenant_id,
@@ -303,9 +303,9 @@ def delete_widget(
 def bulk_update_widgets(
     bulk_request: BulkWidgetUpdateRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(has_permission("dashboards:update_widget:own"))
 ):
-    """Bulk update widget positions and order (for drag-drop)."""
+    """Bulk update widget positions and order (for drag-drop) - requires dashboards:update_widget:own"""
     try:
         success = DashboardService.bulk_update_widgets(
             db=db,
@@ -323,9 +323,9 @@ def bulk_update_widgets(
 def get_widget_data(
     data_request: WidgetDataRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(has_permission("dashboards:read:tenant"))
 ):
-    """Get data for a specific widget. Reuses ReportService for report-based widgets."""
+    """Get data for a specific widget. Reuses ReportService for report-based widgets - requires dashboards:read:tenant"""
     try:
         result = DashboardService.get_widget_data(
             db=db,
@@ -355,9 +355,9 @@ def get_widget_data(
 def create_share(
     share_data: DashboardShareCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(has_permission("dashboards:share:tenant"))
 ):
-    """Share a dashboard with a user or role."""
+    """Share a dashboard with a user or role - requires dashboards:share:tenant"""
     try:
         share = DashboardService.create_share(
             db=db,
@@ -376,9 +376,9 @@ def create_share(
 def create_snapshot(
     snapshot_data: DashboardSnapshotCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(has_permission("dashboards:snapshot:tenant"))
 ):
-    """Create a snapshot of a dashboard at a specific point in time."""
+    """Create a snapshot of a dashboard at a specific point in time - requires dashboards:snapshot:tenant"""
     try:
         snapshot = DashboardService.create_snapshot(
             db=db,

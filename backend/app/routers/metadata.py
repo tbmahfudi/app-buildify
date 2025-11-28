@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.core.audit import create_audit_log
-from app.core.dependencies import get_current_user, get_db, has_role
+from app.core.dependencies import get_current_user, get_db, has_permission
 from app.models.metadata import EntityMetadata
 from app.models.user import User
 from app.schemas.metadata import (
@@ -25,9 +25,13 @@ logger = logging.getLogger(__name__)
 @router.get("/entities", response_model=EntityListResponse)
 def list_entities(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(has_permission("metadata:read:tenant"))
 ):
-    """List all available entities"""
+    """
+    List all available entities.
+
+    Requires permission: metadata:read:tenant
+    """
     entities = db.query(EntityMetadata).filter(
         EntityMetadata.is_active == True
     ).all()
@@ -41,9 +45,13 @@ def list_entities(
 def get_entity_metadata(
     entity_name: str,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(has_permission("metadata:read:tenant"))
 ):
-    """Get metadata for a specific entity"""
+    """
+    Get metadata for a specific entity.
+
+    Requires permission: metadata:read:tenant
+    """
     metadata = db.query(EntityMetadata).filter(
         EntityMetadata.entity_name == entity_name,
         EntityMetadata.is_active == True
@@ -79,9 +87,13 @@ def get_entity_metadata(
 def create_entity_metadata(
     entity: EntityMetadataCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_role("admin"))
+    current_user: User = Depends(has_permission("metadata:create:tenant"))
 ):
-    """Create metadata for a new entity (admin only)"""
+    """
+    Create metadata for a new entity.
+
+    Requires permission: metadata:create:tenant
+    """
     
     # Check if entity already exists
     existing = db.query(EntityMetadata).filter(
@@ -148,9 +160,13 @@ def update_entity_metadata(
     entity_name: str,
     updates: EntityMetadataUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_role("admin"))
+    current_user: User = Depends(has_permission("metadata:update:tenant"))
 ):
-    """Update entity metadata (admin only)"""
+    """
+    Update entity metadata.
+
+    Requires permission: metadata:update:tenant
+    """
     
     metadata = db.query(EntityMetadata).filter(
         EntityMetadata.entity_name == entity_name
@@ -220,9 +236,13 @@ def update_entity_metadata(
 def delete_entity_metadata(
     entity_name: str,
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_role("admin"))
+    current_user: User = Depends(has_permission("metadata:delete:tenant"))
 ):
-    """Soft delete entity metadata (admin only)"""
+    """
+    Soft delete entity metadata.
+
+    Requires permission: metadata:delete:tenant
+    """
     
     metadata = db.query(EntityMetadata).filter(
         EntityMetadata.entity_name == entity_name

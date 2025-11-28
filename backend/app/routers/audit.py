@@ -5,7 +5,7 @@ from typing import List
 from uuid import UUID
 import json
 
-from app.core.dependencies import get_db, get_current_user, has_role
+from app.core.dependencies import get_db, get_current_user, has_permission
 from app.models.user import User
 from app.models.audit import AuditLog
 from app.schemas.audit import (
@@ -18,9 +18,9 @@ router = APIRouter(prefix="/audit", tags=["audit"])
 def list_audit_logs(
     request: AuditLogListRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(has_permission("audit:read:tenant"))
 ):
-    """List audit logs with filters"""
+    """List audit logs with filters - requires audit:read:tenant"""
     
     # Base query
     query = db.query(AuditLog)
@@ -127,26 +127,26 @@ def _get_audit_summary_impl(db: Session, current_user: User):
 @router.get("/summary")
 def get_audit_summary_short(
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_role("admin"))
+    current_user: User = Depends(has_permission("audit:summary:read:tenant"))
 ):
-    """Get audit statistics summary (short path)"""
+    """Get audit statistics summary (short path) - requires audit:summary:read:tenant"""
     return _get_audit_summary_impl(db, current_user)
 
 @router.get("/stats/summary")
 def get_audit_summary(
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_role("admin"))
+    current_user: User = Depends(has_permission("audit:summary:read:tenant"))
 ):
-    """Get audit statistics summary"""
+    """Get audit statistics summary - requires audit:summary:read:tenant"""
     return _get_audit_summary_impl(db, current_user)
 
 @router.get("/{log_id}", response_model=AuditLogResponse)
 def get_audit_log(
     log_id: UUID,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(has_permission("audit:read:tenant"))
 ):
-    """Get a specific audit log"""
+    """Get a specific audit log - requires audit:read:tenant"""
     log = db.query(AuditLog).filter(AuditLog.id == str(log_id)).first()
 
     if not log:

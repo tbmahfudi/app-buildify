@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 import uuid
 import json
 
-from app.core.dependencies import get_db, get_current_user, has_role
+from app.core.dependencies import get_db, get_current_user, has_permission
 from app.models.user import User
 from app.models.settings import UserSettings, TenantSettings
 from app.schemas.settings import (
@@ -19,9 +19,9 @@ router = APIRouter(prefix="/settings", tags=["settings"])
 @router.get("/user", response_model=UserSettingsResponse)
 def get_user_settings(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(has_permission("settings:read:own"))
 ):
-    """Get current user's settings"""
+    """Get current user's settings - requires settings:read:own"""
     settings = db.query(UserSettings).filter(
         UserSettings.user_id == str(current_user.id)
     ).first()
@@ -64,9 +64,9 @@ def get_user_settings(
 def update_user_settings(
     updates: UserSettingsUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(has_permission("settings:update:own"))
 ):
-    """Update current user's settings"""
+    """Update current user's settings - requires settings:update:own"""
     settings = db.query(UserSettings).filter(
         UserSettings.user_id == str(current_user.id)
     ).first()
@@ -134,9 +134,9 @@ def update_user_settings(
 def get_tenant_settings(
     tenant_id: str = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(has_permission("settings:read:tenant"))
 ):
-    """Get tenant settings (uses current user's tenant if not specified)"""
+    """Get tenant settings (uses current user's tenant if not specified) - requires settings:read:tenant"""
 
     # Determine tenant_id
     target_tenant = tenant_id or str(current_user.tenant_id) if current_user.tenant_id else None
@@ -201,9 +201,9 @@ def update_tenant_settings(
     updates: TenantSettingsUpdate,
     tenant_id: str = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_role("admin"))
+    current_user: User = Depends(has_permission("settings:update:tenant"))
 ):
-    """Update tenant settings (admin only)"""
+    """Update tenant settings - requires settings:update:tenant"""
     
     # Determine tenant_id
     target_tenant = tenant_id or current_user.tenant_id
