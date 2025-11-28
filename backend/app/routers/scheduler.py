@@ -8,7 +8,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
-from app.core.dependencies import get_current_user, get_db
+from app.core.dependencies import get_current_user, get_db, has_permission
 from app.models.scheduler import JobStatus, JobType
 from app.models.user import User
 from app.schemas.scheduler import (
@@ -39,16 +39,12 @@ logger = logging.getLogger(__name__)
 def create_scheduler_config(
     config_data: SchedulerConfigCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(has_permission("scheduler:config:create:tenant"))
 ):
     """
     Create a new scheduler configuration.
 
-    Requires appropriate permissions based on configuration level:
-    - SYSTEM: Admin only
-    - TENANT: Tenant admin
-    - COMPANY: Company admin
-    - BRANCH: Branch admin
+    Requires permission: scheduler:config:create:tenant
     """
     try:
         config = SchedulerService.create_config(
@@ -84,12 +80,13 @@ def get_effective_config(
     company_id: Optional[UUID] = Query(None, description="Company ID"),
     branch_id: Optional[UUID] = Query(None, description="Branch ID"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(has_permission("scheduler:config:read:tenant"))
 ):
     """
     Get the effective scheduler configuration for the given hierarchy.
 
     Resolution order: Branch > Company > Tenant > System
+    Requires permission: scheduler:config:read:tenant
     """
     # Default to current user's context if not specified
     if tenant_id is None:
@@ -115,9 +112,13 @@ def get_effective_config(
 def get_scheduler_config(
     config_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(has_permission("scheduler:config:read:tenant"))
 ):
-    """Get a specific scheduler configuration."""
+    """
+    Get a specific scheduler configuration.
+
+    Requires permission: scheduler:config:read:tenant
+    """
     config = db.query(SchedulerConfig).filter(
         SchedulerConfig.id == config_id
     ).first()
@@ -136,9 +137,13 @@ def update_scheduler_config(
     config_id: int,
     config_data: SchedulerConfigUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(has_permission("scheduler:config:update:tenant"))
 ):
-    """Update a scheduler configuration."""
+    """
+    Update a scheduler configuration.
+
+    Requires permission: scheduler:config:update:tenant
+    """
     # Filter out None values
     update_data = {k: v for k, v in config_data.model_dump().items() if v is not None}
 
@@ -163,9 +168,13 @@ def update_scheduler_config(
 def delete_scheduler_config(
     config_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(has_permission("scheduler:config:delete:tenant"))
 ):
-    """Delete a scheduler configuration."""
+    """
+    Delete a scheduler configuration.
+
+    Requires permission: scheduler:config:delete:tenant
+    """
     deleted = SchedulerService.delete_config(db=db, config_id=config_id)
 
     if not deleted:
@@ -181,9 +190,13 @@ def delete_scheduler_config(
 def create_scheduler_job(
     job_data: SchedulerJobCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(has_permission("scheduler:jobs:create:tenant"))
 ):
-    """Create a new scheduled job."""
+    """
+    Create a new scheduled job.
+
+    Requires permission: scheduler:jobs:create:tenant
+    """
     try:
         job = SchedulerService.create_job(
             db=db,
@@ -223,9 +236,13 @@ def list_scheduler_jobs(
     skip: int = Query(0, ge=0, description="Number of records to skip"),
     limit: int = Query(100, ge=1, le=1000, description="Maximum number of records"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(has_permission("scheduler:jobs:read:tenant"))
 ):
-    """List scheduled jobs with optional filters."""
+    """
+    List scheduled jobs with optional filters.
+
+    Requires permission: scheduler:jobs:read:tenant
+    """
     # Default to current user's tenant if not specified
     if tenant_id is None:
         tenant_id = current_user.tenant_id
@@ -268,9 +285,13 @@ def list_scheduler_jobs(
 def get_scheduler_job(
     job_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(has_permission("scheduler:jobs:read:tenant"))
 ):
-    """Get a specific scheduled job."""
+    """
+    Get a specific scheduled job.
+
+    Requires permission: scheduler:jobs:read:tenant
+    """
     job = SchedulerService.get_job(db=db, job_id=job_id)
 
     if not job:
@@ -294,9 +315,13 @@ def update_scheduler_job(
     job_id: int,
     job_data: SchedulerJobUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(has_permission("scheduler:jobs:update:tenant"))
 ):
-    """Update a scheduled job."""
+    """
+    Update a scheduled job.
+
+    Requires permission: scheduler:jobs:update:tenant
+    """
     # Filter out None values
     update_data = {k: v for k, v in job_data.model_dump().items() if v is not None}
 
@@ -323,9 +348,13 @@ def update_scheduler_job(
 def delete_scheduler_job(
     job_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(has_permission("scheduler:jobs:delete:tenant"))
 ):
-    """Delete a scheduled job."""
+    """
+    Delete a scheduled job.
+
+    Requires permission: scheduler:jobs:delete:tenant
+    """
     deleted = SchedulerService.delete_job(db=db, job_id=job_id)
 
     if not deleted:
@@ -342,9 +371,13 @@ def execute_job_manually(
     job_id: int,
     request: JobExecuteRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(has_permission("scheduler:jobs:execute:tenant"))
 ):
-    """Manually trigger a job execution."""
+    """
+    Manually trigger a job execution.
+
+    Requires permission: scheduler:jobs:execute:tenant
+    """
     job = SchedulerService.get_job(db=db, job_id=job_id)
 
     if not job:
@@ -386,9 +419,13 @@ def list_job_executions(
     skip: int = Query(0, ge=0, description="Number of records to skip"),
     limit: int = Query(50, ge=1, le=500, description="Maximum number of records"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(has_permission("scheduler:executions:read:tenant"))
 ):
-    """Get execution history for a job."""
+    """
+    Get execution history for a job.
+
+    Requires permission: scheduler:executions:read:tenant
+    """
     job = SchedulerService.get_job(db=db, job_id=job_id)
 
     if not job:
@@ -424,9 +461,13 @@ def list_job_executions(
 def get_job_execution(
     execution_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(has_permission("scheduler:executions:read:tenant"))
 ):
-    """Get a specific job execution."""
+    """
+    Get a specific job execution.
+
+    Requires permission: scheduler:executions:read:tenant
+    """
     from app.models.scheduler import SchedulerJobExecution
 
     execution = db.query(SchedulerJobExecution).filter(
@@ -449,9 +490,13 @@ def get_execution_logs(
     skip: int = Query(0, ge=0, description="Number of records to skip"),
     limit: int = Query(100, ge=1, le=1000, description="Maximum number of records"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(has_permission("scheduler:executions:read:tenant"))
 ):
-    """Get logs for a job execution."""
+    """
+    Get logs for a job execution.
+
+    Requires permission: scheduler:executions:read:tenant
+    """
     logs = SchedulerService.get_execution_logs(
         db=db,
         execution_id=execution_id,
