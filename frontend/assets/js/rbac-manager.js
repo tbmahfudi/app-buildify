@@ -9,6 +9,7 @@ import { TableController } from './rbac/table-controller.js';
 import { modalManager } from './rbac/modal-controller.js';
 import { rbacAPI } from './rbac/rbac-api.js';
 import { permissionGrid } from './rbac/permission-grid.js';
+import { permissionAssignmentHelper } from './rbac/permission-assignment-helper.js';
 import { keyboardShortcuts, setupDefaultShortcuts } from './rbac/keyboard-shortcuts.js';
 
 class RBACManager {
@@ -285,6 +286,9 @@ class RBACManager {
       case 'users':
         await this.tables.users.load();
         break;
+      case 'assignment':
+        await this.loadAssignmentHelper();
+        break;
     }
   }
 
@@ -319,6 +323,41 @@ class RBACManager {
     } catch (error) {
       console.error('Error loading organization:', error);
       showToast('Failed to load organization structure', 'error');
+    } finally {
+      hideLoading();
+    }
+  }
+
+  async loadAssignmentHelper() {
+    try {
+      showLoading();
+
+      // Initialize the Permission Assignment Helper
+      await permissionAssignmentHelper.initialize('content-assignment');
+
+      console.log('✓ Permission Assignment Helper loaded successfully');
+
+    } catch (error) {
+      console.error('Error loading Assignment Helper:', error);
+      showToast('Failed to load Assignment Helper', 'error');
+
+      // Show error state
+      const container = document.getElementById('content-assignment');
+      if (container) {
+        container.innerHTML = `
+          <div class="bg-white rounded-xl shadow p-12 text-center">
+            <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <i class="ph ph-warning-circle text-3xl text-red-600"></i>
+            </div>
+            <h3 class="text-lg font-semibold text-gray-900 mb-2">Failed to Load Assignment Helper</h3>
+            <p class="text-sm text-gray-600 mb-4">${error.message || 'An unexpected error occurred'}</p>
+            <button onclick="rbacManager.loadAssignmentHelper()"
+              class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+              Try Again
+            </button>
+          </div>
+        `;
+      }
     } finally {
       hideLoading();
     }
