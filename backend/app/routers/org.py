@@ -11,7 +11,7 @@ from app.core.crud_helpers import (
     get_entity_by_id,
     validate_parent_exists,
 )
-from app.core.dependencies import get_current_user, get_db, has_role
+from app.core.dependencies import get_current_user, get_db, has_role, has_permission
 from app.core.exceptions_helpers import (
     duplicate_exception,
     not_found_exception,
@@ -58,7 +58,7 @@ def list_companies(
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(has_permission("companies:read:tenant"))
 ):
     """
     List all companies with pagination.
@@ -96,7 +96,7 @@ def list_companies(
 def get_company(
     company_id: str,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(has_permission("companies:read:tenant"))
 ):
     """
     Get a specific company by ID.
@@ -131,7 +131,7 @@ def create_company(
     company: CompanyCreate,
     request: Request,
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_role("admin"))
+    current_user: User = Depends(has_permission("companies:create:tenant"))
 ):
     """
     Create a new company (admin only).
@@ -211,7 +211,7 @@ def update_company(
     company: CompanyUpdate,
     request: Request,
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_role("admin"))
+    current_user: User = Depends(has_permission("companies:update:tenant"))
 ):
     """Update a company (admin only)"""
     db_company = get_entity_by_id(db, Company, company_id, "Company")
@@ -253,7 +253,7 @@ def delete_company(
     company_id: str,
     request: Request,
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_role("admin"))
+    current_user: User = Depends(has_permission("companies:delete:tenant"))
 ):
     """Delete a company (admin only)"""
     db_company = get_entity_by_id(db, Company, company_id, "Company")
@@ -298,7 +298,7 @@ def list_branches(
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(has_permission("branches:read:company"))
 ):
     """List branches, optionally filtered by tenant and/or company"""
     query = db.query(Branch)
@@ -312,7 +312,7 @@ def list_branches(
 def get_branch(
     branch_id: str,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(has_permission("branches:read:company"))
 ):
     """Get a specific branch"""
     return get_entity_by_id(db, Branch, branch_id, "Branch")
@@ -322,9 +322,9 @@ def create_branch(
     branch: BranchCreate,
     request: Request,
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_role("admin"))
+    current_user: User = Depends(has_permission("branches:create:company"))
 ):
-    """Create a new branch (admin only)"""
+    """Create a new branch"""
     # Verify company exists and get tenant_id from it
     company = validate_parent_exists(db, Company, branch.company_id, "Company")
 
@@ -356,9 +356,9 @@ def update_branch(
     branch: BranchUpdate,
     request: Request,
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_role("admin"))
+    current_user: User = Depends(has_permission("branches:update:company"))
 ):
-    """Update a branch (admin only)"""
+    """Update a branch"""
     db_branch = get_entity_by_id(db, Branch, branch_id, "Branch")
 
     # Capture before state
@@ -398,9 +398,9 @@ def delete_branch(
     branch_id: str,
     request: Request,
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_role("admin"))
+    current_user: User = Depends(has_permission("branches:delete:company"))
 ):
-    """Delete a branch (admin only)"""
+    """Delete a branch"""
     db_branch = get_entity_by_id(db, Branch, branch_id, "Branch")
 
     branch_name = db_branch.name
@@ -432,7 +432,7 @@ def list_departments(
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(has_permission("departments:read:branch"))
 ):
     """List departments, optionally filtered by tenant, company, and/or branch"""
     query = db.query(Department)
@@ -448,7 +448,7 @@ def list_departments(
 def get_department(
     department_id: str,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(has_permission("departments:read:branch"))
 ):
     """Get a specific department"""
     return get_entity_by_id(db, Department, department_id, "Department")
@@ -458,9 +458,9 @@ def create_department(
     department: DepartmentCreate,
     request: Request,
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_role("admin"))
+    current_user: User = Depends(has_permission("departments:create:branch"))
 ):
-    """Create a new department (admin only)"""
+    """Create a new department"""
     # Verify company exists and get tenant_id from it
     company = validate_parent_exists(db, Company, department.company_id, "Company")
 
@@ -499,9 +499,9 @@ def update_department(
     department: DepartmentUpdate,
     request: Request,
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_role("admin"))
+    current_user: User = Depends(has_permission("departments:update:branch"))
 ):
-    """Update a department (admin only)"""
+    """Update a department"""
     db_dept = get_entity_by_id(db, Department, department_id, "Department")
 
     # Capture before state
@@ -550,9 +550,9 @@ def delete_department(
     department_id: str,
     request: Request,
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_role("admin"))
+    current_user: User = Depends(has_permission("departments:delete:branch"))
 ):
-    """Delete a department (admin only)"""
+    """Delete a department"""
     db_dept = get_entity_by_id(db, Department, department_id, "Department")
 
     dept_name = db_dept.name
@@ -582,13 +582,9 @@ def list_tenants(
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(has_permission("tenants:read:all"))
 ):
-    """List all tenants - superuser only"""
-    # Only superusers can list tenants
-    if not current_user.is_superuser:
-        raise permission_denied_exception("list", "tenants")
-
+    """List all tenants - requires tenants:read:all permission"""
     from app.models.tenant import Tenant
 
     query = db.query(Tenant).filter(Tenant.deleted_at.is_(None))
@@ -632,12 +628,9 @@ def list_tenants(
 def get_tenant(
     tenant_id: str,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(has_permission("tenants:read:all"))
 ):
-    """Get a specific tenant - superuser only"""
-    if not current_user.is_superuser:
-        raise permission_denied_exception("view", "tenant")
-
+    """Get a specific tenant - requires tenants:read:all permission"""
     from app.models.tenant import Tenant
     from uuid import UUID
 
@@ -685,12 +678,9 @@ def get_tenant(
 def create_tenant(
     tenant: TenantCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(has_permission("tenants:create:all"))
 ):
-    """Create a new tenant - superuser only"""
-    if not current_user.is_superuser:
-        raise permission_denied_exception("create", "tenant")
-
+    """Create a new tenant - requires tenants:create:all permission"""
     from app.models.tenant import Tenant
 
     # Check if code already exists
@@ -756,12 +746,9 @@ def update_tenant(
     tenant_id: str,
     tenant_update: TenantUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(has_permission("tenants:update:all"))
 ):
-    """Update a tenant - superuser only"""
-    if not current_user.is_superuser:
-        raise permission_denied_exception("update", "tenant")
-
+    """Update a tenant - requires tenants:update:all permission"""
     from app.models.tenant import Tenant
     from uuid import UUID
 
@@ -826,12 +813,9 @@ def update_tenant(
 def delete_tenant(
     tenant_id: str,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(has_permission("tenants:delete:all"))
 ):
-    """Delete a tenant (soft delete) - superuser only"""
-    if not current_user.is_superuser:
-        raise permission_denied_exception("delete", "tenant")
-
+    """Delete a tenant (soft delete) - requires tenants:delete:all permission"""
     from app.models.tenant import Tenant
     from uuid import UUID
     from datetime import datetime
@@ -864,9 +848,9 @@ def list_users(
     limit: int = 100,
     include_roles: bool = True,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(has_permission("users:read:tenant"))
 ):
-    """List all users - superusers see all, regular users see their tenant"""
+    """List all users - requires users:read:tenant permission"""
     from sqlalchemy.orm import joinedload
 
     query = db.query(User)
