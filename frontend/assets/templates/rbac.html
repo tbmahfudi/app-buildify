@@ -22,26 +22,32 @@
     </div>
   </div>
 
-  <!-- Tab Navigation - 6 tabs with Assignment Helper -->
-  <div class="border-b border-gray-200 mb-6">
-    <nav class="flex gap-4" role="tablist">
-      <button id="tab-dashboard" class="rbac-tab active px-4 py-3 text-sm font-medium border-b-2 border-blue-600 text-blue-600">
-        <i class="ph ph-chart-line-up mr-2"></i>Dashboard
+  <!-- Tab Navigation - Enhanced with Assignment Helper views -->
+  <div class="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-xl shadow-lg mb-6 p-4">
+    <nav class="flex gap-2 flex-wrap" role="tablist">
+      <button id="tab-dashboard" class="rbac-tab active px-4 py-2.5 text-sm font-medium rounded-lg transition-all bg-white text-blue-700 shadow-md">
+        <i class="ph-duotone ph-chart-line-up mr-2"></i>Dashboard
       </button>
-      <button id="tab-roles" class="rbac-tab px-4 py-3 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700">
-        <i class="ph ph-user-gear mr-2"></i>Roles & Permissions
+      <button id="tab-roles" class="rbac-tab px-4 py-2.5 text-sm font-medium rounded-lg transition-all bg-white/20 text-white hover:bg-white/30">
+        <i class="ph-duotone ph-user-gear mr-2"></i>Roles & Permissions
       </button>
-      <button id="tab-users" class="rbac-tab px-4 py-3 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700">
-        <i class="ph ph-users mr-2"></i>Users & Access
+      <button id="tab-users" class="rbac-tab px-4 py-2.5 text-sm font-medium rounded-lg transition-all bg-white/20 text-white hover:bg-white/30">
+        <i class="ph-duotone ph-users mr-2"></i>Users & Access
       </button>
-      <button id="tab-assignment" class="rbac-tab px-4 py-3 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700">
-        <i class="ph ph-lock-key mr-2"></i>Assignment Helper
+      <button id="tab-user-roles" class="rbac-tab px-4 py-2.5 text-sm font-medium rounded-lg transition-all bg-white/20 text-white hover:bg-white/30">
+        <i class="ph-duotone ph-user-gear mr-2"></i>User → Roles
       </button>
-      <button id="tab-groups" class="rbac-tab px-4 py-3 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700">
-        <i class="ph ph-users-three mr-2"></i>Groups
+      <button id="tab-role-permissions" class="rbac-tab px-4 py-2.5 text-sm font-medium rounded-lg transition-all bg-white/20 text-white hover:bg-white/30">
+        <i class="ph-duotone ph-shield-star mr-2"></i>Role → Permissions
       </button>
-      <button id="tab-organization" class="rbac-tab px-4 py-3 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700">
-        <i class="ph ph-building mr-2"></i>Organization
+      <button id="tab-matrix" class="rbac-tab px-4 py-2.5 text-sm font-medium rounded-lg transition-all bg-white/20 text-white hover:bg-white/30">
+        <i class="ph-duotone ph-table mr-2"></i>Permission Matrix
+      </button>
+      <button id="tab-groups" class="rbac-tab px-4 py-2.5 text-sm font-medium rounded-lg transition-all bg-white/20 text-white hover:bg-white/30">
+        <i class="ph-duotone ph-users-three mr-2"></i>Groups
+      </button>
+      <button id="tab-organization" class="rbac-tab px-4 py-2.5 text-sm font-medium rounded-lg transition-all bg-white/20 text-white hover:bg-white/30">
+        <i class="ph-duotone ph-building mr-2"></i>Organization
       </button>
     </nav>
   </div>
@@ -283,9 +289,19 @@
       </div>
     </div>
 
-    <!-- Assignment Helper Tab -->
-    <div id="content-assignment" class="rbac-content hidden">
-      <!-- Permission Assignment Helper will be dynamically inserted here -->
+    <!-- User → Roles View -->
+    <div id="content-user-roles" class="rbac-content hidden">
+      <!-- User → Roles assignment view -->
+    </div>
+
+    <!-- Role → Permissions View -->
+    <div id="content-role-permissions" class="rbac-content hidden">
+      <!-- Role → Permissions assignment view -->
+    </div>
+
+    <!-- Permission Matrix View -->
+    <div id="content-matrix" class="rbac-content hidden">
+      <!-- Permission Matrix view -->
     </div>
   </div>
 </div>
@@ -352,16 +368,25 @@
 </div>
 
 <style>
-.rbac-tab.active {
-  border-bottom-color: rgb(37, 99, 235);
-  color: rgb(37, 99, 235);
-}
-
 .rbac-tab {
-  transition: all 0.2s;
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
 }
 
-.rbac-tab:hover {
-  color: rgb(55, 65, 81);
+.rbac-tab.active {
+  background-color: white !important;
+  color: rgb(29, 78, 216) !important; /* blue-700 */
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.rbac-tab:not(.active) {
+  background-color: rgba(255, 255, 255, 0.2);
+  color: white;
+}
+
+.rbac-tab:not(.active):hover {
+  background-color: rgba(255, 255, 255, 0.3);
 }
 </style>
