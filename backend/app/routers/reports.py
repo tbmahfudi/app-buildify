@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException, Response, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
-from app.core.dependencies import get_current_user, get_db
+from app.core.dependencies import get_current_user, get_db, has_permission
 from app.core.exceptions_helpers import not_found_exception
 from app.core.response_builders import build_list_response
 from app.models.user import User
@@ -42,9 +42,13 @@ logger = logging.getLogger(__name__)
 def create_report_definition(
     report_data: ReportDefinitionCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(has_permission("reports:create:tenant"))
 ):
-    """Create a new report definition."""
+    """
+    Create a new report definition.
+
+    Requires permission: reports:create:tenant
+    """
     try:
         report = ReportService.create_report_definition(
             db=db,
@@ -63,9 +67,13 @@ def list_report_definitions(
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(has_permission("reports:read:tenant"))
 ):
-    """List all accessible report definitions."""
+    """
+    List all accessible report definitions.
+
+    Requires permission: reports:read:tenant
+    """
     reports = ReportService.list_report_definitions(
         db=db,
         tenant_id=current_user.tenant_id,
@@ -81,9 +89,13 @@ def list_report_definitions(
 def get_report_definition(
     report_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(has_permission("reports:read:tenant"))
 ):
-    """Get a specific report definition."""
+    """
+    Get a specific report definition.
+
+    Requires permission: reports:read:tenant
+    """
     report = ReportService.get_report_definition(
         db=db,
         tenant_id=current_user.tenant_id,
@@ -102,9 +114,13 @@ def update_report_definition(
     report_id: int,
     report_data: ReportDefinitionUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(has_permission("reports:update:own"))
 ):
-    """Update a report definition."""
+    """
+    Update a report definition.
+
+    Requires permission: reports:update:own
+    """
     report = ReportService.update_report_definition(
         db=db,
         tenant_id=current_user.tenant_id,
@@ -122,9 +138,13 @@ def update_report_definition(
 def delete_report_definition(
     report_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(has_permission("reports:delete:own"))
 ):
-    """Delete a report definition (soft delete)."""
+    """
+    Delete a report definition (soft delete).
+
+    Requires permission: reports:delete:own
+    """
     success = ReportService.delete_report_definition(
         db=db,
         tenant_id=current_user.tenant_id,
@@ -143,9 +163,13 @@ def delete_report_definition(
 def execute_report(
     request: ReportExecutionRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(has_permission("reports:execute:tenant"))
 ):
-    """Execute a report and return results or export file."""
+    """
+    Execute a report and return results or export file.
+
+    Requires permission: reports:execute:tenant
+    """
     try:
         execution = ReportService.execute_report(
             db=db,
@@ -164,9 +188,13 @@ def execute_report(
 def execute_and_export_report(
     request: ReportExecutionRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(has_permission("reports:export:tenant"))
 ):
-    """Execute a report and return the exported file."""
+    """
+    Execute a report and return the exported file.
+
+    Requires permission: reports:export:tenant
+    """
     try:
         # Get report definition
         report_def = ReportService.get_report_definition(
@@ -235,9 +263,13 @@ def get_execution_history(
     skip: int = 0,
     limit: int = 50,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(has_permission("reports:history:read:tenant"))
 ):
-    """Get report execution history."""
+    """
+    Get report execution history.
+
+    Requires permission: reports:history:read:tenant
+    """
     from app.models.report import ReportExecution
 
     query = db.query(ReportExecution).filter(
@@ -279,9 +311,13 @@ def get_lookup_data(
 def create_report_schedule(
     schedule_data: ReportScheduleCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(has_permission("reports:schedule:create:tenant"))
 ):
-    """Create a new report schedule."""
+    """
+    Create a new report schedule.
+
+    Requires permission: reports:schedule:create:tenant
+    """
     from app.models.report import ReportSchedule
 
     # Verify report exists
@@ -314,9 +350,13 @@ def list_report_schedules(
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(has_permission("reports:schedule:read:tenant"))
 ):
-    """List all report schedules."""
+    """
+    List all report schedules.
+
+    Requires permission: reports:schedule:read:tenant
+    """
     from app.models.report import ReportSchedule
 
     query = db.query(ReportSchedule).filter(
@@ -335,9 +375,13 @@ def update_report_schedule(
     schedule_id: int,
     schedule_data: ReportScheduleUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(has_permission("reports:schedule:update:own"))
 ):
-    """Update a report schedule."""
+    """
+    Update a report schedule.
+
+    Requires permission: reports:schedule:update:own
+    """
     from app.models.report import ReportSchedule
 
     db_schedule = db.query(ReportSchedule).filter(
@@ -361,9 +405,13 @@ def update_report_schedule(
 def delete_report_schedule(
     schedule_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(has_permission("reports:schedule:delete:own"))
 ):
-    """Delete a report schedule."""
+    """
+    Delete a report schedule.
+
+    Requires permission: reports:schedule:delete:own
+    """
     from app.models.report import ReportSchedule
 
     db_schedule = db.query(ReportSchedule).filter(
@@ -387,9 +435,13 @@ def list_report_templates(
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(has_permission("reports:templates:read:tenant"))
 ):
-    """List available report templates."""
+    """
+    List available report templates.
+
+    Requires permission: reports:templates:read:tenant
+    """
     from app.models.report import ReportTemplate
 
     query = db.query(ReportTemplate)
@@ -406,9 +458,13 @@ def create_from_template(
     template_id: int,
     name: str,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(has_permission("reports:templates:create:tenant"))
 ):
-    """Create a new report from a template."""
+    """
+    Create a new report from a template.
+
+    Requires permission: reports:templates:create:tenant
+    """
     from app.models.report import ReportDefinition, ReportTemplate
 
     template = db.query(ReportTemplate).filter(ReportTemplate.id == template_id).first()
