@@ -69,5 +69,5 @@ class GUID(TypeDecorator):
 
 
 def generate_uuid():
-    """Generate a new UUID as a string."""
-    return str(uuid.uuid4())
+    """Generate a new UUID object."""
+    return uuid.uuid4()
