@@ -15,6 +15,28 @@
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
         }
+
+        .access-tab {
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            white-space: nowrap;
+        }
+
+        .access-tab.active {
+            background-color: white !important;
+            color: rgb(29, 78, 216) !important; /* blue-700 */
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        .access-tab:not(.active) {
+            background-color: rgba(255, 255, 255, 0.2);
+            color: white;
+        }
+
+        .access-tab:not(.active):hover {
+            background-color: rgba(255, 255, 255, 0.3);
+        }
     </style>
 </head>
 <body class="bg-gray-50">
@@ -51,9 +73,37 @@
             </div>
         </div>
 
-        <!-- Permission Assignment Helper Container -->
-        <div id="permission-assignment-container" class="hidden">
-            <!-- Content will be dynamically inserted here -->
+        <!-- Tab Navigation -->
+        <div id="tab-navigation" class="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-xl shadow-lg mb-6 p-4 hidden">
+            <nav class="flex gap-2 flex-wrap" role="tablist">
+                <button id="tab-user-roles" class="access-tab active px-4 py-2.5 text-sm font-medium rounded-lg transition-all bg-white text-blue-700 shadow-md">
+                    <i class="ph-duotone ph-user-gear mr-2"></i>User → Roles
+                </button>
+                <button id="tab-role-permissions" class="access-tab px-4 py-2.5 text-sm font-medium rounded-lg transition-all bg-white/20 text-white hover:bg-white/30">
+                    <i class="ph-duotone ph-shield-star mr-2"></i>Role → Permissions
+                </button>
+                <button id="tab-matrix" class="access-tab px-4 py-2.5 text-sm font-medium rounded-lg transition-all bg-white/20 text-white hover:bg-white/30">
+                    <i class="ph-duotone ph-table mr-2"></i>Permission Matrix
+                </button>
+            </nav>
+        </div>
+
+        <!-- Content Containers -->
+        <div id="content-container" class="hidden">
+            <!-- User → Roles View -->
+            <div id="content-user-roles" class="access-content">
+                <!-- User → Roles assignment view -->
+            </div>
+
+            <!-- Role → Permissions View -->
+            <div id="content-role-permissions" class="access-content hidden">
+                <!-- Role → Permissions assignment view -->
+            </div>
+
+            <!-- Permission Matrix View -->
+            <div id="content-matrix" class="access-content hidden">
+                <!-- Permission Matrix view -->
+            </div>
         </div>
 
         <!-- Error State -->
@@ -85,6 +135,9 @@
 
         // API base URL
         const API_BASE_URL = 'http://localhost:8000/api';
+
+        // Current view state
+        let currentView = 'user-roles';
 
         // Simple API client
         window.apiFetch = async function(endpoint, options = {}) {
@@ -183,18 +236,89 @@
             }
         }
 
+        // Setup tab navigation
+        function setupTabs() {
+            const tabs = document.querySelectorAll('.access-tab');
+
+            tabs.forEach(tab => {
+                tab.addEventListener('click', async () => {
+                    // Update active tab styling
+                    tabs.forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+
+                    // Get view name from tab id
+                    const view = tab.id.replace('tab-', '');
+                    currentView = view;
+
+                    // Hide all content
+                    document.querySelectorAll('.access-content').forEach(content => {
+                        content.classList.add('hidden');
+                    });
+
+                    // Show selected content
+                    document.getElementById(`content-${view}`).classList.remove('hidden');
+
+                    // Load view content
+                    await loadView(view);
+                });
+            });
+        }
+
+        // Load a specific view
+        async function loadView(view) {
+            try {
+                showLoading();
+
+                // Set the view in the helper
+                permissionAssignmentHelper.state.view = view;
+
+                // Render the content directly without the header
+                const container = document.getElementById(`content-${view}`);
+                if (container) {
+                    container.innerHTML = `
+                        <div class="bg-white rounded-xl shadow-lg">
+                            ${permissionAssignmentHelper.renderContent()}
+                        </div>
+                    `;
+
+                    // Setup event listeners for this view
+                    permissionAssignmentHelper.setupEventListeners();
+                }
+
+                console.log(`✓ Loaded view: ${view}`);
+
+            } catch (error) {
+                console.error(`Error loading view ${view}:`, error);
+                showToast(`Failed to load ${view} view`, 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
         // Initialize the application
         async function init() {
             try {
                 // Load current user
                 await loadCurrentUser();
 
+                // Initialize the Permission Assignment Helper (load data)
+                permissionAssignmentHelper.containerId = 'content-user-roles';
+                await Promise.all([
+                    permissionAssignmentHelper.loadUsers(),
+                    permissionAssignmentHelper.loadRoles(),
+                    permissionAssignmentHelper.loadPermissions()
+                ]);
+
                 // Hide loading, show content
                 document.getElementById('loading-container').classList.add('hidden');
-                document.getElementById('permission-assignment-container').classList.remove('hidden');
+                document.getElementById('tab-navigation').classList.remove('hidden');
+                document.getElementById('content-container').classList.remove('hidden');
 
-                // Initialize the Permission Assignment Helper
-                await permissionAssignmentHelper.initialize('permission-assignment-container');
+                // Setup tabs
+                setupTabs();
+
+                // Load initial view
+                await loadView('user-roles');
 
                 console.log('✓ Access Control Manager initialized successfully');
 
