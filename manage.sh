@@ -82,7 +82,8 @@ show_help() {
     echo "  db-shell       - Open database shell"
     echo ""
     echo "Seed Scripts (RBAC & Menu):"
-    echo "  seed-menu      - Seed menu items from frontend/config/menu.json"
+    echo "  seed-permissions   - Seed all permissions and role templates"
+    echo "  seed-menu          - Seed menu items from frontend/config/menu.json"
     echo "  seed-menu-rbac [TENANT] - Seed menu management RBAC for tenant"
     echo "  seed-module-rbac [TENANT] - Seed module management RBAC for tenant"
     echo "  seed-financial-rbac [TENANT] - Seed financial module RBAC for tenant"
@@ -107,6 +108,7 @@ show_help() {
     echo "  $0 setup postgres              # Complete initial setup"
     echo "  $0 start postgres              # Start services"
     echo "  $0 migrate mysql               # Run migrations"
+    echo "  $0 seed-permissions            # Seed all permissions and role templates"
     echo "  $0 seed-menu                   # Seed menu items"
     echo "  $0 seed-menu-rbac FASHIONHUB   # Setup menu RBAC for FASHIONHUB tenant"
     echo "  $0 logs backend                # View backend logs only"
@@ -558,6 +560,39 @@ seed_financial_rbac() {
     fi
 }
 
+# Function to seed all permissions and role templates
+seed_all_permissions() {
+    print_info "Seeding all permissions and role templates..."
+    print_info "This will create ~260 permissions across 7 categories and 9 default roles"
+    echo ""
+
+    if docker compose -f "$COMPOSE_FULL_PATH" exec -T backend python -m app.seeds.seed_all_permissions; then
+        echo ""
+        print_info "========================================="
+        print_info "✓ Permissions seeding completed successfully!"
+        print_info "========================================="
+        echo ""
+        print_info "Created:"
+        print_info "  • Organization permissions (47)"
+        print_info "  • RBAC permissions (30)"
+        print_info "  • Dashboard permissions (31)"
+        print_info "  • Report permissions (45)"
+        print_info "  • Scheduler permissions (31)"
+        print_info "  • Audit permissions (27)"
+        print_info "  • Settings permissions (49)"
+        print_info "  • 9 default role templates"
+        echo ""
+        print_info "Next steps:"
+        print_info "  1. Access Permission Assignment Helper at:"
+        print_info "     http://localhost:8080/access-control.html"
+        print_info "  2. Or use the RBAC API endpoints to manage permissions"
+        print_info "  3. View API docs: http://localhost:8000/docs"
+    else
+        print_error "Permission seeding failed"
+        exit 1
+    fi
+}
+
 # Main script logic
 case $COMMAND in
     start)
@@ -655,6 +690,10 @@ case $COMMAND in
     seed-financial-rbac)
         check_services_running
         seed_financial_rbac "$@"
+        ;;
+    seed-permissions)
+        check_services_running
+        seed_all_permissions
         ;;
     help|--help|-h)
         show_help

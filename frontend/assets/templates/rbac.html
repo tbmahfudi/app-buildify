@@ -22,7 +22,7 @@
     </div>
   </div>
 
-  <!-- Tab Navigation - Simplified from 7 to 5 tabs -->
+  <!-- Tab Navigation - 6 tabs with Assignment Helper -->
   <div class="border-b border-gray-200 mb-6">
     <nav class="flex gap-4" role="tablist">
       <button id="tab-dashboard" class="rbac-tab active px-4 py-3 text-sm font-medium border-b-2 border-blue-600 text-blue-600">
@@ -33,6 +33,9 @@
       </button>
       <button id="tab-users" class="rbac-tab px-4 py-3 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700">
         <i class="ph ph-users mr-2"></i>Users & Access
+      </button>
+      <button id="tab-assignment" class="rbac-tab px-4 py-3 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700">
+        <i class="ph ph-lock-key mr-2"></i>Assignment Helper
       </button>
       <button id="tab-groups" class="rbac-tab px-4 py-3 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700">
         <i class="ph ph-users-three mr-2"></i>Groups
@@ -278,6 +281,11 @@
           </div>
         </div>
       </div>
+    </div>
+
+    <!-- Assignment Helper Tab -->
+    <div id="content-assignment" class="rbac-content hidden">
+      <!-- Permission Assignment Helper will be dynamically inserted here -->
     </div>
   </div>
 </div>
