@@ -79,26 +79,26 @@ python -m app.seeds.seed_settings_permissions
 
 | Endpoint | Current Auth | New Permission | Status |
 |----------|-------------|----------------|--------|
-| `GET /permissions` | `get_current_user` | `permissions:read:tenant` | Pending |
-| `GET /permissions/grouped` | `get_current_user` | `permissions:read:tenant` | Pending |
-| `GET /permissions/{id}` | `get_current_user` | `permissions:read:tenant` | Pending |
-| `GET /permission-categories` | `get_current_user` | `permissions:read:tenant` | Pending |
-| `GET /roles` | `get_current_user` | `roles:read:tenant` | Pending |
-| `GET /roles/{id}` | `get_current_user` | `roles:read:tenant` | Pending |
-| `POST /roles/{id}/permissions` | `get_current_user` | `roles:assign_permissions:tenant` | Pending |
-| `DELETE /roles/{id}/permissions/{perm_id}` | `get_current_user` | `roles:revoke_permissions:tenant` | Pending |
-| `PATCH /roles/{id}/permissions/bulk` | `get_current_user` | `roles:assign_permissions:tenant` | Pending |
-| `GET /groups` | `get_current_user` | `groups:read:tenant` | Pending |
-| `GET /groups/{id}` | `get_current_user` | `groups:read:tenant` | Pending |
-| `POST /groups/{id}/members` | `get_current_user` | `groups:add_members:tenant` | Pending |
-| `DELETE /groups/{id}/members/{user_id}` | `get_current_user` | `groups:remove_members:tenant` | Pending |
-| `POST /groups/{id}/roles` | `get_current_user` | `groups:assign_roles:tenant` | Pending |
-| `DELETE /groups/{id}/roles/{role_id}` | `get_current_user` | `groups:revoke_roles:tenant` | Pending |
-| `GET /users/{id}/roles` | `get_current_user` | `users:read_roles:tenant` | Pending |
-| `GET /users/{id}/permissions` | `get_current_user` | `users:read_permissions:tenant` | Pending |
-| `POST /users/{id}/roles` | `get_current_user` | `users:assign_roles:tenant` | Pending |
-| `DELETE /users/{id}/roles/{role_id}` | `get_current_user` | `users:revoke_roles:tenant` | Pending |
-| `GET /organization-structure` | `get_current_user` | `organization:view:tenant` | Pending |
+| `GET /permissions` | `get_current_user` | `permissions:read:tenant` | ✅ Complete |
+| `GET /permissions/grouped` | `get_current_user` | `permissions:read:tenant` | ✅ Complete |
+| `GET /permissions/{id}` | `get_current_user` | `permissions:read:tenant` | ✅ Complete |
+| `GET /permission-categories` | `get_current_user` | `permissions:read:tenant` | ✅ Complete |
+| `GET /roles` | `get_current_user` | `roles:read:tenant` | ✅ Complete |
+| `GET /roles/{id}` | `get_current_user` | `roles:read:tenant` | ✅ Complete |
+| `POST /roles/{id}/permissions` | `get_current_user` | `roles:assign_permissions:tenant` | ✅ Complete |
+| `DELETE /roles/{id}/permissions/{perm_id}` | `get_current_user` | `roles:revoke_permissions:tenant` | ✅ Complete |
+| `PATCH /roles/{id}/permissions/bulk` | `get_current_user` | `roles:assign_permissions:tenant` | ✅ Complete |
+| `GET /groups` | `get_current_user` | `groups:read:tenant` | ✅ Complete |
+| `GET /groups/{id}` | `get_current_user` | `groups:read:tenant` | ✅ Complete |
+| `POST /groups/{id}/members` | `get_current_user` | `groups:add_members:tenant` | ✅ Complete |
+| `DELETE /groups/{id}/members/{user_id}` | `get_current_user` | `groups:remove_members:tenant` | ✅ Complete |
+| `POST /groups/{id}/roles` | `get_current_user` | `groups:assign_roles:tenant` | ✅ Complete |
+| `DELETE /groups/{id}/roles/{role_id}` | `get_current_user` | `groups:revoke_roles:tenant` | ✅ Complete |
+| `GET /users/{id}/roles` | `get_current_user` | `users:read_roles:tenant` | ✅ Complete |
+| `GET /users/{id}/permissions` | `get_current_user` | `users:read_permissions:tenant` | ✅ Complete |
+| `POST /users/{id}/roles` | `get_current_user` | `users:assign_roles:tenant` | ✅ Complete |
+| `DELETE /users/{id}/roles/{role_id}` | `get_current_user` | `users:revoke_roles:tenant` | ✅ Complete |
+| `GET /organization-structure` | `get_current_user` | `organization:view:tenant` | ✅ Complete |
 
 #### 3. Dashboard Router (`backend/app/routers/dashboards.py`)
 
@@ -144,10 +144,10 @@ python -m app.seeds.seed_settings_permissions
 
 | Endpoint | Current Auth | New Permission | Status |
 |----------|-------------|----------------|--------|
-| `POST /list` | `get_current_user` | `audit:read:tenant` | Pending |
-| `GET /summary` | `has_role("admin")` | `audit:summary:read:tenant` | Pending |
-| `GET /stats/summary` | `has_role("admin")` | `audit:summary:read:tenant` | Pending |
-| `GET /{log_id}` | `get_current_user` | `audit:read:tenant` | Pending |
+| `POST /list` | `get_current_user` | `audit:read:tenant` | ✅ Complete |
+| `GET /summary` | `has_role("admin")` | `audit:summary:read:tenant` | ✅ Complete |
+| `GET /stats/summary` | `has_role("admin")` | `audit:summary:read:tenant` | ✅ Complete |
+| `GET /{log_id}` | `get_current_user` | `audit:read:tenant` | ✅ Complete |
 
 #### 7. Settings Router (`backend/app/routers/settings.py`)
 
@@ -155,10 +155,10 @@ python -m app.seeds.seed_settings_permissions
 
 | Endpoint | Current Auth | New Permission | Status |
 |----------|-------------|----------------|--------|
-| `GET /user` | `get_current_user` | `settings:read:own` | Pending |
-| `PUT /user` | `get_current_user` | `settings:update:own` | Pending |
-| `GET /tenant` | `get_current_user` | `settings:read:tenant` | Pending |
-| `PUT /tenant` | `has_role("admin")` | `settings:update:tenant` | Pending |
+| `GET /user` | `get_current_user` | `settings:read:own` | ✅ Complete |
+| `PUT /user` | `get_current_user` | `settings:update:own` | ✅ Complete |
+| `GET /tenant` | `get_current_user` | `settings:read:tenant` | ✅ Complete |
+| `PUT /tenant` | `has_role("admin")` | `settings:update:tenant` | ✅ Complete |
 
 #### 8. Metadata Router (`backend/app/routers/metadata.py`)
 
@@ -236,9 +236,15 @@ After implementation:
 
 ---
 
-**Status:** Priority 1 Complete ✅ | Priority 2 Partial ✅⏳ | Priority 3 Complete ✅
+**Status:** Priority 1 Complete ✅ | Priority 2 Partial (56%) ✅⏳ | Priority 3 Complete ✅
 
 **Last Updated:** 2025-11-28
+
+**Recent Updates:**
+- ✅ Updated Organization Router (21 endpoints)
+- ✅ Updated RBAC Router (20 endpoints)
+- ✅ Updated Audit Router (4 endpoints)
+- ✅ Updated Settings Router (4 endpoints)
 
 ## 📈 Implementation Progress:
 
@@ -246,14 +252,14 @@ After implementation:
 - 7 permission seed scripts (~260 permissions)
 - Master seed script with role templates
 
-### ✅⏳ Priority 2: API Endpoint Updates (20% Complete)
+### ✅⏳ Priority 2: API Endpoint Updates (56% Complete)
 - ✅ **Organization Router** - 21 endpoints updated with granular permissions
-- ⏳ **RBAC Router** - Pending (20 endpoints)
+- ✅ **RBAC Router** - 20 endpoints updated with granular permissions
+- ✅ **Audit Router** - 4 endpoints updated with granular permissions
+- ✅ **Settings Router** - 4 endpoints updated with granular permissions
 - ⏳ **Dashboard Router** - Pending (15 endpoints)
 - ⏳ **Report Router** - Pending (14 endpoints)
 - ⏳ **Scheduler Router** - Pending (13 endpoints)
-- ⏳ **Audit Router** - Pending (4 endpoints)
-- ⏳ **Settings Router** - Pending (4 endpoints)
 - ⏳ **Metadata Router** - Pending (5 endpoints)
 
 ### ✅ Priority 3: Role Templates (100% Complete)
