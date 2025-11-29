@@ -302,7 +302,12 @@ class RBACManager {
       document.getElementById('stat-groups').textContent = stats.totalGroups;
       document.getElementById('stat-users').textContent = stats.totalUsers;
 
-      // Update dashboard title based on company context
+      // Update context header
+      this.renderDashboardContext();
+
+      // Render additional insights
+      this.renderDashboardInsights(stats);
+
       const contextText = this.selectedCompanyId
         ? ` - ${this.companies.find(c => c.id === this.selectedCompanyId)?.name || 'Company'}`
         : ' - All Companies';
@@ -313,6 +318,110 @@ class RBACManager {
       console.error('Error loading dashboard:', error);
       showToast('Failed to load dashboard', 'error');
     }
+  }
+
+  renderDashboardContext() {
+    const headerEl = document.getElementById('dashboard-context-header');
+    if (!headerEl) return;
+
+    if (this.selectedCompanyId) {
+      const company = this.companies.find(c => c.id === this.selectedCompanyId);
+      if (company) {
+        headerEl.innerHTML = `
+          <div class="bg-gradient-to-r from-blue-500 to-indigo-600 rounded-xl shadow-lg p-6 text-white">
+            <div class="flex items-center justify-between">
+              <div>
+                <div class="flex items-center gap-3 mb-2">
+                  <i class="ph-fill ph-buildings text-3xl"></i>
+                  <h2 class="text-2xl font-bold">${company.name}</h2>
+                </div>
+                <p class="text-blue-100">Company Access Control Overview</p>
+              </div>
+              <div class="text-right">
+                <div class="text-sm text-blue-100">Viewing Company Scope</div>
+                <div class="text-xs text-blue-200 mt-1">${company.code || 'N/A'}</div>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+    } else {
+      headerEl.innerHTML = `
+        <div class="bg-gradient-to-r from-gray-700 to-gray-900 rounded-xl shadow-lg p-6 text-white">
+          <div class="flex items-center justify-between">
+            <div>
+              <div class="flex items-center gap-3 mb-2">
+                <i class="ph-fill ph-globe text-3xl"></i>
+                <h2 class="text-2xl font-bold">Tenant Overview</h2>
+              </div>
+              <p class="text-gray-300">All Companies - Organization-wide Statistics</p>
+            </div>
+            <div class="text-right">
+              <div class="text-sm text-gray-300">Viewing All Companies</div>
+              <div class="text-xs text-gray-400 mt-1">${this.companies.length} companies total</div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+  }
+
+  renderDashboardInsights(stats) {
+    const insightsEl = document.getElementById('dashboard-insights');
+    if (!insightsEl) return;
+
+    const insights = [];
+
+    // Role Distribution Insight
+    insights.push(`
+      <div class="bg-white rounded-xl shadow p-6">
+        <h3 class="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+          <i class="ph ph-user-gear text-blue-600"></i>
+          Role Distribution
+        </h3>
+        <div class="space-y-3">
+          <div class="flex items-center justify-between">
+            <span class="text-sm text-gray-600">System Roles</span>
+            <span class="px-3 py-1 bg-red-100 text-red-700 rounded-full text-sm font-medium">Protected</span>
+          </div>
+          <div class="flex items-center justify-between">
+            <span class="text-sm text-gray-600">Custom Roles</span>
+            <span class="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm font-medium">Editable</span>
+          </div>
+          <div class="flex items-center justify-between">
+            <span class="text-sm text-gray-600">Total Active</span>
+            <span class="text-2xl font-bold text-gray-900">${stats.totalRoles}</span>
+          </div>
+        </div>
+      </div>
+    `);
+
+    // Access Control Insight
+    const scopeLabel = this.selectedCompanyId ? 'Company' : 'Organization';
+    insights.push(`
+      <div class="bg-white rounded-xl shadow p-6">
+        <h3 class="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+          <i class="ph ph-shield-check text-green-600"></i>
+          ${scopeLabel} Access Summary
+        </h3>
+        <div class="space-y-3">
+          <div class="flex items-center justify-between">
+            <span class="text-sm text-gray-600">Active Users</span>
+            <span class="text-2xl font-bold text-gray-900">${stats.totalUsers}</span>
+          </div>
+          <div class="flex items-center justify-between">
+            <span class="text-sm text-gray-600">User Groups</span>
+            <span class="text-2xl font-bold text-gray-900">${stats.totalGroups}</span>
+          </div>
+          <div class="flex items-center justify-between">
+            <span class="text-sm text-gray-600">Permissions</span>
+            <span class="text-2xl font-bold text-gray-900">${stats.totalPermissions}</span>
+          </div>
+        </div>
+      </div>
+    `);
+
+    insightsEl.innerHTML = insights.join('');
   }
 
   async loadOrganizationStructure() {
@@ -370,9 +479,19 @@ class RBACManager {
       content.innerHTML = `
         <div class="h-full flex flex-col">
           <div class="mb-4 flex items-center justify-between flex-shrink-0">
-            <p class="text-sm text-gray-600">
-              <strong>${roles.length}</strong> roles × <strong>${permissions.length}</strong> permissions
-            </p>
+            <div>
+              <p class="text-sm text-gray-600 mb-2">
+                <strong>${roles.length}</strong> roles × <strong>${permissions.length}</strong> permissions
+              </p>
+              <div class="flex items-center gap-2 flex-wrap text-xs">
+                <span class="text-gray-500">Scopes:</span>
+                ${this.renderScopeBadge('all')}
+                ${this.renderScopeBadge('tenant')}
+                ${this.renderScopeBadge('company')}
+                ${this.renderScopeBadge('branch')}
+                ${this.renderScopeBadge('own')}
+              </div>
+            </div>
             <div class="flex items-center gap-4 text-xs text-gray-500">
               <div class="flex items-center gap-2">
                 <div class="w-4 h-4 bg-green-500 rounded"></div>
@@ -411,7 +530,8 @@ class RBACManager {
                       <td class="px-4 py-2 text-sm text-gray-900 sticky left-0 bg-white border-r whitespace-nowrap">
                         <div class="flex items-center gap-2">
                           <span class="font-mono text-xs bg-gray-100 px-2 py-0.5 rounded">${perm.code}</span>
-                          <span class="text-xs text-gray-500">${perm.name}</span>
+                          ${this.renderScopeBadge(perm.scope)}
+                          <span class="text-xs text-gray-500 truncate max-w-[150px]" title="${perm.name}">${perm.name}</span>
                         </div>
                       </td>
                       ${roles.map(role => `
@@ -1084,6 +1204,56 @@ class RBACManager {
     } else {
       this.loadTabData(this.currentTab);
     }
+  }
+
+  renderScopeBadge(scope) {
+    const scopeConfig = {
+      'all': { color: 'purple', icon: 'globe', label: 'System' },
+      'tenant': { color: 'blue', icon: 'buildings', label: 'Tenant' },
+      'company': { color: 'green', icon: 'building', label: 'Company' },
+      'branch': { color: 'yellow', icon: 'office', label: 'Branch' },
+      'department': { color: 'orange', icon: 'users-three', label: 'Dept' },
+      'own': { color: 'gray', icon: 'user', label: 'Own' }
+    };
+
+    const config = scopeConfig[scope] || scopeConfig['tenant'];
+    const colorClasses = {
+      'purple': 'bg-purple-100 text-purple-700 border-purple-200',
+      'blue': 'bg-blue-100 text-blue-700 border-blue-200',
+      'green': 'bg-green-100 text-green-700 border-green-200',
+      'yellow': 'bg-yellow-100 text-yellow-700 border-yellow-200',
+      'orange': 'bg-orange-100 text-orange-700 border-orange-200',
+      'gray': 'bg-gray-100 text-gray-700 border-gray-200'
+    };
+
+    return `
+      <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded border text-xs font-medium ${colorClasses[config.color]}" title="Scope: ${config.label}">
+        <i class="ph ph-${config.icon} text-xs"></i>
+        <span>${config.label}</span>
+      </span>
+    `;
+  }
+
+  renderRoleTypeBadge(role) {
+    const typeConfig = {
+      'system': { color: 'red', icon: 'shield-star', label: 'System' },
+      'default': { color: 'blue', icon: 'star', label: 'Default' },
+      'custom': { color: 'purple', icon: 'pencil', label: 'Custom' }
+    };
+
+    const config = typeConfig[role.role_type] || typeConfig['custom'];
+    const colorClasses = {
+      'red': 'bg-red-100 text-red-700',
+      'blue': 'bg-blue-100 text-blue-700',
+      'purple': 'bg-purple-100 text-purple-700'
+    };
+
+    return `
+      <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${colorClasses[config.color]}">
+        <i class="ph ph-${config.icon} text-xs"></i>
+        <span>${config.label}</span>
+      </span>
+    `;
   }
 }
 
