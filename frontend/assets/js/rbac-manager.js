@@ -593,21 +593,147 @@ class RBACManager {
   }
 
   renderOrgStructure(data) {
-    // Simple org structure renderer
-    return `
-      <div class="space-y-4">
-        <div class="p-4 bg-blue-50 rounded-lg">
-          <h4 class="font-semibold text-gray-900">${data.tenant?.name || 'Organization'}</h4>
-        </div>
-        ${data.companies?.map(company => `
-          <div class="ml-6 p-4 border-l-2 border-gray-300">
-            <div class="font-medium text-gray-900">${company.name}</div>
-            <div class="text-sm text-gray-500 mt-1">
-              ${company.branches?.length || 0} branches,
-              ${company.departments?.length || 0} departments
+    // If company is selected, zoom to that company's structure
+    if (this.selectedCompanyId) {
+      const selectedCompany = data.companies?.find(c => c.id === this.selectedCompanyId);
+
+      if (!selectedCompany) {
+        return `
+          <div class="text-center py-12">
+            <i class="ph-duotone ph-building-x text-6xl text-gray-300 mb-4"></i>
+            <p class="text-gray-500">Company not found</p>
+          </div>
+        `;
+      }
+
+      // Render zoomed company view
+      return `
+        <div class="space-y-4">
+          <!-- Company Header -->
+          <div class="p-6 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-lg text-white">
+            <div class="flex items-center justify-between">
+              <div>
+                <h3 class="text-2xl font-bold mb-1">${selectedCompany.name}</h3>
+                <p class="text-blue-100 text-sm">${selectedCompany.code || 'Company'}</p>
+              </div>
+              <div class="text-right">
+                <div class="text-sm text-blue-100">Organization Structure</div>
+                <div class="text-xs text-blue-200 mt-1">
+                  ${selectedCompany.branches?.length || 0} Branches •
+                  ${(selectedCompany.branches || []).reduce((sum, b) => sum + (b.departments?.length || 0), 0)} Departments
+                </div>
+              </div>
             </div>
           </div>
-        `).join('') || ''}
+
+          <!-- Branches -->
+          ${selectedCompany.branches?.length > 0 ? `
+            <div class="space-y-3">
+              ${selectedCompany.branches.map(branch => `
+                <div class="border border-gray-200 rounded-lg bg-white hover:shadow-md transition-shadow">
+                  <div class="p-4 bg-gray-50 border-b border-gray-200">
+                    <div class="flex items-center justify-between">
+                      <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                          <i class="ph-fill ph-buildings text-green-600 text-xl"></i>
+                        </div>
+                        <div>
+                          <h4 class="font-semibold text-gray-900">${branch.name}</h4>
+                          <p class="text-sm text-gray-600">${branch.code || 'Branch'}</p>
+                        </div>
+                      </div>
+                      <span class="px-3 py-1 ${branch.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'} text-xs font-medium rounded-full">
+                        ${branch.is_active ? 'Active' : 'Inactive'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <!-- Departments -->
+                  ${branch.departments?.length > 0 ? `
+                    <div class="p-4">
+                      <div class="text-xs font-semibold text-gray-500 uppercase mb-3">Departments</div>
+                      <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        ${branch.departments.map(dept => `
+                          <div class="p-3 border border-gray-200 rounded-lg hover:border-blue-300 transition-colors">
+                            <div class="flex items-center gap-2">
+                              <i class="ph ph-users-three text-blue-600"></i>
+                              <span class="font-medium text-gray-900">${dept.name}</span>
+                            </div>
+                            <p class="text-xs text-gray-500 mt-1">${dept.code || ''}</p>
+                          </div>
+                        `).join('')}
+                      </div>
+                    </div>
+                  ` : '<div class="p-4 text-center text-sm text-gray-500">No departments</div>'}
+                </div>
+              `).join('')}
+            </div>
+          ` : `
+            <div class="text-center py-12 bg-gray-50 rounded-lg">
+              <i class="ph-duotone ph-buildings text-6xl text-gray-300 mb-4"></i>
+              <p class="text-gray-500">No branches in this company</p>
+            </div>
+          `}
+        </div>
+      `;
+    }
+
+    // Full tenant view
+    return `
+      <div class="space-y-4">
+        <!-- Tenant Header -->
+        <div class="p-6 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-lg text-white">
+          <h3 class="text-2xl font-bold mb-1">${data.tenant?.name || 'Organization'}</h3>
+          <p class="text-blue-100 text-sm">Complete Organization Hierarchy</p>
+          <div class="text-xs text-blue-200 mt-2">
+            ${data.companies?.length || 0} Companies
+          </div>
+        </div>
+
+        <!-- Companies List -->
+        ${data.companies?.length > 0 ? `
+          <div class="space-y-3">
+            ${data.companies.map(company => `
+              <div class="border border-gray-200 rounded-lg bg-white hover:shadow-md transition-shadow">
+                <div class="p-4 bg-gray-50 border-b">
+                  <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                      <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                        <i class="ph-fill ph-buildings text-blue-600 text-2xl"></i>
+                      </div>
+                      <div>
+                        <h4 class="font-bold text-gray-900">${company.name}</h4>
+                        <p class="text-sm text-gray-600">${company.code || 'Company'}</p>
+                      </div>
+                    </div>
+                    <div class="text-right text-sm text-gray-600">
+                      <div>${company.branches?.length || 0} branches</div>
+                      <div class="text-xs text-gray-500">${(company.branches || []).reduce((sum, b) => sum + (b.departments?.length || 0), 0)} departments</div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Branches Summary -->
+                ${company.branches?.length > 0 ? `
+                  <div class="p-4">
+                    <div class="flex flex-wrap gap-2">
+                      ${company.branches.map(branch => `
+                        <span class="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded-full">
+                          ${branch.name} (${branch.departments?.length || 0})
+                        </span>
+                      `).join('')}
+                    </div>
+                  </div>
+                ` : ''}
+              </div>
+            `).join('')}
+          </div>
+        ` : `
+          <div class="text-center py-12 bg-gray-50 rounded-lg">
+            <i class="ph-duotone ph-buildings text-6xl text-gray-300 mb-4"></i>
+            <p class="text-gray-500">No companies in this organization</p>
+          </div>
+        `}
       </div>
     `;
   }
@@ -785,6 +911,17 @@ class RBACManager {
     return user?.roles?.some(role => role.code === 'tenant_admin');
   }
 
+  isCompanyManager(user) {
+    // Check if user has company_manager role
+    return user?.roles?.some(role => role.code === 'company_manager');
+  }
+
+  getUserCompanyId(user) {
+    // Get user's primary company_id
+    // Assuming user object has company_id or companies array
+    return user?.company_id || user?.companies?.[0]?.id || null;
+  }
+
   getFilterParams() {
     // Return query parameters for company filtering
     return this.selectedCompanyId ? { company_id: this.selectedCompanyId } : {};
@@ -792,6 +929,8 @@ class RBACManager {
 
   async setupCompanySelector() {
     try {
+      const currentUser = getCurrentUser();
+
       // Load companies
       const response = await rbacAPI.getCompanies({ limit: 1000 });
       this.companies = response.items || [];
@@ -804,31 +943,123 @@ class RBACManager {
       // Show container
       container.classList.remove('hidden');
 
-      // Populate dropdown
-      selector.innerHTML = '<option value="">All Companies</option>';
-      this.companies.forEach(company => {
-        const option = document.createElement('option');
-        option.value = company.id;
-        option.textContent = company.name;
-        selector.appendChild(option);
-      });
+      // Determine if user can switch companies
+      const canSwitchCompanies = currentUser?.is_superuser || this.isTenantAdmin(currentUser);
 
-      // Setup change handler
-      selector.addEventListener('change', (e) => {
-        this.selectedCompanyId = e.target.value || null;
-        this.onCompanyChange();
-      });
+      if (canSwitchCompanies) {
+        // Tenant Admin / Superuser: Show dropdown
+        selector.innerHTML = '<option value="">All Companies</option>';
+        this.companies.forEach(company => {
+          const option = document.createElement('option');
+          option.value = company.id;
+          option.textContent = company.name;
+          selector.appendChild(option);
+        });
 
-      console.log(`✓ Company selector loaded with ${this.companies.length} companies`);
+        // Setup change handler
+        selector.addEventListener('change', (e) => {
+          this.selectedCompanyId = e.target.value || null;
+          this.onCompanyChange();
+        });
+
+        console.log(`✓ Company selector loaded with ${this.companies.length} companies`);
+      } else if (this.isCompanyManager(currentUser)) {
+        // Company Manager: Auto-scope to their company
+        const userCompanyId = this.getUserCompanyId(currentUser);
+
+        if (userCompanyId) {
+          this.selectedCompanyId = userCompanyId;
+          const userCompany = this.companies.find(c => c.id === userCompanyId);
+
+          // Replace dropdown with read-only badge
+          container.innerHTML = `
+            <div class="flex items-center gap-2">
+              <label class="text-sm font-medium text-gray-700">
+                <i class="ph ph-buildings mr-1"></i>Company Context
+              </label>
+              <div class="px-4 py-2 bg-blue-50 border border-blue-200 rounded-lg flex items-center gap-2">
+                <i class="ph-fill ph-buildings text-blue-600"></i>
+                <span class="text-sm font-semibold text-blue-900">${userCompany?.name || 'Your Company'}</span>
+                <span class="px-2 py-0.5 bg-blue-200 text-blue-800 text-xs rounded">Scoped</span>
+              </div>
+            </div>
+          `;
+
+          // Update page context to show banner
+          this.updatePageContext();
+
+          console.log(`✓ Company manager scoped to: ${userCompany?.name}`);
+        }
+      }
     } catch (error) {
       console.error('Error setting up company selector:', error);
       showToast('Failed to load companies', 'error');
     }
   }
 
+  updatePageContext() {
+    // Update page header to show current company context
+    const headerTitle = document.querySelector('header h1 span');
+    const headerSubtitle = document.querySelector('header p.text-gray-600');
+
+    if (!headerTitle || !headerSubtitle) return;
+
+    if (this.selectedCompanyId) {
+      const company = this.companies.find(c => c.id === this.selectedCompanyId);
+      if (company) {
+        // Add company context banner
+        let contextBanner = document.getElementById('company-context-banner');
+        if (!contextBanner) {
+          contextBanner = document.createElement('div');
+          contextBanner.id = 'company-context-banner';
+          contextBanner.className = 'bg-blue-50 border-b border-blue-200 py-2 px-4';
+
+          const header = document.querySelector('header');
+          if (header) {
+            header.insertAdjacentElement('afterend', contextBanner);
+          }
+        }
+
+        contextBanner.innerHTML = `
+          <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between text-sm">
+              <div class="flex items-center gap-2 text-blue-800">
+                <i class="ph-fill ph-funnel text-blue-600"></i>
+                <span>Filtered to:</span>
+                <strong>${company.name}</strong>
+              </div>
+              <button onclick="rbacManager.clearCompanyFilter()" class="text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1">
+                <i class="ph ph-x-circle"></i>
+                <span>View All Companies</span>
+              </button>
+            </div>
+          </div>
+        `;
+      }
+    } else {
+      // Remove context banner
+      const contextBanner = document.getElementById('company-context-banner');
+      if (contextBanner) {
+        contextBanner.remove();
+      }
+    }
+  }
+
+  clearCompanyFilter() {
+    const selector = document.getElementById('company-selector');
+    if (selector) {
+      selector.value = '';
+      this.selectedCompanyId = null;
+      this.onCompanyChange();
+    }
+  }
+
   async onCompanyChange() {
     try {
       showLoading();
+
+      // Update page context indicator
+      this.updatePageContext();
 
       // Refresh current view with new company filter
       await this.loadTabData(this.currentTab);
