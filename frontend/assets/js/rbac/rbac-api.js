@@ -231,17 +231,25 @@ export const rbacAPI = {
     return response.json();
   },
 
+  async getCompanies(params = {}) {
+    const query = new URLSearchParams(params);
+    const response = await apiFetch(`/org/companies?${query}`);
+    return response.json();
+  },
+
   // ============================================================================
   // DASHBOARD
   // ============================================================================
 
-  async getDashboardStats() {
+  async getDashboardStats(companyId = null) {
     // Fetch multiple endpoints for dashboard stats
+    const params = companyId ? { company_id: companyId, limit: 1 } : { limit: 1 };
+
     const [roles, permissions, groups, users] = await Promise.all([
-      this.getRoles({ limit: 1 }),
-      this.getPermissions({ limit: 1 }),
-      this.getGroups({ limit: 1 }),
-      this.getUsers({ limit: 1 })
+      this.getRoles(params),
+      this.getPermissions(params),
+      this.getGroups(params),
+      this.getUsers(params)
     ]);
 
     return {

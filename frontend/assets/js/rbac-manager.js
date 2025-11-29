@@ -17,6 +17,8 @@ class RBACManager {
     this.tables = {};
     this.currentTab = 'dashboard';
     this.initPromise = null;
+    this.selectedCompanyId = null; // null = "All Companies"
+    this.companies = [];
   }
 
   async init() {
@@ -29,10 +31,10 @@ class RBACManager {
         // Setup keyboard shortcuts
         this.setupKeyboardShortcuts();
 
-        // Check if superuser
+        // Check if tenant admin or superuser
         const currentUser = getCurrentUser();
-        if (currentUser?.is_superuser) {
-          await this.setupTenantSelector();
+        if (currentUser?.is_superuser || this.isTenantAdmin(currentUser)) {
+          await this.setupCompanySelector();
         }
 
         // Setup tabs
@@ -270,6 +272,8 @@ class RBACManager {
   }
 
   async loadTabData(tabId) {
+    const filterParams = this.getFilterParams();
+
     switch (tabId) {
       case 'dashboard':
         await this.loadDashboard();
@@ -278,28 +282,32 @@ class RBACManager {
         await this.loadOrganizationStructure();
         break;
       case 'roles':
-        await this.tables.roles.load();
+        await this.tables.roles.load(filterParams);
         break;
       case 'groups':
-        await this.tables.groups.load();
+        await this.tables.groups.load(filterParams);
         break;
       case 'users':
-        await this.tables.users.load();
+        await this.tables.users.load(filterParams);
         break;
     }
   }
 
   async loadDashboard() {
     try {
-      const stats = await rbacAPI.getDashboardStats();
+      const stats = await rbacAPI.getDashboardStats(this.selectedCompanyId);
 
       document.getElementById('stat-roles').textContent = stats.totalRoles;
       document.getElementById('stat-permissions').textContent = stats.totalPermissions;
       document.getElementById('stat-groups').textContent = stats.totalGroups;
       document.getElementById('stat-users').textContent = stats.totalUsers;
 
-      // Load charts if needed
-      // ...
+      // Update dashboard title based on company context
+      const contextText = this.selectedCompanyId
+        ? ` - ${this.companies.find(c => c.id === this.selectedCompanyId)?.name || 'Company'}`
+        : ' - All Companies';
+
+      console.log(`✓ Dashboard loaded${contextText}`);
 
     } catch (error) {
       console.error('Error loading dashboard:', error);
@@ -340,10 +348,11 @@ class RBACManager {
       // Show modal
       modal.classList.remove('hidden');
 
-      // Load roles and permissions
+      // Load roles and permissions with company filter
+      const filterParams = this.getFilterParams();
       const [rolesData, permsData] = await Promise.all([
-        rbacAPI.getRoles({ limit: 100 }),
-        rbacAPI.getPermissions({ limit: 500 })
+        rbacAPI.getRoles({ ...filterParams, limit: 100 }),
+        rbacAPI.getPermissions({ ...filterParams, limit: 500 })
       ]);
 
       const roles = rolesData.items || [];
@@ -530,9 +539,10 @@ class RBACManager {
     try {
       showLoading();
 
+      const filterParams = this.getFilterParams();
       const [rolesData, permsData] = await Promise.all([
-        rbacAPI.getRoles({ limit: 100 }),
-        rbacAPI.getPermissions({ limit: 500 })
+        rbacAPI.getRoles({ ...filterParams, limit: 100 }),
+        rbacAPI.getPermissions({ ...filterParams, limit: 500 })
       ]);
 
       const roles = rolesData.items || [];
@@ -770,11 +780,69 @@ class RBACManager {
     }
   }
 
-  async setupTenantSelector() {
-    // Superuser tenant selector logic
-    const container = document.getElementById('tenant-selector-container');
-    if (container) {
+  isTenantAdmin(user) {
+    // Check if user has tenant_admin role
+    return user?.roles?.some(role => role.code === 'tenant_admin');
+  }
+
+  getFilterParams() {
+    // Return query parameters for company filtering
+    return this.selectedCompanyId ? { company_id: this.selectedCompanyId } : {};
+  }
+
+  async setupCompanySelector() {
+    try {
+      // Load companies
+      const response = await rbacAPI.getCompanies({ limit: 1000 });
+      this.companies = response.items || [];
+
+      const container = document.getElementById('company-selector-container');
+      const selector = document.getElementById('company-selector');
+
+      if (!container || !selector) return;
+
+      // Show container
       container.classList.remove('hidden');
+
+      // Populate dropdown
+      selector.innerHTML = '<option value="">All Companies</option>';
+      this.companies.forEach(company => {
+        const option = document.createElement('option');
+        option.value = company.id;
+        option.textContent = company.name;
+        selector.appendChild(option);
+      });
+
+      // Setup change handler
+      selector.addEventListener('change', (e) => {
+        this.selectedCompanyId = e.target.value || null;
+        this.onCompanyChange();
+      });
+
+      console.log(`✓ Company selector loaded with ${this.companies.length} companies`);
+    } catch (error) {
+      console.error('Error setting up company selector:', error);
+      showToast('Failed to load companies', 'error');
+    }
+  }
+
+  async onCompanyChange() {
+    try {
+      showLoading();
+
+      // Refresh current view with new company filter
+      await this.loadTabData(this.currentTab);
+
+      const companyName = this.selectedCompanyId
+        ? this.companies.find(c => c.id === this.selectedCompanyId)?.name
+        : 'All Companies';
+
+      showToast(`Viewing: ${companyName}`, 'info');
+    } catch (error) {
+      console.error('Error changing company:', error);
+      showToast('Failed to switch company context', 'error');
+    } finally {
+      hideLoading();
     }
   }
 
