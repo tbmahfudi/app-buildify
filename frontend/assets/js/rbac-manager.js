@@ -286,9 +286,6 @@ class RBACManager {
       case 'users':
         await this.tables.users.load();
         break;
-      case 'assignment':
-        await this.loadAssignmentHelper();
-        break;
     }
   }
 
@@ -328,36 +325,258 @@ class RBACManager {
     }
   }
 
-  async loadAssignmentHelper() {
+  async openPermissionMatrix() {
     try {
       showLoading();
 
-      // Initialize the Permission Assignment Helper
-      await permissionAssignmentHelper.initialize('content-assignment');
+      const modal = document.getElementById('permission-matrix-modal');
+      const content = document.getElementById('permission-matrix-content');
 
-      console.log('✓ Permission Assignment Helper loaded successfully');
+      if (!modal) {
+        showToast('Permission Matrix modal not found', 'error');
+        return;
+      }
+
+      // Show modal
+      modal.classList.remove('hidden');
+
+      // Load roles and permissions
+      const [rolesData, permsData] = await Promise.all([
+        rbacAPI.getRoles({ limit: 100 }),
+        rbacAPI.getPermissions({ limit: 500 })
+      ]);
+
+      const roles = rolesData.items || [];
+      const permissions = permsData.items || [];
+
+      // Group permissions by category
+      const permsByCategory = {};
+      permissions.forEach(perm => {
+        const cat = perm.category || 'Other';
+        if (!permsByCategory[cat]) permsByCategory[cat] = [];
+        permsByCategory[cat].push(perm);
+      });
+
+      // Render matrix
+      content.innerHTML = `
+        <div class="h-full flex flex-col">
+          <div class="mb-4 flex items-center justify-between flex-shrink-0">
+            <p class="text-sm text-gray-600">
+              <strong>${roles.length}</strong> roles × <strong>${permissions.length}</strong> permissions
+            </p>
+            <div class="flex items-center gap-4 text-xs text-gray-500">
+              <div class="flex items-center gap-2">
+                <div class="w-4 h-4 bg-green-500 rounded"></div>
+                <span>Granted</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <div class="w-4 h-4 bg-gray-300 rounded"></div>
+                <span>Not Granted</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex-1 overflow-auto border border-gray-200 rounded-lg">
+            <table class="min-w-full divide-y divide-gray-200">
+              <thead class="bg-gray-50 sticky top-0 z-10">
+                <tr>
+                  <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase sticky left-0 bg-gray-50 border-r min-w-[250px]">
+                    Permission
+                  </th>
+                  ${roles.map(role => `
+                    <th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase min-w-[100px]">
+                      <div class="truncate" title="${role.name}">${role.code}</div>
+                    </th>
+                  `).join('')}
+                </tr>
+              </thead>
+              <tbody class="bg-white divide-y divide-gray-200">
+                ${Object.entries(permsByCategory).map(([category, perms]) => `
+                  <tr class="bg-gray-100">
+                    <td colspan="${roles.length + 1}" class="px-4 py-2 text-sm font-bold text-gray-700">
+                      ${category.toUpperCase()}
+                    </td>
+                  </tr>
+                  ${perms.map(perm => `
+                    <tr class="hover:bg-blue-50">
+                      <td class="px-4 py-2 text-sm text-gray-900 sticky left-0 bg-white border-r whitespace-nowrap">
+                        <div class="flex items-center gap-2">
+                          <span class="font-mono text-xs bg-gray-100 px-2 py-0.5 rounded">${perm.code}</span>
+                          <span class="text-xs text-gray-500">${perm.name}</span>
+                        </div>
+                      </td>
+                      ${roles.map(role => `
+                        <td class="px-3 py-2 text-center">
+                          <button
+                            data-action="toggle-matrix-cell"
+                            data-role-id="${role.id}"
+                            data-perm-id="${perm.id}"
+                            class="matrix-cell-${role.id}-${perm.id} w-6 h-6 rounded flex items-center justify-center transition-all mx-auto
+                              bg-gray-200 text-gray-400 hover:bg-blue-100">
+                            <i class="ph ph-spinner-gap animate-spin text-xs"></i>
+                          </button>
+                        </td>
+                      `).join('')}
+                    </tr>
+                  `).join('')}
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+
+      // Load matrix data (lazy load per role to avoid overwhelming the browser)
+      this.loadMatrixData(roles, permissions);
+
+      // Setup click handlers for matrix cells
+      content.addEventListener('click', async (e) => {
+        const button = e.target.closest('[data-action="toggle-matrix-cell"]');
+        if (!button) return;
+
+        const roleId = button.dataset.roleId;
+        const permId = button.dataset.permId;
+
+        await this.toggleMatrixCell(roleId, permId, button);
+      });
+
+      console.log('✓ Permission Matrix loaded successfully');
 
     } catch (error) {
-      console.error('Error loading Assignment Helper:', error);
-      showToast('Failed to load Assignment Helper', 'error');
+      console.error('Error loading Permission Matrix:', error);
+      showToast('Failed to load Permission Matrix', 'error');
+    } finally {
+      hideLoading();
+    }
+  }
 
-      // Show error state
-      const container = document.getElementById('content-assignment');
-      if (container) {
-        container.innerHTML = `
-          <div class="bg-white rounded-xl shadow p-12 text-center">
-            <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <i class="ph ph-warning-circle text-3xl text-red-600"></i>
-            </div>
-            <h3 class="text-lg font-semibold text-gray-900 mb-2">Failed to Load Assignment Helper</h3>
-            <p class="text-sm text-gray-600 mb-4">${error.message || 'An unexpected error occurred'}</p>
-            <button onclick="rbacManager.loadAssignmentHelper()"
-              class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-              Try Again
-            </button>
-          </div>
-        `;
+  async loadMatrixData(roles, permissions) {
+    try {
+      // Load role permissions in batches to avoid overwhelming the browser
+      const batchSize = 5;
+      for (let i = 0; i < roles.length; i += batchSize) {
+        const batch = roles.slice(i, i + batchSize);
+
+        await Promise.all(
+          batch.map(async role => {
+            try {
+              const roleData = await rbacAPI.getRole(role.id);
+              const permIds = new Set((roleData.permissions || []).map(p => p.id));
+
+              // Update cells for this role
+              permissions.forEach(perm => {
+                const cell = document.querySelector(`.matrix-cell-${role.id}-${perm.id}`);
+                if (cell) {
+                  const hasPermission = permIds.has(perm.id);
+                  cell.className = `matrix-cell-${role.id}-${perm.id} w-6 h-6 rounded flex items-center justify-center transition-all cursor-pointer mx-auto ${
+                    hasPermission
+                      ? 'bg-green-500 text-white hover:bg-green-600'
+                      : 'bg-gray-300 text-gray-500 hover:bg-gray-400'
+                  }`;
+                  cell.innerHTML = hasPermission
+                    ? '<i class="ph-fill ph-check text-sm"></i>'
+                    : '<i class="ph ph-minus text-sm"></i>';
+                }
+              });
+            } catch (error) {
+              console.error(`Error loading permissions for role ${role.id}:`, error);
+            }
+          })
+        );
+
+        // Small delay between batches to keep UI responsive
+        await new Promise(resolve => setTimeout(resolve, 50));
       }
+    } catch (error) {
+      console.error('Error loading matrix data:', error);
+    }
+  }
+
+  async toggleMatrixCell(roleId, permId, cellElement) {
+    try {
+      const isGranted = cellElement.classList.contains('bg-green-500');
+
+      if (isGranted) {
+        await rbacAPI.removePermissionFromRole(roleId, permId);
+      } else {
+        await rbacAPI.assignPermissionsToRole(roleId, [permId]);
+      }
+
+      // Update cell
+      cellElement.className = cellElement.className.replace(
+        isGranted ? 'bg-green-500 text-white hover:bg-green-600' : 'bg-gray-300 text-gray-500 hover:bg-gray-400',
+        !isGranted ? 'bg-green-500 text-white hover:bg-green-600' : 'bg-gray-300 text-gray-500 hover:bg-gray-400'
+      );
+      cellElement.innerHTML = !isGranted
+        ? '<i class="ph-fill ph-check text-sm"></i>'
+        : '<i class="ph ph-minus text-sm"></i>';
+
+      showToast(`Permission ${!isGranted ? 'granted' : 'revoked'}`, 'success');
+
+    } catch (error) {
+      console.error('Error toggling permission:', error);
+      showToast('Failed to toggle permission', 'error');
+    }
+  }
+
+  closePermissionMatrix() {
+    const modal = document.getElementById('permission-matrix-modal');
+    if (modal) {
+      modal.classList.add('hidden');
+    }
+  }
+
+  async exportMatrixCSV() {
+    try {
+      showLoading();
+
+      const [rolesData, permsData] = await Promise.all([
+        rbacAPI.getRoles({ limit: 100 }),
+        rbacAPI.getPermissions({ limit: 500 })
+      ]);
+
+      const roles = rolesData.items || [];
+      const permissions = permsData.items || [];
+
+      // Load all role permissions
+      const rolePermMap = new Map();
+      await Promise.all(
+        roles.map(async role => {
+          const roleData = await rbacAPI.getRole(role.id);
+          const permIds = new Set((roleData.permissions || []).map(p => p.id));
+          rolePermMap.set(role.id, permIds);
+        })
+      );
+
+      // Build CSV
+      let csv = 'Permission Code,Permission Name,Category';
+      roles.forEach(role => {
+        csv += `,${role.code}`;
+      });
+      csv += '\n';
+
+      permissions.forEach(perm => {
+        csv += `"${perm.code}","${perm.name}","${perm.category || 'Other'}"`;
+        roles.forEach(role => {
+          const hasPermission = rolePermMap.get(role.id)?.has(perm.id) ? '1' : '0';
+          csv += `,${hasPermission}`;
+        });
+        csv += '\n';
+      });
+
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `permission-matrix-${Date.now()}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+
+      showToast('Matrix exported to CSV', 'success');
+
+    } catch (error) {
+      console.error('Error exporting matrix:', error);
+      showToast('Failed to export matrix', 'error');
     } finally {
       hideLoading();
     }
