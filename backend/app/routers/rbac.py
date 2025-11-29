@@ -38,6 +38,7 @@ async def list_permissions(
     category: Optional[str] = None,
     search: Optional[str] = None,
     is_active: Optional[bool] = None,
+    company_id: Optional[str] = None,
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000)
 ):
@@ -58,6 +59,10 @@ async def list_permissions(
     if is_active is not None:
         query = query.filter(Permission.is_active == is_active)
 
+    # Note: company_id parameter accepted but not filtered
+    # Permissions are system-wide, not company-specific
+    # This parameter is here for API consistency but doesn't affect results
+
     # Order by category and code
     query = query.order_by(Permission.category, Permission.code)
 
@@ -75,6 +80,9 @@ async def list_permissions(
                 "name": p.name,
                 "description": p.description,
                 "category": p.category,
+                "resource": p.resource,
+                "action": p.action,
+                "scope": p.scope,
                 "is_system": p.is_system,
                 "is_active": p.is_active,
                 "created_at": p.created_at.isoformat() if p.created_at else None,
@@ -224,6 +232,7 @@ async def list_roles(
     search: Optional[str] = None,
     is_active: Optional[bool] = None,
     tenant_id: Optional[str] = None,
+    company_id: Optional[str] = None,
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000)
 ):
@@ -244,8 +253,18 @@ async def list_roles(
     if is_active is not None:
         query = query.filter(Role.is_active == is_active)
 
+    # Company filtering (company_id parameter takes precedence)
+    if company_id:
+        # When filtering by company, show tenant-level and system roles
+        # (company-specific roles don't exist in current schema, so show tenant + system)
+        query = query.filter(
+            or_(
+                Role.tenant_id == current_user.tenant_id,
+                Role.tenant_id.is_(None)  # Include system roles
+            )
+        )
     # Tenant filtering
-    if tenant_id:
+    elif tenant_id:
         query = query.filter(
             or_(
                 Role.tenant_id == tenant_id,
