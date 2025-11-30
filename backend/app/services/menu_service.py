@@ -37,9 +37,9 @@ class MenuService:
         Returns:
             List of menu items in hierarchical structure
         """
-        # Get user permissions and roles
+        # Get user permissions and roles (through groups)
         permissions = user.get_permissions()
-        roles = [role.code for role in user.user_roles] if hasattr(user, 'user_roles') else []
+        roles = list(user.get_roles()) if hasattr(user, 'get_roles') else []
 
         # Get accessible core menu items
         menu_items = MenuService._get_accessible_menu_items(

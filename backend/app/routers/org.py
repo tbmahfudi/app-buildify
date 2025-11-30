@@ -23,7 +23,7 @@ from app.models.branch import Branch
 from app.models.company import Company
 from app.models.department import Department
 from app.models.group import Group
-from app.models.rbac_junctions import UserGroup, UserRole
+from app.models.rbac_junctions import GroupRole, UserGroup, UserRole
 from app.models.role import Role
 from app.models.tenant import Tenant
 from app.models.user import User
@@ -855,11 +855,10 @@ def list_users(
 
     query = db.query(User)
 
-    # Eager load roles and groups if requested
+    # Eager load groups if requested
     if include_roles:
         query = query.options(
-            joinedload(User.user_roles).joinedload(UserRole.role),
-            joinedload(User.user_groups).joinedload(UserGroup.group)
+            joinedload(User.user_groups).joinedload(UserGroup.group).joinedload(Group.group_roles).joinedload(GroupRole.role)
         )
 
     # Filter by tenant for non-superusers
@@ -887,26 +886,32 @@ def list_users(
 
         # Add roles and groups if requested
         if include_roles:
-            # Get direct roles
-            direct_roles = [
-                {
-                    "id": str(ur.role.id),
-                    "name": ur.role.name,
-                    "code": ur.role.code
-                }
-                for ur in u.user_roles if ur.role and ur.role.is_active
-            ]
+            # Get roles via groups (consistent with group-based RBAC model)
+            roles_via_groups = []
+            for ug in u.user_groups:
+                if ug.group and ug.group.is_active:
+                    for gr in ug.group.group_roles:
+                        if gr.role and gr.role.is_active:
+                            roles_via_groups.append({
+                                "id": str(gr.role.id),
+                                "name": gr.role.name,
+                                "code": gr.role.code,
+                                "group_id": str(ug.group.id),
+                                "group_name": ug.group.name,
+                                "group_code": ug.group.code
+                            })
 
             # Get groups
             groups = [
                 {
                     "id": str(ug.group.id),
-                    "name": ug.group.name
+                    "name": ug.group.name,
+                    "code": ug.group.code
                 }
                 for ug in u.user_groups if ug.group and ug.group.is_active
             ]
 
-            user_data["roles"] = direct_roles
+            user_data["roles"] = roles_via_groups
             user_data["groups"] = groups
 
         items.append(user_data)

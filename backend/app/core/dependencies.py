@@ -162,8 +162,11 @@ def has_role(role_code: str):
     """
     Dependency to check if user has a specific role.
 
+    RBAC Consistency: Roles are assigned through groups only.
+    Uses User.get_roles() which returns roles from group membership.
+
     Args:
-        role_code: Role code to check (e.g., "admin", "user")
+        role_code: Role code to check (e.g., "tenant_admin", "manager")
 
     Returns:
         Function that validates the user has the role
@@ -173,8 +176,8 @@ def has_role(role_code: str):
         if current_user.is_superuser:
             return current_user
 
-        # Check if user has the required role
-        user_role_codes = {user_role.role.code for user_role in current_user.user_roles if user_role.role and user_role.role.is_active}
+        # Get user roles from RBAC system (via groups)
+        user_role_codes = current_user.get_roles() if hasattr(current_user, 'get_roles') else set()
 
         if role_code not in user_role_codes:
             raise HTTPException(

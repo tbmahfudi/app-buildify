@@ -131,13 +131,13 @@ class User(Base):
 
     def get_roles(self):
         """
-        Get all role names for this user through group membership only.
+        Get all role codes for this user through group membership only.
 
         RBAC Consistency: Users are assigned to Groups, Groups are assigned to Roles.
         Direct user-to-role assignments are deprecated.
 
         Returns:
-            Set of role names
+            Set of role codes (e.g., "tenant_admin", "manager")
         """
         roles = set()
 
@@ -146,7 +146,7 @@ class User(Base):
             if user_group.group and user_group.group.is_active:
                 for group_role in user_group.group.group_roles:
                     if group_role.role and group_role.role.is_active:
-                        roles.add(group_role.role.name)
+                        roles.add(group_role.role.code)
 
         return roles
 
