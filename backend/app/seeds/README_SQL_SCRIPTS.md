@@ -16,23 +16,37 @@ Quick reference for cleaning up deprecated RBAC data and verifying group assignm
 
 ## 🚀 Quick Start
 
-### Option 1: Using manage.sh (Recommended)
+### Option 1: Using Helper Script (Easiest - Recommended)
 
 ```bash
-# Verify all users are in groups
-./manage.sh db-shell postgres
-\i backend/app/seeds/verify_rbac.sql
-\q
+# Quick verification (read-only, safe)
+./run_rbac_sql.sh verify
+
+# Full analysis
+./run_rbac_sql.sh cleanup
+
+# Interactive cleanup
+./run_rbac_sql.sh cleanup-interactive
 ```
 
-### Option 2: Direct psql
+### Option 2: Direct Docker Command
 
 ```bash
-# PostgreSQL
-psql -U appuser -d appdb -f backend/app/seeds/verify_rbac.sql
+# From host machine (files are on host)
+docker compose -f infra/docker-compose.dev.yml exec -T postgres psql -U appuser -d appdb < backend/app/seeds/verify_rbac.sql
 
-# Or via Docker
-docker compose -f infra/docker-compose.dev.yml exec postgres psql -U appuser -d appdb -f /app/backend/app/seeds/verify_rbac.sql
+# Or for interactive (cleanup)
+docker compose -f infra/docker-compose.dev.yml exec -i postgres psql -U appuser -d appdb < backend/app/seeds/cleanup_user_roles.sql
+```
+
+### Option 3: Copy-Paste SQL (If other methods fail)
+
+```bash
+# Open psql shell
+./manage.sh db-shell postgres
+
+# Then copy-paste the SQL from the files manually
+# (Not recommended but works)
 ```
 
 ---
