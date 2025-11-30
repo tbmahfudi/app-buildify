@@ -131,19 +131,17 @@ class User(Base):
 
     def get_roles(self):
         """
-        Get all role names for this user from direct roles and group roles.
+        Get all role names for this user through group membership only.
+
+        RBAC Consistency: Users are assigned to Groups, Groups are assigned to Roles.
+        Direct user-to-role assignments are deprecated.
 
         Returns:
             Set of role names
         """
         roles = set()
 
-        # Get direct user roles
-        for user_role in self.user_roles:
-            if user_role.role and user_role.role.is_active:
-                roles.add(user_role.role.name)
-
-        # Get roles from groups
+        # Get roles from groups ONLY (consistent RBAC model)
         for user_group in self.user_groups:
             if user_group.group and user_group.group.is_active:
                 for group_role in user_group.group.group_roles:
@@ -154,21 +152,18 @@ class User(Base):
 
     def get_permissions(self):
         """
-        Get all permissions for this user from direct roles and group roles.
+        Get all permissions for this user through group-based roles only.
+
+        RBAC Consistency: Permissions flow through the chain:
+        User → Group → Role → Permission
+        Direct user-to-role assignments are deprecated.
 
         Returns:
             Set of permission codes
         """
         permissions = set()
 
-        # Get permissions from direct user roles
-        for user_role in self.user_roles:
-            if user_role.role and user_role.role.is_active:
-                for role_perm in user_role.role.role_permissions:
-                    if role_perm.permission and role_perm.permission.is_active:
-                        permissions.add(role_perm.permission.code)
-
-        # Get permissions from group roles
+        # Get permissions from group roles ONLY (consistent RBAC model)
         for user_group in self.user_groups:
             if user_group.group and user_group.group.is_active:
                 for group_role in user_group.group.group_roles:
