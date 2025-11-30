@@ -83,6 +83,7 @@ show_help() {
     echo ""
     echo "Seed Scripts (RBAC & Menu):"
     echo "  seed-permissions   - Seed all permissions and role templates"
+    echo "  seed-rbac          - Seed RBAC with groups (User→Group→Role→Permission)"
     echo "  seed-menu          - Seed menu items from frontend/config/menu.json"
     echo "  seed-menu-rbac [TENANT] - Seed menu management RBAC for tenant"
     echo "  seed-module-rbac [TENANT] - Seed module management RBAC for tenant"
@@ -109,6 +110,7 @@ show_help() {
     echo "  $0 start postgres              # Start services"
     echo "  $0 migrate mysql               # Run migrations"
     echo "  $0 seed-permissions            # Seed all permissions and role templates"
+    echo "  $0 seed-rbac                   # Setup RBAC with groups for all tenants"
     echo "  $0 seed-menu                   # Seed menu items"
     echo "  $0 seed-menu-rbac FASHIONHUB   # Setup menu RBAC for FASHIONHUB tenant"
     echo "  $0 logs backend                # View backend logs only"
@@ -593,6 +595,56 @@ seed_all_permissions() {
     fi
 }
 
+# Function to seed RBAC with groups
+seed_rbac_with_groups() {
+    print_info "========================================="
+    print_info "Setting up RBAC with Group-Based Access Control"
+    print_info "========================================="
+    echo ""
+    print_info "This will:"
+    print_info "  • Create 10 default groups (Administrators, Managers, etc.)"
+    print_info "  • Create 10 default roles with permissions"
+    print_info "  • Assign roles to groups"
+    print_info "  • Auto-assign existing users to groups"
+    echo ""
+    print_info "RBAC Model: User → Group → Role → Permission"
+    echo ""
+
+    if docker compose -f "$COMPOSE_FULL_PATH" exec -T backend python -m app.seeds.seed_rbac_with_groups; then
+        echo ""
+        print_info "========================================="
+        print_info "✓ RBAC setup completed successfully!"
+        print_info "========================================="
+        echo ""
+        print_info "Created:"
+        print_info "  • 10 groups (Administrators, Managers, Employees, etc.)"
+        print_info "  • 10 roles (tenant_admin, manager, employee, etc.)"
+        print_info "  • Role → Group assignments"
+        print_info "  • User → Group assignments (smart email-based)"
+        echo ""
+        print_info "Users assigned to groups based on email patterns:"
+        print_info "  • admin@*, ceo@*, cto@* → Administrators"
+        print_info "  • manager@*, director@* → Managers"
+        print_info "  • hr@* → HR Team"
+        print_info "  • finance@* → Finance Team"
+        print_info "  • dev@*, engineer@* → Engineering Team"
+        print_info "  • (others) → Employees"
+        echo ""
+        print_info "Next steps:"
+        print_info "  1. Access RBAC Management: http://localhost:8080/rbac.html"
+        print_info "  2. View user roles via groups: GET /api/rbac/users/{user_id}/roles"
+        print_info "  3. Manage access by adding/removing users from groups"
+        print_info "  4. Read documentation: backend/app/seeds/README_RBAC.md"
+        echo ""
+        print_info "Documentation: backend/app/seeds/README_RBAC.md"
+    else
+        print_error "RBAC setup failed"
+        print_warning "Make sure organization data is seeded first:"
+        print_warning "  $0 seed"
+        exit 1
+    fi
+}
+
 # Main script logic
 case $COMMAND in
     start)
@@ -694,6 +746,10 @@ case $COMMAND in
     seed-permissions)
         check_services_running
         seed_all_permissions
+        ;;
+    seed-rbac)
+        check_services_running
+        seed_rbac_with_groups
         ;;
     help|--help|-h)
         show_help
