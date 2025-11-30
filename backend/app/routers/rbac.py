@@ -330,7 +330,7 @@ async def get_role(
         .all()
     )
 
-    # Get direct user assignments
+    # Get direct user assignments (DEPRECATED - for backwards compatibility only)
     user_roles = (
         db.query(UserRole)
         .filter(UserRole.role_id == role_id)
@@ -338,7 +338,7 @@ async def get_role(
         .all()
     )
 
-    # Get group assignments
+    # Get group assignments (CURRENT - group-based RBAC model)
     group_roles = (
         db.query(GroupRole)
         .filter(GroupRole.role_id == role_id)
@@ -365,7 +365,8 @@ async def get_role(
             }
             for rp in role_permissions if rp.permission
         ],
-        "users": [
+        # DEPRECATED: Direct user-to-role assignments (use groups instead)
+        "deprecated_direct_users": [
             {
                 "id": str(ur.user.id),
                 "email": ur.user.email,
@@ -374,6 +375,7 @@ async def get_role(
             }
             for ur in user_roles if ur.user
         ],
+        # Current group-based assignments
         "groups": [
             {
                 "id": str(gr.group.id),
