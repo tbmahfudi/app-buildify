@@ -24,6 +24,10 @@ export function isSuperuser() {
 
 /**
  * Check if user has a specific role
+ *
+ * RBAC Consistency: Roles are assigned through groups only.
+ * The user.roles array contains role names obtained through group membership.
+ *
  * @param {string} role - Role name to check
  * @returns {boolean} True if user has the role
  */
@@ -34,7 +38,7 @@ export function hasRole(role) {
   // Superusers have all roles
   if (user.is_superuser) return true;
 
-  // Check if user has the role
+  // Check if user has the role (obtained through groups)
   return Array.isArray(user.roles) && user.roles.includes(role);
 }
 
@@ -60,6 +64,10 @@ export function hasAllRoles(roles) {
 
 /**
  * Check if user can perform an action based on permission
+ *
+ * RBAC Consistency: Permissions are obtained through the chain:
+ * User → Group → Role → Permission
+ *
  * For metadata-driven permissions
  * @param {string} permission - Permission string (e.g., "users:create")
  * @returns {boolean} True if user has permission
@@ -78,9 +86,10 @@ export function can(permission) {
   }
 
   // Check if user has the specific permission in their permissions array
+  // (obtained through group → role → permission chain)
   if (user.permissions && Array.isArray(user.permissions)) {
     if (user.permissions.includes(permission)) {
-      console.log(`[Permission] ✓ User has permission in permissions array: ${permission}`);
+      console.log(`[Permission] ✓ User has permission through groups: ${permission}`);
       return true;
     }
   }

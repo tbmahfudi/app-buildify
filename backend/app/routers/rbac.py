@@ -892,20 +892,17 @@ async def get_user_roles(
     db: Session = Depends(get_db),
     current_user: User = Depends(has_permission("users:read_roles:tenant"))
 ):
-    """Get all roles for a user (both direct and through groups) - requires users:read_roles:tenant"""
+    """
+    Get all roles for a user through group membership only - requires users:read_roles:tenant
+
+    RBAC Consistency: Roles are assigned to users through groups only.
+    Direct user-to-role assignments are deprecated.
+    """
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    # Get direct roles
-    direct_roles = (
-        db.query(UserRole)
-        .filter(UserRole.user_id == user_id)
-        .options(joinedload(UserRole.role))
-        .all()
-    )
-
-    # Get roles through groups
+    # Get roles through groups ONLY (consistent RBAC model)
     group_roles = (
         db.query(GroupRole)
         .join(UserGroup, UserGroup.group_id == GroupRole.group_id)
@@ -918,16 +915,7 @@ async def get_user_roles(
         "user_id": str(user_id),
         "email": user.email,
         "full_name": user.full_name,
-        "direct_roles": [
-            {
-                "id": str(ur.role.id),
-                "code": ur.role.code,
-                "name": ur.role.name,
-                "is_active": ur.role.is_active
-            }
-            for ur in direct_roles if ur.role
-        ],
-        "group_roles": [
+        "roles": [
             {
                 "role_id": str(gr.role.id),
                 "role_code": gr.role.code,
@@ -987,49 +975,21 @@ async def assign_roles_to_user(
     db: Session = Depends(get_db),
     current_user: User = Depends(has_permission("users:assign_roles:tenant"))
 ):
-    """Assign multiple roles directly to a user - requires users:assign_roles:tenant"""
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+    """
+    DEPRECATED: Direct role assignment is deprecated.
+    Use group membership instead: Add user to groups, then assign roles to groups.
 
-    # Get existing assignments
-    existing = db.query(UserRole.role_id).filter(
-        UserRole.user_id == user_id
-    ).all()
-    existing_ids = {str(r[0]) for r in existing}
-
-    # Add new roles
-    added = []
-    for role_id in role_ids:
-        if str(role_id) not in existing_ids:
-            # Verify role exists
-            role = db.query(Role).filter(Role.id == role_id).first()
-            if not role:
-                continue
-
-            user_role = UserRole(
-                user_id=user_id,
-                role_id=role_id,
-                granted_by_id=current_user.id
-            )
-            db.add(user_role)
-            added.append(str(role_id))
-
-    db.commit()
-
-    create_audit_log(
-        db,
-        action="assign_roles_to_user",
-        entity_type="User",
-        entity_id=user_id,
-        user=current_user,
-        changes={
-            "user_email": user.email,
-            "roles_added": added
-        }
+    This endpoint now raises an error to enforce consistent RBAC model.
+    """
+    raise HTTPException(
+        status_code=400,
+        detail=(
+            "Direct role assignment is deprecated. "
+            "Please assign users to groups instead, then assign roles to those groups. "
+            "Use POST /rbac/groups/{group_id}/members to add users to groups, "
+            "and POST /rbac/groups/{group_id}/roles to assign roles to groups."
+        )
     )
-
-    return {"message": f"Added {len(added)} roles to user", "added": added}
 
 
 @router.delete("/users/{user_id}/roles/{role_id}")
@@ -1039,30 +999,21 @@ async def remove_role_from_user(
     db: Session = Depends(get_db),
     current_user: User = Depends(has_permission("users:revoke_roles:tenant"))
 ):
-    """Remove a role from a user - requires users:revoke_roles:tenant"""
-    user_role = db.query(UserRole).filter(
-        UserRole.user_id == user_id,
-        UserRole.role_id == role_id
-    ).first()
+    """
+    DEPRECATED: Direct role removal is deprecated.
+    Use group membership instead: Remove user from groups or remove roles from groups.
 
-    if not user_role:
-        raise HTTPException(status_code=404, detail="Role assignment not found")
-
-    db.delete(user_role)
-    db.commit()
-
-    create_audit_log(
-        db,
-        action="remove_role_from_user",
-        entity_type="User",
-        entity_id=user_id,
-        user=current_user,
-        changes={
-            "role_id": str(role_id)
-        }
+    This endpoint now raises an error to enforce consistent RBAC model.
+    """
+    raise HTTPException(
+        status_code=400,
+        detail=(
+            "Direct role removal is deprecated. "
+            "Please manage roles through groups instead. "
+            "Use DELETE /rbac/groups/{group_id}/members/{user_id} to remove users from groups, "
+            "or DELETE /rbac/groups/{group_id}/roles/{role_id} to remove roles from groups."
+        )
     )
-
-    return {"message": "Role removed from user"}
 
 
 # ============================================================================

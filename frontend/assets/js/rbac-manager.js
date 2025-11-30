@@ -975,14 +975,37 @@ class RBACManager {
         title: `User Access: ${roles.email}`,
         content: `
           <div class="space-y-6">
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div class="flex items-start gap-3">
+                <i class="ph ph-info text-blue-600 text-xl mt-0.5"></i>
+                <div class="flex-1">
+                  <h4 class="font-semibold text-blue-900 mb-1">RBAC Model</h4>
+                  <p class="text-sm text-blue-800">
+                    Roles are assigned through group membership. Add users to groups, then assign roles to those groups.
+                  </p>
+                </div>
+              </div>
+            </div>
+
             <div>
-              <h4 class="font-semibold text-gray-900 mb-2">Direct Roles</h4>
-              <div class="flex flex-wrap gap-2">
-                ${roles.direct_roles?.length > 0
-                  ? roles.direct_roles.map(r => `
-                      <span class="px-3 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">${r.name}</span>
+              <h4 class="font-semibold text-gray-900 mb-2">Roles via Groups</h4>
+              <div class="space-y-2">
+                ${roles.roles?.length > 0
+                  ? roles.roles.map(r => `
+                      <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <div class="flex items-center gap-3">
+                          <i class="ph ph-users-three text-purple-600"></i>
+                          <div>
+                            <span class="font-medium text-gray-900">${r.role_name}</span>
+                            <span class="text-xs text-gray-500 ml-2">via ${r.group_name}</span>
+                          </div>
+                        </div>
+                        <span class="px-2 py-1 text-xs ${r.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'} rounded-full">
+                          ${r.is_active ? 'Active' : 'Inactive'}
+                        </span>
+                      </div>
                     `).join('')
-                  : '<span class="text-sm text-gray-500">No direct roles</span>'}
+                  : '<span class="text-sm text-gray-500">No roles assigned. Add user to groups to grant roles.</span>'}
               </div>
             </div>
 
