@@ -1,0 +1,146 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: buildify-postgres
+    environment:
+      POSTGRES_DB: buildify
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - buildify-network
+
+  # Redis (for caching and session management)
+  redis:
+    image: redis:7-alpine
+    container_name: buildify-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - buildify-network
+
+  # Core Platform Service
+  core-platform:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: buildify-core
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/buildify
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET_KEY=your-secret-key-change-in-production
+      - DEBUG=true
+      - ENVIRONMENT=development
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+    networks:
+      - buildify-network
+    restart: unless-stopped
+
+  # Financial Module Service
+  financial-module:
+    build:
+      context: ./modules/financial/backend
+      dockerfile: Dockerfile
+    container_name: buildify-financial
+    environment:
+      # Database Strategy: 'shared' or 'separate'
+      - DATABASE_STRATEGY=shared
+
+      # Shared database configuration
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/buildify
+
+      # Separate database configuration (used if DATABASE_STRATEGY=separate)
+      - MODULE_DATABASE_URL=postgresql://postgres:postgres@postgres:5432/financial_module
+
+      # Core platform integration
+      - CORE_PLATFORM_URL=http://core-platform:8000
+      - MODULE_API_KEY=financial-module-secret-key
+
+      # Event bus configuration (PostgreSQL)
+      - EVENT_BUS_CONNECTION_STRING=postgresql://postgres:postgres@postgres:5432/buildify
+
+      # JWT configuration (shared with core)
+      - JWT_SECRET_KEY=your-secret-key-change-in-production
+
+      # Module configuration
+      - MODULE_PORT=8001
+      - DEBUG=true
+      - ENVIRONMENT=development
+    ports:
+      - "8001:8001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      core-platform:
+        condition: service_started
+    volumes:
+      - ./modules/financial/backend/app:/app/app
+    networks:
+      - buildify-network
+    restart: unless-stopped
+
+  # API Gateway (Nginx)
+  api-gateway:
+    image: nginx:alpine
+    container_name: buildify-gateway
+    ports:
+      - "80:80"
+    volumes:
+      - ./infra/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - core-platform
+      - financial-module
+    networks:
+      - buildify-network
+    restart: unless-stopped
+
+  # Frontend (Development Server)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: buildify-frontend
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - VITE_API_URL=http://localhost/api
+    networks:
+      - buildify-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    name: buildify-postgres-data
+
+networks:
+  buildify-network:
+    name: buildify-network
+    driver: bridge

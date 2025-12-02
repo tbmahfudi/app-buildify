@@ -33,6 +33,10 @@ from .metadata import EntityMetadata
 
 # Module system
 from .module_registry import ModuleRegistry, TenantModule
+from .company_module import CompanyModule
+
+# Event bus
+from .event_bus import Event, EventSubscription, EventHandler, EventArchive
 from .notification_config import NotificationConfig
 from .notification_queue import NotificationQueue
 
@@ -122,6 +126,13 @@ __all__ = [
     # Module system
     "ModuleRegistry",
     "TenantModule",
+    "CompanyModule",
+
+    # Event bus
+    "Event",
+    "EventSubscription",
+    "EventHandler",
+    "EventArchive",
 
     # Menu system
     "MenuItem",
