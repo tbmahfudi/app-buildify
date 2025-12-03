@@ -1,0 +1,35 @@
+<!-- Journal Entries Page -->
+<div class="p-6">
+    <div class="mb-6">
+        <div class="flex items-center justify-between">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-900">Journal Entries</h1>
+                <p class="text-gray-600 mt-1">Record manual journal entries and adjustments</p>
+            </div>
+            <button id="btn-create-entry" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center gap-2">
+                <i class="ph ph-plus-circle"></i>
+                New Entry
+            </button>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <div id="entries-table-container"></div>
+    </div>
+</div>
+
+<div id="entry-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50" style="display: none;">
+    <div class="bg-white rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+        <div class="p-6 border-b border-gray-200">
+            <div class="flex items-center justify-between">
+                <h2 id="modal-title" class="text-2xl font-bold text-gray-900">New Journal Entry</h2>
+                <button id="btn-close-modal" class="text-gray-400 hover:text-gray-600 transition">
+                    <i class="ph ph-x text-2xl"></i>
+                </button>
+            </div>
+        </div>
+        <div class="p-6">
+            <div id="entry-form-container"></div>
+        </div>
+    </div>
+</div>

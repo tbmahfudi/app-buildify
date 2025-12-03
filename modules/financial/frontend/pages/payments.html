@@ -1,0 +1,74 @@
+<!-- Payments Page -->
+<div class="p-6">
+    <div class="mb-6">
+        <div class="flex items-center justify-between">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-900">Payments</h1>
+                <p class="text-gray-600 mt-1">Record and manage customer payments</p>
+            </div>
+            <button id="btn-create-payment" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center gap-2">
+                <i class="ph ph-plus-circle"></i>
+                New Payment
+            </button>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-gray-600">Total Payments</p>
+                    <p id="stat-total-payments" class="text-2xl font-bold text-gray-900">0</p>
+                </div>
+                <i class="ph-duotone ph-credit-card text-4xl text-blue-600"></i>
+            </div>
+        </div>
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-gray-600">Total Amount</p>
+                    <p id="stat-total-amount" class="text-2xl font-bold text-green-600">$0</p>
+                </div>
+                <i class="ph-duotone ph-coins text-4xl text-green-600"></i>
+            </div>
+        </div>
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-gray-600">This Month</p>
+                    <p id="stat-this-month" class="text-2xl font-bold text-purple-600">$0</p>
+                </div>
+                <i class="ph-duotone ph-calendar text-4xl text-purple-600"></i>
+            </div>
+        </div>
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-gray-600">Today</p>
+                    <p id="stat-today" class="text-2xl font-bold text-teal-600">$0</p>
+                </div>
+                <i class="ph-duotone ph-clock text-4xl text-teal-600"></i>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <div id="payments-table-container"></div>
+    </div>
+</div>
+
+<div id="payment-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50" style="display: none;">
+    <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+        <div class="p-6 border-b border-gray-200">
+            <div class="flex items-center justify-between">
+                <h2 id="modal-title" class="text-2xl font-bold text-gray-900">New Payment</h2>
+                <button id="btn-close-modal" class="text-gray-400 hover:text-gray-600 transition">
+                    <i class="ph ph-x text-2xl"></i>
+                </button>
+            </div>
+        </div>
+        <div class="p-6">
+            <div id="payment-form-container"></div>
+        </div>
+    </div>
+</div>

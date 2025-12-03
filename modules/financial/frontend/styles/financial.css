@@ -1,0 +1,454 @@
+/**
+ * Financial Module - Custom Styles
+ */
+
+/* Tree View Styles */
+.tree-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.tree-node {
+    margin: 0;
+}
+
+.tree-node-content {
+    transition: all 0.2s ease;
+}
+
+.tree-node-content:hover {
+    background-color: #f9fafb;
+}
+
+.tree-children {
+    margin-left: 0;
+    transition: all 0.3s ease;
+}
+
+.tree-children.hidden {
+    display: none;
+}
+
+.tree-toggle {
+    flex-shrink: 0;
+}
+
+.tree-toggle i {
+    transition: transform 0.2s ease;
+}
+
+.account-actions {
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.tree-node-content:hover .account-actions {
+    opacity: 1;
+}
+
+/* Data Table Styles */
+.data-table {
+    width: 100%;
+}
+
+.data-table-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.data-table table {
+    border-collapse: collapse;
+    width: 100%;
+}
+
+.data-table thead {
+    background-color: #f9fafb;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.data-table thead th {
+    padding: 12px 16px;
+    text-align: left;
+    font-size: 12px;
+    font-weight: 600;
+    color: #374151;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-bottom: 2px solid #e5e7eb;
+}
+
+.data-table tbody tr {
+    border-bottom: 1px solid #e5e7eb;
+    transition: background-color 0.15s ease;
+}
+
+.data-table tbody tr:hover {
+    background-color: #f9fafb;
+}
+
+.data-table tbody td {
+    padding: 12px 16px;
+    color: #111827;
+}
+
+.data-table-pagination {
+    margin-top: 16px;
+}
+
+/* Form Styles */
+.form-field {
+    margin-bottom: 16px;
+}
+
+.form-field label {
+    display: block;
+    font-size: 14px;
+    font-weight: 500;
+    color: #374151;
+    margin-bottom: 4px;
+}
+
+.form-field input[type="text"],
+.form-field input[type="email"],
+.form-field input[type="number"],
+.form-field input[type="date"],
+.form-field input[type="time"],
+.form-field input[type="datetime-local"],
+.form-field textarea,
+.form-field select {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    font-size: 14px;
+    transition: all 0.2s ease;
+}
+
+.form-field input:focus,
+.form-field textarea:focus,
+.form-field select:focus {
+    outline: none;
+    border-color: #3b82f6;
+    ring: 2px;
+    ring-color: rgba(59, 130, 246, 0.5);
+}
+
+.form-field input[type="checkbox"],
+.form-field input[type="radio"] {
+    width: 16px;
+    height: 16px;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+}
+
+.form-field input[type="checkbox"]:checked,
+.form-field input[type="radio"]:checked {
+    background-color: #3b82f6;
+    border-color: #3b82f6;
+}
+
+/* Report Styles */
+.report-tab {
+    background: none;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.report-tab:focus {
+    outline: none;
+}
+
+.report-tab.active {
+    border-bottom-color: #3b82f6;
+    color: #3b82f6;
+}
+
+.report-header {
+    border-bottom: 2px solid #e5e7eb;
+    padding-bottom: 16px;
+}
+
+.report-content table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.report-content table td {
+    padding: 8px 16px;
+}
+
+.report-content table tr.font-bold td {
+    font-weight: 600;
+}
+
+/* Modal Styles */
+.modal-backdrop {
+    background-color: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+}
+
+/* Stats Cards */
+.stat-card {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    padding: 16px;
+    transition: all 0.2s ease;
+}
+
+.stat-card:hover {
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    transform: translateY(-2px);
+}
+
+/* Status Badges */
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 12px;
+    border-radius: 9999px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.status-badge.active {
+    background-color: #d1fae5;
+    color: #065f46;
+}
+
+.status-badge.inactive {
+    background-color: #f3f4f6;
+    color: #6b7280;
+}
+
+.status-badge.draft {
+    background-color: #f3f4f6;
+    color: #1f2937;
+}
+
+.status-badge.sent {
+    background-color: #dbeafe;
+    color: #1e40af;
+}
+
+.status-badge.paid {
+    background-color: #d1fae5;
+    color: #065f46;
+}
+
+.status-badge.overdue {
+    background-color: #fee2e2;
+    color: #991b1b;
+}
+
+.status-badge.cancelled {
+    background-color: #f3f4f6;
+    color: #6b7280;
+}
+
+/* Loading Spinner */
+.spinner {
+    border: 3px solid #e5e7eb;
+    border-top-color: #3b82f6;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Empty State */
+.empty-state {
+    text-align: center;
+    padding: 48px 16px;
+}
+
+.empty-state i {
+    font-size: 64px;
+    color: #d1d5db;
+    margin-bottom: 16px;
+}
+
+.empty-state p {
+    color: #6b7280;
+    font-size: 16px;
+}
+
+/* Currency Formatting */
+.currency-positive {
+    color: #059669;
+}
+
+.currency-negative {
+    color: #dc2626;
+}
+
+/* Responsive Utilities */
+@media (max-width: 768px) {
+    .data-table-wrapper {
+        overflow-x: scroll;
+    }
+
+    .tree-node-content {
+        font-size: 14px;
+    }
+
+    .account-actions {
+        opacity: 1;
+    }
+
+    .report-tab {
+        padding: 12px 16px;
+        font-size: 14px;
+    }
+}
+
+/* Print Styles */
+@media print {
+    .no-print {
+        display: none !important;
+    }
+
+    .report-content {
+        page-break-inside: avoid;
+    }
+
+    .report-header {
+        margin-bottom: 24px;
+    }
+
+    body {
+        print-color-adjust: exact;
+        -webkit-print-color-adjust: exact;
+    }
+}
+
+/* Custom Scrollbar */
+.data-table-wrapper::-webkit-scrollbar {
+    height: 8px;
+}
+
+.data-table-wrapper::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+.data-table-wrapper::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 4px;
+}
+
+.data-table-wrapper::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
+/* Animation Classes */
+.fade-in {
+    animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.slide-in {
+    animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(-100%);
+    }
+    to {
+        transform: translateX(0);
+    }
+}
+
+/* Hover Effects */
+.hover-lift {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.hover-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Focus Visible for Accessibility */
+*:focus-visible {
+    outline: 2px solid #3b82f6;
+    outline-offset: 2px;
+}
+
+button:focus-visible,
+a:focus-visible {
+    outline: 2px solid #3b82f6;
+    outline-offset: 2px;
+}
+
+/* Disabled States */
+button:disabled,
+input:disabled,
+select:disabled,
+textarea:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Tooltips */
+[data-tooltip] {
+    position: relative;
+}
+
+[data-tooltip]:hover::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 4px 8px;
+    background-color: #1f2937;
+    color: white;
+    font-size: 12px;
+    white-space: nowrap;
+    border-radius: 4px;
+    margin-bottom: 4px;
+    z-index: 1000;
+}
+
+/* File Upload */
+input[type="file"] {
+    padding: 8px;
+}
+
+input[type="file"]::file-selector-button {
+    padding: 6px 12px;
+    background-color: #3b82f6;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-right: 12px;
+    transition: background-color 0.2s ease;
+}
+
+input[type="file"]::file-selector-button:hover {
+    background-color: #2563eb;
+}
