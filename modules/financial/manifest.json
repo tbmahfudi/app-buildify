@@ -1,0 +1,152 @@
+{
+  "name": "financial",
+  "display_name": "Financial Management",
+  "version": "2.0.0",
+  "description": "Complete financial management system with chart of accounts, invoicing, payments, and financial reporting",
+
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/company/financial-module.git",
+    "branch": "main"
+  },
+
+  "author": {
+    "name": "Buildify Team",
+    "email": "support@buildify.com",
+    "website": "https://buildify.com"
+  },
+
+  "backend": {
+    "type": "microservice",
+    "runtime": "python:3.11",
+    "framework": "fastapi",
+    "entry_point": "app.main:app",
+    "health_check": "/health",
+    "api_prefix": "/api/v1/financial",
+    "port": 8001
+  },
+
+  "frontend": {
+    "type": "spa-module",
+    "framework": "vanilla-js",
+    "entry_point": "module.js",
+    "bundle": "dist/financial.bundle.js"
+  },
+
+  "database": {
+    "type": "postgresql",
+    "strategy": "shared",
+    "schema_prefix": "financial_",
+    "has_migrations": true,
+    "tables": [
+      "financial_accounts",
+      "financial_transactions",
+      "financial_invoices",
+      "financial_invoice_line_items",
+      "financial_payments"
+    ]
+  },
+
+  "dependencies": {
+    "platform_version": ">=2.0.0",
+    "python_version": ">=3.11",
+    "required_modules": [],
+    "optional_modules": ["reporting", "notifications"],
+    "external_services": ["redis", "postgresql"]
+  },
+
+  "permissions": [
+    {
+      "code": "financial:accounts:read:company",
+      "name": "View Accounts",
+      "description": "View chart of accounts",
+      "category": "financial",
+      "scope": "company"
+    },
+    {
+      "code": "financial:accounts:create:company",
+      "name": "Create Accounts",
+      "description": "Create new accounts in chart of accounts",
+      "category": "financial",
+      "scope": "company"
+    },
+    {
+      "code": "financial:transactions:read:company",
+      "name": "View Transactions",
+      "description": "View financial transactions",
+      "category": "financial",
+      "scope": "company"
+    },
+    {
+      "code": "financial:invoices:read:company",
+      "name": "View Invoices",
+      "description": "View invoices",
+      "category": "financial",
+      "scope": "company"
+    },
+    {
+      "code": "financial:invoices:create:company",
+      "name": "Create Invoices",
+      "description": "Create and manage invoices",
+      "category": "financial",
+      "scope": "company"
+    }
+  ],
+
+  "routes": [
+    {
+      "path": "#/financial/dashboard",
+      "name": "Financial Dashboard",
+      "component": "pages/dashboard-page.js",
+      "permission": "financial:accounts:read:company",
+      "menu": {
+        "label": "Financial",
+        "icon": "ph-duotone ph-currency-circle-dollar",
+        "order": 5,
+        "parent": null
+      }
+    },
+    {
+      "path": "#/financial/accounts",
+      "name": "Chart of Accounts",
+      "component": "pages/accounts-page.js",
+      "permission": "financial:accounts:read:company",
+      "menu": {
+        "label": "Chart of Accounts",
+        "icon": "ph-duotone ph-chart-line",
+        "order": 10,
+        "parent": "financial"
+      }
+    }
+  ],
+
+  "configuration": {
+    "defaults": {
+      "currency": "USD",
+      "tax_rate": 0,
+      "invoice_prefix": "INV",
+      "payment_terms_days": 30,
+      "fiscal_year_start": "01-01"
+    },
+    "settings": [
+      {
+        "key": "default_currency",
+        "type": "string",
+        "default": "USD",
+        "description": "Default currency for financial operations"
+      },
+      {
+        "key": "fiscal_year_start",
+        "type": "string",
+        "default": "01-01",
+        "description": "Fiscal year start date (MM-DD)"
+      }
+    ]
+  },
+
+  "subscription_tier": "premium",
+  "license": "proprietary",
+  "category": "finance",
+  "tags": ["accounting", "invoicing", "finance", "reporting", "payments"],
+  "status": "stable"
+}
