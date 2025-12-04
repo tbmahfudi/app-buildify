@@ -62,6 +62,32 @@ services:
         condition: service_healthy
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
+  financial-module:
+    container_name: app_buildify_financial
+    build:
+      context: ../modules/financial/backend
+      dockerfile: Dockerfile
+    ports:
+      - "8001:8001"
+    environment:
+      PYTHONPATH: /app
+      DATABASE_STRATEGY: shared
+      CORE_DATABASE_URL: postgresql+asyncpg://appuser:apppass@postgres:5432/appdb
+      EVENT_BUS_CONNECTION_STRING: postgresql://appuser:apppass@postgres:5432/appdb
+      MODULE_NAME: financial
+      MODULE_VERSION: 1.0.0
+      MODULE_PORT: 8001
+      DEBUG: "true"
+      API_PREFIX: /api/v1
+      CORS_ORIGINS: '["http://localhost:8080","http://localhost:3000"]'
+    working_dir: /app
+    volumes:
+      - ../modules/financial/backend:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8001 --reload
+
   frontend:
     container_name: app_buildify_frontend
     image: nginx:1.27-alpine
@@ -72,6 +98,7 @@ services:
       - ../infra/nginx/app.conf:/etc/nginx/conf.d/default.conf:ro
     depends_on:
       - backend
+      - financial-module
 
 volumes:
   postgres_data:
