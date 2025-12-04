@@ -15,7 +15,7 @@ from fastapi.responses import JSONResponse
 from .config import settings
 from .core.database import engine, get_db
 from .core.event_handler import FinancialEventHandler
-from .routers import accounts, invoices
+from .routers import accounts, customers, invoices, journal_entries, payments, tax_rates, reports
 
 # Lifespan context manager for startup/shutdown events
 @asynccontextmanager
@@ -111,9 +111,39 @@ app.include_router(
 )
 
 app.include_router(
+    customers.router,
+    prefix=f"{settings.API_PREFIX}/customers",
+    tags=["customers"]
+)
+
+app.include_router(
     invoices.router,
     prefix=f"{settings.API_PREFIX}/invoices",
     tags=["invoices"]
+)
+
+app.include_router(
+    journal_entries.router,
+    prefix=f"{settings.API_PREFIX}/journal-entries",
+    tags=["journal-entries"]
+)
+
+app.include_router(
+    payments.router,
+    prefix=f"{settings.API_PREFIX}/payments",
+    tags=["payments"]
+)
+
+app.include_router(
+    tax_rates.router,
+    prefix=f"{settings.API_PREFIX}/tax-rates",
+    tags=["tax-rates"]
+)
+
+app.include_router(
+    reports.router,
+    prefix=f"{settings.API_PREFIX}/reports",
+    tags=["reports"]
 )
 
 

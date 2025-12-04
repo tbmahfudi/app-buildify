@@ -1,0 +1,328 @@
+{
+  "name": "Standard Chart of Accounts",
+  "description": "Default chart of accounts for small to medium businesses",
+  "accounts": [
+    {
+      "code": "1000",
+      "name": "Assets",
+      "type": "asset",
+      "is_header": true,
+      "description": "All asset accounts"
+    },
+    {
+      "code": "1100",
+      "name": "Current Assets",
+      "type": "asset",
+      "is_header": true,
+      "parent_code": "1000",
+      "description": "Assets expected to be converted to cash within one year"
+    },
+    {
+      "code": "1110",
+      "name": "Cash and Cash Equivalents",
+      "type": "asset",
+      "parent_code": "1100",
+      "category": "cash",
+      "sub_category": "bank_accounts"
+    },
+    {
+      "code": "1120",
+      "name": "Petty Cash",
+      "type": "asset",
+      "parent_code": "1100",
+      "category": "cash",
+      "sub_category": "petty_cash"
+    },
+    {
+      "code": "1200",
+      "name": "Accounts Receivable",
+      "type": "asset",
+      "parent_code": "1100",
+      "category": "receivables"
+    },
+    {
+      "code": "1210",
+      "name": "Allowance for Doubtful Accounts",
+      "type": "asset",
+      "parent_code": "1100",
+      "category": "receivables"
+    },
+    {
+      "code": "1300",
+      "name": "Inventory",
+      "type": "asset",
+      "parent_code": "1100",
+      "category": "inventory"
+    },
+    {
+      "code": "1400",
+      "name": "Prepaid Expenses",
+      "type": "asset",
+      "parent_code": "1100",
+      "category": "prepaid"
+    },
+    {
+      "code": "1500",
+      "name": "Fixed Assets",
+      "type": "asset",
+      "is_header": true,
+      "parent_code": "1000",
+      "description": "Long-term tangible assets"
+    },
+    {
+      "code": "1510",
+      "name": "Property, Plant & Equipment",
+      "type": "asset",
+      "parent_code": "1500",
+      "category": "fixed_assets"
+    },
+    {
+      "code": "1520",
+      "name": "Accumulated Depreciation",
+      "type": "asset",
+      "parent_code": "1500",
+      "category": "fixed_assets"
+    },
+    {
+      "code": "2000",
+      "name": "Liabilities",
+      "type": "liability",
+      "is_header": true,
+      "description": "All liability accounts"
+    },
+    {
+      "code": "2100",
+      "name": "Current Liabilities",
+      "type": "liability",
+      "is_header": true,
+      "parent_code": "2000",
+      "description": "Obligations due within one year"
+    },
+    {
+      "code": "2110",
+      "name": "Accounts Payable",
+      "type": "liability",
+      "parent_code": "2100",
+      "category": "payables"
+    },
+    {
+      "code": "2120",
+      "name": "Sales Tax Payable",
+      "type": "liability",
+      "parent_code": "2100",
+      "category": "taxes",
+      "tax_category": "taxable"
+    },
+    {
+      "code": "2130",
+      "name": "Accrued Expenses",
+      "type": "liability",
+      "parent_code": "2100",
+      "category": "accrued"
+    },
+    {
+      "code": "2140",
+      "name": "Short-term Loans",
+      "type": "liability",
+      "parent_code": "2100",
+      "category": "loans"
+    },
+    {
+      "code": "2200",
+      "name": "Long-term Liabilities",
+      "type": "liability",
+      "is_header": true,
+      "parent_code": "2000",
+      "description": "Obligations due after one year"
+    },
+    {
+      "code": "2210",
+      "name": "Long-term Loans",
+      "type": "liability",
+      "parent_code": "2200",
+      "category": "loans"
+    },
+    {
+      "code": "3000",
+      "name": "Equity",
+      "type": "equity",
+      "is_header": true,
+      "description": "Owner's equity accounts"
+    },
+    {
+      "code": "3100",
+      "name": "Owner's Capital",
+      "type": "equity",
+      "parent_code": "3000",
+      "category": "capital"
+    },
+    {
+      "code": "3200",
+      "name": "Owner's Drawings",
+      "type": "equity",
+      "parent_code": "3000",
+      "category": "drawings"
+    },
+    {
+      "code": "3300",
+      "name": "Retained Earnings",
+      "type": "equity",
+      "parent_code": "3000",
+      "category": "retained_earnings"
+    },
+    {
+      "code": "3400",
+      "name": "Current Year Earnings",
+      "type": "equity",
+      "parent_code": "3000",
+      "category": "current_earnings"
+    },
+    {
+      "code": "4000",
+      "name": "Revenue",
+      "type": "revenue",
+      "is_header": true,
+      "description": "All revenue accounts"
+    },
+    {
+      "code": "4100",
+      "name": "Sales Revenue",
+      "type": "revenue",
+      "parent_code": "4000",
+      "category": "sales"
+    },
+    {
+      "code": "4200",
+      "name": "Service Revenue",
+      "type": "revenue",
+      "parent_code": "4000",
+      "category": "services"
+    },
+    {
+      "code": "4300",
+      "name": "Interest Income",
+      "type": "revenue",
+      "parent_code": "4000",
+      "category": "interest"
+    },
+    {
+      "code": "4400",
+      "name": "Other Income",
+      "type": "revenue",
+      "parent_code": "4000",
+      "category": "other"
+    },
+    {
+      "code": "5000",
+      "name": "Cost of Goods Sold",
+      "type": "expense",
+      "is_header": true,
+      "description": "Direct costs of producing goods sold"
+    },
+    {
+      "code": "5100",
+      "name": "Cost of Materials",
+      "type": "expense",
+      "parent_code": "5000",
+      "category": "cogs"
+    },
+    {
+      "code": "5200",
+      "name": "Direct Labor",
+      "type": "expense",
+      "parent_code": "5000",
+      "category": "cogs"
+    },
+    {
+      "code": "6000",
+      "name": "Operating Expenses",
+      "type": "expense",
+      "is_header": true,
+      "description": "General operating expenses"
+    },
+    {
+      "code": "6100",
+      "name": "Salaries and Wages",
+      "type": "expense",
+      "parent_code": "6000",
+      "category": "payroll"
+    },
+    {
+      "code": "6200",
+      "name": "Rent Expense",
+      "type": "expense",
+      "parent_code": "6000",
+      "category": "occupancy"
+    },
+    {
+      "code": "6300",
+      "name": "Utilities Expense",
+      "type": "expense",
+      "parent_code": "6000",
+      "category": "utilities"
+    },
+    {
+      "code": "6400",
+      "name": "Insurance Expense",
+      "type": "expense",
+      "parent_code": "6000",
+      "category": "insurance"
+    },
+    {
+      "code": "6500",
+      "name": "Office Supplies",
+      "type": "expense",
+      "parent_code": "6000",
+      "category": "supplies"
+    },
+    {
+      "code": "6600",
+      "name": "Depreciation Expense",
+      "type": "expense",
+      "parent_code": "6000",
+      "category": "depreciation"
+    },
+    {
+      "code": "6700",
+      "name": "Marketing and Advertising",
+      "type": "expense",
+      "parent_code": "6000",
+      "category": "marketing"
+    },
+    {
+      "code": "6800",
+      "name": "Professional Fees",
+      "type": "expense",
+      "parent_code": "6000",
+      "category": "professional_services"
+    },
+    {
+      "code": "6900",
+      "name": "Miscellaneous Expenses",
+      "type": "expense",
+      "parent_code": "6000",
+      "category": "miscellaneous"
+    },
+    {
+      "code": "7000",
+      "name": "Other Expenses",
+      "type": "expense",
+      "is_header": true,
+      "description": "Non-operating expenses"
+    },
+    {
+      "code": "7100",
+      "name": "Interest Expense",
+      "type": "expense",
+      "parent_code": "7000",
+      "category": "interest"
+    },
+    {
+      "code": "7200",
+      "name": "Bank Charges",
+      "type": "expense",
+      "parent_code": "7000",
+      "category": "bank_fees"
+    }
+  ]
+}

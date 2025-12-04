@@ -1,0 +1,129 @@
+<!-- Customers Page -->
+<div class="p-6">
+    <!-- Page Header -->
+    <div class="mb-6">
+        <div class="flex items-center justify-between">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-900">Customers</h1>
+                <p class="text-gray-600 mt-1">Manage customer information and accounts</p>
+            </div>
+            <button
+                id="btn-create-customer"
+                class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center gap-2"
+            >
+                <i class="ph ph-plus-circle"></i>
+                New Customer
+            </button>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-gray-600">Total Customers</p>
+                    <p id="stat-total-customers" class="text-2xl font-bold text-gray-900">0</p>
+                </div>
+                <i class="ph-duotone ph-users text-4xl text-blue-600"></i>
+            </div>
+        </div>
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-gray-600">Active</p>
+                    <p id="stat-active-customers" class="text-2xl font-bold text-green-600">0</p>
+                </div>
+                <i class="ph-duotone ph-check-circle text-4xl text-green-600"></i>
+            </div>
+        </div>
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-gray-600">Total Receivables</p>
+                    <p id="stat-total-receivables" class="text-2xl font-bold text-orange-600">$0</p>
+                </div>
+                <i class="ph-duotone ph-currency-circle-dollar text-4xl text-orange-600"></i>
+            </div>
+        </div>
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-gray-600">Overdue</p>
+                    <p id="stat-overdue" class="text-2xl font-bold text-red-600">$0</p>
+                </div>
+                <i class="ph-duotone ph-warning-circle text-4xl text-red-600"></i>
+            </div>
+        </div>
+    </div>
+
+    <!-- Customers Table -->
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <div id="customers-table-container">
+            <!-- Table will be rendered here -->
+        </div>
+    </div>
+</div>
+
+<!-- Customer Modal -->
+<div id="customer-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50" style="display: none;">
+    <div class="bg-white rounded-lg shadow-xl max-w-3xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+        <div class="p-6 border-b border-gray-200">
+            <div class="flex items-center justify-between">
+                <h2 id="modal-title" class="text-2xl font-bold text-gray-900">New Customer</h2>
+                <button id="btn-close-modal" class="text-gray-400 hover:text-gray-600 transition">
+                    <i class="ph ph-x text-2xl"></i>
+                </button>
+            </div>
+        </div>
+        <div class="p-6">
+            <div id="customer-form-container">
+                <!-- Form will be rendered here -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Customer Details Modal -->
+<div id="customer-details-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50" style="display: none;">
+    <div class="bg-white rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+        <div class="p-6 border-b border-gray-200">
+            <div class="flex items-center justify-between">
+                <h2 class="text-2xl font-bold text-gray-900">Customer Details</h2>
+                <button id="btn-close-details-modal" class="text-gray-400 hover:text-gray-600 transition">
+                    <i class="ph ph-x text-2xl"></i>
+                </button>
+            </div>
+        </div>
+        <div class="p-6">
+            <div id="customer-details-content">
+                <!-- Details will be rendered here -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div id="delete-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50" style="display: none;">
+    <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+        <div class="p-6">
+            <div class="flex items-start gap-4">
+                <div class="flex-shrink-0">
+                    <i class="ph-duotone ph-warning-circle text-red-500 text-4xl"></i>
+                </div>
+                <div class="flex-1">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-2">Delete Customer</h3>
+                    <p class="text-gray-600 mb-4">Are you sure you want to delete this customer? This action cannot be undone.</p>
+                    <div class="flex justify-end gap-3">
+                        <button id="btn-cancel-delete" class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition">
+                            Cancel
+                        </button>
+                        <button id="btn-confirm-delete" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition">
+                            Delete
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
