@@ -88,11 +88,11 @@ services:
       - JWT_SECRET_KEY=your-secret-key-change-in-production
 
       # Module configuration
-      - MODULE_PORT=8001
+      - MODULE_PORT=9001
       - DEBUG=true
       - ENVIRONMENT=development
     ports:
-      - "8001:8001"
+      - "9001:9001"
     depends_on:
       postgres:
         condition: service_healthy

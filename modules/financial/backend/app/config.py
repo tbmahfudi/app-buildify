@@ -13,7 +13,7 @@ class Settings:
     MODULE_NAME: str = "financial"
     MODULE_DISPLAY_NAME: str = "Financial Management"
     MODULE_VERSION: str = "2.0.0"
-    MODULE_PORT: int = int(os.getenv("MODULE_PORT", "8001"))
+    MODULE_PORT: int = int(os.getenv("MODULE_PORT", "9001"))
 
     # API Configuration
     API_PREFIX: str = "/api/v1/financial"
