@@ -162,6 +162,14 @@ class Invoice(Base):
         self.subtotal = sum(item.line_total for item in self.line_items)
         self.tax_amount = sum(item.tax_amount for item in self.line_items)
 
+        # Initialize defaults if None
+        if self.discount_value is None:
+            self.discount_value = Decimal('0.00')
+        if self.discount_amount is None:
+            self.discount_amount = Decimal('0.00')
+        if self.paid_amount is None:
+            self.paid_amount = Decimal('0.00')
+
         # Apply discount
         if self.discount_type == 'percentage':
             self.discount_amount = self.subtotal * (self.discount_value / Decimal('100'))
@@ -281,6 +289,16 @@ class InvoiceLineItem(Base):
         """Calculate line total including discounts and taxes"""
         # Base amount
         base_amount = self.quantity * self.unit_price
+
+        # Initialize defaults if None
+        if self.discount_percentage is None:
+            self.discount_percentage = Decimal('0.00')
+        if self.discount_amount is None:
+            self.discount_amount = Decimal('0.00')
+        if self.tax_percentage is None:
+            self.tax_percentage = Decimal('0.00')
+        if self.tax_amount is None:
+            self.tax_amount = Decimal('0.00')
 
         # Apply discount
         if self.discount_percentage > Decimal('0'):
