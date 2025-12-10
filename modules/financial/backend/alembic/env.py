@@ -79,6 +79,7 @@ def run_migrations_offline() -> None:
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
+        version_table="financial_alembic_version",  # Separate version table for Financial Module
     )
 
     with context.begin_transaction():
@@ -104,7 +105,8 @@ def run_migrations_online() -> None:
     with connectable.connect() as connection:
         context.configure(
             connection=connection,
-            target_metadata=target_metadata
+            target_metadata=target_metadata,
+            version_table="financial_alembic_version",  # Separate version table for Financial Module
         )
 
         with context.begin_transaction():
