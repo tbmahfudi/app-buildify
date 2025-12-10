@@ -43,6 +43,12 @@ if config.config_file_name is not None:
 # for 'autogenerate' support
 target_metadata = Base.metadata
 
+# Dynamically set version table name based on module name
+# This allows each module to have its own version table in a shared database
+# Format: {module_name}_alembic_version
+# Example: financial_alembic_version, inventory_alembic_version, etc.
+VERSION_TABLE_NAME = f"{settings.MODULE_NAME}_alembic_version"
+
 # other values from the config, defined by the needs of env.py,
 # can be acquired:
 # my_important_option = config.get_main_option("my_important_option")
@@ -79,6 +85,7 @@ def run_migrations_offline() -> None:
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
+        version_table=VERSION_TABLE_NAME,  # Dynamic version table per module
     )
 
     with context.begin_transaction():
@@ -104,7 +111,8 @@ def run_migrations_online() -> None:
     with connectable.connect() as connection:
         context.configure(
             connection=connection,
-            target_metadata=target_metadata
+            target_metadata=target_metadata,
+            version_table=VERSION_TABLE_NAME,  # Dynamic version table per module
         )
 
         with context.begin_transaction():
