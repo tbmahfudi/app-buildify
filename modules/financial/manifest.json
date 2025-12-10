@@ -23,7 +23,7 @@
     "entry_point": "app.main:app",
     "health_check": "/health",
     "api_prefix": "/api/v1/financial",
-    "port": 8001
+    "port": 9001
   },
 
   "frontend": {
