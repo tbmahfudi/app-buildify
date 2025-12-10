@@ -37,8 +37,13 @@ USER_ID = "user-admin-001"
 
 async def setup_database():
     """Create database engine and session."""
+    # Convert to async URL if needed
+    database_url = settings.effective_database_url
+    if not database_url.startswith("postgresql+asyncpg://"):
+        database_url = database_url.replace("postgresql://", "postgresql+asyncpg://")
+
     engine = create_async_engine(
-        settings.effective_database_url,
+        database_url,
         echo=True,
         future=True
     )
