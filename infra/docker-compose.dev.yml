@@ -72,7 +72,7 @@ services:
     environment:
       PYTHONPATH: /app
       DATABASE_STRATEGY: shared
-      CORE_DATABASE_URL: postgresql+asyncpg://appuser:apppass@postgres:5432/appdb
+      DATABASE_URL: postgresql://appuser:apppass@postgres:5432/appdb
       EVENT_BUS_CONNECTION_STRING: postgresql://appuser:apppass@postgres:5432/appdb
       MODULE_NAME: financial
       MODULE_VERSION: 1.0.0
