@@ -29,8 +29,9 @@ echo -e "Display name: ${MODULE_DISPLAY}"
 echo ""
 
 # Define paths
-BACKEND_BASE="backend/modules/${MODULE_NAME}"
-FRONTEND_BASE="frontend/modules/${MODULE_NAME}"
+MODULE_BASE="modules/${MODULE_NAME}"
+BACKEND_BASE="${MODULE_BASE}/backend"
+FRONTEND_BASE="${MODULE_BASE}/frontend"
 
 # Create backend directory structure
 echo -e "${YELLOW}Creating backend structure...${NC}"
