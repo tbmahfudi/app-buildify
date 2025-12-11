@@ -8,9 +8,9 @@
 
   "routes": [
     {
-      "path": "#/financial/dashboard",
-      "name": "Financial Dashboard",
-      "component": "pages/dashboard-page.js",
+      "path": "#/financial/accounts",
+      "name": "Chart of Accounts",
+      "component": "pages/accounts.js",
       "permission": "financial:accounts:read:company",
       "menu": {
         "label": "Financial",
@@ -21,8 +21,8 @@
     },
     {
       "path": "#/financial/accounts",
-      "name": "Chart of Accounts",
-      "component": "pages/accounts-page.js",
+      "name": "Accounts",
+      "component": "pages/accounts.js",
       "permission": "financial:accounts:read:company",
       "menu": {
         "label": "Accounts",
@@ -32,38 +32,62 @@
       }
     },
     {
+      "path": "#/financial/customers",
+      "name": "Customers",
+      "component": "pages/customers.js",
+      "permission": "financial:customers:read:company",
+      "menu": {
+        "label": "Customers",
+        "icon": "ph-duotone ph-user-circle",
+        "order": 12,
+        "parent": "financial"
+      }
+    },
+    {
       "path": "#/financial/invoices",
       "name": "Invoices",
-      "component": "pages/invoices-page.js",
+      "component": "pages/invoices.js",
       "permission": "financial:invoices:read:company",
       "menu": {
         "label": "Invoices",
         "icon": "ph-duotone ph-receipt",
-        "order": 12,
+        "order": 13,
         "parent": "financial"
       }
     },
     {
       "path": "#/financial/payments",
       "name": "Payments",
-      "component": "pages/payments-page.js",
+      "component": "pages/payments.js",
       "permission": "financial:payments:read:company",
       "menu": {
         "label": "Payments",
         "icon": "ph-duotone ph-credit-card",
-        "order": 13,
+        "order": 14,
+        "parent": "financial"
+      }
+    },
+    {
+      "path": "#/financial/journal-entries",
+      "name": "Journal Entries",
+      "component": "pages/journal-entries.js",
+      "permission": "financial:journal:read:company",
+      "menu": {
+        "label": "Journal Entries",
+        "icon": "ph-duotone ph-notebook",
+        "order": 15,
         "parent": "financial"
       }
     },
     {
       "path": "#/financial/reports",
       "name": "Financial Reports",
-      "component": "pages/reports-page.js",
+      "component": "pages/reports.js",
       "permission": "financial:reports:read:company",
       "menu": {
         "label": "Reports",
         "icon": "ph-duotone ph-chart-line-up",
-        "order": 14,
+        "order": 16,
         "parent": "financial"
       }
     }
