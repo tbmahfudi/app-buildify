@@ -7,6 +7,13 @@ This script sets up the Financial Module for a sample tenant with:
 - Sample invoices
 - Sample payments
 - Sample journal entries
+
+Usage:
+    python setup_sample_data.py [tenant_code]
+
+    Examples:
+        python setup_sample_data.py TECHSTART
+        python setup_sample_data.py FASHIONHUB
 """
 
 import asyncio
@@ -20,6 +27,7 @@ sys.path.insert(0, '/app')
 
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy import select, text
 
 from app.config import settings
 from app.models import (
@@ -29,10 +37,11 @@ from app.models import (
 from app.services.chart_setup_service import ChartSetupService
 
 
-# Sample tenant and company IDs
-TENANT_ID = "tenant-demo-001"
-COMPANY_ID = "company-acme-corp"
-USER_ID = "user-admin-001"
+# Default values (will be overridden by lookup)
+TENANT_ID = None
+COMPANY_ID = None
+USER_ID = None
+TENANT_CODE = None
 
 
 async def setup_database():
@@ -53,6 +62,83 @@ async def setup_database():
     )
 
     return async_session
+
+
+async def lookup_tenant_info(session: AsyncSession, tenant_code: str):
+    """
+    Lookup tenant, company, and user information from database.
+
+    Returns tuple: (tenant_id, company_id, user_id, tenant_name, company_name)
+    """
+    global TENANT_ID, COMPANY_ID, USER_ID, TENANT_CODE
+
+    print("\n" + "="*60)
+    print(f"LOOKING UP TENANT: {tenant_code}")
+    print("="*60)
+
+    # Query for tenant
+    result = await session.execute(
+        text("SELECT id, code, name FROM tenants WHERE code = :code"),
+        {"code": tenant_code}
+    )
+    tenant_row = result.fetchone()
+
+    if not tenant_row:
+        print(f"❌ Tenant with code '{tenant_code}' not found!")
+        print("\nAvailable tenants:")
+        result = await session.execute(text("SELECT code, name FROM tenants"))
+        for row in result.fetchall():
+            print(f"  - {row[0]}: {row[1]}")
+        raise ValueError(f"Tenant '{tenant_code}' not found")
+
+    tenant_id = tenant_row[0]
+    tenant_name = tenant_row[2]
+    print(f"✅ Found tenant: {tenant_name} (ID: {tenant_id})")
+
+    # Query for company
+    result = await session.execute(
+        text("SELECT id, code, name FROM companies WHERE tenant_id = :tenant_id"),
+        {"tenant_id": tenant_id}
+    )
+    company_row = result.fetchone()
+
+    if not company_row:
+        raise ValueError(f"No company found for tenant '{tenant_code}'")
+
+    company_id = company_row[0]
+    company_name = company_row[2]
+    print(f"✅ Found company: {company_name} (ID: {company_id})")
+
+    # Query for first user in this tenant
+    result = await session.execute(
+        text("SELECT id, email, full_name FROM users WHERE tenant_id = :tenant_id LIMIT 1"),
+        {"tenant_id": tenant_id}
+    )
+    user_row = result.fetchone()
+
+    if not user_row:
+        raise ValueError(f"No users found for tenant '{tenant_code}'")
+
+    user_id = user_row[0]
+    user_email = user_row[1]
+    user_name = user_row[2]
+    print(f"✅ Found user: {user_name} ({user_email}) (ID: {user_id})")
+
+    # Set global variables
+    TENANT_ID = tenant_id
+    COMPANY_ID = company_id
+    USER_ID = user_id
+    TENANT_CODE = tenant_code
+
+    print(f"\n{'='*60}")
+    print("TENANT INFORMATION LOADED")
+    print(f"{'='*60}")
+    print(f"Tenant:  {tenant_name} ({tenant_code})")
+    print(f"Company: {company_name}")
+    print(f"User:    {user_name} ({user_email})")
+    print(f"{'='*60}\n")
+
+    return tenant_id, company_id, user_id, tenant_name, company_name
 
 
 async def setup_chart_of_accounts(session: AsyncSession):
@@ -521,18 +607,44 @@ async def create_journal_entries(session: AsyncSession):
 
 async def main():
     """Main setup function."""
+    global TENANT_ID, COMPANY_ID, USER_ID
+
     print("\n" + "="*60)
     print("FINANCIAL MODULE - COMPLETE SETUP")
     print("="*60)
-    print(f"\nTenant ID: {TENANT_ID}")
-    print(f"Company ID: {COMPANY_ID}")
-    print(f"User ID: {USER_ID}")
+
+    # Parse command line arguments
+    tenant_code = None
+    if len(sys.argv) > 1:
+        tenant_code = sys.argv[1].upper()
+    else:
+        print("\n📋 Available tenant codes:")
+        print("  - TECHSTART    (Tech Startup)")
+        print("  - FASHIONHUB   (Retail Chain)")
+        print("  - MEDCARE      (Healthcare)")
+        print("  - CLOUDWORK    (Remote Tech)")
+        print("  - FINTECH      (Financial Services)")
+        print("\nUsage: python setup_sample_data.py [TENANT_CODE]")
+        print("Example: python setup_sample_data.py TECHSTART\n")
+
+        tenant_code = input("Enter tenant code: ").strip().upper()
+
+    if not tenant_code:
+        print("❌ No tenant code provided. Exiting.")
+        return
 
     # Create database session
     async_session = await setup_database()
 
     async with async_session() as session:
         try:
+            # Lookup tenant information
+            await lookup_tenant_info(session, tenant_code)
+
+            if not TENANT_ID or not COMPANY_ID or not USER_ID:
+                print("❌ Failed to lookup tenant information")
+                return
+
             # Setup chart of accounts
             accounts = await setup_chart_of_accounts(session)
 
@@ -562,7 +674,15 @@ async def main():
             print(f"✅ Journal Entries: {len(journal_entries)} entries")
 
             print("\n" + "="*60)
-            print("NEXT STEPS")
+            print("FRONTEND ACCESS")
+            print("="*60)
+            print(f"\n🌐 You can now login to the frontend with:")
+            print(f"   Tenant Code: {TENANT_CODE}")
+            print(f"   Users: Check seed_complete_org.py for user credentials")
+            print(f"   Default password: password123")
+
+            print("\n" + "="*60)
+            print("API ACCESS")
             print("="*60)
             print("\n1. Access the API documentation:")
             print("   http://localhost:9001/docs")

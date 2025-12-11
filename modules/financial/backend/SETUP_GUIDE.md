@@ -1,15 +1,16 @@
 # Financial Module - Complete Setup Guide
 
-This guide walks you through setting up the Financial Module with sample data for a demo tenant.
+This guide walks you through setting up the Financial Module with sample data for existing tenants.
 
 ## Prerequisites
 
-- Docker and Docker Compose installed
+- Docker and Docker Compose installed (OR backend running locally)
 - Git repository cloned locally
+- Tenants already created (via `seed_complete_org.py`)
 
 ## Quick Start (5 Minutes)
 
-### Step 1: Start All Services
+### Step 1: Start All Services (If using Docker)
 
 ```bash
 cd /path/to/app-buildify
@@ -35,11 +36,36 @@ alembic upgrade head
 exit
 ```
 
-### Step 3: Setup Sample Data
+### Step 3: Setup Sample Data for Tenants
+
+**Option A: Interactive Setup (Recommended)**
 
 ```bash
-# Run the setup script
-docker exec -it buildify-financial python setup_sample_data.py
+# Enter the financial module container
+docker exec -it buildify-financial bash
+
+# Run the interactive setup script
+bash setup_tenants.sh
+```
+
+**Option B: Setup Specific Tenant**
+
+```bash
+# Setup for TECHSTART
+docker exec -it buildify-financial python setup_sample_data.py TECHSTART
+
+# Setup for FASHIONHUB
+docker exec -it buildify-financial python setup_sample_data.py FASHIONHUB
+
+# Setup for other tenants
+docker exec -it buildify-financial python setup_sample_data.py MEDCARE
+```
+
+**Option C: Setup Multiple Tenants at Once**
+
+```bash
+# Setup both TECHSTART and FASHIONHUB
+docker exec -it buildify-financial bash setup_tenants.sh TECHSTART FASHIONHUB
 ```
 
 This will create:
@@ -60,11 +86,16 @@ Open your browser to:
 
 ### Tenant & Company
 
-```
-Tenant ID:  tenant-demo-001
-Company ID: company-acme-corp
-User ID:    user-admin-001
-```
+The script automatically looks up tenant information from the database based on the tenant code you provide.
+
+**Supported Tenant Codes:**
+- `TECHSTART` - TechStart Innovations Inc.
+- `FASHIONHUB` - FashionHub Retail Ltd.
+- `MEDCARE` - MedCare Health System
+- `CLOUDWORK` - CloudWork Solutions
+- `FINTECH` - FinTech Capital Partners
+
+The script will display the actual tenant ID, company ID, and user ID after lookup.
 
 ### Customers
 
@@ -89,60 +120,88 @@ User ID:    user-admin-001
 | PMT-2025-001 | Acme Corporation | $3,000 | Bank Transfer | cleared |
 | PMT-2025-002 | TechCorp Industries | $5,000 | Check | pending |
 
+## Frontend Testing
+
+### Access the Application
+
+1. **Start the frontend server** (if not already running):
+   ```bash
+   cd frontend
+   python3 -m http.server 8080
+   ```
+
+2. **Open browser**: http://localhost:8080
+
+3. **Login with tenant credentials**:
+
+   **TECHSTART users:**
+   - Email: `ceo@techstart.com`
+   - Password: `password123`
+
+   **FASHIONHUB users:**
+   - Email: `ceo@fashionhub.com`
+   - Password: `password123`
+
+4. **Navigate to Financial Module**:
+   - Dashboard: `#/financial/dashboard`
+   - Accounts: `#/financial/accounts`
+   - Invoices: `#/financial/invoices`
+   - Payments: `#/financial/payments`
+   - Reports: `#/financial/reports`
+
 ## Testing the API
+
+**Note**: Replace `<TENANT_ID>` and `<COMPANY_ID>` with the actual IDs displayed after running the setup script.
 
 ### 1. List All Accounts
 
 ```bash
-curl "http://localhost:9001/api/v1/accounts?tenant_id=tenant-demo-001&company_id=company-acme-corp"
+curl "http://localhost:9001/api/v1/accounts?tenant_id=<TENANT_ID>&company_id=<COMPANY_ID>"
 ```
 
 ### 2. Get Chart of Accounts Tree
 
 ```bash
-curl "http://localhost:9001/api/v1/accounts/tree?tenant_id=tenant-demo-001&company_id=company-acme-corp"
+curl "http://localhost:9001/api/v1/accounts/tree?tenant_id=<TENANT_ID>&company_id=<COMPANY_ID>"
 ```
 
 ### 3. List Customers
 
 ```bash
-curl "http://localhost:9001/api/v1/customers?tenant_id=tenant-demo-001&company_id=company-acme-corp"
+curl "http://localhost:9001/api/v1/customers?tenant_id=<TENANT_ID>&company_id=<COMPANY_ID>"
 ```
 
 ### 4. List Invoices
 
 ```bash
-curl "http://localhost:9001/api/v1/invoices?tenant_id=tenant-demo-001&company_id=company-acme-corp"
+curl "http://localhost:9001/api/v1/invoices?tenant_id=<TENANT_ID>&company_id=<COMPANY_ID>"
 ```
 
 ### 5. Get Trial Balance Report
 
 ```bash
-curl "http://localhost:9001/api/v1/reports/trial-balance?tenant_id=tenant-demo-001&company_id=company-acme-corp&as_of_date=2025-12-31"
+curl "http://localhost:9001/api/v1/reports/trial-balance?tenant_id=<TENANT_ID>&company_id=<COMPANY_ID>&as_of_date=2025-12-31"
 ```
 
 ### 6. Get Balance Sheet
 
 ```bash
-curl "http://localhost:9001/api/v1/reports/balance-sheet?tenant_id=tenant-demo-001&company_id=company-acme-corp&as_of_date=2025-12-31"
+curl "http://localhost:9001/api/v1/reports/balance-sheet?tenant_id=<TENANT_ID>&company_id=<COMPANY_ID>&as_of_date=2025-12-31"
 ```
 
 ### 7. Get Income Statement
 
 ```bash
-curl "http://localhost:9001/api/v1/reports/income-statement?tenant_id=tenant-demo-001&company_id=company-acme-corp&from_date=2025-01-01&to_date=2025-12-31"
+curl "http://localhost:9001/api/v1/reports/income-statement?tenant_id=<TENANT_ID>&company_id=<COMPANY_ID>&from_date=2025-01-01&to_date=2025-12-31"
 ```
 
 ## Using the API with Query Parameters
 
 All endpoints require these query parameters:
-- `tenant_id` - Tenant identifier
-- `company_id` - Company identifier
+- `tenant_id` - Tenant identifier (UUID from setup script output)
+- `company_id` - Company identifier (UUID from setup script output)
 
-Example:
-```bash
-GET http://localhost:9001/api/v1/customers?tenant_id=tenant-demo-001&company_id=company-acme-corp
-```
+The setup script will display these IDs after completion.
 
 ## Create New Records via API
 
