@@ -95,7 +95,7 @@ def main():
 
     try:
         # Load financial module manifest
-        manifest_path = Path(__file__).parent.parent / "frontend" / "modules" / "financial" / "manifest.json"
+        manifest_path = Path(__file__).parent.parent / "modules" / "financial" / "manifest.json"
 
         if not manifest_path.exists():
             print(f"❌ Manifest not found at: {manifest_path}")
