@@ -14,7 +14,7 @@
       "permission": "financial:accounts:read:company",
       "menu": {
         "label": "Financial",
-        "icon": "💰",
+        "icon": "ph-duotone ph-currency-circle-dollar",
         "order": 10,
         "parent": null
       }
@@ -26,7 +26,7 @@
       "permission": "financial:accounts:read:company",
       "menu": {
         "label": "Accounts",
-        "icon": "📊",
+        "icon": "ph-duotone ph-chart-bar",
         "order": 11,
         "parent": "financial"
       }
@@ -38,7 +38,7 @@
       "permission": "financial:invoices:read:company",
       "menu": {
         "label": "Invoices",
-        "icon": "🧾",
+        "icon": "ph-duotone ph-receipt",
         "order": 12,
         "parent": "financial"
       }
@@ -50,7 +50,7 @@
       "permission": "financial:payments:read:company",
       "menu": {
         "label": "Payments",
-        "icon": "💳",
+        "icon": "ph-duotone ph-credit-card",
         "order": 13,
         "parent": "financial"
       }
@@ -62,7 +62,7 @@
       "permission": "financial:reports:read:company",
       "menu": {
         "label": "Reports",
-        "icon": "📈",
+        "icon": "ph-duotone ph-chart-line-up",
         "order": 14,
         "parent": "financial"
       }
