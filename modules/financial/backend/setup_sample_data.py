@@ -91,7 +91,7 @@ async def lookup_tenant_info(session: AsyncSession, tenant_code: str):
             print(f"  - {row[0]}: {row[1]}")
         raise ValueError(f"Tenant '{tenant_code}' not found")
 
-    tenant_id = tenant_row[0]
+    tenant_id = str(tenant_row[0])  # Convert UUID to string
     tenant_name = tenant_row[2]
     print(f"✅ Found tenant: {tenant_name} (ID: {tenant_id})")
 
@@ -105,7 +105,7 @@ async def lookup_tenant_info(session: AsyncSession, tenant_code: str):
     if not company_row:
         raise ValueError(f"No company found for tenant '{tenant_code}'")
 
-    company_id = company_row[0]
+    company_id = str(company_row[0])  # Convert UUID to string
     company_name = company_row[2]
     print(f"✅ Found company: {company_name} (ID: {company_id})")
 
@@ -119,12 +119,12 @@ async def lookup_tenant_info(session: AsyncSession, tenant_code: str):
     if not user_row:
         raise ValueError(f"No users found for tenant '{tenant_code}'")
 
-    user_id = user_row[0]
+    user_id = str(user_row[0])  # Convert UUID to string
     user_email = user_row[1]
     user_name = user_row[2]
     print(f"✅ Found user: {user_name} ({user_email}) (ID: {user_id})")
 
-    # Set global variables
+    # Set global variables (all as strings)
     TENANT_ID = tenant_id
     COMPANY_ID = company_id
     USER_ID = user_id
