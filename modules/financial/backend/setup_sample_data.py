@@ -124,6 +124,22 @@ async def create_tax_rates(session: AsyncSession):
 
     created_rates = []
     for rate_data in tax_rates:
+        # Check if tax rate already exists
+        from sqlalchemy import select
+        existing = await session.execute(
+            select(TaxRate).where(
+                TaxRate.tenant_id == TENANT_ID,
+                TaxRate.company_id == COMPANY_ID,
+                TaxRate.code == rate_data["code"]
+            )
+        )
+        existing_rate = existing.scalar_one_or_none()
+
+        if existing_rate:
+            print(f"⚠️  Tax rate already exists: {rate_data['name']} - skipping")
+            created_rates.append(existing_rate)
+            continue
+
         tax_rate = TaxRate(
             id=str(uuid4()),
             tenant_id=TENANT_ID,
@@ -195,6 +211,22 @@ async def create_customers(session: AsyncSession):
 
     customers = []
     for cust_data in customers_data:
+        # Check if customer already exists
+        from sqlalchemy import select
+        existing = await session.execute(
+            select(Customer).where(
+                Customer.tenant_id == TENANT_ID,
+                Customer.company_id == COMPANY_ID,
+                Customer.customer_number == cust_data["customer_number"]
+            )
+        )
+        existing_customer = existing.scalar_one_or_none()
+
+        if existing_customer:
+            print(f"⚠️  Customer already exists: {cust_data['name']} - skipping")
+            customers.append(existing_customer)
+            continue
+
         customer = Customer(
             id=str(uuid4()),
             tenant_id=TENANT_ID,
@@ -290,6 +322,22 @@ async def create_invoices(session: AsyncSession, customers, tax_rates):
 
     invoices = []
     for inv_data in invoices_data:
+        # Check if invoice already exists
+        from sqlalchemy import select
+        existing = await session.execute(
+            select(Invoice).where(
+                Invoice.tenant_id == TENANT_ID,
+                Invoice.company_id == COMPANY_ID,
+                Invoice.invoice_number == inv_data["invoice_number"]
+            )
+        )
+        existing_invoice = existing.scalar_one_or_none()
+
+        if existing_invoice:
+            print(f"⚠️  Invoice already exists: {inv_data['invoice_number']} - skipping")
+            invoices.append(existing_invoice)
+            continue
+
         invoice = Invoice(
             id=str(uuid4()),
             tenant_id=TENANT_ID,
@@ -359,6 +407,22 @@ async def create_payments(session: AsyncSession, customers, invoices):
 
     payments = []
     for pmt_data in payments_data:
+        # Check if payment already exists
+        from sqlalchemy import select
+        existing = await session.execute(
+            select(Payment).where(
+                Payment.tenant_id == TENANT_ID,
+                Payment.company_id == COMPANY_ID,
+                Payment.payment_number == pmt_data["payment_number"]
+            )
+        )
+        existing_payment = existing.scalar_one_or_none()
+
+        if existing_payment:
+            print(f"⚠️  Payment already exists: {pmt_data['payment_number']} - skipping")
+            payments.append(existing_payment)
+            continue
+
         payment = Payment(
             id=str(uuid4()),
             tenant_id=TENANT_ID,
@@ -392,6 +456,21 @@ async def create_journal_entries(session: AsyncSession):
     expense_account = await get_account_by_code(session, "6100")
 
     today = date.today()
+
+    # Check if journal entry already exists
+    from sqlalchemy import select
+    existing = await session.execute(
+        select(JournalEntry).where(
+            JournalEntry.tenant_id == TENANT_ID,
+            JournalEntry.company_id == COMPANY_ID,
+            JournalEntry.entry_number == "JE-2025-001"
+        )
+    )
+    existing_entry = existing.scalar_one_or_none()
+
+    if existing_entry:
+        print(f"⚠️  Journal entry already exists: JE-2025-001 - skipping")
+        return [existing_entry]
 
     # Opening balance entry
     entry = JournalEntry(
