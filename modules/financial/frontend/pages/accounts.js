@@ -19,6 +19,17 @@ export class AccountsPage {
     }
 
     /**
+     * Get tenant context from current user
+     */
+    async getTenantContext() {
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        return {
+            tenant_id: user.tenant_id,
+            company_id: user.company_id
+        };
+    }
+
+    /**
      * Render the page
      */
     async render() {
@@ -131,7 +142,14 @@ export class AccountsPage {
      */
     async loadAccounts() {
         try {
-            const response = await apiFetch('/financial/accounts');
+            const context = await this.getTenantContext();
+            const queryParams = new URLSearchParams({
+                tenant_id: context.tenant_id,
+                company_id: context.company_id,
+                ...this.filters
+            });
+
+            const response = await apiFetch(`/financial/accounts?${queryParams.toString()}`);
 
             if (!response.ok) {
                 throw new Error('Failed to load accounts');
@@ -564,8 +582,11 @@ export class AccountsPage {
      */
     async saveAccount(formData) {
         try {
+            const context = await this.getTenantContext();
             const data = {
                 ...formData,
+                tenant_id: context.tenant_id,
+                company_id: context.company_id,
                 parent_account_id: formData.parent_account_id || null
             };
 
@@ -634,7 +655,13 @@ export class AccountsPage {
         if (!this.selectedAccount) return;
 
         try {
-            const response = await apiFetch(`/financial/accounts/${this.selectedAccount.id}`, {
+            const context = await this.getTenantContext();
+            const queryParams = new URLSearchParams({
+                tenant_id: context.tenant_id,
+                company_id: context.company_id
+            });
+
+            const response = await apiFetch(`/financial/accounts/${this.selectedAccount.id}?${queryParams.toString()}`, {
                 method: 'DELETE'
             });
 

@@ -12,6 +12,17 @@ export class JournalEntriesPage {
         this.dataTable = null;
     }
 
+    /**
+     * Get tenant context from current user
+     */
+    async getTenantContext() {
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        return {
+            tenant_id: user.tenant_id,
+            company_id: user.company_id
+        };
+    }
+
     async render() {
         const response = await fetch('/modules/financial/frontend/pages/journal-entries.html');
         const html = await response.text();
@@ -65,7 +76,11 @@ export class JournalEntriesPage {
                 }
             ],
             dataSource: async (params) => {
-                const queryParams = new URLSearchParams();
+                const context = await this.getTenantContext();
+                const queryParams = new URLSearchParams({
+                    tenant_id: context.tenant_id,
+                    company_id: context.company_id
+                });
                 queryParams.append('page', params.page);
                 queryParams.append('page_size', params.page_size);
                 if (params.search) queryParams.append('search', params.search);
@@ -159,16 +174,23 @@ export class JournalEntriesPage {
 
     async saveEntry(formData) {
         try {
+            const context = await this.getTenantContext();
+            const data = {
+                ...formData,
+                tenant_id: context.tenant_id,
+                company_id: context.company_id
+            };
+
             let response;
             if (this.selectedEntry) {
                 response = await apiFetch(`/financial/journal-entries/${this.selectedEntry.id}`, {
                     method: 'PUT',
-                    body: JSON.stringify(formData)
+                    body: JSON.stringify(data)
                 });
             } else {
                 response = await apiFetch('/financial/journal-entries', {
                     method: 'POST',
-                    body: JSON.stringify(formData)
+                    body: JSON.stringify(data)
                 });
             }
 
@@ -203,7 +225,13 @@ export class JournalEntriesPage {
         if (!confirm('Post this journal entry? This action cannot be undone.')) return;
 
         try {
-            const response = await apiFetch(`/financial/journal-entries/${entry.id}/post`, {
+            const context = await this.getTenantContext();
+            const queryParams = new URLSearchParams({
+                tenant_id: context.tenant_id,
+                company_id: context.company_id
+            });
+
+            const response = await apiFetch(`/financial/journal-entries/${entry.id}/post?${queryParams.toString()}`, {
                 method: 'POST'
             });
 

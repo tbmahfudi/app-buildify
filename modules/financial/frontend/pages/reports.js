@@ -10,6 +10,17 @@ export class ReportsPage {
         this.reportData = null;
     }
 
+    /**
+     * Get tenant context from current user
+     */
+    async getTenantContext() {
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        return {
+            tenant_id: user.tenant_id,
+            company_id: user.company_id
+        };
+    }
+
     async render() {
         const response = await fetch('/modules/financial/frontend/pages/reports.html');
         const html = await response.text();
@@ -154,7 +165,10 @@ export class ReportsPage {
         `;
 
         try {
+            const context = await this.getTenantContext();
             const queryParams = new URLSearchParams({
+                tenant_id: context.tenant_id,
+                company_id: context.company_id,
                 date_from: dateFrom,
                 date_to: dateTo
             });
