@@ -13,6 +13,17 @@ export class CustomersPage {
     }
 
     /**
+     * Get tenant context from current user
+     */
+    async getTenantContext() {
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        return {
+            tenant_id: user.tenant_id,
+            company_id: user.company_id
+        };
+    }
+
+    /**
      * Render the page
      */
     async render() {
@@ -93,7 +104,13 @@ export class CustomersPage {
      */
     async loadStats() {
         try {
-            const response = await apiFetch('/financial/customers/stats');
+            const context = await this.getTenantContext();
+            const queryParams = new URLSearchParams({
+                tenant_id: context.tenant_id,
+                company_id: context.company_id
+            });
+
+            const response = await apiFetch(`/financial/customers/stats?${queryParams.toString()}`);
 
             if (response.ok) {
                 const stats = await response.json();
@@ -135,7 +152,11 @@ export class CustomersPage {
                 }
             ],
             dataSource: async (params) => {
-                const queryParams = new URLSearchParams();
+                const context = await this.getTenantContext();
+                const queryParams = new URLSearchParams({
+                    tenant_id: context.tenant_id,
+                    company_id: context.company_id
+                });
                 queryParams.append('page', params.page);
                 queryParams.append('page_size', params.page_size);
 
@@ -317,16 +338,23 @@ export class CustomersPage {
      */
     async saveCustomer(formData) {
         try {
+            const context = await this.getTenantContext();
+            const data = {
+                ...formData,
+                tenant_id: context.tenant_id,
+                company_id: context.company_id
+            };
+
             let response;
             if (this.selectedCustomer) {
                 response = await apiFetch(`/financial/customers/${this.selectedCustomer.id}`, {
                     method: 'PUT',
-                    body: JSON.stringify(formData)
+                    body: JSON.stringify(data)
                 });
             } else {
                 response = await apiFetch('/financial/customers', {
                     method: 'POST',
-                    body: JSON.stringify(formData)
+                    body: JSON.stringify(data)
                 });
             }
 
@@ -355,7 +383,13 @@ export class CustomersPage {
      */
     async viewCustomer(customer) {
         try {
-            const response = await apiFetch(`/financial/customers/${customer.id}`);
+            const context = await this.getTenantContext();
+            const queryParams = new URLSearchParams({
+                tenant_id: context.tenant_id,
+                company_id: context.company_id
+            });
+
+            const response = await apiFetch(`/financial/customers/${customer.id}?${queryParams.toString()}`);
 
             if (!response.ok) {
                 throw new Error('Failed to load customer details');
@@ -502,7 +536,13 @@ export class CustomersPage {
         if (!this.selectedCustomer) return;
 
         try {
-            const response = await apiFetch(`/financial/customers/${this.selectedCustomer.id}`, {
+            const context = await this.getTenantContext();
+            const queryParams = new URLSearchParams({
+                tenant_id: context.tenant_id,
+                company_id: context.company_id
+            });
+
+            const response = await apiFetch(`/financial/customers/${this.selectedCustomer.id}?${queryParams.toString()}`, {
                 method: 'DELETE'
             });
 

@@ -12,6 +12,17 @@ export class PaymentsPage {
         this.dataTable = null;
     }
 
+    /**
+     * Get tenant context from current user
+     */
+    async getTenantContext() {
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        return {
+            tenant_id: user.tenant_id,
+            company_id: user.company_id
+        };
+    }
+
     async render() {
         const response = await fetch('/modules/financial/frontend/pages/payments.html');
         const html = await response.text();
@@ -35,7 +46,13 @@ export class PaymentsPage {
 
     async loadStats() {
         try {
-            const response = await apiFetch('/financial/payments/stats');
+            const context = await this.getTenantContext();
+            const queryParams = new URLSearchParams({
+                tenant_id: context.tenant_id,
+                company_id: context.company_id
+            });
+
+            const response = await apiFetch(`/financial/payments/stats?${queryParams.toString()}`);
             if (response.ok) {
                 const stats = await response.json();
                 document.getElementById('stat-total-payments').textContent = stats.total_payments || 0;
@@ -75,7 +92,11 @@ export class PaymentsPage {
                 }
             ],
             dataSource: async (params) => {
-                const queryParams = new URLSearchParams();
+                const context = await this.getTenantContext();
+                const queryParams = new URLSearchParams({
+                    tenant_id: context.tenant_id,
+                    company_id: context.company_id
+                });
                 queryParams.append('page', params.page);
                 queryParams.append('page_size', params.page_size);
                 if (params.search) queryParams.append('search', params.search);
@@ -189,16 +210,23 @@ export class PaymentsPage {
 
     async savePayment(formData) {
         try {
+            const context = await this.getTenantContext();
+            const data = {
+                ...formData,
+                tenant_id: context.tenant_id,
+                company_id: context.company_id
+            };
+
             let response;
             if (this.selectedPayment) {
                 response = await apiFetch(`/financial/payments/${this.selectedPayment.id}`, {
                     method: 'PUT',
-                    body: JSON.stringify(formData)
+                    body: JSON.stringify(data)
                 });
             } else {
                 response = await apiFetch('/financial/payments', {
                     method: 'POST',
-                    body: JSON.stringify(formData)
+                    body: JSON.stringify(data)
                 });
             }
 
