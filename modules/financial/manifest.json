@@ -9,24 +9,12 @@
   "routes": [
     {
       "path": "#/financial/accounts",
-      "name": "Chart of Accounts",
-      "component": "pages/accounts.js",
-      "permission": "financial:accounts:read:company",
-      "menu": {
-        "label": "Financial",
-        "icon": "ph-duotone ph-currency-circle-dollar",
-        "order": 10,
-        "parent": null
-      }
-    },
-    {
-      "path": "#/financial/accounts",
       "name": "Accounts",
       "component": "pages/accounts.js",
       "permission": "financial:accounts:read:company",
       "menu": {
         "label": "Accounts",
-        "icon": "ph-duotone ph-chart-bar",
+        "icon": "ph-duotone ph-tree-structure",
         "order": 11,
         "parent": "financial"
       }
@@ -95,6 +83,17 @@
 
   "navigation": {
     "primary_menu": true,
+    "menu_items": [
+      {
+        "code": "financial",
+        "label": "Financial",
+        "icon": "ph-duotone ph-currency-circle-dollar",
+        "icon_color": "text-green-600",
+        "order": 10,
+        "is_parent": true,
+        "permission": null
+      }
+    ],
     "dashboard_widgets": [
       {
         "id": "financial_summary",
