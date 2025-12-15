@@ -56,7 +56,8 @@ class ModuleLoader {
     }
 
     try {
-      const response = await fetch(`/modules/${moduleName}/manifest.json`);
+      // Fetch manifest from API endpoint instead of static file
+      const response = await apiFetch(`/modules/${moduleName}/manifest`);
 
       if (!response.ok) {
         throw new Error(`Failed to load manifest: ${response.statusText}`);
@@ -223,17 +224,35 @@ class ModuleLoader {
     const menuItems = [];
 
     for (const [moduleName, manifest] of this.manifests.entries()) {
-      if (!manifest.routes) continue;
-
-      for (const route of manifest.routes) {
-        if (route.menu) {
+      // Add parent menu items from navigation.menu_items
+      if (manifest.navigation && manifest.navigation.menu_items) {
+        for (const menuItem of manifest.navigation.menu_items) {
           menuItems.push({
-            ...route.menu,
-            path: route.path,
-            name: route.name,
+            label: menuItem.label,
+            icon: menuItem.icon,
+            iconColor: menuItem.icon_color,
+            order: menuItem.order,
+            parent: null,
+            code: menuItem.code,
             moduleName: moduleName,
-            permission: route.permission
+            permission: menuItem.permission,
+            is_parent: menuItem.is_parent || false
           });
+        }
+      }
+
+      // Add route-based menu items
+      if (manifest.routes) {
+        for (const route of manifest.routes) {
+          if (route.menu) {
+            menuItems.push({
+              ...route.menu,
+              path: route.path,
+              name: route.name,
+              moduleName: moduleName,
+              permission: route.permission
+            });
+          }
         }
       }
     }
