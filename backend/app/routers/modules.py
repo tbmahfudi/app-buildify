@@ -33,6 +33,10 @@ from app.schemas.module import (
     TenantModuleInfo,
     TenantModuleInfoWithTenant,
     ModuleManifest,
+    ModuleRegistrationRequest,
+    ModuleRegistrationResponse,
+    ModuleHeartbeatRequest,
+    ModuleHeartbeatResponse,
 )
 from pathlib import Path
 import logging
@@ -231,7 +235,7 @@ async def get_module_info(
     )
 
 
-@router.get("/{module_name}/manifest", response_model=ModuleManifest)
+@router.get("/{module_name}/manifest")
 async def get_module_manifest(
     module_name: str,
     db: Session = Depends(get_db),
@@ -240,12 +244,17 @@ async def get_module_manifest(
     """
     Get full manifest for a module.
 
+    Fetches the manifest directly from the module's backend service
+    to ensure we always get the latest version.
+
     Args:
         module_name: Name of the module
 
     Returns:
         Full module manifest
     """
+    import httpx
+
     module = db.query(ModuleRegistry).filter(
         ModuleRegistry.name == module_name
     ).first()
@@ -256,7 +265,38 @@ async def get_module_manifest(
             detail=f"Module '{module_name}' not found"
         )
 
-    return ModuleManifest(**module.manifest)
+    # Get backend service URL from module's manifest (stored in database)
+    backend_service_url = None
+    if module.manifest and isinstance(module.manifest, dict):
+        backend_service_url = module.manifest.get('backend_service_url')
+
+    # Try to fetch manifest from module backend service if URL is available
+    if backend_service_url:
+        manifest_url = f"{backend_service_url}/manifest"
+
+        try:
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                response = await client.get(manifest_url)
+
+                if response.status_code == 200:
+                    return response.json()
+                else:
+                    logger.warning(
+                        f"Failed to fetch manifest from {manifest_url}: {response.status_code}"
+                    )
+        except Exception as e:
+            logger.warning(f"Error fetching manifest from module service: {e}")
+    else:
+        logger.warning(f"No backend_service_url found in manifest for module '{module_name}'")
+
+    # Fallback to database if module service is unavailable
+    if module.manifest:
+        return module.manifest
+
+    raise HTTPException(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        detail=f"Module manifest not available for '{module_name}'"
+    )
 
 
 @router.post("/install", response_model=ModuleOperationResponse)
@@ -583,6 +623,202 @@ async def update_module_configuration(
         message=f"Configuration updated for module '{module_name}'",
         module_name=module_name
     )
+
+
+@router.post("/register", response_model=ModuleRegistrationResponse)
+async def register_module(
+    request_data: ModuleRegistrationRequest,
+    db: Session = Depends(get_db)
+):
+    """
+    Register a module with the core platform.
+
+    This endpoint is called by modules during their startup to register
+    themselves with the core platform. The module sends its manifest and
+    service URLs, and the core platform stores this information in the database.
+
+    This endpoint does NOT require authentication as it's called during
+    module startup before any user authentication is available.
+
+    Args:
+        request_data: Module registration request with manifest and service URLs
+
+    Returns:
+        Registration response with success status
+    """
+    from datetime import datetime
+
+    try:
+        # Extract module information from manifest
+        manifest = request_data.manifest
+        module_name = manifest.get('name')
+
+        if not module_name:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Module manifest must contain 'name' field"
+            )
+
+        # Add backend_service_url to manifest if not present
+        if 'backend_service_url' not in manifest:
+            manifest['backend_service_url'] = request_data.backend_service_url
+
+        # Check if module already exists
+        existing_module = db.query(ModuleRegistry).filter(
+            ModuleRegistry.name == module_name
+        ).first()
+
+        if existing_module:
+            # Update existing module
+            existing_module.display_name = manifest.get('display_name', module_name)
+            existing_module.version = manifest.get('version', '1.0.0')
+            existing_module.description = manifest.get('description')
+            existing_module.category = manifest.get('category')
+            existing_module.tags = manifest.get('tags')
+            existing_module.author = manifest.get('author')
+            existing_module.license = manifest.get('license')
+            existing_module.manifest = manifest
+            existing_module.dependencies = manifest.get('dependencies')
+            existing_module.subscription_tier = manifest.get('subscription_tier')
+            existing_module.api_prefix = manifest.get('api', {}).get('prefix')
+            existing_module.status = manifest.get('status', 'available')
+            existing_module.homepage = manifest.get('homepage')
+            existing_module.repository = manifest.get('repository')
+            existing_module.support_email = manifest.get('support_email')
+            existing_module.updated_at = datetime.utcnow()
+
+            # Mark as installed if not already
+            if not existing_module.is_installed:
+                existing_module.is_installed = True
+                existing_module.installed_at = datetime.utcnow()
+
+            db.commit()
+            db.refresh(existing_module)
+
+            logger.info(f"Module '{module_name}' re-registered and updated")
+
+            return ModuleRegistrationResponse(
+                success=True,
+                message=f"Module '{module_name}' re-registered successfully",
+                module_name=module_name,
+                registered_at=datetime.utcnow(),
+                should_install=False
+            )
+        else:
+            # Create new module entry
+            from app.models.base import generate_uuid
+
+            new_module = ModuleRegistry(
+                id=generate_uuid(),
+                name=module_name,
+                display_name=manifest.get('display_name', module_name),
+                version=manifest.get('version', '1.0.0'),
+                description=manifest.get('description'),
+                category=manifest.get('category'),
+                tags=manifest.get('tags'),
+                author=manifest.get('author'),
+                license=manifest.get('license'),
+                is_installed=True,
+                is_enabled=True,
+                is_core=manifest.get('is_core', False),
+                installed_at=datetime.utcnow(),
+                manifest=manifest,
+                configuration=manifest.get('configuration'),
+                dependencies=manifest.get('dependencies'),
+                subscription_tier=manifest.get('subscription_tier'),
+                api_prefix=manifest.get('api', {}).get('prefix'),
+                status=manifest.get('status', 'available'),
+                homepage=manifest.get('homepage'),
+                repository=manifest.get('repository'),
+                support_email=manifest.get('support_email')
+            )
+
+            db.add(new_module)
+            db.commit()
+            db.refresh(new_module)
+
+            logger.info(f"Module '{module_name}' registered successfully (new)")
+
+            return ModuleRegistrationResponse(
+                success=True,
+                message=f"Module '{module_name}' registered successfully",
+                module_name=module_name,
+                registered_at=datetime.utcnow(),
+                should_install=True
+            )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error registering module: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error registering module: {str(e)}"
+        )
+
+
+@router.post("/{module_name}/heartbeat", response_model=ModuleHeartbeatResponse)
+async def module_heartbeat(
+    module_name: str,
+    request_data: ModuleHeartbeatRequest,
+    db: Session = Depends(get_db)
+):
+    """
+    Receive heartbeat from a module.
+
+    Modules can optionally send periodic heartbeats to indicate they are
+    still running and healthy. This updates the module's last_seen timestamp.
+
+    This endpoint does NOT require authentication.
+
+    Args:
+        module_name: Name of the module sending heartbeat
+        request_data: Heartbeat data
+
+    Returns:
+        Heartbeat acknowledgment
+    """
+    from datetime import datetime
+
+    try:
+        module = db.query(ModuleRegistry).filter(
+            ModuleRegistry.name == module_name
+        ).first()
+
+        if not module:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Module '{module_name}' not found"
+            )
+
+        # Update last seen timestamp
+        module.updated_at = datetime.utcnow()
+
+        # Update version if changed
+        if request_data.version and request_data.version != module.version:
+            logger.info(f"Module '{module_name}' version changed: {module.version} -> {request_data.version}")
+            module.version = request_data.version
+
+        # Update status if provided
+        if request_data.status:
+            module.status = request_data.status
+
+        db.commit()
+
+        return ModuleHeartbeatResponse(
+            success=True,
+            message="Heartbeat received",
+            last_seen=module.updated_at
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error processing heartbeat from '{module_name}': {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error processing heartbeat: {str(e)}"
+        )
 
 
 @router.post("/sync", response_model=ModuleOperationResponse)

@@ -4,6 +4,7 @@
   "version": "1.0.0",
   "description": "Financial management user interface",
 
+  "backend_service_url": "http://financial-module:9001",
   "entry_point": "module.js",
 
   "routes": [
