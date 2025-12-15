@@ -106,7 +106,6 @@
   },
 
   "dependencies": {
-    "core_version": ">=1.0.0",
     "required_modules": [],
     "optional_modules": []
   },
