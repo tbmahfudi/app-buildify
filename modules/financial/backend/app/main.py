@@ -7,17 +7,77 @@ It can run independently and communicate with the core platform via API calls an
 
 import os
 import json
+import asyncio
 from pathlib import Path
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+import httpx
 
 from .config import settings
 from .core.database import engine, get_db
 from .core.event_handler import FinancialEventHandler
 from .routers import accounts, customers, invoices, journal_entries, payments, tax_rates, reports
+
+async def register_with_core_platform(max_retries: int = 5):
+    """
+    Register this module with the core platform.
+
+    Implements retry logic with exponential backoff in case core platform
+    is not yet ready.
+
+    Args:
+        max_retries: Maximum number of registration attempts
+    """
+    manifest_path = Path(__file__).parent.parent.parent / "manifest.json"
+
+    if not manifest_path.exists():
+        print(f"ERROR: Manifest file not found at {manifest_path}")
+        return False
+
+    # Load manifest
+    with open(manifest_path, 'r') as f:
+        manifest = json.load(f)
+
+    # Prepare registration payload
+    registration_data = {
+        "manifest": manifest,
+        "backend_service_url": settings.CORE_PLATFORM_URL.replace('core-platform', 'financial-module').replace('8000', str(settings.MODULE_PORT)),
+        "health_check_url": f"http://financial-module:{settings.MODULE_PORT}/health"
+    }
+
+    # Retry logic with exponential backoff
+    for attempt in range(max_retries):
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                response = await client.post(
+                    f"{settings.CORE_PLATFORM_URL}/api/v1/modules/register",
+                    json=registration_data
+                )
+
+                if response.status_code == 200:
+                    result = response.json()
+                    print(f"✓ Successfully registered with core platform: {result.get('message')}")
+                    return True
+                else:
+                    print(f"✗ Registration failed (attempt {attempt + 1}/{max_retries}): {response.status_code} - {response.text}")
+
+        except httpx.ConnectError as e:
+            print(f"✗ Cannot connect to core platform (attempt {attempt + 1}/{max_retries}): {e}")
+        except Exception as e:
+            print(f"✗ Registration error (attempt {attempt + 1}/{max_retries}): {e}")
+
+        # Wait before retry with exponential backoff: 2s, 4s, 8s, 16s, 32s
+        if attempt < max_retries - 1:
+            wait_time = 2 ** (attempt + 1)
+            print(f"  Retrying in {wait_time} seconds...")
+            await asyncio.sleep(wait_time)
+
+    print(f"✗ Failed to register with core platform after {max_retries} attempts")
+    return False
+
 
 # Lifespan context manager for startup/shutdown events
 @asynccontextmanager
@@ -34,7 +94,8 @@ async def lifespan(app: FastAPI):
     app.state.event_handler = event_handler
 
     # Register with core platform
-    # await register_with_platform()
+    print(f"Registering {settings.MODULE_NAME} with core platform...")
+    await register_with_core_platform()
 
     print(f"{settings.MODULE_NAME} started successfully on port {settings.MODULE_PORT}")
 

@@ -169,3 +169,37 @@ class ModuleManifest(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class ModuleRegistrationRequest(BaseModel):
+    """Request from module to register itself with core platform"""
+    manifest: Dict[str, Any] = Field(..., description="Full module manifest")
+    backend_service_url: str = Field(..., description="URL of module backend service")
+    health_check_url: Optional[str] = Field(None, description="Health check endpoint URL")
+
+
+class ModuleRegistrationResponse(BaseModel):
+    """Response to module registration request"""
+    success: bool
+    message: str
+    module_name: str
+    registered_at: datetime
+    should_install: bool = Field(
+        default=False,
+        description="Whether module should run installation scripts"
+    )
+
+
+class ModuleHeartbeatRequest(BaseModel):
+    """Heartbeat request from module"""
+    module_name: str
+    version: str
+    status: str = Field(default="healthy", description="Module health status")
+    metadata: Optional[Dict[str, Any]] = Field(None, description="Additional module metadata")
+
+
+class ModuleHeartbeatResponse(BaseModel):
+    """Response to heartbeat"""
+    success: bool
+    message: str
+    last_seen: datetime
