@@ -11,7 +11,7 @@ const deriveApiBase = () => {
 
     const { protocol, hostname } = window.location;
     if (hostname === 'localhost' || hostname === '127.0.0.1') {
-      return `${protocol}//${hostname}:8000/api/v1`;
+      return `${protocol}//${hostname}:8080/api/v1`;
     }
   }
 
