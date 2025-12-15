@@ -261,22 +261,29 @@ async def get_module_manifest(
             detail=f"Module '{module_name}' not found"
         )
 
-    # Try to fetch manifest from module backend service
-    # Module backend services follow naming convention: {module_name}-module
-    module_service_url = f"http://{module_name}-module:9001/manifest"
+    # Get backend service URL from module's manifest (stored in database)
+    backend_service_url = None
+    if module.manifest and isinstance(module.manifest, dict):
+        backend_service_url = module.manifest.get('backend_service_url')
 
-    try:
-        async with httpx.AsyncClient(timeout=5.0) as client:
-            response = await client.get(module_service_url)
+    # Try to fetch manifest from module backend service if URL is available
+    if backend_service_url:
+        manifest_url = f"{backend_service_url}/manifest"
 
-            if response.status_code == 200:
-                return response.json()
-            else:
-                logger.warning(
-                    f"Failed to fetch manifest from {module_service_url}: {response.status_code}"
-                )
-    except Exception as e:
-        logger.warning(f"Error fetching manifest from module service: {e}")
+        try:
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                response = await client.get(manifest_url)
+
+                if response.status_code == 200:
+                    return response.json()
+                else:
+                    logger.warning(
+                        f"Failed to fetch manifest from {manifest_url}: {response.status_code}"
+                    )
+        except Exception as e:
+            logger.warning(f"Error fetching manifest from module service: {e}")
+    else:
+        logger.warning(f"No backend_service_url found in manifest for module '{module_name}'")
 
     # Fallback to database if module service is unavailable
     if module.manifest:
