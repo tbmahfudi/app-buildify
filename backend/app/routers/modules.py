@@ -231,7 +231,7 @@ async def get_module_info(
     )
 
 
-@router.get("/{module_name}/manifest", response_model=ModuleManifest)
+@router.get("/{module_name}/manifest")
 async def get_module_manifest(
     module_name: str,
     db: Session = Depends(get_db),
@@ -240,12 +240,17 @@ async def get_module_manifest(
     """
     Get full manifest for a module.
 
+    Fetches the manifest directly from the module's backend service
+    to ensure we always get the latest version.
+
     Args:
         module_name: Name of the module
 
     Returns:
         Full module manifest
     """
+    import httpx
+
     module = db.query(ModuleRegistry).filter(
         ModuleRegistry.name == module_name
     ).first()
@@ -256,7 +261,31 @@ async def get_module_manifest(
             detail=f"Module '{module_name}' not found"
         )
 
-    return ModuleManifest(**module.manifest)
+    # Try to fetch manifest from module backend service
+    # Module backend services follow naming convention: {module_name}-module
+    module_service_url = f"http://{module_name}-module:9001/manifest"
+
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            response = await client.get(module_service_url)
+
+            if response.status_code == 200:
+                return response.json()
+            else:
+                logger.warning(
+                    f"Failed to fetch manifest from {module_service_url}: {response.status_code}"
+                )
+    except Exception as e:
+        logger.warning(f"Error fetching manifest from module service: {e}")
+
+    # Fallback to database if module service is unavailable
+    if module.manifest:
+        return module.manifest
+
+    raise HTTPException(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        detail=f"Module manifest not available for '{module_name}'"
+    )
 
 
 @router.post("/install", response_model=ModuleOperationResponse)

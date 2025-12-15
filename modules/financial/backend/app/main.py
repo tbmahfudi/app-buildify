@@ -6,9 +6,11 @@ It can run independently and communicate with the core platform via API calls an
 """
 
 import os
+import json
+from pathlib import Path
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
@@ -87,6 +89,41 @@ async def root():
         "status": "running",
         "docs": "/docs"
     }
+
+
+# Manifest endpoint
+@app.get("/manifest")
+async def get_manifest():
+    """
+    Get module manifest.
+
+    Returns the manifest.json file that describes the module's
+    configuration, routes, permissions, and frontend components.
+    """
+    try:
+        # Path to manifest.json (two levels up from app directory)
+        manifest_path = Path(__file__).parent.parent.parent / "manifest.json"
+
+        if not manifest_path.exists():
+            raise HTTPException(
+                status_code=404,
+                detail=f"Manifest file not found at {manifest_path}"
+            )
+
+        with open(manifest_path, 'r') as f:
+            manifest = json.load(f)
+
+        return manifest
+    except json.JSONDecodeError as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Invalid manifest JSON: {str(e)}"
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error reading manifest: {str(e)}"
+        )
 
 
 # Exception handler
