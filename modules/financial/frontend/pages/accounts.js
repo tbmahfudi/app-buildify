@@ -34,7 +34,7 @@ export class AccountsPage {
      */
     async render() {
         // Load the HTML template
-        const response = await fetch('./accounts.html');
+        const response = await fetch('/modules/financial/pages/accounts.html');
         const html = await response.text();
 
         const container = document.getElementById('app-content');
