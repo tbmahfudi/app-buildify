@@ -493,37 +493,53 @@ async function loadMenuFromStatic() {
  * Convert backend menu format to frontend format
  * Backend uses 'children', frontend expects 'submenu'
  * Preserves permission and role information for potential client-side checks
+ * Filters out parent menus with no children
  */
 function convertBackendMenuFormat(menuItems) {
-  return menuItems.map(item => {
-    const converted = {
-      title: item.title,
-      route: item.route,
-      icon: item.icon,
-      order: item.order,
-      target: item.target || '_self'
-    };
+  return menuItems
+    .map(item => {
+      const converted = {
+        title: item.title,
+        route: item.route,
+        icon: item.icon,
+        order: item.order,
+        target: item.target || '_self'
+      };
 
-    // Preserve RBAC information (already filtered by backend, but useful for client-side checks)
-    if (item.permission) {
-      converted.permission = item.permission;
-    }
-    if (item.required_roles) {
-      converted.roles = item.required_roles;  // Map to 'roles' for consistency with static menu format
-    }
+      // Preserve RBAC information (already filtered by backend, but useful for client-side checks)
+      if (item.permission) {
+        converted.permission = item.permission;
+      }
+      if (item.required_roles) {
+        converted.roles = item.required_roles;  // Map to 'roles' for consistency with static menu format
+      }
 
-    // Preserve extra_data if present
-    if (item.extra_data) {
-      converted.extra_data = item.extra_data;
-    }
+      // Preserve extra_data if present (includes icon_color)
+      if (item.extra_data) {
+        converted.extra_data = item.extra_data;
+        // Apply icon_color if present
+        if (item.extra_data.icon_color) {
+          converted.iconColor = item.extra_data.icon_color;
+        }
+      }
 
-    // Convert children to submenu
-    if (item.children && item.children.length > 0) {
-      converted.submenu = convertBackendMenuFormat(item.children);
-    }
+      // Convert children to submenu
+      if (item.children && item.children.length > 0) {
+        converted.submenu = convertBackendMenuFormat(item.children);
+      }
 
-    return converted;
-  });
+      return converted;
+    })
+    .filter(item => {
+      // Filter out parent-only menus (no route) with no children
+      // If menu has a route, keep it (it's a clickable item)
+      // If menu has no route but has children, keep it (it's a valid parent)
+      // If menu has no route and no children, filter it out
+      if (!item.route && (!item.submenu || item.submenu.length === 0)) {
+        return false;
+      }
+      return true;
+    });
 }
 
 // Helper function to convert menu title to i18n key

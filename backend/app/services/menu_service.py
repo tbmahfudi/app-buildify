@@ -146,6 +146,7 @@ class MenuService:
 
         Queries TenantModule to find enabled modules and their routes,
         then converts them to MenuItem objects for consistency.
+        Also includes parent menu items from navigation.menu_items.
         """
         # Get enabled modules for tenant
         tenant_modules = db.query(TenantModule).filter(
@@ -154,6 +155,7 @@ class MenuService:
         ).all()
 
         module_menu_items = []
+        parent_menu_codes = {}  # Track parent menu codes
 
         for tenant_module in tenant_modules:
             # Get module manifest from the module registry
@@ -162,8 +164,37 @@ class MenuService:
 
             manifest = tenant_module.module.manifest if tenant_module.module.manifest else {}
 
-            if not manifest or 'routes' not in manifest:
+            if not manifest:
                 continue
+
+            module_code = tenant_module.module.name
+
+            # Process parent menu items from navigation.menu_items
+            navigation = manifest.get('navigation', {})
+            menu_items_config = navigation.get('menu_items', [])
+
+            for menu_item_config in menu_items_config:
+                # Create parent menu item
+                parent_code = menu_item_config.get('code', f"module_{module_code}_parent")
+                parent_menu_item = MenuItem(
+                    code=parent_code,
+                    title=menu_item_config.get('label', module_code.title()),
+                    icon=menu_item_config.get('icon', 'ph-duotone ph-square'),
+                    route=None,  # Parent items typically don't have routes
+                    permission=menu_item_config.get('permission'),
+                    order=menu_item_config.get('order', 999),
+                    module_code=module_code,
+                    is_system=False,
+                    parent_id=None,
+                    is_active=True,
+                    is_visible=True,
+                    target='_self',
+                    extra_data={'icon_color': menu_item_config.get('icon_color')}
+                )
+
+                # Store parent code for child linking
+                parent_menu_codes[parent_code] = parent_menu_item
+                module_menu_items.append(parent_menu_item)
 
             # Process routes that have menu configuration
             for route in manifest.get('routes', []):
@@ -175,8 +206,13 @@ class MenuService:
                 if route_permission and route_permission not in permissions:
                     continue
 
+                # Determine parent
+                menu_parent = route['menu'].get('parent')
+                parent_id = None
+                if menu_parent and menu_parent in parent_menu_codes:
+                    parent_id = parent_menu_codes[menu_parent].code
+
                 # Create virtual MenuItem for module route
-                module_code = tenant_module.module.name
                 menu_item = MenuItem(
                     code=f"module_{module_code}_{route.get('path', '').replace('#/', '').replace('/', '_')}",
                     title=route['menu'].get('label', route.get('name', 'Unknown')),
@@ -186,7 +222,7 @@ class MenuService:
                     order=route['menu'].get('order', 999),
                     module_code=module_code,
                     is_system=False,
-                    parent_id=None,  # Module menus are top-level for now
+                    parent_id=parent_id,
                     is_active=True,
                     is_visible=True,
                     target='_self'
@@ -202,6 +238,7 @@ class MenuService:
         Build hierarchical menu structure from flat list.
 
         Converts MenuItem objects to dictionaries with nested children.
+        Filters out parent items that have no accessible children.
         """
         # Create lookup map
         item_map = {}
@@ -216,7 +253,14 @@ class MenuService:
 
             if not item.parent_id:
                 # Root item
-                tree.append(MenuService._item_to_dict(item, item_map))
+                item_dict = MenuService._item_to_dict(item, item_map)
+
+                # Filter out parent menus with no children
+                # If the item has no route (parent-only) and no children, skip it
+                if not item_dict.get('route') and len(item_dict.get('children', [])) == 0:
+                    continue
+
+                tree.append(item_dict)
 
         # Sort by order
         tree.sort(key=lambda x: x.get('order', 0))
