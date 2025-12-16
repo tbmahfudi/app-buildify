@@ -277,7 +277,17 @@ class MenuService:
         for item in items:
             item_id = str(item.id) if hasattr(item, 'id') and item.id else item.code
 
-            if not item.parent_id:
+            # Check if this is a root item (no parent reference)
+            # For module items, check _parent_code; for DB items, check parent_id
+            has_parent = False
+            if hasattr(item, '_parent_code') and item._parent_code:
+                has_parent = True
+                logger.info(f"Item {item.code} has _parent_code={item._parent_code}, not a root item")
+            elif item.parent_id:
+                has_parent = True
+                logger.info(f"Item {item.code} has parent_id={item.parent_id}, not a root item")
+
+            if not has_parent:
                 # Root item
                 logger.info(f"Processing root item: {item.code} (item_id={item_id})")
                 item_dict = MenuService._item_to_dict(item, item_map)
