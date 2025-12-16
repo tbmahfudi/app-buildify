@@ -155,7 +155,8 @@ export class AccountsPage {
                 throw new Error('Failed to load accounts');
             }
 
-            this.accounts = await response.json();
+            const data = await response.json();
+            this.accounts = data.accounts || [];
         } catch (error) {
             console.error('Error loading accounts:', error);
             this.showToast('Failed to load accounts', 'error');
