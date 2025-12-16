@@ -217,14 +217,10 @@ class MenuService:
 
                 # Determine parent
                 menu_parent = route['menu'].get('parent')
-                parent_id = None
                 parent_item = None
                 if menu_parent and menu_parent in parent_menu_codes:
                     parent_item = parent_menu_codes[menu_parent]
-                    # For module items, use the parent's code as parent_id
-                    # This ensures consistency when building the tree
-                    parent_id = parent_item.code if hasattr(parent_item, 'code') else None
-                    logger.info(f"Route {route.get('path')} has parent: {menu_parent}, parent_id set to: {parent_id}")
+                    logger.info(f"Route {route.get('path')} has parent: {menu_parent}")
 
                 # Create virtual MenuItem for module route
                 menu_item = MenuItem(
@@ -236,7 +232,7 @@ class MenuService:
                     order=route['menu'].get('order', 999),
                     module_code=module_code,
                     is_system=False,
-                    parent_id=parent_id,
+                    parent_id=None,  # Don't use parent_id for module items (GUID type validation issues)
                     is_active=True,
                     is_visible=True,
                     target='_self'
@@ -245,7 +241,11 @@ class MenuService:
                 # Explicitly set id to None
                 menu_item.id = None
 
-                logger.info(f"Created menu item: code={menu_item.code}, parent_id={menu_item.parent_id}, id={menu_item.id}")
+                # Use a custom attribute to store parent code (not a DB column, just for in-memory linking)
+                # This avoids GUID type validation issues with non-UUID parent references
+                menu_item._parent_code = menu_parent if menu_parent in parent_menu_codes else None
+
+                logger.info(f"Created menu item: code={menu_item.code}, _parent_code={getattr(menu_item, '_parent_code', None)}, id={menu_item.id}")
 
                 module_menu_items.append(menu_item)
 
@@ -334,11 +334,20 @@ class MenuService:
         # Add children
         children = []
         for child_id, child in item_map.items():
-            # Compare parent_id with item_id, handling both UUID and code-based IDs
-            child_parent_id_str = str(child.parent_id) if child.parent_id else None
-            if child_parent_id_str:
-                logger.info(f"      Checking child {child.code}: parent_id={child_parent_id_str}, item_id={item_id}, match={child_parent_id_str == item_id}")
-            if child_parent_id_str and child_parent_id_str == item_id:
+            # For module items, check _parent_code attribute (custom, not a DB column)
+            # For DB items, check parent_id (UUID)
+            child_parent_ref = None
+
+            # First check for module item parent reference (_parent_code)
+            if hasattr(child, '_parent_code') and child._parent_code:
+                child_parent_ref = child._parent_code
+                logger.info(f"      Checking child {child.code}: _parent_code={child_parent_ref}, item_id={item_id}, match={child_parent_ref == item_id}")
+            # Otherwise check database parent_id (UUID)
+            elif child.parent_id:
+                child_parent_ref = str(child.parent_id)
+                logger.info(f"      Checking child {child.code}: parent_id={child_parent_ref}, item_id={item_id}, match={child_parent_ref == item_id}")
+
+            if child_parent_ref and child_parent_ref == item_id:
                 logger.info(f"      -> MATCH! Adding child: {child.code}")
                 children.append(child)
 
