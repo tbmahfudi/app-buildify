@@ -2,7 +2,7 @@
  * Journal Entries Page
  */
 
-import { apiFetch } from '../../../../frontend/assets/js/api.js';
+import { apiFetch } from '/assets/js/api.js';
 import { DataTable } from '../components/data-table.js';
 import { FormBuilder } from '../components/form-builder.js';
 

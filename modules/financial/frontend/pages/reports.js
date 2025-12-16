@@ -2,7 +2,7 @@
  * Financial Reports Page
  */
 
-import { apiFetch } from '../../../../frontend/assets/js/api.js';
+import { apiFetch } from '/assets/js/api.js';
 
 export class ReportsPage {
     constructor() {
