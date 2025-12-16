@@ -172,10 +172,13 @@ class MenuService:
 
             module_code = tenant_module.module.name
             logger.info(f"Processing module: {module_code}")
+            logger.info(f"  Manifest keys: {list(manifest.keys())}")
 
             # Process parent menu items from navigation.menu_items
             navigation = manifest.get('navigation', {})
+            logger.info(f"  Navigation keys: {list(navigation.keys())}")
             menu_items_config = navigation.get('menu_items', [])
+            logger.info(f"  menu_items_config count: {len(menu_items_config)}")
 
             for menu_item_config in menu_items_config:
                 # Create parent menu item
