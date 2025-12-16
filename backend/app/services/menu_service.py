@@ -176,9 +176,9 @@ class MenuService:
 
             # Process parent menu items from navigation.menu_items
             navigation = manifest.get('navigation', {})
-            logger.info(f"  Navigation keys: {list(navigation.keys())}")
+            logger.info(f"  Navigation: {navigation}")
             menu_items_config = navigation.get('menu_items', [])
-            logger.info(f"  menu_items_config count: {len(menu_items_config)}")
+            logger.info(f"  menu_items_config: {menu_items_config}")
 
             for menu_item_config in menu_items_config:
                 # Create parent menu item
