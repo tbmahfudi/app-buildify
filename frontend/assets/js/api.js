@@ -8,13 +8,9 @@ const deriveApiBase = () => {
     if (window.APP_CONFIG?.apiBase) {
       return normalizeBase(window.APP_CONFIG.apiBase);
     }
-
-    const { protocol, hostname } = window.location;
-    if (hostname === 'localhost' || hostname === '127.0.0.1') {
-      return `${protocol}//${hostname}:8080/api/v1`;
-    }
   }
 
+  // Use relative URLs for all environments to match 'self' in CSP
   return '/api/v1';
 };
 
