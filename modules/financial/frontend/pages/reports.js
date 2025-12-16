@@ -22,7 +22,7 @@ export class ReportsPage {
     }
 
     async render() {
-        const response = await fetch('/modules/financial/frontend/pages/reports.html');
+        const response = await fetch('/modules/financial/pages/reports.html');
         const html = await response.text();
         document.getElementById('app-content').innerHTML = html;
         await this.init();
