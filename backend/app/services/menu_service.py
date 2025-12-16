@@ -209,8 +209,12 @@ class MenuService:
                 # Determine parent
                 menu_parent = route['menu'].get('parent')
                 parent_id = None
+                parent_item = None
                 if menu_parent and menu_parent in parent_menu_codes:
-                    parent_id = parent_menu_codes[menu_parent].code
+                    parent_item = parent_menu_codes[menu_parent]
+                    # For module items, use the parent's code as parent_id
+                    # This ensures consistency when building the tree
+                    parent_id = parent_item.code if hasattr(parent_item, 'code') else None
 
                 # Create virtual MenuItem for module route
                 menu_item = MenuItem(
@@ -300,7 +304,9 @@ class MenuService:
         # Add children
         children = []
         for child_id, child in item_map.items():
-            if child.parent_id and str(child.parent_id) == item_id:
+            # Compare parent_id with item_id, handling both UUID and code-based IDs
+            child_parent_id_str = str(child.parent_id) if child.parent_id else None
+            if child_parent_id_str and child_parent_id_str == item_id:
                 children.append(child)
 
         # Sort children by order and convert to dict
