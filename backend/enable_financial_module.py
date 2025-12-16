@@ -94,11 +94,30 @@ def main():
     db = SessionLocal()
 
     try:
-        # Load financial module manifest
-        manifest_path = Path(__file__).parent.parent / "modules" / "financial" / "manifest.json"
+        # Load financial module manifest - try multiple possible locations
+        possible_paths = [
+            # Docker: from backend directory
+            Path(__file__).parent.parent / "modules" / "financial" / "manifest.json",
+            # Docker: from /app
+            Path("/app/../modules/financial/manifest.json"),
+            # Docker: absolute path
+            Path("/modules/financial/manifest.json"),
+            # Development: relative to backend
+            Path(__file__).parent / "../modules/financial/manifest.json",
+        ]
 
-        if not manifest_path.exists():
-            print(f"❌ Manifest not found at: {manifest_path}")
+        manifest_path = None
+        for path in possible_paths:
+            if path.exists():
+                manifest_path = path
+                print(f"✅ Found manifest at: {path}")
+                break
+
+        if not manifest_path:
+            print(f"❌ Manifest not found!")
+            print("\nSearched in:")
+            for path in possible_paths:
+                print(f"  - {path}")
             sys.exit(1)
 
         with open(manifest_path, 'r') as f:

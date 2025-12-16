@@ -1,0 +1,124 @@
+-- Update financial module manifest in database
+-- This updates the manifest to include the parent menu item in navigation.menu_items
+
+UPDATE module_registry
+SET manifest = '{
+  "name": "financial",
+  "display_name": "Financial Management",
+  "version": "1.0.0",
+  "description": "Financial management user interface",
+  "backend_service_url": "http://financial-module:9001",
+  "entry_point": "module.js",
+  "routes": [
+    {
+      "path": "#/financial/accounts",
+      "name": "Accounts",
+      "component": "pages/accounts.js",
+      "permission": "financial:accounts:read:company",
+      "menu": {
+        "label": "Accounts",
+        "icon": "ph-duotone ph-tree-structure",
+        "order": 11,
+        "parent": "financial"
+      }
+    },
+    {
+      "path": "#/financial/customers",
+      "name": "Customers",
+      "component": "pages/customers.js",
+      "permission": "financial:customers:read:company",
+      "menu": {
+        "label": "Customers",
+        "icon": "ph-duotone ph-user-circle",
+        "order": 12,
+        "parent": "financial"
+      }
+    },
+    {
+      "path": "#/financial/invoices",
+      "name": "Invoices",
+      "component": "pages/invoices.js",
+      "permission": "financial:invoices:read:company",
+      "menu": {
+        "label": "Invoices",
+        "icon": "ph-duotone ph-receipt",
+        "order": 13,
+        "parent": "financial"
+      }
+    },
+    {
+      "path": "#/financial/payments",
+      "name": "Payments",
+      "component": "pages/payments.js",
+      "permission": "financial:payments:read:company",
+      "menu": {
+        "label": "Payments",
+        "icon": "ph-duotone ph-credit-card",
+        "order": 14,
+        "parent": "financial"
+      }
+    },
+    {
+      "path": "#/financial/journal-entries",
+      "name": "Journal Entries",
+      "component": "pages/journal-entries.js",
+      "permission": "financial:journal:read:company",
+      "menu": {
+        "label": "Journal Entries",
+        "icon": "ph-duotone ph-notebook",
+        "order": 15,
+        "parent": "financial"
+      }
+    },
+    {
+      "path": "#/financial/reports",
+      "name": "Financial Reports",
+      "component": "pages/reports.js",
+      "permission": "financial:reports:read:company",
+      "menu": {
+        "label": "Reports",
+        "icon": "ph-duotone ph-chart-line-up",
+        "order": 16,
+        "parent": "financial"
+      }
+    }
+  ],
+  "navigation": {
+    "primary_menu": true,
+    "menu_items": [
+      {
+        "code": "financial",
+        "label": "Financial",
+        "icon": "ph-duotone ph-currency-circle-dollar",
+        "icon_color": "text-green-600",
+        "order": 10,
+        "is_parent": true,
+        "permission": null
+      }
+    ],
+    "dashboard_widgets": [
+      {
+        "id": "financial_summary",
+        "name": "Financial Summary",
+        "component": "components/financial-widget.js",
+        "size": "large",
+        "permission": "financial:accounts:read:company"
+      }
+    ]
+  },
+  "dependencies": {
+    "required_modules": [],
+    "optional_modules": []
+  },
+  "assets": {
+    "css": [],
+    "icons": []
+  }
+}'::jsonb
+WHERE name = 'financial';
+
+-- Verify the update
+SELECT name, display_name, version,
+       manifest->'navigation'->'menu_items' as menu_items_config
+FROM module_registry
+WHERE name = 'financial';
