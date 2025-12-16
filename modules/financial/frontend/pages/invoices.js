@@ -28,7 +28,7 @@ export class InvoicesPage {
     }
 
     async render() {
-        const response = await fetch('/modules/financial/frontend/pages/invoices.html');
+        const response = await fetch('/modules/financial/pages/invoices.html');
         const html = await response.text();
 
         const container = document.getElementById('app-content');

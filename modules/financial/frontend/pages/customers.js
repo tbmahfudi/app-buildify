@@ -27,7 +27,7 @@ export class CustomersPage {
      * Render the page
      */
     async render() {
-        const response = await fetch('/modules/financial/frontend/pages/customers.html');
+        const response = await fetch('/modules/financial/pages/customers.html');
         const html = await response.text();
 
         const container = document.getElementById('app-content');

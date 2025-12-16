@@ -24,7 +24,7 @@ export class JournalEntriesPage {
     }
 
     async render() {
-        const response = await fetch('/modules/financial/frontend/pages/journal-entries.html');
+        const response = await fetch('/modules/financial/pages/journal-entries.html');
         const html = await response.text();
         document.getElementById('app-content').innerHTML = html;
         await this.init();
