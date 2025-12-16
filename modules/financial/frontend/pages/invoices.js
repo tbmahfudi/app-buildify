@@ -138,8 +138,8 @@ export class InvoicesPage {
 
                 const data = await response.json();
                 return {
-                    data: data.items || data,
-                    total: data.total || (data.items ? data.items.length : data.length)
+                    data: data.invoices || [],
+                    total: data.total || 0
                 };
             },
             actions: [

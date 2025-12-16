@@ -176,8 +176,8 @@ export class CustomersPage {
 
                 const data = await response.json();
                 return {
-                    data: data.items || data,
-                    total: data.total || (data.items ? data.items.length : data.length)
+                    data: data.customers || [],
+                    total: data.total || 0
                 };
             },
             actions: [
