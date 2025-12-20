@@ -1,14 +1,20 @@
 /**
  * Dynamic Form Builder - Renders forms from metadata with RBAC support
+ * Now uses Flex* components for consistent UI
  */
 import { canViewField, canEditField } from './rbac.js';
+import FlexInput from './components/flex-input.js';
+import FlexTextarea from './components/flex-textarea.js';
+import FlexSelect from './components/flex-select.js';
+import FlexCheckbox from './components/flex-checkbox.js';
 
 export class DynamicForm {
   constructor(container, metadata, record = null) {
     this.container = container;
     this.metadata = metadata;
     this.record = record;
-    this.fields = new Map();
+    this.fields = new Map(); // Maps field name to component instance
+    this.fieldComponents = new Map(); // Maps field name to Flex component instance
   }
 
   /**
@@ -16,9 +22,9 @@ export class DynamicForm {
    */
   render() {
     this.container.innerHTML = '';
-    
+
     const form = document.createElement('form');
-    form.className = 'dynamic-form';
+    form.className = 'dynamic-form space-y-4';
     form.id = 'dynamic-form';
 
     this.metadata.form.fields.forEach(field => {
@@ -42,212 +48,236 @@ export class DynamicForm {
       return hiddenDiv;
     }
 
-    const div = document.createElement('div');
-    div.className = 'mb-3';
+    const fieldContainer = document.createElement('div');
 
     // Check if user can edit this field
     const canEdit = canEditField(fieldConfig);
 
     // If field is marked as readonly OR user cannot edit, make it readonly
-    fieldConfig.readonly = fieldConfig.readonly || !canEdit;
+    const readonly = fieldConfig.readonly || !canEdit;
 
-    // Label
-    const label = document.createElement('label');
-    label.className = 'form-label';
-    label.textContent = fieldConfig.title;
-    if (fieldConfig.required && canEdit) {
-      label.innerHTML += ' <span class="text-danger">*</span>';
-    }
-    // Add lock icon if readonly due to RBAC
+    // Build label text
+    let labelText = fieldConfig.title;
+
+    // Add lock icon if readonly due to RBAC (show in helper text instead)
+    let helperText = fieldConfig.help || '';
     if (!canEdit && !fieldConfig.readonly) {
-      label.innerHTML += ' <i class="bi bi-lock-fill text-muted text-xs ms-1" title="You do not have permission to edit this field"></i>';
-    }
-    div.appendChild(label);
-
-    // Input
-    const input = this.createInput(fieldConfig);
-    div.appendChild(input);
-
-    // Store reference
-    this.fields.set(fieldConfig.field, input);
-
-    // Help text
-    if (fieldConfig.help) {
-      const help = document.createElement('small');
-      help.className = 'form-text text-muted';
-      help.textContent = fieldConfig.help;
-      div.appendChild(help);
+      helperText = '🔒 You do not have permission to edit this field' + (helperText ? '. ' + helperText : '');
     }
 
-    // Validation message
-    const invalid = document.createElement('div');
-    invalid.className = 'invalid-feedback';
-    div.appendChild(invalid);
+    // Create input based on type
+    const inputComponent = this.createInput(fieldConfig, readonly, labelText, helperText);
+    if (inputComponent) {
+      fieldContainer.appendChild(inputComponent);
+    }
 
-    return div;
+    return fieldContainer;
   }
 
   /**
    * Create input element based on field type
    */
-  createInput(fieldConfig) {
+  createInput(fieldConfig, readonly, labelText, helperText) {
     const value = this.record?.data?.[fieldConfig.field] || fieldConfig.default || '';
 
     switch (fieldConfig.type) {
       case 'text':
       case 'email':
       case 'url':
-        return this.createTextInput(fieldConfig, value);
-      
+        return this.createTextInput(fieldConfig, value, readonly, labelText, helperText);
+
       case 'number':
-        return this.createNumberInput(fieldConfig, value);
-      
+        return this.createNumberInput(fieldConfig, value, readonly, labelText, helperText);
+
       case 'textarea':
-        return this.createTextarea(fieldConfig, value);
-      
+        return this.createTextarea(fieldConfig, value, readonly, labelText, helperText);
+
       case 'select':
-        return this.createSelect(fieldConfig, value);
-      
+        return this.createSelect(fieldConfig, value, readonly, labelText, helperText);
+
       case 'boolean':
-        return this.createCheckbox(fieldConfig, value);
-      
+        return this.createCheckbox(fieldConfig, value, readonly, labelText, helperText);
+
       case 'date':
-        return this.createDateInput(fieldConfig, value);
-      
+        return this.createDateInput(fieldConfig, value, readonly, labelText, helperText);
+
       default:
-        return this.createTextInput(fieldConfig, value);
+        return this.createTextInput(fieldConfig, value, readonly, labelText, helperText);
     }
   }
 
   /**
-   * Create text input
+   * Create text input using FlexInput
    */
-  createTextInput(fieldConfig, value) {
-    const input = document.createElement('input');
-    input.type = fieldConfig.type === 'email' ? 'email' : 
-                 fieldConfig.type === 'url' ? 'url' : 'text';
-    input.className = 'form-control';
-    input.name = fieldConfig.field;
-    input.value = value;
-    input.required = fieldConfig.required || false;
-    input.readOnly = fieldConfig.readonly || false;
+  createTextInput(fieldConfig, value, readonly, labelText, helperText) {
+    const container = document.createElement('div');
 
-    if (fieldConfig.validators?.maxLength) {
-      input.maxLength = fieldConfig.validators.maxLength;
-    }
+    const component = new FlexInput(container, {
+      type: fieldConfig.type === 'email' ? 'email' :
+            fieldConfig.type === 'url' ? 'url' : 'text',
+      label: labelText,
+      value: value || '',
+      placeholder: fieldConfig.placeholder || '',
+      required: fieldConfig.required || false,
+      readonly: readonly,
+      helperText: helperText,
+      maxLength: fieldConfig.validators?.maxLength,
+      showCharCount: fieldConfig.validators?.maxLength ? true : false,
+      variant: 'outlined',
+      size: 'md'
+    });
 
-    return input;
+    // Store references
+    this.fields.set(fieldConfig.field, component.inputElement);
+    this.fieldComponents.set(fieldConfig.field, component);
+
+    // Add name attribute for form submission
+    component.inputElement.name = fieldConfig.field;
+
+    return container;
   }
 
   /**
-   * Create number input
+   * Create number input using FlexInput
    */
-  createNumberInput(fieldConfig, value) {
-    const input = document.createElement('input');
-    input.type = 'number';
-    input.className = 'form-control';
-    input.name = fieldConfig.field;
-    input.value = value;
-    input.required = fieldConfig.required || false;
-    input.readOnly = fieldConfig.readonly || false;
+  createNumberInput(fieldConfig, value, readonly, labelText, helperText) {
+    const container = document.createElement('div');
 
-    if (fieldConfig.validators?.min !== undefined) {
-      input.min = fieldConfig.validators.min;
-    }
-    if (fieldConfig.validators?.max !== undefined) {
-      input.max = fieldConfig.validators.max;
-    }
-    if (fieldConfig.validators?.step) {
-      input.step = fieldConfig.validators.step;
-    }
+    const component = new FlexInput(container, {
+      type: 'number',
+      label: labelText,
+      value: value || '',
+      placeholder: fieldConfig.placeholder || '',
+      required: fieldConfig.required || false,
+      readonly: readonly,
+      helperText: helperText,
+      min: fieldConfig.validators?.min,
+      max: fieldConfig.validators?.max,
+      step: fieldConfig.validators?.step,
+      variant: 'outlined',
+      size: 'md'
+    });
 
-    return input;
+    // Store references
+    this.fields.set(fieldConfig.field, component.inputElement);
+    this.fieldComponents.set(fieldConfig.field, component);
+
+    component.inputElement.name = fieldConfig.field;
+
+    return container;
   }
 
   /**
-   * Create textarea
+   * Create textarea using FlexTextarea
    */
-  createTextarea(fieldConfig, value) {
-    const textarea = document.createElement('textarea');
-    textarea.className = 'form-control';
-    textarea.name = fieldConfig.field;
-    textarea.value = value;
-    textarea.required = fieldConfig.required || false;
-    textarea.readOnly = fieldConfig.readonly || false;
-    textarea.rows = fieldConfig.rows || 3;
+  createTextarea(fieldConfig, value, readonly, labelText, helperText) {
+    const container = document.createElement('div');
 
-    return textarea;
+    const component = new FlexTextarea(container, {
+      label: labelText,
+      value: value || '',
+      placeholder: fieldConfig.placeholder || '',
+      required: fieldConfig.required || false,
+      readonly: readonly,
+      helperText: helperText,
+      rows: fieldConfig.rows || 3,
+      autoResize: true,
+      maxLength: fieldConfig.validators?.maxLength,
+      showCharCount: fieldConfig.validators?.maxLength ? true : false,
+      variant: 'outlined',
+      size: 'md'
+    });
+
+    // Store references
+    this.fields.set(fieldConfig.field, component.textareaElement);
+    this.fieldComponents.set(fieldConfig.field, component);
+
+    component.textareaElement.name = fieldConfig.field;
+
+    return container;
   }
 
   /**
-   * Create select dropdown
+   * Create select dropdown using FlexSelect
    */
-  createSelect(fieldConfig, value) {
-    const select = document.createElement('select');
-    select.className = 'form-select';
-    select.name = fieldConfig.field;
-    select.required = fieldConfig.required || false;
-    select.disabled = fieldConfig.readonly || false;
+  createSelect(fieldConfig, value, readonly, labelText, helperText) {
+    const container = document.createElement('div');
 
-    // Empty option
-    if (!fieldConfig.required) {
-      const option = document.createElement('option');
-      option.value = '';
-      option.textContent = '-- Select --';
-      select.appendChild(option);
-    }
+    // Map options to FlexSelect format
+    const options = (fieldConfig.options || []).map(opt => ({
+      value: opt.value,
+      label: opt.label
+    }));
 
-    // Options
-    if (fieldConfig.options) {
-      fieldConfig.options.forEach(opt => {
-        const option = document.createElement('option');
-        option.value = opt.value;
-        option.textContent = opt.label;
-        option.selected = opt.value === value;
-        select.appendChild(option);
-      });
-    }
+    const component = new FlexSelect(container, {
+      label: labelText,
+      value: value || '',
+      options: options,
+      placeholder: fieldConfig.required ? 'Select an option' : '-- Select --',
+      required: fieldConfig.required || false,
+      disabled: readonly,
+      helperText: helperText,
+      searchable: options.length > 10, // Make searchable if many options
+      variant: 'outlined',
+      size: 'md'
+    });
 
-    return select;
+    // Store references
+    this.fields.set(fieldConfig.field, component.selectElement);
+    this.fieldComponents.set(fieldConfig.field, component);
+
+    component.selectElement.name = fieldConfig.field;
+
+    return container;
   }
 
   /**
-   * Create checkbox
+   * Create checkbox using FlexCheckbox
    */
-  createCheckbox(fieldConfig, value) {
-    const div = document.createElement('div');
-    div.className = 'form-check';
+  createCheckbox(fieldConfig, value, readonly, labelText, helperText) {
+    const container = document.createElement('div');
 
-    const input = document.createElement('input');
-    input.type = 'checkbox';
-    input.className = 'form-check-input';
-    input.name = fieldConfig.field;
-    input.checked = value === true || value === 'true';
-    input.disabled = fieldConfig.readonly || false;
+    const component = new FlexCheckbox(container, {
+      label: labelText,
+      checked: value === true || value === 'true',
+      disabled: readonly,
+      helperText: helperText,
+      size: 'md'
+    });
 
-    const label = document.createElement('label');
-    label.className = 'form-check-label';
-    label.textContent = fieldConfig.title;
+    // Store references
+    this.fields.set(fieldConfig.field, component.checkboxElement);
+    this.fieldComponents.set(fieldConfig.field, component);
 
-    div.appendChild(input);
-    div.appendChild(label);
+    component.checkboxElement.name = fieldConfig.field;
 
-    return div;
+    return container;
   }
 
   /**
-   * Create date input
+   * Create date input using FlexInput
    */
-  createDateInput(fieldConfig, value) {
-    const input = document.createElement('input');
-    input.type = 'date';
-    input.className = 'form-control';
-    input.name = fieldConfig.field;
-    input.value = value ? value.split('T')[0] : '';
-    input.required = fieldConfig.required || false;
-    input.readOnly = fieldConfig.readonly || false;
+  createDateInput(fieldConfig, value, readonly, labelText, helperText) {
+    const container = document.createElement('div');
 
-    return input;
+    const component = new FlexInput(container, {
+      type: 'date',
+      label: labelText,
+      value: value ? value.split('T')[0] : '',
+      required: fieldConfig.required || false,
+      readonly: readonly,
+      helperText: helperText,
+      variant: 'outlined',
+      size: 'md'
+    });
+
+    // Store references
+    this.fields.set(fieldConfig.field, component.inputElement);
+    this.fieldComponents.set(fieldConfig.field, component);
+
+    component.inputElement.name = fieldConfig.field;
+
+    return container;
   }
 
   /**
@@ -255,14 +285,14 @@ export class DynamicForm {
    */
   getValues() {
     const values = {};
-    
-    this.fields.forEach((input, field) => {
-      if (input.type === 'checkbox') {
-        values[field] = input.checked;
-      } else if (input.type === 'number') {
-        values[field] = input.value ? parseFloat(input.value) : null;
+
+    this.fields.forEach((element, field) => {
+      if (element.type === 'checkbox') {
+        values[field] = element.checked;
+      } else if (element.type === 'number') {
+        values[field] = element.value ? parseFloat(element.value) : null;
       } else {
-        values[field] = input.value;
+        values[field] = element.value;
       }
     });
 
@@ -273,24 +303,46 @@ export class DynamicForm {
    * Validate form
    */
   validate() {
-    const form = document.getElementById('dynamic-form');
-    if (!form.checkValidity()) {
-      form.classList.add('was-validated');
-      return false;
-    }
-    return true;
+    let isValid = true;
+
+    this.fieldComponents.forEach((component, field) => {
+      // Use the component's validate method if available
+      if (component.validate) {
+        if (!component.validate()) {
+          isValid = false;
+        }
+      } else {
+        // Fallback to HTML5 validation
+        const element = this.fields.get(field);
+        if (element && !element.checkValidity()) {
+          isValid = false;
+        }
+      }
+    });
+
+    return isValid;
   }
 
   /**
    * Set error message for a field
    */
   setFieldError(field, message) {
-    const input = this.fields.get(field);
-    if (input) {
-      input.classList.add('is-invalid');
-      const feedback = input.parentElement.querySelector('.invalid-feedback');
-      if (feedback) {
-        feedback.textContent = message;
+    const component = this.fieldComponents.get(field);
+    if (component && component.setError) {
+      component.setError(message);
+    } else {
+      // Fallback: try to set error on the element directly
+      const element = this.fields.get(field);
+      if (element) {
+        // Create error message element if needed
+        let errorEl = element.parentElement.querySelector('.text-red-600');
+        if (!errorEl) {
+          errorEl = document.createElement('p');
+          errorEl.className = 'mt-1 text-sm text-red-600';
+          element.parentElement.appendChild(errorEl);
+        }
+        errorEl.textContent = message;
+        element.classList.add('border-red-500');
       }
     }
   }
@@ -299,8 +351,32 @@ export class DynamicForm {
    * Clear all errors
    */
   clearErrors() {
-    this.fields.forEach(input => {
-      input.classList.remove('is-invalid');
+    this.fieldComponents.forEach((component) => {
+      if (component.clearError) {
+        component.clearError();
+      }
     });
+
+    // Also clear any manual error elements
+    this.fields.forEach((element) => {
+      element.classList.remove('border-red-500');
+      const errorEl = element.parentElement.querySelector('.text-red-600');
+      if (errorEl) {
+        errorEl.remove();
+      }
+    });
+  }
+
+  /**
+   * Destroy all field components
+   */
+  destroy() {
+    this.fieldComponents.forEach((component) => {
+      if (component.destroy) {
+        component.destroy();
+      }
+    });
+    this.fields.clear();
+    this.fieldComponents.clear();
   }
 }
