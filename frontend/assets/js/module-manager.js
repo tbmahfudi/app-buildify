@@ -28,7 +28,7 @@ export class ModuleManager {
         <div class="flex items-center justify-between mb-6">
           <h1 class="text-2xl font-bold">Module Management</h1>
           ${canManage ? `
-            <button id="sync-modules-btn" class="btn btn-secondary">
+            <button id="sync-modules-btn" class="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-medium transition">
               <span class="icon">🔄</span>
               Sync Modules
             </button>
@@ -36,7 +36,7 @@ export class ModuleManager {
         </div>
 
         ${!canManage ? `
-          <div class="alert alert-warning">
+          <div class="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-lg">
             You don't have permission to manage modules.
           </div>
         ` : ''}
@@ -154,7 +154,7 @@ export class ModuleManager {
     } catch (error) {
       console.error('Error loading modules:', error);
       loading.innerHTML = `
-        <div class="alert alert-error">
+        <div class="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg">
           Failed to load modules: ${error.message}
         </div>
       `;
@@ -180,36 +180,36 @@ export class ModuleManager {
     }
 
     list.innerHTML = modules.map(module => `
-      <div class="card module-card" data-module="${module.name}">
-        <div class="card-header">
+      <div class="bg-white rounded-lg border border-gray-200 shadow-sm module-card" data-module="${module.name}">
+        <div class="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
           <h3 class="text-lg font-semibold">${module.display_name}</h3>
-          <span class="badge badge-${this.getStatusColor(module.status)}">
+          <span class="px-2 py-1 text-xs font-medium rounded-full ${this.getStatusBadgeClasses(module.status)}">
             ${module.status}
           </span>
         </div>
-        <div class="card-body">
+        <div class="p-4">
           <p class="text-sm text-gray-600 mb-2">${module.description || 'No description available'}</p>
 
           <div class="flex items-center gap-2 text-xs text-gray-500 mb-3">
-            <span class="badge badge-sm">${module.category || 'general'}</span>
+            <span class="px-2 py-1 bg-gray-100 rounded text-gray-700">${module.category || 'general'}</span>
             <span>v${module.version}</span>
             ${module.subscription_tier ? `
-              <span class="badge badge-sm badge-warning">${module.subscription_tier}</span>
+              <span class="px-2 py-1 bg-amber-100 text-amber-700 rounded">${module.subscription_tier}</span>
             ` : ''}
           </div>
 
           <div class="flex gap-2">
             ${!module.is_installed ? `
-              <button class="btn btn-primary btn-sm" onclick="moduleManager.installModule('${module.name}')">
+              <button class="px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition" onclick="moduleManager.installModule('${module.name}')">
                 Install
               </button>
             ` : module.is_core ? `
               <span class="text-xs text-gray-500">Core Module</span>
             ` : `
-              <button class="btn btn-success btn-sm" onclick="moduleManager.enableModule('${module.name}')">
+              <button class="px-3 py-1.5 text-sm bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition" onclick="moduleManager.enableModule('${module.name}')">
                 Enable
               </button>
-              <button class="btn btn-error btn-sm" onclick="moduleManager.uninstallModule('${module.name}')">
+              <button class="px-3 py-1.5 text-sm bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition" onclick="moduleManager.uninstallModule('${module.name}')">
                 Uninstall
               </button>
             `}
@@ -245,7 +245,7 @@ export class ModuleManager {
     } catch (error) {
       console.error('Error loading enabled modules:', error);
       loading.innerHTML = `
-        <div class="alert alert-error">
+        <div class="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg">
           Failed to load enabled modules: ${error.message}
         </div>
       `;
@@ -269,8 +269,8 @@ export class ModuleManager {
     }
 
     list.innerHTML = this.enabledModules.map(module => `
-      <div class="card">
-        <div class="card-body">
+      <div class="bg-white rounded-lg border border-gray-200 shadow-sm">
+        <div class="p-4">
           <div class="flex items-start justify-between">
             <div class="flex-1">
               <h3 class="text-lg font-semibold mb-1">${module.display_name}</h3>
@@ -280,10 +280,10 @@ export class ModuleManager {
               </p>
             </div>
             <div class="flex gap-2">
-              <button class="btn btn-sm btn-secondary" onclick="moduleManager.configureModule('${module.module_name}')">
+              <button class="px-3 py-1.5 text-sm bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-medium transition" onclick="moduleManager.configureModule('${module.module_name}')">
                 Configure
               </button>
-              <button class="btn btn-sm btn-warning" onclick="moduleManager.disableModule('${module.module_name}')">
+              <button class="px-3 py-1.5 text-sm bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-medium transition" onclick="moduleManager.disableModule('${module.module_name}')">
                 Disable
               </button>
             </div>
@@ -445,7 +445,7 @@ export class ModuleManager {
   }
 
   /**
-   * Get status badge color
+   * Get status badge color (legacy)
    */
   getStatusColor(status) {
     const colors = {
@@ -455,6 +455,19 @@ export class ModuleManager {
       'deprecated': 'error'
     };
     return colors[status] || 'secondary';
+  }
+
+  /**
+   * Get status badge Tailwind classes
+   */
+  getStatusBadgeClasses(status) {
+    const classes = {
+      'stable': 'bg-green-100 text-green-700',
+      'beta': 'bg-amber-100 text-amber-700',
+      'available': 'bg-blue-100 text-blue-700',
+      'deprecated': 'bg-red-100 text-red-700'
+    };
+    return classes[status] || 'bg-gray-100 text-gray-700';
   }
 }
 

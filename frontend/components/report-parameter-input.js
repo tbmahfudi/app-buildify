@@ -46,10 +46,10 @@ export class ReportParameterInput {
                 <h3 class="text-lg font-bold text-gray-800 mb-4">Report Parameters</h3>
                 ${sortedParams.map(param => this._renderParameter(param)).join('')}
                 <div class="flex justify-end gap-3 pt-4 border-t">
-                    <button id="reset-params-btn" class="btn-secondary">
+                    <button id="reset-params-btn" class="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-medium transition">
                         Reset to Defaults
                     </button>
-                    <button id="apply-params-btn" class="btn-primary">
+                    <button id="apply-params-btn" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition">
                         Apply Parameters
                     </button>
                 </div>

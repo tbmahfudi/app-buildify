@@ -39,7 +39,7 @@ export class ReportViewer {
                                 ` : ''}
                             </div>
                             <div class="flex gap-2">
-                                <button id="edit-report-btn" class="btn-secondary btn-sm">
+                                <button id="edit-report-btn" class="px-3 py-1.5 text-sm bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-medium transition">
                                     ✏️ Edit
                                 </button>
                             </div>
@@ -56,25 +56,25 @@ export class ReportViewer {
                     <!-- Actions Bar -->
                     <div class="actions-bar bg-white shadow-sm p-4 mb-4 rounded flex justify-between items-center">
                         <div class="flex gap-2">
-                            <button id="run-report-btn" class="btn-primary">
+                            <button id="run-report-btn" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition">
                                 ▶️ Run Report
                             </button>
-                            <button id="refresh-btn" class="btn-secondary" disabled>
+                            <button id="refresh-btn" class="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-medium transition" disabled>
                                 🔄 Refresh
                             </button>
                         </div>
                         <div class="flex gap-2">
                             <label class="text-sm font-medium text-gray-700 mr-2">Export as:</label>
-                            <button class="btn-sm btn-outline export-btn" data-format="pdf">
+                            <button class="px-3 py-1.5 text-sm border-2 border-gray-300 hover:border-gray-400 text-gray-700 rounded-lg font-medium transition export-btn" data-format="pdf">
                                 📄 PDF
                             </button>
-                            <button class="btn-sm btn-outline export-btn" data-format="excel_formatted">
+                            <button class="px-3 py-1.5 text-sm border-2 border-gray-300 hover:border-gray-400 text-gray-700 rounded-lg font-medium transition export-btn" data-format="excel_formatted">
                                 📊 Excel
                             </button>
-                            <button class="btn-sm btn-outline export-btn" data-format="excel_raw">
+                            <button class="px-3 py-1.5 text-sm border-2 border-gray-300 hover:border-gray-400 text-gray-700 rounded-lg font-medium transition export-btn" data-format="excel_raw">
                                 📋 Raw Data
                             </button>
-                            <button class="btn-sm btn-outline export-btn" data-format="csv">
+                            <button class="px-3 py-1.5 text-sm border-2 border-gray-300 hover:border-gray-400 text-gray-700 rounded-lg font-medium transition export-btn" data-format="csv">
                                 📝 CSV
                             </button>
                         </div>

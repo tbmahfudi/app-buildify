@@ -76,19 +76,19 @@ export class ReportDesigner {
 
                 <!-- Navigation Buttons -->
                 <div class="designer-footer flex justify-between mt-6">
-                    <button id="btn-prev" class="btn-secondary ${this.currentStep === 1 ? 'invisible' : ''}">
+                    <button id="btn-prev" class="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-medium transition ${this.currentStep === 1 ? 'invisible' : ''}">
                         Previous
                     </button>
                     <div class="flex gap-3">
-                        <button id="btn-preview" class="btn-outline">
+                        <button id="btn-preview" class="px-4 py-2 border-2 border-gray-300 hover:border-gray-400 text-gray-700 rounded-lg font-medium transition">
                             Preview Report
                         </button>
                         ${this.currentStep === this.totalSteps ? `
-                            <button id="btn-save" class="btn-primary">
+                            <button id="btn-save" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition">
                                 Save Report
                             </button>
                         ` : `
-                            <button id="btn-next" class="btn-primary">
+                            <button id="btn-next" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition">
                                 Next
                             </button>
                         `}
@@ -254,7 +254,7 @@ export class ReportDesigner {
         return `
             <h3 class="text-xl font-bold mb-4">Column Configuration</h3>
             <div class="mb-4">
-                <button id="add-column-btn" class="btn-primary btn-sm">
+                <button id="add-column-btn" class="px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition">
                     + Add Column
                 </button>
             </div>
@@ -329,7 +329,7 @@ export class ReportDesigner {
             <h3 class="text-xl font-bold mb-4">Report Parameters</h3>
             <p class="text-gray-600 mb-4">Define parameters that users can provide when running the report</p>
             <div class="mb-4">
-                <button id="add-parameter-btn" class="btn-primary btn-sm">
+                <button id="add-parameter-btn" class="px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition">
                     + Add Parameter
                 </button>
             </div>

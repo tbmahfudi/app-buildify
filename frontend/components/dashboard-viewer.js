@@ -39,13 +39,13 @@ export class DashboardViewer {
                                     ` : ''}
                                 </div>
                                 <div class="flex gap-2">
-                                    <button id="refresh-all-btn" class="btn-secondary btn-sm" title="Refresh All Widgets">
+                                    <button id="refresh-all-btn" class="px-3 py-1.5 text-sm bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-medium transition" title="Refresh All Widgets">
                                         🔄 Refresh All
                                     </button>
-                                    <button id="fullscreen-btn" class="btn-secondary btn-sm" title="Toggle Fullscreen">
+                                    <button id="fullscreen-btn" class="px-3 py-1.5 text-sm bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-medium transition" title="Toggle Fullscreen">
                                         ⛶ Fullscreen
                                     </button>
-                                    <button id="edit-dashboard-btn" class="btn-secondary btn-sm">
+                                    <button id="edit-dashboard-btn" class="px-3 py-1.5 text-sm bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-medium transition">
                                         ✏️ Edit
                                     </button>
                                 </div>
