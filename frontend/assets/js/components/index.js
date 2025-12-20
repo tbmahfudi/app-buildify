@@ -34,5 +34,14 @@ export { default as FlexSpinner } from './flex-spinner.js';
 // Navigation Components
 export { default as FlexDropdown } from './flex-dropdown.js';
 
+// Data Display Components
+export { default as FlexTable } from './flex-table.js';
+export { default as FlexDataGrid } from './flex-datagrid.js';
+export { default as FlexPagination } from './flex-pagination.js';
+
+// Layout Components
+export { default as FlexDrawer } from './flex-drawer.js';
+export { default as FlexStepper } from './flex-stepper.js';
+
 // Base Component
 export { default as BaseComponent } from '../core/base-component.js';

@@ -2,6 +2,9 @@ import { metadataService } from './metadata-service.js';
 import { dataService } from './data-service.js';
 import { DynamicTable } from './dynamic-table.js';
 import { DynamicForm } from './dynamic-form.js';
+import FlexModal from './components/flex-modal.js';
+import FlexButton from './components/flex-button.js';
+import FlexAlert from './components/flex-alert.js';
 
 /**
  * Entity Manager - Complete CRUD UI for any entity
@@ -43,11 +46,13 @@ export class EntityManager {
       
     } catch (error) {
       console.error('Failed to initialize entity manager:', error);
-      this.container.innerHTML = `
-        <div class="alert alert-danger">
-          Failed to load entity: ${error.message}
-        </div>
-      `;
+      this.container.innerHTML = '';
+      new FlexAlert(this.container, {
+        message: `Failed to load entity: ${error.message}`,
+        variant: 'danger',
+        dismissible: false,
+        icon: true
+      });
     }
   }
 
@@ -56,105 +61,172 @@ export class EntityManager {
    */
   render() {
     this.container.innerHTML = `
-      <div class="card shadow-sm">
-        <div class="card-body">
-          <div class="d-flex justify-content-between align-items-center mb-3">
-            <h5 class="mb-0">
-              ${this.metadata.icon ? `<i class="bi bi-${this.metadata.icon}"></i>` : ''}
+      <div class="bg-white rounded-lg border border-gray-200 shadow-sm">
+        <div class="p-6">
+          <div class="flex justify-between items-center mb-3">
+            <h5 class="text-xl font-semibold text-gray-900">
+              ${this.metadata.icon ? `<i class="ph-duotone ph-${this.metadata.icon}"></i>` : ''}
               ${this.metadata.display_name}
             </h5>
-            <div>
-              <button id="btn-refresh-${this.entity}" class="btn btn-outline-secondary btn-sm me-2">
-                <i class="bi bi-arrow-clockwise"></i> Refresh
-              </button>
-              <button id="btn-add-${this.entity}" class="btn btn-primary btn-sm">
-                <i class="bi bi-plus-lg"></i> Add ${this.metadata.display_name.slice(0, -1)}
-              </button>
+            <div class="flex gap-2">
+              <div id="btn-refresh-${this.entity}-container"></div>
+              <div id="btn-add-${this.entity}-container"></div>
             </div>
           </div>
-          
-          ${this.metadata.description ? `
-            <p class="text-muted small">${this.metadata.description}</p>
-          ` : ''}
-          
-          <div id="${this.entity}-table-container"></div>
-        </div>
-      </div>
 
-      <!-- Modal -->
-      <div class="modal fade" id="${this.entity}-modal" tabindex="-1">
-        <div class="modal-dialog">
-          <div class="modal-content">
-            <div class="modal-header">
-              <h5 class="modal-title" id="${this.entity}-modal-title">Record</h5>
-              <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-              <div id="${this.entity}-form-container"></div>
-              <div id="${this.entity}-error" class="alert alert-danger mt-3" style="display:none"></div>
-            </div>
-            <div class="modal-footer">
-              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-              <button type="button" id="btn-save-${this.entity}" class="btn btn-primary">Save</button>
-            </div>
-          </div>
+          ${this.metadata.description ? `
+            <p class="text-gray-500 text-sm mb-4">${this.metadata.description}</p>
+          ` : ''}
+
+          <div id="${this.entity}-table-container"></div>
         </div>
       </div>
     `;
 
-    // Wire up buttons
-    document.getElementById(`btn-add-${this.entity}`).onclick = () => this.showCreateForm();
-    document.getElementById(`btn-refresh-${this.entity}`).onclick = () => this.table.refresh();
-    document.getElementById(`btn-save-${this.entity}`).onclick = () => this.saveRecord();
+    // Create refresh button using FlexButton
+    const refreshBtnContainer = document.getElementById(`btn-refresh-${this.entity}-container`);
+    new FlexButton(refreshBtnContainer, {
+      text: 'Refresh',
+      icon: '<i class="ph-duotone ph-arrow-clockwise"></i>',
+      variant: 'secondary',
+      size: 'sm',
+      onClick: () => this.table.refresh()
+    });
+
+    // Create add button using FlexButton
+    const addBtnContainer = document.getElementById(`btn-add-${this.entity}-container`);
+    new FlexButton(addBtnContainer, {
+      text: `Add ${this.metadata.display_name.slice(0, -1)}`,
+      icon: '<i class="ph-duotone ph-plus"></i>',
+      variant: 'primary',
+      size: 'sm',
+      onClick: () => this.showCreateForm()
+    });
   }
 
   /**
    * Setup modal
    */
   setupModal() {
-    const modalEl = document.getElementById(`${this.entity}-modal`);
-    this.modal = new window.bootstrap.Modal(modalEl);
+    // Create modal container
+    const modalContainer = document.createElement('div');
+    modalContainer.id = `${this.entity}-modal-container`;
+    document.body.appendChild(modalContainer);
+
+    // Modal content will be created dynamically in showCreateForm/showEditForm
+    this.modalContainer = modalContainer;
+    this.modal = null;
   }
 
   /**
    * Show create form
    */
   showCreateForm() {
-    document.getElementById(`${this.entity}-modal-title`).textContent = 
-      `Add ${this.metadata.display_name.slice(0, -1)}`;
-    
-    const container = document.getElementById(`${this.entity}-form-container`);
-    const form = new DynamicForm(container, this.metadata);
+    const title = `Add ${this.metadata.display_name.slice(0, -1)}`;
+
+    // Create form container
+    const formContainer = document.createElement('div');
+    formContainer.id = `${this.entity}-form-container`;
+
+    // Create error container
+    const errorContainer = document.createElement('div');
+    errorContainer.id = `${this.entity}-error`;
+    errorContainer.style.display = 'none';
+
+    // Create modal content
+    const modalContent = document.createElement('div');
+    modalContent.appendChild(formContainer);
+    modalContent.appendChild(errorContainer);
+
+    // Create modal
+    this.modalContainer.innerHTML = '';
+    this.modal = new FlexModal(this.modalContainer, {
+      title,
+      content: modalContent,
+      size: 'lg',
+      actions: [
+        {
+          label: 'Cancel',
+          variant: 'secondary',
+          onClick: () => this.modal.close()
+        },
+        {
+          label: 'Save',
+          variant: 'primary',
+          onClick: () => this.saveRecord()
+        }
+      ],
+      closeOnBackdrop: false,
+      closeOnEscape: true
+    });
+
+    // Render form
+    const form = new DynamicForm(formContainer, this.metadata);
     form.render();
-    
+
     this.currentForm = form;
     this.currentRecord = null;
-    
+
     this.hideError();
-    this.modal.show();
+    this.modal.open();
   }
 
   /**
    * Show edit form
    */
   async showEditForm(row) {
-    document.getElementById(`${this.entity}-modal-title`).textContent = 
-      `Edit ${this.metadata.display_name.slice(0, -1)}`;
-    
+    const title = `Edit ${this.metadata.display_name.slice(0, -1)}`;
+
     try {
       // Fetch full record
       const record = await dataService.get(this.entity, row.id);
-      
-      const container = document.getElementById(`${this.entity}-form-container`);
-      const form = new DynamicForm(container, this.metadata, record);
+
+      // Create form container
+      const formContainer = document.createElement('div');
+      formContainer.id = `${this.entity}-form-container`;
+
+      // Create error container
+      const errorContainer = document.createElement('div');
+      errorContainer.id = `${this.entity}-error`;
+      errorContainer.style.display = 'none';
+
+      // Create modal content
+      const modalContent = document.createElement('div');
+      modalContent.appendChild(formContainer);
+      modalContent.appendChild(errorContainer);
+
+      // Create modal
+      this.modalContainer.innerHTML = '';
+      this.modal = new FlexModal(this.modalContainer, {
+        title,
+        content: modalContent,
+        size: 'lg',
+        actions: [
+          {
+            label: 'Cancel',
+            variant: 'secondary',
+            onClick: () => this.modal.close()
+          },
+          {
+            label: 'Save',
+            variant: 'primary',
+            onClick: () => this.saveRecord()
+          }
+        ],
+        closeOnBackdrop: false,
+        closeOnEscape: true
+      });
+
+      // Render form
+      const form = new DynamicForm(formContainer, this.metadata, record);
       form.render();
-      
+
       this.currentForm = form;
       this.currentRecord = record;
-      
+
       this.hideError();
-      this.modal.show();
-      
+      this.modal.open();
+
     } catch (error) {
       alert(`Failed to load record: ${error.message}`);
     }
@@ -169,12 +241,11 @@ export class EntityManager {
     }
 
     const data = this.currentForm.getValues();
-    const saveBtn = document.getElementById(`btn-save-${this.entity}`);
-    
+
     try {
-      saveBtn.disabled = true;
-      saveBtn.textContent = 'Saving...';
-      
+      // Set loading state on the save button
+      this.modal.setLoading(true);
+
       if (this.currentRecord) {
         // Update
         await dataService.update(this.entity, this.currentRecord.id, data);
@@ -182,15 +253,13 @@ export class EntityManager {
         // Create
         await dataService.create(this.entity, data);
       }
-      
-      this.modal.hide();
+
+      this.modal.close();
       await this.table.refresh();
-      
+
     } catch (error) {
       this.showError(error.message);
-    } finally {
-      saveBtn.disabled = false;
-      saveBtn.textContent = 'Save';
+      this.modal.setLoading(false);
     }
   }
 
@@ -231,63 +300,54 @@ export class EntityManager {
    * Show view dialog (read-only)
    */
   showViewDialog(row) {
-    // Create backdrop
-    const backdrop = document.createElement('div');
-    backdrop.id = 'modal-backdrop';
-    backdrop.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9998;';
-
-    // Create modal container
-    const modal = document.createElement('div');
-    modal.style.cssText = 'position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); z-index: 9999; max-width: 500px; width: 90%;';
-
-    // Create title
-    const title = document.createElement('h5');
-    title.textContent = `${this.metadata.display_name} Details`;
-    modal.appendChild(title);
-
-    // Create separator
-    const hr = document.createElement('hr');
-    modal.appendChild(hr);
-
-    // Create details list
+    // Create details container
     const detailsContainer = document.createElement('div');
-    detailsContainer.className = 'mt-3';
+    detailsContainer.className = 'space-y-3';
 
     this.metadata.table.columns.forEach(col => {
-      const row_div = document.createElement('div');
-      row_div.className = 'mb-2';
+      const rowDiv = document.createElement('div');
+      rowDiv.className = 'flex gap-2';
 
       const label = document.createElement('strong');
-      label.textContent = `${col.title}: `;
+      label.className = 'text-gray-700 min-w-[120px]';
+      label.textContent = `${col.title}:`;
 
-      const value = document.createTextNode(row[col.field] || 'N/A');
+      const value = document.createElement('span');
+      value.className = 'text-gray-900';
+      value.textContent = row[col.field] || 'N/A';
 
-      row_div.appendChild(label);
-      row_div.appendChild(value);
-      detailsContainer.appendChild(row_div);
+      rowDiv.appendChild(label);
+      rowDiv.appendChild(value);
+      detailsContainer.appendChild(rowDiv);
     });
 
-    modal.appendChild(detailsContainer);
+    // Create modal container
+    const viewModalContainer = document.createElement('div');
+    document.body.appendChild(viewModalContainer);
 
-    // Create close button
-    const closeBtn = document.createElement('button');
-    closeBtn.className = 'btn btn-secondary mt-3';
-    closeBtn.textContent = 'Close';
-    closeBtn.onclick = () => {
-      modal.remove();
-      backdrop.remove();
-    };
-    modal.appendChild(closeBtn);
+    // Create modal
+    const viewModal = new FlexModal(viewModalContainer, {
+      title: `${this.metadata.display_name} Details`,
+      content: detailsContainer,
+      size: 'md',
+      actions: [
+        {
+          label: 'Close',
+          variant: 'secondary',
+          onClick: () => {
+            viewModal.close();
+            setTimeout(() => viewModalContainer.remove(), 300);
+          }
+        }
+      ],
+      closeOnBackdrop: true,
+      closeOnEscape: true,
+      onClose: () => {
+        setTimeout(() => viewModalContainer.remove(), 300);
+      }
+    });
 
-    // Add to DOM
-    document.body.appendChild(backdrop);
-    document.body.appendChild(modal);
-
-    // Close on backdrop click
-    backdrop.onclick = () => {
-      modal.remove();
-      backdrop.remove();
-    };
+    viewModal.open();
   }
 
   /**
@@ -295,8 +355,16 @@ export class EntityManager {
    */
   showError(message) {
     const errorDiv = document.getElementById(`${this.entity}-error`);
-    errorDiv.textContent = message; // Already safe with textContent
+    errorDiv.innerHTML = '';
     errorDiv.style.display = 'block';
+
+    // Create FlexAlert
+    new FlexAlert(errorDiv, {
+      message,
+      variant: 'danger',
+      dismissible: false,
+      icon: true
+    });
   }
 
   /**
@@ -304,6 +372,7 @@ export class EntityManager {
    */
   hideError() {
     const errorDiv = document.getElementById(`${this.entity}-error`);
+    errorDiv.innerHTML = '';
     errorDiv.style.display = 'none';
   }
 }

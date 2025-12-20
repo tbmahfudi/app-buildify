@@ -295,7 +295,7 @@ window.viewReport = async function(reportId) {
     // Add back button
     viewerContainer.innerHTML = `
         <div class="mb-4">
-            <button onclick="backToReportsList()" class="btn-secondary">
+            <button onclick="backToReportsList()" class="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-medium transition">
                 ← Back to Reports
             </button>
         </div>
@@ -350,7 +350,7 @@ window.viewDashboard = async function(dashboardId) {
     // Add back button
     viewerContainer.innerHTML = `
         <div class="mb-4">
-            <button onclick="backToDashboardsList()" class="btn-secondary">
+            <button onclick="backToDashboardsList()" class="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-medium transition">
                 ← Back to Dashboards
             </button>
         </div>
