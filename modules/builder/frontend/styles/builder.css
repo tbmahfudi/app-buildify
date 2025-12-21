@@ -1,0 +1,115 @@
+/**
+ * Builder Module Styles
+ *
+ * Additional styles for the GrapeJS UI Builder
+ */
+
+/* GrapeJS panel adjustments for dark mode */
+.gjs-pn-panel {
+    background-color: var(--bg-color, #ffffff);
+    border-color: var(--border-color, #e5e7eb);
+}
+
+.dark .gjs-pn-panel {
+    --bg-color: #1e293b;
+    --border-color: #475569;
+}
+
+/* GrapeJS block manager styles */
+.gjs-block {
+    transition: all 0.2s;
+}
+
+.gjs-block:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+}
+
+/* Custom scrollbar for panels */
+.gjs-pn-panel::-webkit-scrollbar {
+    width: 8px;
+}
+
+.gjs-pn-panel::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+.dark .gjs-pn-panel::-webkit-scrollbar-track {
+    background: #2d3748;
+}
+
+.gjs-pn-panel::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 4px;
+}
+
+.gjs-pn-panel::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
+/* Config panel animations */
+#page-config-container {
+    animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateX(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* Component preview in block manager */
+.gjs-block .ph-duotone {
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+}
+
+/* Builder toolbar enhancements */
+#builder-container .panel__basic-actions,
+#builder-container .panel__devices {
+    display: flex;
+    gap: 0.5rem;
+    padding: 0.5rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    #page-config-container {
+        width: 100%;
+        max-width: 100%;
+        right: 0;
+        left: 0;
+        border-radius: 0;
+    }
+}
+
+/* Loading state */
+.builder-loading {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-center;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 9999;
+}
+
+.builder-loading-spinner {
+    width: 48px;
+    height: 48px;
+    border: 4px solid #e5e7eb;
+    border-top-color: #3b82f6;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
