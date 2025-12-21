@@ -1,0 +1,138 @@
+{
+  "name": "builder",
+  "display_name": "UI Builder",
+  "version": "1.0.0",
+  "description": "GrapeJS-based UI builder for creating custom pages with drag-and-drop components",
+
+  "backend_service_url": "http://builder-module:9002",
+  "entry_point": "module.js",
+
+  "routes": [
+    {
+      "path": "#/builder",
+      "name": "UI Builder",
+      "component": "pages/builder.js",
+      "permission": "builder:design:tenant",
+      "menu": {
+        "label": "UI Builder",
+        "icon": "ph-duotone ph-code-block",
+        "order": 20,
+        "parent": "tools"
+      }
+    },
+    {
+      "path": "#/builder/pages",
+      "name": "Manage Pages",
+      "component": "pages/pages-list.js",
+      "permission": "builder:pages:read:tenant",
+      "menu": {
+        "label": "Pages",
+        "icon": "ph-duotone ph-files",
+        "order": 21,
+        "parent": "tools"
+      }
+    }
+  ],
+
+  "navigation": {
+    "primary_menu": true,
+    "menu_items": [
+      {
+        "code": "tools",
+        "label": "Tools",
+        "icon": "ph-duotone ph-toolbox",
+        "icon_color": "text-purple-600",
+        "order": 90,
+        "is_parent": true,
+        "permission": null
+      }
+    ],
+    "dashboard_widgets": []
+  },
+
+  "permissions": [
+    {
+      "code": "builder:design:tenant",
+      "name": "Design UI Pages",
+      "description": "Create and design UI pages using the builder",
+      "category": "builder",
+      "resource": "design",
+      "action": "design",
+      "scope": "tenant"
+    },
+    {
+      "code": "builder:pages:read:tenant",
+      "name": "View Builder Pages",
+      "description": "View list of builder pages",
+      "category": "builder",
+      "resource": "pages",
+      "action": "read",
+      "scope": "tenant"
+    },
+    {
+      "code": "builder:pages:create:tenant",
+      "name": "Create Builder Pages",
+      "description": "Create new builder pages",
+      "category": "builder",
+      "resource": "pages",
+      "action": "create",
+      "scope": "tenant"
+    },
+    {
+      "code": "builder:pages:edit:tenant",
+      "name": "Edit Builder Pages",
+      "description": "Edit existing builder pages",
+      "category": "builder",
+      "resource": "pages",
+      "action": "edit",
+      "scope": "tenant"
+    },
+    {
+      "code": "builder:pages:delete:tenant",
+      "name": "Delete Builder Pages",
+      "description": "Delete builder pages",
+      "category": "builder",
+      "resource": "pages",
+      "action": "delete",
+      "scope": "tenant"
+    },
+    {
+      "code": "builder:publish:tenant",
+      "name": "Publish Pages",
+      "description": "Publish builder pages to production",
+      "category": "builder",
+      "resource": "pages",
+      "action": "publish",
+      "scope": "tenant"
+    },
+    {
+      "code": "builder:manage-permissions:tenant",
+      "name": "Manage Page Permissions",
+      "description": "Assign permissions to builder pages",
+      "category": "builder",
+      "resource": "permissions",
+      "action": "manage",
+      "scope": "tenant"
+    },
+    {
+      "code": "builder:manage-menus:tenant",
+      "name": "Manage Page Menus",
+      "description": "Create menu entries for builder pages",
+      "category": "builder",
+      "resource": "menus",
+      "action": "manage",
+      "scope": "tenant"
+    }
+  ],
+
+  "dependencies": {
+    "required_modules": [],
+    "optional_modules": ["financial", "inventory", "hr"]
+  },
+
+  "assets": {
+    "css": ["styles/builder.css"],
+    "js": ["lib/grapesjs.min.js"],
+    "icons": []
+  }
+}

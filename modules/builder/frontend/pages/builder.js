@@ -1,0 +1,580 @@
+/**
+ * Builder Page - Main GrapeJS UI Builder
+ *
+ * Comprehensive UI builder with component library integration
+ */
+
+import { can } from '../../../../frontend/assets/js/rbac.js';
+import { showToast } from '../../../../frontend/assets/js/ui-utils.js';
+import { registerComponents } from '../components/component-registry.js';
+import { BuilderConfigPanel } from '../components/config-panel.js';
+
+export class BuilderPage {
+    constructor() {
+        this.editor = null;
+        this.currentPage = null;
+        this.configPanel = null;
+    }
+
+    async render() {
+        // Check permission
+        if (!can('builder:design:tenant')) {
+            return `
+                <div class="flex items-center justify-center h-screen">
+                    <div class="text-center">
+                        <i class="ph-duotone ph-lock text-6xl text-gray-400 mb-4"></i>
+                        <h2 class="text-2xl font-bold text-gray-700 dark:text-gray-300">Access Denied</h2>
+                        <p class="text-gray-500 dark:text-gray-400 mt-2">
+                            You don't have permission to access the UI Builder
+                        </p>
+                    </div>
+                </div>
+            `;
+        }
+
+        return `
+            <div id="builder-container" class="h-screen flex flex-col bg-gray-50 dark:bg-slate-900">
+                <!-- Header -->
+                <div class="bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 px-4 py-3 flex items-center justify-between">
+                    <div class="flex items-center gap-4">
+                        <h1 class="text-xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                            <i class="ph-duotone ph-code-block text-blue-600"></i>
+                            UI Builder
+                        </h1>
+                        <div id="page-name-display" class="text-sm text-gray-500 dark:text-gray-400">
+                            <span id="current-page-name">New Page</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button id="btn-load" class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-600 transition">
+                            <i class="ph-duotone ph-folder-open mr-2"></i>Load
+                        </button>
+                        <button id="btn-save" class="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition">
+                            <i class="ph-duotone ph-floppy-disk mr-2"></i>Save
+                        </button>
+                        <button id="btn-publish" class="px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg transition" disabled>
+                            <i class="ph-duotone ph-rocket-launch mr-2"></i>Publish
+                        </button>
+                        <button id="btn-preview" class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-600 transition">
+                            <i class="ph-duotone ph-eye mr-2"></i>Preview
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Editor Container -->
+                <div class="flex-1 flex overflow-hidden">
+                    <!-- GrapeJS Editor -->
+                    <div id="gjs" class="flex-1"></div>
+                </div>
+            </div>
+        `;
+    }
+
+    async afterRender() {
+        // Initialize GrapeJS
+        await this.initializeGrapeJS();
+
+        // Setup event listeners
+        this.setupEventListeners();
+
+        // Initialize config panel
+        this.configPanel = new BuilderConfigPanel(this.editor);
+        await this.configPanel.init();
+
+        // Check if loading existing page
+        const urlParams = new URLSearchParams(window.location.search);
+        const pageId = urlParams.get('page');
+        if (pageId) {
+            await this.loadPage(pageId);
+        }
+    }
+
+    async initializeGrapeJS() {
+        // Load GrapeJS from CDN if not already loaded
+        if (!window.grapesjs) {
+            await this.loadGrapeJSLibrary();
+        }
+
+        const gjs = window.grapesjs;
+
+        // Initialize editor
+        this.editor = gjs.init({
+            container: '#gjs',
+            height: '100%',
+            width: '100%',
+
+            // Storage
+            storageManager: false, // We'll handle storage via our API
+
+            // Panels
+            panels: {
+                defaults: [
+                    {
+                        id: 'basic-actions',
+                        el: '.panel__basic-actions',
+                        buttons: [
+                            {
+                                id: 'visibility',
+                                active: true,
+                                className: 'btn-toggle-borders',
+                                label: '<i class="ph-duotone ph-eye"></i>',
+                                command: 'sw-visibility',
+                            },
+                            {
+                                id: 'fullscreen',
+                                className: 'btn-fullscreen',
+                                label: '<i class="ph-duotone ph-arrows-out"></i>',
+                                command: 'fullscreen',
+                                context: 'fullscreen',
+                                attributes: { title: 'Fullscreen' }
+                            }
+                        ]
+                    },
+                    {
+                        id: 'panel-devices',
+                        el: '.panel__devices',
+                        buttons: [
+                            {
+                                id: 'device-desktop',
+                                label: '<i class="ph-duotone ph-desktop"></i>',
+                                command: 'set-device-desktop',
+                                active: true,
+                                togglable: false,
+                            },
+                            {
+                                id: 'device-tablet',
+                                label: '<i class="ph-duotone ph-device-tablet"></i>',
+                                command: 'set-device-tablet',
+                                togglable: false,
+                            },
+                            {
+                                id: 'device-mobile',
+                                label: '<i class="ph-duotone ph-device-mobile"></i>',
+                                command: 'set-device-mobile',
+                                togglable: false,
+                            }
+                        ]
+                    }
+                ]
+            },
+
+            // Device manager
+            deviceManager: {
+                devices: [
+                    {
+                        name: 'Desktop',
+                        width: '',
+                    },
+                    {
+                        name: 'Tablet',
+                        width: '768px',
+                        widthMedia: '768px'
+                    },
+                    {
+                        name: 'Mobile',
+                        width: '375px',
+                        widthMedia: '375px'
+                    }
+                ]
+            },
+
+            // Block Manager
+            blockManager: {
+                appendTo: '#blocks',
+                blocks: [] // Will be populated by component registry
+            },
+
+            // Style Manager
+            styleManager: {
+                appendTo: '.styles-container',
+                sectors: [
+                    {
+                        name: 'Dimension',
+                        open: false,
+                        buildProps: ['width', 'min-height', 'padding', 'margin'],
+                        properties: [
+                            {
+                                type: 'integer',
+                                name: 'Width',
+                                property: 'width',
+                                units: ['px', '%', 'vw'],
+                                defaults: 'auto'
+                            },
+                            {
+                                property: 'min-height',
+                                type: 'integer',
+                                units: ['px', '%', 'vh'],
+                                defaults: '0'
+                            },
+                            {
+                                property: 'padding',
+                                properties: [
+                                    { name: 'Top', property: 'padding-top' },
+                                    { name: 'Right', property: 'padding-right' },
+                                    { name: 'Bottom', property: 'padding-bottom' },
+                                    { name: 'Left', property: 'padding-left' }
+                                ]
+                            },
+                            {
+                                property: 'margin',
+                                properties: [
+                                    { name: 'Top', property: 'margin-top' },
+                                    { name: 'Right', property: 'margin-right' },
+                                    { name: 'Bottom', property: 'margin-bottom' },
+                                    { name: 'Left', property: 'margin-left' }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        name: 'Typography',
+                        open: false,
+                        buildProps: ['font-family', 'font-size', 'font-weight', 'letter-spacing', 'color', 'line-height', 'text-align'],
+                        properties: [
+                            { name: 'Font', property: 'font-family' },
+                            { name: 'Weight', property: 'font-weight' },
+                            { name: 'Font color', property: 'color' },
+                            {
+                                property: 'text-align',
+                                type: 'radio',
+                                defaults: 'left',
+                                list: [
+                                    { value: 'left', name: 'Left', className: 'fa fa-align-left' },
+                                    { value: 'center', name: 'Center', className: 'fa fa-align-center' },
+                                    { value: 'right', name: 'Right', className: 'fa fa-align-right' },
+                                    { value: 'justify', name: 'Justify', className: 'fa fa-align-justify' }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        name: 'Decorations',
+                        open: false,
+                        buildProps: ['background-color', 'border-radius', 'border', 'box-shadow', 'background'],
+                    },
+                    {
+                        name: 'Extra',
+                        open: false,
+                        buildProps: ['transition', 'perspective', 'transform'],
+                    },
+                    {
+                        name: 'Flex',
+                        open: false,
+                        properties: [
+                            {
+                                name: 'Flex Container',
+                                property: 'display',
+                                type: 'select',
+                                defaults: 'block',
+                                list: [
+                                    { value: 'block', name: 'Block' },
+                                    { value: 'flex', name: 'Flex' },
+                                    { value: 'grid', name: 'Grid' }
+                                ]
+                            },
+                            {
+                                name: 'Flex Direction',
+                                property: 'flex-direction',
+                                type: 'radio',
+                                defaults: 'row',
+                                list: [
+                                    { value: 'row', name: 'Row' },
+                                    { value: 'row-reverse', name: 'Row reverse' },
+                                    { value: 'column', name: 'Column' },
+                                    { value: 'column-reverse', name: 'Column reverse' }
+                                ]
+                            },
+                            {
+                                name: 'Justify',
+                                property: 'justify-content',
+                                type: 'select',
+                                list: [
+                                    { value: 'flex-start', name: 'Start' },
+                                    { value: 'flex-end', name: 'End' },
+                                    { value: 'center', name: 'Center' },
+                                    { value: 'space-between', name: 'Space between' },
+                                    { value: 'space-around', name: 'Space around' },
+                                    { value: 'space-evenly', name: 'Space evenly' }
+                                ]
+                            },
+                            {
+                                name: 'Align',
+                                property: 'align-items',
+                                type: 'select',
+                                list: [
+                                    { value: 'flex-start', name: 'Start' },
+                                    { value: 'flex-end', name: 'End' },
+                                    { value: 'center', name: 'Center' },
+                                    { value: 'baseline', name: 'Baseline' },
+                                    { value: 'stretch', name: 'Stretch' }
+                                ]
+                            },
+                            {
+                                name: 'Gap',
+                                property: 'gap',
+                                type: 'integer',
+                                units: ['px', 'rem', 'em'],
+                                defaults: '0'
+                            }
+                        ]
+                    }
+                ]
+            },
+
+            // Layer Manager
+            layerManager: {
+                appendTo: '.layers-container'
+            },
+
+            // Trait Manager
+            traitManager: {
+                appendTo: '.traits-container'
+            },
+
+            // Canvas
+            canvas: {
+                styles: [
+                    'https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css'
+                ],
+                scripts: []
+            }
+        });
+
+        // Register all components
+        await registerComponents(this.editor);
+
+        // Add custom commands
+        this.registerCommands();
+
+        console.log('GrapeJS initialized');
+    }
+
+    async loadGrapeJSLibrary() {
+        return new Promise((resolve, reject) => {
+            // Check if already loaded
+            if (window.grapesjs) {
+                resolve();
+                return;
+            }
+
+            // Load CSS
+            const css = document.createElement('link');
+            css.rel = 'stylesheet';
+            css.href = 'https://unpkg.com/grapesjs/dist/css/grapes.min.css';
+            document.head.appendChild(css);
+
+            // Load JS
+            const script = document.createElement('script');
+            script.src = 'https://unpkg.com/grapesjs';
+            script.onload = resolve;
+            script.onerror = reject;
+            document.head.appendChild(script);
+        });
+    }
+
+    registerCommands() {
+        const editor = this.editor;
+
+        // Device commands
+        editor.Commands.add('set-device-desktop', {
+            run: editor => editor.setDevice('Desktop')
+        });
+        editor.Commands.add('set-device-tablet', {
+            run: editor => editor.setDevice('Tablet')
+        });
+        editor.Commands.add('set-device-mobile', {
+            run: editor => editor.setDevice('Mobile')
+        });
+
+        // Fullscreen command
+        editor.Commands.add('fullscreen', {
+            run(editor) {
+                const el = editor.getContainer();
+                if (el.requestFullscreen) {
+                    el.requestFullscreen();
+                } else if (el.webkitRequestFullscreen) {
+                    el.webkitRequestFullscreen();
+                }
+            },
+            stop(editor) {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                } else if (document.webkitExitFullscreen) {
+                    document.webkitExitFullscreen();
+                }
+            }
+        });
+    }
+
+    setupEventListeners() {
+        // Save button
+        document.getElementById('btn-save')?.addEventListener('click', () => {
+            this.savePage();
+        });
+
+        // Load button
+        document.getElementById('btn-load')?.addEventListener('click', () => {
+            this.showLoadPageDialog();
+        });
+
+        // Publish button
+        document.getElementById('btn-publish')?.addEventListener('click', () => {
+            this.publishPage();
+        });
+
+        // Preview button
+        document.getElementById('btn-preview')?.addEventListener('click', () => {
+            this.previewPage();
+        });
+    }
+
+    async savePage() {
+        try {
+            const pageData = this.configPanel.getPageConfig();
+            const grapesjsData = this.editor.getProjectData();
+            const html = this.editor.getHtml();
+            const css = this.editor.getCss();
+
+            const payload = {
+                ...pageData,
+                grapejs_data: grapesjsData,
+                html_output: html,
+                css_output: css
+            };
+
+            let response;
+            if (this.currentPage?.id) {
+                // Update existing page
+                response = await fetch(`/api/v1/builder/pages/${this.currentPage.id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    },
+                    body: JSON.stringify(payload)
+                });
+            } else {
+                // Create new page
+                response = await fetch('/api/v1/builder/pages/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    },
+                    body: JSON.stringify(payload)
+                });
+            }
+
+            if (response.ok) {
+                const savedPage = await response.json();
+                this.currentPage = savedPage;
+                document.getElementById('current-page-name').textContent = savedPage.name;
+                document.getElementById('btn-publish').disabled = false;
+                showToast('Page saved successfully', 'success');
+            } else {
+                throw new Error('Failed to save page');
+            }
+        } catch (error) {
+            console.error('Error saving page:', error);
+            showToast('Failed to save page', 'error');
+        }
+    }
+
+    async loadPage(pageId) {
+        try {
+            const response = await fetch(`/api/v1/builder/pages/${pageId}`, {
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                }
+            });
+
+            if (response.ok) {
+                const page = await response.json();
+                this.currentPage = page;
+
+                // Load into editor
+                this.editor.loadProjectData(page.grapejs_data);
+
+                // Update config panel
+                this.configPanel.setPageConfig(page);
+
+                // Update UI
+                document.getElementById('current-page-name').textContent = page.name;
+                document.getElementById('btn-publish').disabled = !page.published;
+
+                showToast('Page loaded successfully', 'success');
+            } else {
+                throw new Error('Failed to load page');
+            }
+        } catch (error) {
+            console.error('Error loading page:', error);
+            showToast('Failed to load page', 'error');
+        }
+    }
+
+    showLoadPageDialog() {
+        // TODO: Implement load page dialog with page list
+        showToast('Load page dialog coming soon', 'info');
+    }
+
+    async publishPage() {
+        if (!this.currentPage?.id) {
+            showToast('Please save the page first', 'warning');
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/v1/builder/pages/${this.currentPage.id}/publish`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                },
+                body: JSON.stringify({
+                    commit_message: `Published version at ${new Date().toISOString()}`
+                })
+            });
+
+            if (response.ok) {
+                const publishedPage = await response.json();
+                this.currentPage = publishedPage;
+                showToast('Page published successfully', 'success');
+            } else {
+                throw new Error('Failed to publish page');
+            }
+        } catch (error) {
+            console.error('Error publishing page:', error);
+            showToast('Failed to publish page', 'error');
+        }
+    }
+
+    previewPage() {
+        const html = this.editor.getHtml();
+        const css = this.editor.getCss();
+
+        const previewContent = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="utf-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+                <style>${css}</style>
+            </head>
+            <body>
+                ${html}
+            </body>
+            </html>
+        `;
+
+        const previewWindow = window.open('', '_blank');
+        previewWindow.document.write(previewContent);
+        previewWindow.document.close();
+    }
+
+    cleanup() {
+        if (this.editor) {
+            this.editor.destroy();
+        }
+    }
+}
