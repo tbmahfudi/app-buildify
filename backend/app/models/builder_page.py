@@ -3,10 +3,10 @@
 import uuid
 from datetime import datetime
 from typing import Optional, Dict, Any
-from sqlalchemy import Column, String, Text, Integer, Boolean, DateTime, ForeignKey, UniqueConstraint, Index
+from sqlalchemy import Column, String, Text, Integer, Boolean, DateTime, ForeignKey, UniqueConstraint, Index, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
-from ..core.database import Base
+from .base import Base
 
 
 class BuilderPage(Base):
@@ -56,8 +56,8 @@ class BuilderPage(Base):
     # Metadata
     created_by = Column(String(36), nullable=False)
     updated_by = Column(String(36))
-    created_at = Column(DateTime, server_default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime, onupdate=func.now())
 
     # Relationships
     versions = relationship('BuilderPageVersion', back_populates='page', cascade='all, delete-orphan')
@@ -119,7 +119,7 @@ class BuilderPageVersion(Base):
 
     # Metadata
     created_by = Column(String(36), nullable=False)
-    created_at = Column(DateTime, server_default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, server_default=func.now(), nullable=False)
 
     # Relationships
     page = relationship('BuilderPage', back_populates='versions')
