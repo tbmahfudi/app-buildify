@@ -40,6 +40,9 @@ from .event_bus import Event, EventSubscription, EventHandler, EventArchive
 from .notification_config import NotificationConfig
 from .notification_queue import NotificationQueue
 
+# Builder system
+from .builder_page import BuilderPage, BuilderPageVersion
+
 # Security system
 from .password_history import PasswordHistory
 from .password_reset_token import PasswordResetToken
@@ -167,4 +170,8 @@ __all__ = [
     "SchedulerJob",
     "SchedulerJobExecution",
     "SchedulerJobLog",
+
+    # Builder system
+    "BuilderPage",
+    "BuilderPageVersion",
 ]

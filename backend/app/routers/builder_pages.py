@@ -13,7 +13,7 @@ from sqlalchemy import select, and_, desc
 from pydantic import BaseModel, Field
 
 from ..core.database import get_db
-from ..models.page import BuilderPage, BuilderPageVersion
+from ..models.builder_page import BuilderPage, BuilderPageVersion
 
 
 router = APIRouter()
