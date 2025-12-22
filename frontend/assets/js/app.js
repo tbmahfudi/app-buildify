@@ -1294,6 +1294,37 @@ async function loadRoute(route) {
   `;
 
   try {
+    // Handle builder routes (core feature, not a module)
+    if (route === 'builder' || route.startsWith('builder?')) {
+      console.log('Loading builder page');
+      const { BuilderPage } = await import('./pages/builder.js');
+      const page = new BuilderPage();
+      const html = await page.render();
+      content.innerHTML = html;
+      if (typeof page.afterRender === 'function') {
+        await page.afterRender();
+      }
+      document.dispatchEvent(new CustomEvent('route:loaded', {
+        detail: { route: 'builder', isModule: false }
+      }));
+      return;
+    }
+
+    if (route === 'builder/pages') {
+      console.log('Loading builder pages list');
+      const { PagesListPage } = await import('./pages/builder-pages-list.js');
+      const page = new PagesListPage();
+      const html = await page.render();
+      content.innerHTML = html;
+      if (typeof page.afterRender === 'function') {
+        await page.afterRender();
+      }
+      document.dispatchEvent(new CustomEvent('route:loaded', {
+        detail: { route: 'builder/pages', isModule: false }
+      }));
+      return;
+    }
+
     // Check if this is a module route
     const moduleRoute = moduleRegistry.findRoute(`#/${route}`);
 

@@ -11,7 +11,7 @@ from app.core.rate_limiter import setup_rate_limiting
 from app.core.db import SessionLocal
 from app.core.security_middleware import SecurityMiddleware
 from app.core.startup import ensure_default_security_policy
-from app.routers import org, auth, metadata, data, audit, settings, modules, rbac, reports, dashboards, scheduler, menu
+from app.routers import org, auth, metadata, data, audit, settings, modules, rbac, reports, dashboards, scheduler, menu, builder_pages
 from app.routers.admin import security as admin_security
 from app.core.module_system.registry import ModuleRegistryService
 from pathlib import Path
@@ -176,6 +176,7 @@ app.include_router(reports.router, prefix="/api/v1")
 app.include_router(dashboards.router, prefix="/api/v1")
 app.include_router(scheduler.router, prefix="/api/v1")
 app.include_router(menu.router, prefix="/api/v1")
+app.include_router(builder_pages.router, prefix="/api/v1/builder", tags=["builder"])
 app.include_router(admin_security.router, prefix="/api/v1")
 
 # Also maintain backward compatibility with old endpoints (deprecated)

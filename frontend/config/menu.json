@@ -57,6 +57,27 @@
       ]
     },
     {
+      "title": "Developer Tools",
+      "icon": "ph-duotone ph-code",
+      "iconColor": "text-green-600",
+      "submenu": [
+        {
+          "title": "UI Builder",
+          "icon": "ph-duotone ph-code-block",
+          "iconColor": "text-blue-600",
+          "submenu": [
+            { "title": "Page Designer", "route": "builder", "icon": "ph-duotone ph-paint-brush", "iconColor": "text-blue-600", "permission": "builder:design:tenant" },
+            { "title": "Manage Pages", "route": "builder/pages", "icon": "ph-duotone ph-files", "iconColor": "text-purple-600", "permission": "builder:pages:read:tenant" }
+          ]
+        },
+        { "title": "Sample Reports & Dashboards", "route": "sample-reports-dashboards", "icon": "ph-duotone ph-presentation-chart", "iconColor": "text-blue-600" },
+        { "title": "Components", "route": "components-showcase", "icon": "ph-duotone ph-squares-four", "iconColor": "text-green-500" },
+        { "title": "Schema Designer", "route": "schema-designer", "icon": "ph-duotone ph-database", "iconColor": "text-emerald-600" },
+        { "title": "API Playground", "route": "api-playground", "icon": "ph-duotone ph-terminal-window", "iconColor": "text-teal-600" },
+        { "title": "Code Generator", "route": "code-generator", "icon": "ph-duotone ph-brackets-curly", "iconColor": "text-lime-600" }
+      ]
+    },
+    {
       "title": "Help & Support",
       "icon": "ph-duotone ph-lifebuoy",
       "iconColor": "text-pink-600",
@@ -64,19 +85,7 @@
         { "title": "User Guide", "route": "user-guide", "icon": "ph-duotone ph-book-open", "iconColor": "text-pink-500" },
         { "title": "API Docs", "route": "api-docs", "icon": "ph-duotone ph-file-code", "iconColor": "text-rose-600" },
         { "title": "Contact Support", "route": "contact-support", "icon": "ph-duotone ph-headset", "iconColor": "text-pink-600" },
-        { "title": "Changelog", "route": "changelog", "icon": "ph-duotone ph-git-diff", "iconColor": "text-fuchsia-600" },
-        {
-          "title": "Developer Tools",
-          "icon": "ph-duotone ph-code",
-          "iconColor": "text-green-600",
-          "submenu": [
-            { "title": "Sample Reports & Dashboards", "route": "sample-reports-dashboards", "icon": "ph-duotone ph-presentation-chart", "iconColor": "text-blue-600" },
-            { "title": "Components", "route": "components-showcase", "icon": "ph-duotone ph-squares-four", "iconColor": "text-green-500" },
-            { "title": "Schema Designer", "route": "schema-designer", "icon": "ph-duotone ph-database", "iconColor": "text-emerald-600" },
-            { "title": "API Playground", "route": "api-playground", "icon": "ph-duotone ph-terminal-window", "iconColor": "text-teal-600" },
-            { "title": "Code Generator", "route": "code-generator", "icon": "ph-duotone ph-brackets-curly", "iconColor": "text-lime-600" }
-          ]
-        }
+        { "title": "Changelog", "route": "changelog", "icon": "ph-duotone ph-git-diff", "iconColor": "text-fuchsia-600" }
       ]
     }
   ]

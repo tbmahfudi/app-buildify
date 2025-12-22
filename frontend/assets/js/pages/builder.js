@@ -4,10 +4,10 @@
  * Comprehensive UI builder with component library integration
  */
 
-import { can } from '../../../../frontend/assets/js/rbac.js';
-import { showToast } from '../../../../frontend/assets/js/ui-utils.js';
-import { registerComponents } from '../components/component-registry.js';
-import { BuilderConfigPanel } from '../components/config-panel.js';
+import { can } from '../rbac.js';
+import { showToast } from '../ui-utils.js';
+import { registerComponents } from '../components/builder-component-registry.js';
+import { BuilderConfigPanel } from '../components/builder-config-panel.js';
 
 export class BuilderPage {
     constructor() {
