@@ -34,25 +34,42 @@ All users in the Administrators group will have full access to the UI Builder.
 
 ## Setup Instructions
 
-### 1. Run the Seed Script
+**Important**: Run **both** seed scripts in order to set up the UI Builder completely.
+
+### 1. Run the RBAC Seed Script
+
+This creates permissions, role, and assigns to the Administrators group.
 
 ```bash
-# From the backend directory
-cd backend
+# Using Docker (recommended)
+docker exec -it app_buildify_backend python -m app.seeds.seed_builder_rbac
 
-# Run the seed script
+# Or from the backend directory
+cd backend
 python -m app.seeds.seed_builder_rbac
 ```
 
-Or using Docker:
+### 2. Run the Menu Seed Script
+
+This creates menu items in the database for the UI Builder navigation.
 
 ```bash
-docker exec -it app_buildify_backend python -m app.seeds.seed_builder_rbac
+# Using Docker (recommended)
+docker exec -it app_buildify_backend python -m app.seeds.seed_builder_menu
+
+# Or from the backend directory
+cd backend
+python -m app.seeds.seed_builder_menu
 ```
 
-### 2. Verify the Setup
+**Why both scripts?**
+- The application uses a **database-driven menu system**
+- Menu items must exist in the `menu_items` table to appear in navigation
+- The static `menu.json` is only used as a fallback
 
-After running the seed script, you should see:
+### 3. Verify the Setup
+
+After running both seed scripts, you should see:
 
 ```
 ✅ UI BUILDER RBAC SEEDED SUCCESSFULLY
