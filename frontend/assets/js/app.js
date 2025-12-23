@@ -1203,7 +1203,8 @@ function createNestedPopup(item, parentPopup) {
 
     nestedPopup.appendChild(nestedContent);
   } else {
-    // List layout
+    // List layout for items with nested submenus
+    console.log('[Menu Debug] createNestedPopup: Using list layout for items with submenus');
     nestedPopup.className = 'fixed hidden bg-white border border-gray-200 rounded-xl shadow-xl min-w-[200px] overflow-hidden';
     nestedPopup.style.zIndex = '100000';
 
@@ -1212,34 +1213,119 @@ function createNestedPopup(item, parentPopup) {
 
     // Support both submenu and children properties
     const nestedItems = item.submenu || item.children || [];
+    const childPopups = [];
+
     nestedItems.forEach(nestedItem => {
-      const nestedLink = document.createElement('a');
-      nestedLink.className = 'flex items-center gap-3 px-4 py-2 text-gray-600 hover:bg-blue-50 hover:text-blue-600 transition-colors text-sm';
-      nestedLink.href = `#${nestedItem.route}`;
+      console.log('[Menu Debug] createNestedPopup: Processing nestedItem:', nestedItem.title);
+      const nestedItemChildren = nestedItem.submenu || nestedItem.children || [];
+      console.log('[Menu Debug] createNestedPopup: nestedItemChildren count:', nestedItemChildren.length);
 
-      const nestedIcon = nestedItem.icon || 'ph-duotone ph-circle';
-      const nestedIconColor = getIconColor(nestedItem.title, nestedItem.route, nestedItem);
-      const nestedI18nKey = getMenuI18nKey(nestedItem.title);
-      const nestedI18nAttr = nestedI18nKey ? `data-i18n="${nestedI18nKey}"` : '';
-      nestedLink.innerHTML = `
-        <i class="${nestedIcon} text-base ${nestedIconColor}"></i>
-        <span ${nestedI18nAttr}>${nestedItem.title}</span>
-      `;
+      if (nestedItemChildren.length > 0) {
+        console.log('[Menu Debug] createNestedPopup: Creating another nested popup for:', nestedItem.title);
+        // This item has children - create a trigger that shows another nested popup
+        const nestedContainer = document.createElement('div');
+        nestedContainer.className = 'relative';
 
-      nestedLink.onclick = (e) => {
-        e.preventDefault();
-        parentPopup.classList.add('hidden');
-        nestedPopup.classList.add('hidden');
-        // Also hide parent's parent if it exists
-        if (parentPopup.parentPopup) {
-          parentPopup.parentPopup.classList.add('hidden');
-        }
-        // Navigate to route
-        window.location.hash = nestedItem.route;
-      };
+        const nestedTrigger = document.createElement('div');
+        nestedTrigger.className = 'flex items-center justify-between px-4 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600 cursor-pointer transition-colors';
 
-      nestedContent.appendChild(nestedLink);
+        const nestedIcon = nestedItem.icon || 'ph-duotone ph-folder';
+        const nestedIconColor = getIconColor(nestedItem.title, nestedItem.route, nestedItem);
+        const nestedI18nKey = getMenuI18nKey(nestedItem.title);
+        const nestedI18nAttr = nestedI18nKey ? `data-i18n="${nestedI18nKey}"` : '';
+
+        nestedTrigger.innerHTML = `
+          <div class="flex items-center gap-3">
+            <i class="${nestedIcon} text-base ${nestedIconColor}"></i>
+            <span class="text-sm font-medium" ${nestedI18nAttr}>${nestedItem.title}</span>
+          </div>
+          <i class="ph ph-caret-right text-xs"></i>
+        `;
+
+        // Recursively create another nested popup for this item's children
+        const deeperNestedPopup = createNestedPopup(nestedItem, nestedPopup);
+        childPopups.push(deeperNestedPopup);
+        document.body.appendChild(deeperNestedPopup);
+
+        // Show deeper nested popup on hover
+        nestedTrigger.addEventListener('mouseenter', () => {
+          // Hide other child popups
+          childPopups.forEach(p => {
+            if (p !== deeperNestedPopup) {
+              p.classList.add('hidden');
+              p.isActive = false;
+            }
+          });
+
+          const rect = nestedTrigger.getBoundingClientRect();
+          deeperNestedPopup.style.left = `${rect.right - 2}px`;
+          deeperNestedPopup.style.top = `${rect.top}px`;
+          deeperNestedPopup.classList.remove('hidden');
+          deeperNestedPopup.isActive = true;
+          nestedPopup.hasActiveChild = true;
+        });
+
+        nestedTrigger.addEventListener('mouseleave', () => {
+          setTimeout(() => {
+            if (!deeperNestedPopup.matches(':hover')) {
+              deeperNestedPopup.classList.add('hidden');
+              deeperNestedPopup.isActive = false;
+              nestedPopup.hasActiveChild = childPopups.some(p => p.isActive);
+            }
+          }, 100);
+        });
+
+        // Keep parent visible when deeper nested popup is hovered
+        deeperNestedPopup.addEventListener('mouseenter', () => {
+          nestedPopup.hasActiveChild = true;
+          deeperNestedPopup.isActive = true;
+        });
+
+        deeperNestedPopup.addEventListener('mouseleave', () => {
+          setTimeout(() => {
+            if (!deeperNestedPopup.matches(':hover') && !nestedTrigger.matches(':hover')) {
+              deeperNestedPopup.classList.add('hidden');
+              deeperNestedPopup.isActive = false;
+              nestedPopup.hasActiveChild = childPopups.some(p => p.isActive);
+            }
+          }, 100);
+        });
+
+        nestedContainer.appendChild(nestedTrigger);
+        nestedContent.appendChild(nestedContainer);
+      } else {
+        // Regular link - no children
+        const nestedLink = document.createElement('a');
+        nestedLink.className = 'flex items-center gap-3 px-4 py-2 text-gray-600 hover:bg-blue-50 hover:text-blue-600 transition-colors text-sm';
+        nestedLink.href = `#${nestedItem.route}`;
+
+        const nestedIcon = nestedItem.icon || 'ph-duotone ph-circle';
+        const nestedIconColor = getIconColor(nestedItem.title, nestedItem.route, nestedItem);
+        const nestedI18nKey = getMenuI18nKey(nestedItem.title);
+        const nestedI18nAttr = nestedI18nKey ? `data-i18n="${nestedI18nKey}"` : '';
+        nestedLink.innerHTML = `
+          <i class="${nestedIcon} text-base ${nestedIconColor}"></i>
+          <span ${nestedI18nAttr}>${nestedItem.title}</span>
+        `;
+
+        nestedLink.onclick = (e) => {
+          e.preventDefault();
+          parentPopup.classList.add('hidden');
+          nestedPopup.classList.add('hidden');
+          // Also hide parent's parent if it exists
+          if (parentPopup.parentPopup) {
+            parentPopup.parentPopup.classList.add('hidden');
+          }
+          // Navigate to route
+          window.location.hash = nestedItem.route;
+        };
+
+        nestedContent.appendChild(nestedLink);
+      }
     });
+
+    // Store child popups for tracking
+    nestedPopup.childPopups = childPopups;
 
     nestedPopup.appendChild(nestedContent);
   }
