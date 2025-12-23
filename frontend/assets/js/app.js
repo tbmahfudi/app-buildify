@@ -412,6 +412,13 @@ async function loadMenu() {
     navContainer.innerHTML = '';
 
     menuItems.forEach(item => {
+      console.log('[Menu Debug] Rendering item:', item.title, {
+        hasSubmenu: !!item.submenu,
+        submenuLength: item.submenu?.length || 0,
+        hasChildren: !!item.children,
+        childrenLength: item.children?.length || 0
+      });
+
       // If item has submenu/children, create an expandable menu
       if ((item.submenu && item.submenu.length > 0) || (item.children && item.children.length > 0)) {
         const menuGroup = createSubmenuItem(item);
@@ -451,9 +458,15 @@ async function loadMenuFromBackend() {
 
     const menuData = await response.json();
 
+    console.log('[Menu Debug] Raw menu from backend:', JSON.stringify(menuData, null, 2));
+
     // Backend returns pre-filtered menu based on user's RBAC
     // Convert 'children' to 'submenu' for compatibility with existing rendering
-    return convertBackendMenuFormat(menuData);
+    const convertedMenu = convertBackendMenuFormat(menuData);
+
+    console.log('[Menu Debug] Converted menu:', JSON.stringify(convertedMenu, null, 2));
+
+    return convertedMenu;
 
   } catch (error) {
     console.error('Error loading menu from backend:', error);
