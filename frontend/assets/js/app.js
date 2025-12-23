@@ -854,7 +854,11 @@ function createCollapsedSubmenuPopup(item) {
   popup.appendChild(popupHeader);
 
   // Check if all items are final (no submenu) - use grid layout
-  const allItemsFinal = item.submenu.every(subitem => !subitem.submenu || subitem.submenu.length === 0);
+  const submenuItems = item.submenu || item.children || [];
+  const allItemsFinal = submenuItems.every(subitem =>
+    (!subitem.submenu || subitem.submenu.length === 0) &&
+    (!subitem.children || subitem.children.length === 0)
+  );
 
   // Add submenu items
   const popupContent = document.createElement('div');
@@ -862,7 +866,6 @@ function createCollapsedSubmenuPopup(item) {
   if (allItemsFinal) {
     // Grid layout for final items - big icons with text below
     // Vertical-priority layout: items flow vertically first, then horizontally
-    const submenuItems = item.submenu || item.children || [];
     const itemCount = submenuItems.length;
 
     // Calculate grid layout based on item count (vertical priority)
@@ -932,8 +935,7 @@ function createCollapsedSubmenuPopup(item) {
     popupContent.className = 'py-1';
     const childPopups = [];
 
-    // Support both submenu and children properties
-    const submenuItems = item.submenu || item.children || [];
+    // Use submenuItems already defined above
     submenuItems.forEach(subitem => {
       const subitemChildren = subitem.submenu || subitem.children || [];
       if (subitemChildren.length > 0) {
