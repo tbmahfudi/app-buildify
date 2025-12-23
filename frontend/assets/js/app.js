@@ -853,6 +853,7 @@ function createSubmenuItem(item, level = 1) {
 
 // Helper function to create collapsed popup menu (supports nested submenus)
 function createCollapsedSubmenuPopup(item) {
+  console.log('[Menu Debug] createCollapsedSubmenuPopup called for:', item.title);
   const popup = document.createElement('div');
   popup.className = 'fixed hidden bg-white border border-gray-200 rounded-xl shadow-xl min-w-[220px] max-w-[280px] overflow-hidden';
   popup.style.zIndex = '99999';
@@ -868,10 +869,12 @@ function createCollapsedSubmenuPopup(item) {
 
   // Check if all items are final (no submenu) - use grid layout
   const submenuItems = item.submenu || item.children || [];
+  console.log('[Menu Debug] submenuItems:', submenuItems.map(i => ({ title: i.title, hasSubmenu: !!(i.submenu || i.children) })));
   const allItemsFinal = submenuItems.every(subitem =>
     (!subitem.submenu || subitem.submenu.length === 0) &&
     (!subitem.children || subitem.children.length === 0)
   );
+  console.log('[Menu Debug] allItemsFinal:', allItemsFinal);
 
   // Add submenu items
   const popupContent = document.createElement('div');
@@ -945,13 +948,18 @@ function createCollapsedSubmenuPopup(item) {
     });
   } else {
     // List layout for items with submenus
+    console.log('[Menu Debug] Using list layout for items with submenus');
     popupContent.className = 'py-1';
     const childPopups = [];
 
     // Use submenuItems already defined above
+    console.log('[Menu Debug] submenuItems for list layout:', submenuItems.length, 'items');
     submenuItems.forEach(subitem => {
+      console.log('[Menu Debug] Processing subitem:', subitem.title);
       const subitemChildren = subitem.submenu || subitem.children || [];
+      console.log('[Menu Debug]   - has submenu?', !!subitem.submenu, 'has children?', !!subitem.children, 'count:', subitemChildren.length);
       if (subitemChildren.length > 0) {
+        console.log('[Menu Debug]   - Creating nested popup trigger for:', subitem.title);
         // Nested submenu - create item that shows another popup on hover
         const nestedContainer = document.createElement('div');
         nestedContainer.className = 'relative';
