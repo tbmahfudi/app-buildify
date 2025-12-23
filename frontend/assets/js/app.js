@@ -973,6 +973,7 @@ function createCollapsedSubmenuPopup(item) {
         `;
 
         // Create nested popup menu
+        console.log('[Menu Debug] Creating nested popup for:', subitem.title, 'with children:', subitemChildren);
         const nestedPopup = createNestedPopup(subitem, popup);
         childPopups.push(nestedPopup);
         document.body.appendChild(nestedPopup);
@@ -1107,15 +1108,18 @@ function createCollapsedSubmenuPopup(item) {
 
 // Helper function to create nested popup (for second level)
 function createNestedPopup(item, parentPopup) {
+  console.log('[Menu Debug] createNestedPopup called for:', item.title, 'item:', item);
   const nestedPopup = document.createElement('div');
 
   // Check if all items are final - use grid layout
   // Support both submenu and children properties
   const submenuItems = item.submenu || item.children || [];
+  console.log('[Menu Debug] submenuItems:', submenuItems);
   const allItemsFinal = submenuItems.every(subitem =>
     (!subitem.submenu || subitem.submenu.length === 0) &&
     (!subitem.children || subitem.children.length === 0)
   );
+  console.log('[Menu Debug] allItemsFinal:', allItemsFinal);
 
   if (allItemsFinal) {
     // Grid layout for final items - vertical priority
