@@ -46,6 +46,10 @@ export class BuilderPage {
                         </div>
                     </div>
                     <div class="flex items-center gap-2">
+                        <!-- Toolbar Panels -->
+                        <div class="panel__devices flex items-center gap-1 mr-4"></div>
+                        <div class="panel__basic-actions flex items-center gap-1 mr-4"></div>
+
                         <button id="btn-load" class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-600 transition">
                             <i class="ph-duotone ph-folder-open mr-2"></i>Load
                         </button>
@@ -63,8 +67,49 @@ export class BuilderPage {
 
                 <!-- Editor Container -->
                 <div class="flex-1 flex overflow-hidden">
+                    <!-- Left Sidebar - Blocks & Components -->
+                    <div class="w-64 bg-white dark:bg-slate-800 border-r border-gray-200 dark:border-slate-700 overflow-y-auto">
+                        <div class="p-4">
+                            <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+                                <i class="ph-duotone ph-stack"></i>
+                                Components
+                            </h3>
+                            <div id="blocks"></div>
+                        </div>
+                    </div>
+
                     <!-- GrapeJS Editor -->
                     <div id="gjs" class="flex-1"></div>
+
+                    <!-- Right Sidebar - Layers, Styles & Traits -->
+                    <div class="w-80 bg-white dark:bg-slate-800 border-l border-gray-200 dark:border-slate-700 overflow-y-auto">
+                        <!-- Layers -->
+                        <div class="border-b border-gray-200 dark:border-slate-700 p-4">
+                            <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+                                <i class="ph-duotone ph-tree-structure"></i>
+                                Layers
+                            </h3>
+                            <div class="layers-container"></div>
+                        </div>
+
+                        <!-- Traits -->
+                        <div class="border-b border-gray-200 dark:border-slate-700 p-4">
+                            <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+                                <i class="ph-duotone ph-sliders"></i>
+                                Settings
+                            </h3>
+                            <div class="traits-container"></div>
+                        </div>
+
+                        <!-- Styles -->
+                        <div class="p-4">
+                            <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+                                <i class="ph-duotone ph-palette"></i>
+                                Styles
+                            </h3>
+                            <div class="styles-container"></div>
+                        </div>
+                    </div>
                 </div>
             </div>
         `;
