@@ -1110,7 +1110,12 @@ function createNestedPopup(item, parentPopup) {
   const nestedPopup = document.createElement('div');
 
   // Check if all items are final - use grid layout
-  const allItemsFinal = item.submenu.every(subitem => !subitem.submenu || subitem.submenu.length === 0);
+  // Support both submenu and children properties
+  const submenuItems = item.submenu || item.children || [];
+  const allItemsFinal = submenuItems.every(subitem =>
+    (!subitem.submenu || subitem.submenu.length === 0) &&
+    (!subitem.children || subitem.children.length === 0)
+  );
 
   if (allItemsFinal) {
     // Grid layout for final items - vertical priority
