@@ -12,8 +12,6 @@ This creates:
 Run: python -m app.seeds.seed_builder_rbac
 """
 
-import uuid
-from datetime import datetime
 from sqlalchemy.orm import Session
 from sqlalchemy import and_
 from app.core.db import SessionLocal
@@ -120,9 +118,8 @@ def seed_builder_permissions(db: Session):
             existing_count += 1
             continue
 
-        # Create permission
+        # Create permission (ID auto-generated)
         permission = Permission(
-            id=str(uuid.uuid4()),
             code=perm_data["code"],
             name=perm_data["name"],
             description=perm_data["description"],
@@ -157,9 +154,8 @@ def seed_builder_role(db: Session):
         print(f"  ⏭️  Role '{role_code}' already exists")
         role = existing_role
     else:
-        # Create system role (tenant_id = None means available to all tenants)
+        # Create system role (tenant_id = None means available to all tenants, ID auto-generated)
         role = Role(
-            id=str(uuid.uuid4()),
             tenant_id=None,  # System role
             code=role_code,
             name="UI Builder Administrator",
@@ -198,9 +194,8 @@ def seed_builder_role(db: Session):
             existing_count += 1
             continue
 
-        # Assign permission to role
+        # Assign permission to role (ID auto-generated)
         role_perm = RolePermission(
-            id=str(uuid.uuid4()),
             role_id=role.id,
             permission_id=permission.id
         )
@@ -241,9 +236,8 @@ def assign_role_to_admin_group(db: Session, role: Role):
         print(f"  ⏭️  Role already assigned to '{admin_group.name}' group")
         return
 
-    # Assign role to group
+    # Assign role to group (ID auto-generated)
     group_role = GroupRole(
-        id=str(uuid.uuid4()),
         group_id=admin_group.id,
         role_id=role.id
     )
