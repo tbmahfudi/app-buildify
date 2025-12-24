@@ -1443,6 +1443,21 @@ async function loadRoute(route) {
       return;
     }
 
+    if (route === 'builder/showcase') {
+      console.log('Loading builder showcase page');
+      const { BuilderShowcasePage } = await import('./pages/builder-showcase.js');
+      const page = new BuilderShowcasePage();
+      const html = await page.render();
+      content.innerHTML = html;
+      if (typeof page.afterRender === 'function') {
+        await page.afterRender();
+      }
+      document.dispatchEvent(new CustomEvent('route:loaded', {
+        detail: { route: 'builder/showcase', isModule: false }
+      }));
+      return;
+    }
+
     // Check if this is a module route
     const moduleRoute = moduleRegistry.findRoute(`#/${route}`);
 
