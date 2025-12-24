@@ -19,6 +19,8 @@ async function  initBuilder(page) {
     if (typeof page.afterRender === 'function') {
         await page.afterRender();
     }
+    console.log('Initialize Builder');        
+
     document.dispatchEvent(new CustomEvent('route:loaded', {
         detail: { route: 'builder', isModule: false }
     }));
