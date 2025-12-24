@@ -333,12 +333,15 @@ export class BuilderPage {
     }
 
     async loadGrapeJSLibrary() {
+        console.log('Loading GrapeJS');        
         return new Promise((resolve, reject) => {
             // Check if already loaded
             if (window.grapesjs) {
+                console.log('GrapeJS Already Loaded!');        
                 resolve();
                 return;
             }
+            console.log('Adding GrapeJS');        
 
             // Load CSS
             const css = document.createElement('link');
