@@ -11,8 +11,8 @@ from sqlalchemy.dialects.postgresql import JSONB
 
 
 # revision identifiers, used by Alembic.
-revision = '001_initial_builder'
-down_revision = None
+revision = 'pg_001_initial_builder'
+down_revision = 'pg_create_menu_items'
 branch_labels = None
 depends_on = None
 
