@@ -152,6 +152,39 @@ def seed_builder_menu():
                 print(f"  ⏭️  Manage Pages already exists")
                 existing_count += 1
 
+        # Step 5: Create Pages Showcase menu item
+        print("\n🎨 Step 5: Creating Pages Showcase menu item...")
+        pages_showcase = db.query(MenuItem).filter(MenuItem.code == "builder_pages_showcase").first()
+
+        if not pages_showcase:
+            pages_showcase = MenuItem(
+                code="builder_pages_showcase",
+                tenant_id=None,
+                parent_id=ui_builder.id,
+                order=30,
+                title="Pages Showcase",
+                icon="ph-duotone ph-squares-four",
+                route="builder/showcase",
+                description="Browse and preview created pages",
+                permission="builder:design:tenant",
+                is_active=True,
+                is_visible=True,
+                is_system=True,
+                module_code=None
+            )
+            db.add(pages_showcase)
+            print(f"  ✅ Created: Pages Showcase (route: builder/showcase, permission: builder:design:tenant)")
+            created_count += 1
+        else:
+            # Update permission if it changed
+            if pages_showcase.permission != "builder:design:tenant":
+                pages_showcase.permission = "builder:design:tenant"
+                updated_count += 1
+                print(f"  🔄 Updated: Pages Showcase (permission updated)")
+            else:
+                print(f"  ⏭️  Pages Showcase already exists")
+                existing_count += 1
+
         db.commit()
 
         print("\n" + "=" * 70)
@@ -165,7 +198,8 @@ def seed_builder_menu():
         print(f"  Developer Tools")
         print(f"    └── UI Builder")
         print(f"          ├── Page Designer (builder:design:tenant)")
-        print(f"          └── Manage Pages (builder:pages:read:tenant)")
+        print(f"          ├── Manage Pages (builder:pages:read:tenant)")
+        print(f"          └── Pages Showcase (builder:design:tenant)")
         print(f"\nThe UI Builder menu should now appear for users with the required permissions!")
         print("=" * 70 + "\n")
 
