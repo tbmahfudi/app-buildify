@@ -14,6 +14,7 @@ export class BuilderPage {
         this.editor = null;
         this.currentPage = null;
         this.configPanel = null;
+        this.currentTab = 'design';
     }
 
     async render() {
@@ -82,32 +83,101 @@ export class BuilderPage {
                     <div id="gjs" class="flex-1"></div>
 
                     <!-- Right Sidebar - Layers, Styles & Traits -->
-                    <div class="w-80 bg-white dark:bg-slate-800 border-l border-gray-200 dark:border-slate-700 overflow-y-auto">
-                        <!-- Layers -->
-                        <div class="border-b border-gray-200 dark:border-slate-700 p-4">
-                            <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
-                                <i class="ph-duotone ph-tree-structure"></i>
-                                Layers
-                            </h3>
-                            <div class="layers-container"></div>
+                    <div class="w-80 bg-white dark:bg-slate-800 border-l border-gray-200 dark:border-slate-700 flex flex-col">
+                        <!-- Tab Navigation -->
+                        <div class="flex border-b border-gray-200 dark:border-slate-700">
+                            <button id="tab-design" class="flex-1 px-4 py-3 text-sm font-medium text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400 bg-blue-50 dark:bg-slate-900">
+                                <i class="ph-duotone ph-palette mr-2"></i>Design
+                            </button>
+                            <button id="tab-source" class="flex-1 px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-700 transition">
+                                <i class="ph-duotone ph-code mr-2"></i>Source
+                            </button>
                         </div>
 
-                        <!-- Traits -->
-                        <div class="border-b border-gray-200 dark:border-slate-700 p-4">
-                            <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
-                                <i class="ph-duotone ph-sliders"></i>
-                                Settings
-                            </h3>
-                            <div class="traits-container"></div>
-                        </div>
+                        <!-- Tab Content Container -->
+                        <div class="flex-1 overflow-y-auto">
+                            <!-- Design Tab -->
+                            <div id="design-tab-content" class="tab-content">
+                                <!-- Layers -->
+                                <div class="border-b border-gray-200 dark:border-slate-700 p-4">
+                                    <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+                                        <i class="ph-duotone ph-tree-structure"></i>
+                                        Layers
+                                    </h3>
+                                    <div class="layers-container"></div>
+                                </div>
 
-                        <!-- Styles -->
-                        <div class="p-4">
-                            <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
-                                <i class="ph-duotone ph-palette"></i>
-                                Styles
-                            </h3>
-                            <div class="styles-container"></div>
+                                <!-- Traits -->
+                                <div class="border-b border-gray-200 dark:border-slate-700 p-4">
+                                    <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+                                        <i class="ph-duotone ph-sliders"></i>
+                                        Settings
+                                    </h3>
+                                    <div class="traits-container"></div>
+                                </div>
+
+                                <!-- Styles -->
+                                <div class="p-4">
+                                    <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+                                        <i class="ph-duotone ph-palette"></i>
+                                        Styles
+                                    </h3>
+                                    <div class="styles-container"></div>
+                                </div>
+                            </div>
+
+                            <!-- Source Tab -->
+                            <div id="source-tab-content" class="tab-content hidden">
+                                <!-- HTML Section -->
+                                <div class="border-b border-gray-200 dark:border-slate-700 p-4">
+                                    <div class="flex items-center justify-between mb-3">
+                                        <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                                            <i class="ph-duotone ph-file-html"></i>
+                                            HTML
+                                        </h3>
+                                        <button id="copy-html" class="px-2 py-1 text-xs bg-gray-200 dark:bg-slate-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-slate-600 transition">
+                                            <i class="ph-duotone ph-copy"></i> Copy
+                                        </button>
+                                    </div>
+                                    <pre id="html-output" class="bg-gray-900 text-green-400 p-3 rounded text-xs overflow-auto max-h-64 font-mono"></pre>
+                                </div>
+
+                                <!-- CSS Section -->
+                                <div class="border-b border-gray-200 dark:border-slate-700 p-4">
+                                    <div class="flex items-center justify-between mb-3">
+                                        <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                                            <i class="ph-duotone ph-file-css"></i>
+                                            CSS
+                                        </h3>
+                                        <button id="copy-css" class="px-2 py-1 text-xs bg-gray-200 dark:bg-slate-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-slate-600 transition">
+                                            <i class="ph-duotone ph-copy"></i> Copy
+                                        </button>
+                                    </div>
+                                    <pre id="css-output" class="bg-gray-900 text-blue-400 p-3 rounded text-xs overflow-auto max-h-64 font-mono"></pre>
+                                </div>
+
+                                <!-- JS Section -->
+                                <div class="p-4">
+                                    <div class="flex items-center justify-between mb-3">
+                                        <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                                            <i class="ph-duotone ph-file-js"></i>
+                                            JavaScript
+                                        </h3>
+                                        <button id="copy-js" class="px-2 py-1 text-xs bg-gray-200 dark:bg-slate-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-slate-600 transition">
+                                            <i class="ph-duotone ph-copy"></i> Copy
+                                        </button>
+                                    </div>
+                                    <pre id="js-output" class="bg-gray-900 text-yellow-400 p-3 rounded text-xs overflow-auto max-h-64 font-mono"></pre>
+                                </div>
+
+                                <!-- Refresh Button -->
+                                <div class="p-4 border-t border-gray-200 dark:border-slate-700">
+                                    <button id="refresh-source" class="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm font-medium">
+                                        <i class="ph-duotone ph-arrows-clockwise mr-2"></i>
+                                        Refresh Source
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -471,6 +541,181 @@ export class BuilderPage {
         document.getElementById('btn-preview')?.addEventListener('click', () => {
             this.previewPage();
         });
+
+        // Tab switching
+        document.getElementById('tab-design')?.addEventListener('click', () => {
+            this.switchTab('design');
+        });
+
+        document.getElementById('tab-source')?.addEventListener('click', () => {
+            this.switchTab('source');
+            this.updateSourceCode();
+        });
+
+        // Refresh source button
+        document.getElementById('refresh-source')?.addEventListener('click', () => {
+            this.updateSourceCode();
+            showToast('Source code refreshed', 'success');
+        });
+
+        // Copy buttons
+        document.getElementById('copy-html')?.addEventListener('click', () => {
+            this.copyToClipboard('html');
+        });
+
+        document.getElementById('copy-css')?.addEventListener('click', () => {
+            this.copyToClipboard('css');
+        });
+
+        document.getElementById('copy-js')?.addEventListener('click', () => {
+            this.copyToClipboard('js');
+        });
+
+        // Auto-refresh source on editor changes (debounced)
+        let sourceUpdateTimeout;
+        this.editor.on('component:update', () => {
+            if (this.currentTab === 'source') {
+                clearTimeout(sourceUpdateTimeout);
+                sourceUpdateTimeout = setTimeout(() => {
+                    this.updateSourceCode();
+                }, 500);
+            }
+        });
+    }
+
+    switchTab(tabName) {
+        this.currentTab = tabName;
+
+        const designTab = document.getElementById('tab-design');
+        const sourceTab = document.getElementById('tab-source');
+        const designContent = document.getElementById('design-tab-content');
+        const sourceContent = document.getElementById('source-tab-content');
+
+        if (tabName === 'design') {
+            // Activate design tab
+            designTab.classList.add('text-blue-600', 'dark:text-blue-400', 'border-b-2', 'border-blue-600', 'dark:border-blue-400', 'bg-blue-50', 'dark:bg-slate-900');
+            designTab.classList.remove('text-gray-600', 'dark:text-gray-400');
+            sourceTab.classList.remove('text-blue-600', 'dark:text-blue-400', 'border-b-2', 'border-blue-600', 'dark:border-blue-400', 'bg-blue-50', 'dark:bg-slate-900');
+            sourceTab.classList.add('text-gray-600', 'dark:text-gray-400');
+
+            // Show design content
+            designContent.classList.remove('hidden');
+            sourceContent.classList.add('hidden');
+        } else {
+            // Activate source tab
+            sourceTab.classList.add('text-blue-600', 'dark:text-blue-400', 'border-b-2', 'border-blue-600', 'dark:border-blue-400', 'bg-blue-50', 'dark:bg-slate-900');
+            sourceTab.classList.remove('text-gray-600', 'dark:text-gray-400');
+            designTab.classList.remove('text-blue-600', 'dark:text-blue-400', 'border-b-2', 'border-blue-600', 'dark:border-blue-400', 'bg-blue-50', 'dark:bg-slate-900');
+            designTab.classList.add('text-gray-600', 'dark:text-gray-400');
+
+            // Show source content
+            sourceContent.classList.remove('hidden');
+            designContent.classList.add('hidden');
+        }
+    }
+
+    updateSourceCode() {
+        if (!this.editor) return;
+
+        // Get HTML
+        const html = this.editor.getHtml();
+        const htmlOutput = document.getElementById('html-output');
+        if (htmlOutput) {
+            htmlOutput.textContent = this.formatHTML(html);
+        }
+
+        // Get CSS
+        const css = this.editor.getCss();
+        const cssOutput = document.getElementById('css-output');
+        if (cssOutput) {
+            cssOutput.textContent = css || '/* No styles yet */';
+        }
+
+        // Get JS (from component scripts)
+        const js = this.extractJavaScript();
+        const jsOutput = document.getElementById('js-output');
+        if (jsOutput) {
+            jsOutput.textContent = js || '// No JavaScript yet';
+        }
+    }
+
+    formatHTML(html) {
+        // Simple HTML formatter
+        if (!html) return '<!-- No HTML yet -->';
+
+        let formatted = '';
+        let indent = 0;
+        const tab = '  ';
+
+        html.split(/>\s*</).forEach((node, index) => {
+            if (node.match(/^\/\w/)) {
+                indent = Math.max(0, indent - 1);
+            }
+
+            if (index > 0) formatted += '<';
+            formatted += tab.repeat(indent) + node + (index < html.split(/>\s*</).length - 1 ? '>\n' : '');
+
+            if (node.match(/^<?\w[^>]*[^\/]$/) && !node.startsWith('input') && !node.startsWith('img') && !node.startsWith('br') && !node.startsWith('hr')) {
+                indent++;
+            }
+        });
+
+        return formatted.trim();
+    }
+
+    extractJavaScript() {
+        // Extract JavaScript from component scripts
+        const components = this.editor.getComponents();
+        let scripts = [];
+
+        const extractScripts = (component) => {
+            const script = component.get('script');
+            if (script && typeof script === 'function') {
+                scripts.push(script.toString());
+            }
+
+            // Recursively extract from children
+            const children = component.components();
+            if (children && children.length > 0) {
+                children.forEach(child => extractScripts(child));
+            }
+        };
+
+        components.forEach(component => extractScripts(component));
+
+        if (scripts.length === 0) {
+            return '// No JavaScript yet';
+        }
+
+        return '// Component Scripts\n\n' + scripts.join('\n\n// ---\n\n');
+    }
+
+    async copyToClipboard(type) {
+        let content = '';
+        let label = '';
+
+        switch (type) {
+            case 'html':
+                content = this.editor.getHtml();
+                label = 'HTML';
+                break;
+            case 'css':
+                content = this.editor.getCss();
+                label = 'CSS';
+                break;
+            case 'js':
+                content = this.extractJavaScript();
+                label = 'JavaScript';
+                break;
+        }
+
+        try {
+            await navigator.clipboard.writeText(content);
+            showToast(`${label} copied to clipboard`, 'success');
+        } catch (error) {
+            console.error('Failed to copy:', error);
+            showToast(`Failed to copy ${label}`, 'error');
+        }
     }
 
     async savePage() {
