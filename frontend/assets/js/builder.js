@@ -10,27 +10,29 @@ import { registerComponents } from './components/builder-component-registry.js';
 import { BuilderConfigPanel } from './components/builder-config-panel.js';
 // Initialize settings on app load
 document.addEventListener('DOMContentLoaded', () => {
-  initGlobalSettings();
-  
+    const page = new BuilderPage();
+    initBuilder(page);
+
 });
 
-// Also listen for route changes to settings page
-document.addEventListener('route:loaded', (event) => {
-  if (event.detail.route === 'builder') {
-    // Use setTimeout to ensure DOM is fully ready after innerHTML update
-    setTimeout(() => afterRender(), 0);
-  }
-});
+async function  initBuilder(page) {
+    if (typeof page.afterRender === 'function') {
+        await page.afterRender();
+    }
+    document.dispatchEvent(new CustomEvent('route:loaded', {
+        detail: { route: 'builder', isModule: false }
+    }));
+}
 
-
-    function initGlobalSettings() {
+export class BuilderPage {
+    constructor() {
         this.editor = null;
         this.currentPage = null;
         this.configPanel = null;
         this.currentTab = 'design';
     }
 
-    async function render() {
+    async render() {
         // Check permission
         if (!can('builder:design:tenant')) {
             return `
@@ -51,7 +53,7 @@ document.addEventListener('route:loaded', (event) => {
         `;
     }
 
-    async function afterRender() {
+    async afterRender() {
         // Initialize GrapeJS
         await this.initializeGrapeJS();
 
@@ -70,7 +72,7 @@ document.addEventListener('route:loaded', (event) => {
         }
     }
 
-    async function initializeGrapeJS() {
+    async initializeGrapeJS() {
         // Load GrapeJS from CDN if not already loaded
         if (!window.grapesjs) {
             await this.loadGrapeJSLibrary();
@@ -330,7 +332,7 @@ document.addEventListener('route:loaded', (event) => {
         console.log('GrapeJS initialized');
     }
 
-    async function loadGrapeJSLibrary() {
+    async loadGrapeJSLibrary() {
         return new Promise((resolve, reject) => {
             // Check if already loaded
             if (window.grapesjs) {
@@ -353,7 +355,7 @@ document.addEventListener('route:loaded', (event) => {
         });
     }
 
-    function registerCommands() {
+    registerCommands() {
         const editor = this.editor;
 
         // Device commands
@@ -387,7 +389,7 @@ document.addEventListener('route:loaded', (event) => {
         });
     }
 
-    function setupEventListeners() {
+    setupEventListeners() {
         // Save button
         document.getElementById('btn-save')?.addEventListener('click', () => {
             this.savePage();
@@ -449,7 +451,7 @@ document.addEventListener('route:loaded', (event) => {
         });
     }
 
-    function switchTab(tabName) {
+    switchTab(tabName) {
         this.currentTab = tabName;
 
         const designTab = document.getElementById('tab-design');
@@ -480,7 +482,7 @@ document.addEventListener('route:loaded', (event) => {
         }
     }
 
-    function updateSourceCode() {
+    updateSourceCode() {
         if (!this.editor) return;
 
         // Get HTML
@@ -505,7 +507,7 @@ document.addEventListener('route:loaded', (event) => {
         }
     }
 
-    function formatHTML(html) {
+    formatHTML(html) {
         // Simple HTML formatter
         if (!html) return '<!-- No HTML yet -->';
 
@@ -529,7 +531,7 @@ document.addEventListener('route:loaded', (event) => {
         return formatted.trim();
     }
 
-    function extractJavaScript() {
+    extractJavaScript() {
         // Extract JavaScript from component scripts
         const components = this.editor.getComponents();
         let scripts = [];
@@ -556,7 +558,7 @@ document.addEventListener('route:loaded', (event) => {
         return '// Component Scripts\n\n' + scripts.join('\n\n// ---\n\n');
     }
 
-    async function copyToClipboard(type) {
+    async copyToClipboard(type) {
         let content = '';
         let label = '';
 
@@ -584,7 +586,7 @@ document.addEventListener('route:loaded', (event) => {
         }
     }
 
-    async function savePage() {
+    async savePage() {
         try {
             const pageData = this.configPanel.getPageConfig();
             const grapesjsData = this.editor.getProjectData();
@@ -636,7 +638,7 @@ document.addEventListener('route:loaded', (event) => {
         }
     }
 
-    async function loadPage(pageId) {
+    async loadPage(pageId) {
         try {
             const response = await fetch(`/api/v1/builder/pages/${pageId}`, {
                 headers: {
@@ -668,12 +670,12 @@ document.addEventListener('route:loaded', (event) => {
         }
     }
 
-    function showLoadPageDialog() {
+    showLoadPageDialog() {
         // TODO: Implement load page dialog with page list
         showToast('Load page dialog coming soon', 'info');
     }
 
-    async function publishPage() {
+    async publishPage() {
         if (!this.currentPage?.id) {
             showToast('Please save the page first', 'warning');
             return;
@@ -704,7 +706,7 @@ document.addEventListener('route:loaded', (event) => {
         }
     }
 
-    function previewPage() {
+    previewPage() {
         const html = this.editor.getHtml();
         const css = this.editor.getCss();
 
@@ -728,9 +730,9 @@ document.addEventListener('route:loaded', (event) => {
         previewWindow.document.close();
     }
 
-    function cleanup() {
+    cleanup() {
         if (this.editor) {
             this.editor.destroy();
         }
     }
-
+}
