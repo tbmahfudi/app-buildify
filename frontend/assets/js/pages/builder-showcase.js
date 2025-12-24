@@ -206,14 +206,25 @@ export class BuilderShowcasePage {
     async loadPages() {
         try {
             const token = localStorage.getItem('token');
+
+            if (!token) {
+                throw new Error('Not authenticated. Please log in.');
+            }
+
             const response = await fetch('/api/v1/builder/pages/', {
                 headers: {
-                    'Authorization': `Bearer ${token}`
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
                 }
             });
 
+            if (response.status === 401) {
+                throw new Error('Session expired. Please log in again.');
+            }
+
             if (!response.ok) {
-                throw new Error('Failed to load pages');
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.detail || 'Failed to load pages');
             }
 
             this.pages = await response.json();
@@ -222,11 +233,25 @@ export class BuilderShowcasePage {
 
         } catch (error) {
             console.error('Error loading pages:', error);
-            showToast('Failed to load pages', 'error');
+            showToast(error.message || 'Failed to load pages', 'error');
+
+            const isAuthError = error.message.includes('authenticated') || error.message.includes('Session expired');
+
             document.getElementById('pages-container').innerHTML = `
                 <div class="col-span-full text-center py-12">
                     <i class="ph-duotone ph-warning-circle text-5xl text-red-600 mb-4" style="color: #DC2626"></i>
-                    <p class="text-gray-600 dark:text-gray-400">Failed to load pages</p>
+                    <p class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">${error.message}</p>
+                    ${isAuthError ? `
+                        <a href="/#login" class="inline-block mt-4 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+                            <i class="ph-duotone ph-sign-in mr-2"></i>
+                            Go to Login
+                        </a>
+                    ` : `
+                        <button onclick="location.reload()" class="inline-block mt-4 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+                            <i class="ph-duotone ph-arrow-clockwise mr-2"></i>
+                            Try Again
+                        </button>
+                    `}
                 </div>
             `;
         }
@@ -451,15 +476,28 @@ export class BuilderShowcasePage {
 
         try {
             const token = localStorage.getItem('token');
+
+            if (!token) {
+                showToast('Not authenticated. Please log in.', 'error');
+                return;
+            }
+
             const response = await fetch(`/api/v1/builder/pages/${pageId}`, {
                 method: 'DELETE',
                 headers: {
-                    'Authorization': `Bearer ${token}`
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
                 }
             });
 
+            if (response.status === 401) {
+                showToast('Session expired. Please log in again.', 'error');
+                return;
+            }
+
             if (!response.ok) {
-                throw new Error('Failed to delete page');
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.detail || 'Failed to delete page');
             }
 
             showToast('Page deleted successfully', 'success');
@@ -467,7 +505,7 @@ export class BuilderShowcasePage {
 
         } catch (error) {
             console.error('Error deleting page:', error);
-            showToast('Failed to delete page', 'error');
+            showToast(error.message || 'Failed to delete page', 'error');
         }
     }
 
