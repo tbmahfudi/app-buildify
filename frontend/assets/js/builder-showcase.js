@@ -4,9 +4,9 @@
  * Shows published pages in a gallery/grid format with preview and actions
  */
 import { apiFetch } from './api.js';
-import { can } from '../rbac.js';
-import { showToast } from '../ui-utils.js';
-import { authService } from '../auth-service.js';
+import { can } from './rbac.js';
+import { showToast } from './ui-utils.js';
+import { authService } from './auth-service.js';
 
 export class BuilderShowcasePage {
     constructor() {

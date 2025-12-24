@@ -4,8 +4,8 @@
  * Shows all builder pages with actions to edit, publish, delete
  */
 
-import { can } from '../rbac.js';
-import { showToast } from '../ui-utils.js';
+import { can } from './rbac.js';
+import { showToast } from './ui-utils.js';
 
 export class PagesListPage {
     constructor() {
