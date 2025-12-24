@@ -3,7 +3,7 @@
  *
  * Shows published pages in a gallery/grid format with preview and actions
  */
-
+import { apiFetch } from './api.js';
 import { can } from '../rbac.js';
 import { showToast } from '../ui-utils.js';
 import { authService } from '../auth-service.js';
@@ -212,7 +212,7 @@ export class BuilderShowcasePage {
                 throw new Error('Not authenticated. Please log in.');
             }
 
-            const response = await fetch('/api/v1/builder/pages/', {
+            const response = await apiFetch('/api/v1/builder/pages/', {
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
@@ -481,9 +481,9 @@ export class BuilderShowcasePage {
             if (!token) {
                 showToast('Not authenticated. Please log in.', 'error');
                 return;
-            }
+            }            
 
-            const response = await fetch(`/api/v1/builder/pages/${pageId}`, {
+            const response = await apiFetch(`/api/v1/builder/pages/${pageId}`, {
                 method: 'DELETE',
                 headers: {
                     'Authorization': `Bearer ${token}`,
