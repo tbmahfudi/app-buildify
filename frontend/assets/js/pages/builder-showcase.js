@@ -6,6 +6,7 @@
 
 import { can } from '../rbac.js';
 import { showToast } from '../ui-utils.js';
+import { authService } from '../auth-service.js';
 
 export class BuilderShowcasePage {
     constructor() {
@@ -205,7 +206,7 @@ export class BuilderShowcasePage {
 
     async loadPages() {
         try {
-            const token = localStorage.getItem('token');
+            const token = authService.getToken();
 
             if (!token) {
                 throw new Error('Not authenticated. Please log in.');
@@ -475,7 +476,7 @@ export class BuilderShowcasePage {
         }
 
         try {
-            const token = localStorage.getItem('token');
+            const token = authService.getToken();
 
             if (!token) {
                 showToast('Not authenticated. Please log in.', 'error');
