@@ -1413,6 +1413,7 @@ async function loadRoute(route) {
 
   try {
     // Handle builder routes (core feature, not a module)
+    /*
     if (route === 'builder' || route.startsWith('builder?')) {
       console.log('Loading builder page');
       const { BuilderPage } = await import('./pages/builder.js');
@@ -1457,6 +1458,7 @@ async function loadRoute(route) {
       }));
       return;
     }
+      */
 
     // Check if this is a module route
     const moduleRoute = moduleRegistry.findRoute(`#/${route}`);
