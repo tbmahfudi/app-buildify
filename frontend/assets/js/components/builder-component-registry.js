@@ -2,8 +2,10 @@
  * Component Registry for GrapeJS
  *
  * Registers all available UI components as GrapeJS blocks
- * Includes: Basic UI components (7) + Flex Layout components (12) = 19 total
+ * Includes: Basic UI components (7) + Flex Layout components (12) + API components (3) = 22 total
  */
+
+import { registerAPIComponents } from './api-components.js';
 
 export async function registerComponents(editor) {
     console.log('Registering components...');
@@ -32,6 +34,9 @@ export async function registerComponents(editor) {
     registerFlexModal(editor);
     registerDataTable(editor);
     registerDynamicForm(editor);
+
+    // Register API Components
+    registerAPIComponents(editor);
 
     console.log('All components registered');
 }
