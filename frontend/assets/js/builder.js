@@ -8,23 +8,33 @@ import { can } from './rbac.js';
 import { showToast } from './ui-utils.js';
 import { registerComponents } from './components/builder-component-registry.js';
 import { BuilderConfigPanel } from './components/builder-config-panel.js';
-// Initialize settings on app load
-document.addEventListener('DOMContentLoaded', () => {
-    const page = new BuilderPage();
-    initBuilder(page);
 
+let builderPage = null;
+
+// App load (first time)
+document.addEventListener('DOMContentLoaded', () => {
+    builderPage = new BuilderPage();
 });
 
-async function  initBuilder(page) {
-    if (typeof page.afterRender === 'function') {
-        await page.afterRender();
+// Route change
+document.addEventListener('route:loaded', async (event) => {
+    if (event.detail.route === 'builder') {
+        // Ensure DOM from template is ready
+        setTimeout(async () => {
+            if (!builderPage) {
+                builderPage = new BuilderPage();
+            }
+            await builderPage.afterRender();
+        }, 0);
     }
-    console.log('Initialize Builder');        
+});
 
-    document.dispatchEvent(new CustomEvent('route:loaded', {
-        detail: { route: 'builder', isModule: false }
-    }));
-}
+document.addEventListener('route:before-change', (event) => {
+    if (event.detail.from === 'builder' && builderPage) {
+        builderPage.cleanup();
+        builderPage = null;
+    }
+});
 
 export class BuilderPage {
     constructor() {
@@ -56,19 +66,18 @@ export class BuilderPage {
     }
 
     async afterRender() {
-        // Initialize GrapeJS
-        await this.initializeGrapeJS();
+        if (this.editor) {
+            console.warn('Builder already initialized');
+            return;
+        }
 
-        // Setup event listeners
+        await this.initializeGrapeJS();
         this.setupEventListeners();
 
-        // Initialize config panel
         this.configPanel = new BuilderConfigPanel(this.editor);
         await this.configPanel.init();
 
-        // Check if loading existing page
-        const urlParams = new URLSearchParams(window.location.search);
-        const pageId = urlParams.get('page');
+        const pageId = new URLSearchParams(window.location.search).get('page');
         if (pageId) {
             await this.loadPage(pageId);
         }
