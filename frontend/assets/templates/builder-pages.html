@@ -1,0 +1,28 @@
+<div class="p-6">
+    <div class="mb-6 flex items-center justify-between">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">Builder Pages</h1>
+            <p class="text-gray-500 dark:text-gray-400 mt-1">Manage your custom UI pages</p>
+        </div>
+        <div id="create-page-btn-container">
+            <!-- Button will be inserted here by JS based on permissions -->
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="mb-4 flex gap-4">
+        <select id="filter-module" class="px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-gray-100">
+            <option value="">All Modules</option>
+        </select>
+        <select id="filter-status" class="px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-gray-100">
+            <option value="">All Status</option>
+            <option value="published">Published</option>
+            <option value="draft">Draft</option>
+        </select>
+    </div>
+
+    <!-- Pages Grid -->
+    <div id="pages-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <!-- Pages will be loaded here -->
+    </div>
+</div>

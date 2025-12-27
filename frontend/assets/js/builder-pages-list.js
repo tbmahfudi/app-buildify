@@ -2,67 +2,55 @@
  * Pages List Page
  *
  * Shows all builder pages with actions to edit, publish, delete
+ *
+ * Pattern: Template-based (similar to tenants.js)
+ * - HTML template loaded from /assets/templates/builder-pages.html
+ * - This script listens for 'route:loaded' event
+ * - Initializes page list after template is in DOM
  */
 
 import { can } from './rbac.js';
 import { showToast } from './ui-utils.js';
+
+let pagesListPage = null;
+
+// Route change
+document.addEventListener('route:loaded', async (event) => {
+    if (event.detail.route === 'builder/pages') {
+        // Ensure DOM from template is ready
+        setTimeout(async () => {
+            if (!pagesListPage) {
+                pagesListPage = new PagesListPage();
+            }
+            await pagesListPage.afterRender();
+        }, 0);
+    }
+});
+
+document.addEventListener('route:before-change', (event) => {
+    if (event.detail.from === 'builder/pages' && pagesListPage) {
+        pagesListPage.cleanup();
+        pagesListPage = null;
+    }
+});
 
 export class PagesListPage {
     constructor() {
         this.pages = [];
     }
 
-    async render() {
-        if (!can('builder:pages:read:tenant')) {
-            return `
-                <div class="flex items-center justify-center h-screen">
-                    <div class="text-center">
-                        <i class="ph-duotone ph-lock text-6xl text-gray-400 mb-4"></i>
-                        <h2 class="text-2xl font-bold text-gray-700 dark:text-gray-300">Access Denied</h2>
-                        <p class="text-gray-500 dark:text-gray-400 mt-2">
-                            You don't have permission to view pages
-                        </p>
-                    </div>
-                </div>
+    async afterRender() {
+        // Check permission and render create button if allowed
+        const createBtnContainer = document.getElementById('create-page-btn-container');
+        if (createBtnContainer && can('builder:pages:create:tenant')) {
+            createBtnContainer.innerHTML = `
+                <a href="#/builder" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center gap-2 transition">
+                    <i class="ph-duotone ph-plus"></i>
+                    Create New Page
+                </a>
             `;
         }
 
-        return `
-            <div class="p-6">
-                <div class="mb-6 flex items-center justify-between">
-                    <div>
-                        <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">Builder Pages</h1>
-                        <p class="text-gray-500 dark:text-gray-400 mt-1">Manage your custom UI pages</p>
-                    </div>
-                    ${can('builder:pages:create:tenant') ? `
-                        <a href="#/builder" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center gap-2 transition">
-                            <i class="ph-duotone ph-plus"></i>
-                            Create New Page
-                        </a>
-                    ` : ''}
-                </div>
-
-                <!-- Filters -->
-                <div class="mb-4 flex gap-4">
-                    <select id="filter-module" class="px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-gray-100">
-                        <option value="">All Modules</option>
-                    </select>
-                    <select id="filter-status" class="px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-gray-100">
-                        <option value="">All Status</option>
-                        <option value="published">Published</option>
-                        <option value="draft">Draft</option>
-                    </select>
-                </div>
-
-                <!-- Pages Grid -->
-                <div id="pages-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    <!-- Pages will be loaded here -->
-                </div>
-            </div>
-        `;
-    }
-
-    async afterRender() {
         await this.loadPages();
         this.setupEventListeners();
     }

@@ -2,6 +2,11 @@
  * Builder Page - Main GrapeJS UI Builder
  *
  * Comprehensive UI builder with component library integration
+ *
+ * Pattern: Template-based (similar to tenants.js)
+ * - HTML template loaded from /assets/templates/builder.html
+ * - This script listens for 'route:loaded' event
+ * - Initializes GrapeJS editor after template is in DOM
  */
 
 import { can } from './rbac.js';
@@ -42,174 +47,6 @@ export class BuilderPage {
         this.currentPage = null;
         this.configPanel = null;
         this.currentTab = 'design';
-    }
-
-    async render() {
-        // Check permission
-        if (!can('builder:design:tenant')) {
-            return `
-                <div class="flex items-center justify-center h-screen">
-                    <div class="text-center">
-                        <i class="ph-duotone ph-lock text-6xl text-gray-400 mb-4"></i>
-                        <h2 class="text-2xl font-bold text-gray-700 dark:text-gray-300">Access Denied</h2>
-                        <p class="text-gray-500 dark:text-gray-400 mt-2">
-                            You don't have permission to access the UI Builder
-                        </p>
-                    </div>
-                </div>
-            `;
-        }
-
-        return `
-            <div id="builder-container" class="h-screen flex flex-col bg-gray-50 dark:bg-slate-900">
-                <!-- Header -->
-                <div class="bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 px-4 py-3 flex items-center justify-between">
-                    <div class="flex items-center gap-4">
-                        <h1 class="text-xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-                            <i class="ph-duotone ph-code-block text-blue-600"></i>
-                            UI Builder
-                        </h1>
-                        <div id="page-name-display" class="text-sm text-gray-500 dark:text-gray-400">
-                            <span id="current-page-name">New Page</span>
-                        </div>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <!-- Toolbar Panels -->
-                        <div class="panel__devices flex items-center gap-1 mr-4"></div>
-                        <div class="panel__basic-actions flex items-center gap-1 mr-4"></div>
-
-                        <button id="btn-load" class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-600 transition">
-                            <i class="ph-duotone ph-folder-open mr-2"></i>Load
-                        </button>
-                        <button id="btn-save" class="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition">
-                            <i class="ph-duotone ph-floppy-disk mr-2"></i>Save
-                        </button>
-                        <button id="btn-publish" class="px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg transition" disabled>
-                            <i class="ph-duotone ph-rocket-launch mr-2"></i>Publish
-                        </button>
-                        <button id="btn-preview" class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-600 transition">
-                            <i class="ph-duotone ph-eye mr-2"></i>Preview
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Editor Container -->
-                <div class="flex-1 flex overflow-hidden">
-                    <!-- Left Sidebar - Blocks & Components -->
-                    <div class="w-64 bg-white dark:bg-slate-800 border-r border-gray-200 dark:border-slate-700 overflow-y-auto">
-                        <div class="p-4">
-                            <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
-                                <i class="ph-duotone ph-stack"></i>
-                                Components
-                            </h3>
-                            <div id="blocks"></div>
-                        </div>
-                    </div>
-
-                    <!-- GrapeJS Editor -->
-                    <div id="gjs" class="flex-1"></div>
-
-                    <!-- Right Sidebar - Layers, Styles & Traits -->
-                    <div class="w-80 bg-white dark:bg-slate-800 border-l border-gray-200 dark:border-slate-700 flex flex-col">
-                        <!-- Tab Navigation -->
-                        <div class="flex border-b border-gray-200 dark:border-slate-700">
-                            <button id="tab-design" class="flex-1 px-4 py-3 text-sm font-medium text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400 bg-blue-50 dark:bg-slate-900">
-                                <i class="ph-duotone ph-palette mr-2"></i>Design
-                            </button>
-                            <button id="tab-source" class="flex-1 px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-700 transition">
-                                <i class="ph-duotone ph-code mr-2"></i>Source
-                            </button>
-                        </div>
-
-                        <!-- Tab Content Container -->
-                        <div class="flex-1 overflow-y-auto">
-                            <!-- Design Tab -->
-                            <div id="design-tab-content" class="tab-content">
-                                <!-- Layers -->
-                                <div class="border-b border-gray-200 dark:border-slate-700 p-4">
-                                    <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
-                                        <i class="ph-duotone ph-tree-structure"></i>
-                                        Layers
-                                    </h3>
-                                    <div class="layers-container"></div>
-                                </div>
-
-                                <!-- Traits -->
-                                <div class="border-b border-gray-200 dark:border-slate-700 p-4">
-                                    <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
-                                        <i class="ph-duotone ph-sliders"></i>
-                                        Settings
-                                    </h3>
-                                    <div class="traits-container"></div>
-                                </div>
-
-                                <!-- Styles -->
-                                <div class="p-4">
-                                    <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
-                                        <i class="ph-duotone ph-palette"></i>
-                                        Styles
-                                    </h3>
-                                    <div class="styles-container"></div>
-                                </div>
-                            </div>
-
-                            <!-- Source Tab -->
-                            <div id="source-tab-content" class="tab-content hidden">
-                                <!-- HTML Section -->
-                                <div class="border-b border-gray-200 dark:border-slate-700 p-4">
-                                    <div class="flex items-center justify-between mb-3">
-                                        <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
-                                            <i class="ph-duotone ph-file-html"></i>
-                                            HTML
-                                        </h3>
-                                        <button id="copy-html" class="px-2 py-1 text-xs bg-gray-200 dark:bg-slate-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-slate-600 transition">
-                                            <i class="ph-duotone ph-copy"></i> Copy
-                                        </button>
-                                    </div>
-                                    <pre id="html-output" class="bg-gray-900 text-green-400 p-3 rounded text-xs overflow-auto max-h-64 font-mono"></pre>
-                                </div>
-
-                                <!-- CSS Section -->
-                                <div class="border-b border-gray-200 dark:border-slate-700 p-4">
-                                    <div class="flex items-center justify-between mb-3">
-                                        <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
-                                            <i class="ph-duotone ph-file-css"></i>
-                                            CSS
-                                        </h3>
-                                        <button id="copy-css" class="px-2 py-1 text-xs bg-gray-200 dark:bg-slate-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-slate-600 transition">
-                                            <i class="ph-duotone ph-copy"></i> Copy
-                                        </button>
-                                    </div>
-                                    <pre id="css-output" class="bg-gray-900 text-blue-400 p-3 rounded text-xs overflow-auto max-h-64 font-mono"></pre>
-                                </div>
-
-                                <!-- JS Section -->
-                                <div class="p-4">
-                                    <div class="flex items-center justify-between mb-3">
-                                        <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
-                                            <i class="ph-duotone ph-file-js"></i>
-                                            JavaScript
-                                        </h3>
-                                        <button id="copy-js" class="px-2 py-1 text-xs bg-gray-200 dark:bg-slate-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-slate-600 transition">
-                                            <i class="ph-duotone ph-copy"></i> Copy
-                                        </button>
-                                    </div>
-                                    <pre id="js-output" class="bg-gray-900 text-yellow-400 p-3 rounded text-xs overflow-auto max-h-64 font-mono"></pre>
-                                </div>
-
-                                <!-- Refresh Button -->
-                                <div class="p-4 border-t border-gray-200 dark:border-slate-700">
-                                    <button id="refresh-source" class="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm font-medium">
-                                        <i class="ph-duotone ph-arrows-clockwise mr-2"></i>
-                                        Refresh Source
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `;
     }
 
     async afterRender() {

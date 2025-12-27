@@ -2,149 +2,44 @@
  * Builder Showcase Page - Display all pages created with UI Builder
  *
  * Shows published pages in a gallery/grid format with preview and actions
+ *
+ * Pattern: Template-based (similar to tenants.js)
+ * - HTML template loaded from /assets/templates/builder-showcase.html
+ * - This script listens for 'route:loaded' event
+ * - Initializes showcase after template is in DOM
  */
 import { apiFetch } from './api.js';
 import { can } from './rbac.js';
 import { showToast } from './ui-utils.js';
 import { authService } from './auth-service.js';
 
+let showcasePage = null;
+
+// Route change
+document.addEventListener('route:loaded', async (event) => {
+    if (event.detail.route === 'builder/showcase') {
+        // Ensure DOM from template is ready
+        setTimeout(async () => {
+            if (!showcasePage) {
+                showcasePage = new BuilderShowcasePage();
+            }
+            await showcasePage.afterRender();
+        }, 0);
+    }
+});
+
+document.addEventListener('route:before-change', (event) => {
+    if (event.detail.from === 'builder/showcase' && showcasePage) {
+        showcasePage.cleanup();
+        showcasePage = null;
+    }
+});
+
 export class BuilderShowcasePage {
     constructor() {
         this.pages = [];
         this.viewMode = 'grid'; // 'grid' or 'list'
         this.filterStatus = 'all'; // 'all', 'published', 'draft'
-    }
-
-    async render() {
-        // Check permission
-        if (!can('builder:design:tenant')) {
-            return `
-                <div class="flex items-center justify-center h-screen">
-                    <div class="text-center">
-                        <i class="ph-duotone ph-lock text-6xl text-gray-400 mb-4"></i>
-                        <h2 class="text-2xl font-bold text-gray-700 dark:text-gray-300">Access Denied</h2>
-                        <p class="text-gray-500 dark:text-gray-400 mt-2">
-                            You don't have permission to access the Pages Showcase
-                        </p>
-                    </div>
-                </div>
-            `;
-        }
-
-        return `
-            <div id="showcase-container" class="h-screen flex flex-col bg-gray-50 dark:bg-slate-900">
-                <!-- Header -->
-                <div class="bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 px-6 py-4">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-3">
-                                <i class="ph-duotone ph-squares-four text-blue-600" style="color: #3B82F6"></i>
-                                Pages Showcase
-                            </h1>
-                            <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                                Browse and manage pages created with the UI Builder
-                            </p>
-                        </div>
-                        <div class="flex items-center gap-3">
-                            <!-- View Mode Toggle -->
-                            <div class="flex bg-gray-100 dark:bg-slate-700 rounded-lg p-1">
-                                <button id="view-grid" class="px-3 py-2 rounded text-sm font-medium bg-white dark:bg-slate-600 text-blue-600 dark:text-blue-400 shadow">
-                                    <i class="ph-duotone ph-squares-four"></i>
-                                </button>
-                                <button id="view-list" class="px-3 py-2 rounded text-sm font-medium text-gray-600 dark:text-gray-400">
-                                    <i class="ph-duotone ph-list"></i>
-                                </button>
-                            </div>
-
-                            <!-- Filter Dropdown -->
-                            <select id="filter-status" class="px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-gray-100 text-sm">
-                                <option value="all">All Pages</option>
-                                <option value="published">Published Only</option>
-                                <option value="draft">Drafts Only</option>
-                            </select>
-
-                            <!-- Create New Button -->
-                            <a href="/#builder" class="px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition text-sm flex items-center gap-2">
-                                <i class="ph-duotone ph-plus-circle"></i>
-                                Create New Page
-                            </a>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Content Area -->
-                <div class="flex-1 overflow-y-auto p-6">
-                    <!-- Stats Cards -->
-                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                        <div class="bg-white dark:bg-slate-800 rounded-lg p-4 border border-gray-200 dark:border-slate-700">
-                            <div class="flex items-center justify-between">
-                                <div>
-                                    <p class="text-sm text-gray-600 dark:text-gray-400">Total Pages</p>
-                                    <p id="stat-total" class="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-1">0</p>
-                                </div>
-                                <i class="ph-duotone ph-files text-4xl" style="color: #3B82F6"></i>
-                            </div>
-                        </div>
-
-                        <div class="bg-white dark:bg-slate-800 rounded-lg p-4 border border-gray-200 dark:border-slate-700">
-                            <div class="flex items-center justify-between">
-                                <div>
-                                    <p class="text-sm text-gray-600 dark:text-gray-400">Published</p>
-                                    <p id="stat-published" class="text-2xl font-bold text-green-600 dark:text-green-400 mt-1">0</p>
-                                </div>
-                                <i class="ph-duotone ph-check-circle text-4xl" style="color: #10B981"></i>
-                            </div>
-                        </div>
-
-                        <div class="bg-white dark:bg-slate-800 rounded-lg p-4 border border-gray-200 dark:border-slate-700">
-                            <div class="flex items-center justify-between">
-                                <div>
-                                    <p class="text-sm text-gray-600 dark:text-gray-400">Drafts</p>
-                                    <p id="stat-drafts" class="text-2xl font-bold text-orange-600 dark:text-orange-400 mt-1">0</p>
-                                </div>
-                                <i class="ph-duotone ph-file-dashed text-4xl" style="color: #F59E0B"></i>
-                            </div>
-                        </div>
-
-                        <div class="bg-white dark:bg-slate-800 rounded-lg p-4 border border-gray-200 dark:border-slate-700">
-                            <div class="flex items-center justify-between">
-                                <div>
-                                    <p class="text-sm text-gray-600 dark:text-gray-400">In Menu</p>
-                                    <p id="stat-menu" class="text-2xl font-bold text-purple-600 dark:text-purple-400 mt-1">0</p>
-                                </div>
-                                <i class="ph-duotone ph-list-bullets text-4xl" style="color: #8B5CF6"></i>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Pages Grid/List -->
-                    <div id="pages-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        <!-- Loading State -->
-                        <div class="col-span-full flex items-center justify-center py-12">
-                            <div class="text-center">
-                                <i class="ph-duotone ph-spinner text-5xl text-blue-600 animate-spin mb-4" style="color: #3B82F6"></i>
-                                <p class="text-gray-600 dark:text-gray-400">Loading pages...</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Page Preview Modal -->
-            <div id="preview-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                <div class="bg-white dark:bg-slate-800 rounded-xl shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden">
-                    <div class="flex items-center justify-between p-4 border-b border-gray-200 dark:border-slate-700">
-                        <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100" id="preview-title">Page Preview</h3>
-                        <button id="close-preview" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
-                            <i class="ph-duotone ph-x text-2xl"></i>
-                        </button>
-                    </div>
-                    <div class="p-6 overflow-y-auto max-h-[calc(90vh-80px)]" id="preview-content">
-                        <!-- Preview content will be loaded here -->
-                    </div>
-                </div>
-            </div>
-        `;
     }
 
     async afterRender() {
