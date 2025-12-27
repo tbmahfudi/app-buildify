@@ -4,7 +4,7 @@
  * Shows all builder pages with actions to edit, publish, delete
  *
  * Pattern: Template-based (similar to tenants.js)
- * - HTML template loaded from /assets/templates/builder-pages.html
+ * - HTML template loaded from /assets/templates/builder/pages.html
  * - This script listens for 'route:loaded' event
  * - Initializes page list after template is in DOM
  */

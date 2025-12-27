@@ -4,7 +4,7 @@
  * Shows published pages in a gallery/grid format with preview and actions
  *
  * Pattern: Template-based (similar to tenants.js)
- * - HTML template loaded from /assets/templates/builder-showcase.html
+ * - HTML template loaded from /assets/templates/builder/showcase.html
  * - This script listens for 'route:loaded' event
  * - Initializes showcase after template is in DOM
  */
