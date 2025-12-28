@@ -111,7 +111,7 @@ export class BuilderShowcasePage {
                 throw new Error('Not authenticated. Please log in.');
             }
 
-            const response = await apiFetch('/builder/pages/', {
+            const response = await apiFetch('/builder/', {
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
@@ -382,7 +382,7 @@ export class BuilderShowcasePage {
                 return;
             }            
 
-            const response = await apiFetch(`/builder/pages/${pageId}`, {
+            const response = await apiFetch(`/builder/${pageId}`, {
                 method: 'DELETE',
                 headers: {
                     'Authorization': `Bearer ${token}`,

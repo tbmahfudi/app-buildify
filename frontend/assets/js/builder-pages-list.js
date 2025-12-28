@@ -57,7 +57,7 @@ export class PagesListPage {
 
     async loadPages() {
         try {
-            const response = await fetch('/api/v1/builder/pages/', {
+            const response = await fetch('/api/v1/builder/', {
                 headers: {
                     'Authorization': `Bearer ${localStorage.getItem('token')}`
                 }
@@ -134,7 +134,7 @@ export class PagesListPage {
             if (!confirm('Are you sure you want to delete this page?')) return;
 
             try {
-                const response = await fetch(`/api/v1/builder/pages/${pageId}`, {
+                const response = await fetch(`/api/v1/builder/${pageId}`, {
                     method: 'DELETE',
                     headers: {
                         'Authorization': `Bearer ${localStorage.getItem('token')}`
