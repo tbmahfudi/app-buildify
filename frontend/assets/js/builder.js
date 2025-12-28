@@ -24,12 +24,19 @@ document.addEventListener('DOMContentLoaded', () => {
 // Route change
 document.addEventListener('route:loaded', async (event) => {
     if (event.detail.route === 'builder') {
+        console.log('Builder page route loaded');
         // Ensure DOM from template is ready
         setTimeout(async () => {
-            if (!builderPage) {
-                builderPage = new BuilderPage();
+            try {
+                if (!builderPage) {
+                    console.log('Creating new BuilderPage instance');
+                    builderPage = new BuilderPage();
+                }
+                await builderPage.afterRender();
+            } catch (error) {
+                console.error('Error initializing builder page:', error);
+                showToast('Failed to initialize builder page: ' + error.message, 'error');
             }
-            await builderPage.afterRender();
         }, 0);
     }
 });
@@ -71,6 +78,13 @@ export class BuilderPage {
         // Load GrapeJS from CDN if not already loaded
         if (!window.grapesjs) {
             await this.loadGrapeJSLibrary();
+        }
+
+        // Verify container exists
+        const container = document.getElementById('gjs');
+        if (!container) {
+            console.error('GrapeJS container (#gjs) not found in DOM!');
+            throw new Error('GrapeJS container element not found. Please ensure the template is loaded correctly.');
         }
 
         const gjs = window.grapesjs;

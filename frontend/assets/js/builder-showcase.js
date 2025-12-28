@@ -22,10 +22,16 @@ document.addEventListener('route:loaded', async (event) => {
         console.log('Route matched! Initializing showcase...');
         // Ensure DOM from template is ready
         setTimeout(async () => {
-            if (!showcasePage) {
-                showcasePage = new BuilderShowcasePage();
+            try {
+                if (!showcasePage) {
+                    console.log('Creating new BuilderShowcasePage instance');
+                    showcasePage = new BuilderShowcasePage();
+                }
+                await showcasePage.afterRender();
+            } catch (error) {
+                console.error('Error initializing showcase page:', error);
+                showToast('Failed to initialize showcase page', 'error');
             }
-            await showcasePage.afterRender();
         }, 0);
     } else {
         console.log('Route did not match. Expected: builder-showcase, Got:', event.detail.route);
@@ -47,11 +53,15 @@ export class BuilderShowcasePage {
     }
 
     async afterRender() {
+        console.log('BuilderShowcasePage.afterRender() called');
+
         // Load pages
         await this.loadPages();
 
         // Setup event listeners
         this.setupEventListeners();
+
+        console.log('BuilderShowcasePage.afterRender() completed');
     }
 
     setupEventListeners() {
@@ -68,6 +78,11 @@ export class BuilderShowcasePage {
         document.getElementById('filter-status')?.addEventListener('change', (e) => {
             this.filterStatus = e.target.value;
             this.renderPages();
+        });
+
+        // Create sample page
+        document.getElementById('create-sample-btn')?.addEventListener('click', () => {
+            this.createSamplePage();
         });
 
         // Modal close
@@ -127,7 +142,31 @@ export class BuilderShowcasePage {
                 throw new Error(errorData.detail || 'Failed to load pages');
             }
 
-            this.pages = await response.json();
+            const data = await response.json();
+            console.log('Raw API response:', data);
+            console.log('Response type:', typeof data);
+            console.log('Is array?', Array.isArray(data));
+
+            // Handle different response formats
+            if (Array.isArray(data)) {
+                this.pages = data;
+            } else if (data && Array.isArray(data.pages)) {
+                console.log('Response is wrapped in pages property');
+                this.pages = data.pages;
+            } else if (data && Array.isArray(data.data)) {
+                console.log('Response is wrapped in data property');
+                this.pages = data.data;
+            } else {
+                console.warn('Unexpected response format, using empty array');
+                this.pages = [];
+            }
+
+            console.log('Pages loaded:', this.pages.length, 'pages');
+
+            if (this.pages.length > 0) {
+                console.log('First page sample:', this.pages[0]);
+            }
+
             this.updateStats();
             this.renderPages();
 
@@ -157,20 +196,189 @@ export class BuilderShowcasePage {
         }
     }
 
+    async createSamplePage() {
+        try {
+            const token = authService.getToken();
+
+            if (!token) {
+                showToast('Please log in to create pages', 'error');
+                return;
+            }
+
+            // Generate unique identifier
+            const timestamp = Date.now();
+            const randomId = Math.random().toString(36).substring(2, 8);
+
+            // Sample GrapeJS data with basic components
+            const sampleGrapejsData = {
+                "assets": [],
+                "styles": [
+                    {
+                        "selectors": ["#sample-header"],
+                        "style": {
+                            "padding": "40px 20px",
+                            "text-align": "center",
+                            "background": "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                            "color": "#ffffff"
+                        }
+                    },
+                    {
+                        "selectors": ["#sample-content"],
+                        "style": {
+                            "padding": "40px 20px",
+                            "max-width": "1200px",
+                            "margin": "0 auto"
+                        }
+                    }
+                ],
+                "pages": [
+                    {
+                        "component": {
+                            "type": "wrapper",
+                            "components": [
+                                {
+                                    "tagName": "header",
+                                    "attributes": { "id": "sample-header" },
+                                    "components": [
+                                        {
+                                            "tagName": "h1",
+                                            "type": "text",
+                                            "components": [{ "type": "textnode", "content": "Welcome to Sample Page" }]
+                                        },
+                                        {
+                                            "tagName": "p",
+                                            "type": "text",
+                                            "components": [{ "type": "textnode", "content": "This is a sample page created automatically" }]
+                                        }
+                                    ]
+                                },
+                                {
+                                    "tagName": "div",
+                                    "attributes": { "id": "sample-content" },
+                                    "components": [
+                                        {
+                                            "tagName": "h2",
+                                            "type": "text",
+                                            "components": [{ "type": "textnode", "content": "Getting Started" }]
+                                        },
+                                        {
+                                            "tagName": "p",
+                                            "type": "text",
+                                            "components": [{ "type": "textnode", "content": "Click 'Edit' to customize this page with the visual builder." }]
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    }
+                ]
+            };
+
+            // Generate HTML output
+            const sampleHtml = `
+<header id="sample-header">
+    <h1>Welcome to Sample Page</h1>
+    <p>This is a sample page created automatically</p>
+</header>
+<div id="sample-content">
+    <h2>Getting Started</h2>
+    <p>Click 'Edit' to customize this page with the visual builder.</p>
+</div>`;
+
+            // Generate CSS output
+            const sampleCss = `
+#sample-header {
+    padding: 40px 20px;
+    text-align: center;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: #ffffff;
+}
+
+#sample-content {
+    padding: 40px 20px;
+    max-width: 1200px;
+    margin: 0 auto;
+}`;
+
+            const pageData = {
+                name: `Sample Page ${randomId}`,
+                slug: `sample-page-${timestamp}`,
+                description: "Auto-generated sample page for testing",
+                route_path: `/sample-${randomId}`,
+                grapejs_data: sampleGrapejsData,
+                html_output: sampleHtml.trim(),
+                css_output: sampleCss.trim(),
+                js_output: "",
+                menu_label: `Sample ${randomId}`,
+                menu_icon: "ph-duotone ph-star",
+                menu_parent: null,
+                menu_order: 100,
+                show_in_menu: true,
+                permission_code: null,
+                permission_scope: "company"
+            };
+
+            console.log('Creating sample page:', pageData);
+
+            const response = await apiFetch('/builder/', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(pageData)
+            });
+
+            if (response.status === 401) {
+                showToast('Session expired. Please log in again.', 'error');
+                return;
+            }
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.detail || 'Failed to create sample page');
+            }
+
+            const createdPage = await response.json();
+            console.log('Sample page created:', createdPage);
+
+            showToast('Sample page created successfully!', 'success');
+
+            // Reload pages to show the new page
+            await this.loadPages();
+
+        } catch (error) {
+            console.error('Error creating sample page:', error);
+            showToast(error.message || 'Failed to create sample page', 'error');
+        }
+    }
+
     updateStats() {
         const total = this.pages.length;
         const published = this.pages.filter(p => p.published).length;
         const drafts = total - published;
         const inMenu = this.pages.filter(p => p.show_in_menu).length;
 
-        document.getElementById('stat-total').textContent = total;
-        document.getElementById('stat-published').textContent = published;
-        document.getElementById('stat-drafts').textContent = drafts;
-        document.getElementById('stat-menu').textContent = inMenu;
+        const statTotal = document.getElementById('stat-total');
+        const statPublished = document.getElementById('stat-published');
+        const statDrafts = document.getElementById('stat-drafts');
+        const statMenu = document.getElementById('stat-menu');
+
+        if (statTotal) statTotal.textContent = total;
+        if (statPublished) statPublished.textContent = published;
+        if (statDrafts) statDrafts.textContent = drafts;
+        if (statMenu) statMenu.textContent = inMenu;
     }
 
     renderPages() {
         const container = document.getElementById('pages-container');
+        console.log('renderPages called. Container:', container);
+        console.log('Filtered pages to render:', this.filterStatus, 'Total pages:', this.pages.length);
+
+        if (!container) {
+            console.error('ERROR: pages-container element not found in DOM!');
+            return;
+        }
 
         // Filter pages
         let filteredPages = this.pages;
