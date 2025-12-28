@@ -17,7 +17,9 @@ let showcasePage = null;
 
 // Route change
 document.addEventListener('route:loaded', async (event) => {
+    console.log('Builder showcase event listener triggered. Route:', event.detail.route);
     if (event.detail.route === 'builder/showcase') {
+        console.log('Route matched! Initializing showcase...');
         // Ensure DOM from template is ready
         setTimeout(async () => {
             if (!showcasePage) {
@@ -25,6 +27,8 @@ document.addEventListener('route:loaded', async (event) => {
             }
             await showcasePage.afterRender();
         }, 0);
+    } else {
+        console.log('Route did not match. Expected: builder/showcase, Got:', event.detail.route);
     }
 });
 
