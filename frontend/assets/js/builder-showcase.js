@@ -128,6 +128,8 @@ export class BuilderShowcasePage {
             }
 
             this.pages = await response.json();
+            console.log('Pages loaded:', this.pages.length, 'pages');
+            console.log('Pages data:', this.pages);
             this.updateStats();
             this.renderPages();
 
@@ -171,6 +173,8 @@ export class BuilderShowcasePage {
 
     renderPages() {
         const container = document.getElementById('pages-container');
+        console.log('renderPages called. Container:', container);
+        console.log('Filtered pages to render:', this.filterStatus, 'Total pages:', this.pages.length);
 
         // Filter pages
         let filteredPages = this.pages;
