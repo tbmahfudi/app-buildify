@@ -1418,6 +1418,13 @@ async function loadRoute(route) {
       const bodyContent = await window.resourceLoader.loadTemplate('builder');
       content.innerHTML = bodyContent;
 
+      // Load the JavaScript file
+      try {
+        await window.resourceLoader.loadScript('builder.js');
+      } catch (error) {
+        console.warn('Builder script loading failed:', error);
+      }
+
       document.dispatchEvent(new CustomEvent('route:loaded', {
         detail: { route: 'builder', isModule: false }
       }));
@@ -1429,6 +1436,13 @@ async function loadRoute(route) {
       const bodyContent = await window.resourceLoader.loadTemplate('builder-pages');
       content.innerHTML = bodyContent;
 
+      // Load the JavaScript file
+      try {
+        await window.resourceLoader.loadScript('builder-pages-list.js');
+      } catch (error) {
+        console.warn('Builder pages list script loading failed:', error);
+      }
+
       document.dispatchEvent(new CustomEvent('route:loaded', {
         detail: { route: 'builder/pages', isModule: false }
       }));
@@ -1439,6 +1453,13 @@ async function loadRoute(route) {
       console.log('Loading builder showcase page');
       const bodyContent = await window.resourceLoader.loadTemplate('builder-showcase');
       content.innerHTML = bodyContent;
+
+      // Load the JavaScript file
+      try {
+        await window.resourceLoader.loadScript('builder-showcase.js');
+      } catch (error) {
+        console.warn('Builder showcase script loading failed:', error);
+      }
 
       document.dispatchEvent(new CustomEvent('route:loaded', {
         detail: { route: 'builder/showcase', isModule: false }
