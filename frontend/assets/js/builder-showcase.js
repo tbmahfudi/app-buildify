@@ -47,11 +47,15 @@ export class BuilderShowcasePage {
     }
 
     async afterRender() {
+        console.log('BuilderShowcasePage.afterRender() called');
+
         // Load pages
         await this.loadPages();
 
         // Setup event listeners
         this.setupEventListeners();
+
+        console.log('BuilderShowcasePage.afterRender() completed');
     }
 
     setupEventListeners() {
@@ -127,9 +131,17 @@ export class BuilderShowcasePage {
                 throw new Error(errorData.detail || 'Failed to load pages');
             }
 
-            this.pages = await response.json();
+            const data = await response.json();
+            console.log('Raw API response:', data);
+            console.log('Is array?', Array.isArray(data));
+
+            this.pages = Array.isArray(data) ? data : [];
             console.log('Pages loaded:', this.pages.length, 'pages');
-            console.log('Pages data:', this.pages);
+
+            if (this.pages.length > 0) {
+                console.log('First page sample:', this.pages[0]);
+            }
+
             this.updateStats();
             this.renderPages();
 
@@ -175,6 +187,11 @@ export class BuilderShowcasePage {
         const container = document.getElementById('pages-container');
         console.log('renderPages called. Container:', container);
         console.log('Filtered pages to render:', this.filterStatus, 'Total pages:', this.pages.length);
+
+        if (!container) {
+            console.error('ERROR: pages-container element not found in DOM!');
+            return;
+        }
 
         // Filter pages
         let filteredPages = this.pages;
