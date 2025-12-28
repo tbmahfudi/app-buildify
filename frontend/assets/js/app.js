@@ -1413,16 +1413,11 @@ async function loadRoute(route) {
 
   try {
     // Handle builder routes (core feature, not a module)
-    /*
     if (route === 'builder' || route.startsWith('builder?')) {
       console.log('Loading builder page');
-      const { BuilderPage } = await import('./pages/builder.js');
-      const page = new BuilderPage();
-      const html = await page.render();
-      content.innerHTML = html;
-      if (typeof page.afterRender === 'function') {
-        await page.afterRender();
-      }
+      const bodyContent = await window.resourceLoader.loadTemplate('builder');
+      content.innerHTML = bodyContent;
+
       document.dispatchEvent(new CustomEvent('route:loaded', {
         detail: { route: 'builder', isModule: false }
       }));
@@ -1431,13 +1426,9 @@ async function loadRoute(route) {
 
     if (route === 'builder/pages') {
       console.log('Loading builder pages list');
-      const { PagesListPage } = await import('./pages/builder-pages-list.js');
-      const page = new PagesListPage();
-      const html = await page.render();
-      content.innerHTML = html;
-      if (typeof page.afterRender === 'function') {
-        await page.afterRender();
-      }
+      const bodyContent = await window.resourceLoader.loadTemplate('builder-pages');
+      content.innerHTML = bodyContent;
+
       document.dispatchEvent(new CustomEvent('route:loaded', {
         detail: { route: 'builder/pages', isModule: false }
       }));
@@ -1446,19 +1437,14 @@ async function loadRoute(route) {
 
     if (route === 'builder/showcase') {
       console.log('Loading builder showcase page');
-      const { BuilderShowcasePage } = await import('./pages/builder-showcase.js');
-      const page = new BuilderShowcasePage();
-      const html = await page.render();
-      content.innerHTML = html;
-      if (typeof page.afterRender === 'function') {
-        await page.afterRender();
-      }
+      const bodyContent = await window.resourceLoader.loadTemplate('builder-showcase');
+      content.innerHTML = bodyContent;
+
       document.dispatchEvent(new CustomEvent('route:loaded', {
         detail: { route: 'builder/showcase', isModule: false }
       }));
       return;
     }
-      */
 
     // Check if this is a module route
     const moduleRoute = moduleRegistry.findRoute(`#/${route}`);
