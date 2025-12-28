@@ -259,9 +259,11 @@ function updatePreview() {
 function applyTheme(theme) {
   if (theme === 'dark') {
     document.documentElement.setAttribute('data-theme', 'dark');
+    document.documentElement.classList.add('dark'); // For Tailwind dark mode
     document.body.classList.add('bg-gray-900', 'text-white');
   } else {
     document.documentElement.removeAttribute('data-theme');
+    document.documentElement.classList.remove('dark'); // For Tailwind dark mode
     document.body.classList.remove('bg-gray-900', 'text-white');
   }
 }

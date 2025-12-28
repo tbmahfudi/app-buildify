@@ -15,6 +15,7 @@ from datetime import datetime
 from app.models.menu_item import MenuItem
 from app.models.user import User
 from app.models.module_registry import TenantModule
+from app.models.builder_page import BuilderPage
 
 
 class MenuService:
@@ -57,6 +58,14 @@ class MenuService:
                 permissions=permissions
             )
             menu_items.extend(module_menus)
+
+        # Include builder pages with show_in_menu=True
+        builder_menus = MenuService._get_builder_page_menu_items(
+            db=db,
+            user=user,
+            permissions=permissions
+        )
+        menu_items.extend(builder_menus)
 
         # Build hierarchical structure
         menu_tree = MenuService._build_menu_tree(menu_items)
@@ -254,6 +263,69 @@ class MenuService:
 
         logger.info(f"Total module menu items: {len(module_menu_items)}")
         return module_menu_items
+
+    @staticmethod
+    def _get_builder_page_menu_items(
+        db: Session,
+        user: User,
+        permissions: Set[str]
+    ) -> List[MenuItem]:
+        """
+        Get menu items from builder pages with show_in_menu=True.
+
+        Queries BuilderPage to find pages that should appear in the menu,
+        then converts them to MenuItem objects for consistency.
+        """
+        import logging
+        logger = logging.getLogger(__name__)
+
+        # Get builder pages with show_in_menu=True for this tenant
+        builder_pages = db.query(BuilderPage).filter(
+            BuilderPage.tenant_id == user.tenant_id,
+            BuilderPage.show_in_menu == True,
+            BuilderPage.published == True  # Only show published pages
+        ).order_by(BuilderPage.menu_order, BuilderPage.name).all()
+
+        logger.info(f"Found {len(builder_pages)} builder pages with show_in_menu=True")
+
+        builder_menu_items = []
+
+        for page in builder_pages:
+            # Check permission if specified
+            if page.permission_code and page.permission_code not in permissions:
+                logger.info(f"Skipping builder page {page.name} - missing permission {page.permission_code}")
+                continue
+
+            # Create virtual MenuItem for builder page
+            menu_item = MenuItem(
+                code=f"builder_page_{page.slug}",
+                title=page.menu_label or page.name,
+                icon=page.menu_icon or 'ph-duotone ph-file-html',
+                route=page.route_path.lstrip('/'),  # Remove leading slash for consistency
+                permission=page.permission_code,
+                order=page.menu_order or 999,
+                module_code='builder',
+                is_system=False,
+                parent_id=None,
+                is_active=True,
+                is_visible=True,
+                target='_self',
+                extra_data={'builder_page_id': page.id}
+            )
+
+            # Set id to None (virtual menu item)
+            menu_item.id = None
+
+            # If the page has a menu_parent specified, store it
+            if page.menu_parent:
+                menu_item._parent_code = page.menu_parent
+
+            logger.info(f"Created builder page menu item: {menu_item.code} ({menu_item.title}) -> {menu_item.route}")
+
+            builder_menu_items.append(menu_item)
+
+        logger.info(f"Total builder page menu items: {len(builder_menu_items)}")
+        return builder_menu_items
 
     @staticmethod
     def _build_menu_tree(items: List[MenuItem]) -> List[Dict[str, Any]]:
