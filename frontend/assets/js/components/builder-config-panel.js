@@ -205,20 +205,17 @@ export class BuilderConfigPanel {
     }
 
     addToggleButton() {
-        const toolbar = document.querySelector('.bg-white.dark\\:bg-slate-800.border-b .flex.items-center.gap-2');
-        if (toolbar) {
-            const configBtn = document.createElement('button');
-            configBtn.id = 'btn-config';
-            configBtn.className = 'px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-600 transition';
-            configBtn.innerHTML = '<i class="ph-duotone ph-gear mr-2"></i>Configure';
-            toolbar.insertBefore(configBtn, toolbar.firstChild);
-
+        // Attach event listener to the Configure button in the template
+        const configBtn = document.getElementById('btn-config');
+        if (configBtn) {
             configBtn.addEventListener('click', () => {
                 const panel = document.getElementById('page-config-container');
                 if (panel) {
                     panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
                 }
             });
+        } else {
+            console.warn('Configure button (btn-config) not found in template');
         }
     }
 
