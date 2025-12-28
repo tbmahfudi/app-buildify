@@ -22,10 +22,16 @@ document.addEventListener('route:loaded', async (event) => {
         console.log('Route matched! Initializing showcase...');
         // Ensure DOM from template is ready
         setTimeout(async () => {
-            if (!showcasePage) {
-                showcasePage = new BuilderShowcasePage();
+            try {
+                if (!showcasePage) {
+                    console.log('Creating new BuilderShowcasePage instance');
+                    showcasePage = new BuilderShowcasePage();
+                }
+                await showcasePage.afterRender();
+            } catch (error) {
+                console.error('Error initializing showcase page:', error);
+                showToast('Failed to initialize showcase page', 'error');
             }
-            await showcasePage.afterRender();
         }, 0);
     } else {
         console.log('Route did not match. Expected: builder-showcase, Got:', event.detail.route);
@@ -177,10 +183,15 @@ export class BuilderShowcasePage {
         const drafts = total - published;
         const inMenu = this.pages.filter(p => p.show_in_menu).length;
 
-        document.getElementById('stat-total').textContent = total;
-        document.getElementById('stat-published').textContent = published;
-        document.getElementById('stat-drafts').textContent = drafts;
-        document.getElementById('stat-menu').textContent = inMenu;
+        const statTotal = document.getElementById('stat-total');
+        const statPublished = document.getElementById('stat-published');
+        const statDrafts = document.getElementById('stat-drafts');
+        const statMenu = document.getElementById('stat-menu');
+
+        if (statTotal) statTotal.textContent = total;
+        if (statPublished) statPublished.textContent = published;
+        if (statDrafts) statDrafts.textContent = drafts;
+        if (statMenu) statMenu.textContent = inMenu;
     }
 
     renderPages() {
