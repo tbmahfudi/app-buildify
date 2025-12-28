@@ -601,7 +601,7 @@ export class BuilderPage {
             let response;
             if (this.currentPage?.id) {
                 // Update existing page
-                response = await fetch(`/api/v1/builder/pages/${this.currentPage.id}`, {
+                response = await fetch(`/api/v1/builder/${this.currentPage.id}`, {
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json',
@@ -611,7 +611,7 @@ export class BuilderPage {
                 });
             } else {
                 // Create new page
-                response = await fetch('/api/v1/builder/pages/', {
+                response = await fetch('/api/v1/builder/', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -638,7 +638,7 @@ export class BuilderPage {
 
     async loadPage(pageId) {
         try {
-            const response = await fetch(`/api/v1/builder/pages/${pageId}`, {
+            const response = await fetch(`/api/v1/builder/${pageId}`, {
                 headers: {
                     'Authorization': `Bearer ${localStorage.getItem('token')}`
                 }
@@ -680,7 +680,7 @@ export class BuilderPage {
         }
 
         try {
-            const response = await fetch(`/api/v1/builder/pages/${this.currentPage.id}/publish`, {
+            const response = await fetch(`/api/v1/builder/${this.currentPage.id}/publish`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
