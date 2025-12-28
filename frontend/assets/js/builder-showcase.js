@@ -81,9 +81,18 @@ export class BuilderShowcasePage {
         });
 
         // Create sample page
-        document.getElementById('create-sample-btn')?.addEventListener('click', () => {
-            this.createSamplePage();
-        });
+        const createSampleBtn = document.getElementById('create-sample-btn');
+        console.log('Create sample button element:', createSampleBtn);
+
+        if (createSampleBtn) {
+            createSampleBtn.addEventListener('click', () => {
+                console.log('Create sample button clicked!');
+                this.createSamplePage();
+            });
+            console.log('Create sample button listener attached');
+        } else {
+            console.warn('Create sample button not found in DOM!');
+        }
 
         // Modal close
         document.getElementById('close-preview')?.addEventListener('click', () => {
@@ -197,8 +206,11 @@ export class BuilderShowcasePage {
     }
 
     async createSamplePage() {
+        console.log('createSamplePage() called');
+
         try {
             const token = authService.getToken();
+            console.log('Token exists:', !!token);
 
             if (!token) {
                 showToast('Please log in to create pages', 'error');
