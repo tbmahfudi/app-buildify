@@ -1,28 +1,45 @@
-<div class="p-6">
-    <div class="mb-6 flex items-center justify-between">
-        <div>
-            <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">Builder Pages</h1>
-            <p class="text-gray-500 dark:text-gray-400 mt-1">Manage your custom UI pages</p>
-        </div>
-        <div id="create-page-btn-container">
-            <!-- Button will be inserted here by JS based on permissions -->
+<div id="pages-list-container" class="h-screen flex flex-col bg-gray-50 dark:bg-slate-900">
+    <!-- Header -->
+    <div class="bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 px-6 py-4">
+        <div class="flex items-center justify-between">
+            <div>
+                <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-3">
+                    <i class="ph-duotone ph-files text-blue-600" style="color: #3B82F6"></i>
+                    Builder Pages
+                </h1>
+                <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                    Manage your custom UI pages
+                </p>
+            </div>
+            <div id="create-page-btn-container" class="flex items-center gap-3">
+                <!-- Button will be inserted here by JS based on permissions -->
+            </div>
         </div>
     </div>
 
-    <!-- Filters -->
-    <div class="mb-4 flex gap-4">
-        <select id="filter-module" class="px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-gray-100">
-            <option value="">All Modules</option>
-        </select>
-        <select id="filter-status" class="px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-gray-100">
-            <option value="">All Status</option>
-            <option value="published">Published</option>
-            <option value="draft">Draft</option>
-        </select>
-    </div>
+    <!-- Content Area -->
+    <div class="flex-1 overflow-y-auto p-6">
+        <!-- Filters -->
+        <div class="mb-6 flex gap-4">
+            <select id="filter-module" class="px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-gray-100 text-sm">
+                <option value="">All Modules</option>
+            </select>
+            <select id="filter-status" class="px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-gray-100 text-sm">
+                <option value="">All Status</option>
+                <option value="published">Published</option>
+                <option value="draft">Draft</option>
+            </select>
+        </div>
 
-    <!-- Pages Grid -->
-    <div id="pages-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <!-- Pages will be loaded here -->
+        <!-- Pages Grid -->
+        <div id="pages-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- Loading State -->
+            <div class="col-span-full flex items-center justify-center py-12">
+                <div class="text-center">
+                    <i class="ph-duotone ph-spinner text-5xl text-blue-600 animate-spin mb-4" style="color: #3B82F6"></i>
+                    <p class="text-gray-600 dark:text-gray-400">Loading pages...</p>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
