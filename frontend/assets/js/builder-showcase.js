@@ -139,9 +139,23 @@ export class BuilderShowcasePage {
 
             const data = await response.json();
             console.log('Raw API response:', data);
+            console.log('Response type:', typeof data);
             console.log('Is array?', Array.isArray(data));
 
-            this.pages = Array.isArray(data) ? data : [];
+            // Handle different response formats
+            if (Array.isArray(data)) {
+                this.pages = data;
+            } else if (data && Array.isArray(data.pages)) {
+                console.log('Response is wrapped in pages property');
+                this.pages = data.pages;
+            } else if (data && Array.isArray(data.data)) {
+                console.log('Response is wrapped in data property');
+                this.pages = data.data;
+            } else {
+                console.warn('Unexpected response format, using empty array');
+                this.pages = [];
+            }
+
             console.log('Pages loaded:', this.pages.length, 'pages');
 
             if (this.pages.length > 0) {
