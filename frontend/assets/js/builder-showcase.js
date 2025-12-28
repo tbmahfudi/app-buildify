@@ -80,6 +80,11 @@ export class BuilderShowcasePage {
             this.renderPages();
         });
 
+        // Create sample page
+        document.getElementById('create-sample-btn')?.addEventListener('click', () => {
+            this.createSamplePage();
+        });
+
         // Modal close
         document.getElementById('close-preview')?.addEventListener('click', () => {
             this.closePreview();
@@ -188,6 +193,163 @@ export class BuilderShowcasePage {
                     `}
                 </div>
             `;
+        }
+    }
+
+    async createSamplePage() {
+        try {
+            const token = authService.getToken();
+
+            if (!token) {
+                showToast('Please log in to create pages', 'error');
+                return;
+            }
+
+            // Generate unique identifier
+            const timestamp = Date.now();
+            const randomId = Math.random().toString(36).substring(2, 8);
+
+            // Sample GrapeJS data with basic components
+            const sampleGrapejsData = {
+                "assets": [],
+                "styles": [
+                    {
+                        "selectors": ["#sample-header"],
+                        "style": {
+                            "padding": "40px 20px",
+                            "text-align": "center",
+                            "background": "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                            "color": "#ffffff"
+                        }
+                    },
+                    {
+                        "selectors": ["#sample-content"],
+                        "style": {
+                            "padding": "40px 20px",
+                            "max-width": "1200px",
+                            "margin": "0 auto"
+                        }
+                    }
+                ],
+                "pages": [
+                    {
+                        "component": {
+                            "type": "wrapper",
+                            "components": [
+                                {
+                                    "tagName": "header",
+                                    "attributes": { "id": "sample-header" },
+                                    "components": [
+                                        {
+                                            "tagName": "h1",
+                                            "type": "text",
+                                            "components": [{ "type": "textnode", "content": "Welcome to Sample Page" }]
+                                        },
+                                        {
+                                            "tagName": "p",
+                                            "type": "text",
+                                            "components": [{ "type": "textnode", "content": "This is a sample page created automatically" }]
+                                        }
+                                    ]
+                                },
+                                {
+                                    "tagName": "div",
+                                    "attributes": { "id": "sample-content" },
+                                    "components": [
+                                        {
+                                            "tagName": "h2",
+                                            "type": "text",
+                                            "components": [{ "type": "textnode", "content": "Getting Started" }]
+                                        },
+                                        {
+                                            "tagName": "p",
+                                            "type": "text",
+                                            "components": [{ "type": "textnode", "content": "Click 'Edit' to customize this page with the visual builder." }]
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    }
+                ]
+            };
+
+            // Generate HTML output
+            const sampleHtml = `
+<header id="sample-header">
+    <h1>Welcome to Sample Page</h1>
+    <p>This is a sample page created automatically</p>
+</header>
+<div id="sample-content">
+    <h2>Getting Started</h2>
+    <p>Click 'Edit' to customize this page with the visual builder.</p>
+</div>`;
+
+            // Generate CSS output
+            const sampleCss = `
+#sample-header {
+    padding: 40px 20px;
+    text-align: center;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: #ffffff;
+}
+
+#sample-content {
+    padding: 40px 20px;
+    max-width: 1200px;
+    margin: 0 auto;
+}`;
+
+            const pageData = {
+                name: `Sample Page ${randomId}`,
+                slug: `sample-page-${timestamp}`,
+                description: "Auto-generated sample page for testing",
+                route_path: `/sample-${randomId}`,
+                grapejs_data: sampleGrapejsData,
+                html_output: sampleHtml.trim(),
+                css_output: sampleCss.trim(),
+                js_output: "",
+                menu_label: `Sample ${randomId}`,
+                menu_icon: "ph-duotone ph-star",
+                menu_parent: null,
+                menu_order: 100,
+                show_in_menu: true,
+                permission_code: null,
+                permission_scope: "company"
+            };
+
+            console.log('Creating sample page:', pageData);
+
+            const response = await apiFetch('/builder/', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(pageData)
+            });
+
+            if (response.status === 401) {
+                showToast('Session expired. Please log in again.', 'error');
+                return;
+            }
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.detail || 'Failed to create sample page');
+            }
+
+            const createdPage = await response.json();
+            console.log('Sample page created:', createdPage);
+
+            showToast('Sample page created successfully!', 'success');
+
+            // Reload pages to show the new page
+            await this.loadPages();
+
+        } catch (error) {
+            console.error('Error creating sample page:', error);
+            showToast(error.message || 'Failed to create sample page', 'error');
         }
     }
 
