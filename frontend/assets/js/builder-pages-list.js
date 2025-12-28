@@ -16,7 +16,7 @@ let pagesListPage = null;
 
 // Route change
 document.addEventListener('route:loaded', async (event) => {
-    if (event.detail.route === 'builder/pages') {
+    if (event.detail.route === 'builder-pages') {
         // Ensure DOM from template is ready
         setTimeout(async () => {
             if (!pagesListPage) {
@@ -28,7 +28,7 @@ document.addEventListener('route:loaded', async (event) => {
 });
 
 document.addEventListener('route:before-change', (event) => {
-    if (event.detail.from === 'builder/pages' && pagesListPage) {
+    if (event.detail.from === 'builder-pages' && pagesListPage) {
         pagesListPage.cleanup();
         pagesListPage = null;
     }
