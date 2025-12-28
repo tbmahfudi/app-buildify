@@ -1431,7 +1431,7 @@ async function loadRoute(route) {
       return;
     }
 
-    if (route === 'builder/pages') {
+    if (route === 'builder-pages') {
       console.log('Loading builder pages list');
       const bodyContent = await window.resourceLoader.loadTemplate('builder-pages');
       content.innerHTML = bodyContent;
@@ -1444,12 +1444,12 @@ async function loadRoute(route) {
       }
 
       document.dispatchEvent(new CustomEvent('route:loaded', {
-        detail: { route: 'builder/pages', isModule: false }
+        detail: { route: 'builder-pages', isModule: false }
       }));
       return;
     }
 
-    if (route === 'builder/showcase') {
+    if (route === 'builder-showcase') {
       console.log('Loading builder showcase page');
       const bodyContent = await window.resourceLoader.loadTemplate('builder-showcase');
       content.innerHTML = bodyContent;
@@ -1462,7 +1462,7 @@ async function loadRoute(route) {
       }
 
       document.dispatchEvent(new CustomEvent('route:loaded', {
-        detail: { route: 'builder/showcase', isModule: false }
+        detail: { route: 'builder-showcase', isModule: false }
       }));
       return;
     }
