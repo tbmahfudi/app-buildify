@@ -240,10 +240,10 @@ export class BuilderPage {
                                 type: 'radio',
                                 defaults: 'left',
                                 list: [
-                                    { value: 'left', name: 'Left', className: 'fa fa-align-left' },
-                                    { value: 'center', name: 'Center', className: 'fa fa-align-center' },
-                                    { value: 'right', name: 'Right', className: 'fa fa-align-right' },
-                                    { value: 'justify', name: 'Justify', className: 'fa fa-align-justify' }
+                                    { value: 'left', name: 'Left', className: 'ph ph-text-align-left' },
+                                    { value: 'center', name: 'Center', className: 'ph ph-text-align-center' },
+                                    { value: 'right', name: 'Right', className: 'ph ph-text-align-right' },
+                                    { value: 'justify', name: 'Justify', className: 'ph ph-text-align-justify' }
                                 ]
                             }
                         ]
