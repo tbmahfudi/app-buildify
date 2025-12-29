@@ -72,7 +72,7 @@ export class AuditWidget {
     timeline.className = 'audit-timeline space-y-4';
 
     if (data.logs.length === 0) {
-      timeline.innerHTML = '<div class="text-center py-8 text-gray-500"><i class="bi bi-inbox text-2xl block mb-2"></i><p>No audit logs found</p></div>';
+      timeline.innerHTML = '<div class="text-center py-8 text-gray-500"><i class="ph ph-tray text-2xl block mb-2"></i><p>No audit logs found</p></div>';
     } else {
       data.logs.forEach(log => {
         const item = this.renderLogItem(log);
@@ -131,7 +131,7 @@ export class AuditWidget {
       const user = document.createElement('div');
       user.className = 'text-sm text-gray-600 mb-3 flex items-center gap-2';
       user.innerHTML = `
-        <i class="bi bi-person-circle"></i>
+        <i class="ph ph-user-circle"></i>
         <span>${log.user_email}</span>
         ${log.ip_address ? `<span class="text-gray-500">from ${log.ip_address}</span>` : ''}
       `;
@@ -186,8 +186,8 @@ export class AuditWidget {
       item.innerHTML = `
         <div class="font-medium text-gray-900">${field}</div>
         <div class="flex gap-2 mt-1">
-          <span class="flex-1 text-red-700"><i class="bi bi-dash"></i> ${change.before !== null ? change.before : '<em class="text-gray-500">null</em>'}</span>
-          <span class="flex-1 text-green-700"><i class="bi bi-plus"></i> ${change.after !== null ? change.after : '<em class="text-gray-500">null</em>'}</span>
+          <span class="flex-1 text-red-700"><i class="ph ph-minus"></i> ${change.before !== null ? change.before : '<em class="text-gray-500">null</em>'}</span>
+          <span class="flex-1 text-green-700"><i class="ph ph-plus"></i> ${change.after !== null ? change.after : '<em class="text-gray-500">null</em>'}</span>
         </div>
       `;
       changesList.appendChild(item);
@@ -259,10 +259,10 @@ export class AuditWidget {
           <label class="block text-sm font-medium text-gray-700 mb-2">&nbsp;</label>
           <div class="flex gap-2">
             <button type="button" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm font-medium" id="btn-apply-filters">
-              <i class="bi bi-check-lg"></i> Apply
+              <i class="ph ph-check"></i> Apply
             </button>
             <button type="button" class="px-4 py-2 bg-gray-300 text-gray-900 rounded-lg hover:bg-gray-400 transition text-sm font-medium" id="btn-clear-filters">
-              <i class="bi bi-arrow-counterclockwise"></i> Clear
+              <i class="ph ph-arrow-counter-clockwise"></i> Clear
             </button>
           </div>
         </div>
@@ -365,13 +365,13 @@ export class AuditWidget {
    */
   getActionIcon(action) {
     const icons = {
-      'CREATE': '<i class="bi bi-plus-circle text-green-600"></i>',
-      'UPDATE': '<i class="bi bi-pencil-square text-blue-600"></i>',
-      'DELETE': '<i class="bi bi-trash text-red-600"></i>',
-      'LOGIN': '<i class="bi bi-key text-cyan-600"></i>',
-      'LOGOUT': '<i class="bi bi-door-open text-gray-600"></i>'
+      'CREATE': '<i class="ph ph-plus-circle text-green-600"></i>',
+      'UPDATE': '<i class="ph ph-pencil text-blue-600"></i>',
+      'DELETE': '<i class="ph ph-trash text-red-600"></i>',
+      'LOGIN': '<i class="ph ph-key text-cyan-600"></i>',
+      'LOGOUT': '<i class="ph ph-door-open text-gray-600"></i>'
     };
-    return icons[action] || '<i class="bi bi-file-earmark text-gray-600"></i>';
+    return icons[action] || '<i class="ph ph-file text-gray-600"></i>';
   }
 
   /**

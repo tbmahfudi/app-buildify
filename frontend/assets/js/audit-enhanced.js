@@ -164,22 +164,22 @@ function renderAuditEvents(events) {
     };
 
     const actionIcons = {
-      CREATE: 'bi-plus-circle-fill text-green-600',
-      UPDATE: 'bi-pencil-fill text-blue-600',
-      DELETE: 'bi-trash-fill text-red-600',
-      LOGIN: 'bi-box-arrow-in-right text-purple-600',
-      LOGOUT: 'bi-box-arrow-right text-gray-600'
+      CREATE: 'ph-plus-circle-fill text-green-600',
+      UPDATE: 'ph-pencil-fill text-blue-600',
+      DELETE: 'ph-trash-fill text-red-600',
+      LOGIN: 'ph-sign-in text-purple-600',
+      LOGOUT: 'ph-sign-out text-gray-600'
     };
 
     const statusColor = statusColors[event.status] || 'bg-gray-100 text-gray-800';
-    const actionIcon = actionIcons[event.action] || 'bi-circle-fill text-gray-600';
+    const actionIcon = actionIcons[event.action] || 'ph-circle-fill text-gray-600';
 
     return `
       <div class="px-6 py-4 hover:bg-gray-50 transition cursor-pointer" onclick="window.viewAuditDetail('${event.id}')">
         <div class="flex items-start gap-4">
           <!-- Icon -->
           <div class="flex-shrink-0 w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center mt-1">
-            <i class="bi ${actionIcon}"></i>
+            <i class="ph ${actionIcon}"></i>
           </div>
 
           <!-- Content -->
@@ -199,16 +199,16 @@ function renderAuditEvents(events) {
 
                 <div class="flex items-center gap-3 text-xs text-gray-600 mb-2">
                   <span class="flex items-center gap-1">
-                    <i class="bi bi-person"></i>
+                    <i class="ph ph-user"></i>
                     ${escapeHtml(event.user_email || 'System')}
                   </span>
                   <span class="flex items-center gap-1">
-                    <i class="bi bi-clock"></i>
+                    <i class="ph ph-clock"></i>
                     ${formatTimestamp(event.created_at)}
                   </span>
                   ${event.ip_address ? `
                     <span class="flex items-center gap-1">
-                      <i class="bi bi-geo-alt"></i>
+                      <i class="ph ph-map-pin"></i>
                       ${escapeHtml(event.ip_address)}
                     </span>
                   ` : ''}
@@ -229,7 +229,7 @@ function renderAuditEvents(events) {
             ${event.changes_before || event.changes_after ? `
               <div class="mt-2 flex items-center gap-2 text-xs">
                 <span class="text-gray-500">
-                  <i class="bi bi-arrow-left-right"></i>
+                  <i class="ph ph-arrows-left-right"></i>
                   Changes detected
                 </span>
                 <button
@@ -319,7 +319,7 @@ function viewAuditDetail(id) {
             <!-- Before -->
             <div>
               <div class="text-xs font-medium text-red-600 mb-1 flex items-center gap-1">
-                <i class="bi bi-dash-circle"></i>
+                <i class="ph ph-minus-circle"></i>
                 Before
               </div>
               <div class="p-3 bg-red-50 rounded-lg border border-red-200 max-h-48 overflow-y-auto">
@@ -330,7 +330,7 @@ function viewAuditDetail(id) {
             <!-- After -->
             <div>
               <div class="text-xs font-medium text-green-600 mb-1 flex items-center gap-1">
-                <i class="bi bi-plus-circle"></i>
+                <i class="ph ph-plus-circle"></i>
                 After
               </div>
               <div class="p-3 bg-green-50 rounded-lg border border-green-200 max-h-48 overflow-y-auto">

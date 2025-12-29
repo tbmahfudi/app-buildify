@@ -16,10 +16,10 @@ export function showToast(message, type = 'info', duration = 5000) {
   };
   
   const icons = {
-    success: 'bi-check-circle-fill',
-    error: 'bi-exclamation-circle-fill',
-    warning: 'bi-exclamation-triangle-fill',
-    info: 'bi-info-circle-fill'
+    success: 'ph-fill ph-check-circle',
+    error: 'ph-fill ph-warning-circle',
+    warning: 'ph-fill ph-warning',
+    info: 'ph-fill ph-info'
   };
   
   const toast = document.createElement('div');
@@ -27,12 +27,12 @@ export function showToast(message, type = 'info', duration = 5000) {
   
   toast.innerHTML = `
     <div class="flex items-start gap-3">
-      <i class="bi ${icons[type]} text-xl flex-shrink-0 mt-0.5"></i>
+      <i class="${icons[type]} text-xl flex-shrink-0 mt-0.5"></i>
       <div class="flex-1">
         <p class="text-sm font-medium">${escapeHtml(message)}</p>
       </div>
       <button class="text-gray-500 hover:text-gray-700 transition flex-shrink-0" onclick="this.closest('[class*=bg-]').remove()">
-        <i class="bi bi-x-lg"></i>
+        <i class="ph ph-x"></i>
       </button>
     </div>
   `;

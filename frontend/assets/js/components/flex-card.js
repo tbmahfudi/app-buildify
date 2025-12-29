@@ -34,7 +34,7 @@ export class FlexCard {
             // Header options
             title: '',
             subtitle: '',
-            icon: null, // Bootstrap icon class
+            icon: null, // Phosphor icon class
             badge: null, // {text, variant: 'primary'|'success'|'danger'|'warning'|'info'}
 
             // Actions (buttons in header)
@@ -163,7 +163,7 @@ export class FlexCard {
         if (this.options.collapsible) {
             const collapseBtn = document.createElement('button');
             collapseBtn.className = 'flex-shrink-0 text-gray-500 hover:text-gray-700 transition-transform duration-200';
-            collapseBtn.innerHTML = '<i class="bi bi-chevron-down"></i>';
+            collapseBtn.innerHTML = '<i class="ph ph-caret-down"></i>';
             collapseBtn.onclick = () => this.toggle();
             this.elements.collapseBtn = collapseBtn;
             leftSide.appendChild(collapseBtn);

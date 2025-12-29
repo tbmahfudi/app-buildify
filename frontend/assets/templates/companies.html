@@ -3,13 +3,13 @@
   <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
     <div>
       <h2 class="text-3xl font-bold text-gray-900 flex items-center gap-2">
-        <i class="bi bi-building text-blue-600"></i>
+        <i class="ph ph-buildings text-blue-600"></i>
         Companies
       </h2>
       <p class="text-gray-600 text-sm mt-1">Manage your organizations and company structure</p>
     </div>
     <button id="btn-add-company" class="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 active:bg-blue-800 shadow-sm hover:shadow-md transition-all font-medium">
-      <i class="bi bi-plus-lg"></i>
+      <i class="ph ph-plus"></i>
       Add Company
     </button>
   </div>
@@ -18,7 +18,7 @@
   <div class="bg-white rounded-lg shadow-sm p-4">
     <div class="flex flex-col sm:flex-row gap-3">
       <div class="flex-1 relative">
-        <i class="bi bi-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
+        <i class="ph ph-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
         <input
           type="text"
           id="search-companies"
@@ -26,11 +26,11 @@
           class="w-full pl-11 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
       </div>
       <button class="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition">
-        <i class="bi bi-funnel"></i>
+        <i class="ph ph-funnel"></i>
         Filter
       </button>
       <button id="btn-refresh" class="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition">
-        <i class="bi bi-arrow-clockwise"></i>
+        <i class="ph ph-arrow-clockwise"></i>
         Refresh
       </button>
     </div>
@@ -74,12 +74,12 @@
     <!-- Empty State -->
     <div id="empty-state" class="hidden px-6 py-12 text-center">
       <div class="w-16 h-16 mx-auto bg-gray-100 rounded-full flex items-center justify-center mb-4">
-        <i class="bi bi-inbox text-3xl text-gray-400"></i>
+        <i class="ph ph-tray text-3xl text-gray-400"></i>
       </div>
       <h3 class="text-lg font-medium text-gray-900 mb-1">No companies found</h3>
       <p class="text-gray-500 text-sm mb-4">Get started by creating your first company</p>
       <button class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
-        <i class="bi bi-plus-lg"></i>
+        <i class="ph ph-plus"></i>
         Add Company
       </button>
     </div>
@@ -97,7 +97,7 @@
       <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
         <h3 id="modal-title" class="text-xl font-semibold text-gray-900">Add Company</h3>
         <button id="btn-close-modal" class="text-gray-400 hover:text-gray-600 transition">
-          <i class="bi bi-x-lg text-xl"></i>
+          <i class="ph ph-x text-xl"></i>
         </button>
       </div>
 
@@ -135,7 +135,7 @@
         <!-- Error Message -->
         <div id="company-error" class="hidden p-3 bg-red-50 border border-red-200 rounded-lg">
           <div class="flex items-start gap-2">
-            <i class="bi bi-exclamation-circle text-red-600 mt-0.5"></i>
+            <i class="ph ph-warning-circle text-red-600 mt-0.5"></i>
             <span id="error-message" class="text-sm text-red-700"></span>
           </div>
         </div>
@@ -154,7 +154,7 @@
           type="submit"
           form="company-form"
           class="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 active:bg-blue-800 transition font-medium flex items-center gap-2">
-          <i class="bi bi-check-lg"></i>
+          <i class="ph ph-check"></i>
           Save Company
         </button>
       </div>
@@ -224,7 +224,7 @@
         <td class="px-6 py-4 whitespace-nowrap">
           <div class="flex items-center">
             <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
-              <i class="bi bi-building text-blue-600"></i>
+              <i class="ph ph-buildings text-blue-600"></i>
             </div>
             <span class="text-sm font-medium text-gray-900">${escapeHtml(c.code)}</span>
           </div>
@@ -236,16 +236,16 @@
           ${new Date(c.created_at).toLocaleDateString()}
         </td>
         <td class="px-6 py-4 whitespace-nowrap text-right text-sm">
-          <button 
+          <button
             class="inline-flex items-center gap-1 px-3 py-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition"
             onclick="window.editCompany('${c.id}')">
-            <i class="bi bi-pencil-square"></i>
+            <i class="ph ph-pencil"></i>
             Edit
           </button>
-          <button 
+          <button
             class="inline-flex items-center gap-1 px-3 py-1.5 text-red-600 hover:bg-red-50 rounded-lg transition ml-2"
             onclick="window.deleteCompany('${c.id}')">
-            <i class="bi bi-trash"></i>
+            <i class="ph ph-trash"></i>
             Delete
           </button>
         </td>
@@ -300,8 +300,8 @@
     
     try {
       saveBtn.disabled = true;
-      saveBtn.innerHTML = '<i class="bi bi-arrow-repeat animate-spin"></i> Saving...';
-      
+      saveBtn.innerHTML = '<i class="ph ph-arrows-clockwise animate-spin"></i> Saving...';
+
       const res = await apiFetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
@@ -322,7 +322,7 @@
       errorEl.classList.remove('hidden');
     } finally {
       saveBtn.disabled = false;
-      saveBtn.innerHTML = '<i class="bi bi-check-lg"></i> Save Company';
+      saveBtn.innerHTML = '<i class="ph ph-check"></i> Save Company';
     }
   }
 

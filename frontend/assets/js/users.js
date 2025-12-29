@@ -118,7 +118,7 @@ function renderUsers(items) {
         <td class="px-6 py-4">
           <div class="flex items-center">
             <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center mr-3">
-              <i class="bi bi-person${isSuperuser ? '-fill-gear text-yellow-600' : '-fill text-blue-600'}"></i>
+              <i class="ph ph-user${isSuperuser ? '-gear text-yellow-600' : '-fill text-blue-600'}"></i>
             </div>
             <div>
               <div class="text-sm font-medium text-gray-900">${escapeHtml(user.email)}</div>
@@ -130,7 +130,7 @@ function renderUsers(items) {
           <div class="flex flex-wrap gap-1">
             ${isSuperuser ? `
               <span class="inline-flex items-center gap-1 px-2 py-1 bg-yellow-100 text-yellow-800 text-xs font-medium rounded-full">
-                <i class="bi bi-shield-fill-check"></i>
+                <i class="ph ph-shield-check"></i>
                 Superuser
               </span>
             ` : ''}
@@ -145,12 +145,12 @@ function renderUsers(items) {
         <td class="px-6 py-4">
           ${isActive ? `
             <span class="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full">
-              <i class="bi bi-check-circle-fill"></i>
+              <i class="ph ph-check-circle-fill"></i>
               Active
             </span>
           ` : `
             <span class="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 text-gray-800 text-xs font-medium rounded-full">
-              <i class="bi bi-x-circle-fill"></i>
+              <i class="ph ph-x-circle-fill"></i>
               Inactive
             </span>
           `}
@@ -162,14 +162,14 @@ function renderUsers(items) {
           <button
             class="inline-flex items-center gap-1 px-3 py-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition"
             onclick="window.editUser('${user.id}')">
-            <i class="bi bi-pencil-square"></i>
+            <i class="ph ph-pencil"></i>
             Edit
           </button>
           <button
             class="inline-flex items-center gap-1 px-3 py-1.5 text-red-600 hover:bg-red-50 rounded-lg transition ml-2"
             onclick="window.deleteUser('${user.id}')"
             ${!hasRole('admin') ? 'style="display:none"' : ''}>
-            <i class="bi bi-trash"></i>
+            <i class="ph ph-trash"></i>
             Delete
           </button>
         </td>
@@ -296,7 +296,7 @@ async function saveUser(e) {
 
   try {
     saveBtn.disabled = true;
-    saveBtn.innerHTML = '<i class="bi bi-arrow-repeat animate-spin"></i> Saving...';
+    saveBtn.innerHTML = '<i class="ph ph-arrows-clockwise animate-spin"></i> Saving...';
 
     const res = await apiFetch(url, {
       method,
@@ -319,7 +319,7 @@ async function saveUser(e) {
     errorEl?.classList.remove('hidden');
   } finally {
     saveBtn.disabled = false;
-    saveBtn.innerHTML = '<i class="bi bi-check-lg"></i> Save User';
+    saveBtn.innerHTML = '<i class="ph ph-check"></i> Save User';
   }
 }
 

@@ -101,12 +101,12 @@ function renderCompanies(companies) {
     const editBtn = document.createElement('button');
     editBtn.className = 'edit-btn px-3 py-1 text-blue-600 border border-blue-600 rounded hover:bg-blue-50 transition text-sm';
     editBtn.setAttribute('data-company-id', company.id);
-    editBtn.innerHTML = '<i class="bi bi-pencil-square"></i> Edit';
+    editBtn.innerHTML = '<i class="ph ph-pencil"></i> Edit';
 
     const deleteBtn = document.createElement('button');
     deleteBtn.className = 'delete-btn px-3 py-1 text-red-600 border border-red-600 rounded hover:bg-red-50 transition text-sm';
     deleteBtn.setAttribute('data-company-id', company.id);
-    deleteBtn.innerHTML = '<i class="bi bi-trash"></i> Delete';
+    deleteBtn.innerHTML = '<i class="ph ph-trash"></i> Delete';
 
     actionsCell.appendChild(editBtn);
     actionsCell.appendChild(deleteBtn);
@@ -132,7 +132,7 @@ function renderEmptyState() {
   return `
     <tr>
       <td colspan="4" class="px-6 py-8 text-center text-gray-500">
-        <i class="bi bi-inbox text-2xl block mb-2"></i>
+        <i class="ph ph-tray text-2xl block mb-2"></i>
         <p>No companies found</p>
       </td>
     </tr>

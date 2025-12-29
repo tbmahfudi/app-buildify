@@ -344,10 +344,10 @@ function showAlert(message, tone = 'info') {
 
   container.className = `fixed top-4 right-4 max-w-md z-[60] flex items-start gap-3 border rounded-lg shadow-lg p-4 ${toneClasses}`;
   container.innerHTML = `
-    <i class="bi ${getToneIcon(tone)} flex-shrink-0 mt-0.5"></i>
+    <i class="ph ${getToneIcon(tone)} flex-shrink-0 mt-0.5"></i>
     <div class="flex-1">${message}</div>
     <button type="button" class="text-lg hover:opacity-70" data-alert-close>
-      <i class="bi bi-x"></i>
+      <i class="ph ph-x"></i>
     </button>
   `;
 
@@ -376,13 +376,13 @@ function getToneClasses(tone) {
 function getToneIcon(tone) {
   switch (tone) {
     case 'success':
-      return 'bi-check-circle';
+      return 'ph-check-circle';
     case 'danger':
-      return 'bi-exclamation-circle';
+      return 'ph-warning-circle';
     case 'warning':
-      return 'bi-exclamation-triangle';
+      return 'ph-warning';
     default:
-      return 'bi-info-circle';
+      return 'ph-info';
   }
 }
 
