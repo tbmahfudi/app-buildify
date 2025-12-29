@@ -13,6 +13,7 @@ import { can } from './rbac.js';
 import { showToast } from './ui-utils.js';
 import { registerComponents } from './components/builder-component-registry.js';
 import { BuilderConfigPanel } from './components/builder-config-panel.js';
+import { authService } from './auth-service.js';
 
 let builderPage = null;
 
@@ -608,6 +609,12 @@ export class BuilderPage {
 
     async savePage() {
         try {
+            const token = authService.getToken();
+            if (!token) {
+                showToast('Please log in to save pages', 'error');
+                return;
+            }
+
             const pageData = this.configPanel.getPageConfig();
             const grapesjsData = this.editor.getProjectData();
             const html = this.editor.getHtml();
@@ -627,7 +634,7 @@ export class BuilderPage {
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                        'Authorization': `Bearer ${token}`
                     },
                     body: JSON.stringify(payload)
                 });
@@ -637,7 +644,7 @@ export class BuilderPage {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                        'Authorization': `Bearer ${token}`
                     },
                     body: JSON.stringify(payload)
                 });
@@ -660,9 +667,15 @@ export class BuilderPage {
 
     async loadPage(pageId) {
         try {
+            const token = authService.getToken();
+            if (!token) {
+                showToast('Please log in to load pages', 'error');
+                return;
+            }
+
             const response = await fetch(`/api/v1/builder/${pageId}`, {
                 headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    'Authorization': `Bearer ${token}`
                 }
             });
 

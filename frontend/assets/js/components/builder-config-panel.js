@@ -3,6 +3,7 @@
  *
  * Handles page metadata, module selection, menu creation, and RBAC permissions
  */
+import { authService } from '../auth-service.js';
 
 export class BuilderConfigPanel {
     constructor(editor) {
@@ -34,9 +35,16 @@ export class BuilderConfigPanel {
 
     async loadModules() {
         try {
+            const token = authService.getToken();
+            if (!token) {
+                console.warn('No auth token available, skipping modules loading');
+                this.modules = [];
+                return;
+            }
+
             const response = await fetch('/api/v1/modules/enabled', {
                 headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    'Authorization': `Bearer ${token}`
                 }
             });
 
