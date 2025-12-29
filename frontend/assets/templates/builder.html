@@ -10,24 +10,28 @@
                             <span id="current-page-name">New Page</span>
                         </div>
                     </div>
-                    <div class="flex items-center gap-2">
-                        <!-- Toolbar Panels -->
-                        <div class="panel__devices flex items-center gap-1 mr-4"></div>
-                        <div class="panel__basic-actions flex items-center gap-1 mr-4"></div>
+                    <div class="flex items-center gap-2 overflow-x-auto">
+                        <!-- Toolbar Panels - Constrained width to prevent overlap -->
+                        <div class="panel__devices flex items-center gap-1 max-w-[200px] overflow-x-auto flex-shrink-0"></div>
+                        <div class="panel__basic-actions flex items-center gap-1 max-w-[300px] overflow-x-auto flex-shrink-0"></div>
 
-                        <button id="btn-config" class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-600 transition">
+                        <!-- Separator -->
+                        <div class="h-8 w-px bg-gray-300 dark:bg-slate-600 mx-2 flex-shrink-0"></div>
+
+                        <!-- Action Buttons - Prevent shrinking -->
+                        <button id="btn-config" class="flex-shrink-0 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-600 transition">
                             <i class="ph-duotone ph-gear mr-2"></i>Configure
                         </button>
-                        <button id="btn-load" class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-600 transition">
+                        <button id="btn-load" class="flex-shrink-0 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-600 transition">
                             <i class="ph-duotone ph-folder-open mr-2"></i>Load
                         </button>
-                        <button id="btn-save" class="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition">
+                        <button id="btn-save" class="flex-shrink-0 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition">
                             <i class="ph-duotone ph-floppy-disk mr-2"></i>Save
                         </button>
-                        <button id="btn-publish" class="px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg transition" disabled>
+                        <button id="btn-publish" class="flex-shrink-0 px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg transition" disabled>
                             <i class="ph-duotone ph-rocket-launch mr-2"></i>Publish
                         </button>
-                        <button id="btn-preview" class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-600 transition">
+                        <button id="btn-preview" class="flex-shrink-0 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-600 transition">
                             <i class="ph-duotone ph-eye mr-2"></i>Preview
                         </button>
                     </div>
