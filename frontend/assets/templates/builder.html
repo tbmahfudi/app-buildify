@@ -1,3 +1,19 @@
+            <style>
+                /* Override GrapeJS absolute positioning for toolbar panels */
+                .gjs-pn-panel {
+                    position: relative !important;
+                    display: inline-flex !important;
+                    vertical-align: middle;
+                }
+
+                /* Ensure panel buttons are properly styled */
+                .gjs-pn-btn {
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                }
+            </style>
+
             <div id="builder-container" class="h-screen flex flex-col bg-gray-50 dark:bg-slate-900">
                 <!-- Header -->
                 <div class="bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 px-4 py-3 flex items-center justify-between">
