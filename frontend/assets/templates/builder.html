@@ -10,15 +10,8 @@
                             <span id="current-page-name">New Page</span>
                         </div>
                     </div>
-                    <div class="flex items-center gap-2 overflow-x-auto">
-                        <!-- Toolbar Panels - Constrained width to prevent overlap -->
-                        <div class="panel__devices flex items-center gap-1 max-w-[200px] overflow-x-auto flex-shrink-0"></div>
-                        <div class="panel__basic-actions flex items-center gap-1 max-w-[300px] overflow-x-auto flex-shrink-0"></div>
-
-                        <!-- Separator -->
-                        <div class="h-8 w-px bg-gray-300 dark:bg-slate-600 mx-2 flex-shrink-0"></div>
-
-                        <!-- Action Buttons - Prevent shrinking -->
+                    <div class="flex items-center gap-2">
+                        <!-- Action Buttons - Main toolbar -->
                         <button id="btn-config" class="flex-shrink-0 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-600 transition">
                             <i class="ph-duotone ph-gear mr-2"></i>Configure
                         </button>
@@ -34,6 +27,13 @@
                         <button id="btn-preview" class="flex-shrink-0 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-600 transition">
                             <i class="ph-duotone ph-eye mr-2"></i>Preview
                         </button>
+
+                        <!-- Separator -->
+                        <div class="h-8 w-px bg-gray-300 dark:bg-slate-600 mx-2"></div>
+
+                        <!-- GrapeJS Toolbar Panels - Moved to end to prevent overlap -->
+                        <div class="panel__devices flex items-center gap-1"></div>
+                        <div class="panel__basic-actions flex items-center gap-1"></div>
                     </div>
                 </div>
 
