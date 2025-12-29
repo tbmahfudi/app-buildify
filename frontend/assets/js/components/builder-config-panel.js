@@ -34,17 +34,26 @@ export class BuilderConfigPanel {
 
     async loadModules() {
         try {
-            const response = await fetch('/api/modules/enabled/names', {
+            const response = await fetch('/api/v1/modules/enabled', {
                 headers: {
                     'Authorization': `Bearer ${localStorage.getItem('token')}`
                 }
             });
 
             if (response.ok) {
-                this.modules = await response.json();
+                const data = await response.json();
+                // Extract module names from the response
+                this.modules = data.map(m => ({
+                    name: m.name || m.module_name,
+                    display_name: m.display_name || m.name || m.module_name
+                }));
+            } else if (response.status === 404) {
+                console.warn('Modules API not available, skipping module loading');
+                this.modules = [];
             }
         } catch (error) {
-            console.error('Error loading modules:', error);
+            console.warn('Could not load modules (this is optional):', error);
+            this.modules = [];
         }
     }
 

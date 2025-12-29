@@ -68,8 +68,16 @@ export class BuilderPage {
         this.configPanel = new BuilderConfigPanel(this.editor);
         await this.configPanel.init();
 
-        const pageId = new URLSearchParams(window.location.search).get('page');
+        // Parse page ID from hash-based URL (e.g., #builder?page=123)
+        const hash = window.location.hash;
+        const queryString = hash.includes('?') ? hash.split('?')[1] : '';
+        const params = new URLSearchParams(queryString);
+        const pageId = params.get('page');
+
+        console.log('Checking for page ID in URL:', { hash, queryString, pageId });
+
         if (pageId) {
+            console.log('Loading page:', pageId);
             await this.loadPage(pageId);
         }
     }
