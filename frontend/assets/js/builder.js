@@ -367,6 +367,25 @@ export class BuilderPage {
             css.href = 'https://unpkg.com/grapesjs/dist/css/grapes.min.css';
             document.head.appendChild(css);
 
+            // Add custom CSS override for panel positioning (after GrapeJS CSS)
+            const customStyle = document.createElement('style');
+            customStyle.textContent = `
+                /* Override GrapeJS absolute positioning for toolbar panels */
+                .gjs-pn-panel {
+                    position: relative !important;
+                    display: inline-flex !important;
+                    vertical-align: middle !important;
+                }
+
+                /* Ensure panel buttons are properly styled */
+                .gjs-pn-btn {
+                    display: inline-flex !important;
+                    align-items: center !important;
+                    justify-content: center !important;
+                }
+            `;
+            document.head.appendChild(customStyle);
+
             // Load JS
             const script = document.createElement('script');
             script.src = 'https://unpkg.com/grapesjs';
