@@ -50,11 +50,30 @@ export class BuilderConfigPanel {
 
             if (response.ok) {
                 const data = await response.json();
-                // Extract module names from the response
-                this.modules = data.map(m => ({
+                console.log('Modules API response:', data);
+
+                // Handle different response formats
+                let modulesArray = [];
+                if (Array.isArray(data)) {
+                    modulesArray = data;
+                } else if (data && Array.isArray(data.modules)) {
+                    modulesArray = data.modules;
+                } else if (data && Array.isArray(data.data)) {
+                    modulesArray = data.data;
+                } else if (data && typeof data === 'object') {
+                    // If it's an object but not an array, skip module loading
+                    console.warn('Modules API returned object instead of array:', data);
+                    this.modules = [];
+                    return;
+                }
+
+                // Extract module names from the array
+                this.modules = modulesArray.map(m => ({
                     name: m.name || m.module_name,
                     display_name: m.display_name || m.name || m.module_name
                 }));
+
+                console.log('Loaded modules:', this.modules);
             } else if (response.status === 404) {
                 console.warn('Modules API not available, skipping module loading');
                 this.modules = [];
