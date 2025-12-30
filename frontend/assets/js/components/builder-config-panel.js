@@ -3,7 +3,6 @@
  *
  * Handles page metadata, module selection, menu creation, and RBAC permissions
  */
-import { authService } from '../auth-service.js';
 import { apiFetch } from '../api.js';
 
 export class BuilderConfigPanel {
@@ -58,47 +57,21 @@ export class BuilderConfigPanel {
 
     async loadModules() {
         try {
-            const token = authService.getToken();
-            if (!token) {
-                console.warn('No auth token available, skipping modules loading');
-                this.modules = [];
-                return;
-            }
-
-            const response = await fetch('/api/v1/modules/enabled', {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            });
+            const response = await apiFetch('/modules/enabled');
 
             if (response.ok) {
                 const data = await response.json();
                 console.log('Modules API response:', data);
 
-                // Handle different response formats
-                let modulesArray = [];
-                if (Array.isArray(data)) {
-                    modulesArray = data;
-                } else if (data && Array.isArray(data.modules)) {
-                    modulesArray = data.modules;
-                } else if (data && Array.isArray(data.data)) {
-                    modulesArray = data.data;
-                } else if (data && typeof data === 'object') {
-                    // If it's an object but not an array, skip module loading
-                    console.warn('Modules API returned object instead of array:', data);
-                    this.modules = [];
-                    return;
-                }
-
-                // Extract module names from the array
-                this.modules = modulesArray.map(m => ({
-                    name: m.name || m.module_name,
-                    display_name: m.display_name || m.name || m.module_name
+                // The response has format: { modules: [...] }
+                this.modules = (data.modules || []).map(m => ({
+                    name: m.module_name || m.name,
+                    display_name: m.display_name || m.module_name || m.name
                 }));
 
                 console.log('Loaded modules:', this.modules);
-            } else if (response.status === 404) {
-                console.warn('Modules API not available, skipping module loading');
+            } else {
+                console.warn('Could not load modules (this is optional)');
                 this.modules = [];
             }
         } catch (error) {
@@ -242,7 +215,7 @@ export class BuilderConfigPanel {
 
                 <!-- Action Buttons -->
                 <div class="pt-3 border-t border-gray-200">
-                    <button id="auto-generate-config" class="w-full px-4 py-2 text-sm font-medium text-blue-600 hover:text-blue-700 border border-blue-600 rounded-md hover:bg-blue-50 dark:hover:bg-blue-900/20 transition">
+                    <button id="auto-generate-config" class="w-full px-4 py-2 text-sm font-medium text-blue-600 hover:text-blue-700 border border-blue-600 rounded-md hover:bg-blue-50 transition">
                         <i class="ph-duotone ph-magic-wand mr-2"></i>Auto-generate from name
                     </button>
                 </div>
