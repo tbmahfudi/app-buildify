@@ -66,7 +66,21 @@ export class BuilderPage {
 
         console.log('Checking for page ID in URL:', { hash, queryString, pageId });
 
-        // If editor already exists, ensure config panel is initialized and load the new page
+        // Check if editor exists and its container is still in the DOM
+        if (this.editor) {
+            const container = document.getElementById('gjs');
+            const editorContainer = this.editor.getContainer();
+
+            // If the container is not in the DOM anymore, destroy and recreate
+            if (!container || !document.body.contains(editorContainer)) {
+                console.log('Editor container not in DOM, destroying and recreating editor');
+                this.editor.destroy();
+                this.editor = null;
+                this.configPanel = null;
+            }
+        }
+
+        // If editor exists and is valid, just load the new page
         if (this.editor) {
             console.log('Builder already initialized, loading new page');
 
