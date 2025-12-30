@@ -28,14 +28,17 @@
 }
 
 /* Blocks container (component toolbox) background */
-#blocks {
-    background-color: #f8fafc !important;
-    padding: 1rem;
-    border-radius: 0.5rem;
+#blocks,
+#blocks .gjs-blocks-c,
+.gjs-blocks-c {
+    background-color: transparent !important;
+    padding: 0 !important;
 }
 
-.dark #blocks {
-    background-color: #1e293b !important;
+/* Override GrapeJS default block container background */
+.gjs-block-categories,
+#blocks .gjs-block-categories {
+    background-color: transparent !important;
 }
 
 /* GrapeJS block manager styles - Override default styles */

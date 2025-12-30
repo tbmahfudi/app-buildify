@@ -22,7 +22,7 @@ export function registerAPIComponents(editor) {
  */
 function registerAPIDataTable(editor) {
     editor.BlockManager.add('api-datatable', {
-        label: '<div class="text-center"><i class="ph-duotone ph-database text-2xl mb-1"></i><div class="text-xs">API Table</div></div>',
+        label: '<div class="text-center"><i class="ph-duotone ph-database text-lg text-blue-500 mb-1"></i><div style="font-size: 0.65rem; line-height: 1.2">API Table</div></div>',
         category: 'API Components',
         content: {
             type: 'api-datatable'
@@ -202,7 +202,7 @@ function registerAPIDataTable(editor) {
  */
 function registerAPIForm(editor) {
     editor.BlockManager.add('api-form', {
-        label: '<div class="text-center"><i class="ph-duotone ph-paper-plane-tilt text-2xl mb-1"></i><div class="text-xs">API Form</div></div>',
+        label: '<div class="text-center"><i class="ph-duotone ph-paper-plane-tilt text-lg text-blue-500 mb-1"></i><div style="font-size: 0.65rem; line-height: 1.2">API Form</div></div>',
         category: 'API Components',
         content: {
             type: 'api-form'
@@ -339,7 +339,7 @@ function registerAPIForm(editor) {
  */
 function registerAPIButton(editor) {
     editor.BlockManager.add('api-button', {
-        label: '<div class="text-center"><i class="ph-duotone ph-lightning text-2xl mb-1"></i><div class="text-xs">API Button</div></div>',
+        label: '<div class="text-center"><i class="ph-duotone ph-lightning text-lg text-blue-500 mb-1"></i><div style="font-size: 0.65rem; line-height: 1.2">API Button</div></div>',
         category: 'API Components',
         content: {
             type: 'api-button'

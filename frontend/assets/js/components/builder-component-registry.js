@@ -45,7 +45,7 @@ export async function registerComponents(editor) {
 
 function registerButton(editor) {
     editor.BlockManager.add('ui-button', {
-        label: '<div class="text-center"><i class="ph-duotone ph-cursor-click text-2xl mb-1"></i><div class="text-xs">Button</div></div>',
+        label: '<div class="text-center"><i class="ph-duotone ph-cursor-click text-lg text-blue-500 mb-1"></i><div style="font-size: 0.65rem; line-height: 1.2">Button</div></div>',
         category: 'Basic Forms',
         content: {
             type: 'ui-button',
@@ -103,7 +103,7 @@ function registerButton(editor) {
 
 function registerInput(editor) {
     editor.BlockManager.add('ui-input', {
-        label: '<div class="text-center"><i class="ph-duotone ph-text-aa text-2xl mb-1"></i><div class="text-xs">Input</div></div>',
+        label: '<div class="text-center"><i class="ph-duotone ph-text-aa text-lg text-blue-500 mb-1"></i><div style="font-size: 0.65rem; line-height: 1.2">Input</div></div>',
         category: 'Basic Forms',
         content: {
             type: 'ui-input-wrapper'
@@ -167,7 +167,7 @@ function registerInput(editor) {
 
 function registerTextarea(editor) {
     editor.BlockManager.add('ui-textarea', {
-        label: '<div class="text-center"><i class="ph-duotone ph-text-align-left text-2xl mb-1"></i><div class="text-xs">Textarea</div></div>',
+        label: '<div class="text-center"><i class="ph-duotone ph-text-align-left text-lg text-blue-500 mb-1"></i><div style="font-size: 0.65rem; line-height: 1.2">Textarea</div></div>',
         category: 'Basic Forms',
         content: {
             tagName: 'textarea',
@@ -183,7 +183,7 @@ function registerTextarea(editor) {
 
 function registerSelect(editor) {
     editor.BlockManager.add('ui-select', {
-        label: '<div class="text-center"><i class="ph-duotone ph-caret-down text-2xl mb-1"></i><div class="text-xs">Select</div></div>',
+        label: '<div class="text-center"><i class="ph-duotone ph-caret-down text-lg text-blue-500 mb-1"></i><div style="font-size: 0.65rem; line-height: 1.2">Select</div></div>',
         category: 'Basic Forms',
         content: {
             tagName: 'select',
@@ -202,7 +202,7 @@ function registerSelect(editor) {
 
 function registerCard(editor) {
     editor.BlockManager.add('ui-card', {
-        label: '<div class="text-center"><i class="ph-duotone ph-card text-2xl mb-1"></i><div class="text-xs">Card</div></div>',
+        label: '<div class="text-center"><i class="ph-duotone ph-card text-lg text-blue-500 mb-1"></i><div style="font-size: 0.65rem; line-height: 1.2">Card</div></div>',
         category: 'Display',
         content: {
             type: 'ui-card'
@@ -260,7 +260,7 @@ function registerCard(editor) {
 
 function registerBadge(editor) {
     editor.BlockManager.add('ui-badge', {
-        label: '<div class="text-center"><i class="ph-duotone ph-tag text-2xl mb-1"></i><div class="text-xs">Badge</div></div>',
+        label: '<div class="text-center"><i class="ph-duotone ph-tag text-lg text-blue-500 mb-1"></i><div style="font-size: 0.65rem; line-height: 1.2">Badge</div></div>',
         category: 'Display',
         content: {
             type: 'ui-badge',
@@ -308,7 +308,7 @@ function registerBadge(editor) {
 
 function registerAlert(editor) {
     editor.BlockManager.add('ui-alert', {
-        label: '<div class="text-center"><i class="ph-duotone ph-info text-2xl mb-1"></i><div class="text-xs">Alert</div></div>',
+        label: '<div class="text-center"><i class="ph-duotone ph-info text-lg text-blue-500 mb-1"></i><div style="font-size: 0.65rem; line-height: 1.2">Alert</div></div>',
         category: 'Display',
         content: {
             type: 'ui-alert'
@@ -354,7 +354,7 @@ function registerAlert(editor) {
 
 function registerFlexContainer(editor) {
     editor.BlockManager.add('flex-container', {
-        label: '<div class="text-center"><i class="ph-duotone ph-container text-2xl mb-1"></i><div class="text-xs">Container</div></div>',
+        label: '<div class="text-center"><i class="ph-duotone ph-container text-lg text-blue-500 mb-1"></i><div style="font-size: 0.65rem; line-height: 1.2">Container</div></div>',
         category: 'Containers',
         content: {
             type: 'flex-container'
@@ -402,7 +402,7 @@ function registerFlexContainer(editor) {
 
 function registerFlexSection(editor) {
     editor.BlockManager.add('flex-section', {
-        label: '<div class="text-center"><i class="ph-duotone ph-layout text-2xl mb-1"></i><div class="text-xs">Section</div></div>',
+        label: '<div class="text-center"><i class="ph-duotone ph-layout text-lg text-blue-500 mb-1"></i><div style="font-size: 0.65rem; line-height: 1.2">Section</div></div>',
         category: 'Containers',
         content: {
             type: 'flex-section'
@@ -442,7 +442,7 @@ function registerFlexSection(editor) {
 
 function registerFlexStack(editor) {
     editor.BlockManager.add('flex-stack', {
-        label: '<div class="text-center"><i class="ph-duotone ph-rows text-2xl mb-1"></i><div class="text-xs">Stack</div></div>',
+        label: '<div class="text-center"><i class="ph-duotone ph-rows text-lg text-blue-500 mb-1"></i><div style="font-size: 0.65rem; line-height: 1.2">Stack</div></div>',
         category: 'Layout',
         content: {
             type: 'flex-stack'
@@ -520,7 +520,7 @@ function registerFlexStack(editor) {
 
 function registerFlexGrid(editor) {
     editor.BlockManager.add('flex-grid', {
-        label: '<div class="text-center"><i class="ph-duotone ph-grid-four text-2xl mb-1"></i><div class="text-xs">Grid</div></div>',
+        label: '<div class="text-center"><i class="ph-duotone ph-grid-four text-lg text-blue-500 mb-1"></i><div style="font-size: 0.65rem; line-height: 1.2">Grid</div></div>',
         category: 'Layout',
         content: {
             type: 'flex-grid'
@@ -568,7 +568,7 @@ function registerFlexGrid(editor) {
 
 function registerFlexCluster(editor) {
     editor.BlockManager.add('flex-cluster', {
-        label: '<div class="text-center"><i class="ph-duotone ph-dots-three text-2xl mb-1"></i><div class="text-xs">Cluster</div></div>',
+        label: '<div class="text-center"><i class="ph-duotone ph-dots-three text-lg text-blue-500 mb-1"></i><div style="font-size: 0.65rem; line-height: 1.2">Cluster</div></div>',
         category: 'Layout',
         content: {
             type: 'flex-cluster'
@@ -620,7 +620,7 @@ function registerFlexCluster(editor) {
 
 function registerFlexMasonry(editor) {
     editor.BlockManager.add('flex-masonry', {
-        label: '<div class="text-center"><i class="ph-duotone ph-images text-2xl mb-1"></i><div class="text-xs">Masonry</div></div>',
+        label: '<div class="text-center"><i class="ph-duotone ph-images text-lg text-blue-500 mb-1"></i><div style="font-size: 0.65rem; line-height: 1.2">Masonry</div></div>',
         category: 'Layout',
         content: {
             type: 'flex-masonry'
@@ -664,7 +664,7 @@ function registerFlexMasonry(editor) {
 
 function registerFlexSidebar(editor) {
     editor.BlockManager.add('flex-sidebar', {
-        label: '<div class="text-center"><i class="ph-duotone ph-sidebar text-2xl mb-1"></i><div class="text-xs">Sidebar</div></div>',
+        label: '<div class="text-center"><i class="ph-duotone ph-sidebar text-lg text-blue-500 mb-1"></i><div style="font-size: 0.65rem; line-height: 1.2">Sidebar</div></div>',
         category: 'Navigation',
         content: {
             type: 'flex-sidebar'
@@ -705,7 +705,7 @@ function registerFlexSidebar(editor) {
 
 function registerFlexToolbar(editor) {
     editor.BlockManager.add('flex-toolbar', {
-        label: '<div class="text-center"><i class="ph-duotone ph-navigation-arrow text-2xl mb-1"></i><div class="text-xs">Toolbar</div></div>',
+        label: '<div class="text-center"><i class="ph-duotone ph-navigation-arrow text-lg text-blue-500 mb-1"></i><div style="font-size: 0.65rem; line-height: 1.2">Toolbar</div></div>',
         category: 'Navigation',
         content: {
             type: 'flex-toolbar'
@@ -753,7 +753,7 @@ function registerFlexToolbar(editor) {
 
 function registerFlexSplitPane(editor) {
     editor.BlockManager.add('flex-split-pane', {
-        label: '<div class="text-center"><i class="ph-duotone ph-columns text-2xl mb-1"></i><div class="text-xs">Split Pane</div></div>',
+        label: '<div class="text-center"><i class="ph-duotone ph-columns text-lg text-blue-500 mb-1"></i><div style="font-size: 0.65rem; line-height: 1.2">Split Pane</div></div>',
         category: 'Navigation',
         content: {
             type: 'flex-split-pane'
@@ -795,7 +795,7 @@ function registerFlexSplitPane(editor) {
 
 function registerFlexModal(editor) {
     editor.BlockManager.add('flex-modal', {
-        label: '<div class="text-center"><i class="ph-duotone ph-window text-2xl mb-1"></i><div class="text-xs">Modal</div></div>',
+        label: '<div class="text-center"><i class="ph-duotone ph-window text-lg text-blue-500 mb-1"></i><div style="font-size: 0.65rem; line-height: 1.2">Modal</div></div>',
         category: 'Data',
         content: {
             type: 'flex-modal'
@@ -835,7 +835,7 @@ function registerFlexModal(editor) {
 
 function registerDataTable(editor) {
     editor.BlockManager.add('data-table', {
-        label: '<div class="text-center"><i class="ph-duotone ph-table text-2xl mb-1"></i><div class="text-xs">Data Table</div></div>',
+        label: '<div class="text-center"><i class="ph-duotone ph-table text-lg text-blue-500 mb-1"></i><div style="font-size: 0.65rem; line-height: 1.2">Data Table</div></div>',
         category: 'Data',
         content: {
             type: 'data-table'
@@ -876,7 +876,7 @@ function registerDataTable(editor) {
 
 function registerDynamicForm(editor) {
     editor.BlockManager.add('dynamic-form', {
-        label: '<div class="text-center"><i class="ph-duotone ph-list-checks text-2xl mb-1"></i><div class="text-xs">Dynamic Form</div></div>',
+        label: '<div class="text-center"><i class="ph-duotone ph-list-checks text-lg text-blue-500 mb-1"></i><div style="font-size: 0.65rem; line-height: 1.2">Dynamic Form</div></div>',
         category: 'Data',
         content: {
             type: 'dynamic-form'
