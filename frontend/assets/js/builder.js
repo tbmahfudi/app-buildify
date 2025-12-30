@@ -396,6 +396,35 @@ export class BuilderPage {
             // Add custom CSS override for panel positioning (after GrapeJS CSS)
             const customStyle = document.createElement('style');
             customStyle.textContent = `
+                /* Override GrapeJS CSS variables to match theme */
+                #builder-container,
+                #gjs,
+                #blocks,
+                .gjs-one-bg,
+                .gjs-two-bg,
+                .gjs-three-bg,
+                .gjs-four-bg {
+                    --gjs-primary-color: #ffffff;
+                    --gjs-secondary-color: #374151;
+                    --gjs-tertiary-color: #e5e7eb;
+                    --gjs-quaternary-color: #f9fafb;
+                    --gjs-secondary-dark-color: #f3f4f6;
+                }
+
+                .dark #builder-container,
+                .dark #gjs,
+                .dark #blocks,
+                .dark .gjs-one-bg,
+                .dark .gjs-two-bg,
+                .dark .gjs-three-bg,
+                .dark .gjs-four-bg {
+                    --gjs-primary-color: #1e293b;
+                    --gjs-secondary-color: #e2e8f0;
+                    --gjs-tertiary-color: #475569;
+                    --gjs-quaternary-color: #334155;
+                    --gjs-secondary-dark-color: #0f172a;
+                }
+
                 /* Override GrapeJS absolute positioning for toolbar panels */
                 .gjs-pn-panel {
                     position: relative !important;
