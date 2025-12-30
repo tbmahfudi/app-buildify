@@ -66,9 +66,16 @@ export class BuilderPage {
 
         console.log('Checking for page ID in URL:', { hash, queryString, pageId });
 
-        // If editor already exists, just load the new page
+        // If editor already exists, ensure config panel is initialized and load the new page
         if (this.editor) {
             console.log('Builder already initialized, loading new page');
+
+            // Initialize config panel if it doesn't exist
+            if (!this.configPanel) {
+                this.configPanel = new BuilderConfigPanel(this.editor);
+                await this.configPanel.init();
+            }
+
             if (pageId) {
                 await this.loadPage(pageId);
             }
@@ -710,8 +717,10 @@ export class BuilderPage {
                 // Load into editor
                 this.editor.loadProjectData(page.grapejs_data);
 
-                // Update config panel
-                this.configPanel.setPageConfig(page);
+                // Update config panel (if it exists)
+                if (this.configPanel) {
+                    this.configPanel.setPageConfig(page);
+                }
 
                 // Update UI
                 document.getElementById('current-page-name').textContent = page.name;
