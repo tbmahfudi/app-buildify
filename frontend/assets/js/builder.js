@@ -58,17 +58,6 @@ export class BuilderPage {
     }
 
     async afterRender() {
-        if (this.editor) {
-            console.warn('Builder already initialized');
-            return;
-        }
-
-        await this.initializeGrapeJS();
-        this.setupEventListeners();
-
-        this.configPanel = new BuilderConfigPanel(this.editor);
-        await this.configPanel.init();
-
         // Parse page ID from hash-based URL (e.g., #builder?page=123)
         const hash = window.location.hash;
         const queryString = hash.includes('?') ? hash.split('?')[1] : '';
@@ -76,6 +65,22 @@ export class BuilderPage {
         const pageId = params.get('page');
 
         console.log('Checking for page ID in URL:', { hash, queryString, pageId });
+
+        // If editor already exists, just load the new page
+        if (this.editor) {
+            console.log('Builder already initialized, loading new page');
+            if (pageId) {
+                await this.loadPage(pageId);
+            }
+            return;
+        }
+
+        // Initialize GrapeJS for the first time
+        await this.initializeGrapeJS();
+        this.setupEventListeners();
+
+        this.configPanel = new BuilderConfigPanel(this.editor);
+        await this.configPanel.init();
 
         if (pageId) {
             console.log('Loading page:', pageId);
