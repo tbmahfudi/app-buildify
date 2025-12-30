@@ -159,6 +159,24 @@
     background-color: transparent !important;
 }
 
+/* Make GrapeJS canvas stretch to full editor width */
+.gjs-cv-canvas,
+#gjs .gjs-cv-canvas {
+    width: 100% !important;
+    max-width: 100% !important;
+}
+
+.gjs-frame,
+#gjs .gjs-frame {
+    width: 100% !important;
+}
+
+/* Ensure editor takes full width */
+.gjs-editor,
+#gjs {
+    width: 100% !important;
+}
+
 /* Block label styling */
 .gjs-block-label,
 #blocks .gjs-block-label {
