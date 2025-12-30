@@ -409,12 +409,7 @@ export class BuilderShowcasePage {
     }
 
     getBasicComponentsTemplate() {
-        return {
-            name: 'Basic Components {id}',
-            menuLabel: 'Components {id}',
-            description: 'Showcase of basic UI components including buttons, inputs, textarea, select, badge, and alerts',
-            icon: 'ph-duotone ph-squares-four',
-            html: `<div class="container mx-auto p-8">
+        const html = `<div class="container mx-auto p-8">
     <h1 class="text-3xl font-bold mb-8">Basic Components Showcase</h1>
 
     <!-- Buttons Section -->
@@ -502,19 +497,30 @@ export class BuilderShowcasePage {
             </div>
         </div>
     </section>
-</div>`,
+</div>`;
+
+        return {
+            name: 'Basic Components {id}',
+            menuLabel: 'Components {id}',
+            description: 'Showcase of basic UI components including buttons, inputs, textarea, select, badge, and alerts',
+            icon: 'ph-duotone ph-squares-four',
+            html: html,
             css: ``,
-            grapejsData: { assets: [], styles: [], pages: [{ component: { type: "wrapper", components: [] }}] }
+            grapejsData: {
+                assets: [],
+                styles: [],
+                pages: [{
+                    component: {
+                        type: "wrapper",
+                        components: html
+                    }
+                }]
+            }
         };
     }
 
     getLayoutDemoTemplate() {
-        return {
-            name: 'Layout Demo {id}',
-            menuLabel: 'Layouts {id}',
-            description: 'Demonstration of flexible layout components including container, grid, stack, and sidebar',
-            icon: 'ph-duotone ph-layout',
-            html: `<div class="min-h-screen bg-gray-50">
+        const html = `<div class="min-h-screen bg-gray-50">
     <!-- Toolbar -->
     <div data-component="flex-toolbar" class="bg-white shadow">
         <div class="flex justify-between items-center px-6 py-4">
@@ -581,19 +587,30 @@ export class BuilderShowcasePage {
             </div>
         </div>
     </section>
-</div>`,
+</div>`;
+
+        return {
+            name: 'Layout Demo {id}',
+            menuLabel: 'Layouts {id}',
+            description: 'Demonstration of flexible layout components including container, grid, stack, and sidebar',
+            icon: 'ph-duotone ph-layout',
+            html: html,
             css: ``,
-            grapejsData: { assets: [], styles: [], pages: [{ component: { type: "wrapper", components: [] }}] }
+            grapejsData: {
+                assets: [],
+                styles: [],
+                pages: [{
+                    component: {
+                        type: "wrapper",
+                        components: html
+                    }
+                }]
+            }
         };
     }
 
     getCardGalleryTemplate() {
-        return {
-            name: 'Card Gallery {id}',
-            menuLabel: 'Gallery {id}',
-            description: 'Beautiful card gallery with masonry layout and various card variants',
-            icon: 'ph-duotone ph-cards',
-            html: `<div class="container mx-auto p-8">
+        const html = `<div class="container mx-auto p-8">
     <header class="text-center mb-12">
         <h1 class="text-4xl font-bold mb-4">Card & Content Gallery</h1>
         <p class="text-gray-600">Explore different card styles and layouts</p>
@@ -672,19 +689,30 @@ export class BuilderShowcasePage {
             </div>
         </div>
     </section>
-</div>`,
+</div>`;
+
+        return {
+            name: 'Card Gallery {id}',
+            menuLabel: 'Gallery {id}',
+            description: 'Beautiful card gallery with masonry layout and various card variants',
+            icon: 'ph-duotone ph-cards',
+            html: html,
             css: ``,
-            grapejsData: { assets: [], styles: [], pages: [{ component: { type: "wrapper", components: [] }}] }
+            grapejsData: {
+                assets: [],
+                styles: [],
+                pages: [{
+                    component: {
+                        type: "wrapper",
+                        components: html
+                    }
+                }]
+            }
         };
     }
 
     getDataTablesTemplate() {
-        return {
-            name: 'Data Tables {id}',
-            menuLabel: 'Tables {id}',
-            description: 'Interactive data tables with sorting, filtering, and pagination',
-            icon: 'ph-duotone ph-table',
-            html: `<div class="container mx-auto p-8">
+        const html = `<div class="container mx-auto p-8">
     <h1 class="text-3xl font-bold mb-8">Data & Tables Showcase</h1>
 
     <!-- Basic Data Table -->
@@ -801,19 +829,30 @@ export class BuilderShowcasePage {
             </div>
         </div>
     </section>
-</div>`,
+</div>`;
+
+        return {
+            name: 'Data Tables {id}',
+            menuLabel: 'Tables {id}',
+            description: 'Interactive data tables with sorting, filtering, and pagination',
+            icon: 'ph-duotone ph-table',
+            html: html,
             css: ``,
-            grapejsData: { assets: [], styles: [], pages: [{ component: { type: "wrapper", components: [] }}] }
+            grapejsData: {
+                assets: [],
+                styles: [],
+                pages: [{
+                    component: {
+                        type: "wrapper",
+                        components: html
+                    }
+                }]
+            }
         };
     }
 
     getApiIntegrationTemplate() {
-        return {
-            name: 'API Integration {id}',
-            menuLabel: 'API Demo {id}',
-            description: 'Examples of API button, API form, and API datatable components with backend integration',
-            icon: 'ph-duotone ph-plugs-connected',
-            html: `<div class="container mx-auto p-8">
+        const html = `<div class="container mx-auto p-8">
     <h1 class="text-3xl font-bold mb-8">API Integration Demo</h1>
 
     <!-- API Buttons -->
@@ -906,19 +945,30 @@ export class BuilderShowcasePage {
 }</code></pre>
         </div>
     </section>
-</div>`,
+</div>`;
+
+        return {
+            name: 'API Integration {id}',
+            menuLabel: 'API Demo {id}',
+            description: 'Examples of API button, API form, and API datatable components with backend integration',
+            icon: 'ph-duotone ph-plugs-connected',
+            html: html,
             css: ``,
-            grapejsData: { assets: [], styles: [], pages: [{ component: { type: "wrapper", components: [] }}] }
+            grapejsData: {
+                assets: [],
+                styles: [],
+                pages: [{
+                    component: {
+                        type: "wrapper",
+                        components: html
+                    }
+                }]
+            }
         };
     }
 
     getInteractiveComponentsTemplate() {
-        return {
-            name: 'Interactive Components {id}',
-            menuLabel: 'Interactive {id}',
-            description: 'Showcase of modal, tabs, accordion, dropdown, and drawer interactive components',
-            icon: 'ph-duotone ph-magic-wand',
-            html: `<div class="container mx-auto p-8">
+        const html = `<div class="container mx-auto p-8">
     <h1 class="text-3xl font-bold mb-8">Interactive Components</h1>
 
     <!-- Modal Trigger -->
@@ -1023,19 +1073,30 @@ export class BuilderShowcasePage {
             </div>
         </div>
     </section>
-</div>`,
+</div>`;
+
+        return {
+            name: 'Interactive Components {id}',
+            menuLabel: 'Interactive {id}',
+            description: 'Showcase of modal, tabs, accordion, dropdown, and drawer interactive components',
+            icon: 'ph-duotone ph-magic-wand',
+            html: html,
             css: ``,
-            grapejsData: { assets: [], styles: [], pages: [{ component: { type: "wrapper", components: [] }}] }
+            grapejsData: {
+                assets: [],
+                styles: [],
+                pages: [{
+                    component: {
+                        type: "wrapper",
+                        components: html
+                    }
+                }]
+            }
         };
     }
 
     getLandingPageTemplate() {
-        return {
-            name: 'Landing Page {id}',
-            menuLabel: 'Landing {id}',
-            description: 'Complete landing page with hero, features, content sections, and footer',
-            icon: 'ph-duotone ph-rocket-launch',
-            html: `<!-- Hero Section -->
+        const html = `<!-- Hero Section -->
 <section class="bg-gradient-to-br from-blue-600 via-purple-600 to-pink-500 text-white py-20">
     <div class="container mx-auto px-8 text-center">
         <h1 class="text-5xl font-bold mb-6">Build Amazing Web Applications</h1>
@@ -1193,19 +1254,30 @@ export class BuilderShowcasePage {
             <p>&copy; 2024 BuilderApp. All rights reserved.</p>
         </div>
     </div>
-</footer>`,
+</footer>`;
+
+        return {
+            name: 'Landing Page {id}',
+            menuLabel: 'Landing {id}',
+            description: 'Complete landing page with hero, features, content sections, and footer',
+            icon: 'ph-duotone ph-rocket-launch',
+            html: html,
             css: ``,
-            grapejsData: { assets: [], styles: [], pages: [{ component: { type: "wrapper", components: [] }}] }
+            grapejsData: {
+                assets: [],
+                styles: [],
+                pages: [{
+                    component: {
+                        type: "wrapper",
+                        components: html
+                    }
+                }]
+            }
         };
     }
 
     getAdminDashboardTemplate() {
-        return {
-            name: 'Admin Dashboard {id}',
-            menuLabel: 'Dashboard {id}',
-            description: 'Complete admin dashboard with sidebar, data widgets, charts, and management tools',
-            icon: 'ph-duotone ph-gauge',
-            html: `<div class="flex h-screen bg-gray-100">
+        const html = `<div class="flex h-screen bg-gray-100">
     <!-- Sidebar -->
     <aside data-component="flex-sidebar" class="w-64 bg-gray-900 text-white flex-shrink-0">
         <div class="p-6">
@@ -1439,9 +1511,25 @@ export class BuilderShowcasePage {
             </div>
         </main>
     </div>
-</div>`,
+</div>`;
+
+        return {
+            name: 'Admin Dashboard {id}',
+            menuLabel: 'Dashboard {id}',
+            description: 'Complete admin dashboard with sidebar, data widgets, charts, and management tools',
+            icon: 'ph-duotone ph-gauge',
+            html: html,
             css: ``,
-            grapejsData: { assets: [], styles: [], pages: [{ component: { type: "wrapper", components: [] }}] }
+            grapejsData: {
+                assets: [],
+                styles: [],
+                pages: [{
+                    component: {
+                        type: "wrapper",
+                        components: html
+                    }
+                }]
+            }
         };
     }
 
