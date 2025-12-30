@@ -57,7 +57,7 @@ export async function createSampleAPIPage() {
                                                     "tagName": "h1",
                                                     "type": "text",
                                                     "attributes": {
-                                                        "class": "text-4xl font-bold text-gray-900 dark:text-gray-100 mb-8 text-center"
+                                                        "class": "text-4xl font-bold text-gray-900 mb-8 text-center"
                                                     },
                                                     "components": [
                                                         {
@@ -70,7 +70,7 @@ export async function createSampleAPIPage() {
                                                     "tagName": "p",
                                                     "type": "text",
                                                     "attributes": {
-                                                        "class": "text-lg text-gray-600 dark:text-gray-400 mb-12 text-center"
+                                                        "class": "text-lg text-gray-600 mb-12 text-center"
                                                     },
                                                     "components": [
                                                         {
@@ -226,10 +226,10 @@ function generateHTML(grapesjsData) {
     return `
         <section id="iojr" class="py-12 px-4" data-component="flex-section">
             <div class="max-w-7xl mx-auto">
-                <h1 class="text-4xl font-bold text-gray-900 dark:text-gray-100 mb-8 text-center">
+                <h1 class="text-4xl font-bold text-gray-900 mb-8 text-center">
                     API Integration Demo
                 </h1>
-                <p class="text-lg text-gray-600 dark:text-gray-400 mb-12 text-center">
+                <p class="text-lg text-gray-600 mb-12 text-center">
                     This page demonstrates real-time API integration with backend services
                 </p>
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">

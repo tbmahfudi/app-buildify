@@ -189,7 +189,7 @@ export class BuilderShowcasePage {
             document.getElementById('pages-container').innerHTML = `
                 <div class="col-span-full text-center py-12">
                     <i class="ph-duotone ph-warning-circle text-5xl text-red-600 mb-4" style="color: #DC2626"></i>
-                    <p class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">${error.message}</p>
+                    <p class="text-lg font-medium text-gray-900 mb-2">${error.message}</p>
                     ${isAuthError ? `
                         <a href="/#login" class="inline-block mt-4 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
                             <i class="ph-duotone ph-sign-in mr-2"></i>
@@ -1572,8 +1572,8 @@ export class BuilderShowcasePage {
             container.innerHTML = `
                 <div class="col-span-full text-center py-12">
                     <i class="ph-duotone ph-files text-5xl text-gray-400 mb-4" style="color: #9CA3AF"></i>
-                    <p class="text-gray-600 dark:text-gray-400 text-lg font-medium">No pages found</p>
-                    <p class="text-gray-500 dark:text-gray-500 text-sm mt-2">Create your first page with the UI Builder</p>
+                    <p class="text-gray-600 text-lg font-medium">No pages found</p>
+                    <p class="text-gray-500 text-sm mt-2">Create your first page with the UI Builder</p>
                     <a href="/#builder" class="inline-block mt-4 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
                         <i class="ph-duotone ph-plus-circle mr-2"></i>
                         Create Page
@@ -1597,17 +1597,17 @@ export class BuilderShowcasePage {
 
     renderPageCard(page) {
         const statusBadge = page.published
-            ? '<span class="px-2 py-1 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 text-xs font-medium rounded-full">Published</span>'
-            : '<span class="px-2 py-1 bg-orange-100 dark:bg-orange-900 text-orange-800 dark:text-orange-200 text-xs font-medium rounded-full">Draft</span>';
+            ? '<span class="px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full">Published</span>'
+            : '<span class="px-2 py-1 bg-orange-100 text-orange-800 text-xs font-medium rounded-full">Draft</span>';
 
         const menuBadge = page.show_in_menu
             ? '<i class="ph-duotone ph-list-bullets text-purple-600" style="color: #8B5CF6" title="Shown in menu"></i>'
             : '';
 
         return `
-            <div class="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 overflow-hidden hover:shadow-lg transition group">
+            <div class="bg-white rounded-lg border border-gray-200 overflow-hidden hover:shadow-lg transition group">
                 <!-- Preview Thumbnail -->
-                <div class="h-48 bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-slate-700 dark:to-slate-600 flex items-center justify-center overflow-hidden relative">
+                <div class="h-48 bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center overflow-hidden relative">
                     <i class="${page.menu_icon || 'ph-duotone ph-file-html'} text-6xl" style="color: #3B82F6"></i>
                     <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition"></div>
                 </div>
@@ -1615,15 +1615,15 @@ export class BuilderShowcasePage {
                 <!-- Card Content -->
                 <div class="p-4">
                     <div class="flex items-start justify-between mb-2">
-                        <h3 class="font-semibold text-gray-900 dark:text-gray-100 text-lg flex-1 line-clamp-1">${page.name}</h3>
+                        <h3 class="font-semibold text-gray-900 text-lg flex-1 line-clamp-1">${page.name}</h3>
                         ${menuBadge}
                     </div>
 
-                    <p class="text-sm text-gray-600 dark:text-gray-400 mb-3 line-clamp-2">${page.description || 'No description'}</p>
+                    <p class="text-sm text-gray-600 mb-3 line-clamp-2">${page.description || 'No description'}</p>
 
                     <div class="flex items-center gap-2 mb-4">
                         ${statusBadge}
-                        <span class="text-xs text-gray-500 dark:text-gray-500">
+                        <span class="text-xs text-gray-500">
                             <i class="ph-duotone ph-path"></i>
                             ${page.route_path}
                         </span>
@@ -1637,12 +1637,12 @@ export class BuilderShowcasePage {
                             Preview
                         </button>
                         <a href="/#builder?page=${page.id}"
-                           class="flex-1 px-3 py-2 bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-300 text-sm font-medium rounded hover:bg-gray-200 dark:hover:bg-slate-600 transition text-center">
+                           class="flex-1 px-3 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded hover:bg-gray-200 dark:hover:bg-slate-600 transition text-center">
                             <i class="ph-duotone ph-pencil mr-1"></i>
                             Edit
                         </a>
                         <button onclick="window.builderShowcase.deletePage('${page.id}')"
-                                class="px-3 py-2 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-sm font-medium rounded hover:bg-red-100 dark:hover:bg-red-900/40 transition">
+                                class="px-3 py-2 bg-red-50/20 text-red-600 text-sm font-medium rounded hover:bg-red-100 dark:hover:bg-red-900/40 transition">
                             <i class="ph-duotone ph-trash"></i>
                         </button>
                     </div>
@@ -1653,24 +1653,24 @@ export class BuilderShowcasePage {
 
     renderPageListItem(page) {
         const statusBadge = page.published
-            ? '<span class="px-2 py-1 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 text-xs font-medium rounded-full">Published</span>'
-            : '<span class="px-2 py-1 bg-orange-100 dark:bg-orange-900 text-orange-800 dark:text-orange-200 text-xs font-medium rounded-full">Draft</span>';
+            ? '<span class="px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full">Published</span>'
+            : '<span class="px-2 py-1 bg-orange-100 text-orange-800 text-xs font-medium rounded-full">Draft</span>';
 
         return `
-            <div class="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 p-4 hover:shadow-md transition">
+            <div class="bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md transition">
                 <div class="flex items-center gap-4">
-                    <div class="w-16 h-16 bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-slate-700 dark:to-slate-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <div class="w-16 h-16 bg-gradient-to-br from-blue-50 to-indigo-100 rounded-lg flex items-center justify-center flex-shrink-0">
                         <i class="${page.menu_icon || 'ph-duotone ph-file-html'} text-3xl" style="color: #3B82F6"></i>
                     </div>
 
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center gap-2 mb-1">
-                            <h3 class="font-semibold text-gray-900 dark:text-gray-100 text-lg">${page.name}</h3>
+                            <h3 class="font-semibold text-gray-900 text-lg">${page.name}</h3>
                             ${statusBadge}
                             ${page.show_in_menu ? '<i class="ph-duotone ph-list-bullets text-purple-600" style="color: #8B5CF6"></i>' : ''}
                         </div>
-                        <p class="text-sm text-gray-600 dark:text-gray-400 mb-1">${page.description || 'No description'}</p>
-                        <div class="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-500">
+                        <p class="text-sm text-gray-600 mb-1">${page.description || 'No description'}</p>
+                        <div class="flex items-center gap-4 text-xs text-gray-500">
                             <span><i class="ph-duotone ph-path"></i> ${page.route_path}</span>
                             ${page.module_name ? `<span><i class="ph-duotone ph-package"></i> ${page.module_name}</span>` : ''}
                             ${page.created_at ? `<span><i class="ph-duotone ph-calendar"></i> ${new Date(page.created_at).toLocaleDateString()}</span>` : ''}
@@ -1684,12 +1684,12 @@ export class BuilderShowcasePage {
                             Preview
                         </button>
                         <a href="/#builder?page=${page.id}"
-                           class="px-4 py-2 bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-300 text-sm font-medium rounded hover:bg-gray-200 dark:hover:bg-slate-600 transition">
+                           class="px-4 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded hover:bg-gray-200 dark:hover:bg-slate-600 transition">
                             <i class="ph-duotone ph-pencil mr-1"></i>
                             Edit
                         </a>
                         <button onclick="window.builderShowcase.deletePage('${page.id}')"
-                                class="px-4 py-2 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-sm font-medium rounded hover:bg-red-100 dark:hover:bg-red-900/40 transition">
+                                class="px-4 py-2 bg-red-50/20 text-red-600 text-sm font-medium rounded hover:bg-red-100 dark:hover:bg-red-900/40 transition">
                             <i class="ph-duotone ph-trash"></i>
                         </button>
                     </div>
@@ -1733,16 +1733,16 @@ export class BuilderShowcasePage {
             <div class="space-y-4">
                 <div class="grid grid-cols-2 gap-4 text-sm">
                     <div>
-                        <span class="text-gray-600 dark:text-gray-400">Route:</span>
-                        <span class="font-mono text-blue-600 dark:text-blue-400 ml-2">${page.route_path}</span>
+                        <span class="text-gray-600">Route:</span>
+                        <span class="font-mono text-blue-600 ml-2">${page.route_path}</span>
                     </div>
                     <div>
-                        <span class="text-gray-600 dark:text-gray-400">Status:</span>
+                        <span class="text-gray-600">Status:</span>
                         <span class="ml-2">${page.published ? '✅ Published' : '📝 Draft'}</span>
                     </div>
                 </div>
                 <iframe srcdoc="${previewHTML.replace(/"/g, '&quot;')}"
-                        class="w-full h-[600px] border border-gray-200 dark:border-slate-700 rounded-lg bg-white">
+                        class="w-full h-[600px] border border-gray-200 rounded-lg bg-white">
                 </iframe>
             </div>
         `;

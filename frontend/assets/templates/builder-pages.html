@@ -1,13 +1,13 @@
-<div id="pages-list-container" class="h-screen flex flex-col bg-gray-50 dark:bg-slate-900">
+<div id="pages-list-container" class="h-screen flex flex-col bg-gray-50">
     <!-- Header -->
-    <div class="bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 px-6 py-4">
+    <div class="bg-white border-b border-gray-200 px-6 py-4">
         <div class="flex items-center justify-between">
             <div>
-                <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-3">
+                <h1 class="text-2xl font-bold text-gray-900 flex items-center gap-3">
                     <i class="ph-duotone ph-files text-blue-600" style="color: #3B82F6"></i>
                     Builder Pages
                 </h1>
-                <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                <p class="text-sm text-gray-600 mt-1">
                     Manage your custom UI pages
                 </p>
             </div>
@@ -21,10 +21,10 @@
     <div class="flex-1 overflow-y-auto p-6">
         <!-- Filters -->
         <div class="mb-6 flex gap-4">
-            <select id="filter-module" class="px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-gray-100 text-sm">
+            <select id="filter-module" class="px-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 text-sm">
                 <option value="">All Modules</option>
             </select>
-            <select id="filter-status" class="px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-gray-100 text-sm">
+            <select id="filter-status" class="px-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 text-sm">
                 <option value="">All Status</option>
                 <option value="published">Published</option>
                 <option value="draft">Draft</option>
@@ -37,7 +37,7 @@
             <div class="col-span-full flex items-center justify-center py-12">
                 <div class="text-center">
                     <i class="ph-duotone ph-spinner text-5xl text-blue-600 animate-spin mb-4" style="color: #3B82F6"></i>
-                    <p class="text-gray-600 dark:text-gray-400">Loading pages...</p>
+                    <p class="text-gray-600">Loading pages...</p>
                 </div>
             </div>
         </div>

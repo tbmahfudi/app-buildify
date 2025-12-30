@@ -80,39 +80,39 @@ export class PagesListPage {
         if (this.pages.length === 0) {
             grid.innerHTML = `
                 <div class="col-span-full text-center py-12">
-                    <i class="ph-duotone ph-files text-6xl text-gray-300 dark:text-gray-600 mb-4"></i>
-                    <p class="text-gray-500 dark:text-gray-400">No pages found. Create your first page!</p>
+                    <i class="ph-duotone ph-files text-6xl text-gray-300 mb-4"></i>
+                    <p class="text-gray-500">No pages found. Create your first page!</p>
                 </div>
             `;
             return;
         }
 
         grid.innerHTML = this.pages.map(page => `
-            <div class="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg p-6 hover:shadow-lg transition">
+            <div class="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-lg transition">
                 <div class="flex items-start justify-between mb-4">
                     <div class="flex-1">
-                        <h3 class="font-semibold text-gray-900 dark:text-gray-100 mb-1">${page.name}</h3>
-                        <p class="text-sm text-gray-500 dark:text-gray-400">${page.description || 'No description'}</p>
+                        <h3 class="font-semibold text-gray-900 mb-1">${page.name}</h3>
+                        <p class="text-sm text-gray-500">${page.description || 'No description'}</p>
                     </div>
                     ${page.published ?
-                        '<span class="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 rounded-full">Published</span>' :
-                        '<span class="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200 rounded-full">Draft</span>'
+                        '<span class="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">Published</span>' :
+                        '<span class="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full">Draft</span>'
                     }
                 </div>
 
-                <div class="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mb-4">
+                <div class="flex items-center gap-2 text-sm text-gray-500 mb-4">
                     <i class="ph-duotone ph-hash"></i>
                     <span>${page.route_path}</span>
                 </div>
 
                 ${page.module_name ? `
-                    <div class="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mb-4">
+                    <div class="flex items-center gap-2 text-sm text-gray-500 mb-4">
                         <i class="ph-duotone ph-puzzle-piece"></i>
                         <span>${page.module_name}</span>
                     </div>
                 ` : ''}
 
-                <div class="flex items-center gap-2 pt-4 border-t border-gray-200 dark:border-slate-700">
+                <div class="flex items-center gap-2 pt-4 border-t border-gray-200">
                     ${can('builder:pages:edit:tenant') ? `
                         <a href="#/builder?page=${page.id}" class="flex-1 px-3 py-2 text-sm font-medium text-blue-600 hover:text-blue-700 border border-blue-600 rounded-md hover:bg-blue-50 dark:hover:bg-blue-900/20 text-center transition">
                             <i class="ph-duotone ph-pencil mr-1"></i>Edit
