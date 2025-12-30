@@ -29,7 +29,7 @@ export class FlexModal {
             // Header options
             title: '',
             subtitle: '',
-            icon: null, // Bootstrap icon class
+            icon: null, // Phosphor icon class
             showClose: true,
 
             // Body options
@@ -214,7 +214,7 @@ export class FlexModal {
         if (this.options.showClose) {
             const closeBtn = document.createElement('button');
             closeBtn.className = 'flex-shrink-0 ml-4 text-gray-400 hover:text-gray-600 transition-colors duration-200';
-            closeBtn.innerHTML = '<i class="bi bi-x-lg text-xl"></i>';
+            closeBtn.innerHTML = '<i class="ph ph-x text-xl"></i>';
             closeBtn.onclick = () => this.hide();
             this.elements.closeBtn = closeBtn;
             header.appendChild(closeBtn);

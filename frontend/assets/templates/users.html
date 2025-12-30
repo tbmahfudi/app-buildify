@@ -3,13 +3,13 @@
   <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
     <div>
       <h2 class="text-3xl font-bold text-gray-900 flex items-center gap-2">
-        <i class="bi bi-people text-blue-600"></i>
+        <i class="ph ph-users text-blue-600"></i>
         Users
       </h2>
       <p class="text-gray-600 text-sm mt-1">Manage user accounts, roles, and permissions</p>
     </div>
     <button id="btn-add-user" data-rbac-role="admin" class="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 active:bg-blue-800 shadow-sm hover:shadow-md transition-all font-medium">
-      <i class="bi bi-plus-lg"></i>
+      <i class="ph ph-plus"></i>
       Add User
     </button>
   </div>
@@ -18,7 +18,7 @@
   <div class="bg-white rounded-lg shadow-sm p-4">
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
       <div class="relative">
-        <i class="bi bi-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
+        <i class="ph ph-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
         <input
           type="text"
           id="search-users"
@@ -37,7 +37,7 @@
         <option value="inactive">Inactive</option>
       </select>
       <button id="btn-refresh" class="inline-flex items-center justify-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition">
-        <i class="bi bi-arrow-clockwise"></i>
+        <i class="ph ph-arrow-clockwise"></i>
         Refresh
       </button>
     </div>
@@ -84,12 +84,12 @@
     <!-- Empty State -->
     <div id="empty-state" class="hidden px-6 py-12 text-center">
       <div class="w-16 h-16 mx-auto bg-gray-100 rounded-full flex items-center justify-center mb-4">
-        <i class="bi bi-people text-3xl text-gray-400"></i>
+        <i class="ph ph-users text-3xl text-gray-400"></i>
       </div>
       <h3 class="text-lg font-medium text-gray-900 mb-1">No users found</h3>
       <p class="text-gray-500 text-sm mb-4">Get started by creating your first user</p>
       <button class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition" data-rbac-role="admin">
-        <i class="bi bi-plus-lg"></i>
+        <i class="ph ph-plus"></i>
         Add User
       </button>
     </div>
@@ -102,11 +102,11 @@
         </div>
         <div class="flex gap-2">
           <button id="btn-prev-page" disabled class="px-3 py-1 border border-gray-300 rounded-lg hover:bg-gray-50 transition disabled:opacity-50 disabled:cursor-not-allowed">
-            <i class="bi bi-chevron-left"></i>
+            <i class="ph ph-caret-left"></i>
           </button>
           <span id="page-info" class="px-4 py-1 text-sm text-gray-700">Page 1</span>
           <button id="btn-next-page" disabled class="px-3 py-1 border border-gray-300 rounded-lg hover:bg-gray-50 transition disabled:opacity-50 disabled:cursor-not-allowed">
-            <i class="bi bi-chevron-right"></i>
+            <i class="ph ph-caret-right"></i>
           </button>
         </div>
       </div>
@@ -125,7 +125,7 @@
       <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
         <h3 id="modal-title" class="text-xl font-semibold text-gray-900">Add User</h3>
         <button id="btn-close-modal" class="text-gray-400 hover:text-gray-600 transition">
-          <i class="bi bi-x-lg text-xl"></i>
+          <i class="ph ph-x text-xl"></i>
         </button>
       </div>
 
@@ -242,7 +242,7 @@
           <label class="flex items-center justify-between p-4 border border-gray-300 rounded-lg bg-yellow-50 border-yellow-200">
             <div>
               <div class="text-sm font-medium text-gray-900 flex items-center gap-2">
-                <i class="bi bi-shield-fill-exclamation text-yellow-600"></i>
+                <i class="ph ph-shield-warning text-yellow-600"></i>
                 Superuser
               </div>
               <div class="text-xs text-gray-600">Grant unrestricted access to all features</div>
@@ -257,7 +257,7 @@
         <!-- Error Message -->
         <div id="user-error" class="hidden p-3 bg-red-50 border border-red-200 rounded-lg">
           <div class="flex items-start gap-2">
-            <i class="bi bi-exclamation-circle text-red-600 mt-0.5"></i>
+            <i class="ph ph-warning-circle text-red-600 mt-0.5"></i>
             <span id="error-message" class="text-sm text-red-700"></span>
           </div>
         </div>
@@ -276,7 +276,7 @@
           type="submit"
           form="user-form"
           class="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 active:bg-blue-800 transition font-medium flex items-center gap-2">
-          <i class="bi bi-check-lg"></i>
+          <i class="ph ph-check"></i>
           Save User
         </button>
       </div>

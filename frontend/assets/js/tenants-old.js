@@ -228,13 +228,13 @@ function renderTenants(tenants) {
 
     const editBtn = document.createElement('button');
     editBtn.className = 'p-2 text-blue-600 hover:bg-blue-50 rounded transition';
-    editBtn.innerHTML = '<i class="bi bi-pencil"></i>';
+    editBtn.innerHTML = '<i class="ph ph-pencil"></i>';
     editBtn.title = 'Edit';
     editBtn.addEventListener('click', () => editTenant(tenant.id));
 
     const deleteBtn = document.createElement('button');
     deleteBtn.className = 'p-2 text-red-600 hover:bg-red-50 rounded transition';
-    deleteBtn.innerHTML = '<i class="bi bi-trash"></i>';
+    deleteBtn.innerHTML = '<i class="ph ph-trash"></i>';
     deleteBtn.title = 'Delete';
     deleteBtn.addEventListener('click', () => deleteTenant(tenant.id, tenant.name));
 
@@ -316,7 +316,7 @@ function renderErrorState(message) {
   return `
     <tr>
       <td colspan="7" class="px-6 py-12 text-center text-red-500">
-        <i class="bi bi-exclamation-circle text-2xl block mb-2"></i>
+        <i class="ph ph-warning-circle text-2xl block mb-2"></i>
         <p>${message}</p>
       </td>
     </tr>

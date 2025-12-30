@@ -491,7 +491,7 @@ async function loadMenuFromStatic() {
   const moduleMenuFormatted = moduleMenuItems.map(item => ({
     title: item.menu?.label || item.name,
     route: item.path.replace('#/', ''),
-    icon: item.menu?.icon || 'bi-circle',
+    icon: item.menu?.icon || 'ph-circle',
     permission: item.permission
   }));
 
