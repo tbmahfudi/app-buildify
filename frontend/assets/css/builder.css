@@ -18,67 +18,116 @@
 /* Panel backgrounds - Light neutral gray */
 #builder-container .panel__basic-actions,
 #builder-container .panel__devices {
-    background-color: #f8fafc;
+    background-color: #f8fafc !important;
     border-radius: 0.5rem;
 }
 
 .dark #builder-container .panel__basic-actions,
 .dark #builder-container .panel__devices {
-    background-color: #1e293b;
+    background-color: #1e293b !important;
 }
 
 /* Blocks container (component toolbox) background */
 #blocks {
-    background-color: #f8fafc;
+    background-color: #f8fafc !important;
     padding: 1rem;
     border-radius: 0.5rem;
 }
 
 .dark #blocks {
-    background-color: #1e293b;
+    background-color: #1e293b !important;
 }
 
-/* GrapeJS block manager styles */
-.gjs-block {
-    transition: all 0.2s;
-    background-color: #ffffff;
-    border: 1px solid #e5e7eb;
+/* GrapeJS block manager styles - Override default styles */
+.gjs-block,
+#blocks .gjs-block {
+    transition: all 0.2s !important;
+    background-color: #ffffff !important;
+    border: 1px solid #e5e7eb !important;
+    padding: 0.75rem !important;
+    min-height: auto !important;
+    width: auto !important;
 }
 
-.dark .gjs-block {
-    background-color: #2d3748;
-    border-color: #475569;
+.dark .gjs-block,
+.dark #blocks .gjs-block {
+    background-color: #2d3748 !important;
+    border-color: #475569 !important;
 }
 
-.gjs-block:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
-    border-color: #3b82f6;
+.gjs-block:hover,
+#blocks .gjs-block:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1) !important;
+    border-color: #3b82f6 !important;
 }
 
-.dark .gjs-block:hover {
-    border-color: #60a5fa;
+.dark .gjs-block:hover,
+.dark #blocks .gjs-block:hover {
+    border-color: #60a5fa !important;
 }
 
-/* Component icons in toolbox - smaller size */
-.gjs-block .ph-duotone {
-    font-size: 1.25rem !important; /* Smaller than 2rem */
-    margin-bottom: 0.25rem;
+/* Component icons in toolbox - smaller size and duotone color */
+.gjs-block .ph-duotone,
+#blocks .gjs-block .ph-duotone,
+.gjs-block i.ph-duotone,
+#blocks .gjs-block i.ph-duotone {
+    font-size: 1.25rem !important;
+    margin-bottom: 0.25rem !important;
+    display: block !important;
+    color: #3b82f6 !important;
+}
+
+.dark .gjs-block .ph-duotone,
+.dark #blocks .gjs-block .ph-duotone,
+.dark .gjs-block i.ph-duotone,
+.dark #blocks .gjs-block i.ph-duotone {
+    color: #60a5fa !important;
 }
 
 /* Component type titles - smaller font */
-.gjs-block .text-xs {
-    font-size: 0.65rem !important; /* Smaller than default text-xs */
-    font-weight: 500;
+.gjs-block .text-xs,
+#blocks .gjs-block .text-xs,
+.gjs-block div,
+#blocks .gjs-block div {
+    font-size: 0.65rem !important;
+    font-weight: 500 !important;
+    line-height: 1.2 !important;
 }
 
-/* Ensure duotone icons have proper color */
-.gjs-block .ph-duotone {
-    color: #3b82f6; /* Blue color for icons */
+/* GrapeJS category titles */
+.gjs-block-category,
+#blocks .gjs-block-category {
+    border-bottom: 2px solid #e5e7eb;
+    margin-bottom: 0.75rem;
 }
 
-.dark .gjs-block .ph-duotone {
-    color: #60a5fa; /* Lighter blue for dark mode */
+.dark .gjs-block-category,
+.dark #blocks .gjs-block-category {
+    border-bottom-color: #475569;
+}
+
+.gjs-category-title,
+#blocks .gjs-category-title {
+    font-size: 0.75rem !important;
+    font-weight: 600 !important;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #6b7280;
+    padding: 0.5rem 0 !important;
+}
+
+.dark .gjs-category-title,
+.dark #blocks .gjs-category-title {
+    color: #9ca3af;
+}
+
+/* Block label styling */
+.gjs-block-label,
+#blocks .gjs-block-label {
+    font-size: 0.65rem !important;
+    line-height: 1.2 !important;
+    padding: 0 !important;
 }
 
 /* Custom scrollbar for panels */
@@ -134,30 +183,34 @@
 
 /* Panel buttons styling */
 #builder-container .panel__basic-actions button,
-#builder-container .panel__devices button {
-    background-color: #ffffff;
-    border: 1px solid #e5e7eb;
-    padding: 0.5rem;
-    border-radius: 0.375rem;
-    transition: all 0.2s;
+#builder-container .panel__devices button,
+.gjs-pn-btn {
+    background-color: #ffffff !important;
+    border: 1px solid #e5e7eb !important;
+    padding: 0.5rem !important;
+    border-radius: 0.375rem !important;
+    transition: all 0.2s !important;
 }
 
 .dark #builder-container .panel__basic-actions button,
-.dark #builder-container .panel__devices button {
-    background-color: #2d3748;
-    border-color: #475569;
+.dark #builder-container .panel__devices button,
+.dark .gjs-pn-btn {
+    background-color: #2d3748 !important;
+    border-color: #475569 !important;
 }
 
 #builder-container .panel__basic-actions button:hover,
-#builder-container .panel__devices button:hover {
-    background-color: #f1f5f9;
-    border-color: #3b82f6;
+#builder-container .panel__devices button:hover,
+.gjs-pn-btn:hover {
+    background-color: #f1f5f9 !important;
+    border-color: #3b82f6 !important;
 }
 
 .dark #builder-container .panel__basic-actions button:hover,
-.dark #builder-container .panel__devices button:hover {
-    background-color: #374151;
-    border-color: #60a5fa;
+.dark #builder-container .panel__devices button:hover,
+.dark .gjs-pn-btn:hover {
+    background-color: #374151 !important;
+    border-color: #60a5fa !important;
 }
 
 /* Responsive adjustments */
