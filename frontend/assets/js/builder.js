@@ -718,26 +718,36 @@ export class BuilderPage {
                 this.editor.DomComponents.clear();
                 this.editor.CssComposer.clear();
 
-                // Load into editor - use HTML if grapejs_data contains HTML strings
+                // Determine how to load the page data
+                let useHtmlOutput = false;
+
+                // Check if grapejs_data has valid structure
                 if (page.grapejs_data && page.grapejs_data.pages && page.grapejs_data.pages[0]) {
                     const pageData = page.grapejs_data.pages[0];
                     const components = pageData.component?.components;
 
-                    // Check if components is a string (HTML) or an object/array
+                    // If components is a string, it means we stored HTML directly
+                    // Use html_output instead for cleaner loading
                     if (typeof components === 'string') {
-                        // If it's HTML string, parse it and set components
-                        this.editor.setComponents(components);
-                        // Set styles if available
-                        if (page.grapejs_data.styles && Array.isArray(page.grapejs_data.styles)) {
-                            this.editor.setStyle(page.grapejs_data.styles);
-                        }
-                    } else {
-                        // If it's proper GrapeJS structure, use loadProjectData
+                        useHtmlOutput = true;
+                    } else if (Array.isArray(components) && components.length > 0) {
+                        // Proper GrapeJS structure, use loadProjectData
                         this.editor.loadProjectData(page.grapejs_data);
+                    } else {
+                        // Empty or invalid components, fall back to html_output
+                        useHtmlOutput = true;
                     }
                 } else {
-                    // Fallback to loadProjectData
-                    this.editor.loadProjectData(page.grapejs_data);
+                    // No valid grapejs_data, use html_output
+                    useHtmlOutput = true;
+                }
+
+                // If we determined to use HTML output, set it directly
+                if (useHtmlOutput && page.html_output) {
+                    this.editor.setComponents(page.html_output);
+                    if (page.css_output) {
+                        this.editor.setStyle(page.css_output);
+                    }
                 }
 
                 // Update config panel (if it exists)
