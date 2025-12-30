@@ -714,8 +714,27 @@ export class BuilderPage {
                 const page = await response.json();
                 this.currentPage = page;
 
-                // Load into editor
-                this.editor.loadProjectData(page.grapejs_data);
+                // Load into editor - use HTML if grapejs_data contains HTML strings
+                if (page.grapejs_data && page.grapejs_data.pages && page.grapejs_data.pages[0]) {
+                    const pageData = page.grapejs_data.pages[0];
+                    const components = pageData.component?.components;
+
+                    // Check if components is a string (HTML) or an object/array
+                    if (typeof components === 'string') {
+                        // If it's HTML string, use setComponents to parse it
+                        this.editor.setComponents(components);
+                        // Also set styles if available
+                        if (page.grapejs_data.styles) {
+                            this.editor.setStyle(page.grapejs_data.styles);
+                        }
+                    } else {
+                        // If it's proper GrapeJS structure, use loadProjectData
+                        this.editor.loadProjectData(page.grapejs_data);
+                    }
+                } else {
+                    // Fallback to loadProjectData
+                    this.editor.loadProjectData(page.grapejs_data);
+                }
 
                 // Update config panel (if it exists)
                 if (this.configPanel) {
