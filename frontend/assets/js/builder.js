@@ -714,6 +714,10 @@ export class BuilderPage {
                 const page = await response.json();
                 this.currentPage = page;
 
+                // Clear the editor first to ensure clean slate
+                this.editor.DomComponents.clear();
+                this.editor.CssComposer.clear();
+
                 // Load into editor - use HTML if grapejs_data contains HTML strings
                 if (page.grapejs_data && page.grapejs_data.pages && page.grapejs_data.pages[0]) {
                     const pageData = page.grapejs_data.pages[0];
@@ -721,10 +725,10 @@ export class BuilderPage {
 
                     // Check if components is a string (HTML) or an object/array
                     if (typeof components === 'string') {
-                        // If it's HTML string, use setComponents to parse it
+                        // If it's HTML string, parse it and set components
                         this.editor.setComponents(components);
-                        // Also set styles if available
-                        if (page.grapejs_data.styles) {
+                        // Set styles if available
+                        if (page.grapejs_data.styles && Array.isArray(page.grapejs_data.styles)) {
                             this.editor.setStyle(page.grapejs_data.styles);
                         }
                     } else {
