@@ -4,6 +4,27 @@
  * Additional styles for the GrapeJS UI Builder
  */
 
+/* Override GrapeJS CSS variables to match theme */
+#builder-container,
+#gjs,
+#blocks {
+    --gjs-primary-color: #ffffff;
+    --gjs-secondary-color: #374151;
+    --gjs-tertiary-color: #e5e7eb;
+    --gjs-quaternary-color: #f9fafb;
+    --gjs-secondary-dark-color: #f3f4f6;
+}
+
+.dark #builder-container,
+.dark #gjs,
+.dark #blocks {
+    --gjs-primary-color: #1e293b;
+    --gjs-secondary-color: #e2e8f0;
+    --gjs-tertiary-color: #475569;
+    --gjs-quaternary-color: #334155;
+    --gjs-secondary-dark-color: #0f172a;
+}
+
 /* GrapeJS panel adjustments for dark mode */
 .gjs-pn-panel {
     background-color: var(--bg-color, #ffffff);
@@ -111,18 +132,31 @@
 }
 
 .gjs-category-title,
-#blocks .gjs-category-title {
+#blocks .gjs-category-title,
+.gjs-block-category .gjs-title {
     font-size: 0.75rem !important;
     font-weight: 600 !important;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: #6b7280;
+    text-transform: uppercase !important;
+    letter-spacing: 0.05em !important;
+    color: #6b7280 !important;
     padding: 0.5rem 0 !important;
+    background-color: transparent !important;
+    border: none !important;
 }
 
 .dark .gjs-category-title,
-.dark #blocks .gjs-category-title {
-    color: #9ca3af;
+.dark #blocks .gjs-category-title,
+.dark .gjs-block-category .gjs-title {
+    color: #9ca3af !important;
+    background-color: transparent !important;
+}
+
+/* Override GrapeJS background utility classes */
+.gjs-one-bg,
+.gjs-two-bg,
+.gjs-three-bg,
+.gjs-four-bg {
+    background-color: transparent !important;
 }
 
 /* Block label styling */
