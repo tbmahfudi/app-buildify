@@ -411,13 +411,13 @@ export class BuilderPage {
                     --gjs-secondary-dark-color: #f3f4f6;
                 }
 
-                .dark #builder-container,
-                .dark #gjs,
-                .dark #blocks,
-                .dark .gjs-one-bg,
-                .dark .gjs-two-bg,
-                .dark .gjs-three-bg,
-                .dark .gjs-four-bg {
+                [data-theme="dark"] #builder-container,
+                [data-theme="dark"] #gjs,
+                [data-theme="dark"] #blocks,
+                [data-theme="dark"] .gjs-one-bg,
+                [data-theme="dark"] .gjs-two-bg,
+                [data-theme="dark"] .gjs-three-bg,
+                [data-theme="dark"] .gjs-four-bg {
                     --gjs-primary-color: #1e293b;
                     --gjs-secondary-color: #e2e8f0;
                     --gjs-tertiary-color: #475569;
