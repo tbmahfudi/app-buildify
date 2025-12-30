@@ -347,17 +347,30 @@ export class BuilderConfigPanel {
     }
 
     setPageConfig(config) {
-        if (config.name) document.getElementById('config-page-name').value = config.name;
-        if (config.slug) document.getElementById('config-slug').value = config.slug;
-        if (config.description) document.getElementById('config-description').value = config.description;
-        if (config.module_name) document.getElementById('config-module').value = config.module_name;
-        if (config.route_path) document.getElementById('config-route-path').value = config.route_path;
-        if (config.menu_label) document.getElementById('config-menu-label').value = config.menu_label;
-        if (config.menu_icon) document.getElementById('config-menu-icon').value = config.menu_icon;
-        if (config.menu_parent) document.getElementById('config-menu-parent').value = config.menu_parent;
-        if (config.menu_order) document.getElementById('config-menu-order').value = config.menu_order;
-        if (config.show_in_menu !== undefined) document.getElementById('config-show-in-menu').checked = config.show_in_menu;
-        if (config.permission_code) document.getElementById('config-permission-code').value = config.permission_code;
-        if (config.permission_scope) document.getElementById('config-permission-scope').value = config.permission_scope;
+        const nameEl = document.getElementById('config-page-name');
+        const slugEl = document.getElementById('config-slug');
+        const descEl = document.getElementById('config-description');
+        const moduleEl = document.getElementById('config-module');
+        const routeEl = document.getElementById('config-route-path');
+        const menuLabelEl = document.getElementById('config-menu-label');
+        const menuIconEl = document.getElementById('config-menu-icon');
+        const menuParentEl = document.getElementById('config-menu-parent');
+        const menuOrderEl = document.getElementById('config-menu-order');
+        const showInMenuEl = document.getElementById('config-show-in-menu');
+        const permCodeEl = document.getElementById('config-permission-code');
+        const permScopeEl = document.getElementById('config-permission-scope');
+
+        if (config.name && nameEl) nameEl.value = config.name;
+        if (config.slug && slugEl) slugEl.value = config.slug;
+        if (config.description && descEl) descEl.value = config.description;
+        if (config.module_name && moduleEl) moduleEl.value = config.module_name;
+        if (config.route_path && routeEl) routeEl.value = config.route_path;
+        if (config.menu_label && menuLabelEl) menuLabelEl.value = config.menu_label;
+        if (config.menu_icon && menuIconEl) menuIconEl.value = config.menu_icon;
+        if (config.menu_parent && menuParentEl) menuParentEl.value = config.menu_parent;
+        if (config.menu_order && menuOrderEl) menuOrderEl.value = config.menu_order;
+        if (config.show_in_menu !== undefined && showInMenuEl) showInMenuEl.checked = config.show_in_menu;
+        if (config.permission_code && permCodeEl) permCodeEl.value = config.permission_code;
+        if (config.permission_scope && permScopeEl) permScopeEl.value = config.permission_scope;
     }
 }
