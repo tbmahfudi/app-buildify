@@ -27,7 +27,7 @@ div.flex-col {
 
 /* Target the navbar/header specifically */
 .app-header,
-nav,
+#app > nav,
 header {
   margin: 0 !important;
   margin-block: 0 !important;
@@ -215,7 +215,7 @@ body.density-comfortable {
 }
 
 /* Remove gap between navbar and content for comfortable mode */
-body.density-comfortable nav,
+body.density-comfortable #app > nav,
 body.density-comfortable .app-header,
 body.density-comfortable header {
   margin: 0 !important;
@@ -268,7 +268,7 @@ body.density-normal {
 }
 
 /* Remove gap between navbar and content for normal mode */
-body.density-normal nav,
+body.density-normal #app > nav,
 body.density-normal .app-header,
 body.density-normal header {
   margin: 0 !important;
@@ -294,7 +294,7 @@ body.density-compact {
 }
 
 /* Remove gap between navbar and content for compact mode */
-body.density-compact nav,
+body.density-compact #app > nav,
 body.density-compact .app-header,
 body.density-compact header {
   margin: 0 !important;
@@ -1212,7 +1212,7 @@ body.density-compact .sidebar-nav {
    ============================================ */
 
 /* Base navbar styles - keep small and compact */
-nav,
+#app > nav,
 .navbar {
   padding: 0.25rem 1rem !important;
   min-height: auto !important;
@@ -1220,12 +1220,12 @@ nav,
 }
 
 /* Ensure navbar icon-only buttons are square (not buttons with text) */
-nav button.p-2:has(i[class*="ph-"]),
-nav button.p-1\.5:has(i[class*="ph-"]),
-nav button.p-1:has(i[class*="ph-"]),
-nav button.relative.p-2:has(i[class*="ph-"]),
-nav button.relative.p-1\.5:has(i[class*="ph-"]),
-nav button.relative.p-1:has(i[class*="ph-"]) {
+#app > nav button.p-2:has(i[class*="ph-"]),
+#app > nav button.p-1\.5:has(i[class*="ph-"]),
+#app > nav button.p-1:has(i[class*="ph-"]),
+#app > nav button.relative.p-2:has(i[class*="ph-"]),
+#app > nav button.relative.p-1\.5:has(i[class*="ph-"]),
+#app > nav button.relative.p-1:has(i[class*="ph-"]) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1233,7 +1233,7 @@ nav button.relative.p-1:has(i[class*="ph-"]) {
 }
 
 /* Navbar icons - ensure square dimensions */
-nav i[class*="ph-"] {
+#app > nav i[class*="ph-"] {
   width: 1em;
   height: 1em;
   display: inline-flex;
@@ -1242,23 +1242,23 @@ nav i[class*="ph-"] {
 }
 
 /* Keep navbar elements compact */
-nav .flex {
+#app > nav .flex {
   line-height: 1.2;
 }
 
 /* Navbar logo should be small */
-nav .w-10,
-nav .h-10 {
+#app > nav .w-10,
+#app > nav .h-10 {
   width: 1.75rem !important;
   height: 1.75rem !important;
 }
 
 /* Override density mode padding for navbar - keep it compact */
-body.density-comfortable nav,
+body.density-comfortable #app > nav,
 body.density-comfortable .navbar,
-body.density-normal nav,
+body.density-normal #app > nav,
 body.density-normal .navbar,
-body.density-compact nav,
+body.density-compact #app > nav,
 body.density-compact .navbar {
   padding: 0.25rem 1rem !important;
   min-height: auto !important;
@@ -1266,55 +1266,55 @@ body.density-compact .navbar {
 }
 
 /* Ensure navbar elements stay small in all density modes */
-body.density-comfortable nav,
+body.density-comfortable #app > nav,
 body.density-comfortable .navbar,
-body.density-normal nav,
+body.density-normal #app > nav,
 body.density-normal .navbar,
-body.density-compact nav,
+body.density-compact #app > nav,
 body.density-compact .navbar {
   font-size: 0.875rem !important;
   line-height: 1.2 !important;
 }
 
 /* Keep navbar buttons compact in all modes */
-body.density-comfortable nav button,
+body.density-comfortable #app > nav button,
 body.density-comfortable .navbar button,
-body.density-normal nav button,
+body.density-normal #app > nav button,
 body.density-normal .navbar button,
-body.density-compact nav button,
+body.density-compact #app > nav button,
 body.density-compact .navbar button {
   padding: 0.25rem 0.5rem !important;
   font-size: 0.875rem !important;
 }
 
 /* Keep navbar icons small */
-body.density-comfortable nav i[class*="ph-"],
+body.density-comfortable #app > nav i[class*="ph-"],
 body.density-comfortable .navbar i[class*="ph-"],
-body.density-normal nav i[class*="ph-"],
+body.density-normal #app > nav i[class*="ph-"],
 body.density-normal .navbar i[class*="ph-"],
-body.density-compact nav i[class*="ph-"],
+body.density-compact #app > nav i[class*="ph-"],
 body.density-compact .navbar i[class*="ph-"] {
   width: 1em !important;
   height: 1em !important;
 }
 
 /* Keep navbar logo small in all modes */
-body.density-comfortable nav .w-10,
-body.density-comfortable nav .h-10,
-body.density-normal nav .w-10,
-body.density-normal nav .h-10,
-body.density-compact nav .w-10,
-body.density-compact nav .h-10 {
+body.density-comfortable #app > nav .w-10,
+body.density-comfortable #app > nav .h-10,
+body.density-normal #app > nav .w-10,
+body.density-normal #app > nav .h-10,
+body.density-compact #app > nav .w-10,
+body.density-compact #app > nav .h-10 {
   width: 1.75rem !important;
   height: 1.75rem !important;
 }
 
 /* Keep navbar gaps small */
-body.density-comfortable nav .gap-4,
+body.density-comfortable #app > nav .gap-4,
 body.density-comfortable .navbar .gap-4,
-body.density-normal nav .gap-4,
+body.density-normal #app > nav .gap-4,
 body.density-normal .navbar .gap-4,
-body.density-compact nav .gap-4,
+body.density-compact #app > nav .gap-4,
 body.density-compact .navbar .gap-4 {
   gap: 0.5rem !important;
 }
