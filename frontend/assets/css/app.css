@@ -253,6 +253,12 @@ body.density-comfortable .nav-link {
   margin-right: 0.5rem;
 }
 
+/* Add top spacing to first menu item in comfortable mode expanded sidebar */
+body.density-comfortable #sidebar-nav > a:first-child,
+body.density-comfortable #sidebar-nav > .nav-link:first-child {
+  margin-top: 0.5rem;
+}
+
 body.density-comfortable .nav-icon {
   width: calc(40px * 1.15);
   height: calc(40px * 1.15);
@@ -274,6 +280,12 @@ body.density-normal .nav-link {
   padding: 0.75rem 0.5rem;
   margin-left: 0.5rem;
   margin-right: 0.5rem;
+}
+
+/* Add top spacing to first menu item in normal mode expanded sidebar */
+body.density-normal #sidebar-nav > a:first-child,
+body.density-normal #sidebar-nav > .nav-link:first-child {
+  margin-top: 0.5rem;
 }
 
 /* Remove gap between navbar and content for normal mode */
@@ -958,6 +970,12 @@ body {
 
 body.sidebar-collapsed .app-sidebar {
   width: 88px;
+}
+
+/* Reduce sidebar width in compact mode icon-only */
+body.density-compact.sidebar-collapsed .app-sidebar,
+body.density-compact .sidebar-collapsed .app-sidebar {
+  width: 64px;
 }
 
 body.sidebar-collapsed .brand-text,
