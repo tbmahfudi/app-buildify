@@ -1030,10 +1030,10 @@ body.sidebar-collapsed .nav-link-content {
 }
 
 body.sidebar-collapsed .nav-icon {
-  width: 52px;
-  height: 52px;
+  width: 60px;
+  height: 60px;
   margin: 0 auto;
-  font-size: 1.5rem;
+  font-size: 1.75rem;
 }
 
 body.sidebar-collapsed .nav-link::after {
@@ -1454,7 +1454,7 @@ body.density-compact .navbar .gap-4 {
 
 /* Override icon size in collapsed sidebar */
 .sidebar-collapsed .sidebar-menu-item i[class*="ph-"] {
-  font-size: 1.5rem !important;
+  font-size: 1.75rem !important;
   width: 100%;
   text-align: center;
 }
@@ -1468,7 +1468,7 @@ body.density-compact .sidebar-collapsed .sidebar-menu-item {
 /* Compact mode collapsed sidebar icons */
 body.density-compact.sidebar-collapsed .sidebar-menu-item i[class*="ph-"],
 body.density-compact .sidebar-collapsed .sidebar-menu-item i[class*="ph-"] {
-  font-size: 1.35rem !important;
+  font-size: 1.6rem !important;
 }
 
 /* Fix parent menu items with submenu to align properly */
