@@ -1365,12 +1365,6 @@ body.density-compact .navbar .gap-4 {
    SIDEBAR COLLAPSE FUNCTIONALITY
    ============================================ */
 
-/* Collapsed sidebar */
-.sidebar-collapsed {
-  width: 64px !important;
-  min-width: 64px !important;
-}
-
 /* Hide menu labels when sidebar is collapsed */
 .sidebar-collapsed .sidebar-menu-label,
 .sidebar-collapsed .sidebar-footer-content {
