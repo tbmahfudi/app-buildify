@@ -1202,14 +1202,19 @@ body.density-compact .sidebar-nav {
    NAVBAR - CONSISTENTLY SMALL ACROSS ALL THEMES
    ============================================ */
 
-/* Base navbar styles - keep small */
+/* Base navbar styles - keep small and compact */
+nav,
 .navbar {
-  padding: 0.5rem 1rem !important;
+  padding: 0.25rem 1rem !important;
+  min-height: auto !important;
+  height: auto !important;
 }
 
 /* Ensure navbar icon buttons are square */
 nav button:has(i[class*="ph-"]),
-nav .p-2:has(i[class*="ph-"]) {
+nav .p-2:has(i[class*="ph-"]),
+nav .p-1\.5:has(i[class*="ph-"]),
+nav .p-1:has(i[class*="ph-"]) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1225,48 +1230,81 @@ nav i[class*="ph-"] {
   justify-content: center;
 }
 
-/* Override density mode padding for navbar */
+/* Keep navbar elements compact */
+nav .flex {
+  line-height: 1.2;
+}
+
+/* Navbar logo should be small */
+nav .w-10,
+nav .h-10 {
+  width: 1.75rem !important;
+  height: 1.75rem !important;
+}
+
+/* Override density mode padding for navbar - keep it compact */
+body.density-comfortable nav,
 body.density-comfortable .navbar,
+body.density-normal nav,
 body.density-normal .navbar,
+body.density-compact nav,
 body.density-compact .navbar {
-  padding: 0.5rem 1rem !important;
+  padding: 0.25rem 1rem !important;
+  min-height: auto !important;
+  height: auto !important;
 }
 
 /* Ensure navbar elements stay small in all density modes */
+body.density-comfortable nav,
 body.density-comfortable .navbar,
+body.density-normal nav,
 body.density-normal .navbar,
+body.density-compact nav,
 body.density-compact .navbar {
   font-size: 0.875rem !important;
+  line-height: 1.2 !important;
 }
 
-/* Keep navbar buttons small in all modes */
+/* Keep navbar buttons compact in all modes */
+body.density-comfortable nav button,
 body.density-comfortable .navbar button,
+body.density-normal nav button,
 body.density-normal .navbar button,
+body.density-compact nav button,
 body.density-compact .navbar button {
-  padding: 0.375rem 0.75rem !important;
+  padding: 0.25rem 0.5rem !important;
   font-size: 0.875rem !important;
 }
 
 /* Keep navbar icons small */
-body.density-comfortable .navbar svg,
-body.density-normal .navbar svg,
-body.density-compact .navbar svg {
-  width: 1rem !important;
-  height: 1rem !important;
+body.density-comfortable nav i[class*="ph-"],
+body.density-comfortable .navbar i[class*="ph-"],
+body.density-normal nav i[class*="ph-"],
+body.density-normal .navbar i[class*="ph-"],
+body.density-compact nav i[class*="ph-"],
+body.density-compact .navbar i[class*="ph-"] {
+  width: 1em !important;
+  height: 1em !important;
 }
 
-/* Keep navbar logo small */
-body.density-comfortable .navbar > div > div:first-child > div,
-body.density-normal .navbar > div > div:first-child > div,
-body.density-compact .navbar > div > div:first-child > div {
-  width: 1.5rem !important;
-  height: 1.5rem !important;
+/* Keep navbar logo small in all modes */
+body.density-comfortable nav .w-10,
+body.density-comfortable nav .h-10,
+body.density-normal nav .w-10,
+body.density-normal nav .h-10,
+body.density-compact nav .w-10,
+body.density-compact nav .h-10 {
+  width: 1.75rem !important;
+  height: 1.75rem !important;
 }
 
 /* Keep navbar gaps small */
-body.density-comfortable .navbar .gap-2,
-body.density-normal .navbar .gap-2,
-body.density-compact .navbar .gap-2 {
+body.density-comfortable nav .gap-4,
+body.density-comfortable .navbar .gap-4,
+body.density-normal nav .gap-4,
+body.density-normal .navbar .gap-4,
+body.density-compact nav .gap-4,
+body.density-compact .navbar .gap-4 {
   gap: 0.5rem !important;
 }
 
