@@ -1445,10 +1445,29 @@ body.density-compact .navbar .gap-4 {
 /* Center menu items when sidebar is collapsed */
 .sidebar-collapsed .sidebar-menu-item {
   justify-content: center;
-  padding-left: 0.5rem;
-  padding-right: 0.5rem;
+  padding: 0.75rem 0.5rem !important;
+  gap: 0 !important;
   width: 100%;
   max-width: 100%;
+}
+
+/* Override icon size in collapsed sidebar */
+.sidebar-collapsed .sidebar-menu-item i[class*="ph-"] {
+  font-size: 1.25rem !important;
+  width: 100%;
+  text-align: center;
+}
+
+/* Compact mode collapsed sidebar menu items */
+body.density-compact.sidebar-collapsed .sidebar-menu-item,
+body.density-compact .sidebar-collapsed .sidebar-menu-item {
+  padding: 0.5rem 0.25rem !important;
+}
+
+/* Compact mode collapsed sidebar icons */
+body.density-compact.sidebar-collapsed .sidebar-menu-item i[class*="ph-"],
+body.density-compact .sidebar-collapsed .sidebar-menu-item i[class*="ph-"] {
+  font-size: 1.1rem !important;
 }
 
 /* Fix parent menu items with submenu to align properly */
@@ -1516,6 +1535,22 @@ div.flex.justify-between.px-4.py-3 {
 /* Ensure menu items with tooltips are positioned correctly */
 .sidebar-menu-item {
   position: relative;
+}
+
+/* Expanded sidebar menu items - add margins for normal mode */
+body.density-normal .sidebar-menu-item:not(.sidebar-collapsed .sidebar-menu-item) {
+  margin-left: 0.75rem;
+  margin-right: 0.75rem;
+  padding-left: 0.5rem !important;
+  padding-right: 0.5rem !important;
+}
+
+/* Expanded sidebar menu items - add margins for comfortable mode */
+body.density-comfortable .sidebar-menu-item:not(.sidebar-collapsed .sidebar-menu-item) {
+  margin-left: 0.75rem;
+  margin-right: 0.75rem;
+  padding-left: calc(0.5rem * 1.25) !important;
+  padding-right: calc(0.5rem * 1.25) !important;
 }
 
 /* Active state for collapsed menu items */
