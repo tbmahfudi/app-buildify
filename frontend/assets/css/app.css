@@ -1210,11 +1210,13 @@ nav,
   height: auto !important;
 }
 
-/* Ensure navbar icon buttons are square */
-nav button:has(i[class*="ph-"]),
-nav .p-2:has(i[class*="ph-"]),
-nav .p-1\.5:has(i[class*="ph-"]),
-nav .p-1:has(i[class*="ph-"]) {
+/* Ensure navbar icon-only buttons are square (not buttons with text) */
+nav button.p-2:has(i[class*="ph-"]),
+nav button.p-1\.5:has(i[class*="ph-"]),
+nav button.p-1:has(i[class*="ph-"]),
+nav button.relative.p-2:has(i[class*="ph-"]),
+nav button.relative.p-1\.5:has(i[class*="ph-"]),
+nav button.relative.p-1:has(i[class*="ph-"]) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
