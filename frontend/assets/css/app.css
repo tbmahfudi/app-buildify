@@ -262,7 +262,7 @@ body.density-comfortable #sidebar-nav > .nav-link:first-child {
 body.density-comfortable .nav-icon {
   width: calc(40px * 1.15);
   height: calc(40px * 1.15);
-  font-size: calc(1.15rem * 1.15);
+  font-size: calc(1.35rem * 1.15);
 }
 
 body.density-comfortable .sidebar-inner {
@@ -355,7 +355,7 @@ body.density-compact .nav-link {
 body.density-compact .nav-icon {
   width: calc(36px * 0.8);
   height: calc(36px * 0.8);
-  font-size: calc(1rem * 0.85);
+  font-size: calc(1.25rem * 0.85);
   border-radius: calc(10px * 0.8);
 }
 
@@ -715,7 +715,7 @@ body {
   border-radius: 12px;
   background: rgba(59, 130, 246, 0.08);
   color: rgba(59, 130, 246, 0.95);
-  font-size: 1rem;
+  font-size: 1.25rem;
 }
 
 .nav-label {
@@ -1030,9 +1030,10 @@ body.sidebar-collapsed .nav-link-content {
 }
 
 body.sidebar-collapsed .nav-icon {
-  width: 48px;
-  height: 48px;
+  width: 52px;
+  height: 52px;
   margin: 0 auto;
+  font-size: 1.5rem;
 }
 
 body.sidebar-collapsed .nav-link::after {
@@ -1453,7 +1454,7 @@ body.density-compact .navbar .gap-4 {
 
 /* Override icon size in collapsed sidebar */
 .sidebar-collapsed .sidebar-menu-item i[class*="ph-"] {
-  font-size: 1.25rem !important;
+  font-size: 1.5rem !important;
   width: 100%;
   text-align: center;
 }
@@ -1467,7 +1468,7 @@ body.density-compact .sidebar-collapsed .sidebar-menu-item {
 /* Compact mode collapsed sidebar icons */
 body.density-compact.sidebar-collapsed .sidebar-menu-item i[class*="ph-"],
 body.density-compact .sidebar-collapsed .sidebar-menu-item i[class*="ph-"] {
-  font-size: 1.1rem !important;
+  font-size: 1.35rem !important;
 }
 
 /* Fix parent menu items with submenu to align properly */
