@@ -1207,6 +1207,24 @@ body.density-compact .sidebar-nav {
   padding: 0.5rem 1rem !important;
 }
 
+/* Ensure navbar icon buttons are square */
+nav button:has(i[class*="ph-"]),
+nav .p-2:has(i[class*="ph-"]) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 1;
+}
+
+/* Navbar icons - ensure square dimensions */
+nav i[class*="ph-"] {
+  width: 1em;
+  height: 1em;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
 /* Override density mode padding for navbar */
 body.density-comfortable .navbar,
 body.density-normal .navbar,
@@ -1405,6 +1423,24 @@ body.density-compact .navbar .gap-2 {
 .sidebar-collapsed .sidebar-menu-item.bg-blue-50 {
   background-color: #eff6ff;
   color: #2563eb;
+}
+
+/* ============================================
+   PHOSPHOR ICONS - FIX DIMENSIONS
+   ============================================ */
+
+/* Ensure all Phosphor icons display as squares, not rectangles */
+i[class*="ph-"],
+.ph,
+.ph-bold,
+.ph-duotone,
+.ph-fill,
+.ph-light,
+.ph-thin {
+  display: inline-block;
+  line-height: 1 !important;
+  vertical-align: middle;
+  text-align: center;
 }
 
 /* Phosphor icon duotone colors - Make them colorful! */
