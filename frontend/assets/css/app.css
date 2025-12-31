@@ -971,17 +971,26 @@ body.sidebar-collapsed .sidebar-header {
 }
 
 body.sidebar-collapsed .nav-link {
-  padding: 0.9rem 0.75rem;
+  padding: 0.75rem;
   justify-items: center;
+  width: 100%;
+  max-width: 100%;
+}
+
+body.sidebar-collapsed .nav-link:hover,
+body.sidebar-collapsed .nav-link:focus {
+  transform: none;
 }
 
 body.sidebar-collapsed .nav-link-content {
   justify-content: center;
+  width: 100%;
 }
 
 body.sidebar-collapsed .nav-icon {
   width: 48px;
   height: 48px;
+  margin: 0 auto;
 }
 
 body.sidebar-collapsed .nav-link::after {
@@ -1400,8 +1409,22 @@ body.density-compact .navbar .gap-4 {
 /* Center menu items when sidebar is collapsed */
 .sidebar-collapsed .sidebar-menu-item {
   justify-content: center;
-  padding-left: 0;
-  padding-right: 0;
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+  width: 100%;
+  max-width: 100%;
+}
+
+/* Fix parent menu items with submenu to align properly */
+.sidebar-menu-item.flex.justify-between,
+div.flex.justify-between.px-4.py-3 {
+  gap: 0.5rem;
+}
+
+/* Ensure submenu arrow doesn't push content too far right */
+.submenu-arrow {
+  margin-left: auto;
+  flex-shrink: 0;
 }
 
 /* Hide submenu arrow when sidebar is collapsed */
