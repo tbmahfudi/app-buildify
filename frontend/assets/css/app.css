@@ -249,8 +249,8 @@ body.density-comfortable .app-content {
 body.density-comfortable .nav-link {
   padding: calc(0.75rem * 1.25) calc(0.5rem * 1.25);
   margin-bottom: calc(0.25rem * 1.25);
-  margin-left: 0.75rem;
-  margin-right: 0.75rem;
+  margin-left: 0.5rem;
+  margin-right: 0.5rem;
 }
 
 /* Add top spacing to first menu item in comfortable mode expanded sidebar */
@@ -278,8 +278,8 @@ body.density-normal {
 /* Reduce hover highlight width in normal mode expanded sidebar */
 body.density-normal .nav-link {
   padding: 0.75rem 0.5rem;
-  margin-left: 0.75rem;
-  margin-right: 0.75rem;
+  margin-left: 0.5rem;
+  margin-right: 0.5rem;
 }
 
 /* Add top spacing to first menu item in normal mode expanded sidebar */
@@ -1476,6 +1476,30 @@ div.flex.justify-between.px-4.py-3 {
   gap: 0.5rem;
 }
 
+/* Apply margins to submenu parent items - Normal mode */
+body.density-normal div.flex.justify-between.px-4.py-3:not(.sidebar-collapsed *) {
+  margin-left: 0.5rem !important;
+  margin-right: 0.5rem !important;
+  padding-left: 0.5rem !important;
+  padding-right: 0.5rem !important;
+}
+
+/* Apply margins to submenu parent items - Comfortable mode */
+body.density-comfortable div.flex.justify-between.px-4.py-3:not(.sidebar-collapsed *) {
+  margin-left: 0.5rem !important;
+  margin-right: 0.5rem !important;
+  padding-left: calc(0.5rem * 1.25) !important;
+  padding-right: calc(0.5rem * 1.25) !important;
+}
+
+/* Apply margins to submenu parent items - Compact mode */
+body.density-compact div.flex.justify-between.px-4.py-3:not(.sidebar-collapsed *) {
+  margin-left: 0.25rem !important;
+  margin-right: 0.25rem !important;
+  padding-left: 0.25rem !important;
+  padding-right: 0.25rem !important;
+}
+
 /* Ensure submenu arrow doesn't push content too far right */
 .submenu-arrow {
   margin-left: auto;
@@ -1539,18 +1563,24 @@ div.flex.justify-between.px-4.py-3 {
 
 /* Expanded sidebar menu items - add margins for normal mode */
 body.density-normal .sidebar-menu-item:not(.sidebar-collapsed .sidebar-menu-item) {
-  margin-left: 0.75rem;
-  margin-right: 0.75rem;
+  margin-left: 0.5rem;
+  margin-right: 0.5rem;
   padding-left: 0.5rem !important;
   padding-right: 0.5rem !important;
 }
 
 /* Expanded sidebar menu items - add margins for comfortable mode */
 body.density-comfortable .sidebar-menu-item:not(.sidebar-collapsed .sidebar-menu-item) {
-  margin-left: 0.75rem;
-  margin-right: 0.75rem;
+  margin-left: 0.5rem;
+  margin-right: 0.5rem;
   padding-left: calc(0.5rem * 1.25) !important;
   padding-right: calc(0.5rem * 1.25) !important;
+}
+
+/* Expanded sidebar menu items - compact mode */
+body.density-compact .sidebar-menu-item:not(.sidebar-collapsed .sidebar-menu-item) {
+  margin-left: 0.25rem;
+  margin-right: 0.25rem;
 }
 
 /* Active state for collapsed menu items */
