@@ -334,19 +334,77 @@ export default {
  * Initialize the RBAC management interface when this script is loaded
  */
 
+/**
+ * Initialize RBAC Manager with DOM ready check
+ */
+async function initializeRBAC() {
+  console.log('RBAC route detected, initializing RBAC Manager...');
+  try {
+    await initRBACManager();
+    console.log('RBAC Manager initialized successfully');
+  } catch (error) {
+    console.error('Failed to initialize RBAC Manager:', error);
+  }
+}
+
+/**
+ * Check if required DOM elements are present
+ */
+function isRBACDomReady() {
+  const requiredElements = [
+    document.getElementById('content-dashboard'),
+    document.querySelector('.rbac-tab')
+  ];
+  return requiredElements.every(el => el !== null);
+}
+
+/**
+ * Wait for DOM to be ready, then initialize
+ */
+function initWhenReady() {
+  if (isRBACDomReady()) {
+    // DOM is ready, initialize immediately
+    initializeRBAC();
+  } else {
+    // DOM not ready yet, wait for next frame and check again
+    requestAnimationFrame(() => {
+      if (isRBACDomReady()) {
+        initializeRBAC();
+      } else {
+        // If still not ready after one frame, use MutationObserver
+        const observer = new MutationObserver((mutations, obs) => {
+          if (isRBACDomReady()) {
+            obs.disconnect();
+            initializeRBAC();
+          }
+        });
+
+        const contentElement = document.getElementById('content');
+        if (contentElement) {
+          observer.observe(contentElement, {
+            childList: true,
+            subtree: true
+          });
+
+          // Safety timeout: disconnect observer after 5 seconds
+          setTimeout(() => {
+            observer.disconnect();
+            console.warn('RBAC DOM ready timeout - forcing initialization');
+            initializeRBAC();
+          }, 5000);
+        } else {
+          // Fallback: just initialize anyway
+          initializeRBAC();
+        }
+      }
+    });
+  }
+}
+
 // Check if we're on the RBAC route and initialize
 const currentRoute = window.location.hash.slice(1);
 if (currentRoute === 'rbac') {
-  console.log('RBAC route detected, initializing RBAC Manager...');
-  // Use setTimeout to ensure DOM is ready
-  setTimeout(async () => {
-    try {
-      await initRBACManager();
-      console.log('RBAC Manager initialized successfully');
-    } catch (error) {
-      console.error('Failed to initialize RBAC Manager:', error);
-    }
-  }, 100);
+  initWhenReady();
 }
 
 // Also listen for future route loads (in case page is cached)
@@ -354,12 +412,6 @@ document.addEventListener('route:loaded', async (event) => {
   const { route } = event.detail;
 
   if (route === 'rbac') {
-    console.log('RBAC route loaded event, initializing RBAC Manager...');
-    try {
-      await initRBACManager();
-      console.log('RBAC Manager initialized successfully');
-    } catch (error) {
-      console.error('Failed to initialize RBAC Manager:', error);
-    }
+    initWhenReady();
   }
 });
