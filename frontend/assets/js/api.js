@@ -36,13 +36,19 @@ function loadTokens() {
       if (t.access && typeof t.access === 'string' &&
           t.refresh && typeof t.refresh === 'string') {
         tokens = t;
+        console.log('[API] Tokens loaded from localStorage');
       } else {
         // Invalid token structure, clear it
         console.warn('Invalid token structure detected, clearing tokens');
         clearTokens();
       }
+    } else {
+      console.warn('[API] No tokens found in localStorage');
     }
     tenantId = localStorage.getItem("tenantId") || null;
+    if (tenantId) {
+      console.log('[API] Tenant ID loaded:', tenantId);
+    }
   } catch (error) {
     console.error('Error loading tokens:', error);
     clearTokens();
@@ -74,7 +80,12 @@ function setTenant(id) {
 }
 async function apiFetch(path, opts = {}) {
   const headers = opts.headers ? { ...opts.headers } : {};
-  if (tokens.access) headers["Authorization"] = `Bearer ${tokens.access}`;
+  if (tokens.access) {
+    headers["Authorization"] = `Bearer ${tokens.access}`;
+    console.log(`[API] Request to ${path} with auth token`);
+  } else {
+    console.warn(`[API] Request to ${path} WITHOUT auth token!`);
+  }
   if (tenantId) headers["X-Tenant-Id"] = tenantId;
 
   // Automatically set Content-Type for requests with a body
@@ -83,7 +94,9 @@ async function apiFetch(path, opts = {}) {
   }
 
   const res = await fetch(withBase(path), { ...opts, headers });
+
   if (res.status === 401 && tokens.refresh) {
+    console.log('[API] Received 401, attempting token refresh...');
     const r = await fetch(withBase('/auth/refresh'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -94,9 +107,15 @@ async function apiFetch(path, opts = {}) {
       tokens.access = j.access_token;
       tokens.refresh = j.refresh_token;
       saveTokens();
+      console.log('[API] Token refreshed successfully, retrying request');
       return apiFetch(path, opts); // retry
+    } else {
+      console.error('[API] Token refresh failed:', r.status, await r.text());
     }
+  } else if (res.status === 401) {
+    console.error('[API] Received 401 but no refresh token available');
   }
+
   return res;
 }
 
