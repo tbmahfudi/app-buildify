@@ -352,10 +352,20 @@ async function initializeRBAC() {
  */
 function isRBACDomReady() {
   const requiredElements = [
-    document.getElementById('content-dashboard'),
-    document.querySelector('.rbac-tab')
+    'content-dashboard',
+    'stat-roles',
+    'stat-permissions',
+    'stat-groups',
+    'stat-users'
   ];
-  return requiredElements.every(el => el !== null);
+
+  // Check if all required elements exist
+  const allExist = requiredElements.every(id => document.getElementById(id) !== null);
+
+  // Also check for at least one tab
+  const hasTab = document.querySelector('.rbac-tab') !== null;
+
+  return allExist && hasTab;
 }
 
 /**
