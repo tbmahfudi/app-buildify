@@ -982,7 +982,7 @@ function createCollapsedSubmenuPopup(item) {
 
         // Create nested popup menu
         console.log('[Menu Debug] Creating nested popup for:', subitem.title, 'with children:', subitemChildren);
-        const nestedPopup = createNestedPopup(subitem, popup);
+        const nestedPopup = createNestedPopup(subitem, popup, 2); // Pass level 2
         childPopups.push(nestedPopup);
         document.body.appendChild(nestedPopup);
 
@@ -1074,15 +1074,21 @@ function createCollapsedSubmenuPopup(item) {
   // Enhanced mouseleave to check child popups and their descendants
   popup.addEventListener('mouseleave', () => {
     setTimeout(() => {
-      // Check if any child or descendant is hovered or active
+      // Check if any child or descendant is hovered or active (including hasActiveChild)
       const isAnyDescendantActive = () => {
         if (!popup.childPopups) return false;
 
         for (const child of popup.childPopups) {
-          if (child.matches(':hover') || child.isActive) return true;
+          if (child.matches(':hover') || child.isActive || child.hasActiveChild) return true;
           // Check child's children (for 3-level menus)
-          if (child.childPopups && child.childPopups.some(grandchild => grandchild.matches(':hover') || grandchild.isActive)) {
-            return true;
+          if (child.childPopups) {
+            for (const grandchild of child.childPopups) {
+              if (grandchild.matches(':hover') || grandchild.isActive || grandchild.hasActiveChild) return true;
+              // Check grandchild's children (for 4-level menus if they exist)
+              if (grandchild.childPopups && grandchild.childPopups.some(ggc => ggc.matches(':hover') || ggc.isActive)) {
+                return true;
+              }
+            }
           }
         }
         return false;
@@ -1115,8 +1121,8 @@ function createCollapsedSubmenuPopup(item) {
 }
 
 // Helper function to create nested popup (for second level)
-function createNestedPopup(item, parentPopup) {
-  console.log('[Menu Debug] createNestedPopup called for:', item.title, 'item:', item);
+function createNestedPopup(item, parentPopup, level = 2) {
+  console.log('[Menu Debug] createNestedPopup called for:', item.title, 'level:', level, 'item:', item);
   const nestedPopup = document.createElement('div');
 
   // Check if all items are final - use grid layout
@@ -1132,7 +1138,8 @@ function createNestedPopup(item, parentPopup) {
   if (allItemsFinal) {
     // Grid layout for final items - vertical priority
     nestedPopup.className = 'fixed hidden bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden';
-    nestedPopup.style.zIndex = '100000';
+    // Increment z-index based on level to ensure proper stacking
+    nestedPopup.style.zIndex = (99999 + level * 1000).toString();
 
     const nestedContent = document.createElement('div');
 
@@ -1206,7 +1213,8 @@ function createNestedPopup(item, parentPopup) {
     // List layout for items with nested submenus
     console.log('[Menu Debug] createNestedPopup: Using list layout for items with submenus');
     nestedPopup.className = 'fixed hidden bg-white border border-gray-200 rounded-xl shadow-xl min-w-[200px] overflow-hidden';
-    nestedPopup.style.zIndex = '100000';
+    // Increment z-index based on level to ensure proper stacking
+    nestedPopup.style.zIndex = (99999 + level * 1000).toString();
 
     const nestedContent = document.createElement('div');
     nestedContent.className = 'py-1';
@@ -1243,7 +1251,7 @@ function createNestedPopup(item, parentPopup) {
         `;
 
         // Recursively create another nested popup for this item's children
-        const deeperNestedPopup = createNestedPopup(nestedItem, nestedPopup);
+        const deeperNestedPopup = createNestedPopup(nestedItem, nestedPopup, level + 1); // Increment level
         childPopups.push(deeperNestedPopup);
         document.body.appendChild(deeperNestedPopup);
 
@@ -1326,6 +1334,7 @@ function createNestedPopup(item, parentPopup) {
 
     // Store child popups for tracking
     nestedPopup.childPopups = childPopups;
+    nestedPopup.hasActiveChild = false;
 
     nestedPopup.appendChild(nestedContent);
   }
@@ -1333,12 +1342,30 @@ function createNestedPopup(item, parentPopup) {
   // Enhanced mouseleave to keep both popup and parent visible when content is hovered
   nestedPopup.addEventListener('mouseleave', () => {
     setTimeout(() => {
-      if (!nestedPopup.matches(':hover')) {
+      // Check if any child popup is active or hovered before hiding
+      const isAnyChildActive = () => {
+        if (!nestedPopup.childPopups) return false;
+
+        for (const child of nestedPopup.childPopups) {
+          if (child.matches(':hover') || child.isActive) return true;
+          // Check grandchildren (for 4-level menus if they exist)
+          if (child.childPopups && child.childPopups.some(grandchild => grandchild.matches(':hover') || grandchild.isActive)) {
+            return true;
+          }
+        }
+        return false;
+      };
+
+      // Update hasActiveChild flag
+      nestedPopup.hasActiveChild = isAnyChildActive();
+
+      // Only hide if neither the popup nor any child is hovered/active
+      if (!nestedPopup.matches(':hover') && !nestedPopup.hasActiveChild) {
         nestedPopup.classList.add('hidden');
         nestedPopup.isActive = false;
         // Update parent's hasActiveChild flag
         if (parentPopup.childPopups) {
-          parentPopup.hasActiveChild = parentPopup.childPopups.some(p => p.isActive);
+          parentPopup.hasActiveChild = parentPopup.childPopups.some(p => p.isActive || p.hasActiveChild);
         }
       }
     }, 150);
