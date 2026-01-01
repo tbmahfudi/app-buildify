@@ -736,7 +736,7 @@ function createSubmenuItem(item, level = 1) {
   if (isCollapsed) {
     // Collapsed state - show icon with popup menu
     const parent = document.createElement('div');
-    parent.className = 'flex items-center justify-center px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 cursor-pointer transition-colors relative';
+    parent.className = 'sidebar-menu-item flex items-center justify-center px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 cursor-pointer transition-colors relative';
 
     const icon = item.icon || getMenuIcon(item.route);
     const iconColor = getIconColor(item.title, item.route, item);
