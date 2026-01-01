@@ -4,6 +4,7 @@
  */
 
 import { getCurrentUser as getUser } from './app.js';
+import { initRBACManager } from './rbac-manager.js';
 
 /**
  * Get current user from app state
@@ -327,3 +328,38 @@ export default {
   applyRBACToElements,
   filterMenuByRole
 };
+
+/**
+ * RBAC Page Route Handler
+ * Initialize the RBAC management interface when this script is loaded
+ */
+
+// Check if we're on the RBAC route and initialize
+const currentRoute = window.location.hash.slice(1);
+if (currentRoute === 'rbac') {
+  console.log('RBAC route detected, initializing RBAC Manager...');
+  // Use setTimeout to ensure DOM is ready
+  setTimeout(async () => {
+    try {
+      await initRBACManager();
+      console.log('RBAC Manager initialized successfully');
+    } catch (error) {
+      console.error('Failed to initialize RBAC Manager:', error);
+    }
+  }, 100);
+}
+
+// Also listen for future route loads (in case page is cached)
+document.addEventListener('route:loaded', async (event) => {
+  const { route } = event.detail;
+
+  if (route === 'rbac') {
+    console.log('RBAC route loaded event, initializing RBAC Manager...');
+    try {
+      await initRBACManager();
+      console.log('RBAC Manager initialized successfully');
+    } catch (error) {
+      console.error('Failed to initialize RBAC Manager:', error);
+    }
+  }
+});
