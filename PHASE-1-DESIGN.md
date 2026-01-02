@@ -1,9 +1,9 @@
-# Phase 1 Design: Data Model & Workflow Designers
+# Phase 1 Design: Core Foundation Features
 
 **Date:** 2026-01-02
 **Project:** App-Buildify
 **Phase:** 1 - Core Foundation
-**Priorities:** 1 & 2
+**Priorities:** 1, 2, 3 & 4
 **Status:** Design Phase
 
 ---
@@ -13,10 +13,12 @@
 1. [Overview](#overview)
 2. [Priority 1: Data Model Designer](#priority-1-data-model-designer)
 3. [Priority 2: Workflow/Business Process Designer](#priority-2-workflowbusiness-process-designer)
-4. [Integration Points](#integration-points)
-5. [Security & RBAC](#security--rbac)
-6. [Implementation Roadmap](#implementation-roadmap)
-7. [Testing Strategy](#testing-strategy)
+4. [Priority 3: Automation & Trigger System](#priority-3-automation--trigger-system)
+5. [Priority 4: Lookup/Reference Configuration](#priority-4-lookupreference-configuration)
+6. [Integration Points](#integration-points)
+7. [Security & RBAC](#security--rbac)
+8. [Implementation Roadmap](#implementation-roadmap)
+9. [Testing Strategy](#testing-strategy)
 
 ---
 
@@ -28,10 +30,14 @@ This document provides detailed technical design for Phase 1 priorities:
 
 - **Priority 1:** Data Model Designer (Entity/Table Creator)
 - **Priority 2:** Workflow/Business Process Designer
+- **Priority 3:** Automation & Trigger System
+- **Priority 4:** Lookup/Reference Configuration
 
-These two features form the **Core Foundation** for the no-code platform, enabling users to:
+These four features form the **Core Foundation** for the no-code platform, enabling users to:
 1. Create database entities without backend code
 2. Define business processes and workflows visually
+3. Configure event-driven automation without code
+4. Establish data relationships and lookup configurations
 
 ### Design Principles
 
@@ -2003,6 +2009,1837 @@ class WorkflowDesigner {
     // ... (implementation details)
 }
 ```
+
+---
+
+## Priority 3: Automation & Trigger System
+
+### 3.1 Overview
+
+**Purpose:** Enable event-based automation and trigger configuration without writing code, allowing users to create automated workflows based on database events, schedules, user actions, and external events.
+
+**Key Capabilities:**
+- Event trigger configuration (onCreate, onUpdate, onDelete)
+- Scheduled triggers (cron-based)
+- User action triggers
+- External webhook triggers
+- Visual condition builder (if-then-else logic)
+- Action configuration (email, API calls, record updates, etc.)
+- Multi-step automation chains
+- Testing and debugging tools
+- Execution history and monitoring
+
+---
+
+### 3.2 Database Schema
+
+#### 3.2.1 Automation Rule Model
+
+```sql
+-- Table: automation_rules
+CREATE TABLE automation_rules (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id UUID NOT NULL REFERENCES tenants(id),
+
+    -- Basic Info
+    name VARCHAR(100) NOT NULL,
+    label VARCHAR(200) NOT NULL,
+    description TEXT,
+    category VARCHAR(100),
+
+    -- Trigger Configuration
+    trigger_type VARCHAR(50) NOT NULL,  -- 'database_event', 'scheduled', 'user_action', 'webhook', 'manual'
+    trigger_config JSONB NOT NULL,  -- Trigger-specific configuration
+
+    -- Entity Association (for database events)
+    entity_id UUID REFERENCES entity_definitions(id),
+
+    -- Database Event Triggers
+    event_type VARCHAR(50),  -- 'create', 'update', 'delete', 'any'
+    trigger_timing VARCHAR(20),  -- 'before', 'after'
+
+    -- Schedule Configuration (for scheduled triggers)
+    schedule_type VARCHAR(50),  -- 'cron', 'interval', 'one_time'
+    cron_expression VARCHAR(100),  -- For cron schedules
+    schedule_interval INTEGER,  -- Minutes for interval schedules
+    schedule_timezone VARCHAR(50) DEFAULT 'UTC',
+    next_run_at TIMESTAMP,
+    last_run_at TIMESTAMP,
+
+    -- Conditions (if-then-else logic)
+    has_conditions BOOLEAN DEFAULT false,
+    conditions JSONB DEFAULT '{}',  -- Condition tree structure
+
+    -- Actions
+    actions JSONB NOT NULL DEFAULT '[]',  -- Array of actions to execute
+
+    -- Execution Settings
+    execution_order INTEGER DEFAULT 0,  -- Order when multiple rules match
+    max_retries INTEGER DEFAULT 3,
+    retry_delay_seconds INTEGER DEFAULT 60,
+    timeout_seconds INTEGER DEFAULT 300,
+
+    -- Concurrency Control
+    allow_concurrent BOOLEAN DEFAULT true,
+    max_concurrent_instances INTEGER,
+
+    -- Error Handling
+    on_error_action VARCHAR(50) DEFAULT 'stop',  -- 'stop', 'continue', 'retry'
+    error_notification_emails JSONB DEFAULT '[]',
+
+    -- Status & Control
+    is_active BOOLEAN DEFAULT true,
+    is_async BOOLEAN DEFAULT true,  -- Execute asynchronously?
+
+    -- Testing
+    is_test_mode BOOLEAN DEFAULT false,  -- Don't execute actions in test mode
+
+    -- Statistics
+    total_executions INTEGER DEFAULT 0,
+    successful_executions INTEGER DEFAULT 0,
+    failed_executions INTEGER DEFAULT 0,
+    average_execution_time_ms INTEGER,
+
+    -- Metadata
+    metadata JSONB DEFAULT '{}',
+
+    -- Version Control
+    version INTEGER DEFAULT 1,
+    is_published BOOLEAN DEFAULT false,
+
+    -- Audit
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW(),
+    created_by UUID REFERENCES users(id),
+    updated_by UUID REFERENCES users(id),
+    deleted_at TIMESTAMP,
+    is_deleted BOOLEAN DEFAULT false,
+
+    UNIQUE(tenant_id, name)
+);
+
+CREATE INDEX idx_automation_rules_tenant ON automation_rules(tenant_id) WHERE is_deleted = false;
+CREATE INDEX idx_automation_rules_entity ON automation_rules(entity_id) WHERE is_active = true;
+CREATE INDEX idx_automation_rules_trigger_type ON automation_rules(trigger_type) WHERE is_active = true;
+CREATE INDEX idx_automation_rules_next_run ON automation_rules(next_run_at) WHERE is_active = true AND schedule_type IS NOT NULL;
+CREATE INDEX idx_automation_rules_event ON automation_rules(entity_id, event_type) WHERE is_active = true;
+```
+
+#### 3.2.2 Automation Execution Model
+
+```sql
+-- Table: automation_executions
+CREATE TABLE automation_executions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    rule_id UUID NOT NULL REFERENCES automation_rules(id),
+    tenant_id UUID NOT NULL REFERENCES tenants(id),
+
+    -- Trigger Context
+    trigger_type VARCHAR(50) NOT NULL,
+    triggered_by_user_id UUID REFERENCES users(id),
+    triggered_at TIMESTAMP DEFAULT NOW(),
+
+    -- Entity Context (for database events)
+    entity_id UUID REFERENCES entity_definitions(id),
+    record_id UUID,  -- ID of the record that triggered the rule
+    record_data_before JSONB,  -- Snapshot before change (for updates)
+    record_data_after JSONB,  -- Snapshot after change
+
+    -- Execution Status
+    status VARCHAR(50) DEFAULT 'pending',  -- 'pending', 'running', 'completed', 'failed', 'cancelled'
+    started_at TIMESTAMP,
+    completed_at TIMESTAMP,
+    execution_time_ms INTEGER,
+
+    -- Condition Evaluation
+    conditions_met BOOLEAN,
+    condition_evaluation_result JSONB,  -- Details of condition evaluation
+
+    -- Actions Execution
+    total_actions INTEGER DEFAULT 0,
+    completed_actions INTEGER DEFAULT 0,
+    failed_actions INTEGER DEFAULT 0,
+    action_results JSONB DEFAULT '[]',  -- Results of each action
+
+    -- Error Handling
+    error_message TEXT,
+    error_stack_trace TEXT,
+    retry_count INTEGER DEFAULT 0,
+    next_retry_at TIMESTAMP,
+
+    -- Context Data
+    context_data JSONB DEFAULT '{}',  -- Additional context for the execution
+
+    -- Metadata
+    metadata JSONB DEFAULT '{}'
+);
+
+CREATE INDEX idx_automation_executions_rule ON automation_executions(rule_id);
+CREATE INDEX idx_automation_executions_status ON automation_executions(status);
+CREATE INDEX idx_automation_executions_record ON automation_executions(entity_id, record_id);
+CREATE INDEX idx_automation_executions_triggered_at ON automation_executions(triggered_at);
+CREATE INDEX idx_automation_executions_retry ON automation_executions(next_retry_at) WHERE status = 'failed';
+```
+
+#### 3.2.3 Action Template Model
+
+```sql
+-- Table: action_templates
+CREATE TABLE action_templates (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id UUID REFERENCES tenants(id),  -- NULL for system templates
+
+    -- Basic Info
+    name VARCHAR(100) NOT NULL,
+    label VARCHAR(200) NOT NULL,
+    description TEXT,
+    category VARCHAR(100),
+
+    -- Action Type
+    action_type VARCHAR(50) NOT NULL,  -- 'send_email', 'webhook', 'update_record', 'create_record', etc.
+
+    -- Template Configuration
+    config_schema JSONB NOT NULL,  -- JSON schema for action configuration
+    default_config JSONB DEFAULT '{}',
+
+    -- Display
+    icon VARCHAR(50),
+    color VARCHAR(50),
+
+    -- System vs Custom
+    is_system BOOLEAN DEFAULT false,  -- System templates can't be modified
+
+    -- Status
+    is_active BOOLEAN DEFAULT true,
+
+    -- Audit
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW(),
+    created_by UUID REFERENCES users(id),
+    is_deleted BOOLEAN DEFAULT false,
+
+    UNIQUE(tenant_id, name)
+);
+
+CREATE INDEX idx_action_templates_tenant ON action_templates(tenant_id);
+CREATE INDEX idx_action_templates_type ON action_templates(action_type) WHERE is_active = true;
+```
+
+#### 3.2.4 Webhook Configuration Model
+
+```sql
+-- Table: webhook_configs
+CREATE TABLE webhook_configs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id UUID NOT NULL REFERENCES tenants(id),
+
+    -- Basic Info
+    name VARCHAR(100) NOT NULL,
+    label VARCHAR(200) NOT NULL,
+    description TEXT,
+
+    -- Webhook Type
+    webhook_type VARCHAR(50) NOT NULL,  -- 'inbound', 'outbound'
+
+    -- Inbound Webhook Config
+    endpoint_path VARCHAR(200),  -- Unique path: /webhooks/{endpoint_path}
+    secret_token VARCHAR(255),  -- For validating incoming requests
+    allowed_ips JSONB DEFAULT '[]',  -- IP whitelist
+
+    -- Outbound Webhook Config
+    target_url VARCHAR(500),  -- External URL to call
+    http_method VARCHAR(10) DEFAULT 'POST',  -- GET, POST, PUT, DELETE
+    headers JSONB DEFAULT '{}',  -- HTTP headers
+    authentication_type VARCHAR(50),  -- 'none', 'basic', 'bearer', 'api_key', 'oauth2'
+    authentication_config JSONB DEFAULT '{}',
+
+    -- Payload Configuration
+    payload_template TEXT,  -- Template for outbound payload
+    payload_mapping JSONB DEFAULT '{}',  -- Field mapping
+
+    -- Retry Configuration
+    max_retries INTEGER DEFAULT 3,
+    retry_delay_seconds INTEGER DEFAULT 60,
+    timeout_seconds INTEGER DEFAULT 30,
+
+    -- Status
+    is_active BOOLEAN DEFAULT true,
+
+    -- Statistics
+    total_calls INTEGER DEFAULT 0,
+    successful_calls INTEGER DEFAULT 0,
+    failed_calls INTEGER DEFAULT 0,
+    last_called_at TIMESTAMP,
+
+    -- Metadata
+    metadata JSONB DEFAULT '{}',
+
+    -- Audit
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW(),
+    created_by UUID REFERENCES users(id),
+    updated_by UUID REFERENCES users(id),
+    is_deleted BOOLEAN DEFAULT false,
+
+    UNIQUE(tenant_id, name),
+    UNIQUE(endpoint_path) WHERE webhook_type = 'inbound'
+);
+
+CREATE INDEX idx_webhook_configs_tenant ON webhook_configs(tenant_id) WHERE is_deleted = false;
+CREATE INDEX idx_webhook_configs_endpoint ON webhook_configs(endpoint_path) WHERE webhook_type = 'inbound';
+```
+
+---
+
+### 3.3 Backend API
+
+#### 3.3.1 Router: `/backend/app/routers/automations.py`
+
+```python
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
+from sqlalchemy.orm import Session
+from typing import List, Optional
+from uuid import UUID
+
+from app.core.database import get_db
+from app.core.security import get_current_user
+from app.core.rbac import has_permission
+from app.schemas.automation import (
+    AutomationRuleCreate,
+    AutomationRuleUpdate,
+    AutomationRuleResponse,
+    AutomationExecutionResponse,
+    ActionTemplateResponse,
+    WebhookConfigCreate,
+    WebhookConfigResponse,
+    AutomationTestRequest,
+    AutomationTestResponse
+)
+from app.services.automation_service import AutomationService
+
+router = APIRouter(prefix="/api/v1/automations", tags=["Automations"])
+
+# ==================== Automation Rule Endpoints ====================
+
+@router.post("/rules", response_model=AutomationRuleResponse)
+@has_permission("automations:create:tenant")
+async def create_automation_rule(
+    rule: AutomationRuleCreate,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """Create a new automation rule"""
+    service = AutomationService(db, current_user)
+    return await service.create_rule(rule)
+
+
+@router.get("/rules", response_model=List[AutomationRuleResponse])
+@has_permission("automations:read:tenant")
+async def list_automation_rules(
+    entity_id: Optional[UUID] = None,
+    trigger_type: Optional[str] = None,
+    category: Optional[str] = None,
+    is_active: Optional[bool] = None,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """List all automation rules"""
+    service = AutomationService(db, current_user)
+    return await service.list_rules(entity_id, trigger_type, category, is_active)
+
+
+@router.get("/rules/{rule_id}", response_model=AutomationRuleResponse)
+@has_permission("automations:read:tenant")
+async def get_automation_rule(
+    rule_id: UUID,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """Get automation rule details"""
+    service = AutomationService(db, current_user)
+    return await service.get_rule(rule_id)
+
+
+@router.put("/rules/{rule_id}", response_model=AutomationRuleResponse)
+@has_permission("automations:update:tenant")
+async def update_automation_rule(
+    rule_id: UUID,
+    rule: AutomationRuleUpdate,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """Update automation rule"""
+    service = AutomationService(db, current_user)
+    return await service.update_rule(rule_id, rule)
+
+
+@router.delete("/rules/{rule_id}")
+@has_permission("automations:delete:tenant")
+async def delete_automation_rule(
+    rule_id: UUID,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """Delete automation rule"""
+    service = AutomationService(db, current_user)
+    return await service.delete_rule(rule_id)
+
+
+@router.post("/rules/{rule_id}/activate")
+@has_permission("automations:execute:tenant")
+async def activate_automation_rule(
+    rule_id: UUID,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """Activate automation rule"""
+    service = AutomationService(db, current_user)
+    return await service.activate_rule(rule_id)
+
+
+@router.post("/rules/{rule_id}/deactivate")
+@has_permission("automations:execute:tenant")
+async def deactivate_automation_rule(
+    rule_id: UUID,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """Deactivate automation rule"""
+    service = AutomationService(db, current_user)
+    return await service.deactivate_rule(rule_id)
+
+
+# ==================== Execution Endpoints ====================
+
+@router.post("/rules/{rule_id}/execute")
+@has_permission("automations:execute:tenant")
+async def execute_automation_rule(
+    rule_id: UUID,
+    context_data: dict = {},
+    background_tasks: BackgroundTasks = BackgroundTasks(),
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """Manually execute an automation rule"""
+    service = AutomationService(db, current_user)
+    return await service.execute_rule(rule_id, context_data, background_tasks)
+
+
+@router.get("/executions", response_model=List[AutomationExecutionResponse])
+@has_permission("automations:read:tenant")
+async def list_executions(
+    rule_id: Optional[UUID] = None,
+    status: Optional[str] = None,
+    limit: int = 50,
+    offset: int = 0,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """List automation execution history"""
+    service = AutomationService(db, current_user)
+    return await service.list_executions(rule_id, status, limit, offset)
+
+
+@router.get("/executions/{execution_id}", response_model=AutomationExecutionResponse)
+@has_permission("automations:read:tenant")
+async def get_execution(
+    execution_id: UUID,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """Get execution details"""
+    service = AutomationService(db, current_user)
+    return await service.get_execution(execution_id)
+
+
+@router.post("/executions/{execution_id}/retry")
+@has_permission("automations:execute:tenant")
+async def retry_execution(
+    execution_id: UUID,
+    background_tasks: BackgroundTasks = BackgroundTasks(),
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """Retry a failed execution"""
+    service = AutomationService(db, current_user)
+    return await service.retry_execution(execution_id, background_tasks)
+
+
+# ==================== Testing Endpoints ====================
+
+@router.post("/rules/{rule_id}/test", response_model=AutomationTestResponse)
+@has_permission("automations:read:tenant")
+async def test_automation_rule(
+    rule_id: UUID,
+    test_request: AutomationTestRequest,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """Test automation rule with sample data (dry run)"""
+    service = AutomationService(db, current_user)
+    return await service.test_rule(rule_id, test_request)
+
+
+# ==================== Action Template Endpoints ====================
+
+@router.get("/action-templates", response_model=List[ActionTemplateResponse])
+@has_permission("automations:read:tenant")
+async def list_action_templates(
+    category: Optional[str] = None,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """List available action templates"""
+    service = AutomationService(db, current_user)
+    return await service.list_action_templates(category)
+
+
+@router.get("/action-templates/{template_id}", response_model=ActionTemplateResponse)
+@has_permission("automations:read:tenant")
+async def get_action_template(
+    template_id: UUID,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """Get action template details"""
+    service = AutomationService(db, current_user)
+    return await service.get_action_template(template_id)
+
+
+# ==================== Webhook Endpoints ====================
+
+@router.post("/webhooks", response_model=WebhookConfigResponse)
+@has_permission("automations:create:tenant")
+async def create_webhook(
+    webhook: WebhookConfigCreate,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """Create webhook configuration"""
+    service = AutomationService(db, current_user)
+    return await service.create_webhook(webhook)
+
+
+@router.get("/webhooks", response_model=List[WebhookConfigResponse])
+@has_permission("automations:read:tenant")
+async def list_webhooks(
+    webhook_type: Optional[str] = None,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """List webhook configurations"""
+    service = AutomationService(db, current_user)
+    return await service.list_webhooks(webhook_type)
+
+
+@router.get("/webhooks/{webhook_id}", response_model=WebhookConfigResponse)
+@has_permission("automations:read:tenant")
+async def get_webhook(
+    webhook_id: UUID,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """Get webhook configuration"""
+    service = AutomationService(db, current_user)
+    return await service.get_webhook(webhook_id)
+
+
+@router.post("/webhooks/{webhook_id}/test")
+@has_permission("automations:execute:tenant")
+async def test_webhook(
+    webhook_id: UUID,
+    test_payload: dict = {},
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """Test webhook configuration"""
+    service = AutomationService(db, current_user)
+    return await service.test_webhook(webhook_id, test_payload)
+
+
+# ==================== Statistics Endpoints ====================
+
+@router.get("/stats/summary")
+@has_permission("automations:read:tenant")
+async def get_automation_stats(
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """Get automation statistics summary"""
+    service = AutomationService(db, current_user)
+    return await service.get_stats_summary()
+
+
+@router.get("/stats/rules/{rule_id}")
+@has_permission("automations:read:tenant")
+async def get_rule_stats(
+    rule_id: UUID,
+    days: int = 30,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """Get statistics for specific rule"""
+    service = AutomationService(db, current_user)
+    return await service.get_rule_stats(rule_id, days)
+```
+
+---
+
+### 3.4 Frontend Components
+
+#### 3.4.1 Main Component: `/frontend/components/automation-designer.js`
+
+```javascript
+/**
+ * Automation Designer
+ * Visual automation rule builder with condition and action configuration
+ */
+
+class AutomationDesigner {
+    constructor() {
+        this.currentRule = null;
+        this.actionTemplates = [];
+        this.availableEntities = [];
+
+        this.service = new AutomationService();
+        this.init();
+    }
+
+    init() {
+        this.renderLayout();
+        this.loadActionTemplates();
+        this.loadEntities();
+        this.attachEventListeners();
+    }
+
+    renderLayout() {
+        const container = document.getElementById('app-container');
+        container.innerHTML = `
+            <div class="automation-designer">
+                <!-- Header -->
+                <div class="designer-header">
+                    <div class="header-left">
+                        <h1><i class="ph-lightning"></i> Automation Designer</h1>
+                        <p class="subtitle">Create event-driven automation rules</p>
+                    </div>
+                    <div class="header-right">
+                        <button class="btn btn-secondary" id="btn-view-executions">
+                            <i class="ph-clock-counter-clockwise"></i> History
+                        </button>
+                        <button class="btn btn-primary" id="btn-new-automation">
+                            <i class="ph-plus"></i> New Automation
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Main Content -->
+                <div class="designer-content">
+                    <!-- Sidebar: Automation List -->
+                    <div class="automation-sidebar">
+                        <div class="sidebar-header">
+                            <h3>Automation Rules</h3>
+                            <div class="filter-group">
+                                <select class="form-select form-select-sm" id="filter-trigger-type">
+                                    <option value="">All Triggers</option>
+                                    <option value="database_event">Database Events</option>
+                                    <option value="scheduled">Scheduled</option>
+                                    <option value="webhook">Webhooks</option>
+                                    <option value="user_action">User Actions</option>
+                                </select>
+                                <select class="form-select form-select-sm mt-2" id="filter-status">
+                                    <option value="">All Status</option>
+                                    <option value="active">Active</option>
+                                    <option value="inactive">Inactive</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="automation-list" id="automation-list">
+                            <!-- List items -->
+                        </div>
+                    </div>
+
+                    <!-- Main Panel: Rule Designer -->
+                    <div class="automation-designer-panel" id="designer-panel">
+                        <!-- Empty state or rule details -->
+                        <div class="empty-state">
+                            <i class="ph-lightning" style="font-size: 64px; opacity: 0.3;"></i>
+                            <h3>No Automation Selected</h3>
+                            <p>Select an automation from the list or create a new one</p>
+                            <button class="btn btn-primary" id="btn-create-first">
+                                <i class="ph-plus"></i> Create First Automation
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Automation Designer Modal -->
+            <div class="modal fade" id="automation-modal" tabindex="-1">
+                <div class="modal-dialog modal-xl">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Automation Rule Designer</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <!-- Multi-step wizard -->
+                            <div class="wizard-steps">
+                                <div class="step active" data-step="1">
+                                    <span class="step-number">1</span>
+                                    <span class="step-label">Trigger</span>
+                                </div>
+                                <div class="step" data-step="2">
+                                    <span class="step-number">2</span>
+                                    <span class="step-label">Conditions</span>
+                                </div>
+                                <div class="step" data-step="3">
+                                    <span class="step-number">3</span>
+                                    <span class="step-label">Actions</span>
+                                </div>
+                                <div class="step" data-step="4">
+                                    <span class="step-number">4</span>
+                                    <span class="step-label">Settings</span>
+                                </div>
+                                <div class="step" data-step="5">
+                                    <span class="step-number">5</span>
+                                    <span class="step-label">Test & Publish</span>
+                                </div>
+                            </div>
+
+                            <div class="wizard-content" id="wizard-content">
+                                <!-- Step content -->
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" id="btn-prev-step">
+                                <i class="ph-caret-left"></i> Previous
+                            </button>
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button type="button" class="btn btn-primary" id="btn-next-step">
+                                Next <i class="ph-caret-right"></i>
+                            </button>
+                            <button type="button" class="btn btn-warning" id="btn-test-automation" style="display:none;">
+                                <i class="ph-play"></i> Test
+                            </button>
+                            <button type="button" class="btn btn-success" id="btn-save-automation" style="display:none;">
+                                <i class="ph-check"></i> Save & Activate
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Condition Builder Modal -->
+            <div class="modal fade" id="condition-modal" tabindex="-1">
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Condition Builder</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body" id="condition-builder">
+                            <!-- Visual condition builder -->
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button type="button" class="btn btn-primary" id="btn-save-condition">
+                                <i class="ph-check"></i> Save Condition
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Designer Modal -->
+            <div class="modal fade" id="action-modal" tabindex="-1">
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Action Designer</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body" id="action-designer">
+                            <!-- Action configuration -->
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button type="button" class="btn btn-primary" id="btn-save-action">
+                                <i class="ph-check"></i> Save Action
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    // ==================== Step Rendering ====================
+
+    renderStep1_Trigger() {
+        return `
+            <div class="step-content">
+                <h4>Configure Trigger</h4>
+                <p class="text-muted">When should this automation run?</p>
+
+                <div class="row g-3 mt-3">
+                    <div class="col-12">
+                        <label class="form-label required">Rule Name</label>
+                        <input type="text" class="form-control" id="rule-name"
+                               placeholder="e.g., Send welcome email on new customer">
+                    </div>
+
+                    <div class="col-12">
+                        <label class="form-label">Description</label>
+                        <textarea class="form-control" id="rule-description" rows="2"
+                                  placeholder="Describe what this automation does..."></textarea>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label">Category</label>
+                        <select class="form-select" id="rule-category">
+                            <option value="">Select category...</option>
+                            <option value="notifications">Notifications</option>
+                            <option value="data_sync">Data Synchronization</option>
+                            <option value="workflows">Workflows</option>
+                            <option value="integrations">Integrations</option>
+                            <option value="maintenance">Maintenance</option>
+                        </select>
+                    </div>
+
+                    <div class="col-12 mt-4">
+                        <label class="form-label required">Trigger Type</label>
+                        <div class="trigger-types">
+                            <div class="trigger-card" data-type="database_event">
+                                <i class="ph-database"></i>
+                                <h6>Database Event</h6>
+                                <p>When a record is created, updated, or deleted</p>
+                            </div>
+                            <div class="trigger-card" data-type="scheduled">
+                                <i class="ph-clock"></i>
+                                <h6>Scheduled</h6>
+                                <p>Run on a schedule (cron or interval)</p>
+                            </div>
+                            <div class="trigger-card" data-type="webhook">
+                                <i class="ph-globe"></i>
+                                <h6>Webhook</h6>
+                                <p>Triggered by external system via webhook</p>
+                            </div>
+                            <div class="trigger-card" data-type="user_action">
+                                <i class="ph-user"></i>
+                                <h6>User Action</h6>
+                                <p>When user performs a specific action</p>
+                            </div>
+                            <div class="trigger-card" data-type="manual">
+                                <i class="ph-hand-pointing"></i>
+                                <h6>Manual</h6>
+                                <p>Triggered manually by user or API</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Database Event Configuration -->
+                    <div class="col-12 trigger-config" id="config-database-event" style="display:none;">
+                        <div class="card">
+                            <div class="card-body">
+                                <h6>Database Event Configuration</h6>
+
+                                <div class="row g-3 mt-2">
+                                    <div class="col-md-6">
+                                        <label class="form-label required">Entity</label>
+                                        <select class="form-select" id="trigger-entity">
+                                            <option value="">Select entity...</option>
+                                            <!-- Populated dynamically -->
+                                        </select>
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <label class="form-label required">Event Type</label>
+                                        <select class="form-select" id="trigger-event-type">
+                                            <option value="create">Create (Insert)</option>
+                                            <option value="update">Update</option>
+                                            <option value="delete">Delete</option>
+                                            <option value="any">Any Change</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <label class="form-label required">Timing</label>
+                                        <select class="form-select" id="trigger-timing">
+                                            <option value="after">After Event</option>
+                                            <option value="before">Before Event</option>
+                                        </select>
+                                        <small class="form-text text-muted">
+                                            Before: Can prevent the operation. After: Can't prevent but safer.
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Scheduled Configuration -->
+                    <div class="col-12 trigger-config" id="config-scheduled" style="display:none;">
+                        <div class="card">
+                            <div class="card-body">
+                                <h6>Schedule Configuration</h6>
+
+                                <div class="row g-3 mt-2">
+                                    <div class="col-md-6">
+                                        <label class="form-label required">Schedule Type</label>
+                                        <select class="form-select" id="schedule-type">
+                                            <option value="interval">Interval (Every X minutes)</option>
+                                            <option value="cron">Cron Expression</option>
+                                            <option value="one_time">One Time</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="col-md-6 schedule-option" id="option-interval">
+                                        <label class="form-label">Interval (minutes)</label>
+                                        <input type="number" class="form-control" id="schedule-interval"
+                                               min="1" placeholder="e.g., 60 for hourly">
+                                    </div>
+
+                                    <div class="col-md-6 schedule-option" id="option-cron" style="display:none;">
+                                        <label class="form-label">Cron Expression</label>
+                                        <input type="text" class="form-control" id="schedule-cron"
+                                               placeholder="e.g., 0 9 * * * (daily at 9 AM)">
+                                        <small class="form-text text-muted">
+                                            <a href="#" id="cron-helper">Cron expression helper</a>
+                                        </small>
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <label class="form-label">Timezone</label>
+                                        <select class="form-select" id="schedule-timezone">
+                                            <option value="UTC">UTC</option>
+                                            <option value="America/New_York">Eastern Time</option>
+                                            <option value="America/Chicago">Central Time</option>
+                                            <option value="America/Denver">Mountain Time</option>
+                                            <option value="America/Los_Angeles">Pacific Time</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Webhook Configuration -->
+                    <div class="col-12 trigger-config" id="config-webhook" style="display:none;">
+                        <div class="card">
+                            <div class="card-body">
+                                <h6>Webhook Configuration</h6>
+
+                                <div class="row g-3 mt-2">
+                                    <div class="col-12">
+                                        <label class="form-label">Webhook URL</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text">POST</span>
+                                            <input type="text" class="form-control" id="webhook-url" readonly
+                                                   value="https://app.buildify.com/webhooks/[auto-generated]">
+                                            <button class="btn btn-outline-secondary" id="btn-copy-webhook">
+                                                <i class="ph-copy"></i>
+                                            </button>
+                                        </div>
+                                        <small class="form-text text-muted">
+                                            External systems will call this URL to trigger the automation
+                                        </small>
+                                    </div>
+
+                                    <div class="col-12">
+                                        <label class="form-label">Secret Token</label>
+                                        <div class="input-group">
+                                            <input type="password" class="form-control" id="webhook-secret" readonly>
+                                            <button class="btn btn-outline-secondary" id="btn-regenerate-secret">
+                                                <i class="ph-arrows-clockwise"></i> Regenerate
+                                            </button>
+                                        </div>
+                                        <small class="form-text text-muted">
+                                            Include this in X-Webhook-Secret header for authentication
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    renderStep2_Conditions() {
+        return `
+            <div class="step-content">
+                <h4>Add Conditions (Optional)</h4>
+                <p class="text-muted">Define when the actions should execute</p>
+
+                <div class="mt-3">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="enable-conditions">
+                        <label class="form-check-label" for="enable-conditions">
+                            Enable conditions (if unchecked, actions always execute)
+                        </label>
+                    </div>
+                </div>
+
+                <div id="conditions-panel" style="display:none;">
+                    <div class="card mt-3">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h6 class="mb-0">Condition Logic</h6>
+                            <button class="btn btn-sm btn-primary" id="btn-add-condition-group">
+                                <i class="ph-plus"></i> Add Condition
+                            </button>
+                        </div>
+                        <div class="card-body">
+                            <div id="condition-builder-visual">
+                                <!-- Visual condition builder -->
+                                <div class="condition-group">
+                                    <div class="condition-operator">
+                                        <select class="form-select form-select-sm">
+                                            <option value="AND">Match ALL conditions (AND)</option>
+                                            <option value="OR">Match ANY condition (OR)</option>
+                                        </select>
+                                    </div>
+                                    <div class="condition-list" id="condition-list">
+                                        <div class="empty-state-sm">
+                                            <p class="text-muted mb-2">No conditions defined</p>
+                                            <button class="btn btn-sm btn-outline-primary" id="btn-add-first-condition">
+                                                Add First Condition
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Example condition items (hidden by default) -->
+                            <template id="condition-item-template">
+                                <div class="condition-item">
+                                    <div class="row g-2 align-items-center">
+                                        <div class="col-md-3">
+                                            <select class="form-select form-select-sm condition-field">
+                                                <option value="">Select field...</option>
+                                                <!-- Populated based on entity -->
+                                            </select>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <select class="form-select form-select-sm condition-operator">
+                                                <option value="equals">Equals</option>
+                                                <option value="not_equals">Not Equals</option>
+                                                <option value="greater_than">Greater Than</option>
+                                                <option value="less_than">Less Than</option>
+                                                <option value="contains">Contains</option>
+                                                <option value="starts_with">Starts With</option>
+                                                <option value="ends_with">Ends With</option>
+                                                <option value="is_empty">Is Empty</option>
+                                                <option value="is_not_empty">Is Not Empty</option>
+                                                <option value="in">In List</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-5">
+                                            <input type="text" class="form-control form-control-sm condition-value"
+                                                   placeholder="Value">
+                                        </div>
+                                        <div class="col-md-1">
+                                            <button class="btn btn-sm btn-danger btn-remove-condition">
+                                                <i class="ph-trash"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+
+                    <!-- Advanced: Field Change Detection (for update events) -->
+                    <div class="card mt-3" id="field-change-detection" style="display:none;">
+                        <div class="card-header">
+                            <h6 class="mb-0">Field Change Detection</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="check-field-changes">
+                                <label class="form-check-label" for="check-field-changes">
+                                    Only trigger when specific fields change
+                                </label>
+                            </div>
+                            <div id="changed-fields-selector" class="mt-3" style="display:none;">
+                                <label class="form-label">Fields to Monitor</label>
+                                <div id="field-checkboxes">
+                                    <!-- Populated dynamically -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    renderStep3_Actions() {
+        return `
+            <div class="step-content">
+                <h4>Configure Actions</h4>
+                <p class="text-muted">What should happen when conditions are met?</p>
+
+                <div class="d-flex justify-content-between align-items-center mt-3 mb-3">
+                    <div>
+                        <span class="badge bg-info" id="action-count">0 actions configured</span>
+                    </div>
+                    <button class="btn btn-sm btn-primary" id="btn-add-action">
+                        <i class="ph-plus"></i> Add Action
+                    </button>
+                </div>
+
+                <div class="action-list" id="action-list">
+                    <div class="empty-state text-center py-4">
+                        <i class="ph-lightning" style="font-size: 48px; opacity: 0.3;"></i>
+                        <p class="text-muted">No actions configured yet</p>
+                        <button class="btn btn-outline-primary" id="btn-add-first-action">
+                            Add First Action
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Action Templates Panel (shown when adding action) -->
+                <div class="action-templates-panel" id="action-templates" style="display:none;">
+                    <h6>Select Action Type</h6>
+                    <div class="row g-3 mt-2">
+                        <div class="col-md-4">
+                            <div class="action-template-card" data-type="send_email">
+                                <i class="ph-envelope"></i>
+                                <h6>Send Email</h6>
+                                <p>Send email notification</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="action-template-card" data-type="send_notification">
+                                <i class="ph-bell"></i>
+                                <h6>Send Notification</h6>
+                                <p>In-app notification</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="action-template-card" data-type="update_record">
+                                <i class="ph-pencil-simple"></i>
+                                <h6>Update Record</h6>
+                                <p>Update field values</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="action-template-card" data-type="create_record">
+                                <i class="ph-plus-circle"></i>
+                                <h6>Create Record</h6>
+                                <p>Create new record</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="action-template-card" data-type="webhook">
+                                <i class="ph-globe"></i>
+                                <h6>Call Webhook</h6>
+                                <p>HTTP API call</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="action-template-card" data-type="start_workflow">
+                                <i class="ph-flow-arrow"></i>
+                                <h6>Start Workflow</h6>
+                                <p>Initiate workflow</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="action-template-card" data-type="run_script">
+                                <i class="ph-code"></i>
+                                <h6>Run Script</h6>
+                                <p>Execute custom code</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="action-template-card" data-type="send_sms">
+                                <i class="ph-chat-dots"></i>
+                                <h6>Send SMS</h6>
+                                <p>Text message notification</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="action-template-card" data-type="delay">
+                                <i class="ph-clock"></i>
+                                <h6>Delay</h6>
+                                <p>Wait before next action</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    // Additional methods for condition builder, action designer, etc.
+    // ... (implementation details)
+}
+
+// Initialize
+let automationDesignerInstance;
+document.addEventListener('DOMContentLoaded', () => {
+    if (window.location.hash.startsWith('#automations')) {
+        automationDesignerInstance = new AutomationDesigner();
+    }
+});
+```
+
+---
+
+### 3.5 Key Features
+
+#### 3.5.1 Condition Builder
+
+**Visual Condition Builder:**
+- Drag-and-drop interface
+- Support for complex boolean logic (AND/OR groups)
+- Field value comparisons
+- Date/time conditions
+- User/role conditions
+- Custom expressions
+
+**Condition Types:**
+- Field value conditions (equals, contains, greater than, etc.)
+- Field change detection (for update events)
+- Date/time conditions (before, after, between)
+- User conditions (current user, role, department)
+- Related record conditions (lookup fields)
+
+#### 3.5.2 Action Types
+
+**Built-in Actions:**
+
+1. **Send Email**
+   - Template selection
+   - Dynamic recipient list
+   - Merge fields from record data
+   - Attachments support
+
+2. **Send Notification**
+   - In-app notifications
+   - Push notifications
+   - User/role targeting
+
+3. **Update Record**
+   - Update current record
+   - Update related records
+   - Bulk update
+
+4. **Create Record**
+   - Create in same or different entity
+   - Copy field values
+   - Set default values
+
+5. **Call Webhook**
+   - HTTP methods (GET, POST, PUT, DELETE)
+   - Custom headers
+   - Request body templates
+   - Authentication
+
+6. **Start Workflow**
+   - Initiate workflow instance
+   - Pass context data
+
+7. **Run Script**
+   - Python/JavaScript execution
+   - Sandbox environment
+   - Access to record data
+
+---
+
+### 3.6 Integration with Other Systems
+
+#### 3.6.1 Integration with Data Model Designer
+
+When entities are created:
+- Automatically available for automation triggers
+- Fields available in condition builder
+- Actions can create/update records
+
+#### 3.6.2 Integration with Workflow Designer
+
+- Automations can start workflow instances
+- Workflow state changes can trigger automations
+- Shared action library
+
+#### 3.6.3 Integration with Email Template Designer
+
+- Email actions use email templates
+- Merge fields from record data
+- Template variables
+
+---
+
+## Priority 4: Lookup/Reference Configuration
+
+### 4.1 Overview
+
+**Purpose:** Provide comprehensive configuration for dropdown fields, reference fields, and data relationships, enabling users to define how lookup data is sourced, filtered, and displayed.
+
+**Key Capabilities:**
+- Lookup data source configuration
+- Cascading dropdown rules
+- Dynamic filtering based on context
+- Custom lookup queries
+- Search and autocomplete settings
+- Lookup caching strategies
+
+---
+
+### 4.2 Database Schema
+
+#### 4.2.1 Lookup Configuration Model
+
+```sql
+-- Table: lookup_configurations
+CREATE TABLE lookup_configurations (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id UUID NOT NULL REFERENCES tenants(id),
+
+    -- Basic Info
+    name VARCHAR(100) NOT NULL,
+    label VARCHAR(200) NOT NULL,
+    description TEXT,
+
+    -- Source Configuration
+    source_type VARCHAR(50) NOT NULL,  -- 'entity', 'custom_query', 'static_list', 'api'
+
+    -- Entity Source
+    source_entity_id UUID REFERENCES entity_definitions(id),
+    display_field VARCHAR(100),  -- Field to show in dropdown
+    value_field VARCHAR(100) DEFAULT 'id',  -- Field to use as value
+    additional_display_fields JSONB DEFAULT '[]',  -- Additional fields to show
+
+    -- Query Configuration
+    custom_query TEXT,  -- Custom SQL query for advanced scenarios
+    query_parameters JSONB DEFAULT '{}',
+
+    -- Static List Source
+    static_options JSONB DEFAULT '[]',  -- [{value, label, metadata}]
+
+    -- API Source
+    api_endpoint VARCHAR(500),
+    api_method VARCHAR(10) DEFAULT 'GET',
+    api_headers JSONB DEFAULT '{}',
+    api_response_mapping JSONB DEFAULT '{}',  -- How to map API response
+
+    -- Filtering
+    default_filter JSONB DEFAULT '{}',  -- Default WHERE conditions
+    allow_user_filter BOOLEAN DEFAULT true,
+    filter_fields JSONB DEFAULT '[]',  -- Fields available for filtering
+
+    -- Sorting
+    default_sort_field VARCHAR(100),
+    default_sort_order VARCHAR(10) DEFAULT 'ASC',
+    allow_user_sort BOOLEAN DEFAULT true,
+
+    -- Display Configuration
+    display_template VARCHAR(500),  -- Template for displaying items
+    placeholder_text VARCHAR(200),
+    empty_message VARCHAR(200) DEFAULT 'No options available',
+
+    -- Search Configuration
+    enable_search BOOLEAN DEFAULT true,
+    search_fields JSONB DEFAULT '[]',  -- Fields to search in
+    min_search_length INTEGER DEFAULT 3,
+    search_debounce_ms INTEGER DEFAULT 300,
+
+    -- Autocomplete Configuration
+    enable_autocomplete BOOLEAN DEFAULT false,
+    autocomplete_min_chars INTEGER DEFAULT 2,
+    autocomplete_max_results INTEGER DEFAULT 10,
+
+    -- Performance
+    enable_caching BOOLEAN DEFAULT true,
+    cache_ttl_seconds INTEGER DEFAULT 3600,
+    lazy_load BOOLEAN DEFAULT false,  -- Load on demand vs preload
+    page_size INTEGER DEFAULT 50,
+
+    -- Dependency Configuration
+    is_dependent BOOLEAN DEFAULT false,
+    parent_lookup_id UUID REFERENCES lookup_configurations(id),
+    dependency_mapping JSONB DEFAULT '{}',  -- How parent value affects this lookup
+
+    -- Advanced Features
+    allow_create_new BOOLEAN DEFAULT false,  -- Allow creating new options inline
+    create_entity_id UUID REFERENCES entity_definitions(id),  -- Entity to create in
+
+    allow_multiple BOOLEAN DEFAULT false,  -- Multi-select
+    max_selections INTEGER,
+
+    -- Metadata
+    metadata JSONB DEFAULT '{}',
+
+    -- Status
+    is_active BOOLEAN DEFAULT true,
+
+    -- Audit
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW(),
+    created_by UUID REFERENCES users(id),
+    updated_by UUID REFERENCES users(id),
+    is_deleted BOOLEAN DEFAULT false,
+
+    UNIQUE(tenant_id, name)
+);
+
+CREATE INDEX idx_lookup_configurations_tenant ON lookup_configurations(tenant_id) WHERE is_deleted = false;
+CREATE INDEX idx_lookup_configurations_source_entity ON lookup_configurations(source_entity_id);
+CREATE INDEX idx_lookup_configurations_parent ON lookup_configurations(parent_lookup_id) WHERE is_dependent = true;
+```
+
+#### 4.2.2 Lookup Cache Model
+
+```sql
+-- Table: lookup_cache
+CREATE TABLE lookup_cache (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    lookup_id UUID NOT NULL REFERENCES lookup_configurations(id) ON DELETE CASCADE,
+    tenant_id UUID NOT NULL REFERENCES tenants(id),
+
+    -- Cache Key
+    cache_key VARCHAR(255) NOT NULL,  -- Hash of query parameters
+
+    -- Cached Data
+    cached_data JSONB NOT NULL,  -- The actual lookup data
+    record_count INTEGER,
+
+    -- Cache Metadata
+    created_at TIMESTAMP DEFAULT NOW(),
+    expires_at TIMESTAMP NOT NULL,
+    hit_count INTEGER DEFAULT 0,
+    last_accessed_at TIMESTAMP DEFAULT NOW(),
+
+    UNIQUE(lookup_id, cache_key)
+);
+
+CREATE INDEX idx_lookup_cache_lookup ON lookup_cache(lookup_id);
+CREATE INDEX idx_lookup_cache_expires ON lookup_cache(expires_at);
+CREATE INDEX idx_lookup_cache_key ON lookup_cache(cache_key);
+```
+
+#### 4.2.3 Cascading Lookup Rule Model
+
+```sql
+-- Table: cascading_lookup_rules
+CREATE TABLE cascading_lookup_rules (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id UUID NOT NULL REFERENCES tenants(id),
+
+    -- Basic Info
+    name VARCHAR(100) NOT NULL,
+    description TEXT,
+
+    -- Parent-Child Relationship
+    parent_lookup_id UUID NOT NULL REFERENCES lookup_configurations(id),
+    child_lookup_id UUID NOT NULL REFERENCES lookup_configurations(id),
+
+    -- Filtering Rule
+    filter_type VARCHAR(50) DEFAULT 'field_match',  -- 'field_match', 'custom_query', 'function'
+    parent_field VARCHAR(100),  -- Field in parent that drives filtering
+    child_filter_field VARCHAR(100),  -- Field in child to filter on
+
+    -- Custom Filter
+    custom_filter_expression TEXT,  -- Advanced filtering logic
+
+    -- Behavior
+    clear_on_parent_change BOOLEAN DEFAULT true,
+    auto_select_if_single BOOLEAN DEFAULT false,  -- Auto-select if only one option
+
+    -- Status
+    is_active BOOLEAN DEFAULT true,
+
+    -- Audit
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW(),
+    created_by UUID REFERENCES users(id),
+
+    UNIQUE(parent_lookup_id, child_lookup_id)
+);
+
+CREATE INDEX idx_cascading_lookup_rules_parent ON cascading_lookup_rules(parent_lookup_id);
+CREATE INDEX idx_cascading_lookup_rules_child ON cascading_lookup_rules(child_lookup_id);
+```
+
+---
+
+### 4.3 Backend API
+
+#### 4.3.1 Router: `/backend/app/routers/lookups.py`
+
+```python
+from fastapi import APIRouter, Depends, Query
+from sqlalchemy.orm import Session
+from typing import List, Optional
+from uuid import UUID
+
+from app.core.database import get_db
+from app.core.security import get_current_user
+from app.core.rbac import has_permission
+from app.schemas.lookup import (
+    LookupConfigurationCreate,
+    LookupConfigurationUpdate,
+    LookupConfigurationResponse,
+    LookupDataResponse,
+    CascadingLookupRuleCreate,
+    CascadingLookupRuleResponse
+)
+from app.services.lookup_service import LookupService
+
+router = APIRouter(prefix="/api/v1/lookups", tags=["Lookups"])
+
+# ==================== Lookup Configuration Endpoints ====================
+
+@router.post("/configurations", response_model=LookupConfigurationResponse)
+@has_permission("lookups:create:tenant")
+async def create_lookup_configuration(
+    config: LookupConfigurationCreate,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """Create a new lookup configuration"""
+    service = LookupService(db, current_user)
+    return await service.create_configuration(config)
+
+
+@router.get("/configurations", response_model=List[LookupConfigurationResponse])
+@has_permission("lookups:read:tenant")
+async def list_lookup_configurations(
+    source_type: Optional[str] = None,
+    entity_id: Optional[UUID] = None,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """List all lookup configurations"""
+    service = LookupService(db, current_user)
+    return await service.list_configurations(source_type, entity_id)
+
+
+@router.get("/configurations/{config_id}", response_model=LookupConfigurationResponse)
+@has_permission("lookups:read:tenant")
+async def get_lookup_configuration(
+    config_id: UUID,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """Get lookup configuration"""
+    service = LookupService(db, current_user)
+    return await service.get_configuration(config_id)
+
+
+@router.put("/configurations/{config_id}", response_model=LookupConfigurationResponse)
+@has_permission("lookups:update:tenant")
+async def update_lookup_configuration(
+    config_id: UUID,
+    config: LookupConfigurationUpdate,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """Update lookup configuration"""
+    service = LookupService(db, current_user)
+    return await service.update_configuration(config_id, config)
+
+
+@router.delete("/configurations/{config_id}")
+@has_permission("lookups:delete:tenant")
+async def delete_lookup_configuration(
+    config_id: UUID,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """Delete lookup configuration"""
+    service = LookupService(db, current_user)
+    return await service.delete_configuration(config_id)
+
+
+# ==================== Lookup Data Endpoints ====================
+
+@router.get("/configurations/{config_id}/data", response_model=LookupDataResponse)
+@has_permission("lookups:read:tenant")
+async def get_lookup_data(
+    config_id: UUID,
+    search: Optional[str] = Query(None),
+    filters: Optional[str] = Query(None),  # JSON string
+    parent_value: Optional[str] = Query(None),  # For cascading lookups
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=1, le=100),
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """Get lookup data (dropdown options)"""
+    service = LookupService(db, current_user)
+    return await service.get_lookup_data(
+        config_id,
+        search=search,
+        filters=filters,
+        parent_value=parent_value,
+        page=page,
+        page_size=page_size
+    )
+
+
+@router.get("/configurations/{config_id}/search", response_model=LookupDataResponse)
+@has_permission("lookups:read:tenant")
+async def search_lookup(
+    config_id: UUID,
+    q: str = Query(..., min_length=1),
+    limit: int = Query(10, ge=1, le=50),
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """Search lookup data (autocomplete)"""
+    service = LookupService(db, current_user)
+    return await service.search_lookup(config_id, q, limit)
+
+
+@router.post("/configurations/{config_id}/refresh-cache")
+@has_permission("lookups:execute:tenant")
+async def refresh_lookup_cache(
+    config_id: UUID,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """Manually refresh lookup cache"""
+    service = LookupService(db, current_user)
+    return await service.refresh_cache(config_id)
+
+
+# ==================== Cascading Lookup Endpoints ====================
+
+@router.post("/cascading-rules", response_model=CascadingLookupRuleResponse)
+@has_permission("lookups:create:tenant")
+async def create_cascading_rule(
+    rule: CascadingLookupRuleCreate,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """Create cascading lookup rule"""
+    service = LookupService(db, current_user)
+    return await service.create_cascading_rule(rule)
+
+
+@router.get("/cascading-rules", response_model=List[CascadingLookupRuleResponse])
+@has_permission("lookups:read:tenant")
+async def list_cascading_rules(
+    parent_lookup_id: Optional[UUID] = None,
+    child_lookup_id: Optional[UUID] = None,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """List cascading lookup rules"""
+    service = LookupService(db, current_user)
+    return await service.list_cascading_rules(parent_lookup_id, child_lookup_id)
+
+
+@router.delete("/cascading-rules/{rule_id}")
+@has_permission("lookups:delete:tenant")
+async def delete_cascading_rule(
+    rule_id: UUID,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """Delete cascading lookup rule"""
+    service = LookupService(db, current_user)
+    return await service.delete_cascading_rule(rule_id)
+
+
+# ==================== Utility Endpoints ====================
+
+@router.get("/entities/{entity_id}/fields")
+@has_permission("lookups:read:tenant")
+async def get_entity_fields_for_lookup(
+    entity_id: UUID,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """Get fields from entity (for lookup configuration)"""
+    service = LookupService(db, current_user)
+    return await service.get_entity_fields(entity_id)
+
+
+@router.post("/test-query")
+@has_permission("lookups:read:tenant")
+async def test_lookup_query(
+    query: str,
+    parameters: dict = {},
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """Test custom lookup query"""
+    service = LookupService(db, current_user)
+    return await service.test_query(query, parameters)
+```
+
+---
+
+### 4.4 Frontend Components
+
+#### 4.4.1 Main Component: `/frontend/components/lookup-designer.js`
+
+```javascript
+/**
+ * Lookup Designer
+ * Configure dropdown and reference field data sources
+ */
+
+class LookupDesigner {
+    constructor() {
+        this.currentLookup = null;
+        this.availableEntities = [];
+        this.service = new LookupService();
+        this.init();
+    }
+
+    init() {
+        this.renderLayout();
+        this.loadEntities();
+        this.attachEventListeners();
+    }
+
+    renderLayout() {
+        const container = document.getElementById('app-container');
+        container.innerHTML = `
+            <div class="lookup-designer">
+                <!-- Header -->
+                <div class="designer-header">
+                    <div class="header-left">
+                        <h1><i class="ph-list"></i> Lookup Designer</h1>
+                        <p class="subtitle">Configure dropdown and reference fields</p>
+                    </div>
+                    <div class="header-right">
+                        <button class="btn btn-secondary" id="btn-refresh">
+                            <i class="ph-arrows-clockwise"></i> Refresh
+                        </button>
+                        <button class="btn btn-primary" id="btn-new-lookup">
+                            <i class="ph-plus"></i> New Lookup
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Main Content -->
+                <div class="designer-content">
+                    <!-- Sidebar: Lookup List -->
+                    <div class="lookup-sidebar">
+                        <div class="sidebar-header">
+                            <h3>Lookup Configurations</h3>
+                            <select class="form-select form-select-sm mt-2" id="filter-source-type">
+                                <option value="">All Sources</option>
+                                <option value="entity">Entity</option>
+                                <option value="custom_query">Custom Query</option>
+                                <option value="static_list">Static List</option>
+                                <option value="api">API</option>
+                            </select>
+                        </div>
+                        <div class="lookup-list" id="lookup-list">
+                            <!-- List items -->
+                        </div>
+                    </div>
+
+                    <!-- Main Panel: Lookup Designer -->
+                    <div class="lookup-designer-panel" id="designer-panel">
+                        <!-- Empty state or lookup details -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Lookup Designer Modal -->
+            <div class="modal fade" id="lookup-modal" tabindex="-1">
+                <div class="modal-dialog modal-xl">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Lookup Configuration</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <!-- Configuration form -->
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button type="button" class="btn btn-primary" id="btn-save-lookup">
+                                <i class="ph-check"></i> Save Configuration
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    // Additional methods for lookup configuration
+    // ... (implementation details)
+}
+```
+
+---
+
+### 4.5 Use Cases
+
+#### Use Case 1: Simple Entity Lookup
+
+**Scenario:** Country dropdown for address form
+
+**Configuration:**
+- Source Type: Entity
+- Source Entity: countries
+- Display Field: name
+- Value Field: id
+- Sort: name ASC
+- Enable Search: Yes
+
+#### Use Case 2: Cascading Lookups
+
+**Scenario:** Country → State → City dropdowns
+
+**Configuration:**
+1. **Country Lookup:**
+   - Source Entity: countries
+   - Display Field: name
+
+2. **State Lookup:**
+   - Source Entity: states
+   - Display Field: name
+   - Is Dependent: Yes
+   - Parent Lookup: Country
+   - Filter: states.country_id = [selected country]
+
+3. **City Lookup:**
+   - Source Entity: cities
+   - Display Field: name
+   - Is Dependent: Yes
+   - Parent Lookup: State
+   - Filter: cities.state_id = [selected state]
+
+#### Use Case 3: Custom Query Lookup
+
+**Scenario:** Active users from specific department
+
+**Configuration:**
+- Source Type: Custom Query
+- Custom Query:
+  ```sql
+  SELECT id, CONCAT(first_name, ' ', last_name) as display_name
+  FROM users
+  WHERE is_active = true
+    AND department_id = :department_id
+  ORDER BY first_name, last_name
+  ```
+- Query Parameters: {department_id: context.department_id}
+
+#### Use Case 4: API-Based Lookup
+
+**Scenario:** External product catalog
+
+**Configuration:**
+- Source Type: API
+- API Endpoint: https://api.example.com/products
+- API Method: GET
+- Response Mapping:
+  - value: $.data[*].id
+  - label: $.data[*].name
+  - metadata: $.data[*]
+- Enable Caching: Yes
+- Cache TTL: 3600 seconds
 
 ---
 
