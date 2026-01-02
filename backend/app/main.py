@@ -12,6 +12,7 @@ from app.core.db import SessionLocal
 from app.core.security_middleware import SecurityMiddleware
 from app.core.startup import ensure_default_security_policy
 from app.routers import org, auth, metadata, data, audit, settings, modules, rbac, reports, dashboards, scheduler, menu, builder_pages
+from app.routers import data_model, workflows, automations, lookups
 from app.routers.admin import security as admin_security
 from app.core.module_system.registry import ModuleRegistryService
 from pathlib import Path
@@ -138,7 +139,7 @@ async def module_access_middleware(request: Request, call_next):
             potential_module = path_parts[3]
 
             # Skip core endpoints
-            core_endpoints = ["auth", "org", "metadata", "data", "audit", "settings", "modules", "rbac", "reports", "dashboards", "scheduler", "menu", "health", "healthz", "system"]
+            core_endpoints = ["auth", "org", "metadata", "data", "audit", "settings", "modules", "rbac", "reports", "dashboards", "scheduler", "menu", "health", "healthz", "system", "data-model", "workflows", "automations", "lookups"]
             if potential_module not in core_endpoints:
                 # This might be a module endpoint
                 # Check if module exists and is enabled
@@ -178,6 +179,12 @@ app.include_router(scheduler.router, prefix="/api/v1")
 app.include_router(menu.router, prefix="/api/v1")
 app.include_router(builder_pages.router, prefix="/api/v1/builder", tags=["builder"])
 app.include_router(admin_security.router, prefix="/api/v1")
+
+# Phase 1 No-Code Platform routers
+app.include_router(data_model.router, prefix="/api/v1")
+app.include_router(workflows.router, prefix="/api/v1")
+app.include_router(automations.router, prefix="/api/v1")
+app.include_router(lookups.router, prefix="/api/v1")
 
 # Also maintain backward compatibility with old endpoints (deprecated)
 app.include_router(auth.router, tags=["deprecated"])
@@ -270,7 +277,11 @@ async def system_info():
             "session-management",
             "password-expiration",
             "login-attempt-tracking",
-            "hierarchical-scheduler"
+            "hierarchical-scheduler",
+            "nocode-data-model-designer",
+            "nocode-workflow-designer",
+            "nocode-automation-system",
+            "nocode-lookup-configuration"
         ],
         "loaded_modules": module_registry.get_module_count() if module_registry else 0
     }
