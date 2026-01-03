@@ -46,7 +46,7 @@ class FieldDefinitionBase(BaseModel):
     reference_entity_id: Optional[UUID] = None
     reference_field: Optional[str] = None
     relationship_type: Optional[str] = None
-    metadata: Dict[str, Any] = Field(default_factory=dict)
+    meta_data: Dict[str, Any] = Field(default_factory=dict)
 
 
 class FieldDefinitionCreate(FieldDefinitionBase):
@@ -66,7 +66,7 @@ class FieldDefinitionUpdate(BaseModel):
     allowed_values: Optional[Dict[str, Any]] = None
     input_type: Optional[str] = None
     placeholder: Optional[str] = None
-    metadata: Optional[Dict[str, Any]] = None
+    meta_data: Optional[Dict[str, Any]] = None
 
 
 class FieldDefinitionResponse(FieldDefinitionBase):
@@ -106,7 +106,7 @@ class EntityDefinitionBase(BaseModel):
     default_sort_field: Optional[str] = None
     default_sort_order: str = "ASC"
     records_per_page: int = 25
-    metadata: Dict[str, Any] = Field(default_factory=dict)
+    meta_data: Dict[str, Any] = Field(default_factory=dict)
 
 
 class EntityDefinitionCreate(EntityDefinitionBase):
@@ -130,7 +130,7 @@ class EntityDefinitionUpdate(BaseModel):
     default_sort_order: Optional[str] = None
     records_per_page: Optional[int] = None
     is_active: Optional[bool] = None
-    metadata: Optional[Dict[str, Any]] = None
+    meta_data: Optional[Dict[str, Any]] = None
 
 
 class EntityDefinitionResponse(EntityDefinitionBase):
@@ -173,7 +173,7 @@ class RelationshipDefinitionBase(BaseModel):
     is_active: bool = True
     display_in_source: bool = True
     display_in_target: bool = True
-    metadata: Dict[str, Any] = Field(default_factory=dict)
+    meta_data: Dict[str, Any] = Field(default_factory=dict)
 
 
 class RelationshipDefinitionCreate(RelationshipDefinitionBase):
@@ -188,7 +188,7 @@ class RelationshipDefinitionUpdate(BaseModel):
     is_active: Optional[bool] = None
     display_in_source: Optional[bool] = None
     display_in_target: Optional[bool] = None
-    metadata: Optional[Dict[str, Any]] = None
+    meta_data: Optional[Dict[str, Any]] = None
 
 
 class RelationshipDefinitionResponse(RelationshipDefinitionBase):

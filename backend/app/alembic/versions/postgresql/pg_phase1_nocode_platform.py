@@ -64,7 +64,7 @@ def upgrade() -> None:
         sa.Column('is_active', sa.Boolean, default=True),
 
         # Metadata
-        sa.Column('metadata', JSONB, default='{}'),
+        sa.Column('meta_data', JSONB, default='{}'),
 
         # Versioning
         sa.Column('version', sa.Integer, default=1),
@@ -146,7 +146,7 @@ def upgrade() -> None:
         sa.Column('relationship_type', sa.String(50)),
 
         # Metadata
-        sa.Column('metadata', JSONB, default='{}'),
+        sa.Column('meta_data', JSONB, default='{}'),
 
         # Audit
         sa.Column('created_at', sa.DateTime, server_default=sa.func.now()),
@@ -199,7 +199,7 @@ def upgrade() -> None:
         sa.Column('display_in_target', sa.Boolean, default=True),
 
         # Metadata
-        sa.Column('metadata', JSONB, default='{}'),
+        sa.Column('meta_data', JSONB, default='{}'),
 
         # Audit
         sa.Column('created_at', sa.DateTime, server_default=sa.func.now()),
@@ -316,7 +316,7 @@ def upgrade() -> None:
         sa.Column('is_active', sa.Boolean, default=True),
 
         # Metadata
-        sa.Column('metadata', JSONB, default='{}'),
+        sa.Column('meta_data', JSONB, default='{}'),
 
         # Audit
         sa.Column('created_at', sa.DateTime, server_default=sa.func.now()),
@@ -370,7 +370,7 @@ def upgrade() -> None:
         sa.Column('required_fields', JSONB, default='[]'),
 
         # Metadata
-        sa.Column('metadata', JSONB, default='{}'),
+        sa.Column('meta_data', JSONB, default='{}'),
 
         # Audit
         sa.Column('created_at', sa.DateTime, server_default=sa.func.now()),
@@ -419,7 +419,7 @@ def upgrade() -> None:
         sa.Column('validation_rules', JSONB, default='[]'),
 
         # Metadata
-        sa.Column('metadata', JSONB, default='{}'),
+        sa.Column('meta_data', JSONB, default='{}'),
 
         # Audit
         sa.Column('created_at', sa.DateTime, server_default=sa.func.now()),
@@ -499,7 +499,7 @@ def upgrade() -> None:
         sa.Column('duration_minutes', sa.Integer),
 
         # Metadata
-        sa.Column('metadata', JSONB, default='{}'),
+        sa.Column('meta_data', JSONB, default='{}'),
     )
 
     op.create_index('idx_workflow_history_instance', 'workflow_history', ['instance_id'])
@@ -573,7 +573,7 @@ def upgrade() -> None:
         sa.Column('average_execution_time_ms', sa.Integer),
 
         # Metadata
-        sa.Column('metadata', JSONB, default='{}'),
+        sa.Column('meta_data', JSONB, default='{}'),
 
         # Version Control
         sa.Column('version', sa.Integer, default=1),
@@ -645,7 +645,7 @@ def upgrade() -> None:
         sa.Column('context_data', JSONB, default='{}'),
 
         # Metadata
-        sa.Column('metadata', JSONB, default='{}'),
+        sa.Column('meta_data', JSONB, default='{}'),
     )
 
     op.create_index('idx_automation_executions_rule', 'automation_executions', ['rule_id'])
@@ -742,7 +742,7 @@ def upgrade() -> None:
         sa.Column('last_called_at', sa.DateTime),
 
         # Metadata
-        sa.Column('metadata', JSONB, default='{}'),
+        sa.Column('meta_data', JSONB, default='{}'),
 
         # Audit
         sa.Column('created_at', sa.DateTime, server_default=sa.func.now()),
@@ -839,7 +839,7 @@ def upgrade() -> None:
         sa.Column('max_selections', sa.Integer),
 
         # Metadata
-        sa.Column('metadata', JSONB, default='{}'),
+        sa.Column('meta_data', JSONB, default='{}'),
 
         # Status
         sa.Column('is_active', sa.Boolean, default=True),

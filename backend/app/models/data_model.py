@@ -70,7 +70,7 @@ class EntityDefinition(Base):
     is_active = Column(Boolean, default=True)
 
     # Metadata
-    metadata = Column(JSONB, default=dict)  # Extended configuration
+    meta_data = Column(JSONB, default=dict)  # Extended configuration
 
     # Versioning
     version = Column(Integer, default=1)
@@ -166,7 +166,7 @@ class FieldDefinition(Base):
     relationship_type = Column(String(50))  # 'many-to-one', 'one-to-one'
 
     # Metadata
-    metadata = Column(JSONB, default=dict)
+    meta_data = Column(JSONB, default=dict)
 
     # Audit
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -230,7 +230,7 @@ class RelationshipDefinition(Base):
     display_in_target = Column(Boolean, default=True)
 
     # Metadata
-    metadata = Column(JSONB, default=dict)
+    meta_data = Column(JSONB, default=dict)
 
     # Audit
     created_at = Column(DateTime, default=datetime.utcnow)

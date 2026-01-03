@@ -57,7 +57,7 @@ class LookupConfigurationBase(BaseModel):
     create_entity_id: Optional[UUID] = None
     allow_multiple: bool = False
     max_selections: Optional[int] = None
-    metadata: Dict[str, Any] = Field(default_factory=dict)
+    meta_data: Dict[str, Any] = Field(default_factory=dict)
 
 
 class LookupConfigurationCreate(LookupConfigurationBase):
@@ -86,7 +86,7 @@ class LookupConfigurationUpdate(BaseModel):
     enable_caching: Optional[bool] = None
     cache_ttl_seconds: Optional[int] = None
     is_active: Optional[bool] = None
-    metadata: Optional[Dict[str, Any]] = None
+    meta_data: Optional[Dict[str, Any]] = None
 
 
 class LookupConfigurationResponse(LookupConfigurationBase):

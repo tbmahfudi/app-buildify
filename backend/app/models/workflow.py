@@ -62,7 +62,7 @@ class WorkflowDefinition(Base):
     is_active = Column(Boolean, default=True)
 
     # Metadata
-    metadata = Column(JSONB, default=dict)
+    meta_data = Column(JSONB, default=dict)
 
     # Audit
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -128,7 +128,7 @@ class WorkflowState(Base):
     required_fields = Column(JSONB, default=list)  # Fields that must be filled
 
     # Metadata
-    metadata = Column(JSONB, default=dict)
+    meta_data = Column(JSONB, default=dict)
 
     # Audit
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -190,7 +190,7 @@ class WorkflowTransition(Base):
     validation_rules = Column(JSONB, default=list)
 
     # Metadata
-    metadata = Column(JSONB, default=dict)
+    meta_data = Column(JSONB, default=dict)
 
     # Audit
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -298,7 +298,7 @@ class WorkflowHistory(Base):
     duration_minutes = Column(Integer)  # Time spent in previous state
 
     # Metadata
-    metadata = Column(JSONB, default=dict)
+    meta_data = Column(JSONB, default=dict)
 
     # Relationships
     instance = relationship("WorkflowInstance", back_populates="history")
