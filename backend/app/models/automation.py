@@ -119,7 +119,6 @@ class AutomationRule(Base):
         Index("idx_automation_rules_trigger_type", "trigger_type", postgresql_where=text("is_active = true")),
         Index("idx_automation_rules_next_run", "next_run_at", postgresql_where=text("is_active = true AND schedule_type IS NOT NULL")),
         Index("idx_automation_rules_event", "entity_id", "event_type", postgresql_where=text("is_active = true")),
-        {"schema": "public"},
     )
 
 
@@ -185,7 +184,6 @@ class AutomationExecution(Base):
         Index("idx_automation_executions_record", "entity_id", "record_id"),
         Index("idx_automation_executions_triggered_at", "triggered_at"),
         Index("idx_automation_executions_retry", "next_retry_at", postgresql_where=text("status = 'failed'")),
-        {"schema": "public"},
     )
 
 
@@ -234,7 +232,6 @@ class ActionTemplate(Base):
     __table_args__ = (
         Index("idx_action_templates_tenant", "tenant_id"),
         Index("idx_action_templates_type", "action_type", postgresql_where=text("is_active = true")),
-        {"schema": "public"},
     )
 
 
@@ -302,5 +299,4 @@ class WebhookConfig(Base):
     __table_args__ = (
         Index("idx_webhook_configs_tenant", "tenant_id", postgresql_where=text("is_deleted = false")),
         Index("idx_webhook_configs_endpoint", "endpoint_path", postgresql_where=text("webhook_type = 'inbound'")),
-        {"schema": "public"},
     )

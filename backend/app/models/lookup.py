@@ -129,7 +129,6 @@ class LookupConfiguration(Base):
         Index("idx_lookup_configurations_tenant", "tenant_id", postgresql_where=text("is_deleted = false")),
         Index("idx_lookup_configurations_source_entity", "source_entity_id"),
         Index("idx_lookup_configurations_parent", "parent_lookup_id", postgresql_where=text("is_dependent = true")),
-        {"schema": "public"},
     )
 
 
@@ -167,7 +166,6 @@ class LookupCache(Base):
         Index("idx_lookup_cache_lookup", "lookup_id"),
         Index("idx_lookup_cache_expires", "expires_at"),
         Index("idx_lookup_cache_key", "cache_key"),
-        {"schema": "public"},
     )
 
 
@@ -220,5 +218,4 @@ class CascadingLookupRule(Base):
     __table_args__ = (
         Index("idx_cascading_lookup_rules_parent", "parent_lookup_id"),
         Index("idx_cascading_lookup_rules_child", "child_lookup_id"),
-        {"schema": "public"},
     )
