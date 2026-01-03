@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Model Designer - App Buildify</title>
+    <link rel="stylesheet" href="/assets/css/styles.css">
+</head>
+<body>
+    <div class="container">
+        <div class="page-header">
+            <h1><i class="ph ph-database"></i> Data Model Designer</h1>
+            <p class="text-muted">Create and manage database entities without writing code</p>
+        </div>
+
+        <div class="content-section">
+            <div class="section-header">
+                <h2>Entity Definitions</h2>
+                <button class="btn btn-primary" onclick="showCreateEntityModal()">
+                    <i class="ph ph-plus"></i> Create Entity
+                </button>
+            </div>
+
+            <div id="entity-list" class="entity-grid">
+                <!-- Entity cards will be loaded here -->
+                <div class="empty-state">
+                    <i class="ph ph-database" style="font-size: 48px; color: #ccc;"></i>
+                    <p>No entities defined yet</p>
+                    <button class="btn btn-primary" onclick="showCreateEntityModal()">Create Your First Entity</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Entity Modal -->
+    <div id="createEntityModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Create New Entity</h3>
+                <button class="modal-close" onclick="closeCreateEntityModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="createEntityForm">
+                    <div class="form-group">
+                        <label for="entityName">Name (Technical)*</label>
+                        <input type="text" id="entityName" name="name" required placeholder="e.g., customer">
+                    </div>
+                    <div class="form-group">
+                        <label for="entityLabel">Label (Display)*</label>
+                        <input type="text" id="entityLabel" name="label" required placeholder="e.g., Customer">
+                    </div>
+                    <div class="form-group">
+                        <label for="entityPluralLabel">Plural Label</label>
+                        <input type="text" id="entityPluralLabel" name="plural_label" placeholder="e.g., Customers">
+                    </div>
+                    <div class="form-group">
+                        <label for="entityDescription">Description</label>
+                        <textarea id="entityDescription" name="description" rows="3"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="entityTableName">Table Name*</label>
+                        <input type="text" id="entityTableName" name="table_name" required placeholder="e.g., customers">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeCreateEntityModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="createEntity()">Create Entity</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '/api/v1/data-model';
+
+        // Load entities on page load
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadEntities();
+        });
+
+        async function loadEntities() {
+            try {
+                const token = localStorage.getItem('token');
+                const response = await fetch(`${API_BASE}/entities`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.ok) {
+                    const entities = await response.json();
+                    displayEntities(entities);
+                } else {
+                    console.error('Failed to load entities');
+                }
+            } catch (error) {
+                console.error('Error loading entities:', error);
+            }
+        }
+
+        function displayEntities(entities) {
+            const entityList = document.getElementById('entity-list');
+
+            if (entities.length === 0) {
+                entityList.innerHTML = `
+                    <div class="empty-state">
+                        <i class="ph ph-database" style="font-size: 48px; color: #ccc;"></i>
+                        <p>No entities defined yet</p>
+                        <button class="btn btn-primary" onclick="showCreateEntityModal()">Create Your First Entity</button>
+                    </div>
+                `;
+                return;
+            }
+
+            entityList.innerHTML = entities.map(entity => `
+                <div class="entity-card">
+                    <div class="entity-header">
+                        <h3>${entity.label}</h3>
+                        <span class="badge badge-${entity.status}">${entity.status}</span>
+                    </div>
+                    <p class="text-muted">${entity.description || 'No description'}</p>
+                    <div class="entity-meta">
+                        <span><i class="ph ph-table"></i> ${entity.table_name}</span>
+                        <span><i class="ph ph-list"></i> ${entity.fields?.length || 0} fields</span>
+                    </div>
+                    <div class="entity-actions">
+                        <button class="btn btn-sm btn-secondary" onclick="viewEntity('${entity.id}')">
+                            <i class="ph ph-eye"></i> View
+                        </button>
+                        <button class="btn btn-sm btn-primary" onclick="editEntity('${entity.id}')">
+                            <i class="ph ph-pencil"></i> Edit
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function showCreateEntityModal() {
+            document.getElementById('createEntityModal').style.display = 'flex';
+        }
+
+        function closeCreateEntityModal() {
+            document.getElementById('createEntityModal').style.display = 'none';
+            document.getElementById('createEntityForm').reset();
+        }
+
+        async function createEntity() {
+            const form = document.getElementById('createEntityForm');
+            const formData = new FormData(form);
+            const data = Object.fromEntries(formData.entries());
+
+            try {
+                const token = localStorage.getItem('token');
+                const response = await fetch(`${API_BASE}/entities`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                if (response.ok) {
+                    closeCreateEntityModal();
+                    await loadEntities();
+                    alert('Entity created successfully!');
+                } else {
+                    const error = await response.json();
+                    alert(`Error: ${error.detail}`);
+                }
+            } catch (error) {
+                console.error('Error creating entity:', error);
+                alert('Failed to create entity');
+            }
+        }
+
+        function viewEntity(id) {
+            // Navigate to entity detail page
+            window.location.href = `/nocode-data-model-detail.html?id=${id}`;
+        }
+
+        function editEntity(id) {
+            // Navigate to entity editor
+            window.location.href = `/nocode-data-model-edit.html?id=${id}`;
+        }
+    </script>
+
+    <style>
+        .entity-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-top: 1.5rem;
+        }
+
+        .entity-card {
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 1.5rem;
+            background: white;
+            transition: box-shadow 0.2s;
+        }
+
+        .entity-card:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .entity-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+
+        .entity-header h3 {
+            margin: 0;
+            font-size: 1.25rem;
+        }
+
+        .entity-meta {
+            display: flex;
+            gap: 1rem;
+            margin: 1rem 0;
+            font-size: 0.875rem;
+            color: #666;
+        }
+
+        .entity-meta i {
+            margin-right: 0.25rem;
+        }
+
+        .entity-actions {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        .badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .badge-draft {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .badge-published {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .empty-state {
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 3rem;
+            color: #666;
+        }
+
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 600px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h3 {
+            margin: 0;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #666;
+        }
+
+        .modal-body {
+            padding: 1.5rem;
+        }
+
+        .modal-footer {
+            padding: 1rem 1.5rem;
+            border-top: 1px solid #e0e0e0;
+            display: flex;
+            justify-content: flex-end;
+            gap: 0.5rem;
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 0.5rem;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            font-size: 1rem;
+        }
+
+        .form-group textarea {
+            resize: vertical;
+        }
+    </style>
+</body>
+</html>
