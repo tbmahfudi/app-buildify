@@ -28,8 +28,8 @@ def upgrade() -> None:
     # Create entity_definitions table
     op.create_table(
         'entity_definitions',
-        sa.Column('id', sa.String(36), primary_key=True),
-        sa.Column('tenant_id', sa.String(36), sa.ForeignKey('tenants.id'), nullable=False, index=True),
+        sa.Column('id', UUID(as_uuid=True), primary_key=True),
+        sa.Column('tenant_id', UUID(as_uuid=True), sa.ForeignKey('tenants.id'), nullable=False, index=True),
 
         # Basic Info
         sa.Column('name', sa.String(100), nullable=False),
@@ -68,13 +68,13 @@ def upgrade() -> None:
 
         # Versioning
         sa.Column('version', sa.Integer, default=1),
-        sa.Column('parent_version_id', sa.String(36), sa.ForeignKey('entity_definitions.id')),
+        sa.Column('parent_version_id', UUID(as_uuid=True), sa.ForeignKey('entity_definitions.id')),
 
         # Audit
         sa.Column('created_at', sa.DateTime, server_default=sa.func.now()),
         sa.Column('updated_at', sa.DateTime, server_default=sa.func.now(), onupdate=sa.func.now()),
-        sa.Column('created_by', sa.String(36), sa.ForeignKey('users.id')),
-        sa.Column('updated_by', sa.String(36), sa.ForeignKey('users.id')),
+        sa.Column('created_by', UUID(as_uuid=True), sa.ForeignKey('users.id')),
+        sa.Column('updated_by', UUID(as_uuid=True), sa.ForeignKey('users.id')),
         sa.Column('deleted_at', sa.DateTime),
         sa.Column('is_deleted', sa.Boolean, default=False),
 
@@ -90,9 +90,9 @@ def upgrade() -> None:
     # Create field_definitions table
     op.create_table(
         'field_definitions',
-        sa.Column('id', sa.String(36), primary_key=True),
-        sa.Column('entity_id', sa.String(36), sa.ForeignKey('entity_definitions.id', ondelete='CASCADE'), nullable=False, index=True),
-        sa.Column('tenant_id', sa.String(36), sa.ForeignKey('tenants.id'), nullable=False),
+        sa.Column('id', UUID(as_uuid=True), primary_key=True),
+        sa.Column('entity_id', UUID(as_uuid=True), sa.ForeignKey('entity_definitions.id', ondelete='CASCADE'), nullable=False, index=True),
+        sa.Column('tenant_id', UUID(as_uuid=True), sa.ForeignKey('tenants.id'), nullable=False),
 
         # Basic Info
         sa.Column('name', sa.String(100), nullable=False),
@@ -141,7 +141,7 @@ def upgrade() -> None:
         sa.Column('suffix', sa.Text),
 
         # Relationship Fields
-        sa.Column('reference_entity_id', sa.String(36), sa.ForeignKey('entity_definitions.id')),
+        sa.Column('reference_entity_id', UUID(as_uuid=True), sa.ForeignKey('entity_definitions.id')),
         sa.Column('reference_field', sa.String(100)),
         sa.Column('relationship_type', sa.String(50)),
 
@@ -151,8 +151,8 @@ def upgrade() -> None:
         # Audit
         sa.Column('created_at', sa.DateTime, server_default=sa.func.now()),
         sa.Column('updated_at', sa.DateTime, server_default=sa.func.now(), onupdate=sa.func.now()),
-        sa.Column('created_by', sa.String(36), sa.ForeignKey('users.id')),
-        sa.Column('updated_by', sa.String(36), sa.ForeignKey('users.id')),
+        sa.Column('created_by', UUID(as_uuid=True), sa.ForeignKey('users.id')),
+        sa.Column('updated_by', UUID(as_uuid=True), sa.ForeignKey('users.id')),
         sa.Column('is_deleted', sa.Boolean, default=False),
 
         sa.UniqueConstraint('entity_id', 'name', name='uq_field_def_name'),
@@ -165,8 +165,8 @@ def upgrade() -> None:
     # Create relationship_definitions table
     op.create_table(
         'relationship_definitions',
-        sa.Column('id', sa.String(36), primary_key=True),
-        sa.Column('tenant_id', sa.String(36), sa.ForeignKey('tenants.id'), nullable=False),
+        sa.Column('id', UUID(as_uuid=True), primary_key=True),
+        sa.Column('tenant_id', UUID(as_uuid=True), sa.ForeignKey('tenants.id'), nullable=False),
 
         # Basic Info
         sa.Column('name', sa.String(100), nullable=False),
@@ -177,11 +177,11 @@ def upgrade() -> None:
         sa.Column('relationship_type', sa.String(50), nullable=False),
 
         # Source Entity
-        sa.Column('source_entity_id', sa.String(36), sa.ForeignKey('entity_definitions.id'), nullable=False, index=True),
+        sa.Column('source_entity_id', UUID(as_uuid=True), sa.ForeignKey('entity_definitions.id'), nullable=False, index=True),
         sa.Column('source_field_name', sa.String(100)),
 
         # Target Entity
-        sa.Column('target_entity_id', sa.String(36), sa.ForeignKey('entity_definitions.id'), nullable=False, index=True),
+        sa.Column('target_entity_id', UUID(as_uuid=True), sa.ForeignKey('entity_definitions.id'), nullable=False, index=True),
         sa.Column('target_field_name', sa.String(100)),
 
         # Junction Table (for many-to-many)
@@ -204,8 +204,8 @@ def upgrade() -> None:
         # Audit
         sa.Column('created_at', sa.DateTime, server_default=sa.func.now()),
         sa.Column('updated_at', sa.DateTime, server_default=sa.func.now(), onupdate=sa.func.now()),
-        sa.Column('created_by', sa.String(36), sa.ForeignKey('users.id')),
-        sa.Column('updated_by', sa.String(36), sa.ForeignKey('users.id')),
+        sa.Column('created_by', UUID(as_uuid=True), sa.ForeignKey('users.id')),
+        sa.Column('updated_by', UUID(as_uuid=True), sa.ForeignKey('users.id')),
         sa.Column('is_deleted', sa.Boolean, default=False),
 
         sa.UniqueConstraint('tenant_id', 'name', name='uq_relationship_def_name'),
@@ -217,9 +217,9 @@ def upgrade() -> None:
     # Create index_definitions table
     op.create_table(
         'index_definitions',
-        sa.Column('id', sa.String(36), primary_key=True),
-        sa.Column('entity_id', sa.String(36), sa.ForeignKey('entity_definitions.id', ondelete='CASCADE'), nullable=False, index=True),
-        sa.Column('tenant_id', sa.String(36), sa.ForeignKey('tenants.id'), nullable=False),
+        sa.Column('id', UUID(as_uuid=True), primary_key=True),
+        sa.Column('entity_id', UUID(as_uuid=True), sa.ForeignKey('entity_definitions.id', ondelete='CASCADE'), nullable=False, index=True),
+        sa.Column('tenant_id', UUID(as_uuid=True), sa.ForeignKey('tenants.id'), nullable=False),
 
         # Basic Info
         sa.Column('name', sa.String(100), nullable=False),
@@ -238,7 +238,7 @@ def upgrade() -> None:
 
         # Audit
         sa.Column('created_at', sa.DateTime, server_default=sa.func.now()),
-        sa.Column('created_by', sa.String(36), sa.ForeignKey('users.id')),
+        sa.Column('created_by', UUID(as_uuid=True), sa.ForeignKey('users.id')),
         sa.Column('is_deleted', sa.Boolean, default=False),
 
         sa.UniqueConstraint('entity_id', 'name', name='uq_index_def_name'),
@@ -249,9 +249,9 @@ def upgrade() -> None:
     # Create entity_migrations table
     op.create_table(
         'entity_migrations',
-        sa.Column('id', sa.String(36), primary_key=True),
-        sa.Column('entity_id', sa.String(36), sa.ForeignKey('entity_definitions.id'), nullable=False, index=True),
-        sa.Column('tenant_id', sa.String(36), sa.ForeignKey('tenants.id'), nullable=False),
+        sa.Column('id', UUID(as_uuid=True), primary_key=True),
+        sa.Column('entity_id', UUID(as_uuid=True), sa.ForeignKey('entity_definitions.id'), nullable=False, index=True),
+        sa.Column('tenant_id', UUID(as_uuid=True), sa.ForeignKey('tenants.id'), nullable=False),
 
         # Migration Info
         sa.Column('migration_name', sa.String(200), nullable=False),
@@ -276,7 +276,7 @@ def upgrade() -> None:
 
         # Audit
         sa.Column('created_at', sa.DateTime, server_default=sa.func.now()),
-        sa.Column('created_by', sa.String(36), sa.ForeignKey('users.id')),
+        sa.Column('created_by', UUID(as_uuid=True), sa.ForeignKey('users.id')),
     )
 
     op.create_index('idx_entity_migrations_entity', 'entity_migrations', ['entity_id'])
@@ -287,8 +287,8 @@ def upgrade() -> None:
     # Create workflow_definitions table
     op.create_table(
         'workflow_definitions',
-        sa.Column('id', sa.String(36), primary_key=True),
-        sa.Column('tenant_id', sa.String(36), sa.ForeignKey('tenants.id'), nullable=False, index=True),
+        sa.Column('id', UUID(as_uuid=True), primary_key=True),
+        sa.Column('tenant_id', UUID(as_uuid=True), sa.ForeignKey('tenants.id'), nullable=False, index=True),
 
         # Basic Info
         sa.Column('name', sa.String(100), nullable=False),
@@ -297,7 +297,7 @@ def upgrade() -> None:
         sa.Column('category', sa.String(100)),
 
         # Associated Entity
-        sa.Column('entity_id', sa.String(36), sa.ForeignKey('entity_definitions.id')),
+        sa.Column('entity_id', UUID(as_uuid=True), sa.ForeignKey('entity_definitions.id')),
 
         # Configuration
         sa.Column('trigger_type', sa.String(50), default='manual'),
@@ -310,7 +310,7 @@ def upgrade() -> None:
         sa.Column('version', sa.Integer, default=1),
         sa.Column('is_published', sa.Boolean, default=False),
         sa.Column('published_at', sa.DateTime),
-        sa.Column('parent_version_id', sa.String(36), sa.ForeignKey('workflow_definitions.id')),
+        sa.Column('parent_version_id', UUID(as_uuid=True), sa.ForeignKey('workflow_definitions.id')),
 
         # Status
         sa.Column('is_active', sa.Boolean, default=True),
@@ -321,8 +321,8 @@ def upgrade() -> None:
         # Audit
         sa.Column('created_at', sa.DateTime, server_default=sa.func.now()),
         sa.Column('updated_at', sa.DateTime, server_default=sa.func.now(), onupdate=sa.func.now()),
-        sa.Column('created_by', sa.String(36), sa.ForeignKey('users.id')),
-        sa.Column('updated_by', sa.String(36), sa.ForeignKey('users.id')),
+        sa.Column('created_by', UUID(as_uuid=True), sa.ForeignKey('users.id')),
+        sa.Column('updated_by', UUID(as_uuid=True), sa.ForeignKey('users.id')),
         sa.Column('is_deleted', sa.Boolean, default=False),
 
         sa.UniqueConstraint('tenant_id', 'name', name='uq_workflow_def_name'),
@@ -335,9 +335,9 @@ def upgrade() -> None:
     # Create workflow_states table
     op.create_table(
         'workflow_states',
-        sa.Column('id', sa.String(36), primary_key=True),
-        sa.Column('workflow_id', sa.String(36), sa.ForeignKey('workflow_definitions.id', ondelete='CASCADE'), nullable=False, index=True),
-        sa.Column('tenant_id', sa.String(36), sa.ForeignKey('tenants.id'), nullable=False),
+        sa.Column('id', UUID(as_uuid=True), primary_key=True),
+        sa.Column('workflow_id', UUID(as_uuid=True), sa.ForeignKey('workflow_definitions.id', ondelete='CASCADE'), nullable=False, index=True),
+        sa.Column('tenant_id', UUID(as_uuid=True), sa.ForeignKey('tenants.id'), nullable=False),
 
         # Basic Info
         sa.Column('name', sa.String(100), nullable=False),
@@ -385,9 +385,9 @@ def upgrade() -> None:
     # Create workflow_transitions table
     op.create_table(
         'workflow_transitions',
-        sa.Column('id', sa.String(36), primary_key=True),
-        sa.Column('workflow_id', sa.String(36), sa.ForeignKey('workflow_definitions.id', ondelete='CASCADE'), nullable=False, index=True),
-        sa.Column('tenant_id', sa.String(36), sa.ForeignKey('tenants.id'), nullable=False),
+        sa.Column('id', UUID(as_uuid=True), primary_key=True),
+        sa.Column('workflow_id', UUID(as_uuid=True), sa.ForeignKey('workflow_definitions.id', ondelete='CASCADE'), nullable=False, index=True),
+        sa.Column('tenant_id', UUID(as_uuid=True), sa.ForeignKey('tenants.id'), nullable=False),
 
         # Basic Info
         sa.Column('name', sa.String(100), nullable=False),
@@ -395,8 +395,8 @@ def upgrade() -> None:
         sa.Column('description', sa.Text),
 
         # Source & Target
-        sa.Column('from_state_id', sa.String(36), sa.ForeignKey('workflow_states.id'), nullable=False, index=True),
-        sa.Column('to_state_id', sa.String(36), sa.ForeignKey('workflow_states.id'), nullable=False, index=True),
+        sa.Column('from_state_id', UUID(as_uuid=True), sa.ForeignKey('workflow_states.id'), nullable=False, index=True),
+        sa.Column('to_state_id', UUID(as_uuid=True), sa.ForeignKey('workflow_states.id'), nullable=False, index=True),
 
         # Conditions
         sa.Column('condition_type', sa.String(50), default='always'),
@@ -434,16 +434,16 @@ def upgrade() -> None:
     # Create workflow_instances table
     op.create_table(
         'workflow_instances',
-        sa.Column('id', sa.String(36), primary_key=True),
-        sa.Column('workflow_id', sa.String(36), sa.ForeignKey('workflow_definitions.id'), nullable=False, index=True),
-        sa.Column('tenant_id', sa.String(36), sa.ForeignKey('tenants.id'), nullable=False),
+        sa.Column('id', UUID(as_uuid=True), primary_key=True),
+        sa.Column('workflow_id', UUID(as_uuid=True), sa.ForeignKey('workflow_definitions.id'), nullable=False, index=True),
+        sa.Column('tenant_id', UUID(as_uuid=True), sa.ForeignKey('tenants.id'), nullable=False),
 
         # Associated Record
-        sa.Column('entity_id', sa.String(36), sa.ForeignKey('entity_definitions.id'), nullable=False),
-        sa.Column('record_id', sa.String(36), nullable=False),
+        sa.Column('entity_id', UUID(as_uuid=True), sa.ForeignKey('entity_definitions.id'), nullable=False),
+        sa.Column('record_id', UUID(as_uuid=True), nullable=False),
 
         # Current State
-        sa.Column('current_state_id', sa.String(36), sa.ForeignKey('workflow_states.id')),
+        sa.Column('current_state_id', UUID(as_uuid=True), sa.ForeignKey('workflow_states.id')),
         sa.Column('current_state_entered_at', sa.DateTime),
 
         # Status
@@ -459,7 +459,7 @@ def upgrade() -> None:
         # Audit
         sa.Column('started_at', sa.DateTime, server_default=sa.func.now()),
         sa.Column('completed_at', sa.DateTime),
-        sa.Column('started_by', sa.String(36), sa.ForeignKey('users.id')),
+        sa.Column('started_by', UUID(as_uuid=True), sa.ForeignKey('users.id')),
 
         # Error Handling
         sa.Column('error_message', sa.Text),
@@ -475,17 +475,17 @@ def upgrade() -> None:
     # Create workflow_history table
     op.create_table(
         'workflow_history',
-        sa.Column('id', sa.String(36), primary_key=True),
-        sa.Column('instance_id', sa.String(36), sa.ForeignKey('workflow_instances.id'), nullable=False, index=True),
-        sa.Column('tenant_id', sa.String(36), sa.ForeignKey('tenants.id'), nullable=False),
+        sa.Column('id', UUID(as_uuid=True), primary_key=True),
+        sa.Column('instance_id', UUID(as_uuid=True), sa.ForeignKey('workflow_instances.id'), nullable=False, index=True),
+        sa.Column('tenant_id', UUID(as_uuid=True), sa.ForeignKey('tenants.id'), nullable=False),
 
         # Transition Info
-        sa.Column('from_state_id', sa.String(36), sa.ForeignKey('workflow_states.id')),
-        sa.Column('to_state_id', sa.String(36), sa.ForeignKey('workflow_states.id')),
-        sa.Column('transition_id', sa.String(36), sa.ForeignKey('workflow_transitions.id')),
+        sa.Column('from_state_id', UUID(as_uuid=True), sa.ForeignKey('workflow_states.id')),
+        sa.Column('to_state_id', UUID(as_uuid=True), sa.ForeignKey('workflow_states.id')),
+        sa.Column('transition_id', UUID(as_uuid=True), sa.ForeignKey('workflow_transitions.id')),
 
         # Actor
-        sa.Column('performed_by', sa.String(36), sa.ForeignKey('users.id'), index=True),
+        sa.Column('performed_by', UUID(as_uuid=True), sa.ForeignKey('users.id'), index=True),
         sa.Column('performed_at', sa.DateTime, server_default=sa.func.now()),
 
         # Action Details
@@ -510,8 +510,8 @@ def upgrade() -> None:
     # Create automation_rules table
     op.create_table(
         'automation_rules',
-        sa.Column('id', sa.String(36), primary_key=True),
-        sa.Column('tenant_id', sa.String(36), sa.ForeignKey('tenants.id'), nullable=False, index=True),
+        sa.Column('id', UUID(as_uuid=True), primary_key=True),
+        sa.Column('tenant_id', UUID(as_uuid=True), sa.ForeignKey('tenants.id'), nullable=False, index=True),
 
         # Basic Info
         sa.Column('name', sa.String(100), nullable=False),
@@ -524,7 +524,7 @@ def upgrade() -> None:
         sa.Column('trigger_config', JSONB, nullable=False),
 
         # Entity Association
-        sa.Column('entity_id', sa.String(36), sa.ForeignKey('entity_definitions.id')),
+        sa.Column('entity_id', UUID(as_uuid=True), sa.ForeignKey('entity_definitions.id')),
 
         # Database Event Triggers
         sa.Column('event_type', sa.String(50)),
@@ -582,8 +582,8 @@ def upgrade() -> None:
         # Audit
         sa.Column('created_at', sa.DateTime, server_default=sa.func.now()),
         sa.Column('updated_at', sa.DateTime, server_default=sa.func.now(), onupdate=sa.func.now()),
-        sa.Column('created_by', sa.String(36), sa.ForeignKey('users.id')),
-        sa.Column('updated_by', sa.String(36), sa.ForeignKey('users.id')),
+        sa.Column('created_by', UUID(as_uuid=True), sa.ForeignKey('users.id')),
+        sa.Column('updated_by', UUID(as_uuid=True), sa.ForeignKey('users.id')),
         sa.Column('deleted_at', sa.DateTime),
         sa.Column('is_deleted', sa.Boolean, default=False),
 
@@ -604,18 +604,18 @@ def upgrade() -> None:
     # Create automation_executions table
     op.create_table(
         'automation_executions',
-        sa.Column('id', sa.String(36), primary_key=True),
-        sa.Column('rule_id', sa.String(36), sa.ForeignKey('automation_rules.id'), nullable=False, index=True),
-        sa.Column('tenant_id', sa.String(36), sa.ForeignKey('tenants.id'), nullable=False),
+        sa.Column('id', UUID(as_uuid=True), primary_key=True),
+        sa.Column('rule_id', UUID(as_uuid=True), sa.ForeignKey('automation_rules.id'), nullable=False, index=True),
+        sa.Column('tenant_id', UUID(as_uuid=True), sa.ForeignKey('tenants.id'), nullable=False),
 
         # Trigger Context
         sa.Column('trigger_type', sa.String(50), nullable=False),
-        sa.Column('triggered_by_user_id', sa.String(36), sa.ForeignKey('users.id')),
+        sa.Column('triggered_by_user_id', UUID(as_uuid=True), sa.ForeignKey('users.id')),
         sa.Column('triggered_at', sa.DateTime, server_default=sa.func.now()),
 
         # Entity Context
-        sa.Column('entity_id', sa.String(36), sa.ForeignKey('entity_definitions.id')),
-        sa.Column('record_id', sa.String(36)),
+        sa.Column('entity_id', UUID(as_uuid=True), sa.ForeignKey('entity_definitions.id')),
+        sa.Column('record_id', UUID(as_uuid=True)),
         sa.Column('record_data_before', JSONB),
         sa.Column('record_data_after', JSONB),
 
@@ -658,8 +658,8 @@ def upgrade() -> None:
     # Create action_templates table
     op.create_table(
         'action_templates',
-        sa.Column('id', sa.String(36), primary_key=True),
-        sa.Column('tenant_id', sa.String(36), sa.ForeignKey('tenants.id')),
+        sa.Column('id', UUID(as_uuid=True), primary_key=True),
+        sa.Column('tenant_id', UUID(as_uuid=True), sa.ForeignKey('tenants.id')),
 
         # Basic Info
         sa.Column('name', sa.String(100), nullable=False),
@@ -687,7 +687,7 @@ def upgrade() -> None:
         # Audit
         sa.Column('created_at', sa.DateTime, server_default=sa.func.now()),
         sa.Column('updated_at', sa.DateTime, server_default=sa.func.now(), onupdate=sa.func.now()),
-        sa.Column('created_by', sa.String(36), sa.ForeignKey('users.id')),
+        sa.Column('created_by', UUID(as_uuid=True), sa.ForeignKey('users.id')),
         sa.Column('is_deleted', sa.Boolean, default=False),
 
         sa.UniqueConstraint('tenant_id', 'name', name='uq_action_template_name'),
@@ -700,8 +700,8 @@ def upgrade() -> None:
     # Create webhook_configs table
     op.create_table(
         'webhook_configs',
-        sa.Column('id', sa.String(36), primary_key=True),
-        sa.Column('tenant_id', sa.String(36), sa.ForeignKey('tenants.id'), nullable=False),
+        sa.Column('id', UUID(as_uuid=True), primary_key=True),
+        sa.Column('tenant_id', UUID(as_uuid=True), sa.ForeignKey('tenants.id'), nullable=False),
 
         # Basic Info
         sa.Column('name', sa.String(100), nullable=False),
@@ -747,8 +747,8 @@ def upgrade() -> None:
         # Audit
         sa.Column('created_at', sa.DateTime, server_default=sa.func.now()),
         sa.Column('updated_at', sa.DateTime, server_default=sa.func.now(), onupdate=sa.func.now()),
-        sa.Column('created_by', sa.String(36), sa.ForeignKey('users.id')),
-        sa.Column('updated_by', sa.String(36), sa.ForeignKey('users.id')),
+        sa.Column('created_by', UUID(as_uuid=True), sa.ForeignKey('users.id')),
+        sa.Column('updated_by', UUID(as_uuid=True), sa.ForeignKey('users.id')),
         sa.Column('is_deleted', sa.Boolean, default=False),
 
         sa.UniqueConstraint('tenant_id', 'name', name='uq_webhook_config_name'),
@@ -764,8 +764,8 @@ def upgrade() -> None:
     # Create lookup_configurations table
     op.create_table(
         'lookup_configurations',
-        sa.Column('id', sa.String(36), primary_key=True),
-        sa.Column('tenant_id', sa.String(36), sa.ForeignKey('tenants.id'), nullable=False),
+        sa.Column('id', UUID(as_uuid=True), primary_key=True),
+        sa.Column('tenant_id', UUID(as_uuid=True), sa.ForeignKey('tenants.id'), nullable=False),
 
         # Basic Info
         sa.Column('name', sa.String(100), nullable=False),
@@ -776,7 +776,7 @@ def upgrade() -> None:
         sa.Column('source_type', sa.String(50), nullable=False),
 
         # Entity Source
-        sa.Column('source_entity_id', sa.String(36), sa.ForeignKey('entity_definitions.id')),
+        sa.Column('source_entity_id', UUID(as_uuid=True), sa.ForeignKey('entity_definitions.id')),
         sa.Column('display_field', sa.String(100)),
         sa.Column('value_field', sa.String(100), default='id'),
         sa.Column('additional_display_fields', JSONB, default='[]'),
@@ -828,12 +828,12 @@ def upgrade() -> None:
 
         # Dependency Configuration
         sa.Column('is_dependent', sa.Boolean, default=False),
-        sa.Column('parent_lookup_id', sa.String(36), sa.ForeignKey('lookup_configurations.id')),
+        sa.Column('parent_lookup_id', UUID(as_uuid=True), sa.ForeignKey('lookup_configurations.id')),
         sa.Column('dependency_mapping', JSONB, default='{}'),
 
         # Advanced Features
         sa.Column('allow_create_new', sa.Boolean, default=False),
-        sa.Column('create_entity_id', sa.String(36), sa.ForeignKey('entity_definitions.id')),
+        sa.Column('create_entity_id', UUID(as_uuid=True), sa.ForeignKey('entity_definitions.id')),
 
         sa.Column('allow_multiple', sa.Boolean, default=False),
         sa.Column('max_selections', sa.Integer),
@@ -847,8 +847,8 @@ def upgrade() -> None:
         # Audit
         sa.Column('created_at', sa.DateTime, server_default=sa.func.now()),
         sa.Column('updated_at', sa.DateTime, server_default=sa.func.now(), onupdate=sa.func.now()),
-        sa.Column('created_by', sa.String(36), sa.ForeignKey('users.id')),
-        sa.Column('updated_by', sa.String(36), sa.ForeignKey('users.id')),
+        sa.Column('created_by', UUID(as_uuid=True), sa.ForeignKey('users.id')),
+        sa.Column('updated_by', UUID(as_uuid=True), sa.ForeignKey('users.id')),
         sa.Column('is_deleted', sa.Boolean, default=False),
 
         sa.UniqueConstraint('tenant_id', 'name', name='uq_lookup_config_name'),
@@ -863,9 +863,9 @@ def upgrade() -> None:
     # Create lookup_cache table
     op.create_table(
         'lookup_cache',
-        sa.Column('id', sa.String(36), primary_key=True),
-        sa.Column('lookup_id', sa.String(36), sa.ForeignKey('lookup_configurations.id', ondelete='CASCADE'), nullable=False, index=True),
-        sa.Column('tenant_id', sa.String(36), sa.ForeignKey('tenants.id'), nullable=False),
+        sa.Column('id', UUID(as_uuid=True), primary_key=True),
+        sa.Column('lookup_id', UUID(as_uuid=True), sa.ForeignKey('lookup_configurations.id', ondelete='CASCADE'), nullable=False, index=True),
+        sa.Column('tenant_id', UUID(as_uuid=True), sa.ForeignKey('tenants.id'), nullable=False),
 
         # Cache Key
         sa.Column('cache_key', sa.String(255), nullable=False),
@@ -890,16 +890,16 @@ def upgrade() -> None:
     # Create cascading_lookup_rules table
     op.create_table(
         'cascading_lookup_rules',
-        sa.Column('id', sa.String(36), primary_key=True),
-        sa.Column('tenant_id', sa.String(36), sa.ForeignKey('tenants.id'), nullable=False),
+        sa.Column('id', UUID(as_uuid=True), primary_key=True),
+        sa.Column('tenant_id', UUID(as_uuid=True), sa.ForeignKey('tenants.id'), nullable=False),
 
         # Basic Info
         sa.Column('name', sa.String(100), nullable=False),
         sa.Column('description', sa.Text),
 
         # Parent-Child Relationship
-        sa.Column('parent_lookup_id', sa.String(36), sa.ForeignKey('lookup_configurations.id'), nullable=False, index=True),
-        sa.Column('child_lookup_id', sa.String(36), sa.ForeignKey('lookup_configurations.id'), nullable=False, index=True),
+        sa.Column('parent_lookup_id', UUID(as_uuid=True), sa.ForeignKey('lookup_configurations.id'), nullable=False, index=True),
+        sa.Column('child_lookup_id', UUID(as_uuid=True), sa.ForeignKey('lookup_configurations.id'), nullable=False, index=True),
 
         # Filtering Rule
         sa.Column('filter_type', sa.String(50), default='field_match'),
@@ -919,7 +919,7 @@ def upgrade() -> None:
         # Audit
         sa.Column('created_at', sa.DateTime, server_default=sa.func.now()),
         sa.Column('updated_at', sa.DateTime, server_default=sa.func.now(), onupdate=sa.func.now()),
-        sa.Column('created_by', sa.String(36), sa.ForeignKey('users.id')),
+        sa.Column('created_by', UUID(as_uuid=True), sa.ForeignKey('users.id')),
 
         sa.UniqueConstraint('parent_lookup_id', 'child_lookup_id', name='uq_cascading_lookup'),
     )
