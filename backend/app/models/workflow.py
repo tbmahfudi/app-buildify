@@ -80,7 +80,6 @@ class WorkflowDefinition(Base):
     __table_args__ = (
         Index("idx_workflow_definitions_tenant", "tenant_id", postgresql_where=text("is_deleted = false")),
         Index("idx_workflow_definitions_entity", "entity_id"),
-        {"schema": "public"},
     )
 
 
@@ -143,7 +142,6 @@ class WorkflowState(Base):
     # Table constraints
     __table_args__ = (
         Index("idx_workflow_states_workflow", "workflow_id"),
-        {"schema": "public"},
     )
 
 
@@ -207,7 +205,6 @@ class WorkflowTransition(Base):
         Index("idx_workflow_transitions_workflow", "workflow_id"),
         Index("idx_workflow_transitions_from_state", "from_state_id"),
         Index("idx_workflow_transitions_to_state", "to_state_id"),
-        {"schema": "public"},
     )
 
 
@@ -261,7 +258,6 @@ class WorkflowInstance(Base):
         Index("idx_workflow_instances_record", "entity_id", "record_id"),
         Index("idx_workflow_instances_status", "status"),
         Index("idx_workflow_instances_sla", "sla_deadline", postgresql_where=text("is_sla_breached = false")),
-        {"schema": "public"},
     )
 
 
@@ -307,5 +303,4 @@ class WorkflowHistory(Base):
     __table_args__ = (
         Index("idx_workflow_history_instance", "instance_id"),
         Index("idx_workflow_history_performed_by", "performed_by"),
-        {"schema": "public"},
     )

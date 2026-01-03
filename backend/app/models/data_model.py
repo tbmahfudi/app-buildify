@@ -96,7 +96,6 @@ class EntityDefinition(Base):
         Index("idx_entity_definitions_tenant", "tenant_id", postgresql_where=text("is_deleted = false")),
         Index("idx_entity_definitions_status", "status"),
         Index("idx_entity_definitions_type", "entity_type"),
-        {"schema": "public"},
     )
 
 
@@ -182,7 +181,6 @@ class FieldDefinition(Base):
     __table_args__ = (
         Index("idx_field_definitions_entity", "entity_id", postgresql_where=text("is_deleted = false")),
         Index("idx_field_definitions_type", "field_type"),
-        {"schema": "public"},
     )
 
 
@@ -247,7 +245,6 @@ class RelationshipDefinition(Base):
     __table_args__ = (
         Index("idx_relationship_definitions_source", "source_entity_id"),
         Index("idx_relationship_definitions_target", "target_entity_id"),
-        {"schema": "public"},
     )
 
 
@@ -290,7 +287,6 @@ class IndexDefinition(Base):
     # Table constraints
     __table_args__ = (
         Index("idx_index_definitions_entity", "entity_id"),
-        {"schema": "public"},
     )
 
 
@@ -340,5 +336,4 @@ class EntityMigration(Base):
     __table_args__ = (
         Index("idx_entity_migrations_entity", "entity_id"),
         Index("idx_entity_migrations_status", "status"),
-        {"schema": "public"},
     )
