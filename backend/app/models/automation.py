@@ -95,7 +95,7 @@ class AutomationRule(Base):
     average_execution_time_ms = Column(Integer)
 
     # Metadata
-    metadata = Column(JSONB, default=dict)
+    meta_data = Column(JSONB, default=dict)
 
     # Version Control
     version = Column(Integer, default=1)
@@ -173,7 +173,7 @@ class AutomationExecution(Base):
     context_data = Column(JSONB, default=dict)  # Additional context for the execution
 
     # Metadata
-    metadata = Column(JSONB, default=dict)
+    meta_data = Column(JSONB, default=dict)
 
     # Relationships
     rule = relationship("AutomationRule", back_populates="executions")
@@ -289,7 +289,7 @@ class WebhookConfig(Base):
     last_called_at = Column(DateTime)
 
     # Metadata
-    metadata = Column(JSONB, default=dict)
+    meta_data = Column(JSONB, default=dict)
 
     # Audit
     created_at = Column(DateTime, default=datetime.utcnow)

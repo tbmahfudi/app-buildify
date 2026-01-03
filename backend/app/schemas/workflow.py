@@ -31,7 +31,7 @@ class WorkflowStateBase(BaseModel):
     on_entry_actions: List[Dict[str, Any]] = Field(default_factory=list)
     on_exit_actions: List[Dict[str, Any]] = Field(default_factory=list)
     required_fields: List[str] = Field(default_factory=list)
-    metadata: Dict[str, Any] = Field(default_factory=dict)
+    meta_data: Dict[str, Any] = Field(default_factory=dict)
 
 
 class WorkflowStateCreate(WorkflowStateBase):
@@ -54,7 +54,7 @@ class WorkflowStateUpdate(BaseModel):
     on_entry_actions: Optional[List[Dict[str, Any]]] = None
     on_exit_actions: Optional[List[Dict[str, Any]]] = None
     required_fields: Optional[List[str]] = None
-    metadata: Optional[Dict[str, Any]] = None
+    meta_data: Optional[Dict[str, Any]] = None
 
 
 class WorkflowStateResponse(WorkflowStateBase):
@@ -89,7 +89,7 @@ class WorkflowTransitionBase(BaseModel):
     icon: Optional[str] = None
     display_order: int = 0
     validation_rules: List[Dict[str, Any]] = Field(default_factory=list)
-    metadata: Dict[str, Any] = Field(default_factory=dict)
+    meta_data: Dict[str, Any] = Field(default_factory=dict)
 
 
 class WorkflowTransitionCreate(WorkflowTransitionBase):
@@ -110,7 +110,7 @@ class WorkflowTransitionUpdate(BaseModel):
     icon: Optional[str] = None
     display_order: Optional[int] = None
     validation_rules: Optional[List[Dict[str, Any]]] = None
-    metadata: Optional[Dict[str, Any]] = None
+    meta_data: Optional[Dict[str, Any]] = None
 
 
 class WorkflowTransitionResponse(WorkflowTransitionBase):
@@ -138,7 +138,7 @@ class WorkflowDefinitionBase(BaseModel):
     trigger_type: str = "manual"
     trigger_conditions: Optional[Dict[str, Any]] = None
     canvas_data: Dict[str, Any] = Field(..., description="Workflow diagram data")
-    metadata: Dict[str, Any] = Field(default_factory=dict)
+    meta_data: Dict[str, Any] = Field(default_factory=dict)
 
 
 class WorkflowDefinitionCreate(WorkflowDefinitionBase):
@@ -156,7 +156,7 @@ class WorkflowDefinitionUpdate(BaseModel):
     trigger_conditions: Optional[Dict[str, Any]] = None
     canvas_data: Optional[Dict[str, Any]] = None
     is_active: Optional[bool] = None
-    metadata: Optional[Dict[str, Any]] = None
+    meta_data: Optional[Dict[str, Any]] = None
 
 
 class WorkflowDefinitionResponse(WorkflowDefinitionBase):
@@ -237,7 +237,7 @@ class WorkflowHistoryResponse(BaseModel):
     action_data: Optional[Dict[str, Any]]
     comment: Optional[str]
     duration_minutes: Optional[int]
-    metadata: Dict[str, Any]
+    meta_data: Dict[str, Any]
 
     class Config:
         from_attributes = True

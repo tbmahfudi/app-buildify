@@ -41,7 +41,7 @@ class AutomationRuleBase(BaseModel):
     error_notification_emails: List[str] = Field(default_factory=list)
     is_async: bool = True
     is_test_mode: bool = False
-    metadata: Dict[str, Any] = Field(default_factory=dict)
+    meta_data: Dict[str, Any] = Field(default_factory=dict)
 
 
 class AutomationRuleCreate(AutomationRuleBase):
@@ -67,7 +67,7 @@ class AutomationRuleUpdate(BaseModel):
     max_retries: Optional[int] = None
     is_active: Optional[bool] = None
     is_test_mode: Optional[bool] = None
-    metadata: Optional[Dict[str, Any]] = None
+    meta_data: Optional[Dict[str, Any]] = None
 
 
 class AutomationRuleResponse(AutomationRuleBase):
@@ -122,7 +122,7 @@ class AutomationExecutionResponse(BaseModel):
     retry_count: int
     next_retry_at: Optional[datetime]
     context_data: Dict[str, Any]
-    metadata: Dict[str, Any]
+    meta_data: Dict[str, Any]
 
     class Config:
         from_attributes = True
@@ -190,7 +190,7 @@ class WebhookConfigBase(BaseModel):
     max_retries: int = 3
     retry_delay_seconds: int = 60
     timeout_seconds: int = 30
-    metadata: Dict[str, Any] = Field(default_factory=dict)
+    meta_data: Dict[str, Any] = Field(default_factory=dict)
 
 
 class WebhookConfigCreate(WebhookConfigBase):
@@ -211,7 +211,7 @@ class WebhookConfigUpdate(BaseModel):
     payload_template: Optional[str] = None
     payload_mapping: Optional[Dict[str, Any]] = None
     is_active: Optional[bool] = None
-    metadata: Optional[Dict[str, Any]] = None
+    meta_data: Optional[Dict[str, Any]] = None
 
 
 class WebhookConfigResponse(WebhookConfigBase):

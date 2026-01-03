@@ -107,7 +107,7 @@ class LookupConfiguration(Base):
     max_selections = Column(Integer)
 
     # Metadata
-    metadata = Column(JSONB, default=dict)
+    meta_data = Column(JSONB, default=dict)
 
     # Status
     is_active = Column(Boolean, default=True)
