@@ -85,7 +85,7 @@ class EntityDefinition(Base):
     is_deleted = Column(Boolean, default=False)
 
     # Relationships
-    fields = relationship("FieldDefinition", back_populates="entity", cascade="all, delete-orphan")
+    fields = relationship("FieldDefinition", foreign_keys="FieldDefinition.entity_id", back_populates="entity", cascade="all, delete-orphan")
     migrations = relationship("EntityMigration", back_populates="entity")
     indexes = relationship("IndexDefinition", back_populates="entity", cascade="all, delete-orphan")
     source_relationships = relationship("RelationshipDefinition", foreign_keys="RelationshipDefinition.source_entity_id", back_populates="source_entity")
