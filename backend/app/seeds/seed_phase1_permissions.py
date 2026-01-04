@@ -12,9 +12,11 @@ Run: python -m app.seeds.seed_phase1_permissions
 
 from datetime import datetime
 from sqlalchemy.orm import Session
+from sqlalchemy import and_
 from app.core.db import SessionLocal
 from app.models.permission import Permission
 from app.models.role import Role
+from app.models.rbac_junctions import RolePermission
 from app.models.base import generate_uuid
 
 
@@ -279,8 +281,20 @@ def seed_phase1_permissions(db: Session) -> dict:
 
         assigned_count = 0
         for permission in permissions:
-            if permission not in admin_role.permissions:
-                admin_role.permissions.append(permission)
+            # Check if already assigned
+            existing = db.query(RolePermission).filter(
+                and_(
+                    RolePermission.role_id == admin_role.id,
+                    RolePermission.permission_id == permission.id
+                )
+            ).first()
+
+            if not existing:
+                role_perm = RolePermission(
+                    role_id=admin_role.id,
+                    permission_id=permission.id
+                )
+                db.add(role_perm)
                 assigned_count += 1
                 print(f"  ✅ Assigned: {permission.code}")
 
@@ -302,8 +316,20 @@ def seed_phase1_permissions(db: Session) -> dict:
 
         assigned_count = 0
         for permission in permissions:
-            if permission not in security_role.permissions:
-                security_role.permissions.append(permission)
+            # Check if already assigned
+            existing = db.query(RolePermission).filter(
+                and_(
+                    RolePermission.role_id == security_role.id,
+                    RolePermission.permission_id == permission.id
+                )
+            ).first()
+
+            if not existing:
+                role_perm = RolePermission(
+                    role_id=security_role.id,
+                    permission_id=permission.id
+                )
+                db.add(role_perm)
                 assigned_count += 1
                 print(f"  ✅ Assigned: {permission.code}")
 
