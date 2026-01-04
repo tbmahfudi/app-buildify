@@ -266,12 +266,12 @@ def seed_phase1_permissions(db: Session) -> dict:
     print(f"\n✅ Created {created_count} new permissions")
     print(f"⏭️  Skipped {existing_count} existing permissions")
 
-    # Assign to sysadmin role
-    print("\n📋 Assigning permissions to sysadmin role...")
+    # Assign permissions to tenant_admin role
+    print("\n📋 Assigning permissions to tenant_admin role...")
 
-    sysadmin_role = db.query(Role).filter(Role.code == "sysadmin").first()
+    admin_role = db.query(Role).filter(Role.code == "tenant_admin").first()
 
-    if sysadmin_role:
+    if admin_role:
         permission_codes = [p["code"] for p in permissions_data]
         permissions = db.query(Permission).filter(
             Permission.code.in_(permission_codes)
@@ -279,15 +279,38 @@ def seed_phase1_permissions(db: Session) -> dict:
 
         assigned_count = 0
         for permission in permissions:
-            if permission not in sysadmin_role.permissions:
-                sysadmin_role.permissions.append(permission)
+            if permission not in admin_role.permissions:
+                admin_role.permissions.append(permission)
                 assigned_count += 1
                 print(f"  ✅ Assigned: {permission.code}")
 
         db.commit()
-        print(f"\n✅ Assigned {assigned_count} permissions to sysadmin role")
+        print(f"\n✅ Assigned {assigned_count} permissions to tenant_admin role")
     else:
-        print("  ⚠️  Warning: sysadmin role not found")
+        print("  ⚠️  Warning: tenant_admin role not found. Run seed_role_templates.py first.")
+
+    # Also assign to security_admin role (for RBAC management)
+    print("\n📋 Assigning permissions to security_admin role...")
+
+    security_role = db.query(Role).filter(Role.code == "security_admin").first()
+
+    if security_role:
+        permission_codes = [p["code"] for p in permissions_data]
+        permissions = db.query(Permission).filter(
+            Permission.code.in_(permission_codes)
+        ).all()
+
+        assigned_count = 0
+        for permission in permissions:
+            if permission not in security_role.permissions:
+                security_role.permissions.append(permission)
+                assigned_count += 1
+                print(f"  ✅ Assigned: {permission.code}")
+
+        db.commit()
+        print(f"\n✅ Assigned {assigned_count} permissions to security_admin role")
+    else:
+        print("  ⚠️  Note: security_admin role not found (optional)")
 
     print("\n" + "="*80)
     print("PHASE 1 PERMISSIONS SETUP COMPLETE")

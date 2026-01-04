@@ -44,17 +44,17 @@ VALUES
     ('lookup-delete-tenant', 'lookups:delete:tenant', 'Delete Lookups', 'Permission to delete lookup configurations', 'tenant', 'lookups', 'delete', NOW(), NOW())
 ON CONFLICT (code) DO NOTHING;
 
--- ==================== Assign Permissions to System Admin Role ====================
+-- ==================== Assign Permissions to Admin Roles ====================
 
--- Get the system admin role ID (assuming it exists with code 'sysadmin')
+-- Get the tenant admin role ID
 DO $$
 DECLARE
     admin_role_id VARCHAR(36);
 BEGIN
-    SELECT id INTO admin_role_id FROM roles WHERE code = 'sysadmin' LIMIT 1;
+    SELECT id INTO admin_role_id FROM roles WHERE code = 'tenant_admin' LIMIT 1;
 
     IF admin_role_id IS NOT NULL THEN
-        -- Assign all Phase 1 permissions to sysadmin role
+        -- Assign all Phase 1 permissions to tenant_admin role
         INSERT INTO role_permissions (role_id, permission_id, granted_at)
         SELECT admin_role_id, id, NOW()
         FROM permissions
