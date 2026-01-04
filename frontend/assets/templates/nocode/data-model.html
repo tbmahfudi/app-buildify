@@ -1,4 +1,4 @@
-<div class="space-y-6">
+<div class="space-y-6" id="datamodel-app">
   <!-- Header -->
   <div class="bg-white border-b border-gray-200 px-6 py-4">
     <div class="flex items-center justify-between">
@@ -7,36 +7,422 @@
           <i class="ph-duotone ph-database text-blue-600"></i>
           Data Model Designer
         </h1>
-        <p class="text-sm text-gray-600 mt-1">Design and manage your application's data models without code</p>
+        <p class="text-sm text-gray-600 mt-1">Create and manage database entities without writing code</p>
+      </div>
+      <button onclick="DataModelApp.showCreateModal()" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center gap-2">
+        <i class="ph ph-plus"></i>
+        Create Entity
+      </button>
+    </div>
+  </div>
+
+  <!-- Entity List -->
+  <div class="px-6">
+    <div id="entities-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <!-- Loading state -->
+      <div class="col-span-full text-center py-12">
+        <i class="ph-duotone ph-spinner text-4xl text-gray-400 animate-spin"></i>
+        <p class="text-gray-600 mt-2">Loading entities...</p>
       </div>
     </div>
   </div>
 
-  <div class="max-w-4xl mx-auto px-6">
-    <div class="bg-white rounded-lg shadow-sm p-6">
-      <div class="bg-blue-50 border-l-4 border-blue-500 p-6 rounded-lg">
-        <div class="flex items-start gap-3">
-          <i class="ph-duotone ph-info text-blue-600 text-2xl"></i>
+  <!-- Create Entity Modal -->
+  <div id="createEntityModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+      <div class="p-6 border-b border-gray-200">
+        <div class="flex items-center justify-between">
+          <h3 class="text-xl font-bold text-gray-900">Create New Entity</h3>
+          <button onclick="DataModelApp.closeCreateModal()" class="text-gray-400 hover:text-gray-600">
+            <i class="ph ph-x text-2xl"></i>
+          </button>
+        </div>
+      </div>
+
+      <form id="createEntityForm" onsubmit="DataModelApp.createEntity(event)" class="p-6 space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">Entity Name (Technical)*</label>
+          <input type="text" name="name" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g., customer">
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">Display Label*</label>
+          <input type="text" name="label" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g., Customer">
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">Plural Label</label>
+          <input type="text" name="plural_label" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g., Customers">
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">Description</label>
+          <textarea name="description" rows="3" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Describe the entity purpose..."></textarea>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">Table Name*</label>
+          <input type="text" name="table_name" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g., customers">
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">Category</label>
+          <input type="text" name="category" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g., CRM, Sales">
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
           <div>
-            <h3 class="text-lg font-semibold text-blue-900 mb-2">Coming Soon</h3>
-            <p class="text-blue-800 mb-4">
-              The Data Model Designer is currently under development.
-            </p>
-            <p class="text-sm text-blue-700">
-              This no-code tool will allow you to:
-            </p>
-            <ul class="list-disc list-inside text-sm text-blue-700 mt-2 space-y-1">
-              <li>Create and manage database tables and entities</li>
-              <li>Define fields, data types, and relationships</li>
-              <li>Configure validation rules and constraints</li>
-              <li>Set up indexes and optimize queries</li>
-              <li>Generate database migrations automatically</li>
-              <li>Visualize entity relationships (ERD)</li>
-              <li>Import/export data models</li>
-            </ul>
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              <input type="checkbox" name="is_audited" checked class="mr-2">
+              Enable Audit Trail
+            </label>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              <input type="checkbox" name="supports_soft_delete" checked class="mr-2">
+              Soft Delete Support
+            </label>
           </div>
         </div>
+
+        <div class="flex justify-end gap-3 pt-4">
+          <button type="button" onclick="DataModelApp.closeCreateModal()" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
+            Cancel
+          </button>
+          <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+            Create Entity
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- View Entity Detail Modal -->
+  <div id="viewEntityModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+      <div class="p-6 border-b border-gray-200">
+        <div class="flex items-center justify-between">
+          <h3 class="text-xl font-bold text-gray-900" id="viewEntityTitle">Entity Details</h3>
+          <button onclick="DataModelApp.closeViewModal()" class="text-gray-400 hover:text-gray-600">
+            <i class="ph ph-x text-2xl"></i>
+          </button>
+        </div>
+      </div>
+
+      <div id="viewEntityContent" class="p-6">
+        <!-- Content will be loaded dynamically -->
       </div>
     </div>
   </div>
 </div>
+
+<script>
+const DataModelApp = {
+  entities: [],
+
+  async init() {
+    await this.loadEntities();
+
+    // Listen for route:loaded event
+    document.addEventListener('route:loaded', (e) => {
+      if (e.detail.route === 'nocode/data-model') {
+        this.loadEntities();
+      }
+    });
+  },
+
+  async loadEntities() {
+    try {
+      const response = await fetch('/api/v1/data-model/entities', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+
+      if (response.ok) {
+        this.entities = await response.json();
+        this.renderEntities();
+      } else {
+        this.showError('Failed to load entities');
+      }
+    } catch (error) {
+      console.error('Error loading entities:', error);
+      this.showError('Error loading entities');
+    }
+  },
+
+  renderEntities() {
+    const container = document.getElementById('entities-list');
+
+    if (this.entities.length === 0) {
+      container.innerHTML = `
+        <div class="col-span-full text-center py-12">
+          <i class="ph-duotone ph-database text-6xl text-gray-300"></i>
+          <h3 class="mt-4 text-lg font-medium text-gray-900">No entities defined yet</h3>
+          <p class="mt-2 text-gray-500">Create your first entity to get started</p>
+          <button onclick="DataModelApp.showCreateModal()" class="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+            <i class="ph ph-plus"></i> Create Entity
+          </button>
+        </div>
+      `;
+      return;
+    }
+
+    container.innerHTML = this.entities.map(entity => `
+      <div class="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-lg transition">
+        <div class="flex items-start justify-between mb-3">
+          <div class="flex-1">
+            <h3 class="text-lg font-semibold text-gray-900">${this.escapeHtml(entity.label)}</h3>
+            <p class="text-sm text-gray-500 mt-1">${this.escapeHtml(entity.description || 'No description')}</p>
+          </div>
+          <span class="ml-2 px-3 py-1 rounded-full text-xs font-medium ${this.getStatusClass(entity.status)}">
+            ${entity.status}
+          </span>
+        </div>
+
+        <div class="space-y-2 text-sm text-gray-600 mb-4">
+          <div class="flex items-center gap-2">
+            <i class="ph ph-table"></i>
+            <span>Table: ${entity.table_name}</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <i class="ph ph-tag"></i>
+            <span>${entity.category || 'Uncategorized'}</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <i class="ph ph-list"></i>
+            <span>${entity.field_count || 0} fields</span>
+          </div>
+          ${entity.is_audited ? `
+            <div class="flex items-center gap-2">
+              <i class="ph ph-check-circle text-green-600"></i>
+              <span>Audit Enabled</span>
+            </div>
+          ` : ''}
+        </div>
+
+        <div class="flex gap-2">
+          <button onclick="DataModelApp.viewEntity('${entity.id}')" class="flex-1 px-3 py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 text-sm font-medium">
+            <i class="ph ph-eye"></i> View
+          </button>
+          <button onclick="DataModelApp.manageFields('${entity.id}')" class="flex-1 px-3 py-2 bg-purple-50 text-purple-700 rounded-lg hover:bg-purple-100 text-sm font-medium">
+            <i class="ph ph-list-bullets"></i> Fields
+          </button>
+          <button onclick="DataModelApp.deleteEntity('${entity.id}')" class="px-3 py-2 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 text-sm">
+            <i class="ph ph-trash"></i>
+          </button>
+        </div>
+      </div>
+    `).join('');
+  },
+
+  getStatusClass(status) {
+    const classes = {
+      'draft': 'bg-yellow-100 text-yellow-800',
+      'active': 'bg-green-100 text-green-800',
+      'published': 'bg-blue-100 text-blue-800'
+    };
+    return classes[status] || 'bg-gray-100 text-gray-800';
+  },
+
+  showCreateModal() {
+    document.getElementById('createEntityModal').classList.remove('hidden');
+  },
+
+  closeCreateModal() {
+    document.getElementById('createEntityModal').classList.add('hidden');
+    document.getElementById('createEntityForm').reset();
+  },
+
+  async createEntity(event) {
+    event.preventDefault();
+    const formData = new FormData(event.target);
+    const data = {
+      name: formData.get('name'),
+      label: formData.get('label'),
+      plural_label: formData.get('plural_label') || '',
+      description: formData.get('description') || '',
+      table_name: formData.get('table_name'),
+      category: formData.get('category') || '',
+      is_audited: formData.get('is_audited') === 'on',
+      supports_soft_delete: formData.get('supports_soft_delete') === 'on'
+    };
+
+    try {
+      const response = await fetch('/api/v1/data-model/entities', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify(data)
+      });
+
+      if (response.ok) {
+        this.closeCreateModal();
+        await this.loadEntities();
+        this.showSuccess('Entity created successfully');
+      } else {
+        const error = await response.json();
+        this.showError(error.detail || 'Failed to create entity');
+      }
+    } catch (error) {
+      console.error('Error creating entity:', error);
+      this.showError('Error creating entity');
+    }
+  },
+
+  async viewEntity(id) {
+    try {
+      const response = await fetch(`/api/v1/data-model/entities/${id}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+
+      if (response.ok) {
+        const entity = await response.json();
+        document.getElementById('viewEntityTitle').textContent = entity.label;
+        document.getElementById('viewEntityContent').innerHTML = `
+          <div class="space-y-6">
+            <div>
+              <h4 class="font-semibold text-gray-900 mb-2">Basic Information</h4>
+              <dl class="grid grid-cols-2 gap-4">
+                <div>
+                  <dt class="text-sm text-gray-500">Name</dt>
+                  <dd class="text-sm font-medium text-gray-900">${this.escapeHtml(entity.name)}</dd>
+                </div>
+                <div>
+                  <dt class="text-sm text-gray-500">Table Name</dt>
+                  <dd class="text-sm font-medium text-gray-900">${entity.table_name}</dd>
+                </div>
+                <div>
+                  <dt class="text-sm text-gray-500">Category</dt>
+                  <dd class="text-sm font-medium text-gray-900">${entity.category || 'N/A'}</dd>
+                </div>
+                <div>
+                  <dt class="text-sm text-gray-500">Status</dt>
+                  <dd class="text-sm font-medium text-gray-900">${entity.status}</dd>
+                </div>
+              </dl>
+            </div>
+
+            <div>
+              <h4 class="font-semibold text-gray-900 mb-2">Configuration</h4>
+              <div class="grid grid-cols-2 gap-4">
+                <div class="flex items-center gap-2">
+                  <i class="ph ph-${entity.is_audited ? 'check-circle text-green-600' : 'x-circle text-gray-400'}"></i>
+                  <span class="text-sm">Audit Trail ${entity.is_audited ? 'Enabled' : 'Disabled'}</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <i class="ph ph-${entity.supports_soft_delete ? 'check-circle text-green-600' : 'x-circle text-gray-400'}"></i>
+                  <span class="text-sm">Soft Delete ${entity.supports_soft_delete ? 'Enabled' : 'Disabled'}</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <i class="ph ph-${entity.supports_attachments ? 'check-circle text-green-600' : 'x-circle text-gray-400'}"></i>
+                  <span class="text-sm">Attachments ${entity.supports_attachments ? 'Enabled' : 'Disabled'}</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <i class="ph ph-${entity.is_versioned ? 'check-circle text-green-600' : 'x-circle text-gray-400'}"></i>
+                  <span class="text-sm">Versioning ${entity.is_versioned ? 'Enabled' : 'Disabled'}</span>
+                </div>
+              </div>
+            </div>
+
+            ${entity.description ? `
+              <div>
+                <h4 class="font-semibold text-gray-900 mb-2">Description</h4>
+                <p class="text-sm text-gray-600">${this.escapeHtml(entity.description)}</p>
+              </div>
+            ` : ''}
+
+            <div class="flex gap-3 pt-4 border-t">
+              <button onclick="DataModelApp.editEntity('${entity.id}')" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                <i class="ph ph-pencil"></i> Edit Entity
+              </button>
+              <button onclick="DataModelApp.manageFields('${entity.id}')" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700">
+                <i class="ph ph-list-bullets"></i> Manage Fields
+              </button>
+              <button onclick="DataModelApp.viewRelationships('${entity.id}')" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+                <i class="ph ph-arrows-merge"></i> Relationships
+              </button>
+            </div>
+          </div>
+        `;
+        document.getElementById('viewEntityModal').classList.remove('hidden');
+      }
+    } catch (error) {
+      console.error('Error loading entity:', error);
+      this.showError('Error loading entity details');
+    }
+  },
+
+  closeViewModal() {
+    document.getElementById('viewEntityModal').classList.add('hidden');
+  },
+
+  async deleteEntity(id) {
+    if (!confirm('Are you sure you want to delete this entity?')) return;
+
+    try {
+      const response = await fetch(`/api/v1/data-model/entities/${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+
+      if (response.ok) {
+        await this.loadEntities();
+        this.showSuccess('Entity deleted successfully');
+      } else {
+        this.showError('Failed to delete entity');
+      }
+    } catch (error) {
+      console.error('Error deleting entity:', error);
+      this.showError('Error deleting entity');
+    }
+  },
+
+  editEntity(id) {
+    this.showError('Edit feature coming soon - will open entity editor');
+  },
+
+  manageFields(id) {
+    this.showError('Field management UI coming soon');
+  },
+
+  viewRelationships(id) {
+    this.showError('Relationship viewer coming soon');
+  },
+
+  escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  },
+
+  showSuccess(message) {
+    if (window.showNotification) {
+      window.showNotification(message, 'success');
+    } else {
+      alert(message);
+    }
+  },
+
+  showError(message) {
+    if (window.showNotification) {
+      window.showNotification(message, 'error');
+    } else {
+      alert(message);
+    }
+  }
+};
+
+// Initialize when route loads
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => DataModelApp.init());
+} else {
+  DataModelApp.init();
+}
+</script>
