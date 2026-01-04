@@ -405,3 +405,66 @@ async def reorder_menu_items(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to reorder menu items"
         )
+
+
+@router.post("/sync", response_model=MenuOperationResponse)
+async def sync_menu_from_json(
+    clear_existing: bool = False,
+    request: Request = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(has_permission("menu:manage:tenant"))
+):
+    """
+    Sync menu items from menu.json file to database.
+
+    This endpoint reads the frontend/config/menu.json file and imports all menu
+    items into the database, creating a backend-driven menu system.
+
+    Requires permission: menu:manage:tenant
+
+    Args:
+        clear_existing: If True, delete existing menu items before syncing (default: False)
+
+    Returns:
+        Operation result with count of items created
+    """
+    try:
+        # Import the seed function
+        from app.seeds.seed_menu_items import seed_menu_items
+
+        # Run the seed function
+        items_created = seed_menu_items(clear_existing=clear_existing)
+
+        # Audit log
+        await create_audit_log(
+            db=db,
+            user_id=str(current_user.id),
+            tenant_id=current_user.tenant_id,
+            action="menu.sync",
+            resource_type="menu_item",
+            resource_id=None,
+            details={
+                "items_created": items_created,
+                "clear_existing": clear_existing
+            },
+            ip_address=request.client.host if request and request.client else None,
+            user_agent=request.headers.get("user-agent") if request else None
+        )
+
+        return MenuOperationResponse(
+            success=True,
+            message=f"Successfully synced {items_created} menu items from menu.json"
+        )
+
+    except FileNotFoundError as e:
+        logger.error(f"menu.json not found: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="menu.json file not found. Please ensure it exists in frontend/config/menu.json"
+        )
+    except Exception as e:
+        logger.error(f"Error syncing menu from JSON: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to sync menu: {str(e)}"
+        )

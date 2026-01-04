@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Menu Synchronization - Settings</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.0.3/src/duotone/style.css">
+    <link rel="stylesheet" href="/assets/css/app.css">
+</head>
+<body class="bg-gray-50">
+    <div id="app-root"></div>
+
+    <!-- Page Content -->
+    <div id="settings-menu-sync-page" class="p-6">
+        <div class="max-w-4xl mx-auto">
+            <!-- Header -->
+            <div class="mb-6">
+                <h1 class="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                    <i class="ph-duotone ph-arrows-clockwise text-3xl text-blue-600"></i>
+                    Menu Synchronization
+                </h1>
+                <p class="text-gray-600 mt-1">Sync menu configuration from menu.json to database</p>
+            </div>
+
+            <!-- Info Card -->
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                <div class="flex gap-3">
+                    <i class="ph-duotone ph-info text-2xl text-blue-600 flex-shrink-0"></i>
+                    <div>
+                        <h3 class="font-semibold text-blue-900 mb-1">About Menu Synchronization</h3>
+                        <p class="text-sm text-blue-700">
+                            This tool imports menu items from <code class="bg-blue-100 px-1 rounded">frontend/config/menu.json</code>
+                            into the database. The menu is then served dynamically via API with RBAC filtering.
+                        </p>
+                        <ul class="text-sm text-blue-700 mt-2 ml-4 list-disc">
+                            <li>Existing menu items will be skipped (based on code)</li>
+                            <li>New menu items will be created</li>
+                            <li>Use "Clear & Resync" to delete existing items and reimport</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sync Actions Card -->
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <h2 class="text-lg font-semibold text-gray-900 mb-4">Synchronization Actions</h2>
+
+                <!-- Current Status -->
+                <div id="menu-status" class="mb-6 p-4 bg-gray-50 rounded-lg">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-700">Current Menu Items in Database</p>
+                            <p id="menu-count" class="text-2xl font-bold text-gray-900 mt-1">Loading...</p>
+                        </div>
+                        <i class="ph-duotone ph-database text-4xl text-gray-400"></i>
+                    </div>
+                </div>
+
+                <!-- Sync Buttons -->
+                <div class="space-y-4">
+                    <!-- Incremental Sync -->
+                    <div class="flex items-start gap-4 p-4 border border-gray-200 rounded-lg hover:border-blue-300 transition">
+                        <div class="flex-shrink-0 w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                            <i class="ph-duotone ph-arrow-clockwise text-2xl text-green-600"></i>
+                        </div>
+                        <div class="flex-1">
+                            <h3 class="font-semibold text-gray-900">Incremental Sync</h3>
+                            <p class="text-sm text-gray-600 mt-1">
+                                Add new menu items from menu.json. Existing items will be preserved.
+                            </p>
+                            <button
+                                id="sync-btn"
+                                class="mt-3 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition flex items-center gap-2"
+                            >
+                                <i class="ph-duotone ph-arrow-clockwise"></i>
+                                Sync New Items
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Full Resync -->
+                    <div class="flex items-start gap-4 p-4 border border-orange-200 rounded-lg hover:border-orange-300 transition">
+                        <div class="flex-shrink-0 w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
+                            <i class="ph-duotone ph-arrows-clockwise text-2xl text-orange-600"></i>
+                        </div>
+                        <div class="flex-1">
+                            <h3 class="font-semibold text-gray-900">Clear & Resync</h3>
+                            <p class="text-sm text-gray-600 mt-1">
+                                Delete all existing menu items and reimport from menu.json. <strong class="text-orange-600">Use with caution!</strong>
+                            </p>
+                            <button
+                                id="clear-sync-btn"
+                                class="mt-3 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition flex items-center gap-2"
+                            >
+                                <i class="ph-duotone ph-arrows-clockwise"></i>
+                                Clear & Resync All
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sync Results -->
+                <div id="sync-results" class="mt-6 hidden">
+                    <!-- Results will be displayed here -->
+                </div>
+            </div>
+
+            <!-- Last Sync Info -->
+            <div class="mt-6 bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <h2 class="text-lg font-semibold text-gray-900 mb-4">Recent Activity</h2>
+                <div id="sync-history" class="space-y-3">
+                    <p class="text-sm text-gray-500">No recent synchronization activity</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script type="module">
+        import { apiFetch } from '/assets/js/api.js';
+        import { showToast, showLoading, hideLoading } from '/assets/js/ui-utils.js';
+
+        // Load menu count on page load
+        async function loadMenuCount() {
+            try {
+                const response = await apiFetch('/api/v1/menu/admin');
+                const count = response.menu_items?.length || 0;
+                document.getElementById('menu-count').textContent = count;
+            } catch (error) {
+                console.error('Error loading menu count:', error);
+                document.getElementById('menu-count').textContent = 'Error';
+            }
+        }
+
+        // Sync menu (incremental)
+        async function syncMenu(clearExisting = false) {
+            const btnId = clearExisting ? 'clear-sync-btn' : 'sync-btn';
+            const btn = document.getElementById(btnId);
+            const originalText = btn.innerHTML;
+
+            try {
+                // Show loading
+                btn.disabled = true;
+                btn.innerHTML = '<i class="ph-duotone ph-spinner animate-spin"></i> Syncing...';
+
+                // Call sync API
+                const response = await apiFetch('/api/v1/menu/sync', {
+                    method: 'POST',
+                    body: JSON.stringify({ clear_existing: clearExisting })
+                });
+
+                // Show success
+                showSyncResult(true, response.message, clearExisting);
+                showToast('success', response.message);
+
+                // Reload menu count
+                await loadMenuCount();
+
+                // Add to history
+                addSyncHistory(clearExisting, response.message);
+
+            } catch (error) {
+                console.error('Error syncing menu:', error);
+                const errorMsg = error.detail || error.message || 'Failed to sync menu';
+                showSyncResult(false, errorMsg, clearExisting);
+                showToast('error', errorMsg);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
+        }
+
+        // Show sync result
+        function showSyncResult(success, message, clearExisting) {
+            const resultsDiv = document.getElementById('sync-results');
+            resultsDiv.classList.remove('hidden');
+
+            const icon = success
+                ? '<i class="ph-duotone ph-check-circle text-2xl text-green-600"></i>'
+                : '<i class="ph-duotone ph-x-circle text-2xl text-red-600"></i>';
+
+            const bgColor = success ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200';
+            const textColor = success ? 'text-green-900' : 'text-red-900';
+
+            resultsDiv.innerHTML = `
+                <div class="${bgColor} border rounded-lg p-4">
+                    <div class="flex gap-3">
+                        ${icon}
+                        <div class="flex-1">
+                            <h3 class="font-semibold ${textColor}">
+                                ${clearExisting ? 'Clear & Resync' : 'Incremental Sync'} ${success ? 'Completed' : 'Failed'}
+                            </h3>
+                            <p class="text-sm ${textColor} mt-1">${message}</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Add to sync history
+        function addSyncHistory(clearExisting, message) {
+            const historyDiv = document.getElementById('sync-history');
+            const now = new Date().toLocaleString();
+
+            const historyItem = document.createElement('div');
+            historyItem.className = 'flex items-start gap-3 p-3 bg-gray-50 rounded-lg';
+            historyItem.innerHTML = `
+                <i class="ph-duotone ph-clock-clockwise text-xl text-gray-400 flex-shrink-0"></i>
+                <div class="flex-1">
+                    <p class="text-sm font-medium text-gray-900">
+                        ${clearExisting ? 'Clear & Resync' : 'Incremental Sync'}
+                    </p>
+                    <p class="text-xs text-gray-600">${now}</p>
+                    <p class="text-sm text-gray-700 mt-1">${message}</p>
+                </div>
+            `;
+
+            // Remove "no activity" message if present
+            if (historyDiv.querySelector('p.text-gray-500')) {
+                historyDiv.innerHTML = '';
+            }
+
+            // Add to top
+            historyDiv.insertBefore(historyItem, historyDiv.firstChild);
+
+            // Keep only last 5 items
+            while (historyDiv.children.length > 5) {
+                historyDiv.removeChild(historyDiv.lastChild);
+            }
+        }
+
+        // Event listeners
+        document.getElementById('sync-btn').addEventListener('click', () => syncMenu(false));
+        document.getElementById('clear-sync-btn').addEventListener('click', () => {
+            if (confirm('Are you sure you want to delete ALL existing menu items and reimport? This cannot be undone.')) {
+                syncMenu(true);
+            }
+        });
+
+        // Initialize
+        loadMenuCount();
+    </script>
+
+    <script type="module" src="/assets/js/app.js"></script>
+</body>
+</html>
