@@ -29,7 +29,8 @@
             { "title": "Integration", "route": "settings-integration", "icon": "ph-duotone ph-plugs-connected", "iconColor": "text-cyan-600" },
             { "title": "Security", "route": "settings-security", "icon": "ph-duotone ph-shield-checkered", "iconColor": "text-red-600" },
             { "title": "Notifications", "route": "settings-notifications", "icon": "ph-duotone ph-bell-ringing", "iconColor": "text-indigo-600" },
-            { "title": "Menu Management", "route": "menu-management", "icon": "ph-duotone ph-list-dashes", "iconColor": "text-emerald-600", "permission": "menu:manage:tenant" }
+            { "title": "Menu Management", "route": "menu-management", "icon": "ph-duotone ph-list-dashes", "iconColor": "text-emerald-600", "permission": "menu:manage:tenant" },
+            { "title": "Menu Sync", "route": "settings-menu-sync", "icon": "ph-duotone ph-arrows-clockwise", "iconColor": "text-blue-600", "permission": "menu:manage:tenant" }
           ]
         },
         {
