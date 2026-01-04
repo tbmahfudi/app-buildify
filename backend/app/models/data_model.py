@@ -175,7 +175,7 @@ class FieldDefinition(Base):
     is_deleted = Column(Boolean, default=False)
 
     # Relationships
-    entity = relationship("EntityDefinition", back_populates="fields")
+    entity = relationship("EntityDefinition", foreign_keys=[entity_id], back_populates="fields")
 
     # Table constraints
     __table_args__ = (
