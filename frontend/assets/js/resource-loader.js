@@ -142,8 +142,10 @@ class ResourceLoader {
     }
 
     let lastError;
+    const maxAttempts = retry ? this.maxRetries : 1;
+    const is404Error = (error) => error.message.includes('404') || error.message.includes('not found') || error.message.includes('Failed to load script');
 
-    for (let attempt = 1; attempt <= (retry ? this.maxRetries : 1); attempt++) {
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
         await this.loadScriptWithTimeout(normalizedPath, timeout);
 
@@ -155,15 +157,20 @@ class ResourceLoader {
 
       } catch (error) {
         lastError = error;
-        console.warn(`Attempt ${attempt}/${this.maxRetries} failed to load script "${scriptPath}":`, error.message);
+
+        // Only log warnings for non-404 errors, or if we're retrying
+        const shouldLog = !is404Error(error) || (retry && maxAttempts > 1);
+        if (shouldLog) {
+          console.warn(`Attempt ${attempt}/${maxAttempts} failed to load script "${scriptPath}":`, error.message);
+        }
 
         // Don't retry on 404 errors
-        if (error.message.includes('404') || error.message.includes('not found')) {
+        if (is404Error(error)) {
           break;
         }
 
         // Wait before retrying
-        if (attempt < this.maxRetries && retry) {
+        if (attempt < maxAttempts && retry) {
           await this.sleep(this.retryDelay * attempt);
         }
       }
