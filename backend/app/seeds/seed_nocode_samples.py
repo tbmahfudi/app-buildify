@@ -24,7 +24,10 @@ from app.models.base import generate_uuid
 
 def get_or_create_tenant(db: Session):
     """Get the first tenant or create a default one."""
-    tenant = db.query(Tenant).filter(Tenant.is_deleted == False).first()
+    tenant = db.query(Tenant).filter(
+        Tenant.is_active == True,
+        Tenant.deleted_at == None
+    ).first()
 
     if not tenant:
         print("⚠️  No tenant found. Creating default tenant...")
@@ -32,7 +35,8 @@ def get_or_create_tenant(db: Session):
             id=str(generate_uuid()),
             name="Default Tenant",
             code="default",
-            status="active",
+            subscription_status="active",
+            is_active=True,
             created_at=datetime.utcnow(),
             updated_at=datetime.utcnow()
         )
@@ -47,7 +51,7 @@ def get_or_create_user(db: Session, tenant_id: str):
     """Get the first admin user for the tenant."""
     user = db.query(User).filter(
         User.tenant_id == tenant_id,
-        User.is_deleted == False
+        User.is_active == True
     ).first()
 
     if not user:
