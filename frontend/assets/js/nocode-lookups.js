@@ -9,6 +9,8 @@
  * - Initializes Lookup Configuration after template is in DOM
  */
 
+import { authService } from './auth-service.js';
+
 let lookupsPage = null;
 
 // Route change
@@ -83,7 +85,7 @@ export class LookupsPage {
     try {
       const response = await fetch('/api/v1/lookups/configurations', {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${authService.getToken()}`
         }
       });
 
@@ -174,7 +176,7 @@ export class LookupsPage {
     try {
       const response = await fetch('/api/v1/lookups/cascading-rules', {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${authService.getToken()}`
         }
       });
 
@@ -256,7 +258,7 @@ export class LookupsPage {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${authService.getToken()}`
         },
         body: JSON.stringify(data)
       });
@@ -279,7 +281,7 @@ export class LookupsPage {
     try {
       const response = await fetch(`/api/v1/lookups/configurations/${id}`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${authService.getToken()}`
         }
       });
 
@@ -365,7 +367,7 @@ export class LookupsPage {
     try {
       const response = await fetch(`/api/v1/lookups/configurations/${id}/data`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${authService.getToken()}`
         }
       });
 
@@ -388,7 +390,7 @@ export class LookupsPage {
       const response = await fetch(`/api/v1/lookups/configurations/${id}`, {
         method: 'DELETE',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${authService.getToken()}`
         }
       });
 

@@ -9,6 +9,8 @@
  * - Initializes Workflow Designer after template is in DOM
  */
 
+import { authService } from './auth-service.js';
+
 let workflowsPage = null;
 
 // Route change
@@ -86,7 +88,7 @@ export class WorkflowsPage {
     try {
       const response = await fetch('/api/v1/workflows', {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${authService.getToken()}`
         }
       });
 
@@ -166,7 +168,7 @@ export class WorkflowsPage {
     try {
       const response = await fetch('/api/v1/workflows/instances', {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${authService.getToken()}`
         }
       });
 
@@ -256,7 +258,7 @@ export class WorkflowsPage {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${authService.getToken()}`
         },
         body: JSON.stringify(data)
       });
@@ -279,7 +281,7 @@ export class WorkflowsPage {
     try {
       const response = await fetch(`/api/v1/workflows/${id}`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${authService.getToken()}`
         }
       });
 
@@ -357,7 +359,7 @@ export class WorkflowsPage {
       const response = await fetch(`/api/v1/workflows/${id}/publish`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${authService.getToken()}`
         }
       });
 
@@ -380,7 +382,7 @@ export class WorkflowsPage {
       const response = await fetch(`/api/v1/workflows/${id}`, {
         method: 'DELETE',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${authService.getToken()}`
         }
       });
 

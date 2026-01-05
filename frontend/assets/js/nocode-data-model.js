@@ -9,6 +9,8 @@
  * - Initializes Data Model Designer after template is in DOM
  */
 
+import { authService } from './auth-service.js';
+
 let dataModelPage = null;
 
 // Route change
@@ -55,9 +57,10 @@ export class DataModelPage {
 
   async loadEntities() {
     try {
+      const token = authService.getToken();
       const response = await fetch('/api/v1/data-model/entities', {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${token}`
         }
       });
 
@@ -179,7 +182,7 @@ export class DataModelPage {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${authService.getToken()}`
         },
         body: JSON.stringify(data)
       });
@@ -202,7 +205,7 @@ export class DataModelPage {
     try {
       const response = await fetch(`/api/v1/data-model/entities/${id}`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${authService.getToken()}`
         }
       });
 
@@ -302,7 +305,7 @@ export class DataModelPage {
       const response = await fetch(`/api/v1/data-model/entities/${id}`, {
         method: 'DELETE',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${authService.getToken()}`
         }
       });
 
