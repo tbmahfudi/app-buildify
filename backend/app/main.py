@@ -180,11 +180,11 @@ app.include_router(menu.router, prefix="/api/v1")
 app.include_router(builder_pages.router, prefix="/api/v1/builder", tags=["builder"])
 app.include_router(admin_security.router, prefix="/api/v1")
 
-# Phase 1 No-Code Platform routers
-app.include_router(data_model.router, prefix="/api/v1")
-app.include_router(workflows.router, prefix="/api/v1")
-app.include_router(automations.router, prefix="/api/v1")
-app.include_router(lookups.router, prefix="/api/v1")
+# Phase 1 No-Code Platform routers (routers already include /api/v1 prefix)
+app.include_router(data_model.router)
+app.include_router(workflows.router)
+app.include_router(automations.router)
+app.include_router(lookups.router)
 
 # Also maintain backward compatibility with old endpoints (deprecated)
 app.include_router(auth.router, tags=["deprecated"])
