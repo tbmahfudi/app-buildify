@@ -9,6 +9,8 @@
  * - Initializes Automation Rules page after template is in DOM
  */
 
+import { authService } from './auth-service.js';
+
 let automationsPage = null;
 
 // Route change
@@ -88,7 +90,7 @@ export class AutomationsPage {
     try {
       const response = await fetch('/api/v1/automations/rules', {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${authService.getToken()}`
         }
       });
 
@@ -173,7 +175,7 @@ export class AutomationsPage {
     try {
       const response = await fetch('/api/v1/automations/executions', {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${authService.getToken()}`
         }
       });
 
@@ -230,7 +232,7 @@ export class AutomationsPage {
     try {
       const response = await fetch('/api/v1/automations/webhooks', {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${authService.getToken()}`
         }
       });
 
@@ -324,7 +326,7 @@ export class AutomationsPage {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${authService.getToken()}`
         },
         body: JSON.stringify(data)
       });
@@ -347,7 +349,7 @@ export class AutomationsPage {
     try {
       const response = await fetch(`/api/v1/automations/rules/${id}`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${authService.getToken()}`
         }
       });
 
@@ -430,7 +432,7 @@ export class AutomationsPage {
       const response = await fetch(`/api/v1/automations/rules/${id}/toggle`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${authService.getToken()}`
         }
       });
 
@@ -452,7 +454,7 @@ export class AutomationsPage {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${authService.getToken()}`
         },
         body: JSON.stringify({ test_data: {} })
       });
@@ -476,7 +478,7 @@ export class AutomationsPage {
       const response = await fetch(`/api/v1/automations/rules/${id}`, {
         method: 'DELETE',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${authService.getToken()}`
         }
       });
 
