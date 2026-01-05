@@ -64,28 +64,28 @@
       "submenu": [
         {
           "title": "Data Model Designer",
-          "route": "nocode/data-model",
+          "route": "nocode-data-model",
           "icon": "ph-duotone ph-database",
           "iconColor": "text-blue-600",
           "permission": "data_model:read:tenant"
         },
         {
           "title": "Workflow Designer",
-          "route": "nocode/workflows",
+          "route": "nocode-workflows",
           "icon": "ph-duotone ph-flow-arrow",
           "iconColor": "text-purple-600",
           "permission": "workflows:read:tenant"
         },
         {
           "title": "Automation Rules",
-          "route": "nocode/automations",
+          "route": "nocode-automations",
           "icon": "ph-duotone ph-robot",
           "iconColor": "text-green-600",
           "permission": "automations:read:tenant"
         },
         {
           "title": "Lookup Configuration",
-          "route": "nocode/lookups",
+          "route": "nocode-lookups",
           "icon": "ph-duotone ph-list-magnifying-glass",
           "iconColor": "text-orange-600",
           "permission": "lookups:read:tenant"
