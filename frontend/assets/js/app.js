@@ -1494,6 +1494,79 @@ async function loadRoute(route) {
       return;
     }
 
+    // Handle no-code platform routes (core features, not modules)
+    if (route === 'nocode-data-model') {
+      console.log('Loading no-code data model page');
+      const bodyContent = await window.resourceLoader.loadTemplate('nocode-data-model');
+      content.innerHTML = bodyContent;
+
+      // Load the JavaScript file
+      try {
+        await window.resourceLoader.loadScript('nocode-data-model.js');
+      } catch (error) {
+        console.warn('No-code data model script loading failed:', error);
+      }
+
+      document.dispatchEvent(new CustomEvent('route:loaded', {
+        detail: { route: 'nocode-data-model', isModule: false }
+      }));
+      return;
+    }
+
+    if (route === 'nocode-workflows') {
+      console.log('Loading no-code workflows page');
+      const bodyContent = await window.resourceLoader.loadTemplate('nocode-workflows');
+      content.innerHTML = bodyContent;
+
+      // Load the JavaScript file
+      try {
+        await window.resourceLoader.loadScript('nocode-workflows.js');
+      } catch (error) {
+        console.warn('No-code workflows script loading failed:', error);
+      }
+
+      document.dispatchEvent(new CustomEvent('route:loaded', {
+        detail: { route: 'nocode-workflows', isModule: false }
+      }));
+      return;
+    }
+
+    if (route === 'nocode-automations') {
+      console.log('Loading no-code automations page');
+      const bodyContent = await window.resourceLoader.loadTemplate('nocode-automations');
+      content.innerHTML = bodyContent;
+
+      // Load the JavaScript file
+      try {
+        await window.resourceLoader.loadScript('nocode-automations.js');
+      } catch (error) {
+        console.warn('No-code automations script loading failed:', error);
+      }
+
+      document.dispatchEvent(new CustomEvent('route:loaded', {
+        detail: { route: 'nocode-automations', isModule: false }
+      }));
+      return;
+    }
+
+    if (route === 'nocode-lookups') {
+      console.log('Loading no-code lookups page');
+      const bodyContent = await window.resourceLoader.loadTemplate('nocode-lookups');
+      content.innerHTML = bodyContent;
+
+      // Load the JavaScript file
+      try {
+        await window.resourceLoader.loadScript('nocode-lookups.js');
+      } catch (error) {
+        console.warn('No-code lookups script loading failed:', error);
+      }
+
+      document.dispatchEvent(new CustomEvent('route:loaded', {
+        detail: { route: 'nocode-lookups', isModule: false }
+      }));
+      return;
+    }
+
     // Check if this is a module route
     const moduleRoute = moduleRegistry.findRoute(`#/${route}`);
 
