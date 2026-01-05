@@ -103,7 +103,7 @@
           "iconColor": "text-blue-600",
           "submenu": [
             { "title": "Page Designer", "route": "builder", "icon": "ph-duotone ph-paint-brush", "iconColor": "text-blue-600", "permission": "builder:design:tenant" },
-            { "title": "Manage Pages", "route": "builder/pages", "icon": "ph-duotone ph-files", "iconColor": "text-purple-600", "permission": "builder:pages:read:tenant" }
+            { "title": "Manage Pages", "route": "builder-pages", "icon": "ph-duotone ph-files", "iconColor": "text-purple-600", "permission": "builder:pages:read:tenant" }
           ]
         },
         { "title": "Sample Reports & Dashboards", "route": "sample-reports-dashboards", "icon": "ph-duotone ph-presentation-chart", "iconColor": "text-blue-600" },
