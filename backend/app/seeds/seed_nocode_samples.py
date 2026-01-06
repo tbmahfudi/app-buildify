@@ -680,6 +680,96 @@ def seed_platform_level_samples(db: Session):
 
     print(f"  ✅ Created platform-level entity: {task_entity.label} with {len(task_fields)} fields")
 
+    # Platform-level Entity: Contact template
+    contact_entity = EntityDefinition(
+        id=str(generate_uuid()),
+        tenant_id=None,  # Platform-level
+        name="generic_contact",
+        label="Contact",
+        plural_label="Contacts",
+        description="Generic contact template for managing people and organizations - available to all tenants",
+        table_name="platform_contacts",
+        category="Platform Templates",
+        icon="user-circle-gear",
+        is_audited=True,
+        supports_soft_delete=True,
+        status="published",
+        entity_type="custom",
+        created_at=datetime.utcnow(),
+        updated_at=datetime.utcnow()
+    )
+    db.add(contact_entity)
+    db.flush()
+
+    contact_fields = [
+        {"name": "first_name", "label": "First Name", "field_type": "string", "data_type": "VARCHAR", "max_length": 100, "is_required": True},
+        {"name": "last_name", "label": "Last Name", "field_type": "string", "data_type": "VARCHAR", "max_length": 100, "is_required": True},
+        {"name": "email", "label": "Email", "field_type": "email", "data_type": "VARCHAR", "max_length": 255, "is_unique": True},
+        {"name": "phone", "label": "Phone Number", "field_type": "phone", "data_type": "VARCHAR", "max_length": 20},
+        {"name": "company", "label": "Company", "field_type": "string", "data_type": "VARCHAR", "max_length": 200},
+        {"name": "job_title", "label": "Job Title", "field_type": "string", "data_type": "VARCHAR", "max_length": 100},
+        {"name": "contact_type", "label": "Contact Type", "field_type": "choice", "data_type": "VARCHAR", "default_value": "individual", "allowed_values": ["individual", "organization", "lead", "customer", "partner"]},
+        {"name": "notes", "label": "Notes", "field_type": "text", "data_type": "TEXT"},
+    ]
+
+    for field_data in contact_fields:
+        field = FieldDefinition(
+            id=str(generate_uuid()),
+            entity_id=contact_entity.id,
+            tenant_id=None,
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow(),
+            **field_data
+        )
+        db.add(field)
+
+    print(f"  ✅ Created platform-level entity: {contact_entity.label} with {len(contact_fields)} fields")
+
+    # Platform-level Entity: Document template
+    document_entity = EntityDefinition(
+        id=str(generate_uuid()),
+        tenant_id=None,  # Platform-level
+        name="generic_document",
+        label="Document",
+        plural_label="Documents",
+        description="Generic document management template - available to all tenants",
+        table_name="platform_documents",
+        category="Platform Templates",
+        icon="file-text",
+        is_audited=True,
+        supports_soft_delete=True,
+        supports_attachments=True,
+        status="published",
+        entity_type="custom",
+        created_at=datetime.utcnow(),
+        updated_at=datetime.utcnow()
+    )
+    db.add(document_entity)
+    db.flush()
+
+    document_fields = [
+        {"name": "title", "label": "Document Title", "field_type": "string", "data_type": "VARCHAR", "max_length": 200, "is_required": True},
+        {"name": "document_type", "label": "Document Type", "field_type": "choice", "data_type": "VARCHAR", "default_value": "general", "allowed_values": ["general", "contract", "invoice", "report", "proposal", "policy"]},
+        {"name": "version", "label": "Version", "field_type": "string", "data_type": "VARCHAR", "max_length": 20, "default_value": "1.0"},
+        {"name": "status", "label": "Status", "field_type": "choice", "data_type": "VARCHAR", "default_value": "draft", "allowed_values": ["draft", "in_review", "approved", "archived"]},
+        {"name": "content", "label": "Content", "field_type": "text", "data_type": "TEXT"},
+        {"name": "tags", "label": "Tags", "field_type": "text", "data_type": "TEXT"},
+        {"name": "expiry_date", "label": "Expiry Date", "field_type": "date", "data_type": "DATE"},
+    ]
+
+    for field_data in document_fields:
+        field = FieldDefinition(
+            id=str(generate_uuid()),
+            entity_id=document_entity.id,
+            tenant_id=None,
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow(),
+            **field_data
+        )
+        db.add(field)
+
+    print(f"  ✅ Created platform-level entity: {document_entity.label} with {len(document_fields)} fields")
+
     # Platform-level Workflow: Generic Approval Workflow
     approval_workflow = WorkflowDefinition(
         id=str(generate_uuid()),
@@ -866,7 +956,7 @@ def seed_all_samples(db: Session):
     print("Summary:")
     print()
     print("  Platform-level (shared across ALL tenants):")
-    print("    • 1 Entity template (Generic Task)")
+    print("    • 3 Entity templates (Task, Contact, Document)")
     print("    • 1 Workflow template (Generic Approval)")
     print("    • 1 Automation template (Welcome Notification)")
     print("    • 1 Lookup (Priority Levels)")

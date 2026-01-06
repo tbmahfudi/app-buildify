@@ -36,10 +36,12 @@ document.addEventListener('route:before-change', (event) => {
 export class DataModelPage {
   constructor() {
     this.entities = [];
+    this.currentFilter = 'all'; // 'all', 'platform', 'tenant'
   }
 
   async init() {
     await this.loadEntities();
+    this.initializeFilters();
 
     // Make methods available globally for onclick handlers
     window.DataModelApp = {
@@ -51,8 +53,52 @@ export class DataModelPage {
       deleteEntity: (id) => this.deleteEntity(id),
       editEntity: (id) => this.editEntity(id),
       manageFields: (id) => this.manageFields(id),
-      viewRelationships: (id) => this.viewRelationships(id)
+      viewRelationships: (id) => this.viewRelationships(id),
+      cloneEntity: (id) => this.cloneEntity(id),
+      filterEntities: (filter) => this.filterEntities(filter)
     };
+  }
+
+  initializeFilters() {
+    const filterContainer = document.querySelector('.filter-buttons');
+    if (filterContainer) {
+      filterContainer.innerHTML = `
+        <div class="flex gap-2">
+          <button onclick="DataModelApp.filterEntities('all')"
+                  class="filter-btn px-4 py-2 rounded-lg font-medium transition ${this.currentFilter === 'all' ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}"
+                  data-filter="all">
+            All
+          </button>
+          <button onclick="DataModelApp.filterEntities('platform')"
+                  class="filter-btn px-4 py-2 rounded-lg font-medium transition ${this.currentFilter === 'platform' ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}"
+                  data-filter="platform">
+            <i class="ph ph-planet"></i> Platform
+          </button>
+          <button onclick="DataModelApp.filterEntities('tenant')"
+                  class="filter-btn px-4 py-2 rounded-lg font-medium transition ${this.currentFilter === 'tenant' ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}"
+                  data-filter="tenant">
+            <i class="ph ph-building"></i> My Tenant
+          </button>
+        </div>
+      `;
+    }
+  }
+
+  filterEntities(filter) {
+    this.currentFilter = filter;
+
+    // Update button styles
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+      btn.classList.remove('bg-purple-600', 'text-white');
+      btn.classList.add('bg-gray-100', 'text-gray-700');
+    });
+    const activeBtn = document.querySelector(`[data-filter="${filter}"]`);
+    if (activeBtn) {
+      activeBtn.classList.remove('bg-gray-100', 'text-gray-700');
+      activeBtn.classList.add('bg-purple-600', 'text-white');
+    }
+
+    this.renderEntities();
   }
 
   async loadEntities() {
@@ -80,11 +126,25 @@ export class DataModelPage {
     const container = document.getElementById('entities-list');
     if (!container) return;
 
-    if (this.entities.length === 0) {
+    // Apply filter
+    let filteredEntities = this.entities;
+    if (this.currentFilter === 'platform') {
+      filteredEntities = this.entities.filter(e => e.tenant_id === null);
+    } else if (this.currentFilter === 'tenant') {
+      filteredEntities = this.entities.filter(e => e.tenant_id !== null);
+    }
+
+    if (filteredEntities.length === 0) {
+      const message = this.currentFilter === 'platform'
+        ? 'No platform templates yet'
+        : this.currentFilter === 'tenant'
+        ? 'No tenant-specific entities yet'
+        : 'No entities defined yet';
+
       container.innerHTML = `
         <div class="col-span-full text-center py-12">
           <i class="ph-duotone ph-database text-6xl text-gray-300"></i>
-          <h3 class="mt-4 text-lg font-medium text-gray-900">No entities defined yet</h3>
+          <h3 class="mt-4 text-lg font-medium text-gray-900">${message}</h3>
           <p class="mt-2 text-gray-500">Create your first entity to get started</p>
           <button onclick="DataModelApp.showCreateModal()" class="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
             <i class="ph ph-plus"></i> Create Entity
@@ -94,7 +154,7 @@ export class DataModelPage {
       return;
     }
 
-    container.innerHTML = this.entities.map(entity => `
+    container.innerHTML = filteredEntities.map(entity => `
       <div class="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-lg transition">
         <div class="flex items-start justify-between mb-3">
           <div class="flex-1">
@@ -137,6 +197,11 @@ export class DataModelPage {
           <button onclick="DataModelApp.manageFields('${entity.id}')" class="flex-1 px-3 py-2 bg-purple-50 text-purple-700 rounded-lg hover:bg-purple-100 text-sm font-medium">
             <i class="ph ph-list-bullets"></i> Fields
           </button>
+          ${entity.tenant_id === null ? `
+          <button onclick="DataModelApp.cloneEntity('${entity.id}')" class="px-3 py-2 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 text-sm font-medium" title="Clone to my tenant">
+            <i class="ph ph-copy"></i>
+          </button>
+          ` : ''}
           <button onclick="DataModelApp.deleteEntity('${entity.id}')" class="px-3 py-2 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 text-sm">
             <i class="ph ph-trash"></i>
           </button>
@@ -321,6 +386,38 @@ export class DataModelPage {
     } catch (error) {
       console.error('Error deleting entity:', error);
       this.showError('Error deleting entity');
+    }
+  }
+
+  async cloneEntity(id) {
+    const entity = this.entities.find(e => e.id === id);
+    if (!entity) return;
+
+    const newName = prompt('Enter a name for the cloned entity:', `${entity.name}_copy`);
+    if (!newName) return;
+
+    const newLabel = prompt('Enter a label for the cloned entity:', `${entity.label} (Copy)`);
+    if (!newLabel) return;
+
+    try {
+      const response = await fetch(`/api/v1/data-model/entities/${id}/clone?new_name=${encodeURIComponent(newName)}&new_label=${encodeURIComponent(newLabel)}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${authService.getToken()}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        await this.loadEntities();
+        this.showSuccess(`Platform template cloned successfully as "${newLabel}"`);
+      } else {
+        const error = await response.json();
+        this.showError(error.detail || 'Failed to clone entity');
+      }
+    } catch (error) {
+      console.error('Error cloning entity:', error);
+      this.showError('Error cloning entity');
     }
   }
 

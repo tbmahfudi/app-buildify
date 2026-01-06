@@ -17,6 +17,7 @@ from app.models.data_model import (
     IndexDefinition,
     EntityMigration,
 )
+from app.models.base import generate_uuid
 from app.schemas.data_model import (
     EntityDefinitionCreate,
     EntityDefinitionUpdate,
@@ -282,6 +283,124 @@ class DataModelService:
         self.db.commit()
 
         return {"message": "Field deleted successfully"}
+
+    # ==================== Clone Methods ====================
+
+    async def clone_entity(self, entity_id: UUID, new_name: str = None, new_label: str = None):
+        """Clone a platform-level entity to a tenant-specific version."""
+        # Get the source entity (must be platform-level)
+        source_entity = await self.get_entity(entity_id, include_platform=True)
+
+        if source_entity.tenant_id is not None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Can only clone platform-level entities. Use duplicate for tenant entities."
+            )
+
+        # Generate new name/label if not provided
+        if not new_name:
+            new_name = f"{source_entity.name}_copy"
+        if not new_label:
+            new_label = f"{source_entity.label} (Copy)"
+
+        # Check if name already exists in tenant
+        from sqlalchemy import or_
+        existing = self.db.query(EntityDefinition).filter(
+            or_(
+                EntityDefinition.tenant_id == self.tenant_id,
+                EntityDefinition.tenant_id == None
+            ),
+            EntityDefinition.name == new_name,
+            EntityDefinition.is_deleted == False
+        ).first()
+
+        if existing:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Entity with name '{new_name}' already exists"
+            )
+
+        # Clone entity
+        cloned_entity = EntityDefinition(
+            id=str(generate_uuid()),
+            tenant_id=self.tenant_id,  # Make it tenant-specific
+            name=new_name,
+            label=new_label,
+            plural_label=source_entity.plural_label,
+            description=f"Cloned from platform template: {source_entity.description or ''}",
+            icon=source_entity.icon,
+            entity_type=source_entity.entity_type,
+            category=source_entity.category,
+            table_name=f"{new_name}s",  # Generate new table name
+            schema_name=source_entity.schema_name,
+            is_audited=source_entity.is_audited,
+            is_versioned=source_entity.is_versioned,
+            supports_soft_delete=source_entity.supports_soft_delete,
+            supports_attachments=source_entity.supports_attachments,
+            supports_comments=source_entity.supports_comments,
+            primary_field=source_entity.primary_field,
+            default_sort_field=source_entity.default_sort_field,
+            default_sort_order=source_entity.default_sort_order,
+            records_per_page=source_entity.records_per_page,
+            status="draft",  # Start as draft
+            meta_data=source_entity.meta_data,
+            created_by=self.current_user.id,
+            updated_by=self.current_user.id
+        )
+
+        self.db.add(cloned_entity)
+        self.db.flush()
+
+        # Clone fields
+        source_fields = self.db.query(FieldDefinition).filter(
+            FieldDefinition.entity_id == source_entity.id,
+            FieldDefinition.is_deleted == False
+        ).all()
+
+        for source_field in source_fields:
+            cloned_field = FieldDefinition(
+                id=str(generate_uuid()),
+                entity_id=cloned_entity.id,
+                tenant_id=self.tenant_id,
+                name=source_field.name,
+                label=source_field.label,
+                description=source_field.description,
+                help_text=source_field.help_text,
+                field_type=source_field.field_type,
+                data_type=source_field.data_type,
+                is_required=source_field.is_required,
+                is_unique=source_field.is_unique,
+                is_indexed=source_field.is_indexed,
+                is_nullable=source_field.is_nullable,
+                max_length=source_field.max_length,
+                min_length=source_field.min_length,
+                max_value=source_field.max_value,
+                min_value=source_field.min_value,
+                decimal_places=source_field.decimal_places,
+                default_value=source_field.default_value,
+                default_expression=source_field.default_expression,
+                validation_rules=source_field.validation_rules,
+                allowed_values=source_field.allowed_values,
+                display_order=source_field.display_order,
+                is_readonly=source_field.is_readonly,
+                is_system=source_field.is_system,
+                is_calculated=source_field.is_calculated,
+                calculation_formula=source_field.calculation_formula,
+                input_type=source_field.input_type,
+                placeholder=source_field.placeholder,
+                prefix=source_field.prefix,
+                suffix=source_field.suffix,
+                relationship_type=source_field.relationship_type,
+                meta_data=source_field.meta_data,
+                created_by=self.current_user.id,
+                updated_by=self.current_user.id
+            )
+            self.db.add(cloned_field)
+
+        self.db.commit()
+        self.db.refresh(cloned_entity)
+
+        return cloned_entity
 
     # ==================== Relationship Methods ====================
 
