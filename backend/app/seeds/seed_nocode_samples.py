@@ -619,11 +619,201 @@ def seed_lookup_samples(db: Session, tenant_id: str, user_id: str = None, entiti
     db.commit()
 
 
+def seed_platform_level_samples(db: Session):
+    """Seed platform-level sample data (shared across all tenants)."""
+    print("\n" + "="*80)
+    print("PLATFORM-LEVEL SAMPLE DATA (Shared across all tenants)")
+    print("="*80 + "\n")
+
+    # Check if platform-level samples already exist
+    existing_platform_entities = db.query(EntityDefinition).filter(
+        EntityDefinition.tenant_id == None,
+        EntityDefinition.is_deleted == False
+    ).count()
+
+    if existing_platform_entities > 0:
+        print(f"⏭️  Platform-level data already exists ({existing_platform_entities} entities). Skipping.")
+        return
+
+    print("Creating platform-level templates...\n")
+
+    # Platform-level Entity: Generic Task template
+    task_entity = EntityDefinition(
+        id=str(generate_uuid()),
+        tenant_id=None,  # Platform-level
+        name="generic_task",
+        label="Task",
+        plural_label="Tasks",
+        description="Generic task template - available to all tenants",
+        table_name="platform_tasks",
+        category="Platform Templates",
+        icon="clipboard-text",
+        is_audited=True,
+        supports_soft_delete=True,
+        status="published",
+        entity_type="custom",
+        created_at=datetime.utcnow(),
+        updated_at=datetime.utcnow()
+    )
+    db.add(task_entity)
+    db.flush()
+
+    # Fields for Task entity
+    task_fields = [
+        {"name": "title", "label": "Title", "field_type": "string", "data_type": "VARCHAR", "max_length": 200, "is_required": True},
+        {"name": "description", "label": "Description", "field_type": "text", "data_type": "TEXT"},
+        {"name": "priority", "label": "Priority", "field_type": "choice", "data_type": "VARCHAR", "default_value": "medium", "allowed_values": ["low", "medium", "high", "urgent"]},
+        {"name": "status", "label": "Status", "field_type": "choice", "data_type": "VARCHAR", "default_value": "todo", "allowed_values": ["todo", "in_progress", "completed", "cancelled"]},
+        {"name": "due_date", "label": "Due Date", "field_type": "date", "data_type": "DATE"},
+    ]
+
+    for field_data in task_fields:
+        field = FieldDefinition(
+            id=str(generate_uuid()),
+            entity_id=task_entity.id,
+            tenant_id=None,  # Inherit platform-level
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow(),
+            **field_data
+        )
+        db.add(field)
+
+    print(f"  ✅ Created platform-level entity: {task_entity.label} with {len(task_fields)} fields")
+
+    # Platform-level Workflow: Generic Approval Workflow
+    approval_workflow = WorkflowDefinition(
+        id=str(generate_uuid()),
+        tenant_id=None,  # Platform-level
+        name="generic_approval",
+        label="Generic Approval Workflow",
+        description="Standard approval workflow template - available to all tenants",
+        category="Platform Templates",
+        trigger_type="manual",
+        canvas_data={"nodes": [], "edges": []},
+        is_published=True,
+        created_at=datetime.utcnow(),
+        updated_at=datetime.utcnow()
+    )
+    db.add(approval_workflow)
+    db.flush()
+
+    # States for approval workflow
+    states = [
+        {"name": "draft", "label": "Draft", "state_type": "start", "color": "gray"},
+        {"name": "pending_approval", "label": "Pending Approval", "state_type": "approval", "color": "yellow", "requires_approval": True},
+        {"name": "approved", "label": "Approved", "state_type": "end", "color": "green", "is_final": True},
+        {"name": "rejected", "label": "Rejected", "state_type": "end", "color": "red", "is_final": True},
+    ]
+
+    state_objs = {}
+    for state_data in states:
+        state = WorkflowState(
+            id=str(generate_uuid()),
+            workflow_id=approval_workflow.id,
+            tenant_id=None,  # Platform-level
+            created_at=datetime.utcnow(),
+            **state_data
+        )
+        db.add(state)
+        state_objs[state_data["name"]] = state
+
+    db.flush()
+
+    # Transitions
+    transitions = [
+        {"from": "draft", "to": "pending_approval", "label": "Submit for Approval"},
+        {"from": "pending_approval", "to": "approved", "label": "Approve"},
+        {"from": "pending_approval", "to": "rejected", "label": "Reject"},
+        {"from": "rejected", "to": "draft", "label": "Revise"},
+    ]
+
+    for trans_data in transitions:
+        transition = WorkflowTransition(
+            id=str(generate_uuid()),
+            workflow_id=approval_workflow.id,
+            tenant_id=None,  # Platform-level
+            name=f"{trans_data['from']}_to_{trans_data['to']}",
+            label=trans_data["label"],
+            from_state_id=state_objs[trans_data["from"]].id,
+            to_state_id=state_objs[trans_data["to"]].id,
+            button_label=trans_data["label"],
+            created_at=datetime.utcnow()
+        )
+        db.add(transition)
+
+    print(f"  ✅ Created platform-level workflow: {approval_workflow.label} with {len(states)} states")
+
+    # Platform-level Lookup: Priority Levels
+    priority_lookup = LookupConfiguration(
+        id=str(generate_uuid()),
+        tenant_id=None,  # Platform-level
+        name="priority_levels",
+        label="Priority Levels",
+        description="Standard priority levels - available to all tenants",
+        source_type="static_list",
+        static_options=[
+            {"value": "low", "label": "Low", "metadata": {"color": "blue", "sort_order": 1}},
+            {"value": "medium", "label": "Medium", "metadata": {"color": "yellow", "sort_order": 2}},
+            {"value": "high", "label": "High", "metadata": {"color": "orange", "sort_order": 3}},
+            {"value": "urgent", "label": "Urgent", "metadata": {"color": "red", "sort_order": 4}},
+        ],
+        enable_search=False,
+        enable_caching=True,
+        is_active=True,
+        created_at=datetime.utcnow(),
+        updated_at=datetime.utcnow()
+    )
+    db.add(priority_lookup)
+
+    print(f"  ✅ Created platform-level lookup: {priority_lookup.label} with 4 options")
+
+    # Platform-level Automation: Welcome automation template
+    welcome_automation = AutomationRule(
+        id=str(generate_uuid()),
+        tenant_id=None,  # Platform-level
+        name="welcome_notification_template",
+        label="Welcome Notification Template",
+        description="Template for sending welcome notifications - available to all tenants",
+        category="Platform Templates",
+        trigger_type="manual",
+        trigger_config={"event": "manual"},
+        actions=[
+            {
+                "type": "send_notification",
+                "config": {
+                    "title": "Welcome!",
+                    "message": "Welcome to the platform!",
+                    "type": "info"
+                }
+            }
+        ],
+        is_active=False,  # Templates are inactive by default
+        created_at=datetime.utcnow(),
+        updated_at=datetime.utcnow()
+    )
+    db.add(welcome_automation)
+
+    print(f"  ✅ Created platform-level automation: {welcome_automation.label}")
+
+    db.commit()
+
+    print("\n✅ Platform-level samples created successfully!")
+    print("   These templates are now available to ALL tenants.\n")
+
+
 def seed_all_samples(db: Session):
     """Main function to seed sample data for ALL tenants."""
     print("\n" + "="*80)
     print("PHASE 1 NO-CODE PLATFORM - SAMPLE DATA SEED (ALL TENANTS)")
     print("="*80 + "\n")
+
+    # First, seed platform-level samples (shared across all tenants)
+    try:
+        seed_platform_level_samples(db)
+    except Exception as e:
+        print(f"⚠️  Warning: Error seeding platform-level data: {e}")
+        import traceback
+        traceback.print_exc()
 
     # Get all active tenants
     tenants = get_all_tenants(db)
@@ -674,11 +864,18 @@ def seed_all_samples(db: Session):
     print("="*80 + "\n")
 
     print("Summary:")
+    print()
+    print("  Platform-level (shared across ALL tenants):")
+    print("    • 1 Entity template (Generic Task)")
+    print("    • 1 Workflow template (Generic Approval)")
+    print("    • 1 Automation template (Welcome Notification)")
+    print("    • 1 Lookup (Priority Levels)")
+    print()
     print(f"  ✅ Seeded {len(seeded_tenants)} tenant(s): {', '.join(seeded_tenants) if seeded_tenants else 'None'}")
     if skipped_tenants:
         print(f"  ⏭️  Skipped {len(skipped_tenants)} tenant(s) (already have data): {', '.join(skipped_tenants)}")
     print()
-    print("  Per tenant:")
+    print("  Per tenant (tenant-specific):")
     print("    • Data Model Designer: 3 entities (Customer, Order, Product) with fields")
     print("    • Workflow Designer: 2 workflows (Order Approval, Customer Onboarding)")
     print("    • Automation System: 4 automation rules (Welcome email, Alerts, Reports)")

@@ -96,11 +96,21 @@ class WorkflowService:
     async def list_workflows(
         self,
         entity_id: Optional[UUID] = None,
-        category: Optional[str] = None
+        category: Optional[str] = None,
+        include_platform: bool = True
     ):
-        """List all workflow definitions"""
+        """List all workflow definitions (tenant-specific and optionally platform-level)"""
+        # Build tenant filter: include current tenant and optionally platform-level (tenant_id=NULL)
+        if include_platform:
+            tenant_filter = or_(
+                WorkflowDefinition.tenant_id == self.tenant_id,
+                WorkflowDefinition.tenant_id == None  # Platform-level workflows
+            )
+        else:
+            tenant_filter = WorkflowDefinition.tenant_id == self.tenant_id
+
         query = self.db.query(WorkflowDefinition).filter(
-            WorkflowDefinition.tenant_id == self.tenant_id,
+            tenant_filter,
             WorkflowDefinition.is_deleted == False
         )
 
@@ -111,11 +121,20 @@ class WorkflowService:
 
         return query.all()
 
-    async def get_workflow(self, workflow_id: UUID):
-        """Get workflow definition by ID"""
+    async def get_workflow(self, workflow_id: UUID, include_platform: bool = True):
+        """Get workflow definition by ID (checks tenant-specific and optionally platform-level)"""
+        # Build tenant filter
+        if include_platform:
+            tenant_filter = or_(
+                WorkflowDefinition.tenant_id == self.tenant_id,
+                WorkflowDefinition.tenant_id == None  # Platform-level workflows
+            )
+        else:
+            tenant_filter = WorkflowDefinition.tenant_id == self.tenant_id
+
         workflow = self.db.query(WorkflowDefinition).filter(
             WorkflowDefinition.id == workflow_id,
-            WorkflowDefinition.tenant_id == self.tenant_id,
+            tenant_filter,
             WorkflowDefinition.is_deleted == False
         ).first()
 

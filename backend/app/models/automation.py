@@ -33,7 +33,8 @@ class AutomationRule(Base):
 
     # Primary Key
     id = Column(GUID, primary_key=True, default=generate_uuid)
-    tenant_id = Column(GUID, ForeignKey("tenants.id"), nullable=False, index=True)
+    # tenant_id: NULL = platform-level (shared across tenants), specific ID = tenant-specific
+    tenant_id = Column(GUID, ForeignKey("tenants.id"), nullable=True, index=True)
 
     # Basic Info
     name = Column(String(100), nullable=False)

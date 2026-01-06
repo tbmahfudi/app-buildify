@@ -37,25 +37,48 @@ class DataModelService:
 
     # ==================== Entity Methods ====================
 
-    async def create_entity(self, entity_data: EntityDefinitionCreate):
-        """Create a new entity definition"""
-        # Check if entity name already exists
+    async def create_entity(self, entity_data: EntityDefinitionCreate, is_platform_level: bool = False):
+        """Create a new entity definition (tenant-specific or platform-level)"""
+        from sqlalchemy import or_
+
+        # Determine tenant_id: NULL for platform-level, current tenant otherwise
+        target_tenant_id = None if is_platform_level else self.tenant_id
+
+        # Only superusers can create platform-level entities
+        if is_platform_level and not self.current_user.is_superuser:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Only superusers can create platform-level entities"
+            )
+
+        # Check if entity name already exists at the target scope
+        if is_platform_level:
+            # Check platform-level entities only
+            existing_filter = EntityDefinition.tenant_id == None
+        else:
+            # Check both tenant-level and platform-level (to avoid conflicts)
+            existing_filter = or_(
+                EntityDefinition.tenant_id == self.tenant_id,
+                EntityDefinition.tenant_id == None
+            )
+
         existing = self.db.query(EntityDefinition).filter(
-            EntityDefinition.tenant_id == self.tenant_id,
+            existing_filter,
             EntityDefinition.name == entity_data.name,
             EntityDefinition.is_deleted == False
         ).first()
 
         if existing:
+            scope = "platform-level" if existing.tenant_id is None else "tenant"
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Entity with name '{entity_data.name}' already exists"
+                detail=f"Entity with name '{entity_data.name}' already exists at {scope} level"
             )
 
         # Create entity
         entity = EntityDefinition(
             **entity_data.model_dump(exclude={'fields'}),
-            tenant_id=self.tenant_id,
+            tenant_id=target_tenant_id,
             created_by=self.current_user.id,
             updated_by=self.current_user.id
         )
@@ -84,11 +107,23 @@ class DataModelService:
         self,
         category: Optional[str] = None,
         entity_type: Optional[str] = None,
-        status: Optional[str] = None
+        status: Optional[str] = None,
+        include_platform: bool = True
     ):
-        """List all entity definitions"""
+        """List all entity definitions (tenant-specific and optionally platform-level)"""
+        from sqlalchemy import or_
+
+        # Build tenant filter: include current tenant and optionally platform-level (tenant_id=NULL)
+        if include_platform:
+            tenant_filter = or_(
+                EntityDefinition.tenant_id == self.tenant_id,
+                EntityDefinition.tenant_id == None  # Platform-level entities
+            )
+        else:
+            tenant_filter = EntityDefinition.tenant_id == self.tenant_id
+
         query = self.db.query(EntityDefinition).filter(
-            EntityDefinition.tenant_id == self.tenant_id,
+            tenant_filter,
             EntityDefinition.is_deleted == False
         )
 
@@ -101,11 +136,22 @@ class DataModelService:
 
         return query.all()
 
-    async def get_entity(self, entity_id: UUID):
-        """Get entity definition by ID"""
+    async def get_entity(self, entity_id: UUID, include_platform: bool = True):
+        """Get entity definition by ID (checks tenant-specific and optionally platform-level)"""
+        from sqlalchemy import or_
+
+        # Build tenant filter
+        if include_platform:
+            tenant_filter = or_(
+                EntityDefinition.tenant_id == self.tenant_id,
+                EntityDefinition.tenant_id == None  # Platform-level entities
+            )
+        else:
+            tenant_filter = EntityDefinition.tenant_id == self.tenant_id
+
         entity = self.db.query(EntityDefinition).filter(
             EntityDefinition.id == entity_id,
-            EntityDefinition.tenant_id == self.tenant_id,
+            tenant_filter,
             EntityDefinition.is_deleted == False
         ).first()
 

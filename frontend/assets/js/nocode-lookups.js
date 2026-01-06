@@ -122,7 +122,10 @@ export class LookupsPage {
       <div class="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-lg transition">
         <div class="flex items-start justify-between mb-3">
           <div class="flex-1">
-            <h3 class="text-lg font-semibold text-gray-900">${this.escapeHtml(lookup.label)}</h3>
+            <div class="flex items-center gap-2 mb-1">
+              <h3 class="text-lg font-semibold text-gray-900">${this.escapeHtml(lookup.label)}</h3>
+              ${lookup.tenant_id === null ? '<span class="px-2 py-0.5 bg-purple-100 text-purple-700 rounded text-xs font-medium">Platform</span>' : ''}
+            </div>
             <p class="text-sm text-gray-500 mt-1">${this.escapeHtml(lookup.description || 'No description')}</p>
           </div>
           <span class="ml-2 px-3 py-1 rounded-full text-xs font-medium ${lookup.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}">
