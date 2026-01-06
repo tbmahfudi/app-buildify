@@ -81,14 +81,14 @@ def seed_data_model_samples(db: Session, tenant_id: str, user_id: str = None):
             "supports_attachments": True,
             "status": "published",
             "fields": [
-                {"name": "first_name", "label": "First Name", "data_type": "string", "max_length": 100, "is_required": True, "is_searchable": True},
-                {"name": "last_name", "label": "Last Name", "data_type": "string", "max_length": 100, "is_required": True, "is_searchable": True},
-                {"name": "email", "label": "Email", "data_type": "email", "max_length": 255, "is_required": True, "is_unique": True},
-                {"name": "phone", "label": "Phone", "data_type": "phone", "max_length": 20},
-                {"name": "company", "label": "Company", "data_type": "string", "max_length": 200},
-                {"name": "status", "label": "Status", "data_type": "choice", "default_value": "active", "choices": ["active", "inactive", "prospect"]},
-                {"name": "customer_since", "label": "Customer Since", "data_type": "date"},
-                {"name": "lifetime_value", "label": "Lifetime Value", "data_type": "decimal", "precision": 10, "scale": 2},
+                {"name": "first_name", "label": "First Name", "field_type": "string", "data_type": "VARCHAR", "max_length": 100, "is_required": True},
+                {"name": "last_name", "label": "Last Name", "field_type": "string", "data_type": "VARCHAR", "max_length": 100, "is_required": True},
+                {"name": "email", "label": "Email", "field_type": "email", "data_type": "VARCHAR", "max_length": 255, "is_required": True, "is_unique": True},
+                {"name": "phone", "label": "Phone", "field_type": "phone", "data_type": "VARCHAR", "max_length": 20},
+                {"name": "company", "label": "Company", "field_type": "string", "data_type": "VARCHAR", "max_length": 200},
+                {"name": "status", "label": "Status", "field_type": "choice", "data_type": "VARCHAR", "default_value": "active", "allowed_values": ["active", "inactive", "prospect"]},
+                {"name": "customer_since", "label": "Customer Since", "field_type": "date", "data_type": "DATE"},
+                {"name": "lifetime_value", "label": "Lifetime Value", "field_type": "decimal", "data_type": "NUMERIC", "decimal_places": 2},
             ]
         },
         {
@@ -103,12 +103,12 @@ def seed_data_model_samples(db: Session, tenant_id: str, user_id: str = None):
             "supports_soft_delete": True,
             "status": "published",
             "fields": [
-                {"name": "order_number", "label": "Order Number", "data_type": "string", "max_length": 50, "is_required": True, "is_unique": True},
-                {"name": "order_date", "label": "Order Date", "data_type": "datetime", "is_required": True, "default_value": "now()"},
-                {"name": "total_amount", "label": "Total Amount", "data_type": "decimal", "precision": 12, "scale": 2, "is_required": True},
-                {"name": "status", "label": "Status", "data_type": "choice", "default_value": "pending", "choices": ["pending", "confirmed", "shipped", "delivered", "cancelled"]},
-                {"name": "shipping_address", "label": "Shipping Address", "data_type": "text"},
-                {"name": "notes", "label": "Notes", "data_type": "text"},
+                {"name": "order_number", "label": "Order Number", "field_type": "string", "data_type": "VARCHAR", "max_length": 50, "is_required": True, "is_unique": True},
+                {"name": "order_date", "label": "Order Date", "field_type": "datetime", "data_type": "TIMESTAMP", "is_required": True, "default_value": "now()"},
+                {"name": "total_amount", "label": "Total Amount", "field_type": "decimal", "data_type": "NUMERIC", "is_required": True, "decimal_places": 2},
+                {"name": "status", "label": "Status", "field_type": "choice", "data_type": "VARCHAR", "default_value": "pending", "allowed_values": ["pending", "confirmed", "shipped", "delivered", "cancelled"]},
+                {"name": "shipping_address", "label": "Shipping Address", "field_type": "text", "data_type": "TEXT"},
+                {"name": "notes", "label": "Notes", "field_type": "text", "data_type": "TEXT"},
             ]
         },
         {
@@ -123,14 +123,14 @@ def seed_data_model_samples(db: Session, tenant_id: str, user_id: str = None):
             "supports_soft_delete": True,
             "status": "draft",
             "fields": [
-                {"name": "sku", "label": "SKU", "data_type": "string", "max_length": 50, "is_required": True, "is_unique": True},
-                {"name": "name", "label": "Product Name", "data_type": "string", "max_length": 200, "is_required": True, "is_searchable": True},
-                {"name": "description", "label": "Description", "data_type": "text"},
-                {"name": "price", "label": "Price", "data_type": "decimal", "precision": 10, "scale": 2, "is_required": True},
-                {"name": "cost", "label": "Cost", "data_type": "decimal", "precision": 10, "scale": 2},
-                {"name": "stock_quantity", "label": "Stock Quantity", "data_type": "integer", "default_value": "0"},
-                {"name": "is_active", "label": "Active", "data_type": "boolean", "default_value": "true"},
-                {"name": "category", "label": "Category", "data_type": "string", "max_length": 100},
+                {"name": "sku", "label": "SKU", "field_type": "string", "data_type": "VARCHAR", "max_length": 50, "is_required": True, "is_unique": True},
+                {"name": "name", "label": "Product Name", "field_type": "string", "data_type": "VARCHAR", "max_length": 200, "is_required": True},
+                {"name": "description", "label": "Description", "field_type": "text", "data_type": "TEXT"},
+                {"name": "price", "label": "Price", "field_type": "decimal", "data_type": "NUMERIC", "is_required": True, "decimal_places": 2},
+                {"name": "cost", "label": "Cost", "field_type": "decimal", "data_type": "NUMERIC", "decimal_places": 2},
+                {"name": "stock_quantity", "label": "Stock Quantity", "field_type": "integer", "data_type": "INTEGER", "default_value": "0"},
+                {"name": "is_active", "label": "Active", "field_type": "boolean", "data_type": "BOOLEAN", "default_value": "true"},
+                {"name": "category", "label": "Category", "field_type": "string", "data_type": "VARCHAR", "max_length": 100},
             ]
         },
     ]
@@ -171,14 +171,14 @@ def seed_data_model_samples(db: Session, tenant_id: str, user_id: str = None):
                 tenant_id=tenant_id,
                 display_order=idx + 1,
                 is_system=False,
-                is_indexed=field_data.get("is_unique", False) or field_data.get("is_searchable", False),
-                validation_rules={},
+                is_indexed=field_data.get("is_unique", False),
+                validation_rules=[],
                 **field_data
             )
             db.add(field)
 
         created_entities[entity_data["name"]] = entity
-        print(f"  ✅ Created entity: {entity_data['label']} with {len(fields_data)} fields")
+        print(f"  ✅ Created entity: {entity.label} with {len(fields_data)} fields")
 
     db.commit()
 
@@ -212,11 +212,11 @@ def seed_workflow_samples(db: Session, tenant_id: str, user_id: str = None, enti
                 ]
             },
             "states": [
-                {"name": "draft", "label": "Draft", "is_initial": True, "color": "gray"},
-                {"name": "pending_review", "label": "Pending Manager Review", "color": "yellow"},
-                {"name": "pending_approval", "label": "Pending Finance Approval", "color": "blue"},
-                {"name": "approved", "label": "Approved", "is_final": True, "color": "green"},
-                {"name": "rejected", "label": "Rejected", "is_final": True, "color": "red"},
+                {"name": "draft", "label": "Draft", "state_type": "start", "color": "gray"},
+                {"name": "pending_review", "label": "Pending Manager Review", "state_type": "intermediate", "color": "yellow"},
+                {"name": "pending_approval", "label": "Pending Finance Approval", "state_type": "intermediate", "color": "blue"},
+                {"name": "approved", "label": "Approved", "state_type": "end", "is_final": True, "color": "green"},
+                {"name": "rejected", "label": "Rejected", "state_type": "end", "is_final": True, "color": "red"},
             ],
             "transitions": [
                 {"name": "submit", "from_state": "draft", "to_state": "pending_review", "label": "Submit for Review"},
@@ -246,10 +246,10 @@ def seed_workflow_samples(db: Session, tenant_id: str, user_id: str = None, enti
                 ]
             },
             "states": [
-                {"name": "new", "label": "New Customer", "is_initial": True, "color": "blue"},
-                {"name": "verifying", "label": "Verification in Progress", "color": "yellow"},
-                {"name": "setting_up", "label": "Setting Up Account", "color": "purple"},
-                {"name": "active", "label": "Active Customer", "is_final": True, "color": "green"},
+                {"name": "new", "label": "New Customer", "state_type": "start", "color": "blue"},
+                {"name": "verifying", "label": "Verification in Progress", "state_type": "intermediate", "color": "yellow"},
+                {"name": "setting_up", "label": "Setting Up Account", "state_type": "intermediate", "color": "purple"},
+                {"name": "active", "label": "Active Customer", "state_type": "end", "is_final": True, "color": "green"},
             ],
             "transitions": [
                 {"name": "start_verification", "from_state": "new", "to_state": "verifying", "label": "Start Verification"},
@@ -289,12 +289,11 @@ def seed_workflow_samples(db: Session, tenant_id: str, user_id: str = None, enti
 
         # Create states
         state_map = {}
-        for idx, state_data in enumerate(states_data):
+        for state_data in states_data:
             state = WorkflowState(
                 id=str(generate_uuid()),
                 workflow_id=workflow.id,
                 tenant_id=tenant_id,
-                display_order=idx + 1,
                 **state_data
             )
             db.add(state)
@@ -313,7 +312,6 @@ def seed_workflow_samples(db: Session, tenant_id: str, user_id: str = None, enti
                 tenant_id=tenant_id,
                 from_state_id=state_map[from_state_name].id,
                 to_state_id=state_map[to_state_name].id,
-                requires_approval=False,
                 **transition_data
             )
             db.add(transition)
@@ -357,7 +355,7 @@ def seed_automation_samples(db: Session, tenant_id: str, user_id: str = None, en
                     }
                 }
             ],
-            "is_enabled": True,
+            "is_active": True,
             "execution_order": 1
         },
         {
@@ -400,7 +398,7 @@ def seed_automation_samples(db: Session, tenant_id: str, user_id: str = None, en
                     }
                 }
             ],
-            "is_enabled": True,
+            "is_active": True,
             "execution_order": 1
         },
         {
@@ -442,7 +440,7 @@ def seed_automation_samples(db: Session, tenant_id: str, user_id: str = None, en
                     }
                 }
             ],
-            "is_enabled": True,
+            "is_active": True,
             "execution_order": 1
         },
         {
@@ -480,7 +478,7 @@ def seed_automation_samples(db: Session, tenant_id: str, user_id: str = None, en
                     }
                 }
             ],
-            "is_enabled": True,
+            "is_active": True,
             "execution_order": 1
         }
     ]
@@ -535,8 +533,8 @@ def seed_lookup_samples(db: Session, tenant_id: str, user_id: str = None, entiti
                 {"value": "delivered", "label": "Delivered", "color": "green", "icon": "package-check"},
                 {"value": "cancelled", "label": "Cancelled", "color": "red", "icon": "x-circle"},
             ],
-            "is_cached": True,
-            "cache_duration": 86400,  # 24 hours
+            "enable_caching": True,
+            "cache_ttl_seconds": 86400,  # 24 hours
             "is_active": True
         },
         {
@@ -550,8 +548,8 @@ def seed_lookup_samples(db: Session, tenant_id: str, user_id: str = None, entiti
                 {"value": "inactive", "label": "Inactive", "color": "yellow"},
                 {"value": "churned", "label": "Churned", "color": "red"},
             ],
-            "is_cached": True,
-            "cache_duration": 86400,
+            "enable_caching": True,
+            "cache_ttl_seconds": 86400,
             "is_active": True
         },
         {
@@ -569,10 +567,10 @@ def seed_lookup_samples(db: Session, tenant_id: str, user_id: str = None, entiti
                 {"value": "JP", "label": "Japan", "region": "Asia"},
                 {"value": "CN", "label": "China", "region": "Asia"},
             ],
-            "is_cached": True,
-            "cache_duration": 604800,  # 7 days
+            "enable_caching": True,
+            "cache_ttl_seconds": 604800,  # 7 days
             "is_active": True,
-            "allow_search": True
+            "enable_search": True
         },
         {
             "name": "product_categories",
@@ -587,8 +585,8 @@ def seed_lookup_samples(db: Session, tenant_id: str, user_id: str = None, entiti
                 {"value": "sports", "label": "Sports & Outdoors", "icon": "basketball"},
                 {"value": "toys", "label": "Toys & Games", "icon": "gift"},
             ],
-            "is_cached": True,
-            "cache_duration": 86400,
+            "enable_caching": True,
+            "cache_ttl_seconds": 86400,
             "is_active": True
         }
     ]
