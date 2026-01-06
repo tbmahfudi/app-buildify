@@ -23,7 +23,24 @@ from app.models.base import generate_uuid
 
 
 def get_or_create_tenant(db: Session):
-    """Get the first tenant or create a default one."""
+    """Get tenant with sysadmin user, or first active tenant, or create default."""
+    # First, try to find tenant with a sysadmin user
+    sysadmin_user = db.query(User).filter(
+        User.is_superuser == True,
+        User.is_active == True
+    ).first()
+
+    if sysadmin_user:
+        tenant = db.query(Tenant).filter(
+            Tenant.id == sysadmin_user.tenant_id,
+            Tenant.is_active == True,
+            Tenant.deleted_at == None
+        ).first()
+        if tenant:
+            print(f"📋 Using sysadmin's tenant: {tenant.name} (has sysadmin user)")
+            return tenant
+
+    # Fall back to first active tenant
     tenant = db.query(Tenant).filter(
         Tenant.is_active == True,
         Tenant.deleted_at == None
