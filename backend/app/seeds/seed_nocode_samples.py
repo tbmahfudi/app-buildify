@@ -22,32 +22,15 @@ from app.models.user import User
 from app.models.base import generate_uuid
 
 
-def get_or_create_tenant(db: Session):
-    """Get tenant with sysadmin user, or first active tenant, or create default."""
-    # First, try to find tenant with a sysadmin user
-    sysadmin_user = db.query(User).filter(
-        User.is_superuser == True,
-        User.is_active == True
-    ).first()
-
-    if sysadmin_user:
-        tenant = db.query(Tenant).filter(
-            Tenant.id == sysadmin_user.tenant_id,
-            Tenant.is_active == True,
-            Tenant.deleted_at == None
-        ).first()
-        if tenant:
-            print(f"📋 Using sysadmin's tenant: {tenant.name} (has sysadmin user)")
-            return tenant
-
-    # Fall back to first active tenant
-    tenant = db.query(Tenant).filter(
+def get_all_tenants(db: Session):
+    """Get all active tenants."""
+    tenants = db.query(Tenant).filter(
         Tenant.is_active == True,
         Tenant.deleted_at == None
-    ).first()
+    ).all()
 
-    if not tenant:
-        print("⚠️  No tenant found. Creating default tenant...")
+    if not tenants:
+        print("⚠️  No tenants found. Creating default tenant...")
         tenant = Tenant(
             id=str(generate_uuid()),
             name="Default Tenant",
@@ -60,8 +43,9 @@ def get_or_create_tenant(db: Session):
         db.add(tenant)
         db.commit()
         print(f"  ✅ Created tenant: {tenant.name}")
+        tenants = [tenant]
 
-    return tenant
+    return tenants
 
 
 def get_or_create_user(db: Session, tenant_id: str):
@@ -636,34 +620,69 @@ def seed_lookup_samples(db: Session, tenant_id: str, user_id: str = None, entiti
 
 
 def seed_all_samples(db: Session):
-    """Main function to seed all sample data."""
+    """Main function to seed sample data for ALL tenants."""
     print("\n" + "="*80)
-    print("PHASE 1 NO-CODE PLATFORM - SAMPLE DATA SEED")
+    print("PHASE 1 NO-CODE PLATFORM - SAMPLE DATA SEED (ALL TENANTS)")
     print("="*80 + "\n")
 
-    # Get or create tenant
-    tenant = get_or_create_tenant(db)
-    print(f"📋 Using tenant: {tenant.name} (ID: {tenant.id})\n")
+    # Get all active tenants
+    tenants = get_all_tenants(db)
+    print(f"📋 Found {len(tenants)} active tenant(s)\n")
 
-    # Get user
-    user = get_or_create_user(db, tenant.id)
-    user_id = user.id if user else None
+    seeded_tenants = []
+    skipped_tenants = []
 
-    # Seed data for each feature
-    entities = seed_data_model_samples(db, tenant.id, user_id)
-    seed_workflow_samples(db, tenant.id, user_id, entities)
-    seed_automation_samples(db, tenant.id, user_id, entities)
-    seed_lookup_samples(db, tenant.id, user_id, entities)
+    # Seed data for each tenant
+    for tenant in tenants:
+        print(f"\n{'='*80}")
+        print(f"SEEDING TENANT: {tenant.name} (ID: {tenant.id})")
+        print(f"{'='*80}\n")
+
+        # Check if tenant already has sample data
+        existing_entities = db.query(EntityDefinition).filter(
+            EntityDefinition.tenant_id == tenant.id,
+            EntityDefinition.is_deleted == False
+        ).count()
+
+        if existing_entities > 0:
+            print(f"⏭️  Tenant already has {existing_entities} entities. Skipping to avoid duplicates.")
+            print(f"    (Delete existing data first if you want to re-seed)")
+            skipped_tenants.append(tenant.name)
+            continue
+
+        # Get user for this tenant
+        user = get_or_create_user(db, tenant.id)
+        user_id = user.id if user else None
+
+        try:
+            # Seed data for each feature
+            entities = seed_data_model_samples(db, tenant.id, user_id)
+            seed_workflow_samples(db, tenant.id, user_id, entities)
+            seed_automation_samples(db, tenant.id, user_id, entities)
+            seed_lookup_samples(db, tenant.id, user_id, entities)
+
+            seeded_tenants.append(tenant.name)
+            print(f"\n✅ Successfully seeded data for tenant: {tenant.name}")
+
+        except Exception as e:
+            print(f"\n❌ Error seeding tenant {tenant.name}: {e}")
+            import traceback
+            traceback.print_exc()
 
     print("\n" + "="*80)
     print("SAMPLE DATA SEED COMPLETE")
     print("="*80 + "\n")
 
     print("Summary:")
-    print("  • Data Model Designer: Sample entities (Customer, Order, Product) with fields")
-    print("  • Workflow Designer: Sample workflows (Order Approval, Customer Onboarding)")
-    print("  • Automation System: Sample automation rules (Welcome email, Alerts, Reports)")
-    print("  • Lookup Configuration: Sample lookups (Statuses, Countries, Categories)")
+    print(f"  ✅ Seeded {len(seeded_tenants)} tenant(s): {', '.join(seeded_tenants) if seeded_tenants else 'None'}")
+    if skipped_tenants:
+        print(f"  ⏭️  Skipped {len(skipped_tenants)} tenant(s) (already have data): {', '.join(skipped_tenants)}")
+    print()
+    print("  Per tenant:")
+    print("    • Data Model Designer: 3 entities (Customer, Order, Product) with fields")
+    print("    • Workflow Designer: 2 workflows (Order Approval, Customer Onboarding)")
+    print("    • Automation System: 4 automation rules (Welcome email, Alerts, Reports)")
+    print("    • Lookup Configuration: 4 lookups (Statuses, Countries, Categories)")
     print()
 
 
