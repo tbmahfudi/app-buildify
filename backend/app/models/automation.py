@@ -134,7 +134,8 @@ class AutomationExecution(Base):
     # Primary Key
     id = Column(GUID, primary_key=True, default=generate_uuid)
     rule_id = Column(GUID, ForeignKey("automation_rules.id"), nullable=False, index=True)
-    tenant_id = Column(GUID, ForeignKey("tenants.id"), nullable=False)
+    # tenant_id: NULL = platform-level execution, specific ID = tenant-specific execution
+    tenant_id = Column(GUID, ForeignKey("tenants.id"), nullable=True)
 
     # Trigger Context
     trigger_type = Column(String(50), nullable=False)
@@ -246,7 +247,8 @@ class WebhookConfig(Base):
 
     # Primary Key
     id = Column(GUID, primary_key=True, default=generate_uuid)
-    tenant_id = Column(GUID, ForeignKey("tenants.id"), nullable=False)
+    # tenant_id: NULL = platform-level webhook, specific ID = tenant-specific webhook
+    tenant_id = Column(GUID, ForeignKey("tenants.id"), nullable=True)
 
     # Basic Info
     name = Column(String(100), nullable=False)
