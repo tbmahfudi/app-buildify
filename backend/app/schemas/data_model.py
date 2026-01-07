@@ -5,7 +5,7 @@ Request/Response schemas for the Data Model Designer API.
 """
 
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -33,7 +33,7 @@ class FieldDefinitionBase(BaseModel):
     default_value: Optional[str] = None
     default_expression: Optional[str] = None
     validation_rules: List[Dict[str, Any]] = Field(default_factory=list)
-    allowed_values: Optional[Dict[str, Any]] = None
+    allowed_values: Optional[Union[List[str], Dict[str, Any]]] = None  # Can be list or dict
     display_order: int = 0
     is_readonly: bool = False
     is_system: bool = False
@@ -63,7 +63,7 @@ class FieldDefinitionUpdate(BaseModel):
     is_readonly: Optional[bool] = None
     display_order: Optional[int] = None
     validation_rules: Optional[List[Dict[str, Any]]] = None
-    allowed_values: Optional[Dict[str, Any]] = None
+    allowed_values: Optional[Union[List[str], Dict[str, Any]]] = None  # Can be list or dict
     input_type: Optional[str] = None
     placeholder: Optional[str] = None
     meta_data: Optional[Dict[str, Any]] = None
