@@ -267,8 +267,9 @@ def seed_template_categories(db: Session):
         else:
             path = cat_data.get("path", f"/{cat_data['code']}/")
 
-        # Extract children before creating category
+        # Extract children and remove keys that will be set explicitly
         children = cat_data.pop("children", [])
+        cat_data.pop("path", None)  # Remove path as we're setting it explicitly
 
         # Create category
         category = TemplateCategory(
