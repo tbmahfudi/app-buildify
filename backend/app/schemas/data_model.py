@@ -73,7 +73,7 @@ class FieldDefinitionResponse(FieldDefinitionBase):
     """Schema for field definition response"""
     id: UUID
     entity_id: UUID
-    tenant_id: UUID
+    tenant_id: Optional[UUID]  # NULL for platform-level fields
     created_at: datetime
     updated_at: datetime
     created_by: Optional[UUID]
@@ -136,7 +136,7 @@ class EntityDefinitionUpdate(BaseModel):
 class EntityDefinitionResponse(EntityDefinitionBase):
     """Schema for entity definition response"""
     id: UUID
-    tenant_id: UUID
+    tenant_id: Optional[UUID]  # NULL for platform-level entities
     status: str
     is_active: bool
     version: int
@@ -194,7 +194,7 @@ class RelationshipDefinitionUpdate(BaseModel):
 class RelationshipDefinitionResponse(RelationshipDefinitionBase):
     """Schema for relationship definition response"""
     id: UUID
-    tenant_id: UUID
+    tenant_id: Optional[UUID]  # NULL for platform-level relationships
     created_at: datetime
     updated_at: datetime
     created_by: Optional[UUID]
@@ -227,7 +227,7 @@ class IndexDefinitionResponse(IndexDefinitionBase):
     """Schema for index definition response"""
     id: UUID
     entity_id: UUID
-    tenant_id: UUID
+    tenant_id: Optional[UUID]  # NULL for platform-level indexes
     created_at: datetime
     created_by: Optional[UUID]
     is_deleted: bool
@@ -242,7 +242,7 @@ class MigrationResponse(BaseModel):
     """Schema for migration response"""
     id: UUID
     entity_id: UUID
-    tenant_id: UUID
+    tenant_id: Optional[UUID]  # NULL for platform-level migrations
     migration_name: str
     migration_type: str
     from_version: Optional[int]

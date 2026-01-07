@@ -61,7 +61,7 @@ class WorkflowStateResponse(WorkflowStateBase):
     """Schema for workflow state response"""
     id: UUID
     workflow_id: UUID
-    tenant_id: UUID
+    tenant_id: Optional[UUID]  # NULL for platform-level workflow states
     created_at: datetime
     updated_at: datetime
     is_deleted: bool
@@ -117,7 +117,7 @@ class WorkflowTransitionResponse(WorkflowTransitionBase):
     """Schema for workflow transition response"""
     id: UUID
     workflow_id: UUID
-    tenant_id: UUID
+    tenant_id: Optional[UUID]  # NULL for platform-level workflow transitions
     created_at: datetime
     updated_at: datetime
     is_deleted: bool
@@ -162,7 +162,7 @@ class WorkflowDefinitionUpdate(BaseModel):
 class WorkflowDefinitionResponse(WorkflowDefinitionBase):
     """Schema for workflow definition response"""
     id: UUID
-    tenant_id: UUID
+    tenant_id: Optional[UUID]  # NULL for platform-level workflows
     version: int
     is_published: bool
     published_at: Optional[datetime]
@@ -198,7 +198,7 @@ class WorkflowInstanceCreate(WorkflowInstanceBase):
 class WorkflowInstanceResponse(WorkflowInstanceBase):
     """Schema for workflow instance response"""
     id: UUID
-    tenant_id: UUID
+    tenant_id: Optional[UUID]  # NULL for platform-level workflow instances
     current_state_id: Optional[UUID]
     current_state_entered_at: Optional[datetime]
     status: str
@@ -227,7 +227,7 @@ class WorkflowHistoryResponse(BaseModel):
     """Schema for workflow history response"""
     id: UUID
     instance_id: UUID
-    tenant_id: UUID
+    tenant_id: Optional[UUID]  # NULL for platform-level workflow history
     from_state_id: Optional[UUID]
     to_state_id: Optional[UUID]
     transition_id: Optional[UUID]

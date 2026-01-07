@@ -73,7 +73,7 @@ class AutomationRuleUpdate(BaseModel):
 class AutomationRuleResponse(AutomationRuleBase):
     """Schema for automation rule response"""
     id: UUID
-    tenant_id: UUID
+    tenant_id: Optional[UUID]  # NULL for platform-level automation rules
     next_run_at: Optional[datetime]
     last_run_at: Optional[datetime]
     is_active: bool
@@ -100,7 +100,7 @@ class AutomationExecutionResponse(BaseModel):
     """Schema for automation execution response"""
     id: UUID
     rule_id: UUID
-    tenant_id: UUID
+    tenant_id: Optional[UUID]  # NULL for platform-level automation executions
     trigger_type: str
     triggered_by_user_id: Optional[UUID]
     triggered_at: datetime
@@ -217,7 +217,7 @@ class WebhookConfigUpdate(BaseModel):
 class WebhookConfigResponse(WebhookConfigBase):
     """Schema for webhook config response"""
     id: UUID
-    tenant_id: UUID
+    tenant_id: Optional[UUID]  # NULL for platform-level webhook configs
     is_active: bool
     total_calls: int
     successful_calls: int
