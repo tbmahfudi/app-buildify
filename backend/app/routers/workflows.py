@@ -177,6 +177,19 @@ async def create_instance(
     return await service.create_instance(instance)
 
 
+@router.get("/instances", response_model=List[WorkflowInstanceResponse])
+async def list_instances(
+    workflow_id: Optional[UUID] = Query(None),
+    status: Optional[str] = Query(None),
+    entity_id: Optional[UUID] = Query(None),
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """List all workflow instances"""
+    service = WorkflowService(db, current_user)
+    return await service.list_instances(workflow_id, status, entity_id)
+
+
 @router.get("/instances/{instance_id}", response_model=WorkflowInstanceResponse)
 async def get_instance(
     instance_id: UUID,
