@@ -25,28 +25,74 @@ def upgrade() -> None:
     Make tenant_id nullable in no-code platform tables to support
     platform-level (shared) configurations.
     """
-    # Alter entity_definitions table
+    # Parent tables - Main no-code configuration tables
     op.alter_column('entity_definitions', 'tenant_id',
                     existing_type=UUID(as_uuid=True),
                     nullable=True)
 
-    # Alter workflow_definitions table
     op.alter_column('workflow_definitions', 'tenant_id',
                     existing_type=UUID(as_uuid=True),
                     nullable=True)
 
-    # Alter automation_rules table
     op.alter_column('automation_rules', 'tenant_id',
                     existing_type=UUID(as_uuid=True),
                     nullable=True)
 
-    # Alter lookup_configurations table
     op.alter_column('lookup_configurations', 'tenant_id',
                     existing_type=UUID(as_uuid=True),
                     nullable=True)
 
-    # Note: Child tables (workflow_states, workflow_transitions, field_definitions, etc.)
-    # remain tenant-specific as they inherit tenant context from their parent
+    # Child tables - Data Model related
+    op.alter_column('field_definitions', 'tenant_id',
+                    existing_type=UUID(as_uuid=True),
+                    nullable=True)
+
+    op.alter_column('relationship_definitions', 'tenant_id',
+                    existing_type=UUID(as_uuid=True),
+                    nullable=True)
+
+    op.alter_column('index_definitions', 'tenant_id',
+                    existing_type=UUID(as_uuid=True),
+                    nullable=True)
+
+    op.alter_column('entity_migrations', 'tenant_id',
+                    existing_type=UUID(as_uuid=True),
+                    nullable=True)
+
+    # Child tables - Workflow related
+    op.alter_column('workflow_states', 'tenant_id',
+                    existing_type=UUID(as_uuid=True),
+                    nullable=True)
+
+    op.alter_column('workflow_transitions', 'tenant_id',
+                    existing_type=UUID(as_uuid=True),
+                    nullable=True)
+
+    op.alter_column('workflow_instances', 'tenant_id',
+                    existing_type=UUID(as_uuid=True),
+                    nullable=True)
+
+    op.alter_column('workflow_history', 'tenant_id',
+                    existing_type=UUID(as_uuid=True),
+                    nullable=True)
+
+    # Child tables - Automation related
+    op.alter_column('automation_executions', 'tenant_id',
+                    existing_type=UUID(as_uuid=True),
+                    nullable=True)
+
+    op.alter_column('webhook_configs', 'tenant_id',
+                    existing_type=UUID(as_uuid=True),
+                    nullable=True)
+
+    # Child tables - Lookup related
+    op.alter_column('lookup_cache', 'tenant_id',
+                    existing_type=UUID(as_uuid=True),
+                    nullable=True)
+
+    op.alter_column('cascading_lookup_rules', 'tenant_id',
+                    existing_type=UUID(as_uuid=True),
+                    nullable=True)
 
 
 def downgrade() -> None:
@@ -54,22 +100,71 @@ def downgrade() -> None:
     Revert tenant_id to non-nullable.
     WARNING: This will fail if platform-level records (tenant_id=NULL) exist.
     """
-    # Revert lookup_configurations
+    # Revert child tables - Lookup related
+    op.alter_column('cascading_lookup_rules', 'tenant_id',
+                    existing_type=UUID(as_uuid=True),
+                    nullable=False)
+
+    op.alter_column('lookup_cache', 'tenant_id',
+                    existing_type=UUID(as_uuid=True),
+                    nullable=False)
+
+    # Revert child tables - Automation related
+    op.alter_column('webhook_configs', 'tenant_id',
+                    existing_type=UUID(as_uuid=True),
+                    nullable=False)
+
+    op.alter_column('automation_executions', 'tenant_id',
+                    existing_type=UUID(as_uuid=True),
+                    nullable=False)
+
+    # Revert child tables - Workflow related
+    op.alter_column('workflow_history', 'tenant_id',
+                    existing_type=UUID(as_uuid=True),
+                    nullable=False)
+
+    op.alter_column('workflow_instances', 'tenant_id',
+                    existing_type=UUID(as_uuid=True),
+                    nullable=False)
+
+    op.alter_column('workflow_transitions', 'tenant_id',
+                    existing_type=UUID(as_uuid=True),
+                    nullable=False)
+
+    op.alter_column('workflow_states', 'tenant_id',
+                    existing_type=UUID(as_uuid=True),
+                    nullable=False)
+
+    # Revert child tables - Data Model related
+    op.alter_column('entity_migrations', 'tenant_id',
+                    existing_type=UUID(as_uuid=True),
+                    nullable=False)
+
+    op.alter_column('index_definitions', 'tenant_id',
+                    existing_type=UUID(as_uuid=True),
+                    nullable=False)
+
+    op.alter_column('relationship_definitions', 'tenant_id',
+                    existing_type=UUID(as_uuid=True),
+                    nullable=False)
+
+    op.alter_column('field_definitions', 'tenant_id',
+                    existing_type=UUID(as_uuid=True),
+                    nullable=False)
+
+    # Revert parent tables
     op.alter_column('lookup_configurations', 'tenant_id',
                     existing_type=UUID(as_uuid=True),
                     nullable=False)
 
-    # Revert automation_rules
     op.alter_column('automation_rules', 'tenant_id',
                     existing_type=UUID(as_uuid=True),
                     nullable=False)
 
-    # Revert workflow_definitions
     op.alter_column('workflow_definitions', 'tenant_id',
                     existing_type=UUID(as_uuid=True),
                     nullable=False)
 
-    # Revert entity_definitions
     op.alter_column('entity_definitions', 'tenant_id',
                     existing_type=UUID(as_uuid=True),
                     nullable=False)

@@ -144,7 +144,8 @@ class LookupCache(Base):
     # Primary Key
     id = Column(GUID, primary_key=True, default=generate_uuid)
     lookup_id = Column(GUID, ForeignKey("lookup_configurations.id", ondelete="CASCADE"), nullable=False, index=True)
-    tenant_id = Column(GUID, ForeignKey("tenants.id"), nullable=False)
+    # tenant_id: NULL = platform-level cache, specific ID = tenant-specific cache
+    tenant_id = Column(GUID, ForeignKey("tenants.id"), nullable=True)
 
     # Cache Key
     cache_key = Column(String(255), nullable=False)  # Hash of query parameters
@@ -181,7 +182,8 @@ class CascadingLookupRule(Base):
 
     # Primary Key
     id = Column(GUID, primary_key=True, default=generate_uuid)
-    tenant_id = Column(GUID, ForeignKey("tenants.id"), nullable=False)
+    # tenant_id: NULL = platform-level rule, specific ID = tenant-specific rule
+    tenant_id = Column(GUID, ForeignKey("tenants.id"), nullable=True)
 
     # Basic Info
     name = Column(String(100), nullable=False)

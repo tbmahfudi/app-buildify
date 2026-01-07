@@ -112,7 +112,8 @@ class FieldDefinition(Base):
     # Primary Key
     id = Column(GUID, primary_key=True, default=generate_uuid)
     entity_id = Column(GUID, ForeignKey("entity_definitions.id", ondelete="CASCADE"), nullable=False, index=True)
-    tenant_id = Column(GUID, ForeignKey("tenants.id"), nullable=False)
+    # tenant_id: NULL = platform-level (inherited from entity), specific ID = tenant-specific override
+    tenant_id = Column(GUID, ForeignKey("tenants.id"), nullable=True)
 
     # Basic Info
     name = Column(String(100), nullable=False)  # Technical name (snake_case)
@@ -196,7 +197,8 @@ class RelationshipDefinition(Base):
 
     # Primary Key
     id = Column(GUID, primary_key=True, default=generate_uuid)
-    tenant_id = Column(GUID, ForeignKey("tenants.id"), nullable=False)
+    # tenant_id: NULL = platform-level (shared across tenants), specific ID = tenant-specific
+    tenant_id = Column(GUID, ForeignKey("tenants.id"), nullable=True)
 
     # Basic Info
     name = Column(String(100), nullable=False)
@@ -260,7 +262,8 @@ class IndexDefinition(Base):
     # Primary Key
     id = Column(GUID, primary_key=True, default=generate_uuid)
     entity_id = Column(GUID, ForeignKey("entity_definitions.id", ondelete="CASCADE"), nullable=False, index=True)
-    tenant_id = Column(GUID, ForeignKey("tenants.id"), nullable=False)
+    # tenant_id: NULL = platform-level (inherited from entity), specific ID = tenant-specific override
+    tenant_id = Column(GUID, ForeignKey("tenants.id"), nullable=True)
 
     # Basic Info
     name = Column(String(100), nullable=False)
@@ -303,7 +306,8 @@ class EntityMigration(Base):
     # Primary Key
     id = Column(GUID, primary_key=True, default=generate_uuid)
     entity_id = Column(GUID, ForeignKey("entity_definitions.id"), nullable=False, index=True)
-    tenant_id = Column(GUID, ForeignKey("tenants.id"), nullable=False)
+    # tenant_id: NULL = platform-level (inherited from entity), specific ID = tenant-specific
+    tenant_id = Column(GUID, ForeignKey("tenants.id"), nullable=True)
 
     # Migration Info
     migration_name = Column(String(200), nullable=False)

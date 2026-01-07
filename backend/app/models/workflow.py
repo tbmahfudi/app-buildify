@@ -95,7 +95,8 @@ class WorkflowState(Base):
     # Primary Key
     id = Column(GUID, primary_key=True, default=generate_uuid)
     workflow_id = Column(GUID, ForeignKey("workflow_definitions.id", ondelete="CASCADE"), nullable=False, index=True)
-    tenant_id = Column(GUID, ForeignKey("tenants.id"), nullable=False)
+    # tenant_id: NULL = platform-level (inherited from workflow), specific ID = tenant-specific override
+    tenant_id = Column(GUID, ForeignKey("tenants.id"), nullable=True)
 
     # Basic Info
     name = Column(String(100), nullable=False)
@@ -157,7 +158,8 @@ class WorkflowTransition(Base):
     # Primary Key
     id = Column(GUID, primary_key=True, default=generate_uuid)
     workflow_id = Column(GUID, ForeignKey("workflow_definitions.id", ondelete="CASCADE"), nullable=False, index=True)
-    tenant_id = Column(GUID, ForeignKey("tenants.id"), nullable=False)
+    # tenant_id: NULL = platform-level (inherited from workflow), specific ID = tenant-specific override
+    tenant_id = Column(GUID, ForeignKey("tenants.id"), nullable=True)
 
     # Basic Info
     name = Column(String(100), nullable=False)
@@ -220,7 +222,8 @@ class WorkflowInstance(Base):
     # Primary Key
     id = Column(GUID, primary_key=True, default=generate_uuid)
     workflow_id = Column(GUID, ForeignKey("workflow_definitions.id"), nullable=False, index=True)
-    tenant_id = Column(GUID, ForeignKey("tenants.id"), nullable=False)
+    # tenant_id: NULL = platform-level execution, specific ID = tenant-specific execution
+    tenant_id = Column(GUID, ForeignKey("tenants.id"), nullable=True)
 
     # Associated Record
     entity_id = Column(GUID, ForeignKey("entity_definitions.id"), nullable=False)
@@ -273,7 +276,8 @@ class WorkflowHistory(Base):
     # Primary Key
     id = Column(GUID, primary_key=True, default=generate_uuid)
     instance_id = Column(GUID, ForeignKey("workflow_instances.id"), nullable=False, index=True)
-    tenant_id = Column(GUID, ForeignKey("tenants.id"), nullable=False)
+    # tenant_id: NULL = platform-level history, specific ID = tenant-specific history
+    tenant_id = Column(GUID, ForeignKey("tenants.id"), nullable=True)
 
     # Transition Info
     from_state_id = Column(GUID, ForeignKey("workflow_states.id"))
