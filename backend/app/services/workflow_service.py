@@ -373,6 +373,29 @@ class WorkflowService:
 
         return instance
 
+    async def list_instances(
+        self,
+        workflow_id: UUID = None,
+        status: str = None,
+        entity_id: UUID = None
+    ):
+        """List workflow instances with optional filters"""
+        query = self.db.query(WorkflowInstance).filter(
+            WorkflowInstance.tenant_id == self.tenant_id
+        )
+
+        if workflow_id:
+            query = query.filter(WorkflowInstance.workflow_id == workflow_id)
+
+        if status:
+            query = query.filter(WorkflowInstance.status == status)
+
+        if entity_id:
+            query = query.filter(WorkflowInstance.entity_id == entity_id)
+
+        instances = query.order_by(WorkflowInstance.started_at.desc()).all()
+        return instances
+
     async def execute_transition(
         self,
         instance_id: UUID,
