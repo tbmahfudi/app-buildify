@@ -92,7 +92,7 @@ class LookupConfigurationUpdate(BaseModel):
 class LookupConfigurationResponse(LookupConfigurationBase):
     """Schema for lookup configuration response"""
     id: UUID
-    tenant_id: UUID
+    tenant_id: Optional[UUID]  # NULL for platform-level lookup configurations
     is_active: bool
     created_at: datetime
     updated_at: datetime
@@ -158,7 +158,7 @@ class CascadingLookupRuleUpdate(BaseModel):
 class CascadingLookupRuleResponse(CascadingLookupRuleBase):
     """Schema for cascading lookup rule response"""
     id: UUID
-    tenant_id: UUID
+    tenant_id: Optional[UUID]  # NULL for platform-level cascading rules
     is_active: bool
     created_at: datetime
     updated_at: datetime
