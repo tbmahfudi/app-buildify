@@ -126,7 +126,10 @@ export class WorkflowsPage {
       <div class="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-lg transition">
         <div class="flex items-start justify-between mb-3">
           <div class="flex-1">
-            <h3 class="text-lg font-semibold text-gray-900">${this.escapeHtml(workflow.label)}</h3>
+            <div class="flex items-center gap-2 mb-1">
+              <h3 class="text-lg font-semibold text-gray-900">${this.escapeHtml(workflow.label)}</h3>
+              ${workflow.tenant_id === null ? '<span class="px-2 py-0.5 bg-purple-100 text-purple-700 rounded text-xs font-medium">Platform</span>' : ''}
+            </div>
             <p class="text-sm text-gray-500 mt-1">${this.escapeHtml(workflow.description || 'No description')}</p>
           </div>
           <span class="ml-2 px-3 py-1 rounded-full text-xs font-medium ${workflow.is_published ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}">

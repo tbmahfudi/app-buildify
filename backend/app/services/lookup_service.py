@@ -69,11 +69,23 @@ class LookupService:
     async def list_configurations(
         self,
         source_type: Optional[str] = None,
-        entity_id: Optional[UUID] = None
+        entity_id: Optional[UUID] = None,
+        include_platform: bool = True
     ):
-        """List all lookup configurations"""
+        """List all lookup configurations (tenant-specific and optionally platform-level)"""
+        from sqlalchemy import or_
+
+        # Build tenant filter: include current tenant and optionally platform-level (tenant_id=NULL)
+        if include_platform:
+            tenant_filter = or_(
+                LookupConfiguration.tenant_id == self.tenant_id,
+                LookupConfiguration.tenant_id == None  # Platform-level lookups
+            )
+        else:
+            tenant_filter = LookupConfiguration.tenant_id == self.tenant_id
+
         query = self.db.query(LookupConfiguration).filter(
-            LookupConfiguration.tenant_id == self.tenant_id,
+            tenant_filter,
             LookupConfiguration.is_deleted == False
         )
 
@@ -84,11 +96,22 @@ class LookupService:
 
         return query.all()
 
-    async def get_configuration(self, config_id: UUID):
-        """Get lookup configuration by ID"""
+    async def get_configuration(self, config_id: UUID, include_platform: bool = True):
+        """Get lookup configuration by ID (checks tenant-specific and optionally platform-level)"""
+        from sqlalchemy import or_
+
+        # Build tenant filter
+        if include_platform:
+            tenant_filter = or_(
+                LookupConfiguration.tenant_id == self.tenant_id,
+                LookupConfiguration.tenant_id == None  # Platform-level lookups
+            )
+        else:
+            tenant_filter = LookupConfiguration.tenant_id == self.tenant_id
+
         config = self.db.query(LookupConfiguration).filter(
             LookupConfiguration.id == config_id,
-            LookupConfiguration.tenant_id == self.tenant_id,
+            tenant_filter,
             LookupConfiguration.is_deleted == False
         ).first()
 

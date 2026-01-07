@@ -70,11 +70,23 @@ class AutomationService:
         entity_id: Optional[UUID] = None,
         trigger_type: Optional[str] = None,
         category: Optional[str] = None,
-        is_active: Optional[bool] = None
+        is_active: Optional[bool] = None,
+        include_platform: bool = True
     ):
-        """List all automation rules"""
+        """List all automation rules (tenant-specific and optionally platform-level)"""
+        from sqlalchemy import or_
+
+        # Build tenant filter: include current tenant and optionally platform-level (tenant_id=NULL)
+        if include_platform:
+            tenant_filter = or_(
+                AutomationRule.tenant_id == self.tenant_id,
+                AutomationRule.tenant_id == None  # Platform-level rules
+            )
+        else:
+            tenant_filter = AutomationRule.tenant_id == self.tenant_id
+
         query = self.db.query(AutomationRule).filter(
-            AutomationRule.tenant_id == self.tenant_id,
+            tenant_filter,
             AutomationRule.is_deleted == False
         )
 
@@ -89,11 +101,22 @@ class AutomationService:
 
         return query.all()
 
-    async def get_rule(self, rule_id: UUID):
-        """Get automation rule by ID"""
+    async def get_rule(self, rule_id: UUID, include_platform: bool = True):
+        """Get automation rule by ID (checks tenant-specific and optionally platform-level)"""
+        from sqlalchemy import or_
+
+        # Build tenant filter
+        if include_platform:
+            tenant_filter = or_(
+                AutomationRule.tenant_id == self.tenant_id,
+                AutomationRule.tenant_id == None  # Platform-level rules
+            )
+        else:
+            tenant_filter = AutomationRule.tenant_id == self.tenant_id
+
         rule = self.db.query(AutomationRule).filter(
             AutomationRule.id == rule_id,
-            AutomationRule.tenant_id == self.tenant_id,
+            tenant_filter,
             AutomationRule.is_deleted == False
         ).first()
 

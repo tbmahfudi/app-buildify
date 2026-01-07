@@ -86,6 +86,19 @@ async def delete_entity(
     return await service.delete_entity(entity_id)
 
 
+@router.post("/entities/{entity_id}/clone", response_model=EntityDefinitionResponse)
+async def clone_entity(
+    entity_id: UUID,
+    new_name: Optional[str] = Query(None, description="Name for the cloned entity"),
+    new_label: Optional[str] = Query(None, description="Label for the cloned entity"),
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """Clone a platform-level entity to a tenant-specific version"""
+    service = DataModelService(db, current_user)
+    return await service.clone_entity(entity_id, new_name, new_label)
+
+
 # ==================== Field Endpoints ====================
 
 @router.post("/entities/{entity_id}/fields", response_model=FieldDefinitionResponse)
