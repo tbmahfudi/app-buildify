@@ -55,7 +55,20 @@ export class DataModelPage {
       manageFields: (id) => this.manageFields(id),
       viewRelationships: (id) => this.viewRelationships(id),
       cloneEntity: (id) => this.cloneEntity(id),
-      filterEntities: (filter) => this.filterEntities(filter)
+      filterEntities: (filter) => this.filterEntities(filter),
+      closeFieldManager: () => this.closeFieldManager(),
+      showAddFieldModal: (id) => this.showAddFieldModal(id),
+      closeAddFieldModal: () => this.closeAddFieldModal(),
+      updateDataTypeOptions: (type) => this.updateDataTypeOptions(type),
+      editField: (entityId, fieldId) => this.editField(entityId, fieldId),
+      closeEditFieldModal: () => this.closeEditFieldModal(),
+      deleteField: (entityId, fieldId) => this.deleteField(entityId, fieldId),
+      closeRelationshipViewer: () => this.closeRelationshipViewer(),
+      showAddRelationshipModal: () => this.showAddRelationshipModal(),
+      closeAddRelationshipModal: () => this.closeAddRelationshipModal(),
+      deleteRelationship: (id) => this.deleteRelationship(id),
+      showEditEntityModal: (id) => this.showEditEntityModal(id),
+      closeEditEntityModal: () => this.closeEditEntityModal()
     };
   }
 
@@ -421,16 +434,922 @@ export class DataModelPage {
     }
   }
 
-  editEntity(id) {
-    this.showError('Edit feature coming soon - will open entity editor');
+  async editEntity(id) {
+    try {
+      const response = await fetch(`/api/v1/data-model/entities/${id}`, {
+        headers: { 'Authorization': `Bearer ${authService.getToken()}` }
+      });
+
+      if (!response.ok) {
+        this.showError('Failed to load entity');
+        return;
+      }
+
+      const entity = await response.json();
+      this.showEditEntityModal(entity);
+    } catch (error) {
+      console.error('Error loading entity:', error);
+      this.showError('Error loading entity');
+    }
   }
 
-  manageFields(id) {
-    this.showError('Field management UI coming soon');
+  showEditEntityModal(entity) {
+    const modal = document.createElement('div');
+    modal.id = 'editEntityModal';
+    modal.className = 'fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-[60]';
+    modal.innerHTML = `
+      <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div class="px-6 py-4 border-b border-gray-200">
+          <h3 class="text-lg font-semibold text-gray-900">Edit Entity</h3>
+        </div>
+        <form id="editEntityForm" class="p-6 space-y-4">
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Entity Name *</label>
+              <input type="text" name="name" required value="${this.escapeHtml(entity.name)}"
+                     class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100" disabled>
+              <p class="text-xs text-gray-500 mt-1">Cannot change after creation</p>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Table Name *</label>
+              <input type="text" name="table_name" required value="${this.escapeHtml(entity.table_name)}"
+                     class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100" disabled>
+              <p class="text-xs text-gray-500 mt-1">Cannot change after creation</p>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Display Label *</label>
+              <input type="text" name="label" required value="${this.escapeHtml(entity.label)}"
+                     class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Plural Label</label>
+              <input type="text" name="plural_label" value="${this.escapeHtml(entity.plural_label || '')}"
+                     class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+            <textarea name="description" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">${this.escapeHtml(entity.description || '')}</textarea>
+          </div>
+
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Category</label>
+              <input type="text" name="category" value="${this.escapeHtml(entity.category || '')}"
+                     class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Icon</label>
+              <input type="text" name="icon" value="${this.escapeHtml(entity.icon || '')}" placeholder="database"
+                     class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+              <p class="text-xs text-gray-500 mt-1">Phosphor icon name</p>
+            </div>
+          </div>
+
+          <div class="space-y-2">
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" name="is_audited" ${entity.is_audited ? 'checked' : ''} class="rounded text-blue-600">
+              <span class="text-sm text-gray-700">Enable Audit Trail</span>
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" name="supports_soft_delete" ${entity.supports_soft_delete ? 'checked' : ''} class="rounded text-blue-600">
+              <span class="text-sm text-gray-700">Enable Soft Delete</span>
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" name="supports_attachments" ${entity.supports_attachments ? 'checked' : ''} class="rounded text-blue-600">
+              <span class="text-sm text-gray-700">Enable Attachments</span>
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" name="is_versioned" ${entity.is_versioned ? 'checked' : ''} class="rounded text-blue-600">
+              <span class="text-sm text-gray-700">Enable Versioning</span>
+            </label>
+          </div>
+
+          <div class="flex gap-3 pt-4 border-t">
+            <button type="submit" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+              <i class="ph ph-check"></i> Save Changes
+            </button>
+            <button type="button" onclick="DataModelApp.closeEditEntityModal()" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200">
+              Cancel
+            </button>
+          </div>
+        </form>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    document.getElementById('editEntityForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      this.updateEntity(entity.id, e.target);
+    });
   }
 
-  viewRelationships(id) {
-    this.showError('Relationship viewer coming soon');
+  closeEditEntityModal() {
+    const modal = document.getElementById('editEntityModal');
+    if (modal) modal.remove();
+  }
+
+  async updateEntity(entityId, form) {
+    const formData = new FormData(form);
+    const data = {
+      label: formData.get('label'),
+      plural_label: formData.get('plural_label') || null,
+      description: formData.get('description') || null,
+      category: formData.get('category') || null,
+      icon: formData.get('icon') || null,
+      is_audited: formData.get('is_audited') === 'on',
+      supports_soft_delete: formData.get('supports_soft_delete') === 'on',
+      supports_attachments: formData.get('supports_attachments') === 'on',
+      is_versioned: formData.get('is_versioned') === 'on'
+    };
+
+    try {
+      const response = await fetch(`/api/v1/data-model/entities/${entityId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authService.getToken()}`
+        },
+        body: JSON.stringify(data)
+      });
+
+      if (response.ok) {
+        this.closeEditEntityModal();
+        this.showSuccess('Entity updated successfully');
+        await this.loadEntities();
+      } else {
+        const error = await response.json();
+        this.showError(error.detail || 'Failed to update entity');
+      }
+    } catch (error) {
+      console.error('Error updating entity:', error);
+      this.showError('Error updating entity');
+    }
+  }
+
+  async manageFields(id) {
+    try {
+      // Load entity and its fields
+      const [entityResponse, fieldsResponse] = await Promise.all([
+        fetch(`/api/v1/data-model/entities/${id}`, {
+          headers: { 'Authorization': `Bearer ${authService.getToken()}` }
+        }),
+        fetch(`/api/v1/data-model/entities/${id}/fields`, {
+          headers: { 'Authorization': `Bearer ${authService.getToken()}` }
+        })
+      ]);
+
+      if (!entityResponse.ok || !fieldsResponse.ok) {
+        this.showError('Failed to load field data');
+        return;
+      }
+
+      const entity = await entityResponse.json();
+      const fields = await fieldsResponse.json();
+
+      this.showFieldManager(entity, fields);
+    } catch (error) {
+      console.error('Error loading fields:', error);
+      this.showError('Error loading fields');
+    }
+  }
+
+  showFieldManager(entity, fields) {
+    // Create modal
+    const modal = document.createElement('div');
+    modal.id = 'fieldManagerModal';
+    modal.className = 'fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50';
+    modal.innerHTML = `
+      <div class="bg-white rounded-lg shadow-xl w-full max-w-5xl max-h-[90vh] flex flex-col">
+        <!-- Header -->
+        <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+          <div>
+            <h2 class="text-xl font-semibold text-gray-900">
+              <i class="ph ph-list-bullets"></i> Manage Fields: ${this.escapeHtml(entity.label)}
+            </h2>
+            <p class="text-sm text-gray-500 mt-1">Add, edit, and organize fields for this entity</p>
+          </div>
+          <button onclick="DataModelApp.closeFieldManager()" class="text-gray-400 hover:text-gray-600">
+            <i class="ph ph-x text-2xl"></i>
+          </button>
+        </div>
+
+        <!-- Body -->
+        <div class="flex-1 overflow-y-auto p-6">
+          <div class="mb-4 flex justify-between items-center">
+            <div class="text-sm text-gray-600">
+              ${fields.length} fields defined
+            </div>
+            <button onclick="DataModelApp.showAddFieldModal('${entity.id}')" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+              <i class="ph ph-plus"></i> Add Field
+            </button>
+          </div>
+
+          <div class="space-y-2" id="fieldsList">
+            ${fields.length === 0 ? `
+              <div class="text-center py-12 text-gray-500">
+                <i class="ph-duotone ph-list-bullets text-5xl"></i>
+                <p class="mt-2">No fields yet. Click "Add Field" to create one.</p>
+              </div>
+            ` : fields.map(field => this.renderFieldItem(field, entity.id)).join('')}
+          </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="px-6 py-4 border-t border-gray-200 flex justify-end">
+          <button onclick="DataModelApp.closeFieldManager()" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200">
+            Done
+          </button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    // Store current state
+    this.currentEntity = entity;
+    this.currentFields = fields;
+  }
+
+  renderFieldItem(field, entityId) {
+    const isSystem = field.is_system || false;
+    return `
+      <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition">
+        <div class="flex-1">
+          <div class="flex items-center gap-2">
+            <h4 class="font-medium text-gray-900">${this.escapeHtml(field.label)}</h4>
+            ${field.is_required ? '<span class="px-2 py-0.5 bg-red-100 text-red-700 rounded text-xs">Required</span>' : ''}
+            ${field.is_unique ? '<span class="px-2 py-0.5 bg-purple-100 text-purple-700 rounded text-xs">Unique</span>' : ''}
+            ${isSystem ? '<span class="px-2 py-0.5 bg-gray-200 text-gray-700 rounded text-xs">System</span>' : ''}
+          </div>
+          <div class="text-sm text-gray-600 mt-1 flex items-center gap-4">
+            <span><i class="ph ph-code"></i> ${field.name}</span>
+            <span><i class="ph ph-database"></i> ${field.data_type}${field.max_length ? '(' + field.max_length + ')' : ''}</span>
+            <span><i class="ph ph-tag"></i> ${field.field_type}</span>
+          </div>
+          ${field.description ? `<p class="text-sm text-gray-500 mt-1">${this.escapeHtml(field.description)}</p>` : ''}
+        </div>
+        <div class="flex gap-2 ml-4">
+          ${!isSystem ? `
+            <button onclick="DataModelApp.editField('${entityId}', '${field.id}')" class="px-3 py-1.5 bg-blue-50 text-blue-700 rounded hover:bg-blue-100 text-sm">
+              <i class="ph ph-pencil"></i> Edit
+            </button>
+            <button onclick="DataModelApp.deleteField('${entityId}', '${field.id}')" class="px-3 py-1.5 bg-red-50 text-red-700 rounded hover:bg-red-100 text-sm">
+              <i class="ph ph-trash"></i>
+            </button>
+          ` : '<span class="text-xs text-gray-500 px-3 py-1.5">System field</span>'}
+        </div>
+      </div>
+    `;
+  }
+
+  closeFieldManager() {
+    const modal = document.getElementById('fieldManagerModal');
+    if (modal) modal.remove();
+  }
+
+  showAddFieldModal(entityId) {
+    const existingModal = document.getElementById('addFieldModal');
+    if (existingModal) existingModal.remove();
+
+    const modal = document.createElement('div');
+    modal.id = 'addFieldModal';
+    modal.className = 'fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-[60]';
+    modal.innerHTML = `
+      <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div class="px-6 py-4 border-b border-gray-200">
+          <h3 class="text-lg font-semibold text-gray-900">Add New Field</h3>
+        </div>
+        <form id="addFieldForm" class="p-6 space-y-4">
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Field Name *</label>
+              <input type="text" name="name" required placeholder="customer_name"
+                     class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+              <p class="text-xs text-gray-500 mt-1">Technical name (snake_case)</p>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Label *</label>
+              <input type="text" name="label" required placeholder="Customer Name"
+                     class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Field Type *</label>
+              <select name="field_type" required onchange="DataModelApp.updateDataTypeOptions(this.value)"
+                      class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                <option value="">Select type...</option>
+                <option value="string">String/Text</option>
+                <option value="integer">Integer</option>
+                <option value="decimal">Decimal</option>
+                <option value="boolean">Boolean</option>
+                <option value="date">Date</option>
+                <option value="datetime">Date & Time</option>
+                <option value="text">Long Text</option>
+                <option value="email">Email</option>
+                <option value="url">URL</option>
+                <option value="phone">Phone</option>
+                <option value="json">JSON</option>
+                <option value="file">File Upload</option>
+                <option value="lookup">Lookup/Reference</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Database Type *</label>
+              <select name="data_type" required id="dataTypeSelect"
+                      class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                <option value="">Select database type...</option>
+                <option value="VARCHAR">VARCHAR</option>
+                <option value="TEXT">TEXT</option>
+                <option value="INTEGER">INTEGER</option>
+                <option value="BIGINT">BIGINT</option>
+                <option value="DECIMAL">DECIMAL</option>
+                <option value="BOOLEAN">BOOLEAN</option>
+                <option value="DATE">DATE</option>
+                <option value="TIMESTAMP">TIMESTAMP</option>
+                <option value="JSONB">JSONB</option>
+                <option value="UUID">UUID</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Max Length</label>
+              <input type="number" name="max_length" placeholder="255"
+                     class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+              <p class="text-xs text-gray-500 mt-1">For VARCHAR types</p>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Default Value</label>
+              <input type="text" name="default_value" placeholder=""
+                     class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+            <textarea name="description" rows="2" placeholder="Field description..."
+                      class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"></textarea>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Help Text</label>
+            <input type="text" name="help_text" placeholder="Helper text shown to users"
+                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+          </div>
+
+          <div class="grid grid-cols-3 gap-4">
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" name="is_required" class="rounded text-blue-600">
+              <span class="text-sm text-gray-700">Required</span>
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" name="is_unique" class="rounded text-blue-600">
+              <span class="text-sm text-gray-700">Unique</span>
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" name="is_indexed" class="rounded text-blue-600">
+              <span class="text-sm text-gray-700">Indexed</span>
+            </label>
+          </div>
+
+          <div class="flex gap-3 pt-4 border-t">
+            <button type="submit" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+              <i class="ph ph-plus"></i> Add Field
+            </button>
+            <button type="button" onclick="DataModelApp.closeAddFieldModal()" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200">
+              Cancel
+            </button>
+          </div>
+        </form>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    // Add form submit handler
+    document.getElementById('addFieldForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      this.createField(entityId, e.target);
+    });
+  }
+
+  updateDataTypeOptions(fieldType) {
+    const dataTypeSelect = document.getElementById('dataTypeSelect');
+    if (!dataTypeSelect) return;
+
+    const typeMap = {
+      'string': 'VARCHAR',
+      'text': 'TEXT',
+      'integer': 'INTEGER',
+      'decimal': 'DECIMAL',
+      'boolean': 'BOOLEAN',
+      'date': 'DATE',
+      'datetime': 'TIMESTAMP',
+      'email': 'VARCHAR',
+      'url': 'VARCHAR',
+      'phone': 'VARCHAR',
+      'json': 'JSONB',
+      'file': 'VARCHAR',
+      'lookup': 'UUID'
+    };
+
+    if (typeMap[fieldType]) {
+      dataTypeSelect.value = typeMap[fieldType];
+    }
+  }
+
+  closeAddFieldModal() {
+    const modal = document.getElementById('addFieldModal');
+    if (modal) modal.remove();
+  }
+
+  async createField(entityId, form) {
+    const formData = new FormData(form);
+    const data = {
+      name: formData.get('name'),
+      label: formData.get('label'),
+      field_type: formData.get('field_type'),
+      data_type: formData.get('data_type'),
+      description: formData.get('description') || null,
+      help_text: formData.get('help_text') || null,
+      max_length: formData.get('max_length') ? parseInt(formData.get('max_length')) : null,
+      default_value: formData.get('default_value') || null,
+      is_required: formData.get('is_required') === 'on',
+      is_unique: formData.get('is_unique') === 'on',
+      is_indexed: formData.get('is_indexed') === 'on',
+      is_nullable: formData.get('is_required') !== 'on',
+      display_order: 999
+    };
+
+    try {
+      const response = await fetch(`/api/v1/data-model/entities/${entityId}/fields`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authService.getToken()}`
+        },
+        body: JSON.stringify(data)
+      });
+
+      if (response.ok) {
+        this.closeAddFieldModal();
+        this.showSuccess('Field created successfully');
+        // Reload field manager
+        await this.manageFields(entityId);
+      } else {
+        const error = await response.json();
+        this.showError(error.detail || 'Failed to create field');
+      }
+    } catch (error) {
+      console.error('Error creating field:', error);
+      this.showError('Error creating field');
+    }
+  }
+
+  async editField(entityId, fieldId) {
+    try {
+      const response = await fetch(`/api/v1/data-model/entities/${entityId}/fields`, {
+        headers: { 'Authorization': `Bearer ${authService.getToken()}` }
+      });
+
+      if (!response.ok) {
+        this.showError('Failed to load field');
+        return;
+      }
+
+      const fields = await response.json();
+      const field = fields.find(f => f.id === fieldId);
+      if (!field) {
+        this.showError('Field not found');
+        return;
+      }
+
+      this.showEditFieldModal(entityId, field);
+    } catch (error) {
+      console.error('Error loading field:', error);
+      this.showError('Error loading field');
+    }
+  }
+
+  showEditFieldModal(entityId, field) {
+    const existingModal = document.getElementById('editFieldModal');
+    if (existingModal) existingModal.remove();
+
+    const modal = document.createElement('div');
+    modal.id = 'editFieldModal';
+    modal.className = 'fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-[60]';
+    modal.innerHTML = `
+      <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div class="px-6 py-4 border-b border-gray-200">
+          <h3 class="text-lg font-semibold text-gray-900">Edit Field</h3>
+        </div>
+        <form id="editFieldForm" class="p-6 space-y-4">
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Field Name *</label>
+              <input type="text" name="name" required value="${this.escapeHtml(field.name)}"
+                     class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-gray-100" disabled>
+              <p class="text-xs text-gray-500 mt-1">Cannot change after creation</p>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Label *</label>
+              <input type="text" name="label" required value="${this.escapeHtml(field.label)}"
+                     class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+            <textarea name="description" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">${field.description || ''}</textarea>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Help Text</label>
+            <input type="text" name="help_text" value="${field.help_text || ''}"
+                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Default Value</label>
+            <input type="text" name="default_value" value="${field.default_value || ''}"
+                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+          </div>
+
+          <div class="grid grid-cols-3 gap-4">
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" name="is_required" ${field.is_required ? 'checked' : ''} class="rounded text-blue-600">
+              <span class="text-sm text-gray-700">Required</span>
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" name="is_unique" ${field.is_unique ? 'checked' : ''} class="rounded text-blue-600">
+              <span class="text-sm text-gray-700">Unique</span>
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" name="is_indexed" ${field.is_indexed ? 'checked' : ''} class="rounded text-blue-600">
+              <span class="text-sm text-gray-700">Indexed</span>
+            </label>
+          </div>
+
+          <div class="flex gap-3 pt-4 border-t">
+            <button type="submit" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+              <i class="ph ph-check"></i> Save Changes
+            </button>
+            <button type="button" onclick="DataModelApp.closeEditFieldModal()" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200">
+              Cancel
+            </button>
+          </div>
+        </form>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    // Add form submit handler
+    document.getElementById('editFieldForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      this.updateField(entityId, field.id, e.target);
+    });
+  }
+
+  closeEditFieldModal() {
+    const modal = document.getElementById('editFieldModal');
+    if (modal) modal.remove();
+  }
+
+  async updateField(entityId, fieldId, form) {
+    const formData = new FormData(form);
+    const data = {
+      label: formData.get('label'),
+      description: formData.get('description') || null,
+      help_text: formData.get('help_text') || null,
+      default_value: formData.get('default_value') || null,
+      is_required: formData.get('is_required') === 'on',
+      is_unique: formData.get('is_unique') === 'on',
+      is_indexed: formData.get('is_indexed') === 'on',
+      is_nullable: formData.get('is_required') !== 'on'
+    };
+
+    try {
+      const response = await fetch(`/api/v1/data-model/entities/${entityId}/fields/${fieldId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authService.getToken()}`
+        },
+        body: JSON.stringify(data)
+      });
+
+      if (response.ok) {
+        this.closeEditFieldModal();
+        this.showSuccess('Field updated successfully');
+        // Reload field manager
+        await this.manageFields(entityId);
+      } else {
+        const error = await response.json();
+        this.showError(error.detail || 'Failed to update field');
+      }
+    } catch (error) {
+      console.error('Error updating field:', error);
+      this.showError('Error updating field');
+    }
+  }
+
+  async deleteField(entityId, fieldId) {
+    if (!confirm('Are you sure you want to delete this field? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/v1/data-model/entities/${entityId}/fields/${fieldId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${authService.getToken()}`
+        }
+      });
+
+      if (response.ok) {
+        this.showSuccess('Field deleted successfully');
+        // Reload field manager
+        await this.manageFields(entityId);
+      } else {
+        const error = await response.json();
+        this.showError(error.detail || 'Failed to delete field');
+      }
+    } catch (error) {
+      console.error('Error deleting field:', error);
+      this.showError('Error deleting field');
+    }
+  }
+
+  async viewRelationships(id) {
+    try {
+      // Load entity and relationships
+      const [entityResponse, relationshipsResponse] = await Promise.all([
+        fetch(`/api/v1/data-model/entities/${id}`, {
+          headers: { 'Authorization': `Bearer ${authService.getToken()}` }
+        }),
+        fetch(`/api/v1/data-model/relationships?entity_id=${id}`, {
+          headers: { 'Authorization': `Bearer ${authService.getToken()}` }
+        })
+      ]);
+
+      if (!entityResponse.ok || !relationshipsResponse.ok) {
+        this.showError('Failed to load relationship data');
+        return;
+      }
+
+      const entity = await entityResponse.json();
+      const relationships = await relationshipsResponse.json();
+
+      this.showRelationshipViewer(entity, relationships);
+    } catch (error) {
+      console.error('Error loading relationships:', error);
+      this.showError('Error loading relationships');
+    }
+  }
+
+  showRelationshipViewer(entity, relationships) {
+    const modal = document.createElement('div');
+    modal.id = 'relationshipViewerModal';
+    modal.className = 'fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50';
+    modal.innerHTML = `
+      <div class="bg-white rounded-lg shadow-xl w-full max-w-5xl max-h-[90vh] flex flex-col">
+        <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+          <div>
+            <h2 class="text-xl font-semibold text-gray-900">
+              <i class="ph ph-arrows-merge"></i> Relationships: ${this.escapeHtml(entity.label)}
+            </h2>
+            <p class="text-sm text-gray-500 mt-1">Manage relationships with other entities</p>
+          </div>
+          <button onclick="DataModelApp.closeRelationshipViewer()" class="text-gray-400 hover:text-gray-600">
+            <i class="ph ph-x text-2xl"></i>
+          </button>
+        </div>
+
+        <div class="flex-1 overflow-y-auto p-6">
+          <div class="mb-4 flex justify-between items-center">
+            <div class="text-sm text-gray-600">
+              ${relationships.length} relationships defined
+            </div>
+            <button onclick="DataModelApp.showAddRelationshipModal('${entity.id}')" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+              <i class="ph ph-plus"></i> Add Relationship
+            </button>
+          </div>
+
+          <div class="space-y-3" id="relationshipsList">
+            ${relationships.length === 0 ? `
+              <div class="text-center py-12 text-gray-500">
+                <i class="ph-duotone ph-arrows-merge text-5xl"></i>
+                <p class="mt-2">No relationships yet. Click "Add Relationship" to create one.</p>
+              </div>
+            ` : relationships.map(rel => this.renderRelationshipItem(rel)).join('')}
+          </div>
+        </div>
+
+        <div class="px-6 py-4 border-t border-gray-200 flex justify-end">
+          <button onclick="DataModelApp.closeRelationshipViewer()" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200">
+            Done
+          </button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+    this.currentEntity = entity;
+    this.currentRelationships = relationships;
+  }
+
+  renderRelationshipItem(rel) {
+    const typeColors = {
+      'one_to_many': 'bg-blue-100 text-blue-700',
+      'many_to_one': 'bg-purple-100 text-purple-700',
+      'many_to_many': 'bg-green-100 text-green-700',
+      'one_to_one': 'bg-yellow-100 text-yellow-700'
+    };
+    const typeLabel = rel.relationship_type?.replace(/_/g, '-') || 'unknown';
+    const typeClass = typeColors[rel.relationship_type] || 'bg-gray-100 text-gray-700';
+
+    return `
+      <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition">
+        <div class="flex-1">
+          <div class="flex items-center gap-2 mb-2">
+            <h4 class="font-medium text-gray-900">${this.escapeHtml(rel.name || 'Unnamed Relationship')}</h4>
+            <span class="px-2 py-0.5 ${typeClass} rounded text-xs font-medium">${typeLabel}</span>
+          </div>
+          <div class="text-sm text-gray-600 space-y-1">
+            <div class="flex items-center gap-2">
+              <i class="ph ph-arrow-right"></i>
+              <span>Target: <strong>${rel.target_entity_name || rel.target_entity_id}</strong></span>
+            </div>
+            ${rel.foreign_key_field ? `
+              <div class="flex items-center gap-2">
+                <i class="ph ph-key"></i>
+                <span>Foreign Key: <strong>${rel.foreign_key_field}</strong></span>
+              </div>
+            ` : ''}
+            ${rel.description ? `<p class="text-gray-500 mt-1">${this.escapeHtml(rel.description)}</p>` : ''}
+          </div>
+        </div>
+        <div class="flex gap-2 ml-4">
+          <button onclick="DataModelApp.deleteRelationship('${rel.id}')" class="px-3 py-1.5 bg-red-50 text-red-700 rounded hover:bg-red-100 text-sm">
+            <i class="ph ph-trash"></i> Delete
+          </button>
+        </div>
+      </div>
+    `;
+  }
+
+  closeRelationshipViewer() {
+    const modal = document.getElementById('relationshipViewerModal');
+    if (modal) modal.remove();
+  }
+
+  showAddRelationshipModal(entityId) {
+    const modal = document.createElement('div');
+    modal.id = 'addRelationshipModal';
+    modal.className = 'fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-[60]';
+    modal.innerHTML = `
+      <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl">
+        <div class="px-6 py-4 border-b border-gray-200">
+          <h3 class="text-lg font-semibold text-gray-900">Add Relationship</h3>
+        </div>
+        <form id="addRelationshipForm" class="p-6 space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Relationship Name *</label>
+            <input type="text" name="name" required placeholder="customer_orders"
+                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500">
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Relationship Type *</label>
+            <select name="relationship_type" required
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500">
+              <option value="">Select type...</option>
+              <option value="one_to_many">One-to-Many</option>
+              <option value="many_to_one">Many-to-One</option>
+              <option value="many_to_many">Many-to-Many</option>
+              <option value="one_to_one">One-to-One</option>
+            </select>
+            <p class="text-xs text-gray-500 mt-1">Define how entities relate to each other</p>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Target Entity ID *</label>
+            <input type="text" name="target_entity_id" required placeholder="UUID of target entity"
+                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500">
+            <p class="text-xs text-gray-500 mt-1">Entity this relationship points to</p>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Foreign Key Field</label>
+            <input type="text" name="foreign_key_field" placeholder="customer_id"
+                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500">
+            <p class="text-xs text-gray-500 mt-1">Field name storing the foreign key</p>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+            <textarea name="description" rows="2" placeholder="Relationship description..."
+                      class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"></textarea>
+          </div>
+
+          <div class="flex gap-3 pt-4 border-t">
+            <button type="submit" class="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+              <i class="ph ph-plus"></i> Add Relationship
+            </button>
+            <button type="button" onclick="DataModelApp.closeAddRelationshipModal()" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200">
+              Cancel
+            </button>
+          </div>
+        </form>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    document.getElementById('addRelationshipForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      this.createRelationship(entityId, e.target);
+    });
+  }
+
+  closeAddRelationshipModal() {
+    const modal = document.getElementById('addRelationshipModal');
+    if (modal) modal.remove();
+  }
+
+  async createRelationship(sourceEntityId, form) {
+    const formData = new FormData(form);
+    const data = {
+      name: formData.get('name'),
+      source_entity_id: sourceEntityId,
+      target_entity_id: formData.get('target_entity_id'),
+      relationship_type: formData.get('relationship_type'),
+      foreign_key_field: formData.get('foreign_key_field') || null,
+      description: formData.get('description') || null
+    };
+
+    try {
+      const response = await fetch('/api/v1/data-model/relationships', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authService.getToken()}`
+        },
+        body: JSON.stringify(data)
+      });
+
+      if (response.ok) {
+        this.closeAddRelationshipModal();
+        this.showSuccess('Relationship created successfully');
+        await this.viewRelationships(sourceEntityId);
+      } else {
+        const error = await response.json();
+        this.showError(error.detail || 'Failed to create relationship');
+      }
+    } catch (error) {
+      console.error('Error creating relationship:', error);
+      this.showError('Error creating relationship');
+    }
+  }
+
+  async deleteRelationship(relationshipId) {
+    if (!confirm('Are you sure you want to delete this relationship?')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/v1/data-model/relationships/${relationshipId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${authService.getToken()}`
+        }
+      });
+
+      if (response.ok) {
+        this.showSuccess('Relationship deleted successfully');
+        // Reload relationship viewer
+        const entityId = this.currentEntity?.id;
+        if (entityId) {
+          await this.viewRelationships(entityId);
+        }
+      } else {
+        const error = await response.json();
+        this.showError(error.detail || 'Failed to delete relationship');
+      }
+    } catch (error) {
+      console.error('Error deleting relationship:', error);
+      this.showError('Error deleting relationship');
+    }
   }
 
   escapeHtml(text) {
