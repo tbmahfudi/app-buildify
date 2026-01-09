@@ -9,10 +9,16 @@
         </h1>
         <p class="text-sm text-gray-600 mt-1">Create and manage database entities without writing code</p>
       </div>
-      <button onclick="DataModelApp.showCreateModal()" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center gap-2">
-        <i class="ph ph-plus"></i>
-        Create Entity
-      </button>
+      <div class="flex gap-2">
+        <button onclick="DataModelApp.showImportFromDatabaseModal()" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition flex items-center gap-2">
+          <i class="ph ph-download"></i>
+          Import from Database
+        </button>
+        <button onclick="DataModelApp.showCreateModal()" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center gap-2">
+          <i class="ph ph-plus"></i>
+          Create Entity
+        </button>
+      </div>
     </div>
   </div>
 
@@ -118,6 +124,100 @@
 
       <div id="viewEntityContent" class="p-6">
         <!-- Content will be loaded dynamically -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Import from Database Modal -->
+  <div id="importDbModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-lg shadow-xl max-w-5xl w-full max-h-[90vh] overflow-y-auto">
+      <div class="p-6 border-b border-gray-200">
+        <div class="flex items-center justify-between">
+          <div>
+            <h3 class="text-xl font-bold text-gray-900">Import from Database</h3>
+            <p class="text-sm text-gray-600 mt-1">Select existing database objects to import as entities</p>
+          </div>
+          <button onclick="DataModelApp.closeImportModal()" class="text-gray-400 hover:text-gray-600">
+            <i class="ph ph-x text-2xl"></i>
+          </button>
+        </div>
+      </div>
+
+      <div class="p-6">
+        <!-- Loading state -->
+        <div id="dbObjectsLoading" class="text-center py-12">
+          <i class="ph-duotone ph-spinner text-4xl text-gray-400 animate-spin"></i>
+          <p class="text-gray-600 mt-2">Loading database objects...</p>
+        </div>
+
+        <!-- Object list -->
+        <div id="dbObjectsList" class="hidden space-y-6">
+          <!-- Tables -->
+          <div class="border border-gray-200 rounded-lg">
+            <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <i class="ph-duotone ph-table text-blue-600 text-xl"></i>
+                <h4 class="font-semibold text-gray-900">Tables</h4>
+                <span id="tablesCount" class="text-sm text-gray-500"></span>
+              </div>
+              <button onclick="DataModelApp.selectAllObjects('table')" class="text-sm text-blue-600 hover:text-blue-700">
+                Select All
+              </button>
+            </div>
+            <div id="tablesList" class="divide-y divide-gray-200">
+              <!-- Tables will be rendered here -->
+            </div>
+          </div>
+
+          <!-- Views -->
+          <div class="border border-gray-200 rounded-lg">
+            <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <i class="ph-duotone ph-eye text-purple-600 text-xl"></i>
+                <h4 class="font-semibold text-gray-900">Views</h4>
+                <span id="viewsCount" class="text-sm text-gray-500"></span>
+              </div>
+              <button onclick="DataModelApp.selectAllObjects('view')" class="text-sm text-blue-600 hover:text-blue-700">
+                Select All
+              </button>
+            </div>
+            <div id="viewsList" class="divide-y divide-gray-200">
+              <!-- Views will be rendered here -->
+            </div>
+          </div>
+
+          <!-- Materialized Views -->
+          <div class="border border-gray-200 rounded-lg">
+            <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <i class="ph-duotone ph-database text-green-600 text-xl"></i>
+                <h4 class="font-semibold text-gray-900">Materialized Views</h4>
+                <span id="materializedViewsCount" class="text-sm text-gray-500"></span>
+              </div>
+              <button onclick="DataModelApp.selectAllObjects('materialized_view')" class="text-sm text-blue-600 hover:text-blue-700">
+                Select All
+              </button>
+            </div>
+            <div id="materializedViewsList" class="divide-y divide-gray-200">
+              <!-- Materialized views will be rendered here -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Selection summary -->
+        <div class="mt-6 flex items-center justify-between bg-gray-50 px-4 py-3 rounded-lg">
+          <span id="selectedCount" class="text-sm font-medium text-gray-700">0 objects selected</span>
+          <div class="flex gap-2">
+            <button onclick="DataModelApp.previewSelected()" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition flex items-center gap-2">
+              <i class="ph ph-eye"></i>
+              Preview
+            </button>
+            <button onclick="DataModelApp.importSelectedObjects()" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition flex items-center gap-2">
+              <i class="ph ph-download"></i>
+              Import Selected
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   </div>

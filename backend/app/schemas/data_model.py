@@ -281,3 +281,114 @@ class PublishEntityResponse(BaseModel):
     migration_id: UUID
     status: str
     message: str
+
+
+# ==================== Schema Introspection Schemas ====================
+
+class DatabaseObjectInfo(BaseModel):
+    """Information about a database object"""
+    name: str
+    type: str  # 'table', 'view', 'materialized_view'
+    schema: str
+    comment: Optional[str] = None
+    definition: Optional[str] = None  # SQL definition for views
+
+
+class DatabaseObjectsResponse(BaseModel):
+    """Response containing all database objects"""
+    tables: List[DatabaseObjectInfo]
+    views: List[DatabaseObjectInfo]
+    materialized_views: List[DatabaseObjectInfo]
+
+
+class IntrospectRequest(BaseModel):
+    """Request to introspect a database object"""
+    object_name: str
+    object_type: str  # 'table', 'view', 'materialized_view'
+    schema: str = 'public'
+    auto_save: bool = False
+
+
+class IntrospectedFieldDefinition(BaseModel):
+    """Field definition from introspection"""
+    name: str
+    label: str
+    field_type: str
+    data_type: str
+    is_required: bool = False
+    is_nullable: bool = True
+    is_unique: bool = False
+    is_indexed: bool = False
+    is_readonly: bool = False
+    is_system: bool = False
+    is_computed: bool = False
+    max_length: Optional[int] = None
+    decimal_places: Optional[int] = None
+    default_value: Optional[str] = None
+    reference_table: Optional[str] = None
+    reference_field: Optional[str] = None
+    relationship_type: Optional[str] = None
+    display_order: int = 0
+
+
+class IntrospectedRelationship(BaseModel):
+    """Relationship definition from introspection"""
+    name: str
+    label: str
+    relationship_type: str
+    source_entity_name: str
+    target_entity_name: str
+    source_field_name: Optional[str] = None
+    target_field_name: Optional[str] = None
+    on_delete: str = 'NO ACTION'
+    on_update: str = 'NO ACTION'
+
+
+class IntrospectedIndex(BaseModel):
+    """Index definition from introspection"""
+    name: str
+    field_names: List[str]
+    is_unique: bool = False
+    index_type: str = 'btree'
+
+
+class IntrospectedEntityDefinition(BaseModel):
+    """Complete entity definition from introspection"""
+    name: str
+    label: str
+    description: Optional[str] = None
+    object_type: str  # 'table', 'view', 'materialized_view'
+    table_name: str
+    schema_name: str = 'public'
+    view_definition: Optional[str] = None
+    supports_insert: bool = True
+    supports_update: bool = True
+    supports_delete: bool = True
+    is_audited: bool = False
+    supports_soft_delete: bool = False
+    is_materialized: bool = False
+    refresh_strategy: Optional[str] = None
+    fields: List[IntrospectedFieldDefinition]
+    relationships: List[IntrospectedRelationship] = Field(default_factory=list)
+    indexes: List[IntrospectedIndex] = Field(default_factory=list)
+
+
+class BatchIntrospectObject(BaseModel):
+    """Single object for batch introspection"""
+    name: str
+    type: str  # 'table', 'view', 'materialized_view'
+
+
+class BatchIntrospectRequest(BaseModel):
+    """Request for batch introspection"""
+    objects: List[BatchIntrospectObject]
+    schema: str = 'public'
+    auto_save: bool = False
+
+
+class BatchIntrospectResponse(BaseModel):
+    """Response for batch introspection"""
+    total: int
+    queued: int
+    message: str
+    status: str

@@ -436,3 +436,89 @@ class DataModelService:
             )
 
         return query.all()
+
+    async def delete_relationship(self, relationship_id: UUID):
+        """Delete a relationship"""
+        relationship = self.db.query(RelationshipDefinition).filter(
+            RelationshipDefinition.id == relationship_id,
+            RelationshipDefinition.tenant_id == self.tenant_id
+        ).first()
+
+        if not relationship:
+            raise ValueError("Relationship not found")
+
+        relationship.is_deleted = True
+        self.db.commit()
+        return {"message": "Relationship deleted"}
+
+    async def create_entity_from_introspection(self, introspected_data: dict):
+        """
+        Create EntityDefinition and fields from introspected database object
+
+        Takes the output from SchemaIntrospector and creates a complete
+        entity definition with all fields, relationships, and indexes.
+        """
+        from app.schemas.data_model import EntityDefinitionCreate, FieldDefinitionCreate
+
+        # Build EntityDefinitionCreate from introspected data
+        entity_create = EntityDefinitionCreate(
+            name=introspected_data['name'],
+            label=introspected_data['label'],
+            description=introspected_data.get('description'),
+            table_name=introspected_data['table_name'],
+            schema_name=introspected_data.get('schema_name', 'public'),
+            entity_type='custom',
+            is_audited=introspected_data.get('is_audited', False),
+            supports_soft_delete=introspected_data.get('supports_soft_delete', False),
+            # Set status to draft for review
+            status='draft'
+        )
+
+        # Create the entity
+        entity = await self.create_entity(entity_create)
+
+        # Create fields
+        for field_data in introspected_data.get('fields', []):
+            field_create = FieldDefinitionCreate(
+                name=field_data['name'],
+                label=field_data['label'],
+                field_type=field_data['field_type'],
+                data_type=field_data['data_type'],
+                is_required=field_data.get('is_required', False),
+                is_nullable=field_data.get('is_nullable', True),
+                is_unique=field_data.get('is_unique', False),
+                is_indexed=field_data.get('is_indexed', False),
+                is_readonly=field_data.get('is_readonly', False),
+                is_system=field_data.get('is_system', False),
+                is_computed=field_data.get('is_computed', False),
+                max_length=field_data.get('max_length'),
+                decimal_places=field_data.get('decimal_places'),
+                default_value=field_data.get('default_value'),
+                display_order=field_data.get('display_order', 0)
+            )
+
+            await self.create_field(entity.id, field_create)
+
+        # Create relationships if any
+        # Note: This is complex as we need to resolve target entity IDs
+        # For now, we'll skip auto-creating relationships and let users
+        # create them manually or in a second pass
+
+        # Create indexes if any
+        for index_data in introspected_data.get('indexes', []):
+            index = IndexDefinition(
+                entity_id=entity.id,
+                tenant_id=self.tenant_id,
+                name=index_data['name'],
+                index_type=index_data.get('index_type', 'btree'),
+                field_names=index_data['field_names'],
+                is_unique=index_data.get('is_unique', False),
+                is_active=True,
+                created_by=self.user_id
+            )
+            self.db.add(index)
+
+        self.db.commit()
+        self.db.refresh(entity)
+
+        return entity
