@@ -9,10 +9,16 @@
         </h1>
         <p class="text-sm text-gray-600 mt-1">Create and manage automated workflows visually</p>
       </div>
-      <button onclick="WorkflowApp.showCreateModal()" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition flex items-center gap-2">
-        <i class="ph ph-plus"></i>
-        Create Workflow
-      </button>
+      <div class="flex gap-3">
+        <button onclick="WorkflowApp.openMonitoringDashboard()" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center gap-2">
+          <i class="ph ph-chart-line"></i>
+          Monitoring
+        </button>
+        <button onclick="WorkflowApp.showCreateModal()" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition flex items-center gap-2">
+          <i class="ph ph-plus"></i>
+          Create Workflow
+        </button>
+      </div>
     </div>
   </div>
 
