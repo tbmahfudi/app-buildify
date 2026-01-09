@@ -1358,6 +1358,342 @@ export class DataModelPage {
     return div.innerHTML;
   }
 
+  // ==================== Import from Database Methods ====================
+
+  async showImportFromDatabaseModal() {
+    const modal = document.getElementById('importDbModal');
+    modal.classList.remove('hidden');
+    await this.loadDatabaseObjects();
+  }
+
+  closeImportModal() {
+    const modal = document.getElementById('importDbModal');
+    modal.classList.add('hidden');
+  }
+
+  async loadDatabaseObjects(schema = 'public') {
+    const loadingEl = document.getElementById('dbObjectsLoading');
+    const listEl = document.getElementById('dbObjectsList');
+
+    loadingEl.classList.remove('hidden');
+    listEl.classList.add('hidden');
+
+    try {
+      const token = authService.getToken();
+      const response = await fetch(`/api/v1/data-model/introspect/objects?schema=${schema}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+
+        // Render tables
+        this.renderObjectList(data.tables, 'tablesList', 'tablesCount');
+
+        // Render views
+        this.renderObjectList(data.views, 'viewsList', 'viewsCount');
+
+        // Render materialized views
+        this.renderObjectList(data.materialized_views, 'materializedViewsList', 'materializedViewsCount');
+
+        loadingEl.classList.add('hidden');
+        listEl.classList.remove('hidden');
+      } else {
+        this.showError('Failed to load database objects');
+        loadingEl.classList.add('hidden');
+      }
+    } catch (error) {
+      console.error('Error loading database objects:', error);
+      this.showError('Error loading database objects');
+      loadingEl.classList.add('hidden');
+    }
+  }
+
+  renderObjectList(objects, containerId, countId) {
+    const container = document.getElementById(containerId);
+    const countEl = document.getElementById(countId);
+
+    if (!container) return;
+
+    if (countEl) {
+      countEl.textContent = `(${objects.length})`;
+    }
+
+    if (objects.length === 0) {
+      container.innerHTML = '<div class="p-4 text-center text-sm text-gray-500">No objects found</div>';
+      return;
+    }
+
+    container.innerHTML = objects.map(obj => `
+      <label class="flex items-center gap-3 p-4 hover:bg-gray-50 cursor-pointer transition">
+        <input type="checkbox"
+               class="object-checkbox w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+               data-object-name="${this.escapeHtml(obj.name)}"
+               data-object-type="${obj.type}"
+               onchange="DataModelApp.updateSelectedCount()">
+        <div class="flex-1 min-w-0">
+          <div class="font-medium text-gray-900">${this.escapeHtml(obj.name)}</div>
+          ${obj.comment ? `<div class="text-sm text-gray-500 truncate">${this.escapeHtml(obj.comment)}</div>` : ''}
+        </div>
+        <button onclick="event.preventDefault(); event.stopPropagation(); DataModelApp.previewObject('${this.escapeHtml(obj.name)}', '${obj.type}');"
+                class="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition"
+                title="Preview">
+          <i class="ph ph-eye text-lg"></i>
+        </button>
+      </label>
+    `).join('');
+  }
+
+  updateSelectedCount() {
+    const count = document.querySelectorAll('.object-checkbox:checked').length;
+    const countEl = document.getElementById('selectedCount');
+    if (countEl) {
+      countEl.textContent = `${count} object${count !== 1 ? 's' : ''} selected`;
+    }
+  }
+
+  selectAllObjects(objectType) {
+    const checkboxes = document.querySelectorAll(`.object-checkbox[data-object-type="${objectType}"]`);
+    checkboxes.forEach(cb => cb.checked = true);
+    this.updateSelectedCount();
+  }
+
+  async previewObject(objectName, objectType) {
+    try {
+      const token = authService.getToken();
+      const response = await fetch('/api/v1/data-model/introspect/generate', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          object_name: objectName,
+          object_type: objectType,
+          schema: 'public',
+          auto_save: false
+        })
+      });
+
+      if (response.ok) {
+        const entityData = await response.json();
+        this.showPreviewModal(entityData);
+      } else {
+        this.showError('Failed to preview object');
+      }
+    } catch (error) {
+      console.error('Error previewing object:', error);
+      this.showError('Error previewing object');
+    }
+  }
+
+  showPreviewModal(entityData) {
+    // Create preview modal dynamically
+    const modalHTML = `
+      <div id="previewModal" class="fixed inset-0 bg-black bg-opacity-50 z-[60] flex items-center justify-center p-4">
+        <div class="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+          <div class="p-6 border-b border-gray-200">
+            <div class="flex items-center justify-between">
+              <h3 class="text-xl font-bold text-gray-900">Preview: ${this.escapeHtml(entityData.label)}</h3>
+              <button onclick="DataModelApp.closePreviewModal()" class="text-gray-400 hover:text-gray-600">
+                <i class="ph ph-x text-2xl"></i>
+              </button>
+            </div>
+          </div>
+
+          <div class="p-6 space-y-6">
+            <!-- Entity Info -->
+            <div class="grid grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg">
+              <div>
+                <label class="text-sm font-medium text-gray-500">Name</label>
+                <div class="mt-1 text-gray-900">${this.escapeHtml(entityData.name)}</div>
+              </div>
+              <div>
+                <label class="text-sm font-medium text-gray-500">Type</label>
+                <div class="mt-1"><span class="px-2 py-1 bg-blue-100 text-blue-700 rounded text-sm">${entityData.object_type}</span></div>
+              </div>
+              <div>
+                <label class="text-sm font-medium text-gray-500">Table/View</label>
+                <div class="mt-1 text-gray-900">${this.escapeHtml(entityData.table_name)}</div>
+              </div>
+            </div>
+
+            <!-- Fields -->
+            <div>
+              <h4 class="font-semibold text-gray-900 mb-3">Fields (${entityData.fields.length})</h4>
+              <div class="border border-gray-200 rounded-lg overflow-hidden">
+                <table class="min-w-full divide-y divide-gray-200">
+                  <thead class="bg-gray-50">
+                    <tr>
+                      <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Field</th>
+                      <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
+                      <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Constraints</th>
+                      <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Reference</th>
+                    </tr>
+                  </thead>
+                  <tbody class="bg-white divide-y divide-gray-200">
+                    ${entityData.fields.map(field => `
+                      <tr>
+                        <td class="px-4 py-3">
+                          <div class="font-medium text-gray-900">${this.escapeHtml(field.label)}</div>
+                          <div class="text-sm text-gray-500">${this.escapeHtml(field.name)}</div>
+                        </td>
+                        <td class="px-4 py-3">
+                          <span class="px-2 py-1 bg-purple-100 text-purple-700 rounded text-xs font-medium">${this.escapeHtml(field.field_type)}</span>
+                        </td>
+                        <td class="px-4 py-3">
+                          <div class="flex flex-wrap gap-1">
+                            ${field.is_required ? '<span class="px-2 py-0.5 bg-red-100 text-red-700 rounded text-xs">Required</span>' : ''}
+                            ${field.is_unique ? '<span class="px-2 py-0.5 bg-yellow-100 text-yellow-700 rounded text-xs">Unique</span>' : ''}
+                            ${field.is_readonly ? '<span class="px-2 py-0.5 bg-gray-100 text-gray-700 rounded text-xs">Readonly</span>' : ''}
+                            ${field.is_computed ? '<span class="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-xs">Computed</span>' : ''}
+                          </div>
+                        </td>
+                        <td class="px-4 py-3 text-sm text-gray-500">
+                          ${field.reference_table ? `→ ${this.escapeHtml(field.reference_table)}.${this.escapeHtml(field.reference_field)}` : '-'}
+                        </td>
+                      </tr>
+                    `).join('')}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            ${entityData.relationships && entityData.relationships.length > 0 ? `
+              <div>
+                <h4 class="font-semibold text-gray-900 mb-3">Relationships (${entityData.relationships.length})</h4>
+                <div class="space-y-2">
+                  ${entityData.relationships.map(rel => `
+                    <div class="p-3 bg-gray-50 rounded-lg">
+                      <div class="font-medium text-gray-900">${this.escapeHtml(rel.label)}</div>
+                      <div class="text-sm text-gray-500 mt-1">
+                        <span class="px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded text-xs mr-2">${rel.relationship_type}</span>
+                        → ${this.escapeHtml(rel.target_entity_name)}
+                      </div>
+                    </div>
+                  `).join('')}
+                </div>
+              </div>
+            ` : ''}
+          </div>
+
+          <div class="p-6 border-t border-gray-200 flex justify-end gap-2">
+            <button onclick="DataModelApp.closePreviewModal()" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition">
+              Close
+            </button>
+            <button onclick="DataModelApp.importSingleObject('${this.escapeHtml(entityData.name)}', '${entityData.object_type}')" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition flex items-center gap-2">
+              <i class="ph ph-download"></i>
+              Import This Entity
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+  }
+
+  closePreviewModal() {
+    const modal = document.getElementById('previewModal');
+    if (modal) {
+      modal.remove();
+    }
+  }
+
+  async importSingleObject(objectName, objectType) {
+    try {
+      const token = authService.getToken();
+      const response = await fetch('/api/v1/data-model/introspect/generate', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          object_name: objectName,
+          object_type: objectType,
+          schema: 'public',
+          auto_save: true
+        })
+      });
+
+      if (response.ok) {
+        this.showSuccess(`Entity "${objectName}" imported successfully`);
+        this.closePreviewModal();
+        this.closeImportModal();
+        await this.loadEntities(); // Refresh list
+      } else {
+        this.showError('Failed to import entity');
+      }
+    } catch (error) {
+      console.error('Error importing entity:', error);
+      this.showError('Error importing entity');
+    }
+  }
+
+  async importSelectedObjects() {
+    const checkboxes = document.querySelectorAll('.object-checkbox:checked');
+
+    if (checkboxes.length === 0) {
+      this.showError('Please select at least one object');
+      return;
+    }
+
+    const objects = Array.from(checkboxes).map(cb => ({
+      name: cb.dataset.objectName,
+      type: cb.dataset.objectType
+    }));
+
+    try {
+      const token = authService.getToken();
+      const response = await fetch('/api/v1/data-model/introspect/batch-generate', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          objects: objects,
+          schema: 'public',
+          auto_save: true
+        })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        this.showSuccess(`Imported ${result.queued} of ${result.total} objects successfully`);
+        this.closeImportModal();
+        await this.loadEntities(); // Refresh list
+      } else {
+        this.showError('Failed to import objects');
+      }
+    } catch (error) {
+      console.error('Error importing objects:', error);
+      this.showError('Error importing objects');
+    }
+  }
+
+  async previewSelected() {
+    const checkboxes = document.querySelectorAll('.object-checkbox:checked');
+
+    if (checkboxes.length === 0) {
+      this.showError('Please select at least one object');
+      return;
+    }
+
+    if (checkboxes.length > 1) {
+      this.showError('Please select only one object to preview');
+      return;
+    }
+
+    const cb = checkboxes[0];
+    await this.previewObject(cb.dataset.objectName, cb.dataset.objectType);
+  }
+
+  // ==================== Utility Methods ====================
+
   showSuccess(message) {
     if (window.showNotification) {
       window.showNotification(message, 'success');
