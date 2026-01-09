@@ -68,7 +68,8 @@ export class DataModelPage {
       closeAddRelationshipModal: () => this.closeAddRelationshipModal(),
       deleteRelationship: (id) => this.deleteRelationship(id),
       showEditEntityModal: (id) => this.showEditEntityModal(id),
-      closeEditEntityModal: () => this.closeEditEntityModal()
+      closeEditEntityModal: () => this.closeEditEntityModal(),
+      showImportFromDatabaseModal:() => this.showImportFromDatabaseModal()
     };
   }
 
