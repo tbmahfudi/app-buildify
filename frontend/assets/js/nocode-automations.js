@@ -62,7 +62,29 @@ export class AutomationsPage {
       deleteWebhook: (id) => this.deleteWebhook(id),
       closeRuleBuilder: () => this.closeRuleBuilder(),
       closeExecutionDetail: () => this.closeExecutionDetail(),
-      closeCreateWebhookModal: () => this.closeCreateWebhookModal()
+      closeCreateWebhookModal: () => this.closeCreateWebhookModal(),
+      openVisualConditionBuilder: (id) => this.openVisualConditionBuilder(id),
+      closeVisualConditionBuilder: () => this.closeVisualConditionBuilder(),
+      addConditionGroup: () => this.addConditionGroup(),
+      addCondition: (groupId) => this.addCondition(groupId),
+      removeCondition: (groupId, condId) => this.removeCondition(groupId, condId),
+      removeConditionGroup: (groupId) => this.removeConditionGroup(groupId),
+      saveConditions: () => this.saveConditions(),
+      openVisualActionBuilder: (id) => this.openVisualActionBuilder(id),
+      closeVisualActionBuilder: () => this.closeVisualActionBuilder(),
+      addAction: () => this.addAction(),
+      removeAction: (actionId) => this.removeAction(actionId),
+      moveActionUp: (actionId) => this.moveActionUp(actionId),
+      moveActionDown: (actionId) => this.moveActionDown(actionId),
+      saveActions: () => this.saveActions(),
+      openActionLibrary: () => this.openActionLibrary(),
+      closeActionLibrary: () => this.closeActionLibrary(),
+      applyTemplate: (template) => this.applyTemplate(template),
+      openScheduleBuilder: (id) => this.openScheduleBuilder(id),
+      closeScheduleBuilder: () => this.closeScheduleBuilder(),
+      saveSchedule: () => this.saveSchedule(),
+      openMonitoringDashboard: () => this.openMonitoringDashboard(),
+      closeMonitoringDashboard: () => this.closeMonitoringDashboard()
     };
   }
 
@@ -411,13 +433,26 @@ export class AutomationsPage {
               </div>
             ` : ''}
 
-            <div class="flex gap-3 pt-4 border-t">
-              <button onclick="AutomationApp.editRule('${rule.id}')" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
-                <i class="ph ph-pencil"></i> Edit Rule
-              </button>
-              <button onclick="AutomationApp.testRule('${rule.id}')" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                <i class="ph ph-play"></i> Test Run
-              </button>
+            <div class="space-y-3 pt-4 border-t">
+              <div class="flex gap-3">
+                <button onclick="AutomationApp.openVisualConditionBuilder('${rule.id}')" class="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center justify-center gap-2">
+                  <i class="ph ph-tree-structure"></i> Condition Builder
+                </button>
+                <button onclick="AutomationApp.openVisualActionBuilder('${rule.id}')" class="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center justify-center gap-2">
+                  <i class="ph ph-steps"></i> Action Builder
+                </button>
+                <button onclick="AutomationApp.openScheduleBuilder('${rule.id}')" class="flex-1 px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 flex items-center justify-center gap-2">
+                  <i class="ph ph-clock"></i> Schedule
+                </button>
+              </div>
+              <div class="flex gap-3">
+                <button onclick="AutomationApp.editRule('${rule.id}')" class="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+                  <i class="ph ph-pencil"></i> Edit Rule
+                </button>
+                <button onclick="AutomationApp.testRule('${rule.id}')" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                  <i class="ph ph-play"></i> Test Run
+                </button>
+              </div>
             </div>
           </div>
         `;
@@ -866,6 +901,848 @@ export class AutomationsPage {
 
   deleteWebhook(id) {
     this.showError('Webhook deletion coming soon');
+  }
+
+  // ========== VISUAL CONDITION BUILDER ==========
+  async openVisualConditionBuilder(ruleId) {
+    try {
+      const response = await fetch(`/api/v1/automations/rules/${ruleId}`, {
+        headers: { 'Authorization': `Bearer ${authService.getToken()}` }
+      });
+
+      if (!response.ok) {
+        this.showError('Failed to load rule');
+        return;
+      }
+
+      const rule = await response.json();
+      this.currentRule = rule;
+      this.conditionGroups = rule.conditions || [{ operator: 'AND', conditions: [] }];
+      this.showVisualConditionBuilder();
+    } catch (error) {
+      console.error('Error loading rule:', error);
+      this.showError('Error loading rule');
+    }
+  }
+
+  showVisualConditionBuilder() {
+    const modal = document.createElement('div');
+    modal.id = 'visualConditionBuilderModal';
+    modal.className = 'fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50';
+
+    modal.innerHTML = `
+      <div class="bg-white rounded-lg shadow-xl w-full max-w-6xl max-h-[90vh] flex flex-col">
+        <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+          <h2 class="text-xl font-semibold text-gray-900">
+            <i class="ph ph-flow-arrow"></i> Visual Condition Builder
+          </h2>
+          <button onclick="AutomationApp.closeVisualConditionBuilder()" class="text-gray-400 hover:text-gray-600">
+            <i class="ph ph-x text-2xl"></i>
+          </button>
+        </div>
+
+        <div class="flex-1 overflow-y-auto p-6">
+          <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+            <div class="flex items-start gap-3">
+              <i class="ph ph-info text-blue-600 text-xl"></i>
+              <div>
+                <h4 class="font-semibold text-blue-900 mb-1">Build Conditions Visually</h4>
+                <p class="text-sm text-blue-800">Create complex conditional logic using drag-and-drop. Group conditions with AND/OR operators.</p>
+              </div>
+            </div>
+          </div>
+
+          <div id="conditionGroupsContainer" class="space-y-4"></div>
+
+          <button onclick="AutomationApp.addConditionGroup()" class="mt-4 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 flex items-center gap-2">
+            <i class="ph ph-plus"></i> Add Condition Group
+          </button>
+        </div>
+
+        <div class="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
+          <button onclick="AutomationApp.saveConditions()" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+            <i class="ph ph-check"></i> Save Conditions
+          </button>
+          <button onclick="AutomationApp.closeVisualConditionBuilder()" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200">
+            Cancel
+          </button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+    this.renderConditionGroups();
+  }
+
+  renderConditionGroups() {
+    const container = document.getElementById('conditionGroupsContainer');
+    if (!container) return;
+
+    container.innerHTML = this.conditionGroups.map((group, groupIdx) => `
+      <div class="border-2 border-gray-300 rounded-lg p-4 bg-gray-50">
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex items-center gap-3">
+            <span class="font-semibold text-gray-900">Group ${groupIdx + 1}</span>
+            <select onchange="this.parentElement.parentElement.parentElement.dataset.operator = this.value" class="px-3 py-1 border border-gray-300 rounded text-sm">
+              <option value="AND" ${group.operator === 'AND' ? 'selected' : ''}>AND (All must match)</option>
+              <option value="OR" ${group.operator === 'OR' ? 'selected' : ''}>OR (Any can match)</option>
+            </select>
+          </div>
+          <button onclick="AutomationApp.removeConditionGroup(${groupIdx})" class="text-red-600 hover:text-red-800">
+            <i class="ph ph-trash text-lg"></i>
+          </button>
+        </div>
+
+        <div class="space-y-2">
+          ${(group.conditions || []).map((cond, condIdx) => `
+            <div class="flex items-center gap-2 bg-white p-3 rounded border border-gray-200">
+              <select class="flex-1 px-3 py-2 border border-gray-300 rounded text-sm" data-field="${groupIdx}-${condIdx}">
+                <option value="field1" ${cond.field === 'field1' ? 'selected' : ''}>Field 1</option>
+                <option value="field2" ${cond.field === 'field2' ? 'selected' : ''}>Field 2</option>
+                <option value="status" ${cond.field === 'status' ? 'selected' : ''}>Status</option>
+              </select>
+              <select class="px-3 py-2 border border-gray-300 rounded text-sm" data-operator="${groupIdx}-${condIdx}">
+                <option value="equals" ${cond.operator === 'equals' ? 'selected' : ''}>Equals</option>
+                <option value="not_equals" ${cond.operator === 'not_equals' ? 'selected' : ''}>Not Equals</option>
+                <option value="contains" ${cond.operator === 'contains' ? 'selected' : ''}>Contains</option>
+                <option value="greater_than" ${cond.operator === 'greater_than' ? 'selected' : ''}>Greater Than</option>
+                <option value="less_than" ${cond.operator === 'less_than' ? 'selected' : ''}>Less Than</option>
+              </select>
+              <input type="text" value="${cond.value || ''}" placeholder="Value" class="flex-1 px-3 py-2 border border-gray-300 rounded text-sm" data-value="${groupIdx}-${condIdx}">
+              <button onclick="AutomationApp.removeCondition(${groupIdx}, ${condIdx})" class="text-red-600 hover:text-red-800">
+                <i class="ph ph-x text-lg"></i>
+              </button>
+            </div>
+          `).join('')}
+        </div>
+
+        <button onclick="AutomationApp.addCondition(${groupIdx})" class="mt-3 px-3 py-1.5 bg-white border border-gray-300 text-gray-700 rounded text-sm hover:bg-gray-50">
+          <i class="ph ph-plus"></i> Add Condition
+        </button>
+      </div>
+    `).join('');
+  }
+
+  addConditionGroup() {
+    this.conditionGroups.push({ operator: 'AND', conditions: [] });
+    this.renderConditionGroups();
+  }
+
+  addCondition(groupIdx) {
+    this.conditionGroups[groupIdx].conditions.push({ field: '', operator: 'equals', value: '' });
+    this.renderConditionGroups();
+  }
+
+  removeCondition(groupIdx, condIdx) {
+    this.conditionGroups[groupIdx].conditions.splice(condIdx, 1);
+    this.renderConditionGroups();
+  }
+
+  removeConditionGroup(groupIdx) {
+    this.conditionGroups.splice(groupIdx, 1);
+    this.renderConditionGroups();
+  }
+
+  async saveConditions() {
+    // Collect condition data from DOM
+    const groups = [];
+    this.conditionGroups.forEach((group, groupIdx) => {
+      const conditions = [];
+      group.conditions.forEach((cond, condIdx) => {
+        const fieldSelect = document.querySelector(`[data-field="${groupIdx}-${condIdx}"]`);
+        const operatorSelect = document.querySelector(`[data-operator="${groupIdx}-${condIdx}"]`);
+        const valueInput = document.querySelector(`[data-value="${groupIdx}-${condIdx}"]`);
+
+        if (fieldSelect && operatorSelect && valueInput) {
+          conditions.push({
+            field: fieldSelect.value,
+            operator: operatorSelect.value,
+            value: valueInput.value
+          });
+        }
+      });
+
+      groups.push({
+        operator: group.operator,
+        conditions
+      });
+    });
+
+    try {
+      const response = await fetch(`/api/v1/automations/rules/${this.currentRule.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authService.getToken()}`
+        },
+        body: JSON.stringify({
+          conditions: groups
+        })
+      });
+
+      if (response.ok) {
+        this.closeVisualConditionBuilder();
+        this.showSuccess('Conditions saved successfully');
+        await this.loadRules();
+      } else {
+        this.showError('Failed to save conditions');
+      }
+    } catch (error) {
+      console.error('Error saving conditions:', error);
+      this.showError('Error saving conditions');
+    }
+  }
+
+  closeVisualConditionBuilder() {
+    const modal = document.getElementById('visualConditionBuilderModal');
+    if (modal) modal.remove();
+  }
+
+  // ========== VISUAL ACTION BUILDER ==========
+  async openVisualActionBuilder(ruleId) {
+    try {
+      const response = await fetch(`/api/v1/automations/rules/${ruleId}`, {
+        headers: { 'Authorization': `Bearer ${authService.getToken()}` }
+      });
+
+      if (!response.ok) {
+        this.showError('Failed to load rule');
+        return;
+      }
+
+      const rule = await response.json();
+      this.currentRule = rule;
+      this.actions = rule.actions || [];
+      this.showVisualActionBuilder();
+    } catch (error) {
+      console.error('Error loading rule:', error);
+      this.showError('Error loading rule');
+    }
+  }
+
+  showVisualActionBuilder() {
+    const modal = document.createElement('div');
+    modal.id = 'visualActionBuilderModal';
+    modal.className = 'fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50';
+
+    modal.innerHTML = `
+      <div class="bg-white rounded-lg shadow-xl w-full max-w-6xl max-h-[90vh] flex flex-col">
+        <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+          <h2 class="text-xl font-semibold text-gray-900">
+            <i class="ph ph-play-circle"></i> Visual Action Builder
+          </h2>
+          <button onclick="AutomationApp.closeVisualActionBuilder()" class="text-gray-400 hover:text-gray-600">
+            <i class="ph ph-x text-2xl"></i>
+          </button>
+        </div>
+
+        <div class="flex-1 overflow-y-auto p-6">
+          <div class="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+            <div class="flex items-start gap-3">
+              <i class="ph ph-info text-green-600 text-xl"></i>
+              <div class="flex-1">
+                <h4 class="font-semibold text-green-900 mb-1">Build Action Workflow</h4>
+                <p class="text-sm text-green-800">Define actions to execute when conditions are met. Actions run in sequence from top to bottom.</p>
+              </div>
+              <button onclick="AutomationApp.openActionLibrary()" class="px-3 py-1.5 bg-green-600 text-white rounded text-sm hover:bg-green-700">
+                <i class="ph ph-books"></i> Templates
+              </button>
+            </div>
+          </div>
+
+          <div id="actionsContainer" class="space-y-3"></div>
+
+          <button onclick="AutomationApp.addAction()" class="mt-4 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2">
+            <i class="ph ph-plus"></i> Add Action
+          </button>
+        </div>
+
+        <div class="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
+          <button onclick="AutomationApp.saveActions()" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+            <i class="ph ph-check"></i> Save Actions
+          </button>
+          <button onclick="AutomationApp.closeVisualActionBuilder()" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200">
+            Cancel
+          </button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+    this.renderActions();
+  }
+
+  renderActions() {
+    const container = document.getElementById('actionsContainer');
+    if (!container) return;
+
+    if (this.actions.length === 0) {
+      container.innerHTML = `
+        <div class="text-center py-12 text-gray-500">
+          <i class="ph-duotone ph-play-circle text-5xl"></i>
+          <p class="mt-2">No actions yet. Click "Add Action" to create one.</p>
+        </div>
+      `;
+      return;
+    }
+
+    container.innerHTML = this.actions.map((action, idx) => `
+      <div class="flex items-start gap-3 bg-white p-4 rounded-lg border-2 border-gray-300">
+        <div class="flex flex-col gap-1">
+          <button onclick="AutomationApp.moveActionUp(${idx})" class="text-gray-400 hover:text-gray-700 ${idx === 0 ? 'invisible' : ''}" title="Move Up">
+            <i class="ph ph-caret-up text-lg"></i>
+          </button>
+          <span class="w-8 h-8 bg-green-100 text-green-700 rounded-full flex items-center justify-center text-sm font-bold">${idx + 1}</span>
+          <button onclick="AutomationApp.moveActionDown(${idx})" class="text-gray-400 hover:text-gray-700 ${idx === this.actions.length - 1 ? 'invisible' : ''}" title="Move Down">
+            <i class="ph ph-caret-down text-lg"></i>
+          </button>
+        </div>
+
+        <div class="flex-1 space-y-3">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Action Type</label>
+            <select data-action-type="${idx}" class="w-full px-3 py-2 border border-gray-300 rounded">
+              <option value="send_email" ${action.type === 'send_email' ? 'selected' : ''}>Send Email</option>
+              <option value="update_record" ${action.type === 'update_record' ? 'selected' : ''}>Update Record</option>
+              <option value="create_record" ${action.type === 'create_record' ? 'selected' : ''}>Create Record</option>
+              <option value="webhook" ${action.type === 'webhook' ? 'selected' : ''}>Call Webhook</option>
+              <option value="notification" ${action.type === 'notification' ? 'selected' : ''}>Send Notification</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Configuration (JSON)</label>
+            <textarea data-action-config="${idx}" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded font-mono text-sm">${JSON.stringify(action.config || {}, null, 2)}</textarea>
+          </div>
+
+          <div class="flex items-center gap-4">
+            <label class="flex items-center gap-2">
+              <input type="checkbox" data-action-continue="${idx}" ${action.continue_on_error ? 'checked' : ''} class="rounded">
+              <span class="text-sm text-gray-700">Continue on error</span>
+            </label>
+          </div>
+        </div>
+
+        <button onclick="AutomationApp.removeAction(${idx})" class="text-red-600 hover:text-red-800">
+          <i class="ph ph-trash text-xl"></i>
+        </button>
+      </div>
+    `).join('');
+  }
+
+  addAction() {
+    this.actions.push({
+      type: 'send_email',
+      config: {},
+      continue_on_error: false
+    });
+    this.renderActions();
+  }
+
+  removeAction(idx) {
+    this.actions.splice(idx, 1);
+    this.renderActions();
+  }
+
+  moveActionUp(idx) {
+    if (idx > 0) {
+      [this.actions[idx - 1], this.actions[idx]] = [this.actions[idx], this.actions[idx - 1]];
+      this.renderActions();
+    }
+  }
+
+  moveActionDown(idx) {
+    if (idx < this.actions.length - 1) {
+      [this.actions[idx], this.actions[idx + 1]] = [this.actions[idx + 1], this.actions[idx]];
+      this.renderActions();
+    }
+  }
+
+  async saveActions() {
+    // Collect action data from DOM
+    const actions = [];
+    this.actions.forEach((action, idx) => {
+      const typeSelect = document.querySelector(`[data-action-type="${idx}"]`);
+      const configTextarea = document.querySelector(`[data-action-config="${idx}"]`);
+      const continueCheckbox = document.querySelector(`[data-action-continue="${idx}"]`);
+
+      if (typeSelect && configTextarea) {
+        try {
+          actions.push({
+            type: typeSelect.value,
+            config: JSON.parse(configTextarea.value),
+            continue_on_error: continueCheckbox?.checked || false
+          });
+        } catch (e) {
+          this.showError(`Invalid JSON in action ${idx + 1}`);
+          return;
+        }
+      }
+    });
+
+    try {
+      const response = await fetch(`/api/v1/automations/rules/${this.currentRule.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authService.getToken()}`
+        },
+        body: JSON.stringify({
+          actions
+        })
+      });
+
+      if (response.ok) {
+        this.closeVisualActionBuilder();
+        this.showSuccess('Actions saved successfully');
+        await this.loadRules();
+      } else {
+        this.showError('Failed to save actions');
+      }
+    } catch (error) {
+      console.error('Error saving actions:', error);
+      this.showError('Error saving actions');
+    }
+  }
+
+  closeVisualActionBuilder() {
+    const modal = document.getElementById('visualActionBuilderModal');
+    if (modal) modal.remove();
+  }
+
+  // ========== ACTION TEMPLATE LIBRARY ==========
+  openActionLibrary() {
+    const modal = document.createElement('div');
+    modal.id = 'actionLibraryModal';
+    modal.className = 'fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-[60]';
+
+    const templates = [
+      {
+        name: 'Send Welcome Email',
+        description: 'Send a welcome email to new users',
+        actions: [
+          { type: 'send_email', config: { to: '{{user.email}}', subject: 'Welcome!', body: 'Welcome to our platform!' }, continue_on_error: false }
+        ]
+      },
+      {
+        name: 'Update & Notify',
+        description: 'Update a record and send notification',
+        actions: [
+          { type: 'update_record', config: { entity: 'users', field: 'status', value: 'active' }, continue_on_error: false },
+          { type: 'notification', config: { message: 'Record updated successfully' }, continue_on_error: true }
+        ]
+      },
+      {
+        name: 'Webhook Chain',
+        description: 'Call external webhooks in sequence',
+        actions: [
+          { type: 'webhook', config: { url: 'https://api.example.com/notify', method: 'POST' }, continue_on_error: true },
+          { type: 'webhook', config: { url: 'https://api.example.com/log', method: 'POST' }, continue_on_error: true }
+        ]
+      }
+    ];
+
+    modal.innerHTML = `
+      <div class="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+        <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+          <h3 class="text-lg font-semibold text-gray-900">
+            <i class="ph ph-books"></i> Action Templates
+          </h3>
+          <button onclick="AutomationApp.closeActionLibrary()" class="text-gray-400 hover:text-gray-600">
+            <i class="ph ph-x text-2xl"></i>
+          </button>
+        </div>
+
+        <div class="p-6 space-y-4">
+          ${templates.map((template, idx) => `
+            <div class="border-2 border-gray-200 rounded-lg p-4 hover:border-green-300 transition">
+              <div class="flex items-start justify-between mb-2">
+                <div>
+                  <h4 class="font-semibold text-gray-900">${this.escapeHtml(template.name)}</h4>
+                  <p class="text-sm text-gray-600 mt-1">${this.escapeHtml(template.description)}</p>
+                </div>
+                <button onclick='AutomationApp.applyTemplate(${JSON.stringify(template.actions).replace(/'/g, "&apos;")})' class="px-3 py-1.5 bg-green-600 text-white rounded text-sm hover:bg-green-700">
+                  Apply
+                </button>
+              </div>
+              <div class="mt-3 bg-gray-50 rounded p-2 text-xs">
+                <span class="font-medium text-gray-700">${template.actions.length} action(s)</span>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+
+        <div class="px-6 py-4 border-t border-gray-200 flex justify-end">
+          <button onclick="AutomationApp.closeActionLibrary()" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200">
+            Close
+          </button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+  }
+
+  applyTemplate(template) {
+    if (typeof template === 'string') {
+      template = JSON.parse(template);
+    }
+    this.actions = [...template];
+    this.renderActions();
+    this.closeActionLibrary();
+    this.showSuccess('Template applied successfully');
+  }
+
+  closeActionLibrary() {
+    const modal = document.getElementById('actionLibraryModal');
+    if (modal) modal.remove();
+  }
+
+  // ========== SCHEDULE CONFIGURATION UI ==========
+  async openScheduleBuilder(ruleId) {
+    try {
+      const response = await fetch(`/api/v1/automations/rules/${ruleId}`, {
+        headers: { 'Authorization': `Bearer ${authService.getToken()}` }
+      });
+
+      if (!response.ok) {
+        this.showError('Failed to load rule');
+        return;
+      }
+
+      const rule = await response.json();
+      this.currentRule = rule;
+      this.showScheduleBuilder();
+    } catch (error) {
+      console.error('Error loading rule:', error);
+      this.showError('Error loading rule');
+    }
+  }
+
+  showScheduleBuilder() {
+    const modal = document.createElement('div');
+    modal.id = 'scheduleBuilderModal';
+    modal.className = 'fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50';
+
+    const schedule = this.currentRule.schedule_config || {};
+
+    modal.innerHTML = `
+      <div class="bg-white rounded-lg shadow-xl w-full max-w-4xl">
+        <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+          <h2 class="text-xl font-semibold text-gray-900">
+            <i class="ph ph-clock"></i> Schedule Configuration
+          </h2>
+          <button onclick="AutomationApp.closeScheduleBuilder()" class="text-gray-400 hover:text-gray-600">
+            <i class="ph ph-x text-2xl"></i>
+          </button>
+        </div>
+
+        <div class="p-6 space-y-6">
+          <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+            <div class="flex items-start gap-3">
+              <i class="ph ph-info text-yellow-600 text-xl"></i>
+              <div>
+                <h4 class="font-semibold text-yellow-900 mb-1">Cron Expression Builder</h4>
+                <p class="text-sm text-yellow-800">Build cron expressions visually or enter them manually.</p>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Schedule Type</label>
+            <select id="scheduleType" class="w-full px-3 py-2 border border-gray-300 rounded">
+              <option value="simple">Simple Schedule</option>
+              <option value="cron" ${schedule.type === 'cron' ? 'selected' : ''}>Cron Expression</option>
+            </select>
+          </div>
+
+          <div id="simpleSchedule" class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Frequency</label>
+              <select id="frequency" class="w-full px-3 py-2 border border-gray-300 rounded">
+                <option value="hourly">Every Hour</option>
+                <option value="daily">Every Day</option>
+                <option value="weekly">Every Week</option>
+                <option value="monthly">Every Month</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Time</label>
+              <input type="time" id="scheduleTime" value="09:00" class="w-full px-3 py-2 border border-gray-300 rounded">
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Days of Week (for weekly)</label>
+              <div class="flex gap-2">
+                ${['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, idx) => `
+                  <label class="flex-1 text-center">
+                    <input type="checkbox" value="${idx + 1}" class="day-checkbox">
+                    <div class="text-sm">${day}</div>
+                  </label>
+                `).join('')}
+              </div>
+            </div>
+          </div>
+
+          <div id="cronSchedule" class="hidden space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Cron Expression</label>
+              <input type="text" id="cronExpression" value="${schedule.cron_expression || '0 9 * * *'}" placeholder="0 9 * * *" class="w-full px-3 py-2 border border-gray-300 rounded font-mono">
+              <p class="text-xs text-gray-500 mt-1">Format: minute hour day month weekday</p>
+            </div>
+
+            <div class="bg-gray-50 rounded p-3">
+              <h5 class="text-sm font-medium text-gray-900 mb-2">Common Examples:</h5>
+              <ul class="text-xs text-gray-600 space-y-1">
+                <li><code class="bg-white px-1 py-0.5 rounded">0 9 * * *</code> - Every day at 9:00 AM</li>
+                <li><code class="bg-white px-1 py-0.5 rounded">0 */6 * * *</code> - Every 6 hours</li>
+                <li><code class="bg-white px-1 py-0.5 rounded">0 9 * * 1</code> - Every Monday at 9:00 AM</li>
+                <li><code class="bg-white px-1 py-0.5 rounded">0 0 1 * *</code> - First day of every month at midnight</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
+          <button onclick="AutomationApp.saveSchedule()" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+            <i class="ph ph-check"></i> Save Schedule
+          </button>
+          <button onclick="AutomationApp.closeScheduleBuilder()" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200">
+            Cancel
+          </button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    // Setup schedule type toggle
+    document.getElementById('scheduleType').addEventListener('change', (e) => {
+      if (e.target.value === 'cron') {
+        document.getElementById('simpleSchedule').classList.add('hidden');
+        document.getElementById('cronSchedule').classList.remove('hidden');
+      } else {
+        document.getElementById('simpleSchedule').classList.remove('hidden');
+        document.getElementById('cronSchedule').classList.add('hidden');
+      }
+    });
+  }
+
+  async saveSchedule() {
+    const scheduleType = document.getElementById('scheduleType').value;
+    let scheduleConfig;
+
+    if (scheduleType === 'cron') {
+      scheduleConfig = {
+        type: 'cron',
+        cron_expression: document.getElementById('cronExpression').value
+      };
+    } else {
+      scheduleConfig = {
+        type: 'simple',
+        frequency: document.getElementById('frequency').value,
+        time: document.getElementById('scheduleTime').value
+      };
+    }
+
+    try {
+      const response = await fetch(`/api/v1/automations/rules/${this.currentRule.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authService.getToken()}`
+        },
+        body: JSON.stringify({
+          trigger_type: 'scheduled',
+          schedule_config: scheduleConfig
+        })
+      });
+
+      if (response.ok) {
+        this.closeScheduleBuilder();
+        this.showSuccess('Schedule saved successfully');
+        await this.loadRules();
+      } else {
+        this.showError('Failed to save schedule');
+      }
+    } catch (error) {
+      console.error('Error saving schedule:', error);
+      this.showError('Error saving schedule');
+    }
+  }
+
+  closeScheduleBuilder() {
+    const modal = document.getElementById('scheduleBuilderModal');
+    if (modal) modal.remove();
+  }
+
+  // ========== EXECUTION MONITORING DASHBOARD ==========
+  async openMonitoringDashboard() {
+    try {
+      const response = await fetch('/api/v1/automations/executions', {
+        headers: { 'Authorization': `Bearer ${authService.getToken()}` }
+      });
+
+      if (!response.ok) {
+        this.showError('Failed to load monitoring data');
+        return;
+      }
+
+      const executions = await response.json();
+      this.showMonitoringDashboard(executions);
+    } catch (error) {
+      console.error('Error loading monitoring data:', error);
+      this.showError('Error loading monitoring data');
+    }
+  }
+
+  showMonitoringDashboard(executions) {
+    const modal = document.createElement('div');
+    modal.id = 'automationMonitoringModal';
+    modal.className = 'fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50';
+
+    const successCount = executions.filter(e => e.status === 'success').length;
+    const failedCount = executions.filter(e => e.status === 'failed').length;
+    const runningCount = executions.filter(e => e.status === 'running').length;
+    const totalCount = executions.length;
+
+    modal.innerHTML = `
+      <div class="bg-white rounded-lg shadow-xl w-full max-w-7xl max-h-[90vh] flex flex-col">
+        <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+          <h2 class="text-xl font-semibold text-gray-900">
+            <i class="ph ph-chart-line"></i> Automation Monitoring Dashboard
+          </h2>
+          <button onclick="AutomationApp.closeMonitoringDashboard()" class="text-gray-400 hover:text-gray-600">
+            <i class="ph ph-x text-2xl"></i>
+          </button>
+        </div>
+
+        <div class="flex-1 overflow-y-auto p-6 space-y-6">
+          <!-- Stats Cards -->
+          <div class="grid grid-cols-4 gap-4">
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div class="flex items-center justify-between">
+                <div>
+                  <p class="text-sm text-blue-600 font-medium">Total Executions</p>
+                  <p class="text-2xl font-bold text-blue-900">${totalCount}</p>
+                </div>
+                <i class="ph ph-play-circle text-3xl text-blue-600"></i>
+              </div>
+            </div>
+
+            <div class="bg-green-50 border border-green-200 rounded-lg p-4">
+              <div class="flex items-center justify-between">
+                <div>
+                  <p class="text-sm text-green-600 font-medium">Successful</p>
+                  <p class="text-2xl font-bold text-green-900">${successCount}</p>
+                </div>
+                <i class="ph ph-check-circle text-3xl text-green-600"></i>
+              </div>
+            </div>
+
+            <div class="bg-red-50 border border-red-200 rounded-lg p-4">
+              <div class="flex items-center justify-between">
+                <div>
+                  <p class="text-sm text-red-600 font-medium">Failed</p>
+                  <p class="text-2xl font-bold text-red-900">${failedCount}</p>
+                </div>
+                <i class="ph ph-x-circle text-3xl text-red-600"></i>
+              </div>
+            </div>
+
+            <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+              <div class="flex items-center justify-between">
+                <div>
+                  <p class="text-sm text-yellow-600 font-medium">Running</p>
+                  <p class="text-2xl font-bold text-yellow-900">${runningCount}</p>
+                </div>
+                <i class="ph ph-spinner text-3xl text-yellow-600"></i>
+              </div>
+            </div>
+          </div>
+
+          <!-- Success Rate Chart -->
+          <div class="bg-white border border-gray-200 rounded-lg p-4">
+            <h3 class="text-lg font-semibold text-gray-900 mb-3">Success Rate</h3>
+            <div class="h-4 bg-gray-200 rounded-full overflow-hidden">
+              <div class="h-full bg-green-500" style="width: ${totalCount > 0 ? (successCount / totalCount * 100) : 0}%"></div>
+            </div>
+            <p class="text-sm text-gray-600 mt-2">${totalCount > 0 ? Math.round(successCount / totalCount * 100) : 0}% success rate</p>
+          </div>
+
+          <!-- Recent Executions -->
+          <div>
+            <h3 class="text-lg font-semibold text-gray-900 mb-3">Recent Executions</h3>
+            <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+              <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                  <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Rule</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Duration</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Started</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Action</th>
+                  </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                  ${executions.slice(0, 10).map(exec => `
+                    <tr class="hover:bg-gray-50">
+                      <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        ${this.escapeHtml(exec.rule_name || 'Unknown')}
+                      </td>
+                      <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="px-2 py-1 text-xs font-medium rounded-full ${this.getExecutionStatusClass(exec.status)}">
+                          ${exec.status}
+                        </span>
+                      </td>
+                      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        ${exec.duration_ms || 0}ms
+                      </td>
+                      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        ${new Date(exec.started_at).toLocaleString()}
+                      </td>
+                      <td class="px-6 py-4 whitespace-nowrap text-sm">
+                        <button onclick="AutomationApp.viewExecution('${exec.id}')" class="text-green-600 hover:text-green-900">
+                          <i class="ph ph-eye"></i> View
+                        </button>
+                      </td>
+                    </tr>
+                  `).join('')}
+                  ${executions.length === 0 ? `
+                    <tr>
+                      <td colspan="5" class="px-6 py-12 text-center text-gray-500">No executions found</td>
+                    </tr>
+                  ` : ''}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div class="px-6 py-4 border-t border-gray-200 flex justify-end">
+          <button onclick="AutomationApp.closeMonitoringDashboard()" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200">
+            Close
+          </button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+  }
+
+  getExecutionStatusClass(status) {
+    const classes = {
+      'success': 'bg-green-100 text-green-800',
+      'failed': 'bg-red-100 text-red-800',
+      'running': 'bg-yellow-100 text-yellow-800'
+    };
+    return classes[status] || 'bg-gray-100 text-gray-800';
+  }
+
+  closeMonitoringDashboard() {
+    const modal = document.getElementById('automationMonitoringModal');
+    if (modal) modal.remove();
   }
 
   escapeHtml(text) {
