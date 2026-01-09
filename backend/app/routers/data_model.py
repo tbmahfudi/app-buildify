@@ -24,6 +24,11 @@ from app.schemas.data_model import (
     IntrospectedEntityDefinition,
     BatchIntrospectRequest,
     BatchIntrospectResponse,
+    MigrationPreviewResponse,
+    PublishEntityRequest,
+    MigrationResponse,
+    MigrationListResponse,
+    RollbackResponse,
 )
 from app.services.data_model_service import DataModelService
 from app.services.schema_introspector import SchemaIntrospector
@@ -289,3 +294,71 @@ async def batch_generate_entities(
         "message": f"Processed {created_count} objects successfully, {failed_count} failed",
         "status": "completed" if failed_count == 0 else "partial"
     }
+
+
+# ==================== Migration Endpoints ====================
+
+@router.get("/entities/{entity_id}/preview-migration", response_model=MigrationPreviewResponse)
+async def preview_migration(
+    entity_id: UUID,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """
+    Preview schema changes before publishing
+
+    Returns the SQL that will be executed and an estimated impact analysis.
+    This allows users to review changes before applying them to the database.
+    """
+    service = DataModelService(db, current_user)
+    return await service.preview_migration(entity_id)
+
+
+@router.post("/entities/{entity_id}/publish", response_model=MigrationResponse)
+async def publish_entity(
+    entity_id: UUID,
+    request: PublishEntityRequest,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """
+    Publish entity and execute migration
+
+    Generates and executes SQL migration to create or alter the database table.
+    The entity status will be updated to 'published' and a migration record
+    will be created for history tracking.
+    """
+    service = DataModelService(db, current_user)
+    return await service.publish_entity(entity_id, request.commit_message)
+
+
+@router.get("/entities/{entity_id}/migrations", response_model=MigrationListResponse)
+async def list_migrations(
+    entity_id: UUID,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """
+    List migration history for an entity
+
+    Returns all migrations that have been executed for this entity,
+    including their status, SQL scripts, and execution details.
+    """
+    service = DataModelService(db, current_user)
+    return await service.list_migrations(entity_id)
+
+
+@router.post("/migrations/{migration_id}/rollback", response_model=RollbackResponse)
+async def rollback_migration(
+    migration_id: UUID,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """
+    Rollback a migration
+
+    Executes the down script of a migration to revert changes.
+    Only completed migrations with down scripts can be rolled back.
+    """
+    service = DataModelService(db, current_user)
+    return await service.rollback_migration(migration_id)

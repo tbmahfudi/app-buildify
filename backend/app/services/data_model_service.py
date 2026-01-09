@@ -522,3 +522,308 @@ class DataModelService:
         self.db.refresh(entity)
 
         return entity
+
+    # ==================== Migration Methods ====================
+
+    async def preview_migration(self, entity_id: UUID):
+        """Preview SQL changes for entity"""
+        from app.services.migration_generator import MigrationGenerator
+        from sqlalchemy import text
+
+        entity = self.db.query(EntityDefinition).filter(
+            EntityDefinition.id == entity_id,
+            EntityDefinition.is_deleted == False
+        ).first()
+
+        if not entity:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Entity {entity_id} not found"
+            )
+
+        # Check permissions
+        if entity.tenant_id and entity.tenant_id != self.tenant_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You don't have permission to preview this entity"
+            )
+
+        # Generate migration SQL
+        migration_gen = MigrationGenerator(self.db)
+        up_sql, down_sql = await migration_gen.generate_migration(entity)
+
+        # Get change preview
+        changes = await migration_gen.preview_changes(entity)
+
+        # Estimate impact
+        estimated_impact = await self._estimate_impact(entity)
+
+        return {
+            'entity_id': entity.id,
+            'entity_name': entity.name,
+            'table_name': entity.table_name,
+            'operation': changes['operation'],
+            'up_script': up_sql,
+            'down_script': down_sql,
+            'changes': changes.get('changes', {}),
+            'estimated_impact': estimated_impact
+        }
+
+    async def publish_entity(self, entity_id: UUID, commit_message: str = None):
+        """Publish entity and execute migration"""
+        from app.services.migration_generator import MigrationGenerator
+        from datetime import datetime
+        from sqlalchemy import text
+        import time
+
+        entity = self.db.query(EntityDefinition).filter(
+            EntityDefinition.id == entity_id,
+            EntityDefinition.is_deleted == False
+        ).first()
+
+        if not entity:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Entity {entity_id} not found"
+            )
+
+        # Check permissions
+        if entity.tenant_id and entity.tenant_id != self.tenant_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You don't have permission to publish this entity"
+            )
+
+        if entity.status == 'published':
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Entity is already published. Create a new version to make changes."
+            )
+
+        # Generate migration
+        migration_gen = MigrationGenerator(self.db)
+        up_sql, down_sql = await migration_gen.generate_migration(entity)
+
+        # Get changes for logging
+        changes = await migration_gen.preview_changes(entity)
+
+        # Increment version
+        entity.version = (entity.version or 0) + 1
+
+        # Create migration record
+        migration = EntityMigration(
+            entity_id=entity_id,
+            tenant_id=entity.tenant_id,
+            migration_name=f"{entity.name}_v{entity.version}_{int(time.time())}",
+            migration_type='create' if entity.version == 1 else 'alter',
+            from_version=entity.version - 1 if entity.version > 1 else None,
+            to_version=entity.version,
+            up_script=up_sql,
+            down_script=down_sql,
+            status='pending',
+            changes=changes,
+            created_by=self.user_id
+        )
+
+        self.db.add(migration)
+        self.db.flush()  # Get the migration ID
+
+        # Execute migration
+        try:
+            migration.status = 'running'
+            self.db.commit()
+
+            start_time = time.time()
+
+            # Execute in transaction
+            self.db.execute(text(up_sql))
+
+            execution_time = int((time.time() - start_time) * 1000)
+
+            migration.status = 'completed'
+            migration.executed_at = datetime.utcnow()
+            migration.execution_time_ms = execution_time
+
+            # Update entity status
+            entity.status = 'published'
+
+            self.db.commit()
+            self.db.refresh(migration)
+
+            return migration
+
+        except Exception as e:
+            self.db.rollback()
+
+            migration.status = 'failed'
+            migration.error_message = str(e)
+            self.db.commit()
+
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Migration failed: {str(e)}"
+            )
+
+    async def list_migrations(self, entity_id: UUID):
+        """List migration history for an entity"""
+        entity = self.db.query(EntityDefinition).filter(
+            EntityDefinition.id == entity_id,
+            EntityDefinition.is_deleted == False
+        ).first()
+
+        if not entity:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Entity {entity_id} not found"
+            )
+
+        # Check permissions
+        if entity.tenant_id and entity.tenant_id != self.tenant_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You don't have permission to view migrations for this entity"
+            )
+
+        migrations = self.db.query(EntityMigration).filter(
+            EntityMigration.entity_id == entity_id
+        ).order_by(EntityMigration.created_at.desc()).all()
+
+        return {
+            'migrations': migrations,
+            'total': len(migrations)
+        }
+
+    async def rollback_migration(self, migration_id: UUID):
+        """Rollback a migration"""
+        from datetime import datetime
+        from sqlalchemy import text
+        import time
+
+        migration = self.db.query(EntityMigration).filter(
+            EntityMigration.id == migration_id
+        ).first()
+
+        if not migration:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Migration {migration_id} not found"
+            )
+
+        # Check permissions
+        if migration.tenant_id and migration.tenant_id != self.tenant_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You don't have permission to rollback this migration"
+            )
+
+        if migration.status != 'completed':
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Can only rollback completed migrations"
+            )
+
+        if not migration.down_script:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="No rollback script available for this migration"
+            )
+
+        # Execute rollback
+        try:
+            start_time = time.time()
+
+            # Execute down script
+            self.db.execute(text(migration.down_script))
+
+            execution_time = int((time.time() - start_time) * 1000)
+
+            # Update migration status
+            migration.status = 'rolled_back'
+
+            # Update entity version
+            entity = self.db.query(EntityDefinition).filter(
+                EntityDefinition.id == migration.entity_id
+            ).first()
+
+            if entity:
+                entity.version = migration.from_version or 0
+                if entity.version == 0:
+                    entity.status = 'draft'
+
+            self.db.commit()
+
+            return {
+                'migration_id': migration.id,
+                'status': 'rolled_back',
+                'message': 'Migration rolled back successfully',
+                'execution_time_ms': execution_time,
+                'rolled_back_at': datetime.utcnow()
+            }
+
+        except Exception as e:
+            self.db.rollback()
+
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Rollback failed: {str(e)}"
+            )
+
+    async def _estimate_impact(self, entity: EntityDefinition) -> dict:
+        """Estimate the impact of publishing this entity"""
+        from app.services.migration_generator import MigrationGenerator
+        from sqlalchemy import text
+
+        migration_gen = MigrationGenerator(self.db)
+        table_exists = await migration_gen._table_exists(entity.table_name)
+
+        if not table_exists:
+            return {
+                'risk_level': 'low',
+                'affected_records': 0,
+                'breaking_changes': [],
+                'warnings': []
+            }
+
+        # Check for existing data
+        try:
+            result = self.db.execute(
+                text(f"SELECT COUNT(*) FROM {entity.table_name}")
+            )
+            record_count = result.scalar()
+        except:
+            record_count = 0
+
+        # Analyze changes for risk
+        changes = await migration_gen.preview_changes(entity)
+        breaking_changes = []
+        warnings = []
+
+        if changes['operation'] == 'ALTER':
+            change_details = changes.get('changes', {})
+
+            # Dropping columns is a breaking change
+            if change_details.get('removed_columns'):
+                breaking_changes.append(
+                    f"Dropping columns: {', '.join(change_details['removed_columns'])}"
+                )
+
+            # Type changes can be risky
+            if change_details.get('modified_columns'):
+                for mod in change_details['modified_columns']:
+                    warnings.append(
+                        f"Column {mod['name']} type changing from {mod['from_type']} to {mod['to_type']}"
+                    )
+
+        # Determine risk level
+        risk_level = 'low'
+        if breaking_changes:
+            risk_level = 'high'
+        elif warnings or record_count > 1000:
+            risk_level = 'medium'
+
+        return {
+            'risk_level': risk_level,
+            'affected_records': record_count,
+            'breaking_changes': breaking_changes,
+            'warnings': warnings
+        }
