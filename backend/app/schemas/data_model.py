@@ -392,3 +392,59 @@ class BatchIntrospectResponse(BaseModel):
     queued: int
     message: str
     status: str
+
+
+# ==================== Migration Schemas ====================
+
+class MigrationPreviewResponse(BaseModel):
+    """Preview of migration changes"""
+    entity_id: UUID
+    entity_name: str
+    table_name: str
+    operation: str  # 'CREATE', 'ALTER'
+    up_script: str
+    down_script: str
+    changes: Dict[str, Any]
+    estimated_impact: Dict[str, Any]
+
+
+class PublishEntityRequest(BaseModel):
+    """Request to publish an entity"""
+    commit_message: Optional[str] = None
+
+
+class MigrationResponse(BaseModel):
+    """Migration execution response"""
+    id: UUID
+    entity_id: UUID
+    migration_name: str
+    migration_type: str
+    from_version: Optional[int]
+    to_version: int
+    status: str
+    up_script: str
+    down_script: Optional[str]
+    executed_at: Optional[datetime]
+    execution_time_ms: Optional[int]
+    error_message: Optional[str]
+    changes: Optional[Dict[str, Any]]
+    created_at: datetime
+    created_by: UUID
+
+    class Config:
+        from_attributes = True
+
+
+class MigrationListResponse(BaseModel):
+    """List of migrations for an entity"""
+    migrations: List[MigrationResponse]
+    total: int
+
+
+class RollbackResponse(BaseModel):
+    """Response for migration rollback"""
+    migration_id: UUID
+    status: str
+    message: str
+    execution_time_ms: Optional[int]
+    rolled_back_at: datetime

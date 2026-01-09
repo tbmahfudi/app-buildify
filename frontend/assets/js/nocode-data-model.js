@@ -350,7 +350,7 @@ export class DataModelPage {
                 </div>
               ` : ''}
 
-              <div class="flex gap-3 pt-4 border-t">
+              <div class="flex flex-wrap gap-3 pt-4 border-t">
                 <button onclick="DataModelApp.editEntity('${entity.id}')" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
                   <i class="ph ph-pencil"></i> Edit Entity
                 </button>
@@ -359,6 +359,17 @@ export class DataModelPage {
                 </button>
                 <button onclick="DataModelApp.viewRelationships('${entity.id}')" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
                   <i class="ph ph-arrows-merge"></i> Relationships
+                </button>
+                ${entity.status !== 'published' ? `
+                  <button onclick="DataModelApp.previewMigration('${entity.id}')" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
+                    <i class="ph ph-eye"></i> Preview Migration
+                  </button>
+                  <button onclick="DataModelApp.publishEntity('${entity.id}')" class="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700">
+                    <i class="ph ph-rocket-launch"></i> Publish
+                  </button>
+                ` : ''}
+                <button onclick="DataModelApp.viewMigrations('${entity.id}')" class="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700">
+                  <i class="ph ph-clock-clockwise"></i> Migration History
                 </button>
               </div>
             </div>
@@ -1690,6 +1701,372 @@ export class DataModelPage {
 
     const cb = checkboxes[0];
     await this.previewObject(cb.dataset.objectName, cb.dataset.objectType);
+  }
+
+  // ==================== Migration Methods ====================
+
+  async previewMigration(entityId) {
+    try {
+      const response = await fetch(`/api/v1/data-model/entities/${entityId}/preview-migration`);
+      if (!response.ok) {
+        const error = await response.json();
+        this.showError(error.detail || 'Failed to preview migration');
+        return;
+      }
+
+      const preview = await response.json();
+
+      // Show preview modal
+      this.showMigrationPreviewModal(preview);
+    } catch (error) {
+      console.error('Error previewing migration:', error);
+      this.showError('Error previewing migration');
+    }
+  }
+
+  showMigrationPreviewModal(preview) {
+    // Remove existing preview modal if any
+    const existingModal = document.getElementById('migrationPreviewModal');
+    if (existingModal) existingModal.remove();
+
+    // Get risk level color
+    const riskColors = {
+      'low': 'text-green-700 bg-green-100',
+      'medium': 'text-yellow-700 bg-yellow-100',
+      'high': 'text-red-700 bg-red-100'
+    };
+
+    const riskColor = riskColors[preview.estimated_impact.risk_level] || riskColors['low'];
+
+    const modalHTML = `
+      <div id="migrationPreviewModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-5xl max-h-[90vh] overflow-y-auto">
+          <!-- Header -->
+          <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between sticky top-0 bg-white">
+            <h3 class="text-lg font-semibold text-gray-900">
+              <i class="ph ph-eye"></i> Migration Preview: ${preview.entity_name}
+            </h3>
+            <button onclick="DataModelApp.closeMigrationPreviewModal()" class="text-gray-400 hover:text-gray-600">
+              <i class="ph ph-x text-xl"></i>
+            </button>
+          </div>
+
+          <!-- Content -->
+          <div class="p-6 space-y-6">
+            <!-- Operation Info -->
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div class="flex items-center gap-2 mb-2">
+                <i class="ph ph-info text-blue-600"></i>
+                <span class="font-semibold text-blue-900">Operation Type</span>
+              </div>
+              <p class="text-sm text-blue-800">${preview.operation === 'CREATE' ? 'Create new table' : 'Alter existing table'}: ${preview.table_name}</p>
+            </div>
+
+            <!-- Impact Assessment -->
+            <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
+              <div class="flex items-center justify-between mb-3">
+                <span class="font-semibold text-gray-900">Impact Assessment</span>
+                <span class="px-3 py-1 rounded-full text-sm font-medium ${riskColor}">
+                  ${preview.estimated_impact.risk_level.toUpperCase()} RISK
+                </span>
+              </div>
+              <div class="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span class="text-gray-600">Affected Records:</span>
+                  <span class="ml-2 font-medium">${preview.estimated_impact.affected_records}</span>
+                </div>
+                ${preview.changes && preview.changes.added_columns ? `
+                  <div>
+                    <span class="text-gray-600">New Columns:</span>
+                    <span class="ml-2 font-medium">${preview.changes.added_columns.length}</span>
+                  </div>
+                ` : ''}
+                ${preview.changes && preview.changes.removed_columns ? `
+                  <div>
+                    <span class="text-gray-600">Removed Columns:</span>
+                    <span class="ml-2 font-medium">${preview.changes.removed_columns.length}</span>
+                  </div>
+                ` : ''}
+                ${preview.changes && preview.changes.modified_columns ? `
+                  <div>
+                    <span class="text-gray-600">Modified Columns:</span>
+                    <span class="ml-2 font-medium">${preview.changes.modified_columns.length}</span>
+                  </div>
+                ` : ''}
+              </div>
+
+              ${preview.estimated_impact.breaking_changes && preview.estimated_impact.breaking_changes.length > 0 ? `
+                <div class="mt-3 p-3 bg-red-50 border border-red-200 rounded">
+                  <div class="font-semibold text-red-800 mb-2">Breaking Changes:</div>
+                  <ul class="text-sm text-red-700 list-disc list-inside">
+                    ${preview.estimated_impact.breaking_changes.map(bc => `<li>${bc}</li>`).join('')}
+                  </ul>
+                </div>
+              ` : ''}
+
+              ${preview.estimated_impact.warnings && preview.estimated_impact.warnings.length > 0 ? `
+                <div class="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded">
+                  <div class="font-semibold text-yellow-800 mb-2">Warnings:</div>
+                  <ul class="text-sm text-yellow-700 list-disc list-inside">
+                    ${preview.estimated_impact.warnings.map(w => `<li>${w}</li>`).join('')}
+                  </ul>
+                </div>
+              ` : ''}
+            </div>
+
+            <!-- SQL Scripts -->
+            <div class="space-y-4">
+              <!-- Up Script -->
+              <div>
+                <div class="flex items-center gap-2 mb-2">
+                  <i class="ph ph-arrow-up text-green-600"></i>
+                  <span class="font-semibold text-gray-900">Migration Script (UP)</span>
+                </div>
+                <pre class="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto text-sm"><code>${this.escapeHtml(preview.up_script)}</code></pre>
+              </div>
+
+              <!-- Down Script -->
+              <div>
+                <div class="flex items-center gap-2 mb-2">
+                  <i class="ph ph-arrow-down text-red-600"></i>
+                  <span class="font-semibold text-gray-900">Rollback Script (DOWN)</span>
+                </div>
+                <pre class="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto text-sm"><code>${this.escapeHtml(preview.down_script)}</code></pre>
+              </div>
+            </div>
+          </div>
+
+          <!-- Footer Actions -->
+          <div class="px-6 py-4 border-t border-gray-200 flex gap-3 justify-end sticky bottom-0 bg-white">
+            <button onclick="DataModelApp.closeMigrationPreviewModal()" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">
+              Cancel
+            </button>
+            <button onclick="DataModelApp.publishEntityFromPreview('${preview.entity_id}')" class="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700">
+              <i class="ph ph-rocket-launch"></i> Proceed with Publish
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+  }
+
+  closeMigrationPreviewModal() {
+    const modal = document.getElementById('migrationPreviewModal');
+    if (modal) modal.remove();
+  }
+
+  async publishEntity(entityId) {
+    const confirmed = confirm('Are you sure you want to publish this entity? This will execute the migration and create/alter the database table.');
+    if (!confirmed) return;
+
+    await this.executePublish(entityId);
+  }
+
+  async publishEntityFromPreview(entityId) {
+    this.closeMigrationPreviewModal();
+    await this.executePublish(entityId);
+  }
+
+  async executePublish(entityId) {
+    try {
+      const commitMessage = prompt('Enter a commit message (optional):');
+
+      const response = await fetch(`/api/v1/data-model/entities/${entityId}/publish`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ commit_message: commitMessage })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        this.showError(error.detail || 'Failed to publish entity');
+        return;
+      }
+
+      const migration = await response.json();
+      this.showSuccess(`Entity published successfully! Migration completed in ${migration.execution_time_ms}ms`);
+
+      // Reload entity list and close modals
+      await this.loadEntities();
+      this.closeViewModal();
+    } catch (error) {
+      console.error('Error publishing entity:', error);
+      this.showError('Error publishing entity');
+    }
+  }
+
+  async viewMigrations(entityId) {
+    try {
+      const response = await fetch(`/api/v1/data-model/entities/${entityId}/migrations`);
+      if (!response.ok) {
+        const error = await response.json();
+        this.showError(error.detail || 'Failed to load migrations');
+        return;
+      }
+
+      const data = await response.json();
+      this.showMigrationHistoryModal(entityId, data.migrations);
+    } catch (error) {
+      console.error('Error loading migrations:', error);
+      this.showError('Error loading migration history');
+    }
+  }
+
+  showMigrationHistoryModal(entityId, migrations) {
+    // Remove existing modal if any
+    const existingModal = document.getElementById('migrationHistoryModal');
+    if (existingModal) existingModal.remove();
+
+    const statusColors = {
+      'pending': 'bg-gray-100 text-gray-700',
+      'running': 'bg-blue-100 text-blue-700',
+      'completed': 'bg-green-100 text-green-700',
+      'failed': 'bg-red-100 text-red-700',
+      'rolled_back': 'bg-orange-100 text-orange-700'
+    };
+
+    const modalHTML = `
+      <div id="migrationHistoryModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-6xl max-h-[90vh] overflow-y-auto">
+          <!-- Header -->
+          <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between sticky top-0 bg-white">
+            <h3 class="text-lg font-semibold text-gray-900">
+              <i class="ph ph-clock-clockwise"></i> Migration History
+            </h3>
+            <button onclick="DataModelApp.closeMigrationHistoryModal()" class="text-gray-400 hover:text-gray-600">
+              <i class="ph ph-x text-xl"></i>
+            </button>
+          </div>
+
+          <!-- Content -->
+          <div class="p-6">
+            ${migrations.length === 0 ? `
+              <div class="text-center py-12 text-gray-500">
+                <i class="ph ph-database text-4xl mb-2"></i>
+                <p>No migrations yet</p>
+              </div>
+            ` : `
+              <div class="space-y-4">
+                ${migrations.map(migration => `
+                  <div class="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                    <!-- Migration Header -->
+                    <div class="flex items-center justify-between mb-3">
+                      <div class="flex items-center gap-3">
+                        <span class="font-semibold text-gray-900">${migration.migration_name}</span>
+                        <span class="px-2 py-1 rounded text-xs font-medium ${statusColors[migration.status] || statusColors['pending']}">
+                          ${migration.status.toUpperCase()}
+                        </span>
+                        <span class="text-sm text-gray-500">${migration.migration_type.toUpperCase()}</span>
+                      </div>
+                      <div class="flex items-center gap-2">
+                        ${migration.status === 'completed' && migration.down_script ? `
+                          <button onclick="DataModelApp.rollbackMigration('${migration.id}')" class="px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700">
+                            <i class="ph ph-arrow-counter-clockwise"></i> Rollback
+                          </button>
+                        ` : ''}
+                        <button onclick="DataModelApp.viewMigrationDetails('${migration.id}')" class="px-3 py-1 bg-gray-200 text-gray-700 text-sm rounded hover:bg-gray-300">
+                          <i class="ph ph-eye"></i> Details
+                        </button>
+                      </div>
+                    </div>
+
+                    <!-- Migration Info -->
+                    <div class="grid grid-cols-4 gap-4 text-sm">
+                      <div>
+                        <span class="text-gray-600">Version:</span>
+                        <span class="ml-2 font-medium">${migration.from_version || 0} → ${migration.to_version}</span>
+                      </div>
+                      ${migration.executed_at ? `
+                        <div>
+                          <span class="text-gray-600">Executed:</span>
+                          <span class="ml-2 font-medium">${new Date(migration.executed_at).toLocaleString()}</span>
+                        </div>
+                      ` : ''}
+                      ${migration.execution_time_ms ? `
+                        <div>
+                          <span class="text-gray-600">Duration:</span>
+                          <span class="ml-2 font-medium">${migration.execution_time_ms}ms</span>
+                        </div>
+                      ` : ''}
+                      <div>
+                        <span class="text-gray-600">Created:</span>
+                        <span class="ml-2 font-medium">${new Date(migration.created_at).toLocaleString()}</span>
+                      </div>
+                    </div>
+
+                    ${migration.error_message ? `
+                      <div class="mt-3 p-3 bg-red-50 border border-red-200 rounded">
+                        <div class="font-semibold text-red-800 mb-1">Error:</div>
+                        <p class="text-sm text-red-700">${this.escapeHtml(migration.error_message)}</p>
+                      </div>
+                    ` : ''}
+                  </div>
+                `).join('')}
+              </div>
+            `}
+          </div>
+
+          <!-- Footer -->
+          <div class="px-6 py-4 border-t border-gray-200 flex justify-end sticky bottom-0 bg-white">
+            <button onclick="DataModelApp.closeMigrationHistoryModal()" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+  }
+
+  closeMigrationHistoryModal() {
+    const modal = document.getElementById('migrationHistoryModal');
+    if (modal) modal.remove();
+  }
+
+  async viewMigrationDetails(migrationId) {
+    try {
+      // Get all migrations to find the specific one
+      const historyModal = document.getElementById('migrationHistoryModal');
+      if (!historyModal) return;
+
+      // Find migration in current data (simpler approach)
+      // In a real scenario, you'd fetch the specific migration
+      this.showInfo('Migration details viewer - to be implemented with expanded SQL view');
+    } catch (error) {
+      console.error('Error viewing migration details:', error);
+      this.showError('Error loading migration details');
+    }
+  }
+
+  async rollbackMigration(migrationId) {
+    const confirmed = confirm('Are you sure you want to rollback this migration? This will revert the database changes and cannot be undone.');
+    if (!confirmed) return;
+
+    try {
+      const response = await fetch(`/api/v1/data-model/migrations/${migrationId}/rollback`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        this.showError(error.detail || 'Failed to rollback migration');
+        return;
+      }
+
+      const result = await response.json();
+      this.showSuccess(`Migration rolled back successfully in ${result.execution_time_ms}ms`);
+
+      // Close modal and reload
+      this.closeMigrationHistoryModal();
+      await this.loadEntities();
+    } catch (error) {
+      console.error('Error rolling back migration:', error);
+      this.showError('Error rolling back migration');
+    }
   }
 
   // ==================== Utility Methods ====================
