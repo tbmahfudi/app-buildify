@@ -647,6 +647,20 @@ class DataModelService:
             # Update entity status
             entity.status = 'published'
 
+            # Auto-generate EntityMetadata for published entity
+            try:
+                from app.services.metadata_sync_service import MetadataSyncService
+                metadata_sync = MetadataSyncService(self.db)
+                metadata_sync.auto_generate_metadata(
+                    entity_definition=entity,
+                    created_by=str(self.current_user.id)
+                )
+            except Exception as meta_error:
+                # Log error but don't fail the publish
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f"Failed to auto-generate metadata for {entity.name}: {str(meta_error)}")
+
             self.db.commit()
             self.db.refresh(migration)
 
