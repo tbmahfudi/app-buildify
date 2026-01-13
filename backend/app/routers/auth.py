@@ -44,7 +44,7 @@ from app.schemas.security import PasswordPolicyRequirements, PasswordStrengthChe
 
 security = HTTPBearer()
 
-router = APIRouter(prefix="/auth", tags=["auth"])
+router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 # Set up logger at the top of your file
 logger = logging.getLogger(__name__)
 

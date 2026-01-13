@@ -29,7 +29,7 @@ from app.schemas.scheduler import (
 )
 from app.services.scheduler_service import SchedulerService
 
-router = APIRouter(prefix="/scheduler", tags=["scheduler"])
+router = APIRouter(prefix="/api/v1/scheduler", tags=["scheduler"])
 logger = logging.getLogger(__name__)
 
 

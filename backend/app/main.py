@@ -163,39 +163,34 @@ limiter = setup_rate_limiting(app)
 # Register exception handlers
 register_exception_handlers(app)
 
-# Include routers with API versioning
-# v1 API endpoints
-app.include_router(auth.router, prefix="/api/v1")
-app.include_router(org.router, prefix="/api/v1")
-app.include_router(metadata.router, prefix="/api/v1")
-app.include_router(data.router, prefix="/api/v1")
-app.include_router(audit.router, prefix="/api/v1")
-app.include_router(settings.router, prefix="/api/v1")
-app.include_router(modules.router, prefix="/api/v1")
-app.include_router(rbac.router, prefix="/api/v1")
-app.include_router(reports.router, prefix="/api/v1")
-app.include_router(dashboards.router, prefix="/api/v1")
-app.include_router(scheduler.router, prefix="/api/v1")
-app.include_router(menu.router, prefix="/api/v1")
-app.include_router(builder_pages.router, prefix="/api/v1/builder", tags=["builder"])
-app.include_router(admin_security.router, prefix="/api/v1")
+# ============================================================================
+# API Routers - All use /api/v1 prefix (defined in router files)
+# ============================================================================
 
-# Phase 1 No-Code Platform routers (routers already include /api/v1 prefix)
+# Core API routers (prefix defined in each router file)
+app.include_router(auth.router)
+app.include_router(org.router)
+app.include_router(metadata.router)
+app.include_router(data.router)
+app.include_router(audit.router)
+app.include_router(settings.router)
+app.include_router(modules.router)
+app.include_router(rbac.router)
+app.include_router(reports.router)
+app.include_router(dashboards.router)
+app.include_router(scheduler.router)
+app.include_router(menu.router)
+app.include_router(builder_pages.router, prefix="/api/v1/builder", tags=["builder"])
+app.include_router(admin_security.router)
+
+# Phase 1 No-Code Platform routers (prefix defined in router files)
 app.include_router(data_model.router)
 app.include_router(workflows.router)
 app.include_router(automations.router)
 app.include_router(lookups.router)
 
-# Phase 2 No-Code Platform routers (Priority 1: Runtime Data Access Layer)
+# Phase 2 No-Code Platform routers (prefix defined in router files)
 app.include_router(dynamic_data.router)
-
-# Also maintain backward compatibility with old endpoints (deprecated)
-app.include_router(auth.router, tags=["deprecated"])
-app.include_router(org.router, tags=["deprecated"])
-app.include_router(metadata.router, tags=["deprecated"])
-app.include_router(data.router, tags=["deprecated"])
-app.include_router(audit.router, tags=["deprecated"])
-app.include_router(settings.router, tags=["deprecated"])
 
 
 @app.get("/")

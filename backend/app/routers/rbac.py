@@ -23,7 +23,7 @@ from app.models.role import Role
 from app.models.tenant import Tenant
 from app.models.user import User
 
-router = APIRouter(prefix="/rbac", tags=["RBAC Management"])
+router = APIRouter(prefix="/api/v1/rbac", tags=["RBAC Management"])
 logger = logging.getLogger(__name__)
 
 

@@ -12,7 +12,7 @@ from app.schemas.settings import (
 )
 from app.core.audit import create_audit_log
 
-router = APIRouter(prefix="/settings", tags=["settings"])
+router = APIRouter(prefix="/api/v1/settings", tags=["settings"])
 
 # ============= USER SETTINGS =============
 
