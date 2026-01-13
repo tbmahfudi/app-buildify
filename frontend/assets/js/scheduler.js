@@ -68,9 +68,9 @@ document.getElementById('form-config').addEventListener('submit', async (e) => {
   try {
     let response;
     if (configId) {
-      response = await api.put(`/scheduler/configs/${configId}`, data);
+      response = await api.put(`/api/v1/scheduler/configs/${configId}`, data);
     } else {
-      response = await api.post('/scheduler/configs', data);
+      response = await api.post('/api/v1/scheduler/configs', data);
     }
 
     showNotification(configId ? 'Configuration updated successfully' : 'Configuration created successfully', 'success');
@@ -118,9 +118,9 @@ document.getElementById('form-job').addEventListener('submit', async (e) => {
   try {
     let response;
     if (jobId) {
-      response = await api.put(`/scheduler/jobs/${jobId}`, data);
+      response = await api.put(`/api/v1/scheduler/jobs/${jobId}`, data);
     } else {
-      response = await api.post('/scheduler/jobs', data);
+      response = await api.post('/api/v1/scheduler/jobs', data);
     }
 
     showNotification(jobId ? 'Job updated successfully' : 'Job created successfully', 'success');
@@ -157,7 +157,7 @@ async function loadJobs() {
     if (type) params.push(`job_type=${type}`);
     if (status) params.push(`is_active=${status}`);
 
-    const response = await api.get(`/scheduler/jobs?${params.join('&')}`);
+    const response = await api.get(`/api/v1/scheduler/jobs?${params.join('&')}`);
     const tbody = document.getElementById('jobs-table-body');
 
     if (response.items && response.items.length > 0) {
@@ -219,7 +219,7 @@ async function executeJob(jobId) {
   if (!confirm('Are you sure you want to execute this job now?')) return;
 
   try {
-    await api.post(`/scheduler/jobs/${jobId}/execute`, {});
+    await api.post(`/api/v1/scheduler/jobs/${jobId}/execute`, {});
     showNotification('Job execution triggered', 'success');
     loadJobs();
   } catch (error) {
@@ -229,7 +229,7 @@ async function executeJob(jobId) {
 
 async function editJob(jobId) {
   try {
-    const job = await api.get(`/scheduler/jobs/${jobId}`);
+    const job = await api.get(`/api/v1/scheduler/jobs/${jobId}`);
 
     document.getElementById('modal-job-title').textContent = 'Edit Scheduled Job';
     document.getElementById('job-id').value = job.id;
@@ -255,7 +255,7 @@ async function deleteJob(jobId) {
   if (!confirm('Are you sure you want to delete this job?')) return;
 
   try {
-    await api.delete(`/scheduler/jobs/${jobId}`);
+    await api.delete(`/api/v1/scheduler/jobs/${jobId}`);
     showNotification('Job deleted successfully', 'success');
     loadJobs();
   } catch (error) {
