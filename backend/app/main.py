@@ -12,7 +12,7 @@ from app.core.db import SessionLocal
 from app.core.security_middleware import SecurityMiddleware
 from app.core.startup import ensure_default_security_policy
 from app.routers import org, auth, metadata, data, audit, settings, modules, rbac, reports, dashboards, scheduler, menu, builder_pages
-from app.routers import data_model, workflows, automations, lookups
+from app.routers import data_model, workflows, automations, lookups, dynamic_data
 from app.routers.admin import security as admin_security
 from app.core.module_system.registry import ModuleRegistryService
 from pathlib import Path
@@ -139,7 +139,7 @@ async def module_access_middleware(request: Request, call_next):
             potential_module = path_parts[3]
 
             # Skip core endpoints
-            core_endpoints = ["auth", "org", "metadata", "data", "audit", "settings", "modules", "rbac", "reports", "dashboards", "scheduler", "menu", "health", "healthz", "system", "data-model", "workflows", "automations", "lookups"]
+            core_endpoints = ["auth", "org", "metadata", "data", "audit", "settings", "modules", "rbac", "reports", "dashboards", "scheduler", "menu", "health", "healthz", "system", "data-model", "workflows", "automations", "lookups", "dynamic-data"]
             if potential_module not in core_endpoints:
                 # This might be a module endpoint
                 # Check if module exists and is enabled
@@ -185,6 +185,9 @@ app.include_router(data_model.router)
 app.include_router(workflows.router)
 app.include_router(automations.router)
 app.include_router(lookups.router)
+
+# Phase 2 No-Code Platform routers (Priority 1: Runtime Data Access Layer)
+app.include_router(dynamic_data.router)
 
 # Also maintain backward compatibility with old endpoints (deprecated)
 app.include_router(auth.router, tags=["deprecated"])
@@ -281,7 +284,8 @@ async def system_info():
             "nocode-data-model-designer",
             "nocode-workflow-designer",
             "nocode-automation-system",
-            "nocode-lookup-configuration"
+            "nocode-lookup-configuration",
+            "nocode-runtime-data-layer"
         ],
         "loaded_modules": module_registry.get_module_count() if module_registry else 0
     }
