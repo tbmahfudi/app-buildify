@@ -3,6 +3,8 @@
  * Handles configuration and job management for the hierarchical scheduler
  */
 
+import { apiFetch } from './api.js';
+
 // Tab management
 document.querySelectorAll('.scheduler-tab-btn').forEach(btn => {
   btn.addEventListener('click', () => {
@@ -68,9 +70,9 @@ document.getElementById('form-config').addEventListener('submit', async (e) => {
   try {
     let response;
     if (configId) {
-      response = await api.put(`/api/v1/scheduler/configs/${configId}`, data);
+      response = await apiFetch(`/scheduler/configs/${configId}`, { method: "PUT", body: JSON.stringify(data) });
     } else {
-      response = await api.post('/api/v1/scheduler/configs', data);
+      response = await apiFetch('/scheduler/configs', { method: "POST", body: JSON.stringify(data) });
     }
 
     showNotification(configId ? 'Configuration updated successfully' : 'Configuration created successfully', 'success');
@@ -118,9 +120,9 @@ document.getElementById('form-job').addEventListener('submit', async (e) => {
   try {
     let response;
     if (jobId) {
-      response = await api.put(`/api/v1/scheduler/jobs/${jobId}`, data);
+      response = await apiFetch(`/scheduler/jobs/${jobId}`, { method: "PUT", body: JSON.stringify(data) });
     } else {
-      response = await api.post('/api/v1/scheduler/jobs', data);
+      response = await apiFetch('/scheduler/jobs', { method: "POST", body: JSON.stringify(data) });
     }
 
     showNotification(jobId ? 'Job updated successfully' : 'Job created successfully', 'success');
@@ -157,7 +159,7 @@ async function loadJobs() {
     if (type) params.push(`job_type=${type}`);
     if (status) params.push(`is_active=${status}`);
 
-    const response = await api.get(`/api/v1/scheduler/jobs?${params.join('&')}`);
+    const response = await apiFetch(`/scheduler/jobs?${params.join('&')}`);
     const tbody = document.getElementById('jobs-table-body');
 
     if (response.items && response.items.length > 0) {
@@ -219,7 +221,7 @@ async function executeJob(jobId) {
   if (!confirm('Are you sure you want to execute this job now?')) return;
 
   try {
-    await api.post(`/api/v1/scheduler/jobs/${jobId}/execute`, {});
+    await apiFetch(`/scheduler/jobs/${jobId}/execute`, { method: "POST", body: JSON.stringify({}) });
     showNotification('Job execution triggered', 'success');
     loadJobs();
   } catch (error) {
@@ -229,7 +231,7 @@ async function executeJob(jobId) {
 
 async function editJob(jobId) {
   try {
-    const job = await api.get(`/api/v1/scheduler/jobs/${jobId}`);
+    const job = await apiFetch(`/scheduler/jobs/${jobId}`);
 
     document.getElementById('modal-job-title').textContent = 'Edit Scheduled Job';
     document.getElementById('job-id').value = job.id;
@@ -255,7 +257,7 @@ async function deleteJob(jobId) {
   if (!confirm('Are you sure you want to delete this job?')) return;
 
   try {
-    await api.delete(`/api/v1/scheduler/jobs/${jobId}`);
+    await apiFetch(`/scheduler/jobs/${jobId}`, { method: "DELETE" });
     showNotification('Job deleted successfully', 'success');
     loadJobs();
   } catch (error) {
