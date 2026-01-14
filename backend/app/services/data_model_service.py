@@ -661,6 +661,47 @@ class DataModelService:
                 logger = logging.getLogger(__name__)
                 logger.error(f"Failed to auto-generate metadata for {entity.name}: {str(meta_error)}")
 
+            # Auto-create menu item for published nocode entity
+            try:
+                from app.services.menu_service import MenuService
+                import logging
+                logger = logging.getLogger(__name__)
+
+                # Create menu item with route to dynamic entity list view
+                menu_data = {
+                    'code': f'nocode_entity_{entity.name}',
+                    'title': entity.label or entity.name.replace('_', ' ').title(),
+                    'route': f'dynamic/{entity.name}/list',
+                    'icon': entity.icon or 'ph-duotone ph-database',
+                    'parent_code': 'nocode_entities',  # Will be created if not exists
+                    'permission': None,  # Default permission - will be filtered by entity access control
+                    'required_roles': [],
+                    'is_system': False,
+                    'is_active': True,
+                    'extra_data': {
+                        'entity_id': str(entity.id),
+                        'is_nocode': True
+                    }
+                }
+
+                # Ensure parent "No-Code Entities" menu exists
+                parent_menu = MenuService.get_or_create_nocode_parent(self.db, entity.tenant_id, str(self.current_user.id))
+
+                # Create menu item
+                MenuService.create_menu_item(
+                    db=self.db,
+                    user=self.current_user,
+                    menu_data=menu_data
+                )
+
+                logger.info(f"✅ Auto-created menu item for nocode entity: {entity.name}")
+
+            except Exception as menu_error:
+                # Log error but don't fail the publish
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f"Failed to auto-create menu item for {entity.name}: {str(menu_error)}")
+
             self.db.commit()
             self.db.refresh(migration)
 

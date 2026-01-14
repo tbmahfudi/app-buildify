@@ -627,3 +627,64 @@ class MenuService:
 
         db.commit()
         return True
+
+    @staticmethod
+    def get_or_create_nocode_parent(
+        db: Session,
+        tenant_id: Optional[str],
+        created_by: str
+    ) -> MenuItem:
+        """
+        Get or create the "No-Code Entities" parent menu item.
+
+        This menu serves as the container for all auto-generated nocode entity menu items.
+
+        Args:
+            db: Database session
+            tenant_id: Tenant ID (None for system menu)
+            created_by: User ID creating the menu
+
+        Returns:
+            MenuItem for "No-Code Entities" parent menu
+        """
+        from app.models.base import generate_uuid
+
+        # Check if parent menu already exists
+        parent = db.query(MenuItem).filter(
+            MenuItem.code == 'nocode_entities',
+            or_(
+                MenuItem.tenant_id == tenant_id,
+                MenuItem.tenant_id == None  # System menu
+            )
+        ).first()
+
+        if parent:
+            return parent
+
+        # Create parent menu
+        parent = MenuItem(
+            id=generate_uuid(),
+            code='nocode_entities',
+            title='No-Code Entities',
+            route=None,  # Parent menu without direct route
+            icon='ph-duotone ph-squares-four',
+            parent_id=None,
+            order=90,  # Place near the end of the menu
+            permission=None,  # Accessible to all authenticated users
+            required_roles=[],
+            is_system=False,
+            is_active=True,
+            is_visible=True,
+            tenant_id=tenant_id,
+            created_by=created_by,
+            extra_data={
+                'is_nocode_parent': True,
+                'description': 'Dynamically generated entities from the No-Code platform'
+            }
+        )
+
+        db.add(parent)
+        db.commit()
+        db.refresh(parent)
+
+        return parent
