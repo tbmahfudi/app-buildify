@@ -104,6 +104,13 @@ class DynamicEntityService:
                 {'created': record_dict}
             )
 
+            # Trigger automations
+            await self._trigger_automations(
+                entity_name,
+                'onCreate',
+                record_dict
+            )
+
             logger.info(f"Created {entity_name} record: {record_dict.get('id')}")
 
             return record_dict
@@ -288,6 +295,13 @@ class DynamicEntityService:
                 {'before': before, 'after': after}
             )
 
+            # Trigger automations
+            await self._trigger_automations(
+                entity_name,
+                'onUpdate',
+                after
+            )
+
             logger.info(f"Updated {entity_name} record: {record_id}")
 
             return after
@@ -353,6 +367,13 @@ class DynamicEntityService:
             entity_name,
             record_id,
             {'deleted': before, 'deletion_type': deletion_type}
+        )
+
+        # Trigger automations
+        await self._trigger_automations(
+            entity_name,
+            'onDelete',
+            before
         )
 
         logger.info(f"Deleted {entity_name} record: {record_id} ({deletion_type})")
@@ -609,3 +630,67 @@ class DynamicEntityService:
         except Exception as e:
             # Don't fail the operation if audit logging fails
             logger.error(f"Failed to create audit log: {e}")
+
+    async def _trigger_automations(
+        self,
+        entity_name: str,
+        event: str,
+        record: Dict[str, Any]
+    ):
+        """
+        Trigger automation rules for nocode entity events
+
+        Args:
+            entity_name: Name of the entity
+            event: Event type (onCreate, onUpdate, onDelete)
+            record: Record data
+
+        Events:
+            - onCreate: Triggered after record creation
+            - onUpdate: Triggered after record update
+            - onDelete: Triggered after record deletion
+        """
+        try:
+            from app.models.automation import AutomationRule
+            from app.services.automation_service import AutomationService
+
+            # Find matching automation rules
+            rules = self.db.query(AutomationRule).filter(
+                AutomationRule.trigger_type == 'database',
+                AutomationRule.is_active == True
+            ).all()
+
+            # Filter rules by entity and event
+            matching_rules = []
+            for rule in rules:
+                trigger_config = rule.trigger_config or {}
+                if (trigger_config.get('entity_name') == entity_name and
+                    trigger_config.get('event') == event):
+                    matching_rules.append(rule)
+
+            if not matching_rules:
+                logger.debug(f"No automation rules found for {entity_name}.{event}")
+                return
+
+            # Execute each matching rule
+            automation_service = AutomationService(self.db, self.current_user)
+            for rule in matching_rules:
+                try:
+                    logger.info(f"Triggering automation rule: {rule.name} for {entity_name}.{event}")
+                    await automation_service.execute_rule(
+                        rule.id,
+                        context={
+                            'entity': entity_name,
+                            'event': event,
+                            'record': record,
+                            'user_id': str(self.current_user.id),
+                            'tenant_id': str(self.current_user.tenant_id) if self.current_user.tenant_id else None
+                        }
+                    )
+                except Exception as rule_error:
+                    # Log error but continue with other rules
+                    logger.error(f"Failed to execute automation rule {rule.name}: {rule_error}")
+
+        except Exception as e:
+            # Don't fail the operation if automation triggering fails
+            logger.error(f"Failed to trigger automations for {entity_name}.{event}: {e}")

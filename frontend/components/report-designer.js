@@ -14,6 +14,7 @@ import { reportService } from '../assets/js/report-service.js';
 import { dataService } from '../assets/js/data-service.js';
 import { metadataService } from '../assets/js/metadata-service.js';
 import { showNotification } from '../assets/js/notifications.js';
+import { apiFetch } from '../assets/js/api.js';
 
 export class ReportDesigner {
     constructor(container, reportId = null) {
@@ -23,6 +24,8 @@ export class ReportDesigner {
         this.currentStep = 1;
         this.totalSteps = 5;
         this.availableFields = []; // Store fields from selected entity
+        this.availableEntities = []; // Store all available entities (standard + nocode)
+        this.entitiesLoaded = false; // Flag to track if entities are loaded
     }
 
     _getDefaultReportData() {
@@ -49,10 +52,71 @@ export class ReportDesigner {
         };
     }
 
+    /**
+     * Load all available entities (standard + nocode)
+     */
+    async loadAvailableEntities() {
+        if (this.entitiesLoaded) {
+            return; // Already loaded
+        }
+
+        try {
+            const allEntities = [];
+
+            // Load standard entities from metadata service
+            try {
+                const response = await apiFetch('/metadata/entities');
+                if (response.ok) {
+                    const systemEntities = await response.json();
+                    systemEntities.forEach(entity => {
+                        allEntities.push({
+                            name: entity.entity_name || entity.name,
+                            label: entity.display_name || entity.label || entity.name,
+                            type: 'system',
+                            icon: entity.icon || 'table'
+                        });
+                    });
+                }
+            } catch (error) {
+                console.warn('Failed to load standard entities:', error);
+            }
+
+            // Load nocode entities (published only)
+            try {
+                const response = await apiFetch('/data-model/entities?status=published');
+                if (response.ok) {
+                    const nocodeEntities = await response.json();
+                    nocodeEntities.forEach(entity => {
+                        allEntities.push({
+                            name: entity.name,
+                            label: entity.label || entity.name,
+                            type: 'nocode',
+                            icon: entity.icon || 'database'
+                        });
+                    });
+                }
+            } catch (error) {
+                console.warn('Failed to load nocode entities:', error);
+            }
+
+            this.availableEntities = allEntities;
+            this.entitiesLoaded = true;
+
+            console.log(`✓ Loaded ${allEntities.length} entities for reports (${allEntities.filter(e => e.type === 'system').length} standard, ${allEntities.filter(e => e.type === 'nocode').length} nocode)`);
+
+        } catch (error) {
+            console.error('Error loading entities for reports:', error);
+            this.availableEntities = [];
+        }
+    }
+
     async render() {
         if (this.reportId) {
             await this.loadReport();
         }
+
+        // Load entities upfront
+        await this.loadAvailableEntities();
 
         this.container.innerHTML = `
             <div class="report-designer">
@@ -203,6 +267,14 @@ export class ReportDesigner {
     }
 
     _renderDataSourceStep() {
+        // Generate entity options dynamically from loaded entities
+        const entityOptions = this.availableEntities.length > 0
+            ? this.availableEntities.map(entity => {
+                const badge = entity.type === 'nocode' ? '<span class="ml-2 text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded">NoCode</span>' : '';
+                return `<option value="${entity.name}" ${this.reportData.base_entity === entity.name ? 'selected' : ''}>${entity.label}${entity.type === 'nocode' ? ' (NoCode)' : ''}</option>`;
+              }).join('')
+            : '<option value="">No entities available</option>';
+
         return `
             <h3 class="text-xl font-bold mb-4">Data Source Configuration</h3>
             <div class="space-y-4">
@@ -210,12 +282,9 @@ export class ReportDesigner {
                     <label class="block text-sm font-medium text-gray-700 mb-1">Base Entity/Table *</label>
                     <select id="base-entity" class="input-field">
                         <option value="">Select an entity...</option>
-                        <option value="companies" ${this.reportData.base_entity === 'companies' ? 'selected' : ''}>Companies</option>
-                        <option value="branches" ${this.reportData.base_entity === 'branches' ? 'selected' : ''}>Branches</option>
-                        <option value="departments" ${this.reportData.base_entity === 'departments' ? 'selected' : ''}>Departments</option>
-                        <option value="users" ${this.reportData.base_entity === 'users' ? 'selected' : ''}>Users</option>
+                        ${entityOptions}
                     </select>
-                    <p class="text-xs text-gray-500 mt-1">Select the primary data source for your report</p>
+                    <p class="text-xs text-gray-500 mt-1">Select the primary data source for your report (includes standard and NoCode entities)</p>
                 </div>
 
                 <div class="border-t pt-4">
