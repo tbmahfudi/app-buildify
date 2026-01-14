@@ -2,6 +2,7 @@ import { apiFetch, login, logout as apiLogout } from './api.js';
 import { showToast, showLoading, hideLoading } from './ui-utils.js';
 import { filterMenuByRole, applyRBACToElements } from './rbac.js';
 import { moduleLoader, moduleRegistry } from './core/module-system/index.js';
+import { dynamicRouteRegistry } from './dynamic-route-registry.js';
 
 // Module-level state (not polluting global namespace)
 const appState = {
@@ -139,6 +140,16 @@ export async function initApp() {
 
   // Load menu (now includes module menu items)
   await loadMenu();
+
+  // Register all published nocode entities for auto-generated UI
+  try {
+    console.log('Loading published nocode entities...');
+    await dynamicRouteRegistry.registerAllPublishedEntities();
+    console.log('✓ Published nocode entities registered');
+  } catch (error) {
+    console.error('Failed to register nocode entities:', error);
+    // Continue even if entity registration fails
+  }
 
   // Load initial route
   const hash = window.location.hash.slice(1) || 'dashboard';
@@ -1439,6 +1450,15 @@ async function loadRoute(route) {
   `;
 
   try {
+    // Check if this is a dynamic entity route (nocode auto-generated UI)
+    const handled = await dynamicRouteRegistry.handleRoute(route, content);
+    if (handled) {
+      document.dispatchEvent(new CustomEvent('route:loaded', {
+        detail: { route, isDynamic: true }
+      }));
+      return;
+    }
+
     // Handle builder routes (core feature, not a module)
     if (route === 'builder' || route.startsWith('builder?')) {
       console.log('Loading builder page');
