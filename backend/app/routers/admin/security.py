@@ -36,7 +36,7 @@ from app.schemas.security import (
     UserSessionResponse,
 )
 
-router = APIRouter(prefix="/admin/security", tags=["admin", "security"])
+router = APIRouter(prefix="/api/v1/admin/security", tags=["admin", "security"])
 
 
 # ==================== Security Policies ====================

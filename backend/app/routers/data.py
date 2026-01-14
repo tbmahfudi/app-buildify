@@ -22,7 +22,7 @@ from app.schemas.data import (
     DataUpdateRequest,
 )
 
-router = APIRouter(prefix="/data", tags=["data"])
+router = APIRouter(prefix="/api/v1/data", tags=["data"])
 logger = logging.getLogger(__name__)
 
 # Entity registry - maps entity names to SQLAlchemy models

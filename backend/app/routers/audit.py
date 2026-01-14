@@ -12,7 +12,7 @@ from app.schemas.audit import (
     AuditLogResponse, AuditLogListRequest, AuditLogListResponse
 )
 
-router = APIRouter(prefix="/audit", tags=["audit"])
+router = APIRouter(prefix="/api/v1/audit", tags=["audit"])
 
 @router.post("/list", response_model=AuditLogListResponse)
 def list_audit_logs(

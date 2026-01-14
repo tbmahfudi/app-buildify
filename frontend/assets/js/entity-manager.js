@@ -5,9 +5,14 @@ import { DynamicForm } from './dynamic-form.js';
 import FlexModal from './components/flex-modal.js';
 import FlexButton from './components/flex-button.js';
 import FlexAlert from './components/flex-alert.js';
+import { apiFetch } from './api.js';
 
 /**
- * Entity Manager - Complete CRUD UI for any entity
+ * Entity Manager - Complete CRUD UI for any entity (standard and nocode)
+ *
+ * Supports:
+ * - Standard entities (using metadata-service and data-service)
+ * - NoCode entities (using dynamic-data endpoints and entity definitions)
  */
 export class EntityManager {
   constructor(container, entity) {
@@ -16,6 +21,7 @@ export class EntityManager {
     this.metadata = null;
     this.table = null;
     this.modal = null;
+    this.isNocodeEntity = false;
   }
 
   /**
@@ -23,27 +29,42 @@ export class EntityManager {
    */
   async init() {
     try {
-      // Load metadata
-      this.metadata = await metadataService.getMetadata(this.entity);
-      
+      // Try to load standard metadata first
+      try {
+        this.metadata = await metadataService.getMetadata(this.entity);
+        this.isNocodeEntity = false;
+      } catch (standardError) {
+        // Standard metadata failed - try nocode entity definition
+        console.log(`Standard metadata not found for ${this.entity}, trying nocode entity...`);
+        try {
+          const entityDef = await this.loadNocodeEntityDefinition(this.entity);
+          this.metadata = this.convertEntityDefToMetadata(entityDef);
+          this.isNocodeEntity = true;
+          console.log(`✅ Loaded nocode entity: ${this.entity}`);
+        } catch (nocodeError) {
+          // Neither standard nor nocode entity found
+          throw new Error(`Entity "${this.entity}" not found (tried both standard and nocode)`);
+        }
+      }
+
       // Render UI
       this.render();
-      
+
       // Setup modal
       this.setupModal();
-      
+
       // Render table
       this.table = new DynamicTable(
         document.getElementById(`${this.entity}-table-container`),
         this.entity,
         this.metadata
       );
-      
+
       // Handle row actions
       this.table.onRowAction = (action, row) => this.handleRowAction(action, row);
-      
+
       await this.table.render();
-      
+
     } catch (error) {
       console.error('Failed to initialize entity manager:', error);
       this.container.innerHTML = '';
@@ -54,6 +75,64 @@ export class EntityManager {
         icon: true
       });
     }
+  }
+
+  /**
+   * Load nocode entity definition from API
+   */
+  async loadNocodeEntityDefinition(entityName) {
+    const response = await apiFetch(`/data-model/entities/${entityName}`);
+    if (!response.ok) {
+      throw new Error(`Entity definition not found: ${response.status}`);
+    }
+    return await response.json();
+  }
+
+  /**
+   * Convert nocode entity definition to metadata format
+   */
+  convertEntityDefToMetadata(entityDef) {
+    // Convert entity definition fields to metadata format
+    const fields = entityDef.fields.map(field => ({
+      name: field.name,
+      label: field.label || field.name,
+      type: field.field_type,
+      required: field.required || false,
+      max_length: field.max_length,
+      decimal_places: field.decimal_places,
+      options: field.options,
+      default_value: field.default_value,
+      help_text: field.help_text,
+      validation_rules: field.validation_rules
+    }));
+
+    // Convert to table columns
+    const columns = entityDef.fields
+      .filter(field => !field.hidden)
+      .map(field => ({
+        field: field.name,
+        title: field.label || field.name,
+        type: field.field_type,
+        sortable: true,
+        filterable: true
+      }));
+
+    return {
+      name: entityDef.name,
+      display_name: entityDef.label || entityDef.name,
+      description: entityDef.description,
+      icon: entityDef.icon || 'database',
+      fields,
+      table: {
+        columns,
+        default_sort: [{ field: 'created_at', order: 'desc' }],
+        page_size: 25
+      },
+      form: {
+        fields: fields.filter(f => !['id', 'created_at', 'updated_at'].includes(f.name))
+      },
+      permissions: {}
+    };
   }
 
   /**
@@ -178,8 +257,10 @@ export class EntityManager {
     const title = `Edit ${this.metadata.display_name.slice(0, -1)}`;
 
     try {
-      // Fetch full record
-      const record = await dataService.get(this.entity, row.id);
+      // Fetch full record using appropriate service
+      const record = this.isNocodeEntity
+        ? await this.getNocodeRecord(row.id)
+        : await dataService.get(this.entity, row.id);
 
       // Create form container
       const formContainer = document.createElement('div');
@@ -246,12 +327,20 @@ export class EntityManager {
       // Set loading state on the save button
       this.modal.setLoading(true);
 
-      if (this.currentRecord) {
-        // Update
-        await dataService.update(this.entity, this.currentRecord.id, data);
+      if (this.isNocodeEntity) {
+        // Use nocode endpoints
+        if (this.currentRecord) {
+          await this.updateNocodeRecord(this.currentRecord.id, data);
+        } else {
+          await this.createNocodeRecord(data);
+        }
       } else {
-        // Create
-        await dataService.create(this.entity, data);
+        // Use standard endpoints
+        if (this.currentRecord) {
+          await dataService.update(this.entity, this.currentRecord.id, data);
+        } else {
+          await dataService.create(this.entity, data);
+        }
       }
 
       this.modal.close();
@@ -272,7 +361,11 @@ export class EntityManager {
     }
 
     try {
-      await dataService.delete(this.entity, row.id);
+      if (this.isNocodeEntity) {
+        await this.deleteNocodeRecord(row.id);
+      } else {
+        await dataService.delete(this.entity, row.id);
+      }
       await this.table.refresh();
     } catch (error) {
       alert(`Failed to delete: ${error.message}`);
@@ -374,5 +467,78 @@ export class EntityManager {
     const errorDiv = document.getElementById(`${this.entity}-error`);
     errorDiv.innerHTML = '';
     errorDiv.style.display = 'none';
+  }
+
+  /**
+   * ========================================
+   * NoCode Entity CRUD Adapter Methods
+   * ========================================
+   * These methods handle CRUD operations for dynamically-defined nocode entities
+   * using the /dynamic-data endpoints
+   */
+
+  /**
+   * Get a single nocode record
+   */
+  async getNocodeRecord(id) {
+    const response = await apiFetch(`/dynamic-data/${this.entity}/records/${id}`);
+    if (!response.ok) {
+      throw new Error(`Failed to load record: ${response.status}`);
+    }
+    const result = await response.json();
+    // dynamic-data returns { id, data } format
+    return result.data || result;
+  }
+
+  /**
+   * Create a nocode record
+   */
+  async createNocodeRecord(data) {
+    const response = await apiFetch(`/dynamic-data/${this.entity}/records`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ data })
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Create failed');
+    }
+
+    return await response.json();
+  }
+
+  /**
+   * Update a nocode record
+   */
+  async updateNocodeRecord(id, data) {
+    const response = await apiFetch(`/dynamic-data/${this.entity}/records/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ data })
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Update failed');
+    }
+
+    return await response.json();
+  }
+
+  /**
+   * Delete a nocode record
+   */
+  async deleteNocodeRecord(id) {
+    const response = await apiFetch(`/dynamic-data/${this.entity}/records/${id}`, {
+      method: 'DELETE'
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Delete failed');
+    }
+
+    return true;
   }
 }

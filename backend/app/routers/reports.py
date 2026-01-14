@@ -32,7 +32,7 @@ from app.schemas.report import (
 from app.services.report_export import ReportExporter
 from app.services.report_service import ReportService
 
-router = APIRouter(prefix="/reports", tags=["reports"])
+router = APIRouter(prefix="/api/v1/reports", tags=["reports"])
 logger = logging.getLogger(__name__)
 
 

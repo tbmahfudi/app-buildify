@@ -31,7 +31,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/menu", tags=["menu"])
+router = APIRouter(prefix="/api/v1/menu", tags=["menu"])
 
 
 @router.get("", response_model=List[MenuItemTree])

@@ -47,7 +47,7 @@ from app.schemas.org import (
     TenantUpdate,
 )
 
-router = APIRouter(prefix="/org", tags=["org"])
+router = APIRouter(prefix="/api/v1/org", tags=["org"])
 logger = logging.getLogger(__name__)
 
 # ============= COMPANIES =============

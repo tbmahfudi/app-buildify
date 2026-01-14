@@ -19,7 +19,7 @@ from app.schemas.metadata import (
     TableConfig,
 )
 
-router = APIRouter(prefix="/metadata", tags=["metadata"])
+router = APIRouter(prefix="/api/v1/metadata", tags=["metadata"])
 logger = logging.getLogger(__name__)
 
 @router.get("/entities", response_model=EntityListResponse)

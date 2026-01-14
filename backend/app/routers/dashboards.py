@@ -32,7 +32,7 @@ from app.schemas.dashboard import (
 )
 from app.services.dashboard_service import DashboardService
 
-router = APIRouter(prefix="/dashboards", tags=["dashboards"])
+router = APIRouter(prefix="/api/v1/dashboards", tags=["dashboards"])
 logger = logging.getLogger(__name__)
 
 
