@@ -1,7 +1,7 @@
 # No-Code Platform - High-Level Design
 
 **Date:** 2026-01-02
-**Last Updated:** 2026-01-14
+**Last Updated:** 2026-01-15
 **Project:** App-Buildify
 **Purpose:** High-level design and architecture of the No-Code Platform
 
@@ -13,10 +13,11 @@ App-Buildify is a comprehensive no-code/low-code platform that enables sysadmin 
 
 **Vision:** Configure everything from the platform - if developing a new module with all needed functionality, only platform configuration is required. Backend processes are handled separately in their own modules/business services.
 
-**Current Status (2026-01-14):**
+**Current Status (2026-01-15):**
 - ✅ **Phase 1 Core Foundation:** 100% Complete
 - ✅ **Phase 2 Runtime Layer:** 100% Complete
-- 📋 **Phase 3+ Advanced Features:** Ready to Start
+- 📋 **Phase 3 Visual Designer Enhancement & Menu Consolidation:** Ready to Start
+- 📋 **Phase 4-6 Advanced Features:** Future Planning
 
 ---
 
@@ -397,7 +398,315 @@ automations:read:all        - Read all automation rules
 
 ---
 
-### 📋 Phase 3: Integration & Communication (Future)
+### 📋 Phase 3: Visual Designer Enhancement & Menu Consolidation (Ready to Start)
+
+**Goal:** Consolidate No-Code Platform menu, enable visual designers, and enhance user experience
+
+**Status:** Ready to Start
+
+**Priorities:**
+
+#### Priority 1: Menu Consolidation & Designer Activation (1-2 weeks)
+**Goal:** Reorganize menu structure and enable existing but inaccessible designers
+
+**Sub-Tasks:**
+1. **Menu Restructuring** - Consolidate all no-code tools under unified menu
+   - Move UI Builder (Page Designer, Manage Pages) to No-Code Platform
+   - Move System Management tools (Menu Management, Menu Sync, Module Management) to No-Code Platform
+   - Create logical groupings: Data & Schema, UI & Pages, Reports & Dashboards, Business Logic, Platform Configuration
+   - Update menu.json with new hierarchical structure
+   - Update i18n translations
+
+2. **Enable Report & Dashboard Designers** - Critical: Unlock existing 1,552 lines of code
+   - Register routes in app.js (report-designer, dashboard-designer)
+   - Create Reports List page (reports-list.html, reports-list-page.js)
+   - Create Dashboards List page (dashboards-list.html, dashboards-list-page.js)
+   - Add menu items to No-Code Platform menu
+   - Test existing designer functionality (843 lines report, 709 lines dashboard)
+
+3. **Menu Sync UI Implementation** - Complete the menu management workflow
+   - Replace placeholder UI with functional interface
+   - Add sync configuration options (clear existing checkbox)
+   - Implement sync trigger with confirmation
+   - Add sync history display
+   - Create JavaScript handler (settings-menu-sync-page.js)
+
+4. **Cross-Feature Quick Actions** - Improve workflow efficiency
+   - Add "Create Report on this Entity" button in Data Model Designer
+   - Add "Create Page for this Entity" button in Data Model Designer
+   - Add "Add to Dashboard" button in Report Designer
+   - Add "Add to Menu" button in Page Designer and Dashboard Designer
+   - Add "Create Automation for this Report" button in Report Designer
+
+**Deliverables:**
+- ✅ Unified No-Code Platform menu with logical groupings
+- ✅ Report & Dashboard designers accessible from menu
+- ✅ Functional Menu Sync UI
+- ✅ Quick action buttons for improved workflows
+- ✅ Updated documentation and user guides
+
+---
+
+#### Priority 2: Visual Report Designer Enhancement (3-4 weeks)
+**Goal:** Transform text-based report configuration into fully visual experience
+
+**Current State:**
+- ✅ 5-step wizard (Data Source, Columns, Parameters, Formatting, Preview)
+- ✅ NoCode entity support
+- ✅ Export formats (PDF, Excel, CSV, JSON, HTML)
+- ✅ Scheduling and caching
+- ❌ Text-based configuration (dropdowns and forms)
+
+**Enhancement Tasks:**
+
+1. **Visual Data Source Builder** (Week 1)
+   - Replace dropdown with entity relationship diagram
+   - Show entity relationships graphically (using D3.js or Cytoscape.js)
+   - Drag-and-drop to add entity joins
+   - Visual filter builder (similar to Automation Rules)
+   - Preview data sample (top 10 rows)
+
+2. **Drag-and-Drop Column Designer** (Week 1)
+   - Left panel: Entity schema with available fields
+   - Center panel: Selected columns with drag-to-reorder
+   - Right panel: Column properties (formatting, aggregation, alias)
+   - Visual format preview for each column
+   - Quick actions: Add all fields, Clear all, Group by entity
+
+3. **Visual Chart Builder** (Week 2)
+   - Chart type selector with thumbnails and previews
+   - Drag fields to axis configuration (X-axis, Y-axis, Series, Filters)
+   - Color scheme designer with preset palettes
+   - Visual chart customization (titles, legends, tooltips)
+   - Live chart preview with sample data
+   - Support for all 9 chart types (Bar, Line, Pie, Donut, Area, Scatter, Radar, Polar, Bubble)
+
+4. **Split-Pane Live Preview** (Week 2)
+   - Left pane: Configuration wizard
+   - Right pane: Live data preview
+   - Toggle between table view and chart view
+   - Auto-refresh on configuration changes
+   - Performance metrics (query time, row count)
+
+5. **Enhanced Parameter UI** (Week 3)
+   - Visual parameter builder
+   - Input type selector with previews (text, number, date, dropdown, checkbox)
+   - Default value configuration
+   - Dependency rules (cascading parameters)
+   - Test parameter values in preview
+
+6. **Template Library** (Week 3-4)
+   - Pre-built report templates (Sales Report, Inventory Report, Customer Analytics, etc.)
+   - Template preview with screenshots
+   - Clone and customize templates
+   - Save custom templates for reuse
+
+**Deliverables:**
+- ✅ Fully visual report designer with drag-and-drop
+- ✅ Live preview with auto-refresh
+- ✅ Template library with 10+ templates
+- ✅ Enhanced user experience (50% faster report creation)
+
+---
+
+#### Priority 3: Visual Dashboard Designer Enhancement (3-4 weeks)
+**Goal:** Transform form-based dashboard configuration into drag-and-drop canvas
+
+**Current State:**
+- ✅ 4-step wizard (Details, Pages, Widgets, Preview)
+- ✅ Widget types (9 chart types + metrics)
+- ✅ Theme support
+- ✅ Multi-page dashboards
+- ❌ Form-based widget configuration
+
+**Enhancement Tasks:**
+
+1. **Visual Layout Canvas (GrapeJS-style)** (Week 1-2)
+   - Grid-based layout with snap-to-grid (12-column responsive grid)
+   - Drag widgets from left palette to canvas
+   - Visual resize handles (drag corners/edges)
+   - Widget positioning with pixel-perfect placement
+   - Copy/paste/duplicate widgets
+   - Undo/redo support
+   - Grid guidelines and alignment helpers
+
+2. **Widget Library with Visual Previews** (Week 2)
+   - Categorized palette with thumbnails:
+     - 📊 **Charts:** Bar, Line, Pie, Donut, Area, Scatter, Radar, Polar, Bubble
+     - 📈 **Metrics:** KPI Card, Gauge, Progress Bar, Stat Card, Number Counter
+     - 📋 **Tables:** Data Grid, Summary Table, Pivot Table
+     - 📝 **Text:** Header (H1-H6), Paragraph, Rich Text Editor
+     - 🖼️ **Media:** Image, Video, Iframe Embed
+     - 🔗 **Actions:** Button, Link, Dropdown Menu, Filter Panel
+   - Live preview on hover
+   - Drag to add to canvas
+   - Widget search and favorites
+
+3. **Live Dashboard Preview** (Week 2-3)
+   - Multi-device preview modes:
+     - 💻 Desktop (1920x1080, 1366x768)
+     - 📱 Tablet (768x1024, 1024x768)
+     - 📱 Mobile (375x812, 414x896)
+   - Theme switcher (Light/Dark/Custom)
+   - Live data toggle (Real data vs Mock data)
+   - Performance metrics overlay (load time, API calls)
+   - Refresh rate configuration
+   - Auto-save with version history
+
+4. **Enhanced Widget Configuration** (Week 3)
+   - Visual report selector with search/filter/preview
+   - Chart type visual picker with previews
+   - Color scheme designer:
+     - Preset palettes (Material, Tailwind, Bootstrap, Custom)
+     - Color picker for custom colors
+     - Gradient support
+   - Visual spacing editor (padding, margin with visual preview)
+   - Border and shadow designer
+   - Conditional formatting rules
+
+5. **Dashboard Templates** (Week 4)
+   - Pre-built dashboard templates:
+     - Executive Dashboard (KPIs, trends, top metrics)
+     - Sales Dashboard (revenue, pipeline, conversion)
+     - Operations Dashboard (capacity, efficiency, alerts)
+     - Analytics Dashboard (user behavior, traffic, engagement)
+     - Financial Dashboard (P&L, cash flow, budget vs actual)
+   - Template gallery with screenshots and descriptions
+   - Clone and customize templates
+   - Save custom templates
+
+6. **Interactive Features** (Week 4)
+   - Widget drill-down (click chart to see details)
+   - Widget filtering (click to filter other widgets)
+   - Cross-widget communication
+   - Real-time data refresh
+   - Export dashboard (PDF, Image, Interactive HTML)
+
+**Deliverables:**
+- ✅ Fully visual drag-and-drop dashboard canvas
+- ✅ Widget library with 30+ widget types
+- ✅ Multi-device preview with live data
+- ✅ Template library with 5+ dashboard templates
+- ✅ Enhanced user experience (60% faster dashboard creation)
+
+---
+
+#### Priority 4: Developer Tools Enhancement (2-3 weeks)
+**Goal:** Define and document features for Schema Designer, API Playground, and Code Generator
+
+**Note:** Implementation decision pending - currently defining features only
+
+**Feature Definitions:**
+
+1. **Schema Designer**
+   - **Purpose:** Visual database schema viewer and lightweight editor
+   - **Target Users:** Developers, Database Admins, System Architects
+   - **Key Features:**
+     - Visual ER diagram of entire database schema
+     - Interactive node-based graph (entities as nodes, relationships as edges)
+     - Zoom, pan, filter by schema/table
+     - Click entity to view details (columns, indexes, constraints, relationships)
+     - Read-only view of system tables
+     - Export schema as image (PNG, SVG) or documentation (PDF, Markdown)
+     - Compare schemas across tenants or environments
+     - Integration with Data Model Designer (open entity in designer)
+   - **Implementation Approach:**
+     - Use existing Data Model Designer metadata
+     - Add read-only visualization layer
+     - Leverage D3.js or Cytoscape.js for graph rendering
+   - **Estimated Effort:** 2-3 weeks
+   - **Dependencies:** Data Model Designer (already complete)
+
+2. **API Playground**
+   - **Purpose:** Interactive API testing and documentation tool (Swagger/Postman alternative)
+   - **Target Users:** Developers, Integration Engineers, QA Testers
+   - **Key Features:**
+     - Auto-generated API documentation from OpenAPI spec
+     - Interactive request builder (method, headers, body, query params)
+     - Authentication handling (JWT token injection)
+     - Request history and favorites
+     - Response viewer with syntax highlighting (JSON, XML, HTML)
+     - Code snippet generator (Python, JavaScript, cURL, PHP)
+     - Test collection builder (save and replay API sequences)
+     - Environment variables (dev, staging, production)
+     - Mock server for testing frontend before backend ready
+     - WebSocket support for real-time APIs
+   - **Implementation Approach:**
+     - Build on top of existing FastAPI OpenAPI spec
+     - Integrate with authentication system
+     - Use Monaco Editor for request/response editing
+   - **Estimated Effort:** 3-4 weeks
+   - **Dependencies:** OpenAPI spec generation, Auth system
+
+3. **Code Generator**
+   - **Purpose:** Generate boilerplate code from NoCode entity definitions
+   - **Target Users:** Developers extending the platform
+   - **Key Features:**
+     - Generate SQLAlchemy models from EntityDefinition
+     - Generate Pydantic schemas (request/response)
+     - Generate FastAPI CRUD endpoints
+     - Generate frontend forms and tables (HTML + JS)
+     - Generate test cases (pytest, jest)
+     - Generate API documentation (Markdown)
+     - Template customization (modify code templates)
+     - Preview generated code before download
+     - Export as ZIP or Git repository
+     - Support for multiple languages/frameworks:
+       - Backend: Python (FastAPI), Node.js (Express), Java (Spring Boot)
+       - Frontend: React, Vue.js, Vanilla JS
+   - **Implementation Approach:**
+     - Template engine (Jinja2) for code generation
+     - Read from EntityDefinition and EntityMetadata
+     - Modular generator architecture (separate generators per artifact type)
+   - **Estimated Effort:** 4-6 weeks
+   - **Dependencies:** Data Model Designer, Entity Metadata
+
+**Deliverables:**
+- ✅ Feature specification documents for Schema Designer
+- ✅ Feature specification documents for API Playground
+- ✅ Feature specification documents for Code Generator
+- ✅ Architecture diagrams and technical designs
+- ✅ Effort estimation and resource planning
+- ⏸️ Implementation decision: To be determined by stakeholders
+
+---
+
+**Phase 3 Summary:**
+
+**Duration:** 8-12 weeks (depending on priorities selected)
+
+**Quick Wins (Priority 1):** 1-2 weeks
+- Menu consolidation
+- Enable existing designers
+- Menu Sync UI
+- Cross-feature quick actions
+
+**Major Enhancements (Priority 2-3):** 6-8 weeks
+- Visual Report Designer
+- Visual Dashboard Designer
+
+**Documentation (Priority 4):** 2-3 weeks
+- Feature specifications for future tools
+
+**Total Effort:**
+- Minimum viable (Priority 1 only): 1-2 weeks
+- Recommended (Priority 1-2): 4-6 weeks
+- Complete (Priority 1-3): 8-10 weeks
+- Full scope (Priority 1-4): 10-12 weeks
+
+**Success Metrics:**
+- ✅ All no-code tools accessible from unified menu
+- ✅ Report/Dashboard designers available to all users
+- ✅ 50% reduction in report creation time (with visual enhancements)
+- ✅ 60% reduction in dashboard creation time (with visual enhancements)
+- ✅ Positive user feedback (>4.5/5 rating)
+- ✅ Increased platform adoption (>80% of users create custom reports/dashboards)
+
+**Detail:** See [NO-CODE-PHASE3.md](NO-CODE-PHASE3.md) (to be created when phase starts)
+
+---
+
+### 📋 Phase 4: Integration & Communication (Future)
 
 **Goal:** Connect with external systems
 
@@ -406,10 +715,13 @@ automations:read:all        - Read all automation rules
 - Email Template Designer
 - Notification Configuration
 - Document Template Designer
+- Webhook Management
+- External API Connectors
+- Data Sync Configuration
 
 ---
 
-### 📋 Phase 4: Advanced Features (Future)
+### 📋 Phase 5: Advanced Features (Future)
 
 **Goal:** Power user capabilities
 
@@ -417,21 +729,25 @@ automations:read:all        - Read all automation rules
 - Calculated Fields & Formula Builder
 - Custom Validation Rules Designer
 - Data Import/Export Templates
-- Query Builder (Advanced)
+- Query Builder (Advanced SQL)
 - Scheduled Jobs/Batch Processes
+- Data Transformation Rules
+- Custom Functions Library
 
 ---
 
-### 📋 Phase 5: Administration & Customization (Future)
+### 📋 Phase 6: Administration & Customization (Future)
 
 **Goal:** Enterprise features
 
 **Features:**
-- Record-Level Security
+- Record-Level Security (Row-Level Security)
 - Theme & Branding Designer
 - Localization/Translation Management
-- Audit Configuration
+- Audit Configuration & Compliance
 - Mobile App Configuration
+- White-Label Configuration
+- Advanced Caching Strategies
 
 ---
 
@@ -472,7 +788,8 @@ The platform achieves complete no-code capability when:
 6. ✅ **Automation** - Event triggers on nocode entities (Phase 1+2 - Done)
 7. ✅ **Reporting** - Reports and dashboards buildable from UI (Existing - Done)
 8. ✅ **Security** - Permissions configurable from UI (Existing - Done)
-9. 📋 **Customization** - Branding, themes, localization from UI (Phase 3+ - Planned)
+9. 📋 **Visual Designers** - Fully visual report/dashboard designers (Phase 3 - In Progress)
+10. 📋 **Customization** - Branding, themes, localization from UI (Phase 6 - Planned)
 
 **Final Goal:** Develop a complete new module with full functionality using ONLY the platform's configuration UI, with backend processes handled by separate business service modules.
 
@@ -480,14 +797,15 @@ The platform achieves complete no-code capability when:
 
 ## Related Documentation
 
-- [NO-CODE-PHASE1.md](NO-CODE-PHASE1.md) - Detailed Phase 1 design and status
+- [NO-CODE-PHASE1.md](NO-CODE-PHASE1.md) - Detailed Phase 1 design and status ✅
 - [NO-CODE-PHASE2.md](NO-CODE-PHASE2.md) - Detailed Phase 2 implementation and status ✅
+- [NO-CODE-PHASE3.md](NO-CODE-PHASE3.md) - Detailed Phase 3 design (to be created when phase starts)
 - [FRONTEND-API-MIGRATION-GUIDE.md](FRONTEND-API-MIGRATION-GUIDE.md) - API migration reference for frontend
 - [BACKEND-API-REVIEW.md](BACKEND-API-REVIEW.md) - API consistency review and EntityMetadata analysis
 - [API-OVERLAP-ANALYSIS.md](API-OVERLAP-ANALYSIS.md) - API overlap analysis
 
 ---
 
-**Document Version:** 3.0
-**Last Updated:** 2026-01-14
-**Next Review:** Phase 3 Planning (Advanced Features)
+**Document Version:** 4.0
+**Last Updated:** 2026-01-15
+**Next Review:** Phase 3 Implementation Start
