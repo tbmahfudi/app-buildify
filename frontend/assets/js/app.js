@@ -1587,6 +1587,84 @@ async function loadRoute(route) {
       return;
     }
 
+    // Handle report designer route
+    if (route === 'report-designer' || route.startsWith('report-designer?')) {
+      console.log('Loading report designer page');
+
+      // The report-designer component is self-contained, just load it
+      content.innerHTML = '<div id="report-designer-container"></div>';
+
+      // Load the JavaScript file
+      try {
+        await window.resourceLoader.loadScript('report-designer.js');
+      } catch (error) {
+        console.warn('Report designer script loading failed:', error);
+      }
+
+      document.dispatchEvent(new CustomEvent('route:loaded', {
+        detail: { route: 'report-designer', isModule: false }
+      }));
+      return;
+    }
+
+    // Handle reports list route
+    if (route === 'reports-list') {
+      console.log('Loading reports list page');
+      const bodyContent = await window.resourceLoader.loadTemplate('reports-list');
+      content.innerHTML = bodyContent;
+
+      // Load the JavaScript file
+      try {
+        await window.resourceLoader.loadScript('reports-list-page.js');
+      } catch (error) {
+        console.warn('Reports list script loading failed:', error);
+      }
+
+      document.dispatchEvent(new CustomEvent('route:loaded', {
+        detail: { route: 'reports-list', isModule: false }
+      }));
+      return;
+    }
+
+    // Handle dashboard designer route
+    if (route === 'dashboard-designer' || route.startsWith('dashboard-designer?')) {
+      console.log('Loading dashboard designer page');
+
+      // The dashboard-designer component is self-contained, just load it
+      content.innerHTML = '<div id="dashboard-designer-container"></div>';
+
+      // Load the JavaScript file
+      try {
+        await window.resourceLoader.loadScript('dashboard-designer.js');
+      } catch (error) {
+        console.warn('Dashboard designer script loading failed:', error);
+      }
+
+      document.dispatchEvent(new CustomEvent('route:loaded', {
+        detail: { route: 'dashboard-designer', isModule: false }
+      }));
+      return;
+    }
+
+    // Handle dashboards list route
+    if (route === 'dashboards-list') {
+      console.log('Loading dashboards list page');
+      const bodyContent = await window.resourceLoader.loadTemplate('dashboards-list');
+      content.innerHTML = bodyContent;
+
+      // Load the JavaScript file
+      try {
+        await window.resourceLoader.loadScript('dashboards-list-page.js');
+      } catch (error) {
+        console.warn('Dashboards list script loading failed:', error);
+      }
+
+      document.dispatchEvent(new CustomEvent('route:loaded', {
+        detail: { route: 'dashboards-list', isModule: false }
+      }));
+      return;
+    }
+
     // Check if this is a module route
     const moduleRoute = moduleRegistry.findRoute(`#/${route}`);
 

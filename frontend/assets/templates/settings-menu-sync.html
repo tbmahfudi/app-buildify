@@ -12,27 +12,123 @@
     </div>
   </div>
 
-  <div class="max-w-4xl mx-auto px-6">
+  <div class="max-w-6xl mx-auto px-6 space-y-6">
+    <!-- Sync Status Card -->
     <div class="bg-white rounded-lg shadow-sm p-6">
-      <div class="bg-blue-50 border-l-4 border-blue-500 p-6 rounded-lg">
-        <div class="flex items-start gap-3">
-          <i class="ph-duotone ph-info text-blue-600 text-2xl"></i>
-          <div>
-            <h3 class="text-lg font-semibold text-blue-900 mb-2">Coming Soon</h3>
-            <p class="text-blue-800 mb-4">
-              Menu synchronization functionality is currently under development.
-            </p>
-            <p class="text-sm text-blue-700">
-              This section will allow you to:
-            </p>
-            <ul class="list-disc list-inside text-sm text-blue-700 mt-2 space-y-1">
-              <li>Sync menu configuration from menu.json to database</li>
-              <li>View sync status and history</li>
-              <li>Manage menu versions and rollbacks</li>
-              <li>Preview menu changes before syncing</li>
-              <li>Configure tenant-specific menu overrides</li>
-            </ul>
+      <div class="flex items-start justify-between mb-6">
+        <div>
+          <h2 class="text-lg font-semibold text-gray-900 mb-1">Sync Status</h2>
+          <p class="text-sm text-gray-600">Current menu synchronization state</p>
+        </div>
+        <div id="sync-status-badge" class="badge badge-lg bg-gray-100 text-gray-800">
+          <i class="ph ph-clock mr-2"></i>
+          Not Synced
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div class="bg-gray-50 p-4 rounded-lg">
+          <div class="text-sm text-gray-600 mb-1">Last Sync</div>
+          <div id="last-sync-time" class="text-lg font-semibold text-gray-900">Never</div>
+        </div>
+        <div class="bg-gray-50 p-4 rounded-lg">
+          <div class="text-sm text-gray-600 mb-1">Menu Items</div>
+          <div id="menu-items-count" class="text-lg font-semibold text-gray-900">0</div>
+        </div>
+        <div class="bg-gray-50 p-4 rounded-lg">
+          <div class="text-sm text-gray-600 mb-1">Sync Version</div>
+          <div id="sync-version" class="text-lg font-semibold text-gray-900">-</div>
+        </div>
+      </div>
+
+      <div class="flex gap-3">
+        <button id="sync-now-btn" class="btn btn-primary">
+          <i class="ph ph-arrows-clockwise mr-2"></i>
+          Sync Now
+        </button>
+        <button id="preview-changes-btn" class="btn btn-secondary">
+          <i class="ph ph-eye mr-2"></i>
+          Preview Changes
+        </button>
+        <button id="refresh-status-btn" class="btn btn-secondary">
+          <i class="ph ph-arrow-clockwise mr-2"></i>
+          Refresh Status
+        </button>
+      </div>
+    </div>
+
+    <!-- Menu Structure Preview -->
+    <div class="bg-white rounded-lg shadow-sm p-6">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-semibold text-gray-900">Menu Structure</h2>
+        <button id="toggle-menu-preview" class="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1">
+          <span>Show All</span>
+          <i class="ph ph-caret-down"></i>
+        </button>
+      </div>
+      <div id="menu-structure-preview" class="space-y-2">
+        <!-- Menu structure will be rendered here -->
+      </div>
+    </div>
+
+    <!-- Sync History -->
+    <div class="bg-white rounded-lg shadow-sm p-6">
+      <h2 class="text-lg font-semibold text-gray-900 mb-4">Sync History</h2>
+      <div id="sync-history-container">
+        <!-- Sync history will be rendered here -->
+      </div>
+    </div>
+
+    <!-- Advanced Options (Collapsed by default) -->
+    <div class="bg-white rounded-lg shadow-sm p-6">
+      <button id="toggle-advanced-options" class="w-full flex items-center justify-between text-left">
+        <h2 class="text-lg font-semibold text-gray-900">Advanced Options</h2>
+        <i class="ph ph-caret-down transition-transform"></i>
+      </button>
+      <div id="advanced-options-content" class="hidden mt-4 space-y-4">
+        <div class="bg-yellow-50 border-l-4 border-yellow-500 p-4 rounded">
+          <div class="flex items-start gap-3">
+            <i class="ph-duotone ph-warning text-yellow-600 text-xl"></i>
+            <div>
+              <h3 class="font-semibold text-yellow-900 mb-1">Caution</h3>
+              <p class="text-sm text-yellow-800">
+                These operations can affect menu visibility across all tenants. Use with care.
+              </p>
+            </div>
           </div>
+        </div>
+
+        <div class="space-y-3">
+          <label class="flex items-center gap-3 cursor-pointer">
+            <input type="checkbox" id="force-sync-checkbox" class="form-checkbox">
+            <div>
+              <div class="font-medium text-gray-900">Force Sync</div>
+              <div class="text-sm text-gray-600">Override existing menu items without confirmation</div>
+            </div>
+          </label>
+
+          <label class="flex items-center gap-3 cursor-pointer">
+            <input type="checkbox" id="preserve-customizations-checkbox" class="form-checkbox" checked>
+            <div>
+              <div class="font-medium text-gray-900">Preserve Tenant Customizations</div>
+              <div class="text-sm text-gray-600">Keep tenant-specific menu modifications</div>
+            </div>
+          </label>
+
+          <label class="flex items-center gap-3 cursor-pointer">
+            <input type="checkbox" id="clear-cache-checkbox" class="form-checkbox" checked>
+            <div>
+              <div class="font-medium text-gray-900">Clear Menu Cache</div>
+              <div class="text-sm text-gray-600">Refresh menu cache after sync</div>
+            </div>
+          </label>
+        </div>
+
+        <div class="pt-4 border-t border-gray-200">
+          <button id="reset-menu-btn" class="btn btn-danger">
+            <i class="ph ph-warning-circle mr-2"></i>
+            Reset Menu to Default
+          </button>
         </div>
       </div>
     </div>

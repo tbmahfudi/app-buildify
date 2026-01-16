@@ -1,0 +1,46 @@
+<div class="container mx-auto p-6">
+    <!-- Header -->
+    <div class="flex justify-between items-center mb-6">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900">My Dashboards</h1>
+            <p class="text-sm text-gray-600 mt-1">Create and manage interactive dashboards</p>
+        </div>
+        <button id="create-dashboard-btn" class="btn btn-primary">
+            <i class="ph-duotone ph-plus mr-2"></i>
+            Create Dashboard
+        </button>
+    </div>
+
+    <!-- View Toggle -->
+    <div class="flex justify-between items-center mb-6">
+        <div class="flex gap-2">
+            <button id="view-grid-btn" class="btn btn-secondary active">
+                <i class="ph-duotone ph-grid-four"></i>
+                Grid
+            </button>
+            <button id="view-list-btn" class="btn btn-secondary">
+                <i class="ph-duotone ph-list"></i>
+                List
+            </button>
+        </div>
+
+        <div class="flex gap-4">
+            <input
+                type="text"
+                id="search-dashboards"
+                class="form-input w-64"
+                placeholder="Search dashboards..."
+            />
+        </div>
+    </div>
+
+    <!-- Grid View (Default) -->
+    <div id="dashboards-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <!-- Dashboard cards will be rendered here -->
+    </div>
+
+    <!-- List View (Hidden by default) -->
+    <div id="dashboards-list" class="card hidden">
+        <div id="dashboards-table-container"></div>
+    </div>
+</div>
