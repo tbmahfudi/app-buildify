@@ -141,8 +141,13 @@ def create_menu_item_recursive(
     Returns:
         Number of items created (including children)
     """
+    # Skip header items (they're visual separators in the menu)
+    if 'header' in item_data and 'title' not in item_data:
+        print(f"  • Skipping header item: {item_data['header']}")
+        return 0
+
     # Generate code from route or title
-    code = item_data.get('route', item_data['title'].lower().replace(' ', '_').replace('&', 'and'))
+    code = item_data.get('route', item_data.get('title', 'unknown').lower().replace(' ', '_').replace('&', 'and'))
 
     # Check if item already exists (by code)
     existing = db.query(MenuItem).filter(MenuItem.code == code).first()
@@ -156,7 +161,7 @@ def create_menu_item_recursive(
         menu_item = MenuItem(
             id=generate_uuid(),
             code=code,
-            title=item_data['title'],
+            title=item_data.get('title', item_data.get('header', 'Unknown')),
             icon=item_data.get('icon'),
             route=item_data.get('route'),
             description=item_data.get('description'),
