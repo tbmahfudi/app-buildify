@@ -50,124 +50,144 @@
       "iconColor": "text-purple-600",
       "submenu": [
         {
-          "header": "Data & Schema"
-        },
-        {
-          "title": "Data Model Designer",
-          "route": "nocode-data-model",
+          "title": "Data & Schema",
           "icon": "ph-duotone ph-database",
           "iconColor": "text-blue-600",
-          "permission": "data_model:read:tenant"
+          "submenu": [
+            {
+              "title": "Data Model Designer",
+              "route": "nocode-data-model",
+              "icon": "ph-duotone ph-database",
+              "iconColor": "text-blue-600",
+              "permission": "data_model:read:tenant"
+            },
+            {
+              "title": "Lookup Configuration",
+              "route": "nocode-lookups",
+              "icon": "ph-duotone ph-list-magnifying-glass",
+              "iconColor": "text-green-600",
+              "permission": "lookups:read:tenant"
+            }
+          ]
         },
         {
-          "title": "Lookup Configuration",
-          "route": "nocode-lookups",
-          "icon": "ph-duotone ph-list-magnifying-glass",
-          "iconColor": "text-green-600",
-          "permission": "lookups:read:tenant"
-        },
-        {
-          "header": "UI & Pages"
-        },
-        {
-          "title": "Page Designer",
-          "route": "builder",
+          "title": "UI & Pages",
           "icon": "ph-duotone ph-layout",
           "iconColor": "text-indigo-600",
-          "permission": "builder:design:tenant"
+          "submenu": [
+            {
+              "title": "Page Designer",
+              "route": "builder",
+              "icon": "ph-duotone ph-layout",
+              "iconColor": "text-indigo-600",
+              "permission": "builder:design:tenant"
+            },
+            {
+              "title": "Manage Pages",
+              "route": "builder-pages",
+              "icon": "ph-duotone ph-files",
+              "iconColor": "text-indigo-500",
+              "permission": "builder:pages:read:tenant"
+            },
+            {
+              "title": "Components Showcase",
+              "route": "components-showcase",
+              "icon": "ph-duotone ph-squares-four",
+              "iconColor": "text-cyan-600"
+            }
+          ]
         },
         {
-          "title": "Manage Pages",
-          "route": "builder-pages",
-          "icon": "ph-duotone ph-files",
-          "iconColor": "text-indigo-500",
-          "permission": "builder:pages:read:tenant"
-        },
-        {
-          "title": "Components Showcase",
-          "route": "components-showcase",
-          "icon": "ph-duotone ph-squares-four",
-          "iconColor": "text-cyan-600"
-        },
-        {
-          "header": "Reports & Dashboards"
-        },
-        {
-          "title": "Create Report",
-          "route": "report-designer",
-          "icon": "ph-duotone ph-file-plus",
+          "title": "Reports & Dashboards",
+          "icon": "ph-duotone ph-presentation-chart",
           "iconColor": "text-emerald-600",
-          "permission": "reports:create:tenant",
-          "badge": "NEW",
-          "badgeColor": "bg-green-500"
+          "submenu": [
+            {
+              "title": "Create Report",
+              "route": "report-designer",
+              "icon": "ph-duotone ph-file-plus",
+              "iconColor": "text-emerald-600",
+              "permission": "reports:create:tenant",
+              "badge": "NEW",
+              "badgeColor": "bg-green-500"
+            },
+            {
+              "title": "My Reports",
+              "route": "reports-list",
+              "icon": "ph-duotone ph-files",
+              "iconColor": "text-emerald-500",
+              "permission": "reports:read:tenant",
+              "badge": "NEW",
+              "badgeColor": "bg-green-500"
+            },
+            {
+              "title": "Create Dashboard",
+              "route": "dashboard-designer",
+              "icon": "ph-duotone ph-squares-four",
+              "iconColor": "text-violet-600",
+              "permission": "dashboards:create:tenant",
+              "badge": "NEW",
+              "badgeColor": "bg-green-500"
+            },
+            {
+              "title": "My Dashboards",
+              "route": "dashboards-list",
+              "icon": "ph-duotone ph-layout",
+              "iconColor": "text-violet-500",
+              "permission": "dashboards:read:tenant",
+              "badge": "NEW",
+              "badgeColor": "bg-green-500"
+            }
+          ]
         },
         {
-          "title": "My Reports",
-          "route": "reports-list",
-          "icon": "ph-duotone ph-files",
-          "iconColor": "text-emerald-500",
-          "permission": "reports:read:tenant",
-          "badge": "NEW",
-          "badgeColor": "bg-green-500"
-        },
-        {
-          "title": "Create Dashboard",
-          "route": "dashboard-designer",
-          "icon": "ph-duotone ph-squares-four",
-          "iconColor": "text-violet-600",
-          "permission": "dashboards:create:tenant",
-          "badge": "NEW",
-          "badgeColor": "bg-green-500"
-        },
-        {
-          "title": "My Dashboards",
-          "route": "dashboards-list",
-          "icon": "ph-duotone ph-layout",
-          "iconColor": "text-violet-500",
-          "permission": "dashboards:read:tenant",
-          "badge": "NEW",
-          "badgeColor": "bg-green-500"
-        },
-        {
-          "header": "Business Logic"
-        },
-        {
-          "title": "Workflow Designer",
-          "route": "nocode-workflows",
+          "title": "Business Logic",
           "icon": "ph-duotone ph-flow-arrow",
           "iconColor": "text-orange-600",
-          "permission": "workflows:read:tenant"
+          "submenu": [
+            {
+              "title": "Workflow Designer",
+              "route": "nocode-workflows",
+              "icon": "ph-duotone ph-flow-arrow",
+              "iconColor": "text-orange-600",
+              "permission": "workflows:read:tenant"
+            },
+            {
+              "title": "Automation Rules",
+              "route": "nocode-automations",
+              "icon": "ph-duotone ph-lightning",
+              "iconColor": "text-yellow-600",
+              "permission": "automations:read:tenant"
+            }
+          ]
         },
         {
-          "title": "Automation Rules",
-          "route": "nocode-automations",
-          "icon": "ph-duotone ph-lightning",
-          "iconColor": "text-yellow-600",
-          "permission": "automations:read:tenant"
-        },
-        {
-          "header": "Platform Configuration"
-        },
-        {
-          "title": "Menu Management",
-          "route": "menu-management",
-          "icon": "ph-duotone ph-list",
+          "title": "Platform Configuration",
+          "icon": "ph-duotone ph-gear",
           "iconColor": "text-pink-600",
-          "permission": "menu:manage:tenant"
-        },
-        {
-          "title": "Menu Sync",
-          "route": "settings-menu-sync",
-          "icon": "ph-duotone ph-arrows-clockwise",
-          "iconColor": "text-pink-500",
-          "permission": "menu:manage:tenant"
-        },
-        {
-          "title": "Module Management",
-          "route": "modules",
-          "icon": "ph-duotone ph-package",
-          "iconColor": "text-red-600",
-          "permission": "modules:manage:tenant"
+          "submenu": [
+            {
+              "title": "Menu Management",
+              "route": "menu-management",
+              "icon": "ph-duotone ph-list",
+              "iconColor": "text-pink-600",
+              "permission": "menu:manage:tenant"
+            },
+            {
+              "title": "Menu Sync",
+              "route": "settings-menu-sync",
+              "icon": "ph-duotone ph-arrows-clockwise",
+              "iconColor": "text-pink-500",
+              "permission": "menu:manage:tenant"
+            },
+            {
+              "title": "Module Management",
+              "route": "modules",
+              "icon": "ph-duotone ph-package",
+              "iconColor": "text-red-600",
+              "permission": "modules:manage:tenant"
+            }
+          ]
         }
       ]
     },
