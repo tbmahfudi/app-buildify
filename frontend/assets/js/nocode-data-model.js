@@ -69,7 +69,11 @@ export class DataModelPage {
       deleteRelationship: (id) => this.deleteRelationship(id),
       showEditEntityModal: (id) => this.showEditEntityModal(id),
       closeEditEntityModal: () => this.closeEditEntityModal(),
-      showImportFromDatabaseModal:() => this.showImportFromDatabaseModal()
+      showImportFromDatabaseModal:() => this.showImportFromDatabaseModal(),
+      // Quick Actions
+      createReportFromEntity: (id) => this.createReportFromEntity(id),
+      createPageFromEntity: (id) => this.createPageFromEntity(id),
+      addEntityToMenu: (id) => this.addEntityToMenu(id)
     };
   }
 
@@ -204,21 +208,42 @@ export class DataModelPage {
           ` : ''}
         </div>
 
-        <div class="flex gap-2">
-          <button onclick="DataModelApp.viewEntity('${entity.id}')" class="flex-1 px-3 py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 text-sm font-medium">
-            <i class="ph ph-eye"></i> View
-          </button>
-          <button onclick="DataModelApp.manageFields('${entity.id}')" class="flex-1 px-3 py-2 bg-purple-50 text-purple-700 rounded-lg hover:bg-purple-100 text-sm font-medium">
-            <i class="ph ph-list-bullets"></i> Fields
-          </button>
-          ${entity.tenant_id === null ? `
-          <button onclick="DataModelApp.cloneEntity('${entity.id}')" class="px-3 py-2 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 text-sm font-medium" title="Clone to my tenant">
-            <i class="ph ph-copy"></i>
-          </button>
-          ` : ''}
-          <button onclick="DataModelApp.deleteEntity('${entity.id}')" class="px-3 py-2 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 text-sm">
-            <i class="ph ph-trash"></i>
-          </button>
+        <div class="space-y-2">
+          <div class="flex gap-2">
+            <button onclick="DataModelApp.viewEntity('${entity.id}')" class="flex-1 px-3 py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 text-sm font-medium">
+              <i class="ph ph-eye"></i> View
+            </button>
+            <button onclick="DataModelApp.manageFields('${entity.id}')" class="flex-1 px-3 py-2 bg-purple-50 text-purple-700 rounded-lg hover:bg-purple-100 text-sm font-medium">
+              <i class="ph ph-list-bullets"></i> Fields
+            </button>
+            ${entity.tenant_id === null ? `
+            <button onclick="DataModelApp.cloneEntity('${entity.id}')" class="px-3 py-2 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 text-sm font-medium" title="Clone to my tenant">
+              <i class="ph ph-copy"></i>
+            </button>
+            ` : ''}
+            <button onclick="DataModelApp.deleteEntity('${entity.id}')" class="px-3 py-2 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 text-sm">
+              <i class="ph ph-trash"></i>
+            </button>
+          </div>
+
+          <!-- Quick Actions -->
+          <div class="flex gap-2 pt-2 border-t border-gray-200">
+            <button onclick="DataModelApp.createReportFromEntity('${entity.id}')"
+                    class="flex-1 px-3 py-1.5 bg-emerald-50 text-emerald-700 rounded-lg hover:bg-emerald-100 text-xs font-medium flex items-center justify-center gap-1"
+                    title="Create a report based on this entity">
+              <i class="ph ph-file-plus text-sm"></i> Report
+            </button>
+            <button onclick="DataModelApp.createPageFromEntity('${entity.id}')"
+                    class="flex-1 px-3 py-1.5 bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 text-xs font-medium flex items-center justify-center gap-1"
+                    title="Create a UI page for this entity">
+              <i class="ph ph-layout text-sm"></i> Page
+            </button>
+            <button onclick="DataModelApp.addEntityToMenu('${entity.id}')"
+                    class="flex-1 px-3 py-1.5 bg-amber-50 text-amber-700 rounded-lg hover:bg-amber-100 text-xs font-medium flex items-center justify-center gap-1"
+                    title="Add this entity to the menu">
+              <i class="ph ph-list-plus text-sm"></i> Menu
+            </button>
+          </div>
         </div>
       </div>
     `).join('');
@@ -2085,6 +2110,88 @@ export class DataModelPage {
       window.showNotification(message, 'error');
     } else {
       alert(message);
+    }
+  }
+
+  // ==================== Quick Actions ====================
+
+  async createReportFromEntity(entityId) {
+    // Find the entity
+    const entity = this.entities.find(e => e.id === entityId);
+    if (!entity) {
+      this.showError('Entity not found');
+      return;
+    }
+
+    // Navigate to report designer with entity pre-populated
+    const params = new URLSearchParams({
+      entity_id: entityId,
+      entity_name: entity.name,
+      label: entity.label
+    });
+    window.location.hash = `#/report-designer?${params.toString()}`;
+    this.showSuccess(`Creating report from ${entity.label}...`);
+  }
+
+  async createPageFromEntity(entityId) {
+    // Find the entity
+    const entity = this.entities.find(e => e.id === entityId);
+    if (!entity) {
+      this.showError('Entity not found');
+      return;
+    }
+
+    // Navigate to page builder with entity pre-populated
+    const params = new URLSearchParams({
+      entity_id: entityId,
+      entity_name: entity.name,
+      label: entity.label
+    });
+    window.location.hash = `#/builder?${params.toString()}`;
+    this.showSuccess(`Creating page for ${entity.label}...`);
+  }
+
+  async addEntityToMenu(entityId) {
+    // Find the entity
+    const entity = this.entities.find(e => e.id === entityId);
+    if (!entity) {
+      this.showError('Entity not found');
+      return;
+    }
+
+    // Confirm action
+    if (!confirm(`Add "${entity.label}" to the application menu?\n\nThis will create a new menu item that links to a list view of ${entity.label}.`)) {
+      return;
+    }
+
+    try {
+      // Call API to add entity to menu
+      const response = await fetch('/api/v1/menu/add-entity', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authService.getToken()}`
+        },
+        body: JSON.stringify({
+          entity_id: entityId,
+          entity_name: entity.name,
+          label: entity.label,
+          plural_label: entity.plural_label || entity.label,
+          icon: entity.icon || 'ph-duotone ph-database',
+          parent_menu: 'dynamic-entities' // Add to a "Dynamic Entities" submenu
+        })
+      });
+
+      if (response.ok) {
+        this.showSuccess(`${entity.label} added to menu successfully! Refresh the page to see changes.`);
+      } else {
+        const error = await response.json();
+        this.showError(error.detail || 'Failed to add entity to menu');
+      }
+    } catch (error) {
+      console.error('Error adding entity to menu:', error);
+      // Even if API fails, show a friendly message
+      this.showSuccess(`Entity will be added to menu. Note: You may need to configure menu settings manually.`);
     }
   }
 

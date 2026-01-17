@@ -122,10 +122,28 @@ export class ReportDesigner {
             <div class="report-designer">
                 <!-- Header -->
                 <div class="designer-header bg-white shadow-sm p-4 mb-4 rounded">
-                    <h2 class="text-2xl font-bold text-gray-800">
-                        ${this.reportId ? 'Edit Report' : 'Create New Report'}
-                    </h2>
-                    <p class="text-gray-600 mt-1">Design your custom report with parameters and formatting</p>
+                    <div class="flex items-start justify-between">
+                        <div class="flex-1">
+                            <h2 class="text-2xl font-bold text-gray-800">
+                                ${this.reportId ? 'Edit Report' : 'Create New Report'}
+                            </h2>
+                            <p class="text-gray-600 mt-1">Design your custom report with parameters and formatting</p>
+                        </div>
+
+                        <!-- Quick Actions -->
+                        ${this.reportId ? `
+                        <div class="flex gap-2 ml-4">
+                            <button id="btn-add-to-dashboard" class="px-4 py-2 bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 text-sm font-medium flex items-center gap-2 transition" title="Add this report to a dashboard">
+                                <i class="ph ph-chart-bar"></i>
+                                Add to Dashboard
+                            </button>
+                            <button id="btn-create-automation" class="px-4 py-2 bg-purple-50 text-purple-700 rounded-lg hover:bg-purple-100 text-sm font-medium flex items-center gap-2 transition" title="Create an automation rule for this report">
+                                <i class="ph ph-robot"></i>
+                                Create Automation
+                            </button>
+                        </div>
+                        ` : ''}
+                    </div>
                 </div>
 
                 <!-- Progress Steps -->
@@ -663,6 +681,17 @@ export class ReportDesigner {
         if (btnPreview) {
             btnPreview.addEventListener('click', () => this._previewReport());
         }
+
+        // Quick Actions
+        const btnAddToDashboard = document.getElementById('btn-add-to-dashboard');
+        const btnCreateAutomation = document.getElementById('btn-create-automation');
+
+        if (btnAddToDashboard) {
+            btnAddToDashboard.addEventListener('click', () => this._addToDashboard());
+        }
+        if (btnCreateAutomation) {
+            btnCreateAutomation.addEventListener('click', () => this._createAutomation());
+        }
     }
 
     _attachStepEventListeners() {
@@ -839,5 +868,71 @@ export class ReportDesigner {
 
     async _previewReport() {
         showNotification('Preview functionality coming soon', 'info');
+    }
+
+    // ==================== Quick Actions ====================
+
+    async _addToDashboard() {
+        if (!this.reportId) {
+            showNotification('Please save the report first before adding it to a dashboard', 'warning');
+            return;
+        }
+
+        // Show a simple prompt for dashboard selection
+        const dashboards = await this._fetchDashboards();
+
+        if (!dashboards || dashboards.length === 0) {
+            const createNew = confirm('No dashboards found. Would you like to create a new dashboard?');
+            if (createNew) {
+                window.location.hash = `#/dashboard-designer?report_id=${this.reportId}`;
+            }
+            return;
+        }
+
+        // For now, navigate to dashboard designer with the report pre-selected
+        const message = 'Select a dashboard to add this report to, or create a new one.';
+        showNotification(message, 'info');
+
+        // Navigate to dashboards list with context
+        setTimeout(() => {
+            window.location.hash = `#/dashboards-list?add_report=${this.reportId}`;
+        }, 1500);
+    }
+
+    async _createAutomation() {
+        if (!this.reportId) {
+            showNotification('Please save the report first before creating an automation', 'warning');
+            return;
+        }
+
+        // Navigate to automation/workflow designer with report pre-selected
+        const confirmed = confirm(
+            'Create an automation rule for this report?\n\n' +
+            'You can set up:\n' +
+            '• Scheduled report generation\n' +
+            '• Email delivery\n' +
+            '• Data-driven triggers\n' +
+            '• Custom notifications'
+        );
+
+        if (confirmed) {
+            showNotification('Navigating to automation designer...', 'success');
+            setTimeout(() => {
+                window.location.hash = `#/nocode-automations?report_id=${this.reportId}&report_name=${encodeURIComponent(this.reportData.name)}`;
+            }, 800);
+        }
+    }
+
+    async _fetchDashboards() {
+        try {
+            const response = await apiFetch('/dashboards');
+            if (response.ok) {
+                const data = await response.json();
+                return data.dashboards || data.items || data;
+            }
+        } catch (error) {
+            console.error('Error fetching dashboards:', error);
+        }
+        return [];
     }
 }

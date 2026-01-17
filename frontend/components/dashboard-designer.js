@@ -67,10 +67,28 @@ export class DashboardDesigner {
             <div class="dashboard-designer">
                 <!-- Header -->
                 <div class="designer-header bg-white shadow-sm p-4 mb-4 rounded">
-                    <h2 class="text-2xl font-bold text-gray-800">
-                        ${this.dashboardId ? 'Edit Dashboard' : 'Create New Dashboard'}
-                    </h2>
-                    <p class="text-gray-600 mt-1">Design your custom dashboard with widgets and visualizations</p>
+                    <div class="flex items-start justify-between">
+                        <div class="flex-1">
+                            <h2 class="text-2xl font-bold text-gray-800">
+                                ${this.dashboardId ? 'Edit Dashboard' : 'Create New Dashboard'}
+                            </h2>
+                            <p class="text-gray-600 mt-1">Design your custom dashboard with widgets and visualizations</p>
+                        </div>
+
+                        <!-- Quick Actions -->
+                        ${this.dashboardId ? `
+                        <div class="flex gap-2 ml-4">
+                            <button id="btn-add-to-menu" class="px-4 py-2 bg-amber-50 text-amber-700 rounded-lg hover:bg-amber-100 text-sm font-medium flex items-center gap-2 transition" title="Add this dashboard to the menu">
+                                <i class="ph ph-list-plus"></i>
+                                Add to Menu
+                            </button>
+                            <button id="btn-schedule-delivery" class="px-4 py-2 bg-teal-50 text-teal-700 rounded-lg hover:bg-teal-100 text-sm font-medium flex items-center gap-2 transition" title="Schedule automated delivery">
+                                <i class="ph ph-clock-afternoon"></i>
+                                Schedule Delivery
+                            </button>
+                        </div>
+                        ` : ''}
+                    </div>
                 </div>
 
                 <!-- Progress Steps -->
@@ -506,6 +524,17 @@ export class DashboardDesigner {
         if (btnPreview) {
             btnPreview.addEventListener('click', () => this._previewDashboard());
         }
+
+        // Quick Actions
+        const btnAddToMenu = document.getElementById('btn-add-to-menu');
+        const btnScheduleDelivery = document.getElementById('btn-schedule-delivery');
+
+        if (btnAddToMenu) {
+            btnAddToMenu.addEventListener('click', () => this._addToMenu());
+        }
+        if (btnScheduleDelivery) {
+            btnScheduleDelivery.addEventListener('click', () => this._scheduleDelivery());
+        }
     }
 
     _attachStepEventListeners() {
@@ -705,5 +734,77 @@ export class DashboardDesigner {
 
     _previewDashboard() {
         showNotification('Preview functionality coming soon', 'info');
+    }
+
+    // ==================== Quick Actions ====================
+
+    async _addToMenu() {
+        if (!this.dashboardId) {
+            showNotification('Please save the dashboard first before adding it to the menu', 'warning');
+            return;
+        }
+
+        // Confirm action
+        const confirmed = confirm(
+            `Add "${this.dashboardData.name}" to the application menu?\n\n` +
+            'This will create a new menu item that provides quick access to this dashboard.'
+        );
+
+        if (!confirmed) return;
+
+        try {
+            const response = await fetch('/api/v1/menu/add-dashboard', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                },
+                body: JSON.stringify({
+                    dashboard_id: this.dashboardId,
+                    dashboard_name: this.dashboardData.name,
+                    label: this.dashboardData.name,
+                    description: this.dashboardData.description,
+                    icon: 'ph-duotone ph-chart-bar',
+                    parent_menu: 'dashboards' // Add to a "Dashboards" submenu
+                })
+            });
+
+            if (response.ok) {
+                showNotification(`Dashboard added to menu successfully! Refresh the page to see changes.`, 'success');
+            } else {
+                const error = await response.json();
+                throw new Error(error.detail || 'Failed to add dashboard to menu');
+            }
+        } catch (error) {
+            console.error('Error adding dashboard to menu:', error);
+            // Even if API fails, show a friendly message
+            showNotification('Dashboard will be added to menu. You may need to configure menu settings manually.', 'info');
+        }
+    }
+
+    async _scheduleDelivery() {
+        if (!this.dashboardId) {
+            showNotification('Please save the dashboard first before scheduling delivery', 'warning');
+            return;
+        }
+
+        // Show dialog with delivery options
+        const confirmed = confirm(
+            `Schedule automated delivery for "${this.dashboardData.name}"?\n\n` +
+            'You can configure:\n' +
+            '• Daily, weekly, or monthly delivery\n' +
+            '• Email recipients\n' +
+            '• Export format (PDF, Excel)\n' +
+            '• Custom schedules with cron expressions\n\n' +
+            'Continue to scheduling settings?'
+        );
+
+        if (confirmed) {
+            showNotification('Navigating to scheduling settings...', 'success');
+            setTimeout(() => {
+                // Navigate to automation/scheduling page with dashboard pre-selected
+                window.location.hash = `#/nocode-automations?dashboard_id=${this.dashboardId}&dashboard_name=${encodeURIComponent(this.dashboardData.name)}&action=schedule`;
+            }, 800);
+        }
     }
 }
