@@ -170,20 +170,18 @@ async def create_menu_item(
         )
 
         # Audit log
-        await create_audit_log(
+        create_audit_log(
             db=db,
-            user_id=str(current_user.id),
-            tenant_id=current_user.tenant_id,
             action="menu.create",
-            resource_type="menu_item",
-            resource_id=str(menu_item.id),
-            details={
+            user=current_user,
+            entity_type="menu_item",
+            entity_id=str(menu_item.id),
+            changes={
                 "code": menu_item.code,
                 "title": menu_item.title,
                 "route": menu_item.route
             },
-            ip_address=request.client.host if request.client else None,
-            user_agent=request.headers.get("user-agent")
+            request=request
         )
 
         return MenuItemResponse.from_orm(menu_item)
@@ -240,19 +238,17 @@ async def update_menu_item(
             )
 
         # Audit log
-        await create_audit_log(
+        create_audit_log(
             db=db,
-            user_id=str(current_user.id),
-            tenant_id=current_user.tenant_id,
             action="menu.update",
-            resource_type="menu_item",
-            resource_id=str(menu_item.id),
-            details={
-                "code": menu_item.code,
-                "updates": menu_dict
+            user=current_user,
+            entity_type="menu_item",
+            entity_id=str(menu_item.id),
+            changes=menu_dict,
+            context_info={
+                "code": menu_item.code
             },
-            ip_address=request.client.host if request.client else None,
-            user_agent=request.headers.get("user-agent")
+            request=request
         )
 
         return MenuItemResponse.from_orm(menu_item)
@@ -312,19 +308,17 @@ async def delete_menu_item(
             )
 
         # Audit log
-        await create_audit_log(
+        create_audit_log(
             db=db,
-            user_id=str(current_user.id),
-            tenant_id=current_user.tenant_id,
             action="menu.delete",
-            resource_type="menu_item",
-            resource_id=menu_id,
-            details={
+            user=current_user,
+            entity_type="menu_item",
+            entity_id=menu_id,
+            context_info={
                 "code": menu_code,
                 "title": menu_title
             },
-            ip_address=request.client.host if request.client else None,
-            user_agent=request.headers.get("user-agent")
+            request=request
         )
 
         return MenuOperationResponse(
@@ -378,18 +372,15 @@ async def reorder_menu_items(
             )
 
         # Audit log
-        await create_audit_log(
+        create_audit_log(
             db=db,
-            user_id=str(current_user.id),
-            tenant_id=current_user.tenant_id,
             action="menu.reorder",
-            resource_type="menu_item",
-            resource_id=None,
-            details={
+            user=current_user,
+            entity_type="menu_item",
+            context_info={
                 "item_count": len(items)
             },
-            ip_address=request.client.host if request.client else None,
-            user_agent=request.headers.get("user-agent")
+            request=request
         )
 
         return MenuOperationResponse(
@@ -559,19 +550,16 @@ async def sync_menu_from_json(
         items_created = seed_menu_items(clear_existing=clear_existing)
 
         # Audit log
-        await create_audit_log(
+        create_audit_log(
             db=db,
-            user_id=str(current_user.id),
-            tenant_id=current_user.tenant_id,
             action="menu.sync",
-            resource_type="menu_item",
-            resource_id=None,
-            details={
+            user=current_user,
+            entity_type="menu_item",
+            context_info={
                 "items_created": items_created,
                 "clear_existing": clear_existing
             },
-            ip_address=request.client.host if request and request.client else None,
-            user_agent=request.headers.get("user-agent") if request else None
+            request=request
         )
 
         return MenuOperationResponse(
