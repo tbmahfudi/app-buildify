@@ -407,6 +407,129 @@ async def reorder_menu_items(
         )
 
 
+@router.get("/sync/status")
+async def get_sync_status(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(has_permission("menu:manage:tenant"))
+):
+    """
+    Get menu sync status.
+
+    Returns information about the last menu sync operation.
+
+    Requires permission: menu:manage:tenant
+
+    Returns:
+        Sync status including last sync time, item count, etc.
+    """
+    try:
+        # Count menu items
+        menu_items_count = db.query(MenuItem).count()
+
+        # Get latest menu item to determine last sync
+        latest_item = db.query(MenuItem).order_by(MenuItem.created_at.desc()).first()
+
+        return {
+            "last_sync": latest_item.created_at.isoformat() if latest_item else None,
+            "menu_items_count": menu_items_count,
+            "sync_version": "1.0",
+            "is_synced": menu_items_count > 0
+        }
+
+    except Exception as e:
+        logger.error(f"Error getting sync status: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to get sync status"
+        )
+
+
+@router.get("/sync/history")
+async def get_sync_history(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(has_permission("menu:manage:tenant"))
+):
+    """
+    Get menu sync history.
+
+    Returns:
+        List of sync operations (currently returns empty array as we don't track history yet)
+    """
+    # TODO: Implement sync history tracking in future
+    # For now, return empty array to prevent 404 errors
+    return []
+
+
+@router.get("/sync/preview")
+async def preview_sync(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(has_permission("menu:manage:tenant"))
+):
+    """
+    Preview changes that would be made by syncing menu.json.
+
+    Requires permission: menu:manage:tenant
+
+    Returns:
+        Preview of changes (new items, updated items, removed items)
+    """
+    try:
+        import json
+        from pathlib import Path
+
+        # Try to find menu.json
+        possible_paths = [
+            Path("/app/frontend/config/menu.json"),
+            Path("/frontend/config/menu.json"),
+            Path(__file__).parent.parent.parent.parent / "frontend" / "config" / "menu.json",
+            Path("frontend/config/menu.json"),
+        ]
+
+        menu_json_file = None
+        for path in possible_paths:
+            if path.exists():
+                menu_json_file = path
+                break
+
+        if not menu_json_file:
+            raise FileNotFoundError("menu.json not found")
+
+        with open(menu_json_file, 'r', encoding='utf-8') as f:
+            menu_data = json.load(f)
+
+        # Count items in JSON (recursively)
+        def count_items(items):
+            count = 0
+            for item in items:
+                if 'header' not in item or 'title' in item:
+                    count += 1
+                if 'submenu' in item:
+                    count += count_items(item['submenu'])
+            return count
+
+        json_count = count_items(menu_data.get('items', []))
+        db_count = db.query(MenuItem).count()
+
+        return {
+            "new_items": max(0, json_count - db_count),
+            "updated_items": min(json_count, db_count),
+            "removed_items": max(0, db_count - json_count),
+            "total_items": json_count
+        }
+
+    except FileNotFoundError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="menu.json file not found"
+        )
+    except Exception as e:
+        logger.error(f"Error previewing sync: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to preview sync"
+        )
+
+
 @router.post("/sync", response_model=MenuOperationResponse)
 async def sync_menu_from_json(
     clear_existing: bool = False,
@@ -453,7 +576,8 @@ async def sync_menu_from_json(
 
         return MenuOperationResponse(
             success=True,
-            message=f"Successfully synced {items_created} menu items from menu.json"
+            message=f"Successfully synced {items_created} menu items from menu.json",
+            items_synced=items_created
         )
 
     except FileNotFoundError as e:

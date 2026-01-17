@@ -119,6 +119,7 @@ class MenuOperationResponse(BaseModel):
     success: bool
     message: str
     menu_item: Optional[MenuItemResponse] = None
+    items_synced: Optional[int] = None  # For sync operations
 
 
 # Update forward references
