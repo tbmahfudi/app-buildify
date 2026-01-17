@@ -1,0 +1,360 @@
+<div class="dashboard-designer-page h-screen flex flex-col overflow-hidden">
+  <!-- Header -->
+  <div class="bg-white border-b border-gray-200 px-6 py-4">
+    <div class="flex items-center justify-between">
+      <div class="flex items-center space-x-4">
+        <button id="back-to-dashboards" class="text-gray-500 hover:text-gray-700">
+          <i class="ph ph-arrow-left text-xl"></i>
+        </button>
+        <div>
+          <h1 class="text-2xl font-bold text-gray-900 flex items-center gap-3">
+            <i class="ph-duotone ph-squares-four text-violet-600"></i>
+            <span id="dashboard-title">New Dashboard</span>
+          </h1>
+          <p class="text-sm text-gray-600 mt-1">Design and build interactive dashboards</p>
+        </div>
+      </div>
+      <div class="flex items-center space-x-3">
+        <button id="preview-dashboard-btn" class="btn btn-secondary">
+          <i class="ph ph-eye mr-2"></i>
+          Preview
+        </button>
+        <button id="save-dashboard-btn" class="btn btn-primary">
+          <i class="ph ph-floppy-disk mr-2"></i>
+          Save Dashboard
+        </button>
+        <button id="publish-dashboard-btn" class="btn btn-success">
+          <i class="ph ph-upload mr-2"></i>
+          Publish
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <div class="flex-1 flex overflow-hidden">
+    <!-- Left Sidebar: Widget Library -->
+    <div class="w-80 bg-white border-r border-gray-200 overflow-y-auto">
+      <div id="widget-library-container" class="h-full">
+        <!-- Widget library will be rendered here -->
+      </div>
+    </div>
+
+    <!-- Center: Canvas Area -->
+    <div class="flex-1 flex flex-col overflow-hidden">
+      <!-- Canvas Toolbar -->
+      <div class="bg-gray-50 border-b border-gray-200 px-4 py-2 flex items-center justify-between">
+        <div class="flex items-center space-x-2">
+          <span class="text-sm font-medium text-gray-700">Canvas:</span>
+          <span id="canvas-widget-count" class="text-sm text-gray-600">0 widgets</span>
+        </div>
+        <div class="flex items-center space-x-2">
+          <button id="use-template-btn" class="btn btn-sm btn-secondary">
+            <i class="ph ph-copy mr-1"></i>
+            Use Template
+          </button>
+          <button id="clear-canvas-btn" class="btn btn-sm btn-secondary">
+            <i class="ph ph-trash mr-1"></i>
+            Clear All
+          </button>
+        </div>
+      </div>
+
+      <!-- Canvas -->
+      <div class="flex-1 bg-gray-100 p-6 overflow-auto">
+        <div id="dashboard-canvas-container" class="h-full">
+          <!-- Dashboard canvas will be rendered here -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Sidebar: Widget Configuration -->
+    <div class="w-96 bg-white border-l border-gray-200 overflow-y-auto">
+      <div id="widget-config-container" class="h-full">
+        <!-- Widget configuration will be rendered here -->
+        <div class="p-6 text-center text-gray-500">
+          <i class="ph ph-hand-pointing text-4xl mb-2"></i>
+          <p>Select a widget to configure</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Template Library Modal (Hidden by default) -->
+  <div id="template-library-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+    <div id="template-library-modal-content">
+      <!-- Template library will be rendered here -->
+    </div>
+  </div>
+
+  <!-- Preview Modal (Hidden by default) -->
+  <div id="preview-modal" class="hidden fixed inset-0 bg-black bg-opacity-90 z-50 flex flex-col">
+    <div class="bg-gray-900 text-white px-6 py-4 flex items-center justify-between">
+      <h3 class="text-lg font-semibold">Dashboard Preview</h3>
+      <button id="close-preview-btn" class="text-gray-300 hover:text-white">
+        <i class="ph ph-x text-2xl"></i>
+      </button>
+    </div>
+    <div class="flex-1 overflow-auto">
+      <div id="preview-container" class="h-full">
+        <!-- Live preview will be rendered here -->
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  import { WidgetLibraryPalette } from '../components/widget-library-palette.js';
+  import { VisualDashboardCanvas } from '../components/visual-dashboard-canvas.js';
+  import { EnhancedWidgetConfig } from '../components/enhanced-widget-config.js';
+  import { DashboardTemplateLibrary } from '../components/dashboard-template-library.js';
+  import { LiveDashboardPreview } from '../components/live-dashboard-preview.js';
+  import { DashboardInteractiveFeatures } from '../components/dashboard-interactive-features.js';
+  import { apiFetch } from '../utils/api.js';
+
+  class DashboardDesigner {
+    constructor() {
+      this.dashboardId = null;
+      this.dashboardData = {
+        name: 'New Dashboard',
+        description: '',
+        widgets: [],
+        layout: 'grid',
+        theme: 'light'
+      };
+
+      this.widgetLibrary = null;
+      this.canvas = null;
+      this.widgetConfig = null;
+      this.templateLibrary = null;
+      this.preview = null;
+      this.interactiveFeatures = null;
+      this.selectedWidget = null;
+
+      this.init();
+    }
+
+    async init() {
+      // Check if editing existing dashboard
+      const urlParams = new URLSearchParams(window.location.search);
+      this.dashboardId = urlParams.get('id');
+
+      if (this.dashboardId) {
+        await this.loadDashboard(this.dashboardId);
+      }
+
+      // Initialize components
+      this.initializeComponents();
+      this.setupEventListeners();
+    }
+
+    initializeComponents() {
+      // Widget Library
+      this.widgetLibrary = new WidgetLibraryPalette('#widget-library-container', {
+        onWidgetSelect: (widget) => this.handleWidgetSelect(widget),
+        onWidgetDragStart: (widget) => this.handleWidgetDragStart(widget)
+      });
+
+      // Dashboard Canvas
+      this.canvas = new VisualDashboardCanvas('#dashboard-canvas-container', {
+        onWidgetsChange: (widgets) => this.handleWidgetsChange(widgets),
+        onWidgetSelect: (widget) => this.handleWidgetSelect(widget)
+      });
+
+      // Widget Config (initially empty)
+      this.widgetConfig = new EnhancedWidgetConfig('#widget-config-container', {
+        onConfigChange: (config) => this.handleConfigChange(config)
+      });
+
+      // Update widget count
+      this.updateWidgetCount();
+    }
+
+    setupEventListeners() {
+      // Back button
+      document.getElementById('back-to-dashboards')?.addEventListener('click', () => {
+        window.location.href = '/dashboards-list';
+      });
+
+      // Save button
+      document.getElementById('save-dashboard-btn')?.addEventListener('click', () => {
+        this.saveDashboard();
+      });
+
+      // Publish button
+      document.getElementById('publish-dashboard-btn')?.addEventListener('click', () => {
+        this.publishDashboard();
+      });
+
+      // Preview button
+      document.getElementById('preview-dashboard-btn')?.addEventListener('click', () => {
+        this.showPreview();
+      });
+
+      // Use template button
+      document.getElementById('use-template-btn')?.addEventListener('click', () => {
+        this.showTemplateLibrary();
+      });
+
+      // Clear canvas button
+      document.getElementById('clear-canvas-btn')?.addEventListener('click', () => {
+        if (confirm('Are you sure you want to clear all widgets from the canvas?')) {
+          this.canvas.clearWidgets();
+        }
+      });
+
+      // Close preview
+      document.getElementById('close-preview-btn')?.addEventListener('click', () => {
+        this.hidePreview();
+      });
+    }
+
+    async loadDashboard(dashboardId) {
+      try {
+        const response = await apiFetch(`/api/v1/dashboards/${dashboardId}`);
+        this.dashboardData = await response.json();
+
+        // Update UI
+        document.getElementById('dashboard-title').textContent = this.dashboardData.name;
+
+        // Load widgets to canvas
+        if (this.canvas && this.dashboardData.widgets) {
+          this.canvas.loadWidgets(this.dashboardData.widgets);
+        }
+      } catch (error) {
+        console.error('Failed to load dashboard:', error);
+        alert('Failed to load dashboard');
+      }
+    }
+
+    async saveDashboard() {
+      const dashboardName = prompt('Dashboard name:', this.dashboardData.name);
+      if (!dashboardName) return;
+
+      this.dashboardData.name = dashboardName;
+      this.dashboardData.widgets = this.canvas.getWidgets();
+
+      try {
+        const url = this.dashboardId
+          ? `/api/v1/dashboards/${this.dashboardId}`
+          : '/api/v1/dashboards';
+
+        const method = this.dashboardId ? 'PUT' : 'POST';
+
+        const response = await apiFetch(url, {
+          method: method,
+          body: JSON.stringify(this.dashboardData)
+        });
+
+        const result = await response.json();
+        this.dashboardId = result.id;
+
+        alert('Dashboard saved successfully!');
+        document.getElementById('dashboard-title').textContent = dashboardName;
+      } catch (error) {
+        console.error('Failed to save dashboard:', error);
+        alert('Failed to save dashboard');
+      }
+    }
+
+    async publishDashboard() {
+      if (!this.dashboardId) {
+        alert('Please save the dashboard first');
+        return;
+      }
+
+      try {
+        await apiFetch(`/api/v1/dashboards/${this.dashboardId}/publish`, {
+          method: 'POST'
+        });
+
+        alert('Dashboard published successfully!');
+      } catch (error) {
+        console.error('Failed to publish dashboard:', error);
+        alert('Failed to publish dashboard');
+      }
+    }
+
+    showTemplateLibrary() {
+      const modal = document.getElementById('template-library-modal');
+      modal.classList.remove('hidden');
+
+      // Initialize template library if not already done
+      if (!this.templateLibrary) {
+        this.templateLibrary = new DashboardTemplateLibrary('#template-library-modal-content', {
+          onTemplateClone: (template) => {
+            this.canvas.loadWidgets(template.widgets);
+            modal.classList.add('hidden');
+          },
+          onClose: () => {
+            modal.classList.add('hidden');
+          }
+        });
+      }
+    }
+
+    showPreview() {
+      const modal = document.getElementById('preview-modal');
+      modal.classList.remove('hidden');
+
+      // Initialize preview if not already done
+      if (!this.preview) {
+        this.preview = new LiveDashboardPreview('#preview-container', {
+          dashboardConfig: {
+            ...this.dashboardData,
+            widgets: this.canvas.getWidgets()
+          },
+          autoRefresh: false
+        });
+      } else {
+        this.preview.updateDashboardConfig({
+          ...this.dashboardData,
+          widgets: this.canvas.getWidgets()
+        });
+      }
+    }
+
+    hidePreview() {
+      document.getElementById('preview-modal').classList.add('hidden');
+    }
+
+    handleWidgetSelect(widget) {
+      this.selectedWidget = widget;
+
+      // Update widget config panel
+      if (this.widgetConfig) {
+        this.widgetConfig.updateWidget(widget);
+      }
+    }
+
+    handleWidgetDragStart(widget) {
+      console.log('Widget drag started:', widget);
+    }
+
+    handleWidgetsChange(widgets) {
+      this.dashboardData.widgets = widgets;
+      this.updateWidgetCount();
+    }
+
+    handleConfigChange(config) {
+      if (this.selectedWidget && this.canvas) {
+        this.selectedWidget.config = config;
+        this.canvas.updateWidget(this.selectedWidget);
+      }
+    }
+
+    updateWidgetCount() {
+      const count = this.canvas?.getWidgets()?.length || 0;
+      const countEl = document.getElementById('canvas-widget-count');
+      if (countEl) {
+        countEl.textContent = `${count} widget${count !== 1 ? 's' : ''}`;
+      }
+    }
+  }
+
+  // Initialize designer when page loads
+  const designer = new DashboardDesigner();
+
+  // Make it globally accessible for debugging
+  window.dashboardDesigner = designer;
+</script>
