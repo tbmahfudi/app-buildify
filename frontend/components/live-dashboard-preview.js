@@ -22,7 +22,7 @@
  * });
  */
 
-import { apiFetch } from '../utils/api.js';
+import { apiFetch } from '../assets/js/api.js';
 
 export class LiveDashboardPreview {
     constructor(container, options = {}) {

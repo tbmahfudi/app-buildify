@@ -5,6 +5,8 @@
  * Provides UI for viewing sync status, previewing changes, and managing sync history.
  */
 
+import { apiFetch } from './api.js';
+
 class MenuSyncPage {
     constructor() {
         this.syncStatus = null;
@@ -60,12 +62,7 @@ class MenuSyncPage {
 
     async loadSyncStatus() {
         try {
-            const response = await fetch('/api/v1/menu/sync/status', {
-                headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`,
-                    'Content-Type': 'application/json'
-                }
-            });
+            const response = await apiFetch('/menu/sync/status');
 
             if (response.ok) {
                 this.syncStatus = await response.json();
@@ -113,12 +110,7 @@ class MenuSyncPage {
 
     async loadSyncHistory() {
         try {
-            const response = await fetch('/api/v1/menu/sync/history', {
-                headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`,
-                    'Content-Type': 'application/json'
-                }
-            });
+            const response = await apiFetch('/menu/sync/history');
 
             if (response.ok) {
                 this.syncHistory = await response.json();
@@ -280,12 +272,8 @@ class MenuSyncPage {
             const preserveCustomizations = document.getElementById('preserve-customizations-checkbox')?.checked || true;
             const clearCache = document.getElementById('clear-cache-checkbox')?.checked || true;
 
-            const response = await fetch('/api/v1/menu/sync', {
+            const response = await apiFetch('/menu/sync', {
                 method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`,
-                    'Content-Type': 'application/json'
-                },
                 body: JSON.stringify({
                     force_sync: forceSync,
                     preserve_customizations: preserveCustomizations,
@@ -317,12 +305,7 @@ class MenuSyncPage {
         previewBtn.innerHTML = '<i class="ph ph-spinner ph-spin mr-2"></i>Loading...';
 
         try {
-            const response = await fetch('/api/v1/menu/sync/preview', {
-                headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`,
-                    'Content-Type': 'application/json'
-                }
-            });
+            const response = await apiFetch('/menu/sync/preview');
 
             if (response.ok) {
                 const preview = await response.json();
@@ -438,12 +421,8 @@ class MenuSyncPage {
         }
 
         try {
-            const response = await fetch('/api/v1/menu/reset', {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`,
-                    'Content-Type': 'application/json'
-                }
+            const response = await apiFetch('/menu/reset', {
+                method: 'POST'
             });
 
             if (response.ok) {
