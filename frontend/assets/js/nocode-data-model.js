@@ -511,78 +511,80 @@ export class DataModelPage {
     modal.id = 'editEntityModal';
     modal.className = 'fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-[60]';
     modal.innerHTML = `
-      <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+      <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
         <div class="px-6 py-4 border-b border-gray-200">
           <h3 class="text-lg font-semibold text-gray-900">Edit Entity</h3>
         </div>
-        <form id="editEntityForm" class="p-6 space-y-4">
-          <div class="grid grid-cols-2 gap-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Entity Name *</label>
-              <input type="text" name="name" required value="${this.escapeHtml(entity.name)}"
-                     class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100" disabled>
-              <p class="text-xs text-gray-500 mt-1">Cannot change after creation</p>
+        <form id="editEntityForm" class="flex-1 flex flex-col">
+          <div class="flex-1 overflow-y-auto p-6 space-y-4">
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Entity Name *</label>
+                <input type="text" name="name" required value="${this.escapeHtml(entity.name)}"
+                       class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100" disabled>
+                <p class="text-xs text-gray-500 mt-1">Cannot change after creation</p>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Table Name *</label>
+                <input type="text" name="table_name" required value="${this.escapeHtml(entity.table_name)}"
+                       class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100" disabled>
+                <p class="text-xs text-gray-500 mt-1">Cannot change after creation</p>
+              </div>
             </div>
+
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Display Label *</label>
+                <input type="text" name="label" required value="${this.escapeHtml(entity.label)}"
+                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Plural Label</label>
+                <input type="text" name="plural_label" value="${this.escapeHtml(entity.plural_label || '')}"
+                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+              </div>
+            </div>
+
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Table Name *</label>
-              <input type="text" name="table_name" required value="${this.escapeHtml(entity.table_name)}"
-                     class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100" disabled>
-              <p class="text-xs text-gray-500 mt-1">Cannot change after creation</p>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+              <textarea name="description" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">${this.escapeHtml(entity.description || '')}</textarea>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                <input type="text" name="category" value="${this.escapeHtml(entity.category || '')}"
+                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Icon</label>
+                <input type="text" name="icon" value="${this.escapeHtml(entity.icon || '')}" placeholder="database"
+                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                <p class="text-xs text-gray-500 mt-1">Phosphor icon name</p>
+              </div>
+            </div>
+
+            <div class="space-y-2">
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" name="is_audited" ${entity.is_audited ? 'checked' : ''} class="rounded text-blue-600">
+                <span class="text-sm text-gray-700">Enable Audit Trail</span>
+              </label>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" name="supports_soft_delete" ${entity.supports_soft_delete ? 'checked' : ''} class="rounded text-blue-600">
+                <span class="text-sm text-gray-700">Enable Soft Delete</span>
+              </label>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" name="supports_attachments" ${entity.supports_attachments ? 'checked' : ''} class="rounded text-blue-600">
+                <span class="text-sm text-gray-700">Enable Attachments</span>
+              </label>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" name="is_versioned" ${entity.is_versioned ? 'checked' : ''} class="rounded text-blue-600">
+                <span class="text-sm text-gray-700">Enable Versioning</span>
+              </label>
             </div>
           </div>
 
-          <div class="grid grid-cols-2 gap-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Display Label *</label>
-              <input type="text" name="label" required value="${this.escapeHtml(entity.label)}"
-                     class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Plural Label</label>
-              <input type="text" name="plural_label" value="${this.escapeHtml(entity.plural_label || '')}"
-                     class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-            </div>
-          </div>
-
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
-            <textarea name="description" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">${this.escapeHtml(entity.description || '')}</textarea>
-          </div>
-
-          <div class="grid grid-cols-2 gap-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Category</label>
-              <input type="text" name="category" value="${this.escapeHtml(entity.category || '')}"
-                     class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Icon</label>
-              <input type="text" name="icon" value="${this.escapeHtml(entity.icon || '')}" placeholder="database"
-                     class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-              <p class="text-xs text-gray-500 mt-1">Phosphor icon name</p>
-            </div>
-          </div>
-
-          <div class="space-y-2">
-            <label class="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" name="is_audited" ${entity.is_audited ? 'checked' : ''} class="rounded text-blue-600">
-              <span class="text-sm text-gray-700">Enable Audit Trail</span>
-            </label>
-            <label class="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" name="supports_soft_delete" ${entity.supports_soft_delete ? 'checked' : ''} class="rounded text-blue-600">
-              <span class="text-sm text-gray-700">Enable Soft Delete</span>
-            </label>
-            <label class="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" name="supports_attachments" ${entity.supports_attachments ? 'checked' : ''} class="rounded text-blue-600">
-              <span class="text-sm text-gray-700">Enable Attachments</span>
-            </label>
-            <label class="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" name="is_versioned" ${entity.is_versioned ? 'checked' : ''} class="rounded text-blue-600">
-              <span class="text-sm text-gray-700">Enable Versioning</span>
-            </label>
-          </div>
-
-          <div class="flex gap-3 pt-4 border-t">
+          <div class="px-6 py-4 border-t border-gray-200 flex gap-3">
             <button type="submit" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
               <i class="ph ph-check"></i> Save Changes
             </button>
@@ -774,107 +776,109 @@ export class DataModelPage {
     modal.id = 'addFieldModal';
     modal.className = 'fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-[60]';
     modal.innerHTML = `
-      <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+      <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
         <div class="px-6 py-4 border-b border-gray-200">
           <h3 class="text-lg font-semibold text-gray-900">Add New Field</h3>
         </div>
-        <form id="addFieldForm" class="p-6 space-y-4">
-          <div class="grid grid-cols-2 gap-4">
+        <form id="addFieldForm" class="flex-1 flex flex-col">
+          <div class="flex-1 overflow-y-auto p-6 space-y-4">
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Field Name *</label>
+                <input type="text" name="name" required placeholder="customer_name"
+                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                <p class="text-xs text-gray-500 mt-1">Technical name (snake_case)</p>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Label *</label>
+                <input type="text" name="label" required placeholder="Customer Name"
+                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Field Type *</label>
+                <select name="field_type" required onchange="DataModelApp.updateDataTypeOptions(this.value)"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                  <option value="">Select type...</option>
+                  <option value="string">String/Text</option>
+                  <option value="integer">Integer</option>
+                  <option value="decimal">Decimal</option>
+                  <option value="boolean">Boolean</option>
+                  <option value="date">Date</option>
+                  <option value="datetime">Date & Time</option>
+                  <option value="text">Long Text</option>
+                  <option value="email">Email</option>
+                  <option value="url">URL</option>
+                  <option value="phone">Phone</option>
+                  <option value="json">JSON</option>
+                  <option value="file">File Upload</option>
+                  <option value="lookup">Lookup/Reference</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Database Type *</label>
+                <select name="data_type" required id="dataTypeSelect"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                  <option value="">Select database type...</option>
+                  <option value="VARCHAR">VARCHAR</option>
+                  <option value="TEXT">TEXT</option>
+                  <option value="INTEGER">INTEGER</option>
+                  <option value="BIGINT">BIGINT</option>
+                  <option value="DECIMAL">DECIMAL</option>
+                  <option value="BOOLEAN">BOOLEAN</option>
+                  <option value="DATE">DATE</option>
+                  <option value="TIMESTAMP">TIMESTAMP</option>
+                  <option value="JSONB">JSONB</option>
+                  <option value="UUID">UUID</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Max Length</label>
+                <input type="number" name="max_length" placeholder="255"
+                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                <p class="text-xs text-gray-500 mt-1">For VARCHAR types</p>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Default Value</label>
+                <input type="text" name="default_value" placeholder=""
+                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+              </div>
+            </div>
+
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Field Name *</label>
-              <input type="text" name="name" required placeholder="customer_name"
+              <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+              <textarea name="description" rows="2" placeholder="Field description..."
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"></textarea>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Help Text</label>
+              <input type="text" name="help_text" placeholder="Helper text shown to users"
                      class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-              <p class="text-xs text-gray-500 mt-1">Technical name (snake_case)</p>
             </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Label *</label>
-              <input type="text" name="label" required placeholder="Customer Name"
-                     class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-            </div>
-          </div>
 
-          <div class="grid grid-cols-2 gap-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Field Type *</label>
-              <select name="field_type" required onchange="DataModelApp.updateDataTypeOptions(this.value)"
-                      class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-                <option value="">Select type...</option>
-                <option value="string">String/Text</option>
-                <option value="integer">Integer</option>
-                <option value="decimal">Decimal</option>
-                <option value="boolean">Boolean</option>
-                <option value="date">Date</option>
-                <option value="datetime">Date & Time</option>
-                <option value="text">Long Text</option>
-                <option value="email">Email</option>
-                <option value="url">URL</option>
-                <option value="phone">Phone</option>
-                <option value="json">JSON</option>
-                <option value="file">File Upload</option>
-                <option value="lookup">Lookup/Reference</option>
-              </select>
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Database Type *</label>
-              <select name="data_type" required id="dataTypeSelect"
-                      class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-                <option value="">Select database type...</option>
-                <option value="VARCHAR">VARCHAR</option>
-                <option value="TEXT">TEXT</option>
-                <option value="INTEGER">INTEGER</option>
-                <option value="BIGINT">BIGINT</option>
-                <option value="DECIMAL">DECIMAL</option>
-                <option value="BOOLEAN">BOOLEAN</option>
-                <option value="DATE">DATE</option>
-                <option value="TIMESTAMP">TIMESTAMP</option>
-                <option value="JSONB">JSONB</option>
-                <option value="UUID">UUID</option>
-              </select>
+            <div class="grid grid-cols-3 gap-4">
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" name="is_required" class="rounded text-blue-600">
+                <span class="text-sm text-gray-700">Required</span>
+              </label>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" name="is_unique" class="rounded text-blue-600">
+                <span class="text-sm text-gray-700">Unique</span>
+              </label>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" name="is_indexed" class="rounded text-blue-600">
+                <span class="text-sm text-gray-700">Indexed</span>
+              </label>
             </div>
           </div>
 
-          <div class="grid grid-cols-2 gap-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Max Length</label>
-              <input type="number" name="max_length" placeholder="255"
-                     class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-              <p class="text-xs text-gray-500 mt-1">For VARCHAR types</p>
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Default Value</label>
-              <input type="text" name="default_value" placeholder=""
-                     class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-            </div>
-          </div>
-
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
-            <textarea name="description" rows="2" placeholder="Field description..."
-                      class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"></textarea>
-          </div>
-
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Help Text</label>
-            <input type="text" name="help_text" placeholder="Helper text shown to users"
-                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-          </div>
-
-          <div class="grid grid-cols-3 gap-4">
-            <label class="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" name="is_required" class="rounded text-blue-600">
-              <span class="text-sm text-gray-700">Required</span>
-            </label>
-            <label class="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" name="is_unique" class="rounded text-blue-600">
-              <span class="text-sm text-gray-700">Unique</span>
-            </label>
-            <label class="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" name="is_indexed" class="rounded text-blue-600">
-              <span class="text-sm text-gray-700">Indexed</span>
-            </label>
-          </div>
-
-          <div class="flex gap-3 pt-4 border-t">
+          <div class="px-6 py-4 border-t border-gray-200 flex gap-3">
             <button type="submit" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
               <i class="ph ph-plus"></i> Add Field
             </button>
@@ -1001,58 +1005,60 @@ export class DataModelPage {
     modal.id = 'editFieldModal';
     modal.className = 'fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-[60]';
     modal.innerHTML = `
-      <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+      <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
         <div class="px-6 py-4 border-b border-gray-200">
           <h3 class="text-lg font-semibold text-gray-900">Edit Field</h3>
         </div>
-        <form id="editFieldForm" class="p-6 space-y-4">
-          <div class="grid grid-cols-2 gap-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Field Name *</label>
-              <input type="text" name="name" required value="${this.escapeHtml(field.name)}"
-                     class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-gray-100" disabled>
-              <p class="text-xs text-gray-500 mt-1">Cannot change after creation</p>
+        <form id="editFieldForm" class="flex-1 flex flex-col">
+          <div class="flex-1 overflow-y-auto p-6 space-y-4">
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Field Name *</label>
+                <input type="text" name="name" required value="${this.escapeHtml(field.name)}"
+                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-gray-100" disabled>
+                <p class="text-xs text-gray-500 mt-1">Cannot change after creation</p>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Label *</label>
+                <input type="text" name="label" required value="${this.escapeHtml(field.label)}"
+                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+              </div>
             </div>
+
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Label *</label>
-              <input type="text" name="label" required value="${this.escapeHtml(field.label)}"
+              <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+              <textarea name="description" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">${field.description || ''}</textarea>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Help Text</label>
+              <input type="text" name="help_text" value="${field.help_text || ''}"
                      class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
             </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Default Value</label>
+              <input type="text" name="default_value" value="${field.default_value || ''}"
+                     class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+            </div>
+
+            <div class="grid grid-cols-3 gap-4">
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" name="is_required" ${field.is_required ? 'checked' : ''} class="rounded text-blue-600">
+                <span class="text-sm text-gray-700">Required</span>
+              </label>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" name="is_unique" ${field.is_unique ? 'checked' : ''} class="rounded text-blue-600">
+                <span class="text-sm text-gray-700">Unique</span>
+              </label>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" name="is_indexed" ${field.is_indexed ? 'checked' : ''} class="rounded text-blue-600">
+                <span class="text-sm text-gray-700">Indexed</span>
+              </label>
+            </div>
           </div>
 
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
-            <textarea name="description" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">${field.description || ''}</textarea>
-          </div>
-
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Help Text</label>
-            <input type="text" name="help_text" value="${field.help_text || ''}"
-                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-          </div>
-
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Default Value</label>
-            <input type="text" name="default_value" value="${field.default_value || ''}"
-                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-          </div>
-
-          <div class="grid grid-cols-3 gap-4">
-            <label class="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" name="is_required" ${field.is_required ? 'checked' : ''} class="rounded text-blue-600">
-              <span class="text-sm text-gray-700">Required</span>
-            </label>
-            <label class="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" name="is_unique" ${field.is_unique ? 'checked' : ''} class="rounded text-blue-600">
-              <span class="text-sm text-gray-700">Unique</span>
-            </label>
-            <label class="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" name="is_indexed" ${field.is_indexed ? 'checked' : ''} class="rounded text-blue-600">
-              <span class="text-sm text-gray-700">Indexed</span>
-            </label>
-          </div>
-
-          <div class="flex gap-3 pt-4 border-t">
+          <div class="px-6 py-4 border-t border-gray-200 flex gap-3">
             <button type="submit" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
               <i class="ph ph-check"></i> Save Changes
             </button>
@@ -1271,51 +1277,53 @@ export class DataModelPage {
     modal.id = 'addRelationshipModal';
     modal.className = 'fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-[60]';
     modal.innerHTML = `
-      <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl">
+      <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
         <div class="px-6 py-4 border-b border-gray-200">
           <h3 class="text-lg font-semibold text-gray-900">Add Relationship</h3>
         </div>
-        <form id="addRelationshipForm" class="p-6 space-y-4">
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Relationship Name *</label>
-            <input type="text" name="name" required placeholder="customer_orders"
-                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500">
+        <form id="addRelationshipForm" class="flex-1 flex flex-col">
+          <div class="flex-1 overflow-y-auto p-6 space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Relationship Name *</label>
+              <input type="text" name="name" required placeholder="customer_orders"
+                     class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500">
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Relationship Type *</label>
+              <select name="relationship_type" required
+                      class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500">
+                <option value="">Select type...</option>
+                <option value="one_to_many">One-to-Many</option>
+                <option value="many_to_one">Many-to-One</option>
+                <option value="many_to_many">Many-to-Many</option>
+                <option value="one_to_one">One-to-One</option>
+              </select>
+              <p class="text-xs text-gray-500 mt-1">Define how entities relate to each other</p>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Target Entity ID *</label>
+              <input type="text" name="target_entity_id" required placeholder="UUID of target entity"
+                     class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500">
+              <p class="text-xs text-gray-500 mt-1">Entity this relationship points to</p>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Foreign Key Field</label>
+              <input type="text" name="foreign_key_field" placeholder="customer_id"
+                     class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500">
+              <p class="text-xs text-gray-500 mt-1">Field name storing the foreign key</p>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+              <textarea name="description" rows="2" placeholder="Relationship description..."
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"></textarea>
+            </div>
           </div>
 
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Relationship Type *</label>
-            <select name="relationship_type" required
-                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500">
-              <option value="">Select type...</option>
-              <option value="one_to_many">One-to-Many</option>
-              <option value="many_to_one">Many-to-One</option>
-              <option value="many_to_many">Many-to-Many</option>
-              <option value="one_to_one">One-to-One</option>
-            </select>
-            <p class="text-xs text-gray-500 mt-1">Define how entities relate to each other</p>
-          </div>
-
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Target Entity ID *</label>
-            <input type="text" name="target_entity_id" required placeholder="UUID of target entity"
-                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500">
-            <p class="text-xs text-gray-500 mt-1">Entity this relationship points to</p>
-          </div>
-
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Foreign Key Field</label>
-            <input type="text" name="foreign_key_field" placeholder="customer_id"
-                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500">
-            <p class="text-xs text-gray-500 mt-1">Field name storing the foreign key</p>
-          </div>
-
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
-            <textarea name="description" rows="2" placeholder="Relationship description..."
-                      class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"></textarea>
-          </div>
-
-          <div class="flex gap-3 pt-4 border-t">
+          <div class="px-6 py-4 border-t border-gray-200 flex gap-3">
             <button type="submit" class="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
               <i class="ph ph-plus"></i> Add Relationship
             </button>
@@ -1546,8 +1554,8 @@ export class DataModelPage {
     // Create preview modal dynamically
     const modalHTML = `
       <div id="previewModal" class="fixed inset-0 bg-black bg-opacity-50 z-[60] flex items-center justify-center p-4">
-        <div class="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-          <div class="p-6 border-b border-gray-200">
+        <div class="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] flex flex-col">
+          <div class="px-6 py-4 border-b border-gray-200">
             <div class="flex items-center justify-between">
               <h3 class="text-xl font-bold text-gray-900">Preview: ${this.escapeHtml(entityData.label)}</h3>
               <button onclick="DataModelApp.closePreviewModal()" class="text-gray-400 hover:text-gray-600">
@@ -1556,7 +1564,7 @@ export class DataModelPage {
             </div>
           </div>
 
-          <div class="p-6 space-y-6">
+          <div class="flex-1 overflow-y-auto p-6 space-y-6">
             <!-- Entity Info -->
             <div class="grid grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg">
               <div>
@@ -1632,7 +1640,7 @@ export class DataModelPage {
             ` : ''}
           </div>
 
-          <div class="p-6 border-t border-gray-200 flex justify-end gap-2">
+          <div class="px-6 py-4 border-t border-gray-200 flex justify-end gap-2">
             <button onclick="DataModelApp.closePreviewModal()" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition">
               Close
             </button>
@@ -1782,9 +1790,9 @@ export class DataModelPage {
 
     const modalHTML = `
       <div id="migrationPreviewModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-lg shadow-xl w-full max-w-5xl max-h-[90vh] overflow-y-auto">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-5xl max-h-[90vh] flex flex-col">
           <!-- Header -->
-          <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between sticky top-0 bg-white">
+          <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
             <h3 class="text-lg font-semibold text-gray-900">
               <i class="ph ph-eye"></i> Migration Preview: ${preview.entity_name}
             </h3>
@@ -1794,7 +1802,7 @@ export class DataModelPage {
           </div>
 
           <!-- Content -->
-          <div class="p-6 space-y-6">
+          <div class="flex-1 overflow-y-auto p-6 space-y-6">
             <!-- Operation Info -->
             <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <div class="flex items-center gap-2 mb-2">
@@ -1879,7 +1887,7 @@ export class DataModelPage {
           </div>
 
           <!-- Footer Actions -->
-          <div class="px-6 py-4 border-t border-gray-200 flex gap-3 justify-end sticky bottom-0 bg-white">
+          <div class="px-6 py-4 border-t border-gray-200 flex gap-3 justify-end">
             <button onclick="DataModelApp.closeMigrationPreviewModal()" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">
               Cancel
             </button>
@@ -1971,9 +1979,9 @@ export class DataModelPage {
 
     const modalHTML = `
       <div id="migrationHistoryModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-lg shadow-xl w-full max-w-6xl max-h-[90vh] overflow-y-auto">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-6xl max-h-[90vh] flex flex-col">
           <!-- Header -->
-          <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between sticky top-0 bg-white">
+          <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
             <h3 class="text-lg font-semibold text-gray-900">
               <i class="ph ph-clock-clockwise"></i> Migration History
             </h3>
@@ -1983,7 +1991,7 @@ export class DataModelPage {
           </div>
 
           <!-- Content -->
-          <div class="p-6">
+          <div class="flex-1 overflow-y-auto p-6">
             ${migrations.length === 0 ? `
               <div class="text-center py-12 text-gray-500">
                 <i class="ph ph-database text-4xl mb-2"></i>
@@ -2051,7 +2059,7 @@ export class DataModelPage {
           </div>
 
           <!-- Footer -->
-          <div class="px-6 py-4 border-t border-gray-200 flex justify-end sticky bottom-0 bg-white">
+          <div class="px-6 py-4 border-t border-gray-200 flex justify-end">
             <button onclick="DataModelApp.closeMigrationHistoryModal()" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">
               Close
             </button>
