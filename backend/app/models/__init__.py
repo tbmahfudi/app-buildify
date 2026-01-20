@@ -89,6 +89,13 @@ from .module_service import (
     ModuleServiceAccessLog,
 )
 
+# No-Code Platform - Module Extension Framework (Phase 4 Priority 3)
+from .module_extension import (
+    ModuleEntityExtension,
+    ModuleScreenExtension,
+    ModuleMenuExtension,
+)
+
 # Security system
 from .password_history import PasswordHistory
 from .password_reset_token import PasswordResetToken
@@ -254,4 +261,9 @@ __all__ = [
     # No-Code Platform - Module Service Registry (Phase 4 Priority 2)
     "ModuleService",
     "ModuleServiceAccessLog",
+
+    # No-Code Platform - Module Extension Framework (Phase 4 Priority 3)
+    "ModuleEntityExtension",
+    "ModuleScreenExtension",
+    "ModuleMenuExtension",
 ]

@@ -12,7 +12,7 @@ from app.core.db import SessionLocal
 from app.core.security_middleware import SecurityMiddleware
 from app.core.startup import ensure_default_security_policy
 from app.routers import org, auth, metadata, data, audit, settings, modules, rbac, reports, dashboards, scheduler, menu, builder_pages
-from app.routers import data_model, workflows, automations, lookups, dynamic_data, nocode_modules
+from app.routers import data_model, workflows, automations, lookups, dynamic_data, nocode_modules, module_extensions
 from app.routers.admin import security as admin_security
 from app.core.module_system.registry import ModuleRegistryService
 from pathlib import Path
@@ -194,6 +194,7 @@ app.include_router(dynamic_data.router)
 
 # Phase 4 No-Code Platform routers - Module System Foundation (prefix defined in router files)
 app.include_router(nocode_modules.router)
+app.include_router(module_extensions.router)
 
 
 @app.get("/")

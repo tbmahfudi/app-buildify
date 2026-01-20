@@ -159,21 +159,32 @@ def upgrade() -> None:
     op.create_index('idx_module_versions_current', 'module_versions', ['module_id', 'is_current'], postgresql_where=sa.text('is_current = true'))
     op.create_index('idx_module_versions_number', 'module_versions', ['module_id', 'version_number'])
 
-    # Add module_id to existing no-code component tables
-    op.add_column('entity_definitions', sa.Column('module_id', UUID(as_uuid=True), sa.ForeignKey('nocode_modules.id', ondelete='SET NULL')))
-    op.add_column('workflow_definitions', sa.Column('module_id', UUID(as_uuid=True), sa.ForeignKey('nocode_modules.id', ondelete='SET NULL')))
-    op.add_column('automation_rules', sa.Column('module_id', UUID(as_uuid=True), sa.ForeignKey('nocode_modules.id', ondelete='SET NULL')))
-    op.add_column('lookup_configurations', sa.Column('module_id', UUID(as_uuid=True), sa.ForeignKey('nocode_modules.id', ondelete='SET NULL')))
-    op.add_column('report_definitions', sa.Column('module_id', UUID(as_uuid=True), sa.ForeignKey('nocode_modules.id', ondelete='SET NULL')))
-    op.add_column('dashboard_definitions', sa.Column('module_id', UUID(as_uuid=True), sa.ForeignKey('nocode_modules.id', ondelete='SET NULL')))
+    # Add module_id to existing no-code component tables (only if they exist)
+    # Using a connection to check table existence
+    connection = op.get_bind()
 
-    # Create indexes on module_id foreign keys
-    op.create_index('idx_entity_definitions_module', 'entity_definitions', ['module_id'])
-    op.create_index('idx_workflow_definitions_module', 'workflow_definitions', ['module_id'])
-    op.create_index('idx_automation_rules_module', 'automation_rules', ['module_id'])
-    op.create_index('idx_lookup_configurations_module', 'lookup_configurations', ['module_id'])
-    op.create_index('idx_report_definitions_module', 'report_definitions', ['module_id'])
-    op.create_index('idx_dashboard_definitions_module', 'dashboard_definitions', ['module_id'])
+    # Helper function to check if table exists
+    def table_exists(table_name):
+        result = connection.execute(sa.text(
+            "SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = :table_name)"
+        ), {"table_name": table_name})
+        return result.scalar()
+
+    # List of tables to add module_id to
+    component_tables = [
+        'entity_definitions',
+        'workflow_definitions',
+        'automation_rules',
+        'lookup_configurations',
+        'report_definitions',
+        'dashboard_definitions'
+    ]
+
+    # Add module_id column and index to each table if it exists
+    for table_name in component_tables:
+        if table_exists(table_name):
+            op.add_column(table_name, sa.Column('module_id', UUID(as_uuid=True), sa.ForeignKey('nocode_modules.id', ondelete='SET NULL')))
+            op.create_index(f'idx_{table_name}_module', table_name, ['module_id'])
 
 
 def downgrade() -> None:
@@ -181,21 +192,38 @@ def downgrade() -> None:
     Drop no-code module system tables.
     """
 
-    # Drop indexes from component tables
-    op.drop_index('idx_entity_definitions_module', 'entity_definitions')
-    op.drop_index('idx_workflow_definitions_module', 'workflow_definitions')
-    op.drop_index('idx_automation_rules_module', 'automation_rules')
-    op.drop_index('idx_lookup_configurations_module', 'lookup_configurations')
-    op.drop_index('idx_report_definitions_module', 'report_definitions')
-    op.drop_index('idx_dashboard_definitions_module', 'dashboard_definitions')
+    connection = op.get_bind()
 
-    # Drop module_id columns from component tables
-    op.drop_column('entity_definitions', 'module_id')
-    op.drop_column('workflow_definitions', 'module_id')
-    op.drop_column('automation_rules', 'module_id')
-    op.drop_column('lookup_configurations', 'module_id')
-    op.drop_column('report_definitions', 'module_id')
-    op.drop_column('dashboard_definitions', 'module_id')
+    # Helper function to check if table exists
+    def table_exists(table_name):
+        result = connection.execute(sa.text(
+            "SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = :table_name)"
+        ), {"table_name": table_name})
+        return result.scalar()
+
+    # List of component tables
+    component_tables = [
+        'entity_definitions',
+        'workflow_definitions',
+        'automation_rules',
+        'lookup_configurations',
+        'report_definitions',
+        'dashboard_definitions'
+    ]
+
+    # Drop indexes and columns from component tables if they exist
+    for table_name in component_tables:
+        if table_exists(table_name):
+            try:
+                op.drop_index(f'idx_{table_name}_module', table_name)
+            except Exception:
+                pass  # Index might not exist
+
+            try:
+                op.drop_column(table_name, 'module_id')
+            except Exception:
+                pass  # Column might not exist
+
 
     # Drop module_versions table
     op.drop_index('idx_module_versions_number', 'module_versions')
