@@ -1,7 +1,7 @@
 # No-Code Platform - High-Level Design
 
 **Date:** 2026-01-02
-**Last Updated:** 2026-01-18
+**Last Updated:** 2026-01-19
 **Project:** App-Buildify
 **Purpose:** High-level design and architecture of the No-Code Platform
 
@@ -13,15 +13,19 @@ App-Buildify is a comprehensive no-code/low-code platform that enables sysadmin 
 
 **Vision:** Configure everything from the platform - if developing a new module with all needed functionality, only platform configuration is required. Backend processes are handled separately in their own modules/business services.
 
-**Current Status (2026-01-18):**
+**Current Status (2026-01-19):**
 - ✅ **Phase 1 Core Foundation:** 100% Complete
 - ✅ **Phase 2 Runtime Layer:** 100% Complete
-- 🔄 **Phase 3 Visual Designer Enhancement & Menu Consolidation:** Priority 3 Completed
-  - ✅ Priority 1: Menu Consolidation & Designer Activation (Complete)
-  - ✅ Priority 2: Visual Report Designer Enhancement (Complete)
-  - ✅ Priority 3: Visual Dashboard Designer Enhancement (Complete - 2026-01-18)
+- ✅ **Phase 3 Visual Designer Enhancement:** 100% Complete
+  - ✅ Priority 1: Menu Consolidation & Designer Activation
+  - ✅ Priority 2: Visual Report Designer Enhancement
+  - ✅ Priority 3: Visual Dashboard Designer Enhancement
   - 📋 Priority 4: Developer Tools Enhancement (Documentation Only)
-- 📋 **Phase 4-6 Advanced Features:** Future Planning
+- 🎯 **Phase 4 Module System Foundation:** In Progress (2026-01-19)
+  - 📋 Priority 1: Module Definition & Registry
+  - 📋 Priority 2: Cross-Module Access (Service Layer)
+  - 📋 Priority 3: Extension Framework
+- 📋 **Phase 5-7 Advanced Features:** Future Planning
 
 ---
 
@@ -733,48 +737,251 @@ automations:read:all        - Read all automation rules
 
 ---
 
-### 📋 Phase 4: Integration & Communication (Future)
+### 🎯 Phase 4: Module System Foundation (In Progress - 2026-01-19)
 
-**Goal:** Connect with external systems
+**Goal:** Build infrastructure for modular no-code development with cross-module capabilities
+
+**Status:** In Progress (started 2026-01-19)
+
+**Priorities:**
+
+#### Priority 1: Module Definition & Registry (Week 1-2)
+**Purpose:** Core module infrastructure with semantic versioning and dependency management
 
 **Features:**
-- API & Integration Designer
-- Email Template Designer
-- Notification Configuration
-- Document Template Designer
-- Webhook Management
-- External API Connectors
-- Data Sync Configuration
+1. **Module Metadata Model**
+   - Module definition table with versioning
+   - Semantic versioning (MAJOR.MINOR.PATCH)
+   - Dependency declaration (required, optional, conflicts)
+   - Table naming convention: `{prefix}_{entity}` (max 10 char prefix, no underscore in prefix)
+   - Organization hierarchy support (always include branch_id)
+
+2. **Module Registry Service**
+   - Register/unregister modules
+   - Dependency resolver (version compatibility checking)
+   - Module lifecycle management (draft, active, deprecated)
+   - Module metadata API endpoints
+
+3. **Database Schema**
+   - nocode_modules table
+   - module_dependencies table
+   - module_versions table (version history)
+   - Add module_id FK to all no-code component tables
+
+**Deliverables:**
+- Module registry database schema
+- Module API endpoints (`/api/v1/nocode-modules/*`)
+- Dependency resolver service
+- Module creation wizard UI
 
 ---
 
-### 📋 Phase 5: Advanced Features (Future)
-
-**Goal:** Power user capabilities
+#### Priority 2: Cross-Module Access (Week 2-3)
+**Purpose:** Enable modules to safely access data and services from other modules
 
 **Features:**
-- Calculated Fields & Formula Builder
-- Custom Validation Rules Designer
-- Data Import/Export Templates
-- Query Builder (Advanced SQL)
-- Scheduled Jobs/Batch Processes
-- Data Transformation Rules
-- Custom Functions Library
+1. **Service Layer Architecture**
+   - Service registration (modules export typed services)
+   - Service discovery (find available services)
+   - Service versioning (API compatibility)
+
+2. **Permission Delegation**
+   - Cross-module permission checks
+   - Service-level RBAC enforcement
+   - Audit logging for cross-module access
+
+3. **Data Access Patterns**
+   - Backend: Service layer calls (recommended)
+   - Frontend: Direct API calls to `/dynamic-data/*`
+   - No direct database access across modules
+
+**Deliverables:**
+- Service registry system
+- Cross-module access examples
+- Permission delegation framework
+- Developer documentation
 
 ---
 
-### 📋 Phase 6: Administration & Customization (Future)
-
-**Goal:** Enterprise features
+#### Priority 3: Extension Framework (Week 3-4)
+**Purpose:** Allow modules to extend other modules' entities, screens, and menus
 
 **Features:**
-- Record-Level Security (Row-Level Security)
-- Theme & Branding Designer
-- Localization/Translation Management
-- Audit Configuration & Compliance
-- Mobile App Configuration
-- White-Label Configuration
-- Advanced Caching Strategies
+1. **Entity Extensions**
+   - Add custom fields to existing entities
+   - Extension tables: `{extending_prefix}_{target_prefix}_{target_entity}_ext`
+   - Auto-join extensions when loading entities
+   - Example: `payroll_hr_employees_ext` extends `hr_employees`
+
+2. **Screen Extensions**
+   - Add tabs to existing entity screens
+   - Add sections to existing forms
+   - Extension point registration
+   - Dynamic UI composition
+
+3. **Menu Extensions**
+   - Add menu items under other modules' menus
+   - Context-aware menu items
+   - Permission-based visibility
+
+**Deliverables:**
+- Entity extension system
+- Screen extension framework
+- Menu extension API
+- Extension registry UI
+- Example implementations
+
+**Total Effort:** 3-4 weeks
+
+**Detail:** See [NO-CODE-PHASE4.md](NO-CODE-PHASE4.md)
+
+---
+
+### 📋 Phase 5: No-Code Feature Enhancements (Future)
+
+**Goal:** Advanced no-code capabilities for power users
+
+**Features:**
+
+1. **Calculated Fields & Formulas**
+   - Expression builder with formula editor
+   - Support for common functions (SUM, AVG, COUNT, IF, etc.)
+   - Field dependencies tracking
+   - Real-time calculation
+
+2. **Validation Rules Designer**
+   - Visual validation rule builder
+   - Complex validation expressions
+   - Cross-field validation
+   - Custom error messages
+
+3. **Workflow Enhancements**
+   - Conditional branching (if/then/else)
+   - Loop support (foreach, while)
+   - Sub-workflows (call other workflows)
+   - Error handling and retry logic
+   - Workflow testing and debugging tools
+
+4. **Automation Enhancements**
+   - Event chaining (trigger cascades)
+   - Advanced retry policies
+   - Complex nested conditions (AND/OR groups)
+   - Action templates library
+   - Automation debugging dashboard
+
+5. **UI/UX Enhancements**
+   - Custom form layouts (multi-column, tabs, accordions)
+   - Conditional field visibility rules
+   - Multi-step forms with progress indicators
+   - Inline editing in data tables
+   - Bulk edit operations
+   - Field-level help text and tooltips
+
+6. **Report/Dashboard Enhancements**
+   - Drill-through reports (click to detail)
+   - Cross-tab/pivot reports
+   - Scheduled email delivery
+   - Dashboard filter synchronization
+   - Custom SQL query builder (advanced users)
+
+**Total Effort:** 6-8 weeks
+
+**Detail:** See [NO-CODE-PHASE5.md](NO-CODE-PHASE5.md) (to be created)
+
+---
+
+### 📋 Phase 6: Module Packaging & Deployment (Future)
+
+**Goal:** Enable environment promotion and module distribution
+
+**Features:**
+
+1. **Module Export**
+   - Bundle all module components (entities, workflows, automations, reports, etc.)
+   - Include database migrations
+   - Dependency validation
+   - Export as ZIP package
+
+2. **Module Import**
+   - Parse module package
+   - Conflict detection (naming conflicts, version conflicts)
+   - Preview changes before import
+   - Atomic deployment (all or nothing)
+
+3. **Version Management**
+   - Track module versions
+   - Upgrade existing modules
+   - Rollback capability
+   - Version comparison
+
+4. **Environment Promotion**
+   - Export from dev → import to staging
+   - Export from staging → import to prod
+   - Configuration overrides per environment
+   - Migration script generation
+
+5. **Deployment Tools**
+   - Deployment wizard UI
+   - Conflict resolution interface
+   - Deployment history and audit log
+   - Rollback UI
+
+**Total Effort:** 3-4 weeks
+
+**Detail:** See [NO-CODE-PHASE6.md](NO-CODE-PHASE6.md) (to be created)
+
+---
+
+### 📋 Phase 7: Integration & Communication (Future)
+
+**Goal:** Connect with external systems and communication channels
+
+**Features:**
+
+1. **API Integration Designer**
+   - REST API connector configuration
+   - GraphQL support
+   - Authentication methods (API key, OAuth, JWT)
+   - Request/response mapping
+   - Error handling and retry
+
+2. **Email System**
+   - Email template designer (WYSIWYG)
+   - Dynamic content with merge fields
+   - Attachment support
+   - Email scheduling
+   - Delivery tracking
+
+3. **Notification System**
+   - In-app notification builder
+   - SMS integration (Twilio, etc.)
+   - Push notifications (mobile/web)
+   - Notification preferences
+   - Read/unread tracking
+
+4. **Document Generation**
+   - PDF template designer
+   - Word template support
+   - Merge fields and dynamic content
+   - Batch document generation
+   - Template library
+
+5. **Webhook Management**
+   - Outgoing webhook configuration
+   - Incoming webhook handlers
+   - Payload transformation
+   - Webhook security (signatures)
+
+6. **External Data Sync**
+   - Bi-directional sync configuration
+   - Field mapping UI
+   - Conflict resolution strategies
+   - Sync scheduling
+   - Sync history and logs
+
+**Total Effort:** 6-8 weeks
+
+**Detail:** See [NO-CODE-PHASE7.md](NO-CODE-PHASE7.md) (to be created)
 
 ---
 
@@ -815,24 +1022,39 @@ The platform achieves complete no-code capability when:
 6. ✅ **Automation** - Event triggers on nocode entities (Phase 1+2 - Done)
 7. ✅ **Reporting** - Reports and dashboards buildable from UI (Existing - Done)
 8. ✅ **Security** - Permissions configurable from UI (Existing - Done)
-9. ✅ **Visual Designers** - Fully visual report/dashboard designers (Phase 3 - Priority 3 Completed)
-10. 📋 **Customization** - Branding, themes, localization from UI (Phase 6 - Planned)
+9. ✅ **Visual Designers** - Fully visual report/dashboard designers (Phase 3 - Done)
+10. 🎯 **Modular Architecture** - Modules with dependencies and extensions (Phase 4 - In Progress)
+11. 📋 **Advanced Features** - Calculated fields, validation rules (Phase 5 - Planned)
+12. 📋 **Module Packaging** - Export/import modules across environments (Phase 6 - Planned)
+13. 📋 **External Integration** - API, email, notifications (Phase 7 - Planned)
 
-**Final Goal:** Develop a complete new module with full functionality using ONLY the platform's configuration UI, with backend processes handled by separate business service modules.
+**Final Goal:** Develop complete, modular business applications using ONLY the platform's no-code configuration UI, with cross-module capabilities and environment promotion (dev → staging → prod).
 
 ---
 
 ## Related Documentation
 
-- [NO-CODE-PHASE1.md](NO-CODE-PHASE1.md) - Detailed Phase 1 design and status ✅
-- [NO-CODE-PHASE2.md](NO-CODE-PHASE2.md) - Detailed Phase 2 implementation and status ✅
-- [NO-CODE-PHASE3.md](NO-CODE-PHASE3.md) - Detailed Phase 3 design and implementation (Priority 3 Completed ✅)
+### Phase Documentation
+- [NO-CODE-PHASE1.md](NO-CODE-PHASE1.md) - Core Foundation (Data Model, Workflow, Automation, Lookups) ✅
+- [NO-CODE-PHASE2.md](NO-CODE-PHASE2.md) - Runtime Data Layer (CRUD API, Auto-UI, Integration) ✅
+- [NO-CODE-PHASE3.md](NO-CODE-PHASE3.md) - Visual Designer Enhancement (Menu, Report, Dashboard) ✅
+- [NO-CODE-PHASE4.md](NO-CODE-PHASE4.md) - Module System Foundation (Registry, Cross-Module, Extensions) 🎯
+- [NO-CODE-PHASE5.md](NO-CODE-PHASE5.md) - No-Code Feature Enhancements (to be created) 📋
+- [NO-CODE-PHASE6.md](NO-CODE-PHASE6.md) - Module Packaging & Deployment (to be created) 📋
+- [NO-CODE-PHASE7.md](NO-CODE-PHASE7.md) - Integration & Communication (to be created) 📋
+
+### User Guides
+- [NO-CODE-MODULE-CREATION-GUIDE.md](NO-CODE-MODULE-CREATION-GUIDE.md) - Step-by-step guide to create modules ✅
+
+### Technical Documentation
 - [FRONTEND-API-MIGRATION-GUIDE.md](FRONTEND-API-MIGRATION-GUIDE.md) - API migration reference for frontend
 - [BACKEND-API-REVIEW.md](BACKEND-API-REVIEW.md) - API consistency review and EntityMetadata analysis
 - [API-OVERLAP-ANALYSIS.md](API-OVERLAP-ANALYSIS.md) - API overlap analysis
 
 ---
 
-**Document Version:** 5.0
-**Last Updated:** 2026-01-18
-**Next Review:** Phase 3 Priority 4 Decision & Phase 4 Planning
+**Document Version:** 6.0
+**Last Updated:** 2026-01-19
+**Next Review:** Phase 4 implementation progress
+**Changelog:**
+- v6.0 (2026-01-19): Reorganized phases, added Phase 4-7 structure, updated module system architecture
