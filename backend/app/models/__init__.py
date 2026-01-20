@@ -83,6 +83,12 @@ from .nocode_module import (
     ModuleVersion,
 )
 
+# No-Code Platform - Module Service Registry (Phase 4 Priority 2)
+from .module_service import (
+    ModuleService,
+    ModuleServiceAccessLog,
+)
+
 # Security system
 from .password_history import PasswordHistory
 from .password_reset_token import PasswordResetToken
@@ -244,4 +250,8 @@ __all__ = [
     "NocodeModule",
     "ModuleDependency",
     "ModuleVersion",
+
+    # No-Code Platform - Module Service Registry (Phase 4 Priority 2)
+    "ModuleService",
+    "ModuleServiceAccessLog",
 ]

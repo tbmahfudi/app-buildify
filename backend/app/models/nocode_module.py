@@ -97,6 +97,12 @@ class NocodeModule(Base):
         order_by="desc(ModuleVersion.version_number)"
     )
 
+    services = relationship(
+        "ModuleService",
+        back_populates="module",
+        cascade="all, delete-orphan"
+    )
+
     # Constraints
     __table_args__ = (
         CheckConstraint(
