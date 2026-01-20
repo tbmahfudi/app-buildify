@@ -76,6 +76,13 @@ from .lookup import (
     CascadingLookupRule,
 )
 
+# No-Code Platform - Module System Foundation (Phase 4)
+from .nocode_module import (
+    NocodeModule,
+    ModuleDependency,
+    ModuleVersion,
+)
+
 # Security system
 from .password_history import PasswordHistory
 from .password_reset_token import PasswordResetToken
@@ -232,4 +239,9 @@ __all__ = [
     "LookupConfiguration",
     "LookupCache",
     "CascadingLookupRule",
+
+    # No-Code Platform - Module System Foundation (Phase 4)
+    "NocodeModule",
+    "ModuleDependency",
+    "ModuleVersion",
 ]
