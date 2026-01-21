@@ -1,6 +1,6 @@
 # Complete No-Code Module Creation Guide
 
-**Date:** 2026-01-19
+**Date:** 2026-01-21 (Updated for Phase 4)
 **Purpose:** Step-by-step guide to create a fully functional module using only the No-Code Platform
 **Example Module:** Customer Support Ticket System
 **Estimated Time:** 2-3 hours
@@ -12,10 +12,12 @@
 1. [Introduction](#introduction)
 2. [Module Overview](#module-overview)
 3. [Prerequisites](#prerequisites)
-4. [Step-by-Step Implementation](#step-by-step-implementation)
-5. [Testing & Validation](#testing--validation)
-6. [Going Live](#going-live)
-7. [Appendix](#appendix)
+4. [Phase 4: Module System Setup](#phase-4-module-system-setup)
+5. [Step-by-Step Implementation](#step-by-step-implementation)
+6. [Testing & Validation](#testing--validation)
+7. [Going Live](#going-live)
+8. [Advanced: Module Extensions](#advanced-module-extensions)
+9. [Appendix](#appendix)
 
 ---
 
@@ -23,9 +25,20 @@
 
 This guide demonstrates how to build a complete, production-ready **Customer Support Ticket System** using ONLY the No-Code Platform features. No backend coding required!
 
+### What's New in Phase 4
+
+With the **Module System Foundation** (Phase 4), you can now:
+- ✅ Create **organized modules** per business domain
+- ✅ Define **module dependencies** with version constraints
+- ✅ Use **cross-module services** to access data from other modules
+- ✅ **Extend other modules** by adding fields, UI tabs, and menu items
+- ✅ **Version and publish** modules independently
+- ✅ Export/import modules for reuse across tenants
+
 ### What You'll Build
 
 A complete support ticket system with:
+- **Module Definition** - Organized "Support" module with version control
 - Custom data models (Tickets, Categories, SLA Policies)
 - Automated workflows (ticket assignment, escalation)
 - Business automation (SLA monitoring, notifications)
@@ -33,10 +46,12 @@ A complete support ticket system with:
 - Auto-generated CRUD UI
 - Reports and dashboards
 - Custom pages for end-users
+- **Optional:** Extend HR module to link tickets to employees
 
 ### Features You'll Use
 
-✅ **Data Model Designer** - Create 4 entities
+✅ **Module Management** - Create and version your module
+✅ **Data Model Designer** - Create 4 entities within the module
 ✅ **Lookup Configuration** - Configure dropdowns
 ✅ **Workflow Designer** - Ticket approval workflow
 ✅ **Automation System** - Auto-assignment & SLA alerts
@@ -44,6 +59,7 @@ A complete support ticket system with:
 ✅ **Report Designer** - Ticket analytics
 ✅ **Dashboard Designer** - Support metrics dashboard
 ✅ **Menu Management** - Navigation structure
+✅ **Extension Framework** - Extend other modules
 ✅ **Page Builder** (Optional) - Custom ticket portal
 
 ---
@@ -59,16 +75,24 @@ A complete support ticket system with:
 4. SLA violations trigger alerts
 5. Managers can track ticket metrics
 6. Approval is required for refund requests
+7. **New:** Link tickets to employees from HR module (via extension)
 
-### Module Architecture
+### Module Architecture (Phase 4)
 
 ```
 ┌─────────────────────────────────────────────────────────┐
+│  MODULE: Support Ticket System (v1.0.0)                 │
+│  Table Prefix: support                                  │
+│  Status: Active                                         │
+│  Dependencies: None                                     │
+└─────────────────────────────────────────────────────────┘
+                        ↓
+┌─────────────────────────────────────────────────────────┐
 │  DATA LAYER (4 Entities)                                │
-│  ├── SupportTicket (main entity)                        │
-│  ├── TicketCategory (lookup data)                       │
-│  ├── TicketComment (related records)                    │
-│  └── SLAPolicy (configuration data)                     │
+│  ├── SupportTicket (support_tickets)                    │
+│  ├── TicketCategory (support_categories)                │
+│  ├── TicketComment (support_comments)                   │
+│  └── SLAPolicy (support_sla_policies)                   │
 └─────────────────────────────────────────────────────────┘
                         ↓
 ┌─────────────────────────────────────────────────────────┐
@@ -86,6 +110,12 @@ A complete support ticket system with:
 │  ├── Dashboard: Support Metrics Overview                │
 │  └── Custom Page: Customer Ticket Portal (Optional)     │
 └─────────────────────────────────────────────────────────┘
+                        ↓
+┌─────────────────────────────────────────────────────────┐
+│  EXTENSIONS (Optional)                                  │
+│  └── Extend HR Employee entity with support fields      │
+│      (total_tickets, avg_resolution_time)               │
+└─────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -95,6 +125,8 @@ A complete support ticket system with:
 ### Required Permissions
 
 Ensure you have these permissions:
+- `modules:create:tenant` - **NEW:** Create modules
+- `modules:publish:tenant` - **NEW:** Publish modules
 - `data-model:create:tenant` - Create entities
 - `workflows:create:tenant` - Create workflows
 - `automations:create:tenant` - Create automation rules
@@ -106,11 +138,126 @@ Ensure you have these permissions:
 ### Platform Status Check
 
 Before starting, verify:
-1. ✅ Phase 1 Complete (Data Model, Workflow, Automation, Lookups)
-2. ✅ Phase 2 Complete (Runtime CRUD, Auto-UI, Integration)
-3. ✅ Phase 3 Priority 1-3 Complete (Menu, Report/Dashboard Designers)
+1. ✅ **Phase 1 Complete** (Data Model, Workflow, Automation, Lookups)
+2. ✅ **Phase 2 Complete** (Runtime CRUD, Auto-UI, Integration)
+3. ✅ **Phase 3 Priority 1-3 Complete** (Menu, Report/Dashboard Designers)
+4. ✅ **Phase 4 Complete** (Module System Foundation) - **NEW!**
 
-You can verify by checking the "No-Code Platform" menu exists and contains all submenus.
+You can verify by checking:
+- "No-Code Platform" menu exists and contains all submenus
+- "Module Management" menu item exists (Phase 4)
+- Database migrations are up to date: `alembic upgrade head`
+
+### Database Migrations
+
+**IMPORTANT:** Before creating modules, ensure Phase 4 migrations have been applied:
+
+```bash
+cd /home/user/app-buildify/backend
+alembic upgrade head
+```
+
+Expected output should include:
+```
+INFO  [alembic.runtime.migration] Running upgrade -> pg_nocode_module_system
+INFO  [alembic.runtime.migration] Running upgrade -> pg_module_services
+INFO  [alembic.runtime.migration] Running upgrade -> pg_module_extensions
+```
+
+---
+
+## Phase 4: Module System Setup
+
+### Step 0.1: Create the Support Module
+
+**Navigation:** Module Management (or direct URL: `/nocode-modules.html`)
+
+**Why Module First?**
+In Phase 4, all no-code components (entities, workflows, automations, etc.) must belong to a module. This ensures proper organization, versioning, and dependency management.
+
+#### Create Module Wizard
+
+1. **Navigate to Module Management**
+   - Click "Module Management" in the main navigation
+   - Or go directly to: `http://your-domain/nocode-modules.html`
+
+2. **Click "Create Module"**
+
+#### Step 1: Basic Info
+
+| Field | Value | Description |
+|-------|-------|-------------|
+| **Module Name** | `support_management` | Technical name (lowercase, underscore) |
+| **Display Name** | `Support Management` | User-friendly name |
+| **Description** | `Customer support ticket system with SLA tracking and automated workflows` | Brief module description |
+| **Category** | `Support` | Business domain category |
+| **Tags** | `tickets, support, sla, customer-service` | Comma-separated tags |
+
+Click **"Next"** →
+
+#### Step 2: Table Prefix
+
+| Field | Value | Notes |
+|-------|-------|-------|
+| **Table Prefix** | `support` | • Max 10 characters<br>• Lowercase only<br>• No underscores<br>• Must be unique |
+
+**How it works:**
+- All tables in this module will be prefixed with `support_`
+- Example tables: `support_tickets`, `support_categories`, `support_comments`
+- This ensures no naming conflicts with other modules
+
+The system will validate the prefix in real-time:
+- ✅ **Green checkmark** = Available
+- ❌ **Red X** = Already in use or invalid format
+
+Click **"Next"** →
+
+#### Step 3: Visual Config
+
+**Module Icon:**
+- Select icon: `headset` (support/help desk icon)
+- Or choose any icon from the picker
+
+**Module Color:**
+- Select color: Blue (`#3b82f6`)
+- Or choose any color from the picker
+
+**Preview:**
+You'll see a live preview of how the module will appear in lists and menus.
+
+Click **"Next"** →
+
+#### Step 4: Review & Create
+
+Review all information:
+- ✅ Module Name: `support_management`
+- ✅ Display Name: `Support Management`
+- ✅ Category: Support
+- ✅ Table Prefix: `support`
+- ✅ Icon: headset
+- ✅ Color: Blue
+
+Click **"Create Module"** ✨
+
+**Result:**
+- Module created with status: **Draft**
+- Version: **1.0.0**
+- You can now add entities, workflows, and other components to this module
+
+---
+
+### Step 0.2: Understanding Module Status
+
+Your module has these lifecycle stages:
+
+| Status | Description | Can Edit? | Visible to Users? |
+|--------|-------------|-----------|-------------------|
+| **Draft** | Initial state, under development | ✅ Yes | ❌ No |
+| **Active** | Published and ready for use | ⚠️ Limited | ✅ Yes |
+| **Deprecated** | Old version, still works but discouraged | ❌ No | ✅ Yes (with warning) |
+| **Archived** | Inactive, kept for records | ❌ No | ❌ No |
+
+**Current Status:** Your module is in **Draft** mode. You can freely add and modify components. When ready, you'll publish it to make it active.
 
 ---
 
@@ -125,11 +272,14 @@ You can verify by checking the "No-Code Platform" menu exists and contains all s
 1. **Click "Create New Entity"**
 
 2. **Basic Information:**
+   - **Module:** `Support Management` ⬅️ **NEW: Select your module!**
    - **Entity Name:** `SupportTicket`
    - **Display Name:** `Support Ticket`
-   - **Table Name:** `support_tickets`
+   - **Table Name:** `support_tickets` (auto-prefixed: will become `support_tickets`)
    - **Description:** `Customer support ticket with SLA tracking`
    - **Icon:** `ticket` (or choose from Phosphor icons)
+
+> **💡 Phase 4 Note:** The table name will automatically be prefixed with `support_` because it belongs to the Support module. You just enter the entity name part.
 
 3. **Add Fields:** Click "Add Field" for each field below
 
@@ -1706,12 +1856,299 @@ async function triggerWorkflow(workflowId, entityId) {
 
 ---
 
+## Advanced: Module Extensions
+
+**New in Phase 4!** Learn how to extend other modules with your own custom fields, UI components, and menu items.
+
+### Use Case: Link Support Tickets to HR Employees
+
+Imagine you have an HR module with an Employee entity. You want to track support tickets raised by each employee directly on their employee record.
+
+Instead of modifying the HR module directly, you can **extend** it from your Support module!
+
+---
+
+### Extension 1: Add Support Fields to HR Employee Entity
+
+**API Endpoint:** `POST /api/v1/module-extensions/entity`
+
+**Request:**
+```json
+{
+  "extending_module_id": "support_module_uuid",
+  "target_entity_id": "hr_employees_entity_uuid",
+  "extension_fields": [
+    {
+      "name": "total_tickets",
+      "type": "integer",
+      "label": "Total Support Tickets",
+      "description": "Total number of support tickets raised by this employee",
+      "required": false,
+      "default_value": 0
+    },
+    {
+      "name": "avg_resolution_time",
+      "type": "decimal",
+      "precision": 10,
+      "scale": 2,
+      "label": "Avg Resolution Time (hours)",
+      "description": "Average time to resolve tickets raised by this employee",
+      "required": false
+    },
+    {
+      "name": "last_ticket_date",
+      "type": "datetime",
+      "label": "Last Ticket Date",
+      "description": "Date of last ticket raised",
+      "required": false
+    }
+  ]
+}
+```
+
+**What happens:**
+1. System creates extension table: `support_hr_employees_ext`
+2. Table has foreign key to `hr_employees.id`
+3. Extension fields are added to the extension table
+4. When querying an employee, extension data is automatically joined
+
+**Query Employee with Extensions:**
+```bash
+GET /api/v1/module-extensions/entity/Employee/records/{employee_id}
+```
+
+**Response:**
+```json
+{
+  "id": "employee-123",
+  "name": "John Doe",
+  "email": "john@company.com",
+  "department": "Engineering",
+
+  "support_ext": {
+    "total_tickets": 15,
+    "avg_resolution_time": 4.5,
+    "last_ticket_date": "2026-01-20T10:30:00Z"
+  }
+}
+```
+
+---
+
+### Extension 2: Add "Support Tickets" Tab to Employee Detail Screen
+
+**API Endpoint:** `POST /api/v1/module-extensions/screen`
+
+**Request:**
+```json
+{
+  "extending_module_id": "support_module_uuid",
+  "target_module_id": "hr_module_uuid",
+  "target_screen": "employee_detail",
+  "extension_type": "tab",
+  "extension_config": {
+    "label": "Support Tickets",
+    "icon": "headset",
+    "component_path": "/modules/support/components/employee-tickets-tab.js"
+  },
+  "position": 10,
+  "required_permission": "support:tickets:read"
+}
+```
+
+**Result:**
+When viewing an employee's detail page in the HR module, a new "Support Tickets" tab appears showing all tickets raised by that employee.
+
+**Tab Content (employee-tickets-tab.js):**
+```javascript
+class EmployeeTicketsTab {
+  async render(employeeId) {
+    // Fetch tickets for this employee
+    const tickets = await apiFetch(
+      `/dynamic-data/SupportTicket/records?filters={"created_by":"${employeeId}"}`
+    );
+
+    return `
+      <div class="employee-tickets">
+        <h3>Support Tickets (${tickets.length})</h3>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Ticket #</th>
+              <th>Subject</th>
+              <th>Status</th>
+              <th>Priority</th>
+              <th>Created</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${tickets.map(ticket => `
+              <tr onclick="window.location='/tickets/${ticket.id}'">
+                <td>${ticket.ticket_number}</td>
+                <td>${ticket.subject}</td>
+                <td><span class="badge badge-${ticket.status}">${ticket.status}</span></td>
+                <td>${ticket.priority}</td>
+                <td>${formatDate(ticket.created_at)}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+  }
+}
+```
+
+---
+
+### Extension 3: Add "Support" Submenu to HR Management Menu
+
+**API Endpoint:** `POST /api/v1/module-extensions/menu`
+
+**Request:**
+```json
+{
+  "extending_module_id": "support_module_uuid",
+  "target_module_id": "hr_module_uuid",
+  "target_menu_item": "hr_management",
+  "menu_config": {
+    "type": "submenu",
+    "label": "Employee Support",
+    "icon": "headset",
+    "items": [
+      {
+        "label": "Employee Tickets",
+        "route": "support/employee-tickets",
+        "icon": "ticket",
+        "permission": "support:tickets:read"
+      },
+      {
+        "label": "Support Analytics",
+        "route": "support/employee-analytics",
+        "icon": "chart-bar",
+        "permission": "support:reports:read"
+      }
+    ]
+  },
+  "position": 20
+}
+```
+
+**Result:**
+The HR Management menu now has an "Employee Support" submenu with links to view support tickets and analytics for employees.
+
+**Menu Structure:**
+```
+HR Management
+  ├── Employees
+  ├── Departments
+  ├── Leave Requests
+  ├── Employee Support (⬅️ Extension from Support module)
+  │   ├── Employee Tickets
+  │   └── Support Analytics
+  └── Payroll
+```
+
+---
+
+### Extension Benefits
+
+✅ **Non-invasive:** Don't modify the HR module's code
+✅ **Modular:** Support module can be removed without breaking HR
+✅ **Permission-aware:** Extensions respect user permissions
+✅ **Versioned:** Extensions are tied to module versions
+✅ **Maintainable:** Each module manages its own extensions
+
+### When to Use Extensions
+
+Use entity extensions when:
+- ✅ You need to add fields to entities from another module
+- ✅ You want to track relationships across modules
+- ✅ You need module-specific data on shared entities
+
+Use screen extensions when:
+- ✅ You want to display your module's data on another module's screens
+- ✅ You need to add actions/buttons to existing screens
+- ✅ You want to enhance user workflows across modules
+
+Use menu extensions when:
+- ✅ Your module's features are related to another module
+- ✅ You want to organize navigation by business domain
+- ✅ You need quick access to cross-module features
+
+---
+
+## Publishing Your Module
+
+Once you've finished building and testing your module, it's time to publish it!
+
+### Step 1: Review Module Components
+
+Check that all components are complete:
+- ✅ All entities published
+- ✅ All workflows tested
+- ✅ All automations working
+- ✅ All reports generating correctly
+- ✅ Dashboard widgets displaying data
+- ✅ Menu items configured
+
+### Step 2: Publish Module
+
+**API Endpoint:** `POST /api/v1/nocode-modules/{module_id}/publish`
+
+**Request:**
+```json
+{
+  "release_notes": "Initial release of Support Management module with ticket tracking, SLA monitoring, and automated workflows."
+}
+```
+
+**Result:**
+- Module status changes from **Draft** → **Active**
+- Version remains: **1.0.0**
+- All components become visible to users with appropriate permissions
+- Module is now available for use across the tenant
+
+### Step 3: Version Management
+
+When you make changes to an active module:
+
+**Patch Version (1.0.0 → 1.0.1):**
+- Bug fixes
+- Minor text changes
+- Performance improvements
+
+**Minor Version (1.0.1 → 1.1.0):**
+- New fields added
+- New features added
+- Backward compatible changes
+
+**Major Version (1.1.0 → 2.0.0):**
+- Breaking changes
+- Entity schema changes
+- Workflow logic changes
+- Not backward compatible
+
+**API Endpoint:** `POST /api/v1/nocode-modules/{module_id}/versions`
+
+**Request:**
+```json
+{
+  "change_type": "minor",
+  "change_description": "Added SLA escalation automation and ticket priority field",
+  "breaking_changes": false
+}
+```
+
+---
+
 ## Summary
 
-Congratulations! You've successfully created a complete **Customer Support Ticket System** using ONLY the No-Code Platform.
+Congratulations! You've successfully created a complete **Customer Support Ticket System** using ONLY the No-Code Platform with Phase 4 Module System!
 
 ### What You Built:
-✅ 4 database entities with relationships
+✅ **1 organized module** with semantic versioning
+✅ 4 database entities with relationships (all within module)
 ✅ 4 dynamic lookup configurations
 ✅ 1 approval workflow
 ✅ 4 automation rules
@@ -1720,8 +2157,14 @@ Congratulations! You've successfully created a complete **Customer Support Ticke
 ✅ 1 interactive dashboard
 ✅ Complete menu navigation
 ✅ Optional custom portal pages
+✅ **Optional entity extensions** to HR module
+✅ **Optional screen extensions** with custom tabs
+✅ **Optional menu extensions** for cross-module navigation
 
 ### Skills You Learned:
+- **Module creation and management** (Phase 4)
+- **Table prefix configuration** (Phase 4)
+- **Module publishing and versioning** (Phase 4)
 - Data modeling with entity relationships
 - Dynamic lookup configuration
 - Visual workflow design
@@ -1730,6 +2173,9 @@ Congratulations! You've successfully created a complete **Customer Support Ticke
 - Dashboard design with interactive widgets
 - Menu management
 - Page building with GrapeJS
+- **Entity extension creation** (Phase 4)
+- **Screen extension creation** (Phase 4)
+- **Menu extension creation** (Phase 4)
 
 ### Next Steps:
 1. **Enhance the module:**
@@ -1737,27 +2183,40 @@ Congratulations! You've successfully created a complete **Customer Support Ticke
    - Implement ticket merging
    - Add knowledge base integration
    - Create customer self-service portal
+   - Version and publish updates (1.1.0, 1.2.0, etc.)
 
 2. **Build another module:**
    - Inventory Management System
    - Employee Onboarding System
    - Project Management System
    - CRM System
+   - Create dependencies between modules
 
 3. **Explore advanced features:**
    - Custom calculated fields
    - Complex validation rules
    - External API integrations
    - Mobile app configuration
+   - **Cross-module service calls** (Phase 4)
+   - **Module packaging and export** (Phase 6)
+
+### Module System Benefits:
+✅ **Organization:** All components grouped by business domain
+✅ **Versioning:** Track changes with semantic versioning
+✅ **Dependencies:** Modules can depend on other modules
+✅ **Extensions:** Enhance other modules without modifying them
+✅ **Reusability:** Export and import modules across tenants
+✅ **Isolation:** Modules are independent and self-contained
 
 ### Need Help?
 - Check documentation: [NO-CODE-PLATFORM-DESIGN.md](NO-CODE-PLATFORM-DESIGN.md)
-- Review phase docs: [NO-CODE-PHASE1.md](NO-CODE-PHASE1.md), [NO-CODE-PHASE2.md](NO-CODE-PHASE2.md)
+- Review phase docs: [NO-CODE-PHASE4.md](NO-CODE-PHASE4.md)
+- Module system examples: [backend/app/services/examples/](backend/app/services/examples/)
 - Contact platform admin for support
 
 ---
 
-**Document Version:** 1.0
-**Last Updated:** 2026-01-19
+**Document Version:** 2.0 (Updated for Phase 4)
+**Last Updated:** 2026-01-21
 **Author:** Platform Team
 **Next Review:** After first user feedback
