@@ -3,6 +3,8 @@
  * Handles module CRUD operations, wizard navigation, and validation
  */
 
+import { apiFetch } from './api.js';
+
 const API_BASE = '/api/v1/nocode-modules';
 let currentStep = 1;
 let allModules = [];
@@ -22,11 +24,15 @@ const COLOR_OPTIONS = [
     '#6366f1', '#a855f7', '#64748b', '#0ea5e9', '#22c55e'
 ];
 
-// Initialize on page load
-document.addEventListener('DOMContentLoaded', async () => {
-    await loadModules();
-    initializeIconPicker();
-    initializeColorPicker();
+// Initialize when route is loaded
+document.addEventListener('route:loaded', async (event) => {
+    if (event.detail.route === 'nocode-modules') {
+        setTimeout(async () => {
+            await loadModules();
+            initializeIconPicker();
+            initializeColorPicker();
+        }, 0);
+    }
 });
 
 /**
@@ -34,24 +40,13 @@ document.addEventListener('DOMContentLoaded', async () => {
  */
 async function loadModules() {
     try {
-        const token = localStorage.getItem('token');
-        if (!token) {
-            window.location.href = '/login.html';
-            return;
-        }
-
-        const response = await fetch(API_BASE, {
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
-            }
-        });
+        const response = await apiFetch(API_BASE);
 
         if (response.ok) {
             allModules = await response.json();
             displayModules(allModules);
         } else if (response.status === 401) {
-            window.location.href = '/login.html';
+            window.location.href = '/';
         } else {
             showNotification('Failed to load modules', 'error');
         }
@@ -127,7 +122,7 @@ function createModuleCard(module) {
 /**
  * Filter modules based on search and filters
  */
-function filterModules() {
+window.filterModules = function() {
     const searchTerm = document.getElementById('searchInput').value.toLowerCase();
     const statusFilter = document.getElementById('statusFilter').value;
     const categoryFilter = document.getElementById('categoryFilter').value;
@@ -150,7 +145,7 @@ function filterModules() {
 /**
  * Show create module wizard
  */
-function showCreateModuleWizard() {
+window.showCreateModuleWizard = function() {
     document.getElementById('createModuleModal').classList.remove('hidden');
     document.getElementById('createModuleModal').classList.add('flex');
     currentStep = 1;
@@ -161,7 +156,7 @@ function showCreateModuleWizard() {
 /**
  * Close create module wizard
  */
-function closeCreateModuleWizard() {
+window.closeCreateModuleWizard = function() {
     document.getElementById('createModuleModal').classList.add('hidden');
     document.getElementById('createModuleModal').classList.remove('flex');
     resetForm();
@@ -170,7 +165,7 @@ function closeCreateModuleWizard() {
 /**
  * Navigate to next wizard step
  */
-function nextStep() {
+window.nextStep = function() {
     if (!validateCurrentStep()) {
         return;
     }
@@ -184,7 +179,7 @@ function nextStep() {
 /**
  * Navigate to previous wizard step
  */
-function previousStep() {
+window.previousStep = function() {
     if (currentStep > 1) {
         currentStep--;
         updateWizardUI();
@@ -307,15 +302,13 @@ function getFormData() {
 /**
  * Create module
  */
-async function createModule() {
+window.createModule = async function() {
     try {
         const formData = getFormData();
-        const token = localStorage.getItem('token');
 
-        const response = await fetch(API_BASE, {
+        const response = await apiFetch(API_BASE, {
             method: 'POST',
             headers: {
-                'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify(formData)
@@ -340,7 +333,7 @@ async function createModule() {
  * Validate table prefix
  */
 let prefixValidationTimeout;
-async function validatePrefix(prefix) {
+window.validatePrefix = async function(prefix) {
     clearTimeout(prefixValidationTimeout);
 
     const validation = document.getElementById('prefixValidation');
@@ -379,11 +372,9 @@ async function validatePrefix(prefix) {
 
     prefixValidationTimeout = setTimeout(async () => {
         try {
-            const token = localStorage.getItem('token');
-            const response = await fetch(`${API_BASE}/validate/prefix`, {
+            const response = await apiFetch(`${API_BASE}/validate/prefix`, {
                 method: 'POST',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({ table_prefix: prefix })
@@ -429,7 +420,7 @@ function initializeIconPicker() {
 /**
  * Select icon
  */
-function selectIcon(icon) {
+window.selectIcon = function(icon) {
     document.querySelectorAll('.icon-picker-option').forEach(el => {
         el.classList.remove('selected');
     });
@@ -459,7 +450,7 @@ function initializeColorPicker() {
 /**
  * Select color
  */
-function selectColor(color) {
+window.selectColor = function(color) {
     document.querySelectorAll('.color-picker-option').forEach(el => {
         el.classList.remove('selected');
     });
@@ -502,15 +493,9 @@ document.addEventListener('DOMContentLoaded', () => {
 /**
  * Show module detail
  */
-async function showModuleDetail(moduleId) {
+window.showModuleDetail = async function(moduleId) {
     try {
-        const token = localStorage.getItem('token');
-        const response = await fetch(`${API_BASE}/${moduleId}`, {
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
-            }
-        });
+        const response = await apiFetch(`${API_BASE}/${moduleId}`);
 
         if (response.ok) {
             selectedModule = await response.json();
@@ -559,7 +544,7 @@ function displayModuleDetail(module) {
                     ` : ''}
                     <button onclick="editModule('${module.id}')" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium">
                         <i class="ph-bold ph-pencil mr-2"></i>Edit
-                    </button>
+                        </button>
                     <button onclick="deleteModule('${module.id}')" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium">
                         <i class="ph-bold ph-trash mr-2"></i>Delete
                     </button>
@@ -619,7 +604,7 @@ function displayModuleDetail(module) {
 /**
  * Close module detail modal
  */
-function closeModuleDetail() {
+window.closeModuleDetail = function() {
     document.getElementById('moduleDetailModal').classList.add('hidden');
     document.getElementById('moduleDetailModal').classList.remove('flex');
     selectedModule = null;
@@ -628,17 +613,15 @@ function closeModuleDetail() {
 /**
  * Publish module
  */
-async function publishModule(moduleId) {
+window.publishModule = async function(moduleId) {
     if (!confirm('Are you sure you want to publish this module? It will become active and available for use.')) {
         return;
     }
 
     try {
-        const token = localStorage.getItem('token');
-        const response = await fetch(`${API_BASE}/${moduleId}/publish`, {
+        const response = await apiFetch(`${API_BASE}/${moduleId}/publish`, {
             method: 'POST',
             headers: {
-                'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json'
             }
         });
@@ -660,24 +643,22 @@ async function publishModule(moduleId) {
 /**
  * Edit module (placeholder)
  */
-function editModule(moduleId) {
+window.editModule = function(moduleId) {
     showNotification('Edit functionality coming soon', 'info');
 }
 
 /**
  * Delete module
  */
-async function deleteModule(moduleId) {
+window.deleteModule = async function(moduleId) {
     if (!confirm('Are you sure you want to delete this module? This action cannot be undone.')) {
         return;
     }
 
     try {
-        const token = localStorage.getItem('token');
-        const response = await fetch(`${API_BASE}/${moduleId}`, {
+        const response = await apiFetch(`${API_BASE}/${moduleId}`, {
             method: 'DELETE',
             headers: {
-                'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json'
             }
         });

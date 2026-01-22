@@ -10,6 +10,7 @@
  */
 
 import { authService } from './auth-service.js';
+import { apiFetch } from './api.js';
 
 let dataModelPage = null;
 
@@ -136,13 +137,7 @@ export class DataModelPage {
   }
 
   async loadEntities() {
-    try {
-      const token = authService.getToken();
-      const response = await fetch('/api/v1/data-model/entities', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
+    try {      const response = await apiFetch('/api/v1/data-model/entities');
 
       if (response.ok) {
         this.entities = await response.json();
@@ -301,7 +296,7 @@ export class DataModelPage {
     };
 
     try {
-      const response = await fetch('/api/v1/data-model/entities', {
+      const response = await apiFetch('/api/v1/data-model/entities', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -326,7 +321,7 @@ export class DataModelPage {
 
   async viewEntity(id) {
     try {
-      const response = await fetch(`/api/v1/data-model/entities/${id}`, {
+      const response = await apiFetch(`/api/v1/data-model/entities/${id}`, {
         headers: {
           'Authorization': `Bearer ${authService.getToken()}`
         }
@@ -436,7 +431,7 @@ export class DataModelPage {
     if (!confirm('Are you sure you want to delete this entity?')) return;
 
     try {
-      const response = await fetch(`/api/v1/data-model/entities/${id}`, {
+      const response = await apiFetch(`/api/v1/data-model/entities/${id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${authService.getToken()}`
@@ -466,7 +461,7 @@ export class DataModelPage {
     if (!newLabel) return;
 
     try {
-      const response = await fetch(`/api/v1/data-model/entities/${id}/clone?new_name=${encodeURIComponent(newName)}&new_label=${encodeURIComponent(newLabel)}`, {
+      const response = await apiFetch(`/api/v1/data-model/entities/${id}/clone?new_name=${encodeURIComponent(newName)}&new_label=${encodeURIComponent(newLabel)}`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${authService.getToken()}`,
@@ -489,7 +484,7 @@ export class DataModelPage {
 
   async editEntity(id) {
     try {
-      const response = await fetch(`/api/v1/data-model/entities/${id}`, {
+      const response = await apiFetch(`/api/v1/data-model/entities/${id}`, {
         headers: { 'Authorization': `Bearer ${authService.getToken()}` }
       });
 
@@ -624,7 +619,7 @@ export class DataModelPage {
     };
 
     try {
-      const response = await fetch(`/api/v1/data-model/entities/${entityId}`, {
+      const response = await apiFetch(`/api/v1/data-model/entities/${entityId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -948,7 +943,7 @@ export class DataModelPage {
     };
 
     try {
-      const response = await fetch(`/api/v1/data-model/entities/${entityId}/fields`, {
+      const response = await apiFetch(`/api/v1/data-model/entities/${entityId}/fields`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -974,7 +969,7 @@ export class DataModelPage {
 
   async editField(entityId, fieldId) {
     try {
-      const response = await fetch(`/api/v1/data-model/entities/${entityId}/fields`, {
+      const response = await apiFetch(`/api/v1/data-model/entities/${entityId}/fields`, {
         headers: { 'Authorization': `Bearer ${authService.getToken()}` }
       });
 
@@ -1098,7 +1093,7 @@ export class DataModelPage {
     };
 
     try {
-      const response = await fetch(`/api/v1/data-model/entities/${entityId}/fields/${fieldId}`, {
+      const response = await apiFetch(`/api/v1/data-model/entities/${entityId}/fields/${fieldId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -1128,7 +1123,7 @@ export class DataModelPage {
     }
 
     try {
-      const response = await fetch(`/api/v1/data-model/entities/${entityId}/fields/${fieldId}`, {
+      const response = await apiFetch(`/api/v1/data-model/entities/${entityId}/fields/${fieldId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${authService.getToken()}`
@@ -1360,7 +1355,7 @@ export class DataModelPage {
     };
 
     try {
-      const response = await fetch('/api/v1/data-model/relationships', {
+      const response = await apiFetch('/api/v1/data-model/relationships', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1389,7 +1384,7 @@ export class DataModelPage {
     }
 
     try {
-      const response = await fetch(`/api/v1/data-model/relationships/${relationshipId}`, {
+      const response = await apiFetch(`/api/v1/data-model/relationships/${relationshipId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${authService.getToken()}`
@@ -1439,13 +1434,7 @@ export class DataModelPage {
     loadingEl.classList.remove('hidden');
     listEl.classList.add('hidden');
 
-    try {
-      const token = authService.getToken();
-      const response = await fetch(`/api/v1/data-model/introspect/objects?schema=${schema}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
+    try {      const response = await apiFetch(`/api/v1/data-model/introspect/objects?schema=${schema}`);
 
       if (response.ok) {
         const data = await response.json();
@@ -1522,12 +1511,9 @@ export class DataModelPage {
   }
 
   async previewObject(objectName, objectType) {
-    try {
-      const token = authService.getToken();
-      const response = await fetch('/api/v1/data-model/introspect/generate', {
+    try {      const response = await apiFetch('/api/v1/data-model/introspect/generate', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
@@ -1664,12 +1650,9 @@ export class DataModelPage {
   }
 
   async importSingleObject(objectName, objectType) {
-    try {
-      const token = authService.getToken();
-      const response = await fetch('/api/v1/data-model/introspect/generate', {
+    try {      const response = await apiFetch('/api/v1/data-model/introspect/generate', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
@@ -1707,12 +1690,9 @@ export class DataModelPage {
       type: cb.dataset.objectType
     }));
 
-    try {
-      const token = authService.getToken();
-      const response = await fetch('/api/v1/data-model/introspect/batch-generate', {
+    try {      const response = await apiFetch('/api/v1/data-model/introspect/batch-generate', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
@@ -1757,7 +1737,7 @@ export class DataModelPage {
 
   async previewMigration(entityId) {
     try {
-      const response = await fetch(`/api/v1/data-model/entities/${entityId}/preview-migration`);
+      const response = await apiFetch(`/api/v1/data-model/entities/${entityId}/preview-migration`);
       if (!response.ok) {
         const error = await response.json();
         this.showError(error.detail || 'Failed to preview migration');
@@ -1923,7 +1903,7 @@ export class DataModelPage {
     try {
       const commitMessage = prompt('Enter a commit message (optional):');
 
-      const response = await fetch(`/api/v1/data-model/entities/${entityId}/publish`, {
+      const response = await apiFetch(`/api/v1/data-model/entities/${entityId}/publish`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ commit_message: commitMessage })
@@ -1949,7 +1929,7 @@ export class DataModelPage {
 
   async viewMigrations(entityId) {
     try {
-      const response = await fetch(`/api/v1/data-model/entities/${entityId}/migrations`);
+      const response = await apiFetch(`/api/v1/data-model/entities/${entityId}/migrations`);
       if (!response.ok) {
         const error = await response.json();
         this.showError(error.detail || 'Failed to load migrations');
@@ -2096,7 +2076,7 @@ export class DataModelPage {
     if (!confirmed) return;
 
     try {
-      const response = await fetch(`/api/v1/data-model/migrations/${migrationId}/rollback`, {
+      const response = await apiFetch(`/api/v1/data-model/migrations/${migrationId}/rollback`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }
       });
@@ -2190,7 +2170,7 @@ export class DataModelPage {
 
     try {
       // Call API to add entity to menu
-      const response = await fetch('/api/v1/menu/add-entity', {
+      const response = await apiFetch('/api/v1/menu/add-entity', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
