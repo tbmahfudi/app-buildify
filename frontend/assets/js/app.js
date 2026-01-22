@@ -1522,7 +1522,7 @@ async function loadRoute(route) {
 
       // Load the JavaScript file
       try {
-        await window.resourceLoader.loadScript('nocode-modules.mjs');
+        await window.resourceLoader.loadScript('nocode-modules.js');
       } catch (error) {
         console.warn('No-code modules script loading failed:', error);
       }

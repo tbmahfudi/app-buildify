@@ -22,7 +22,7 @@ import './report-designer-page.js';
 import './dashboard-designer-page.js';
 import './menu-management.js';
 import './settings-menu-sync.js';
-import './nocode-modules.mjs';
+import './nocode-modules.js';
 import './nocode-data-model.js';
 import './nocode-workflows.js';
 import './nocode-automations.js';
