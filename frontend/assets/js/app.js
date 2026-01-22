@@ -687,12 +687,29 @@ function createMenuItem(item) {
 
   // Use icon from menu item or fallback to getMenuIcon
   const icon = item.icon || getMenuIcon(item.route);
-  const iconColor = getIconColor(item.title, item.route, item);
+
+  // Check for custom colors (for duo-tone icons)
+  let iconStyle = '';
+  let iconColorClass = '';
+
+  if (item.icon_color_primary || item.icon_color_secondary) {
+    const primaryColor = item.icon_color_primary || '#3b82f6';
+    const secondaryColor = item.icon_color_secondary || '#93c5fd';
+
+    if (icon.includes('ph-duotone')) {
+      iconStyle = `style="color: ${primaryColor}; --ph-duotone-primary: ${primaryColor}; --ph-duotone-secondary: ${secondaryColor};"`;
+    } else {
+      iconStyle = `style="color: ${primaryColor};"`;
+    }
+  } else {
+    // Fallback to Tailwind color classes
+    iconColorClass = getIconColor(item.title, item.route, item);
+  }
 
   if (isCollapsed) {
     link.innerHTML = `
       <div class="w-full flex justify-center">
-        <i class="${icon} text-2xl ${iconColor}"></i>
+        <i class="${icon} text-2xl ${iconColorClass}" ${iconStyle}></i>
       </div>
     `;
 
@@ -719,7 +736,7 @@ function createMenuItem(item) {
     const i18nAttr = i18nKey ? `data-i18n="${i18nKey}"` : '';
 
     link.innerHTML = `
-      <i class="${icon} text-xl flex-shrink-0 ${iconColor}"></i>
+      <i class="${icon} text-xl flex-shrink-0 ${iconColorClass}" ${iconStyle}></i>
       <span class="sidebar-menu-label font-medium" ${i18nAttr}>${item.title}</span>
     `;
   }
@@ -750,9 +767,26 @@ function createSubmenuItem(item, level = 1) {
     parent.className = 'sidebar-menu-item flex items-center justify-center px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 cursor-pointer transition-colors relative';
 
     const icon = item.icon || getMenuIcon(item.route);
-    const iconColor = getIconColor(item.title, item.route, item);
+
+    // Check for custom colors
+    let iconStyle = '';
+    let iconColorClass = '';
+
+    if (item.icon_color_primary || item.icon_color_secondary) {
+      const primaryColor = item.icon_color_primary || '#3b82f6';
+      const secondaryColor = item.icon_color_secondary || '#93c5fd';
+
+      if (icon.includes('ph-duotone')) {
+        iconStyle = `style="color: ${primaryColor}; --ph-duotone-primary: ${primaryColor}; --ph-duotone-secondary: ${secondaryColor};"`;
+      } else {
+        iconStyle = `style="color: ${primaryColor};"`;
+      }
+    } else {
+      iconColorClass = getIconColor(item.title, item.route, item);
+    }
+
     parent.innerHTML = `
-      <i class="${icon} text-2xl ${iconColor}"></i>
+      <i class="${icon} text-2xl ${iconColorClass}" ${iconStyle}></i>
     `;
 
     // Create popup menu with fixed positioning to avoid clipping
@@ -791,13 +825,30 @@ function createSubmenuItem(item, level = 1) {
     parent.className = 'flex items-center justify-between px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 cursor-pointer transition-colors';
 
     const icon = item.icon || getMenuIcon(item.route);
-    const iconColor = getIconColor(item.title, item.route, item);
+
+    // Check for custom colors
+    let iconStyle = '';
+    let iconColorClass = '';
+
+    if (item.icon_color_primary || item.icon_color_secondary) {
+      const primaryColor = item.icon_color_primary || '#3b82f6';
+      const secondaryColor = item.icon_color_secondary || '#93c5fd';
+
+      if (icon.includes('ph-duotone')) {
+        iconStyle = `style="color: ${primaryColor}; --ph-duotone-primary: ${primaryColor}; --ph-duotone-secondary: ${secondaryColor};"`;
+      } else {
+        iconStyle = `style="color: ${primaryColor};"`;
+      }
+    } else {
+      iconColorClass = getIconColor(item.title, item.route, item);
+    }
+
     const i18nKey = getMenuI18nKey(item.title);
     const i18nAttr = i18nKey ? `data-i18n="${i18nKey}"` : '';
 
     parent.innerHTML = `
       <div class="flex items-center gap-3">
-        <i class="${icon} text-xl flex-shrink-0 ${iconColor}"></i>
+        <i class="${icon} text-xl flex-shrink-0 ${iconColorClass}" ${iconStyle}></i>
         <span class="font-medium sidebar-menu-label" ${i18nAttr}>${item.title}</span>
       </div>
       <i class="ph ph-caret-down text-sm transition-transform submenu-arrow"></i>
@@ -822,12 +873,29 @@ function createSubmenuItem(item, level = 1) {
         sublink.href = `#${subitem.route}`;
 
         const subicon = subitem.icon || 'ph-duotone ph-square';
-        const subiconColor = getIconColor(subitem.title, subitem.route, subitem);
+
+        // Check for custom colors
+        let subiconStyle = '';
+        let subiconColorClass = '';
+
+        if (subitem.icon_color_primary || subitem.icon_color_secondary) {
+          const primaryColor = subitem.icon_color_primary || '#3b82f6';
+          const secondaryColor = subitem.icon_color_secondary || '#93c5fd';
+
+          if (subicon.includes('ph-duotone')) {
+            subiconStyle = `style="color: ${primaryColor}; --ph-duotone-primary: ${primaryColor}; --ph-duotone-secondary: ${secondaryColor};"`;
+          } else {
+            subiconStyle = `style="color: ${primaryColor};"`;
+          }
+        } else {
+          subiconColorClass = getIconColor(subitem.title, subitem.route, subitem);
+        }
+
         const subI18nKey = getMenuI18nKey(subitem.title);
         const subI18nAttr = subI18nKey ? `data-i18n="${subI18nKey}"` : '';
 
         sublink.innerHTML = `
-          <i class="${subicon} text-lg flex-shrink-0 ${subiconColor}"></i>
+          <i class="${subicon} text-lg flex-shrink-0 ${subiconColorClass}" ${subiconStyle}></i>
           <span ${subI18nAttr}>${subitem.title}</span>
         `;
 

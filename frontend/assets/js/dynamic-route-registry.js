@@ -60,13 +60,17 @@ export class DynamicRouteRegistry {
       const response = await apiFetch(`/metadata/entities/${entityName}`);
 
       if (!response.ok) {
+        if (response.status === 404) {
+          console.warn(`Metadata not found for entity ${entityName}, skipping registration`);
+          throw new Error(`Metadata not found for ${entityName}`);
+        }
         throw new Error(`Failed to fetch metadata for ${entityName}: ${response.statusText}`);
       }
 
       const metadata = await response.json();
       return metadata;
     } catch (error) {
-      console.error(`Error fetching metadata for ${entityName}:`, error);
+      console.warn(`Error fetching metadata for ${entityName}:`, error.message);
       throw error;
     }
   }
@@ -497,7 +501,8 @@ export class DynamicRouteRegistry {
         try {
           await this.registerEntity(entity.name);
         } catch (error) {
-          console.error(`Failed to register entity ${entity.name}:`, error);
+          console.warn(`Skipping entity ${entity.name} - ${error.message}`);
+          // Continue with next entity even if one fails
         }
       }
 
