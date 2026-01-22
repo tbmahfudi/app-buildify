@@ -423,12 +423,6 @@ async function loadMenu() {
     navContainer.innerHTML = '';
 
     menuItems.forEach(item => {
-      console.log('[Menu Debug] Rendering item:', item.title, {
-        hasSubmenu: !!item.submenu,
-        submenuLength: item.submenu?.length || 0,
-        hasChildren: !!item.children,
-        childrenLength: item.children?.length || 0
-      });
 
       // If item has submenu/children, create an expandable menu
       if ((item.submenu && item.submenu.length > 0) || (item.children && item.children.length > 0)) {
@@ -469,13 +463,11 @@ async function loadMenuFromBackend() {
 
     const menuData = await response.json();
 
-    console.log('[Menu Debug] Raw menu from backend:', JSON.stringify(menuData, null, 2));
 
     // Backend returns pre-filtered menu based on user's RBAC
     // Convert 'children' to 'submenu' for compatibility with existing rendering
     const convertedMenu = convertBackendMenuFormat(menuData);
 
-    console.log('[Menu Debug] Converted menu:', JSON.stringify(convertedMenu, null, 2));
 
     return convertedMenu;
 
@@ -687,12 +679,29 @@ function createMenuItem(item) {
 
   // Use icon from menu item or fallback to getMenuIcon
   const icon = item.icon || getMenuIcon(item.route);
-  const iconColor = getIconColor(item.title, item.route, item);
+
+  // Check for custom colors (for duo-tone icons)
+  let iconStyle = '';
+  let iconColorClass = '';
+
+  if (item.icon_color_primary || item.icon_color_secondary) {
+    const primaryColor = item.icon_color_primary || '#3b82f6';
+    const secondaryColor = item.icon_color_secondary || '#93c5fd';
+
+    if (icon.includes('ph-duotone')) {
+      iconStyle = `style="color: ${primaryColor}; --ph-duotone-primary: ${primaryColor}; --ph-duotone-secondary: ${secondaryColor};"`;
+    } else {
+      iconStyle = `style="color: ${primaryColor};"`;
+    }
+  } else {
+    // Fallback to Tailwind color classes
+    iconColorClass = getIconColor(item.title, item.route, item);
+  }
 
   if (isCollapsed) {
     link.innerHTML = `
       <div class="w-full flex justify-center">
-        <i class="${icon} text-2xl ${iconColor}"></i>
+        <i class="${icon} text-2xl ${iconColorClass}" ${iconStyle}></i>
       </div>
     `;
 
@@ -719,7 +728,7 @@ function createMenuItem(item) {
     const i18nAttr = i18nKey ? `data-i18n="${i18nKey}"` : '';
 
     link.innerHTML = `
-      <i class="${icon} text-xl flex-shrink-0 ${iconColor}"></i>
+      <i class="${icon} text-xl flex-shrink-0 ${iconColorClass}" ${iconStyle}></i>
       <span class="sidebar-menu-label font-medium" ${i18nAttr}>${item.title}</span>
     `;
   }
@@ -750,9 +759,26 @@ function createSubmenuItem(item, level = 1) {
     parent.className = 'sidebar-menu-item flex items-center justify-center px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 cursor-pointer transition-colors relative';
 
     const icon = item.icon || getMenuIcon(item.route);
-    const iconColor = getIconColor(item.title, item.route, item);
+
+    // Check for custom colors
+    let iconStyle = '';
+    let iconColorClass = '';
+
+    if (item.icon_color_primary || item.icon_color_secondary) {
+      const primaryColor = item.icon_color_primary || '#3b82f6';
+      const secondaryColor = item.icon_color_secondary || '#93c5fd';
+
+      if (icon.includes('ph-duotone')) {
+        iconStyle = `style="color: ${primaryColor}; --ph-duotone-primary: ${primaryColor}; --ph-duotone-secondary: ${secondaryColor};"`;
+      } else {
+        iconStyle = `style="color: ${primaryColor};"`;
+      }
+    } else {
+      iconColorClass = getIconColor(item.title, item.route, item);
+    }
+
     parent.innerHTML = `
-      <i class="${icon} text-2xl ${iconColor}"></i>
+      <i class="${icon} text-2xl ${iconColorClass}" ${iconStyle}></i>
     `;
 
     // Create popup menu with fixed positioning to avoid clipping
@@ -791,13 +817,30 @@ function createSubmenuItem(item, level = 1) {
     parent.className = 'flex items-center justify-between px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 cursor-pointer transition-colors';
 
     const icon = item.icon || getMenuIcon(item.route);
-    const iconColor = getIconColor(item.title, item.route, item);
+
+    // Check for custom colors
+    let iconStyle = '';
+    let iconColorClass = '';
+
+    if (item.icon_color_primary || item.icon_color_secondary) {
+      const primaryColor = item.icon_color_primary || '#3b82f6';
+      const secondaryColor = item.icon_color_secondary || '#93c5fd';
+
+      if (icon.includes('ph-duotone')) {
+        iconStyle = `style="color: ${primaryColor}; --ph-duotone-primary: ${primaryColor}; --ph-duotone-secondary: ${secondaryColor};"`;
+      } else {
+        iconStyle = `style="color: ${primaryColor};"`;
+      }
+    } else {
+      iconColorClass = getIconColor(item.title, item.route, item);
+    }
+
     const i18nKey = getMenuI18nKey(item.title);
     const i18nAttr = i18nKey ? `data-i18n="${i18nKey}"` : '';
 
     parent.innerHTML = `
       <div class="flex items-center gap-3">
-        <i class="${icon} text-xl flex-shrink-0 ${iconColor}"></i>
+        <i class="${icon} text-xl flex-shrink-0 ${iconColorClass}" ${iconStyle}></i>
         <span class="font-medium sidebar-menu-label" ${i18nAttr}>${item.title}</span>
       </div>
       <i class="ph ph-caret-down text-sm transition-transform submenu-arrow"></i>
@@ -822,12 +865,29 @@ function createSubmenuItem(item, level = 1) {
         sublink.href = `#${subitem.route}`;
 
         const subicon = subitem.icon || 'ph-duotone ph-square';
-        const subiconColor = getIconColor(subitem.title, subitem.route, subitem);
+
+        // Check for custom colors
+        let subiconStyle = '';
+        let subiconColorClass = '';
+
+        if (subitem.icon_color_primary || subitem.icon_color_secondary) {
+          const primaryColor = subitem.icon_color_primary || '#3b82f6';
+          const secondaryColor = subitem.icon_color_secondary || '#93c5fd';
+
+          if (subicon.includes('ph-duotone')) {
+            subiconStyle = `style="color: ${primaryColor}; --ph-duotone-primary: ${primaryColor}; --ph-duotone-secondary: ${secondaryColor};"`;
+          } else {
+            subiconStyle = `style="color: ${primaryColor};"`;
+          }
+        } else {
+          subiconColorClass = getIconColor(subitem.title, subitem.route, subitem);
+        }
+
         const subI18nKey = getMenuI18nKey(subitem.title);
         const subI18nAttr = subI18nKey ? `data-i18n="${subI18nKey}"` : '';
 
         sublink.innerHTML = `
-          <i class="${subicon} text-lg flex-shrink-0 ${subiconColor}"></i>
+          <i class="${subicon} text-lg flex-shrink-0 ${subiconColorClass}" ${subiconStyle}></i>
           <span ${subI18nAttr}>${subitem.title}</span>
         `;
 
@@ -864,7 +924,6 @@ function createSubmenuItem(item, level = 1) {
 
 // Helper function to create collapsed popup menu (supports nested submenus)
 function createCollapsedSubmenuPopup(item) {
-  console.log('[Menu Debug] createCollapsedSubmenuPopup called for:', item.title);
   const popup = document.createElement('div');
   popup.className = 'fixed hidden bg-white border border-gray-200 rounded-xl shadow-xl min-w-[220px] max-w-[280px] overflow-hidden';
   popup.style.zIndex = '99999';
@@ -880,12 +939,10 @@ function createCollapsedSubmenuPopup(item) {
 
   // Check if all items are final (no submenu) - use grid layout
   const submenuItems = item.submenu || item.children || [];
-  console.log('[Menu Debug] submenuItems:', submenuItems.map(i => ({ title: i.title, hasSubmenu: !!(i.submenu || i.children) })));
   const allItemsFinal = submenuItems.every(subitem =>
     (!subitem.submenu || subitem.submenu.length === 0) &&
     (!subitem.children || subitem.children.length === 0)
   );
-  console.log('[Menu Debug] allItemsFinal:', allItemsFinal);
 
   // Add submenu items
   const popupContent = document.createElement('div');
@@ -959,18 +1016,13 @@ function createCollapsedSubmenuPopup(item) {
     });
   } else {
     // List layout for items with submenus
-    console.log('[Menu Debug] Using list layout for items with submenus');
     popupContent.className = 'py-1';
     const childPopups = [];
 
     // Use submenuItems already defined above
-    console.log('[Menu Debug] submenuItems for list layout:', submenuItems.length, 'items');
     submenuItems.forEach(subitem => {
-      console.log('[Menu Debug] Processing subitem:', subitem.title);
       const subitemChildren = subitem.submenu || subitem.children || [];
-      console.log('[Menu Debug]   - has submenu?', !!subitem.submenu, 'has children?', !!subitem.children, 'count:', subitemChildren.length);
       if (subitemChildren.length > 0) {
-        console.log('[Menu Debug]   - Creating nested popup trigger for:', subitem.title);
         // Nested submenu - create item that shows another popup on hover
         const nestedContainer = document.createElement('div');
         nestedContainer.className = 'relative';
@@ -992,7 +1044,6 @@ function createCollapsedSubmenuPopup(item) {
         `;
 
         // Create nested popup menu
-        console.log('[Menu Debug] Creating nested popup for:', subitem.title, 'with children:', subitemChildren);
         const nestedPopup = createNestedPopup(subitem, popup, 2); // Pass level 2
         childPopups.push(nestedPopup);
         document.body.appendChild(nestedPopup);
@@ -1133,18 +1184,15 @@ function createCollapsedSubmenuPopup(item) {
 
 // Helper function to create nested popup (for second level)
 function createNestedPopup(item, parentPopup, level = 2) {
-  console.log('[Menu Debug] createNestedPopup called for:', item.title, 'level:', level, 'item:', item);
   const nestedPopup = document.createElement('div');
 
   // Check if all items are final - use grid layout
   // Support both submenu and children properties
   const submenuItems = item.submenu || item.children || [];
-  console.log('[Menu Debug] submenuItems:', submenuItems);
   const allItemsFinal = submenuItems.every(subitem =>
     (!subitem.submenu || subitem.submenu.length === 0) &&
     (!subitem.children || subitem.children.length === 0)
   );
-  console.log('[Menu Debug] allItemsFinal:', allItemsFinal);
 
   if (allItemsFinal) {
     // Grid layout for final items - vertical priority
@@ -1222,7 +1270,6 @@ function createNestedPopup(item, parentPopup, level = 2) {
     nestedPopup.appendChild(nestedContent);
   } else {
     // List layout for items with nested submenus
-    console.log('[Menu Debug] createNestedPopup: Using list layout for items with submenus');
     nestedPopup.className = 'fixed hidden bg-white border border-gray-200 rounded-xl shadow-xl min-w-[200px] overflow-hidden';
     // Increment z-index based on level to ensure proper stacking
     nestedPopup.style.zIndex = (99999 + level * 1000).toString();
@@ -1235,12 +1282,9 @@ function createNestedPopup(item, parentPopup, level = 2) {
     const childPopups = [];
 
     nestedItems.forEach(nestedItem => {
-      console.log('[Menu Debug] createNestedPopup: Processing nestedItem:', nestedItem.title);
       const nestedItemChildren = nestedItem.submenu || nestedItem.children || [];
-      console.log('[Menu Debug] createNestedPopup: nestedItemChildren count:', nestedItemChildren.length);
 
       if (nestedItemChildren.length > 0) {
-        console.log('[Menu Debug] createNestedPopup: Creating another nested popup for:', nestedItem.title);
         // This item has children - create a trigger that shows another nested popup
         const nestedContainer = document.createElement('div');
         nestedContainer.className = 'relative';

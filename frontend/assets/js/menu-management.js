@@ -17,8 +17,6 @@ class MenuManagement {
    * Initialize the menu management page
    */
   async init() {
-    console.log('Initializing Menu Management');
-
     this.setupEventListeners();
     await this.loadMenuItems();
   }
@@ -63,7 +61,34 @@ class MenuManagement {
 
     // Icon preview
     document.getElementById('input-icon')?.addEventListener('input', (e) => {
-      this.updateIconPreview(e.target.value);
+      this.updateIconPreview();
+    });
+
+    // Color pickers - sync color picker with text input
+    document.getElementById('input-icon-color-primary')?.addEventListener('input', (e) => {
+      document.getElementById('input-icon-color-primary-text').value = e.target.value;
+      this.updateIconPreview();
+    });
+
+    document.getElementById('input-icon-color-primary-text')?.addEventListener('input', (e) => {
+      const value = e.target.value;
+      if (/^#[0-9A-Fa-f]{6}$/.test(value)) {
+        document.getElementById('input-icon-color-primary').value = value;
+        this.updateIconPreview();
+      }
+    });
+
+    document.getElementById('input-icon-color-secondary')?.addEventListener('input', (e) => {
+      document.getElementById('input-icon-color-secondary-text').value = e.target.value;
+      this.updateIconPreview();
+    });
+
+    document.getElementById('input-icon-color-secondary-text')?.addEventListener('input', (e) => {
+      const value = e.target.value;
+      if (/^#[0-9A-Fa-f]{6}$/.test(value)) {
+        document.getElementById('input-icon-color-secondary').value = value;
+        this.updateIconPreview();
+      }
     });
 
     // Delete modal
@@ -179,6 +204,14 @@ class MenuManagement {
       ? `<span class="px-2 py-0.5 text-xs bg-blue-100 text-blue-700 rounded font-mono">${item.permission}</span>`
       : '';
 
+    // Apply icon colors for duo-tone icons
+    const iconClass = item.icon || 'ph-duotone ph-circle';
+    const primaryColor = item.icon_color_primary || '#3b82f6';
+    const secondaryColor = item.icon_color_secondary || '#93c5fd';
+    const iconStyle = iconClass.includes('ph-duotone')
+      ? `color: ${primaryColor}; --ph-duotone-primary: ${primaryColor}; --ph-duotone-secondary: ${secondaryColor};`
+      : `color: ${primaryColor};`;
+
     const html = `
       <div class="menu-item" data-id="${item.id}" data-level="${level}">
         <div class="flex items-center gap-2 p-2 hover:bg-gray-50 rounded-lg group">
@@ -191,7 +224,7 @@ class MenuManagement {
           ` : '<div class="w-5"></div>'}
 
           <div class="flex-1 flex items-center gap-3">
-            <i class="${item.icon || 'ph-duotone ph-circle'} text-xl text-gray-600"></i>
+            <i class="${iconClass} text-xl" style="${iconStyle}"></i>
             <div class="flex-1">
               <div class="flex items-center gap-2">
                 <span class="font-medium text-gray-900">${item.title}</span>
@@ -302,7 +335,16 @@ class MenuManagement {
     this.currentEditId = null;
     document.getElementById('modal-title').textContent = 'Create Menu Item';
     document.getElementById('menu-form').reset();
-    this.updateIconPreview('');
+
+    // Set default colors
+    const defaultPrimary = '#3b82f6';
+    const defaultSecondary = '#93c5fd';
+    document.getElementById('input-icon-color-primary').value = defaultPrimary;
+    document.getElementById('input-icon-color-primary-text').value = defaultPrimary;
+    document.getElementById('input-icon-color-secondary').value = defaultSecondary;
+    document.getElementById('input-icon-color-secondary-text').value = defaultSecondary;
+
+    this.updateIconPreview();
     this.populateParentOptions();
     document.getElementById('menu-modal')?.classList.remove('hidden');
   }
@@ -329,7 +371,15 @@ class MenuManagement {
     document.getElementById('input-active').checked = item.is_active !== false;
     document.getElementById('input-visible').checked = item.is_visible !== false;
 
-    this.updateIconPreview(item.icon || '');
+    // Populate icon colors
+    const primaryColor = item.icon_color_primary || '#3b82f6';
+    const secondaryColor = item.icon_color_secondary || '#93c5fd';
+    document.getElementById('input-icon-color-primary').value = primaryColor;
+    document.getElementById('input-icon-color-primary-text').value = primaryColor;
+    document.getElementById('input-icon-color-secondary').value = secondaryColor;
+    document.getElementById('input-icon-color-secondary-text').value = secondaryColor;
+
+    this.updateIconPreview();
     this.populateParentOptions(item.parent_id);
 
     document.getElementById('menu-modal')?.classList.remove('hidden');
@@ -344,12 +394,27 @@ class MenuManagement {
   }
 
   /**
-   * Update icon preview
+   * Update icon preview with colors
    */
-  updateIconPreview(iconClass) {
+  updateIconPreview() {
     const preview = document.querySelector('#icon-preview i');
-    if (preview) {
-      preview.className = iconClass || 'text-2xl text-gray-400';
+    if (!preview) return;
+
+    const iconClass = document.getElementById('input-icon')?.value || '';
+    const primaryColor = document.getElementById('input-icon-color-primary')?.value || '#3b82f6';
+    const secondaryColor = document.getElementById('input-icon-color-secondary')?.value || '#93c5fd';
+
+    preview.className = iconClass || 'text-2xl text-gray-400';
+
+    // Apply colors if it's a duo-tone icon
+    if (iconClass.includes('ph-duotone')) {
+      preview.style.color = primaryColor;
+      preview.style.setProperty('--ph-duotone-primary', primaryColor);
+      preview.style.setProperty('--ph-duotone-secondary', secondaryColor);
+    } else {
+      preview.style.color = primaryColor;
+      preview.style.removeProperty('--ph-duotone-primary');
+      preview.style.removeProperty('--ph-duotone-secondary');
     }
   }
 
@@ -385,6 +450,8 @@ class MenuManagement {
         code: formData.get('code'),
         title: formData.get('title'),
         icon: formData.get('icon') || null,
+        icon_color_primary: formData.get('icon_color_primary') || '#3b82f6',
+        icon_color_secondary: formData.get('icon_color_secondary') || '#93c5fd',
         route: formData.get('route') || null,
         parent_id: formData.get('parent_id') || null,
         permission: formData.get('permission') || null,
@@ -494,7 +561,6 @@ document.addEventListener('route:loaded', async (event) => {
   const { route } = event.detail;
 
   if (route === 'menu-management') {
-    console.log('Menu Management route loaded');
     const menuMgmt = new MenuManagement();
     await menuMgmt.init();
   }

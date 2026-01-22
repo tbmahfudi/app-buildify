@@ -43,7 +43,9 @@ async function loadModules() {
         const response = await apiFetch(API_BASE);
 
         if (response.ok) {
-            allModules = await response.json();
+            const data = await response.json();
+            // Handle both array and object responses
+            allModules = Array.isArray(data) ? data : (data.modules || []);
             displayModules(allModules);
         } else if (response.status === 401) {
             window.location.href = '/';
