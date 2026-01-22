@@ -17,8 +17,6 @@ class MenuManagement {
    * Initialize the menu management page
    */
   async init() {
-    console.log('Initializing Menu Management');
-
     this.setupEventListeners();
     await this.loadMenuItems();
   }
@@ -563,7 +561,6 @@ document.addEventListener('route:loaded', async (event) => {
   const { route } = event.detail;
 
   if (route === 'menu-management') {
-    console.log('Menu Management route loaded');
     const menuMgmt = new MenuManagement();
     await menuMgmt.init();
   }
