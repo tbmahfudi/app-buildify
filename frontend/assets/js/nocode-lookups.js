@@ -10,6 +10,7 @@
  */
 
 import { authService } from './auth-service.js';
+import { apiFetch } from './api.js';
 
 let lookupsPage = null;
 
@@ -83,7 +84,7 @@ export class LookupsPage {
 
   async loadLookups() {
     try {
-      const response = await fetch('/api/v1/lookups/configurations', {
+      const response = await apiFetch('/api/v1/lookups/configurations', {
         headers: {
           'Authorization': `Bearer ${authService.getToken()}`
         }
@@ -177,7 +178,7 @@ export class LookupsPage {
 
   async loadCascadingRules() {
     try {
-      const response = await fetch('/api/v1/lookups/cascading-rules', {
+      const response = await apiFetch('/api/v1/lookups/cascading-rules', {
         headers: {
           'Authorization': `Bearer ${authService.getToken()}`
         }
@@ -257,7 +258,7 @@ export class LookupsPage {
     };
 
     try {
-      const response = await fetch('/api/v1/lookups/configurations', {
+      const response = await apiFetch('/api/v1/lookups/configurations', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -282,7 +283,7 @@ export class LookupsPage {
 
   async viewLookup(id) {
     try {
-      const response = await fetch(`/api/v1/lookups/configurations/${id}`, {
+      const response = await apiFetch(`/api/v1/lookups/configurations/${id}`, {
         headers: {
           'Authorization': `Bearer ${authService.getToken()}`
         }
@@ -368,7 +369,7 @@ export class LookupsPage {
 
   async testLookup(id) {
     try {
-      const response = await fetch(`/api/v1/lookups/configurations/${id}/data`, {
+      const response = await apiFetch(`/api/v1/lookups/configurations/${id}/data`, {
         headers: {
           'Authorization': `Bearer ${authService.getToken()}`
         }
@@ -390,7 +391,7 @@ export class LookupsPage {
     if (!confirm('Are you sure you want to delete this lookup configuration?')) return;
 
     try {
-      const response = await fetch(`/api/v1/lookups/configurations/${id}`, {
+      const response = await apiFetch(`/api/v1/lookups/configurations/${id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${authService.getToken()}`

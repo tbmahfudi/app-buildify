@@ -10,6 +10,7 @@
  */
 
 import { authService } from './auth-service.js';
+import { apiFetch } from './api.js';
 
 let workflowsPage = null;
 
@@ -107,7 +108,7 @@ export class WorkflowsPage {
 
   async loadWorkflows() {
     try {
-      const response = await fetch('/api/v1/workflows', {
+      const response = await apiFetch('/api/v1/workflows', {
         headers: {
           'Authorization': `Bearer ${authService.getToken()}`
         }
@@ -190,7 +191,7 @@ export class WorkflowsPage {
 
   async loadInstances() {
     try {
-      const response = await fetch('/api/v1/workflows/instances', {
+      const response = await apiFetch('/api/v1/workflows/instances', {
         headers: {
           'Authorization': `Bearer ${authService.getToken()}`
         }
@@ -278,7 +279,7 @@ export class WorkflowsPage {
     };
 
     try {
-      const response = await fetch('/api/v1/workflows', {
+      const response = await apiFetch('/api/v1/workflows', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -303,7 +304,7 @@ export class WorkflowsPage {
 
   async viewWorkflow(id) {
     try {
-      const response = await fetch(`/api/v1/workflows/${id}`, {
+      const response = await apiFetch(`/api/v1/workflows/${id}`, {
         headers: {
           'Authorization': `Bearer ${authService.getToken()}`
         }
@@ -383,7 +384,7 @@ export class WorkflowsPage {
     }
 
     try {
-      const response = await fetch(`/api/v1/workflows/${id}/publish`, {
+      const response = await apiFetch(`/api/v1/workflows/${id}/publish`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${authService.getToken()}`
@@ -406,7 +407,7 @@ export class WorkflowsPage {
     if (!confirm('Are you sure you want to delete this workflow?')) return;
 
     try {
-      const response = await fetch(`/api/v1/workflows/${id}`, {
+      const response = await apiFetch(`/api/v1/workflows/${id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${authService.getToken()}`
@@ -427,7 +428,7 @@ export class WorkflowsPage {
 
   async editWorkflow(id) {
     try {
-      const response = await fetch(`/api/v1/workflows/${id}`, {
+      const response = await apiFetch(`/api/v1/workflows/${id}`, {
         headers: { 'Authorization': `Bearer ${authService.getToken()}` }
       });
 
@@ -525,7 +526,7 @@ export class WorkflowsPage {
     };
 
     try {
-      const response = await fetch(`/api/v1/workflows/${workflowId}`, {
+      const response = await apiFetch(`/api/v1/workflows/${workflowId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -814,7 +815,7 @@ export class WorkflowsPage {
     };
 
     try {
-      const response = await fetch(`/api/v1/workflows/${workflowId}/states`, {
+      const response = await apiFetch(`/api/v1/workflows/${workflowId}/states`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -848,7 +849,7 @@ export class WorkflowsPage {
     }
 
     try {
-      const response = await fetch(`/api/v1/workflows/${workflowId}/states/${stateId}`, {
+      const response = await apiFetch(`/api/v1/workflows/${workflowId}/states/${stateId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${authService.getToken()}`
@@ -1076,7 +1077,7 @@ export class WorkflowsPage {
     };
 
     try {
-      const response = await fetch(`/api/v1/workflows/${workflowId}/transitions`, {
+      const response = await apiFetch(`/api/v1/workflows/${workflowId}/transitions`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1105,7 +1106,7 @@ export class WorkflowsPage {
     }
 
     try {
-      const response = await fetch(`/api/v1/workflows/${workflowId}/transitions/${transitionId}`, {
+      const response = await apiFetch(`/api/v1/workflows/${workflowId}/transitions/${transitionId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${authService.getToken()}`
@@ -1127,7 +1128,7 @@ export class WorkflowsPage {
 
   async viewInstance(id) {
     try {
-      const response = await fetch(`/api/v1/workflows/instances/${id}`, {
+      const response = await apiFetch(`/api/v1/workflows/instances/${id}`, {
         headers: { 'Authorization': `Bearer ${authService.getToken()}` }
       });
 
@@ -1493,7 +1494,7 @@ export class WorkflowsPage {
 
   async saveStatePosition(workflowId, stateId, x, y) {
     try {
-      await fetch(`/api/v1/workflows/${workflowId}/states/${stateId}`, {
+      await apiFetch(`/api/v1/workflows/${workflowId}/states/${stateId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -1607,7 +1608,7 @@ export class WorkflowsPage {
     };
 
     try {
-      const response = await fetch(`/api/v1/workflows/${workflowId}/simulate`, {
+      const response = await apiFetch(`/api/v1/workflows/${workflowId}/simulate`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1786,7 +1787,7 @@ export class WorkflowsPage {
   async openMonitoringDashboard() {
     // Load all workflow instances with details
     try {
-      const response = await fetch('/api/v1/workflows/instances', {
+      const response = await apiFetch('/api/v1/workflows/instances', {
         headers: { 'Authorization': `Bearer ${authService.getToken()}` }
       });
 

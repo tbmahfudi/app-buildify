@@ -20,6 +20,13 @@ import './auth-policies-page.js';
 import './sample-reports-dashboards-page.js';
 import './report-designer-page.js';
 import './dashboard-designer-page.js';
+import './menu-management.js';
+import './settings-menu-sync.js';
+import './nocode-modules.mjs';
+import './nocode-data-model.js';
+import './nocode-workflows.js';
+import './nocode-automations.js';
+import './nocode-lookups.js';
 
 // Resource loader is automatically available at window.resourceLoader
 // Error handling classes are available at window.ErrorDisplay and window.ResourceLoadError
