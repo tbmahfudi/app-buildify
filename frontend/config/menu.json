@@ -182,10 +182,12 @@
             },
             {
               "title": "Module Management",
-              "route": "modules",
+              "route": "nocode-modules",
               "icon": "ph-duotone ph-package",
-              "iconColor": "text-red-600",
-              "permission": "modules:manage:tenant"
+              "iconColor": "text-indigo-600",
+              "permission": "modules:read:tenant",
+              "badge": "PHASE 4",
+              "badgeColor": "bg-indigo-500"
             }
           ]
         }
