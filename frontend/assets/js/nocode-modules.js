@@ -5,7 +5,7 @@
 
 import { apiFetch } from './api.js';
 
-const API_BASE = '/api/v1/nocode-modules';
+const API_BASE = '/nocode-modules';
 let currentStep = 1;
 let allModules = [];
 let selectedModule = null;

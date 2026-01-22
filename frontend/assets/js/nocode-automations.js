@@ -114,7 +114,7 @@ export class AutomationsPage {
 
   async loadRules() {
     try {
-      const response = await apiFetch('/api/v1/automations/rules', {
+      const response = await apiFetch('/automations/rules', {
         headers: {
           'Authorization': `Bearer ${authService.getToken()}`
         }
@@ -202,7 +202,7 @@ export class AutomationsPage {
 
   async loadExecutions() {
     try {
-      const response = await apiFetch('/api/v1/automations/executions', {
+      const response = await apiFetch('/automations/executions', {
         headers: {
           'Authorization': `Bearer ${authService.getToken()}`
         }
@@ -259,7 +259,7 @@ export class AutomationsPage {
 
   async loadWebhooks() {
     try {
-      const response = await apiFetch('/api/v1/automations/webhooks', {
+      const response = await apiFetch('/automations/webhooks', {
         headers: {
           'Authorization': `Bearer ${authService.getToken()}`
         }
@@ -351,7 +351,7 @@ export class AutomationsPage {
     };
 
     try {
-      const response = await apiFetch('/api/v1/automations/rules', {
+      const response = await apiFetch('/automations/rules', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -376,7 +376,7 @@ export class AutomationsPage {
 
   async viewRule(id) {
     try {
-      const response = await apiFetch(`/api/v1/automations/rules/${id}`, {
+      const response = await apiFetch(`/automations/rules/${id}`, {
         headers: {
           'Authorization': `Bearer ${authService.getToken()}`
         }
@@ -471,7 +471,7 @@ export class AutomationsPage {
 
   async toggleActive(id, isActive) {
     try {
-      const response = await apiFetch(`/api/v1/automations/rules/${id}/toggle`, {
+      const response = await apiFetch(`/automations/rules/${id}/toggle`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${authService.getToken()}`
@@ -492,7 +492,7 @@ export class AutomationsPage {
 
   async testRule(id) {
     try {
-      const response = await apiFetch(`/api/v1/automations/rules/${id}/test`, {
+      const response = await apiFetch(`/automations/rules/${id}/test`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -517,7 +517,7 @@ export class AutomationsPage {
     if (!confirm('Are you sure you want to delete this automation rule?')) return;
 
     try {
-      const response = await apiFetch(`/api/v1/automations/rules/${id}`, {
+      const response = await apiFetch(`/automations/rules/${id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${authService.getToken()}`
@@ -538,7 +538,7 @@ export class AutomationsPage {
 
   async editRule(id) {
     try {
-      const response = await apiFetch(`/api/v1/automations/rules/${id}`, {
+      const response = await apiFetch(`/automations/rules/${id}`, {
         headers: { 'Authorization': `Bearer ${authService.getToken()}` }
       });
 
@@ -676,7 +676,7 @@ export class AutomationsPage {
     };
 
     try {
-      const response = await apiFetch(`/api/v1/automations/rules/${ruleId}`, {
+      const response = await apiFetch(`/automations/rules/${ruleId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -701,7 +701,7 @@ export class AutomationsPage {
 
   async viewExecution(id) {
     try {
-      const response = await apiFetch(`/api/v1/automations/executions/${id}`, {
+      const response = await apiFetch(`/automations/executions/${id}`, {
         headers: { 'Authorization': `Bearer ${authService.getToken()}` }
       });
 
@@ -873,7 +873,7 @@ export class AutomationsPage {
     };
 
     try {
-      const response = await apiFetch('/api/v1/automations/webhooks', {
+      const response = await apiFetch('/automations/webhooks', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -907,7 +907,7 @@ export class AutomationsPage {
   // ========== VISUAL CONDITION BUILDER ==========
   async openVisualConditionBuilder(ruleId) {
     try {
-      const response = await apiFetch(`/api/v1/automations/rules/${ruleId}`, {
+      const response = await apiFetch(`/automations/rules/${ruleId}`, {
         headers: { 'Authorization': `Bearer ${authService.getToken()}` }
       });
 
@@ -1070,7 +1070,7 @@ export class AutomationsPage {
     });
 
     try {
-      const response = await apiFetch(`/api/v1/automations/rules/${this.currentRule.id}`, {
+      const response = await apiFetch(`/automations/rules/${this.currentRule.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -1102,7 +1102,7 @@ export class AutomationsPage {
   // ========== VISUAL ACTION BUILDER ==========
   async openVisualActionBuilder(ruleId) {
     try {
-      const response = await apiFetch(`/api/v1/automations/rules/${ruleId}`, {
+      const response = await apiFetch(`/automations/rules/${ruleId}`, {
         headers: { 'Authorization': `Bearer ${authService.getToken()}` }
       });
 
@@ -1282,7 +1282,7 @@ export class AutomationsPage {
     });
 
     try {
-      const response = await apiFetch(`/api/v1/automations/rules/${this.currentRule.id}`, {
+      const response = await apiFetch(`/automations/rules/${this.currentRule.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -1402,7 +1402,7 @@ export class AutomationsPage {
   // ========== SCHEDULE CONFIGURATION UI ==========
   async openScheduleBuilder(ruleId) {
     try {
-      const response = await apiFetch(`/api/v1/automations/rules/${ruleId}`, {
+      const response = await apiFetch(`/automations/rules/${ruleId}`, {
         headers: { 'Authorization': `Bearer ${authService.getToken()}` }
       });
 
@@ -1548,7 +1548,7 @@ export class AutomationsPage {
     }
 
     try {
-      const response = await apiFetch(`/api/v1/automations/rules/${this.currentRule.id}`, {
+      const response = await apiFetch(`/automations/rules/${this.currentRule.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -1581,7 +1581,7 @@ export class AutomationsPage {
   // ========== EXECUTION MONITORING DASHBOARD ==========
   async openMonitoringDashboard() {
     try {
-      const response = await apiFetch('/api/v1/automations/executions', {
+      const response = await apiFetch('/automations/executions', {
         headers: { 'Authorization': `Bearer ${authService.getToken()}` }
       });
 
