@@ -95,6 +95,7 @@ class EntityDefinitionBase(BaseModel):
     icon: Optional[str] = None
     entity_type: str = "custom"
     category: Optional[str] = None
+    module_id: Optional[UUID] = Field(None, description="Associated module ID")
     table_name: str = Field(..., max_length=100, description="Database table name")
     schema_name: str = "public"
     is_audited: bool = True

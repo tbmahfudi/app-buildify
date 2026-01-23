@@ -37,10 +37,12 @@ document.addEventListener('route:before-change', (event) => {
 export class DataModelPage {
   constructor() {
     this.entities = [];
+    this.modules = [];
     this.currentFilter = 'all'; // 'all', 'platform', 'tenant'
   }
 
   async init() {
+    await this.loadModules();
     await this.loadEntities();
     this.initializeFilters();
 
@@ -134,6 +136,41 @@ export class DataModelPage {
     }
 
     this.renderEntities();
+  }
+
+  async loadModules() {
+    try {
+      const response = await apiFetch('/nocode-modules');
+
+      if (response.ok) {
+        const data = await response.json();
+        // Handle both array and object responses
+        this.modules = Array.isArray(data) ? data : (data.modules || []);
+        this.populateModuleDropdown();
+      } else {
+        console.error('Failed to load modules');
+        this.modules = [];
+      }
+    } catch (error) {
+      console.error('Error loading modules:', error);
+      this.modules = [];
+    }
+  }
+
+  populateModuleDropdown() {
+    const select = document.getElementById('moduleSelect');
+    if (!select) return;
+
+    // Keep the default "No Module" option and add modules
+    const moduleOptions = this.modules
+      .filter(m => m.status === 'active' || m.status === 'draft')
+      .map(module => `<option value="${module.id}">${this.escapeHtml(module.display_name || module.name)}</option>`)
+      .join('');
+
+    select.innerHTML = `
+      <option value="">-- No Module (Standalone) --</option>
+      ${moduleOptions}
+    `;
   }
 
   async loadEntities() {
@@ -271,7 +308,11 @@ export class DataModelPage {
 
   showCreateModal() {
     const modal = document.getElementById('createEntityModal');
-    if (modal) modal.classList.remove('hidden');
+    if (modal) {
+      modal.classList.remove('hidden');
+      // Ensure module dropdown is populated
+      this.populateModuleDropdown();
+    }
   }
 
   closeCreateModal() {
@@ -284,6 +325,7 @@ export class DataModelPage {
   async createEntity(event) {
     event.preventDefault();
     const formData = new FormData(event.target);
+    const moduleId = formData.get('module_id');
     const data = {
       name: formData.get('name'),
       label: formData.get('label'),
@@ -291,6 +333,7 @@ export class DataModelPage {
       description: formData.get('description') || '',
       table_name: formData.get('table_name'),
       category: formData.get('category') || '',
+      module_id: moduleId && moduleId !== '' ? moduleId : null,
       is_audited: formData.get('is_audited') === 'on',
       supports_soft_delete: formData.get('supports_soft_delete') === 'on'
     };
