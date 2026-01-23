@@ -1634,3 +1634,129 @@ i[class*="ph-"],
   pointer-events: none;
   line-height: 1.6;
 }
+
+/* ============================================
+   WIZARD & STEP INDICATOR
+   ============================================ */
+
+/* Step Indicator - Visual progress bar */
+.step-indicator {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: relative;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+/* Connecting line between steps */
+.step-indicator::before {
+  content: '';
+  position: absolute;
+  top: 20px;
+  left: 10%;
+  right: 10%;
+  height: 2px;
+  background-color: #e5e7eb;
+  z-index: 0;
+}
+
+/* Individual step item */
+.step-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  position: relative;
+  z-index: 1;
+}
+
+/* Step circle/number badge */
+.step-circle {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 16px;
+  background-color: white;
+  border: 2px solid #e5e7eb;
+  color: #9ca3af;
+  transition: all 0.3s ease;
+}
+
+/* Active step */
+.step-item.active .step-circle {
+  background-color: #3b82f6;
+  border-color: #3b82f6;
+  color: white;
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+}
+
+.step-item.active .text-sm {
+  color: #1f2937;
+  font-weight: 600;
+}
+
+/* Completed step */
+.step-item.completed .step-circle {
+  background-color: #10b981;
+  border-color: #10b981;
+  color: white;
+}
+
+.step-item.completed .text-sm {
+  color: #059669;
+}
+
+/* Wizard step content - hide by default */
+.wizard-step {
+  display: none;
+}
+
+/* Show active wizard step */
+.wizard-step.active {
+  display: block;
+}
+
+/* Module card styles */
+.module-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.module-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Status badges */
+.status-badge {
+  padding: 4px 12px;
+  border-radius: 9999px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.status-draft {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+.status-active {
+  background-color: #d1fae5;
+  color: #065f46;
+}
+
+.status-deprecated {
+  background-color: #fee2e2;
+  color: #991b1b;
+}
+
+.status-archived {
+  background-color: #f3f4f6;
+  color: #4b5563;
+}
