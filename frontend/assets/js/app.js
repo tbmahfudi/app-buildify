@@ -519,7 +519,6 @@ function convertBackendMenuFormat(menuItems) {
         route: item.route,
         icon: item.icon,
         icon_color_primary: item.icon_color_primary,
-        icon_color_secondary: item.icon_color_secondary,
         order: item.order,
         target: item.target || '_self'
       };
@@ -686,12 +685,11 @@ function createMenuItem(item) {
   let iconStyle = '';
   let iconColorClass = '';
 
-  if (item.icon_color_primary || item.icon_color_secondary) {
-    const primaryColor = item.icon_color_primary || '#3b82f6';
-    const secondaryColor = item.icon_color_secondary || '#93c5fd';
+  if (item.icon_color_primary) {
+    const primaryColor = item.icon_color_primary;
 
     if (icon.includes('ph-duotone')) {
-      iconStyle = `style="color: ${primaryColor}; --ph-duotone-primary: ${primaryColor}; --ph-duotone-secondary: ${secondaryColor};"`;
+      iconStyle = `style="color: ${primaryColor}; --ph-duotone-primary: ${primaryColor};"`;
     } else {
       iconStyle = `style="color: ${primaryColor};"`;
     }
@@ -766,12 +764,11 @@ function createSubmenuItem(item, level = 1) {
     let iconStyle = '';
     let iconColorClass = '';
 
-    if (item.icon_color_primary || item.icon_color_secondary) {
-      const primaryColor = item.icon_color_primary || '#3b82f6';
-      const secondaryColor = item.icon_color_secondary || '#93c5fd';
+    if (item.icon_color_primary) {
+      const primaryColor = item.icon_color_primary;
 
       if (icon.includes('ph-duotone')) {
-        iconStyle = `style="color: ${primaryColor}; --ph-duotone-primary: ${primaryColor}; --ph-duotone-secondary: ${secondaryColor};"`;
+        iconStyle = `style="color: ${primaryColor}; --ph-duotone-primary: ${primaryColor};"`;
       } else {
         iconStyle = `style="color: ${primaryColor};"`;
       }
@@ -824,12 +821,11 @@ function createSubmenuItem(item, level = 1) {
     let iconStyle = '';
     let iconColorClass = '';
 
-    if (item.icon_color_primary || item.icon_color_secondary) {
-      const primaryColor = item.icon_color_primary || '#3b82f6';
-      const secondaryColor = item.icon_color_secondary || '#93c5fd';
+    if (item.icon_color_primary) {
+      const primaryColor = item.icon_color_primary;
 
       if (icon.includes('ph-duotone')) {
-        iconStyle = `style="color: ${primaryColor}; --ph-duotone-primary: ${primaryColor}; --ph-duotone-secondary: ${secondaryColor};"`;
+        iconStyle = `style="color: ${primaryColor}; --ph-duotone-primary: ${primaryColor};"`;
       } else {
         iconStyle = `style="color: ${primaryColor};"`;
       }
@@ -872,12 +868,11 @@ function createSubmenuItem(item, level = 1) {
         let subiconStyle = '';
         let subiconColorClass = '';
 
-        if (subitem.icon_color_primary || subitem.icon_color_secondary) {
-          const primaryColor = subitem.icon_color_primary || '#3b82f6';
-          const secondaryColor = subitem.icon_color_secondary || '#93c5fd';
+        if (subitem.icon_color_primary) {
+          const primaryColor = subitem.icon_color_primary;
 
           if (subicon.includes('ph-duotone')) {
-            subiconStyle = `style="color: ${primaryColor}; --ph-duotone-primary: ${primaryColor}; --ph-duotone-secondary: ${secondaryColor};"`;
+            subiconStyle = `style="color: ${primaryColor}; --ph-duotone-primary: ${primaryColor};"`;
           } else {
             subiconStyle = `style="color: ${primaryColor};"`;
           }
@@ -1003,12 +998,11 @@ function createCollapsedSubmenuPopup(item) {
       let subiconStyle = '';
       let subiconColorClass = '';
 
-      if (subitem.icon_color_primary || subitem.icon_color_secondary) {
-        const primaryColor = subitem.icon_color_primary || '#3b82f6';
-        const secondaryColor = subitem.icon_color_secondary || '#93c5fd';
+      if (subitem.icon_color_primary) {
+        const primaryColor = subitem.icon_color_primary;
 
         if (subicon.includes('ph-duotone')) {
-          subiconStyle = `style="color: ${primaryColor}; --ph-duotone-primary: ${primaryColor}; --ph-duotone-secondary: ${secondaryColor};"`;
+          subiconStyle = `style="color: ${primaryColor}; --ph-duotone-primary: ${primaryColor};"`;
         } else {
           subiconStyle = `style="color: ${primaryColor};"`;
         }
@@ -1055,12 +1049,11 @@ function createCollapsedSubmenuPopup(item) {
         let subiconStyle = '';
         let subiconColorClass = '';
 
-        if (subitem.icon_color_primary || subitem.icon_color_secondary) {
-          const primaryColor = subitem.icon_color_primary || '#3b82f6';
-          const secondaryColor = subitem.icon_color_secondary || '#93c5fd';
+        if (subitem.icon_color_primary) {
+          const primaryColor = subitem.icon_color_primary;
 
           if (subicon.includes('ph-duotone')) {
-            subiconStyle = `style="color: ${primaryColor}; --ph-duotone-primary: ${primaryColor}; --ph-duotone-secondary: ${secondaryColor};"`;
+            subiconStyle = `style="color: ${primaryColor}; --ph-duotone-primary: ${primaryColor};"`;
           } else {
             subiconStyle = `style="color: ${primaryColor};"`;
           }
@@ -1142,12 +1135,11 @@ function createCollapsedSubmenuPopup(item) {
         let subiconStyle = '';
         let subiconColorClass = '';
 
-        if (subitem.icon_color_primary || subitem.icon_color_secondary) {
-          const primaryColor = subitem.icon_color_primary || '#3b82f6';
-          const secondaryColor = subitem.icon_color_secondary || '#93c5fd';
+        if (subitem.icon_color_primary) {
+          const primaryColor = subitem.icon_color_primary;
 
           if (subicon.includes('ph-duotone')) {
-            subiconStyle = `style="color: ${primaryColor}; --ph-duotone-primary: ${primaryColor}; --ph-duotone-secondary: ${secondaryColor};"`;
+            subiconStyle = `style="color: ${primaryColor}; --ph-duotone-primary: ${primaryColor};"`;
           } else {
             subiconStyle = `style="color: ${primaryColor};"`;
           }
@@ -1301,12 +1293,11 @@ function createNestedPopup(item, parentPopup, level = 2) {
       let nestedIconStyle = '';
       let nestedIconColorClass = '';
 
-      if (nestedItem.icon_color_primary || nestedItem.icon_color_secondary) {
-        const primaryColor = nestedItem.icon_color_primary || '#3b82f6';
-        const secondaryColor = nestedItem.icon_color_secondary || '#93c5fd';
+      if (nestedItem.icon_color_primary) {
+        const primaryColor = nestedItem.icon_color_primary;
 
         if (nestedIcon.includes('ph-duotone')) {
-          nestedIconStyle = `style="color: ${primaryColor}; --ph-duotone-primary: ${primaryColor}; --ph-duotone-secondary: ${secondaryColor};"`;
+          nestedIconStyle = `style="color: ${primaryColor}; --ph-duotone-primary: ${primaryColor};"`;
         } else {
           nestedIconStyle = `style="color: ${primaryColor};"`;
         }
@@ -1368,12 +1359,11 @@ function createNestedPopup(item, parentPopup, level = 2) {
         let nestedIconStyle = '';
         let nestedIconColorClass = '';
 
-        if (nestedItem.icon_color_primary || nestedItem.icon_color_secondary) {
-          const primaryColor = nestedItem.icon_color_primary || '#3b82f6';
-          const secondaryColor = nestedItem.icon_color_secondary || '#93c5fd';
+        if (nestedItem.icon_color_primary) {
+          const primaryColor = nestedItem.icon_color_primary;
 
           if (nestedIcon.includes('ph-duotone')) {
-            nestedIconStyle = `style="color: ${primaryColor}; --ph-duotone-primary: ${primaryColor}; --ph-duotone-secondary: ${secondaryColor};"`;
+            nestedIconStyle = `style="color: ${primaryColor}; --ph-duotone-primary: ${primaryColor};"`;
           } else {
             nestedIconStyle = `style="color: ${primaryColor};"`;
           }
@@ -1455,12 +1445,11 @@ function createNestedPopup(item, parentPopup, level = 2) {
         let nestedIconStyle = '';
         let nestedIconColorClass = '';
 
-        if (nestedItem.icon_color_primary || nestedItem.icon_color_secondary) {
-          const primaryColor = nestedItem.icon_color_primary || '#3b82f6';
-          const secondaryColor = nestedItem.icon_color_secondary || '#93c5fd';
+        if (nestedItem.icon_color_primary) {
+          const primaryColor = nestedItem.icon_color_primary;
 
           if (nestedIcon.includes('ph-duotone')) {
-            nestedIconStyle = `style="color: ${primaryColor}; --ph-duotone-primary: ${primaryColor}; --ph-duotone-secondary: ${secondaryColor};"`;
+            nestedIconStyle = `style="color: ${primaryColor}; --ph-duotone-primary: ${primaryColor};"`;
           } else {
             nestedIconStyle = `style="color: ${primaryColor};"`;
           }

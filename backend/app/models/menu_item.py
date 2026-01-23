@@ -37,7 +37,6 @@ class MenuItem(Base):
     title = Column(String(100), nullable=False)
     icon = Column(String(100), nullable=True)  # Icon class (e.g., "ph-duotone ph-gauge") or emoji
     icon_color_primary = Column(String(20), nullable=True)  # Primary color for duo-tone icons (e.g., "#3b82f6")
-    icon_color_secondary = Column(String(20), nullable=True)  # Secondary color for duo-tone icons (e.g., "#93c5fd")
     route = Column(String(255), nullable=True)  # Frontend route (e.g., "dashboard", "financial/accounts")
     description = Column(Text, nullable=True)
 
@@ -83,7 +82,6 @@ class MenuItem(Base):
             'title': self.title,
             'icon': self.icon,
             'icon_color_primary': self.icon_color_primary,
-            'icon_color_secondary': self.icon_color_secondary,
             'route': self.route,
             'order': self.order,
             'target': self.target,
