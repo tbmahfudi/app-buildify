@@ -14,6 +14,14 @@ import { apiFetch } from './api.js';
 
 let dataModelPage = null;
 
+// Phosphor icon options for entities
+const ENTITY_ICON_OPTIONS = [
+  'table', 'database', 'folder', 'user', 'users', 'briefcase',
+  'shopping-cart', 'package', 'file-text', 'clipboard-text',
+  'calendar', 'note', 'address-book', 'receipt', 'invoice',
+  'chart-bar', 'buildings', 'truck', 'gear', 'tag'
+];
+
 // Route change
 document.addEventListener('route:loaded', async (event) => {
   if (event.detail.route === 'nocode-data-model') {
@@ -92,7 +100,9 @@ export class DataModelPage {
       // Quick Actions
       createReportFromEntity: (id) => this.createReportFromEntity(id),
       createPageFromEntity: (id) => this.createPageFromEntity(id),
-      addEntityToMenu: (id) => this.addEntityToMenu(id)
+      addEntityToMenu: (id) => this.addEntityToMenu(id),
+      // Icon selection
+      selectEntityIcon: (icon) => this.selectEntityIcon(icon)
     };
   }
 
@@ -312,14 +322,54 @@ export class DataModelPage {
       modal.classList.remove('hidden');
       // Ensure module dropdown is populated
       this.populateModuleDropdown();
+      // Initialize icon picker
+      this.initializeEntityIconPicker();
     }
+  }
+
+  initializeEntityIconPicker() {
+    const picker = document.getElementById('entityIconPicker');
+    const iconInput = document.getElementById('entityIcon');
+    if (!picker || !iconInput) return;
+
+    // Render icon options
+    picker.innerHTML = ENTITY_ICON_OPTIONS.map(icon => `
+      <button type="button"
+              class="entity-icon-option w-12 h-12 flex items-center justify-center border-2 border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition ${icon === 'table' ? 'border-blue-500 bg-blue-50' : ''}"
+              data-icon="${icon}"
+              onclick="DataModelApp.selectEntityIcon('${icon}')">
+        <i class="ph-fill ph-${icon} text-2xl text-gray-700"></i>
+      </button>
+    `).join('');
+  }
+
+  selectEntityIcon(icon) {
+    const iconInput = document.getElementById('entityIcon');
+    if (iconInput) {
+      iconInput.value = icon;
+    }
+
+    // Update visual selection
+    document.querySelectorAll('.entity-icon-option').forEach(btn => {
+      if (btn.dataset.icon === icon) {
+        btn.classList.add('border-blue-500', 'bg-blue-50');
+        btn.classList.remove('border-gray-300');
+      } else {
+        btn.classList.remove('border-blue-500', 'bg-blue-50');
+        btn.classList.add('border-gray-300');
+      }
+    });
   }
 
   closeCreateModal() {
     const modal = document.getElementById('createEntityModal');
     const form = document.getElementById('createEntityForm');
     if (modal) modal.classList.add('hidden');
-    if (form) form.reset();
+    if (form) {
+      form.reset();
+      // Reset icon selection to default
+      this.selectEntityIcon('table');
+    }
   }
 
   async createEntity(event) {
@@ -331,6 +381,7 @@ export class DataModelPage {
       label: formData.get('label'),
       plural_label: formData.get('plural_label') || '',
       description: formData.get('description') || '',
+      icon: formData.get('icon') || 'table',
       table_name: formData.get('table_name'),
       category: formData.get('category') || '',
       module_id: moduleId && moduleId !== '' ? moduleId : null,
