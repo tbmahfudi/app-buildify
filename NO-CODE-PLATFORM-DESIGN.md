@@ -1,7 +1,7 @@
 # No-Code Platform - High-Level Design
 
 **Date:** 2026-01-02
-**Last Updated:** 2026-01-19
+**Last Updated:** 2026-01-23
 **Project:** App-Buildify
 **Purpose:** High-level design and architecture of the No-Code Platform
 
@@ -13,7 +13,7 @@ App-Buildify is a comprehensive no-code/low-code platform that enables sysadmin 
 
 **Vision:** Configure everything from the platform - if developing a new module with all needed functionality, only platform configuration is required. Backend processes are handled separately in their own modules/business services.
 
-**Current Status (2026-01-19):**
+**Current Status (2026-01-23):**
 - ✅ **Phase 1 Core Foundation:** 100% Complete
 - ✅ **Phase 2 Runtime Layer:** 100% Complete
 - ✅ **Phase 3 Visual Designer Enhancement:** 100% Complete
@@ -25,7 +25,12 @@ App-Buildify is a comprehensive no-code/low-code platform that enables sysadmin 
   - 📋 Priority 1: Module Definition & Registry
   - 📋 Priority 2: Cross-Module Access (Service Layer)
   - 📋 Priority 3: Extension Framework
-- 📋 **Phase 5-7 Advanced Features:** Future Planning
+- 🔥 **Phase 5 Field-Level Features (Quick Wins):** In Progress (2026-01-23)
+  - ✅ Select & Reference field types with FK constraints
+  - 🎯 Priority 1: Calculated Fields & Validation Rules (Week 1)
+  - 📋 Priority 2: Advanced Input Types & Lookup Enhancements (Week 2)
+  - 📋 Priority 3: Conditional Visibility & Field Groups (Week 3-4)
+- 📋 **Phase 6-7 Advanced Features:** Future Planning
 
 ---
 
@@ -837,54 +842,210 @@ automations:read:all        - Read all automation rules
 
 ---
 
-### 📋 Phase 5: No-Code Feature Enhancements (Future)
+### 🔥 Phase 5: Field-Level Features & Enhancements (In Progress - 2026-01-23)
 
-**Goal:** Advanced no-code capabilities for power users
+**Goal:** Advanced field-level capabilities leveraging existing backend infrastructure
+
+**Status:** Priority 1 In Progress (2026-01-23)
+
+**Key Discovery:** Backend models already support many advanced features - columns exist but frontend implementation missing!
+
+**Backend Readiness Assessment:**
+- ✅ `is_calculated` + `calculation_formula` columns exist (data_model.py:158-159)
+- ✅ `validation_rules` JSONB column exists (data_model.py:151)
+- ✅ `prefix` + `suffix` columns exist (data_model.py:164-165)
+- ✅ `input_type` column exists (data_model.py:162)
+- ✅ `allowed_values` JSONB column exists (data_model.py:152)
+- ✅ Select & Reference field types added (2026-01-23)
+- ✅ FK constraint behavior (`on_delete`, `on_update`) added (2026-01-23)
+
+---
+
+#### Priority 1: Quick Wins (Week 1 - 2026-01-23)
+**Goal:** Unlock existing backend capabilities with minimal frontend work
+
+**Sub-Tasks:**
+
+1. **✅ Select & Reference Field Types** (Completed 2026-01-23)
+   - Added `select` and `reference` to field type dropdown
+   - Reference field configuration UI (entity selector, FK constraints)
+   - Select options configuration UI (multi-line textarea)
+   - Frontend: 224 lines added/modified
+   - Backend: Migration for `on_delete`/`on_update` columns
+   - **Status:** ✅ Complete, Committed, Pushed
+
+2. **🎯 Calculated/Formula Fields** (Day 1-2)
+   - Expression evaluator in dynamic-form.js
+   - Support arithmetic: `+`, `-`, `*`, `/`, `%`
+   - Support functions: `SUM()`, `AVG()`, `MIN()`, `MAX()`, `COUNT()`
+   - Support conditionals: `IF(condition, true_value, false_value)`
+   - Field dependency tracking
+   - Auto-recalculate on dependency change
+   - Read-only display for calculated fields
+   - **Backend:** ✅ Ready (columns exist)
+   - **Frontend:** ❌ Need implementation
+   - **Effort:** 1-2 days
+
+3. **🎯 Field Validation Rules** (Day 2-3)
+   - Validation executor in dynamic-form.js
+   - Support validation types:
+     - `regex`: Pattern matching
+     - `min_length` / `max_length`: String length
+     - `min_value` / `max_value`: Numeric range
+     - `custom`: JavaScript expression
+     - `email`, `url`, `phone`: Format validation
+   - Real-time validation on blur/change
+   - Custom error messages
+   - Cross-field validation support
+   - **Backend:** ✅ Ready (validation_rules column exists)
+   - **Frontend:** ❌ Need implementation
+   - **Effort:** 1-2 days
+
+4. **🎯 Prefix/Suffix Support** (Day 4)
+   - Render prefix/suffix in FlexInput component
+   - Visual styling (prepend/append to input)
+   - Examples: `$` for currency, `%` for percentage, `kg` for weight
+   - **Backend:** ✅ Ready (prefix/suffix columns exist)
+   - **Frontend:** ❌ Need implementation
+   - **Effort:** 0.5 day
+
+**Deliverables:**
+- ✅ Select & Reference field types working
+- 🎯 Formula engine for calculated fields
+- 🎯 Validation engine for field rules
+- 🎯 Prefix/Suffix rendering in forms
+- 🎯 Updated dynamic-form.js with new capabilities
+- 🎯 Documentation and examples
+
+**Total Effort:** 4-5 days
+
+---
+
+#### Priority 2: Advanced Input Types & Lookup Enhancements (Week 2)
+**Goal:** Rich UI controls and improved reference field UX
 
 **Features:**
 
-1. **Calculated Fields & Formulas**
-   - Expression builder with formula editor
-   - Support for common functions (SUM, AVG, COUNT, IF, etc.)
-   - Field dependencies tracking
-   - Real-time calculation
+1. **Advanced Input Types**
+   - `color`: Color picker (native `<input type="color">`)
+   - `rating`: Star rating component (1-5 stars)
+   - `currency`: Number input with currency symbol
+   - `percentage`: Number input with % symbol
+   - `slider`: Range slider for numeric values
+   - `rich-text`: WYSIWYG editor (TinyMCE/Quill)
+   - `code-editor`: Syntax highlighting (Monaco/CodeMirror)
+   - `tags`: Multi-tag input component
+   - `autocomplete`: Search-as-you-type
+   - Leverage existing `input_type` column
 
-2. **Validation Rules Designer**
-   - Visual validation rule builder
-   - Complex validation expressions
-   - Cross-field validation
-   - Custom error messages
+2. **Lookup/Reference Field Enhancements**
+   - Replace dropdown with autocomplete (search-as-you-type)
+   - Quick-create button (add new record inline)
+   - Display template support (e.g., "{name} ({email})")
+   - Filtered lookups based on other field values
+   - Multi-column display in dropdown
+   - Recent/favorites in lookup
+   - Backend: Add `lookup_display_template`, `lookup_filter_field` columns
 
-3. **Workflow Enhancements**
-   - Conditional branching (if/then/else)
-   - Loop support (foreach, while)
-   - Sub-workflows (call other workflows)
-   - Error handling and retry logic
-   - Workflow testing and debugging tools
+**Total Effort:** 3-4 days
 
-4. **Automation Enhancements**
-   - Event chaining (trigger cascades)
-   - Advanced retry policies
-   - Complex nested conditions (AND/OR groups)
-   - Action templates library
-   - Automation debugging dashboard
+---
 
-5. **UI/UX Enhancements**
-   - Custom form layouts (multi-column, tabs, accordions)
-   - Conditional field visibility rules
-   - Multi-step forms with progress indicators
-   - Inline editing in data tables
-   - Bulk edit operations
-   - Field-level help text and tooltips
+#### Priority 3: Conditional Visibility & Field Groups (Week 3-4)
+**Goal:** Dynamic forms with conditional logic and organization
 
-6. **Report/Dashboard Enhancements**
-   - Drill-through reports (click to detail)
-   - Cross-tab/pivot reports
-   - Scheduled email delivery
-   - Dashboard filter synchronization
-   - Custom SQL query builder (advanced users)
+**Features:**
 
-**Total Effort:** 6-8 weeks
+1. **Conditional Field Visibility**
+   - Show/hide fields based on other field values
+   - Visibility rules: `{"field": "status", "operator": "equals", "value": "active"}`
+   - Support operators: equals, not_equals, contains, in, greater_than, less_than
+   - AND/OR rule groups
+   - Real-time visibility updates
+   - Backend: Add `visibility_rules` JSONB column
+
+2. **Field Groups & Sections**
+   - Organize fields into collapsible sections
+   - Visual section headers with icons
+   - Tab-based layouts
+   - Accordion-style sections
+   - Backend: New `FieldGroup` model
+   - Frontend: Enhanced form renderer
+
+3. **Field Dependencies (Cascading)**
+   - Auto-populate fields based on other fields
+   - Cascading dropdowns (Country → State → City)
+   - Dynamic option filtering
+   - Backend: Add `depends_on_field`, `filter_expression` columns
+
+**Total Effort:** 4-6 days
+
+---
+
+#### Priority 4: Multi-language Support (Week 4)
+**Goal:** Internationalization for global applications
+
+**Features:**
+
+1. **Field Label Translations**
+   - Backend: Add `label_i18n`, `help_text_i18n`, `placeholder_i18n` JSONB columns
+   - Store translations: `{"en": "Name", "es": "Nombre", "fr": "Nom"}`
+   - Frontend: Locale selector and dynamic label rendering
+   - Fallback to default language
+
+2. **Data Translations**
+   - Translatable text fields
+   - Language switcher in forms
+   - Multi-language data storage
+
+**Total Effort:** 3-5 days
+
+---
+
+#### Future Enhancements (Phase 5B)
+
+**Workflow Enhancements**
+- Conditional branching (if/then/else)
+- Loop support (foreach, while)
+- Sub-workflows (call other workflows)
+- Error handling and retry logic
+
+**Automation Enhancements**
+- Event chaining (trigger cascades)
+- Advanced retry policies
+- Complex nested conditions (already supported)
+- Action templates library
+
+**UI/UX Enhancements**
+- Multi-step forms with progress indicators
+- Inline editing in data tables
+- Bulk edit operations
+- Custom form templates
+
+**Report/Dashboard Enhancements**
+- Drill-through reports (click to detail)
+- Cross-tab/pivot reports
+- Scheduled email delivery
+- Custom SQL query builder
+
+---
+
+**Phase 5 Summary:**
+
+**Total Duration:** 3-4 weeks (Priorities 1-4)
+
+**Week 1:** Quick Wins (Calculated, Validation, Prefix/Suffix)
+**Week 2:** Advanced Input Types & Lookup Enhancements
+**Week 3-4:** Conditional Visibility, Field Groups, Multi-language
+
+**Success Metrics:**
+- ✅ Backend columns fully utilized (no unused infrastructure)
+- 🎯 Users can create calculated fields (e.g., `total = quantity * price`)
+- 🎯 Users can add validation rules (e.g., email format, min/max)
+- 🎯 Rich input controls available (color picker, rating, rich-text)
+- 🎯 Reference fields have autocomplete and quick-create
+- 🎯 Forms support conditional visibility and sections
+- 🎯 Multi-language support for global apps
 
 **Detail:** See [NO-CODE-PHASE5.md](NO-CODE-PHASE5.md) (to be created)
 
@@ -1024,9 +1185,10 @@ The platform achieves complete no-code capability when:
 8. ✅ **Security** - Permissions configurable from UI (Existing - Done)
 9. ✅ **Visual Designers** - Fully visual report/dashboard designers (Phase 3 - Done)
 10. 🎯 **Modular Architecture** - Modules with dependencies and extensions (Phase 4 - In Progress)
-11. 📋 **Advanced Features** - Calculated fields, validation rules (Phase 5 - Planned)
-12. 📋 **Module Packaging** - Export/import modules across environments (Phase 6 - Planned)
-13. 📋 **External Integration** - API, email, notifications (Phase 7 - Planned)
+11. 🔥 **Field-Level Features** - Select/Reference types, calculated fields, validation rules, prefix/suffix (Phase 5 - In Progress)
+12. 📋 **Advanced Input Types** - Rich UI controls, conditional visibility, field groups (Phase 5 - Planned)
+13. 📋 **Module Packaging** - Export/import modules across environments (Phase 6 - Planned)
+14. 📋 **External Integration** - API, email, notifications (Phase 7 - Planned)
 
 **Final Goal:** Develop complete, modular business applications using ONLY the platform's no-code configuration UI, with cross-module capabilities and environment promotion (dev → staging → prod).
 
@@ -1039,7 +1201,7 @@ The platform achieves complete no-code capability when:
 - [NO-CODE-PHASE2.md](NO-CODE-PHASE2.md) - Runtime Data Layer (CRUD API, Auto-UI, Integration) ✅
 - [NO-CODE-PHASE3.md](NO-CODE-PHASE3.md) - Visual Designer Enhancement (Menu, Report, Dashboard) ✅
 - [NO-CODE-PHASE4.md](NO-CODE-PHASE4.md) - Module System Foundation (Registry, Cross-Module, Extensions) 🎯
-- [NO-CODE-PHASE5.md](NO-CODE-PHASE5.md) - No-Code Feature Enhancements (to be created) 📋
+- [NO-CODE-PHASE5.md](NO-CODE-PHASE5.md) - Field-Level Features & Enhancements (Calculated, Validation, Advanced Inputs) 🔥
 - [NO-CODE-PHASE6.md](NO-CODE-PHASE6.md) - Module Packaging & Deployment (to be created) 📋
 - [NO-CODE-PHASE7.md](NO-CODE-PHASE7.md) - Integration & Communication (to be created) 📋
 
@@ -1053,8 +1215,9 @@ The platform achieves complete no-code capability when:
 
 ---
 
-**Document Version:** 6.0
-**Last Updated:** 2026-01-19
-**Next Review:** Phase 4 implementation progress
+**Document Version:** 7.0
+**Last Updated:** 2026-01-23
+**Next Review:** Phase 5 Priority 1 completion
 **Changelog:**
+- v7.0 (2026-01-23): Phase 5 started - Select/Reference field types implemented, detailed Quick Wins plan, backend readiness assessment
 - v6.0 (2026-01-19): Reorganized phases, added Phase 4-7 structure, updated module system architecture
