@@ -116,7 +116,14 @@ export class DynamicForm {
           return this.createPercentageInput(fieldConfig, value, readonly, labelText, helperText);
         case 'slider':
           return this.createSlider(fieldConfig, value, readonly, labelText, helperText);
-        // Future: rich-text, code-editor, tags, autocomplete
+        case 'tags':
+          return this.createTagInput(fieldConfig, value, readonly, labelText, helperText);
+        case 'autocomplete':
+          return this.createAutocomplete(fieldConfig, value, readonly, labelText, helperText);
+        case 'rich-text':
+          return this.createRichTextEditor(fieldConfig, value, readonly, labelText, helperText);
+        case 'code-editor':
+          return this.createCodeEditor(fieldConfig, value, readonly, labelText, helperText);
       }
     }
 
@@ -667,6 +674,373 @@ export class DynamicForm {
     }
 
     this.fields.set(fieldConfig.field, slider);
+
+    return container;
+  }
+
+  /**
+   * Create tag input component
+   */
+  createTagInput(fieldConfig, value, readonly, labelText, helperText) {
+    const container = document.createElement('div');
+    container.className = 'space-y-2';
+
+    // Label
+    if (labelText) {
+      const label = document.createElement('label');
+      label.className = 'block text-sm font-medium text-gray-700';
+      label.textContent = labelText;
+      if (fieldConfig.required) {
+        const asterisk = document.createElement('span');
+        asterisk.className = 'text-red-500 ml-1';
+        asterisk.textContent = '*';
+        label.appendChild(asterisk);
+      }
+      container.appendChild(label);
+    }
+
+    // Tags wrapper
+    const tagsWrapper = document.createElement('div');
+    tagsWrapper.className = 'flex flex-wrap gap-2 p-3 border border-gray-300 rounded-lg min-h-[42px] focus-within:ring-2 focus-within:ring-blue-500';
+
+    // Hidden input to store tag values
+    const hiddenInput = document.createElement('input');
+    hiddenInput.type = 'hidden';
+    hiddenInput.name = fieldConfig.field;
+
+    // Parse existing tags
+    let tags = [];
+    try {
+      tags = value ? (Array.isArray(value) ? value : JSON.parse(value)) : [];
+    } catch {
+      tags = value ? value.split(',').map(t => t.trim()) : [];
+    }
+
+    // Render existing tags
+    const renderTags = () => {
+      tagsWrapper.innerHTML = '';
+
+      tags.forEach((tag, index) => {
+        const tagEl = document.createElement('span');
+        tagEl.className = 'inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 rounded text-sm';
+        tagEl.innerHTML = `
+          ${tag}
+          ${!readonly ? '<button type="button" class="hover:text-blue-600" data-index="' + index + '">×</button>' : ''}
+        `;
+
+        if (!readonly) {
+          const removeBtn = tagEl.querySelector('button');
+          removeBtn.addEventListener('click', () => {
+            tags.splice(index, 1);
+            hiddenInput.value = JSON.stringify(tags);
+            renderTags();
+          });
+        }
+
+        tagsWrapper.appendChild(tagEl);
+      });
+
+      // Add input field for new tags
+      if (!readonly) {
+        const tagInput = document.createElement('input');
+        tagInput.type = 'text';
+        tagInput.placeholder = tags.length === 0 ? (fieldConfig.placeholder || 'Add tag...') : '';
+        tagInput.className = 'flex-1 min-w-[120px] outline-none bg-transparent';
+
+        tagInput.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' || e.key === ',') {
+            e.preventDefault();
+            const newTag = tagInput.value.trim();
+            if (newTag && !tags.includes(newTag)) {
+              tags.push(newTag);
+              hiddenInput.value = JSON.stringify(tags);
+              tagInput.value = '';
+              renderTags();
+            }
+          } else if (e.key === 'Backspace' && tagInput.value === '' && tags.length > 0) {
+            tags.pop();
+            hiddenInput.value = JSON.stringify(tags);
+            renderTags();
+          }
+        });
+
+        tagsWrapper.appendChild(tagInput);
+      }
+    };
+
+    hiddenInput.value = JSON.stringify(tags);
+    renderTags();
+
+    container.appendChild(tagsWrapper);
+    container.appendChild(hiddenInput);
+
+    // Helper text
+    if (helperText) {
+      const helper = document.createElement('p');
+      helper.className = 'text-sm text-gray-500';
+      helper.textContent = helperText;
+      container.appendChild(helper);
+    }
+
+    this.fields.set(fieldConfig.field, hiddenInput);
+
+    return container;
+  }
+
+  /**
+   * Create autocomplete input
+   */
+  createAutocomplete(fieldConfig, value, readonly, labelText, helperText) {
+    const container = document.createElement('div');
+    container.className = 'space-y-2 relative';
+
+    // Label
+    if (labelText) {
+      const label = document.createElement('label');
+      label.className = 'block text-sm font-medium text-gray-700';
+      label.textContent = labelText;
+      if (fieldConfig.required) {
+        const asterisk = document.createElement('span');
+        asterisk.className = 'text-red-500 ml-1';
+        asterisk.textContent = '*';
+        label.appendChild(asterisk);
+      }
+      container.appendChild(label);
+    }
+
+    // Input
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.value = value || '';
+    input.disabled = readonly;
+    input.name = fieldConfig.field;
+    input.placeholder = fieldConfig.placeholder || 'Start typing...';
+    input.className = 'w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500';
+    input.autocomplete = 'off';
+
+    // Dropdown for suggestions
+    const dropdown = document.createElement('div');
+    dropdown.className = 'absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto hidden';
+
+    let debounceTimeout;
+    input.addEventListener('input', () => {
+      clearTimeout(debounceTimeout);
+
+      if (input.value.length < 2) {
+        dropdown.classList.add('hidden');
+        return;
+      }
+
+      debounceTimeout = setTimeout(async () => {
+        const suggestions = await this.fetchAutocompleteSuggestions(fieldConfig, input.value);
+
+        if (suggestions.length > 0) {
+          dropdown.innerHTML = '';
+          suggestions.forEach(suggestion => {
+            const item = document.createElement('div');
+            item.className = 'px-3 py-2 hover:bg-gray-100 cursor-pointer';
+            item.textContent = suggestion;
+            item.addEventListener('click', () => {
+              input.value = suggestion;
+              dropdown.classList.add('hidden');
+            });
+            dropdown.appendChild(item);
+          });
+          dropdown.classList.remove('hidden');
+        } else {
+          dropdown.classList.add('hidden');
+        }
+      }, 300);
+    });
+
+    // Close dropdown on outside click
+    document.addEventListener('click', (e) => {
+      if (!container.contains(e.target)) {
+        dropdown.classList.add('hidden');
+      }
+    });
+
+    container.appendChild(input);
+    container.appendChild(dropdown);
+
+    // Helper text
+    if (helperText) {
+      const helper = document.createElement('p');
+      helper.className = 'text-sm text-gray-500';
+      helper.textContent = helperText;
+      container.appendChild(helper);
+    }
+
+    this.fields.set(fieldConfig.field, input);
+
+    return container;
+  }
+
+  /**
+   * Fetch autocomplete suggestions
+   */
+  async fetchAutocompleteSuggestions(fieldConfig, query) {
+    // Check if suggestions are configured in metadata
+    const source = fieldConfig.meta_data?.autocomplete_source;
+
+    if (source === 'api' && fieldConfig.meta_data?.api_url) {
+      try {
+        const response = await fetch(`${fieldConfig.meta_data.api_url}?q=${encodeURIComponent(query)}`);
+        const data = await response.json();
+        return data.results || data;
+      } catch (error) {
+        console.error('Autocomplete API error:', error);
+        return [];
+      }
+    }
+
+    // Static list from allowed_values
+    if (fieldConfig.allowed_values && Array.isArray(fieldConfig.allowed_values)) {
+      return fieldConfig.allowed_values.filter(val =>
+        val.toLowerCase().includes(query.toLowerCase())
+      );
+    }
+
+    return [];
+  }
+
+  /**
+   * Create rich text editor
+   */
+  createRichTextEditor(fieldConfig, value, readonly, labelText, helperText) {
+    const container = document.createElement('div');
+    container.className = 'space-y-2';
+
+    // Label
+    if (labelText) {
+      const label = document.createElement('label');
+      label.className = 'block text-sm font-medium text-gray-700';
+      label.textContent = labelText;
+      if (fieldConfig.required) {
+        const asterisk = document.createElement('span');
+        asterisk.className = 'text-red-500 ml-1';
+        asterisk.textContent = '*';
+        label.appendChild(asterisk);
+      }
+      container.appendChild(label);
+    }
+
+    // Toolbar (if not readonly)
+    if (!readonly) {
+      const toolbar = document.createElement('div');
+      toolbar.className = 'flex gap-1 p-2 bg-gray-50 border border-gray-300 rounded-t-lg';
+      toolbar.innerHTML = `
+        <button type="button" data-command="bold" class="px-2 py-1 hover:bg-gray-200 rounded" title="Bold"><strong>B</strong></button>
+        <button type="button" data-command="italic" class="px-2 py-1 hover:bg-gray-200 rounded" title="Italic"><em>I</em></button>
+        <button type="button" data-command="underline" class="px-2 py-1 hover:bg-gray-200 rounded" title="Underline"><u>U</u></button>
+        <div class="w-px bg-gray-300 mx-1"></div>
+        <button type="button" data-command="insertUnorderedList" class="px-2 py-1 hover:bg-gray-200 rounded" title="Bullet List">•</button>
+        <button type="button" data-command="insertOrderedList" class="px-2 py-1 hover:bg-gray-200 rounded" title="Numbered List">1.</button>
+      `;
+
+      toolbar.querySelectorAll('button').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.preventDefault();
+          document.execCommand(btn.dataset.command, false, null);
+        });
+      });
+
+      container.appendChild(toolbar);
+    }
+
+    // Editable div
+    const editor = document.createElement('div');
+    editor.contentEditable = !readonly;
+    editor.innerHTML = value || '';
+    editor.className = `w-full min-h-[150px] p-3 border ${readonly ? 'border-t' : ''} border-gray-300 ${readonly ? 'rounded-lg' : 'rounded-b-lg'} focus:ring-2 focus:ring-blue-500 focus:outline-none overflow-y-auto`;
+
+    // Hidden input to store HTML
+    const hiddenInput = document.createElement('input');
+    hiddenInput.type = 'hidden';
+    hiddenInput.name = fieldConfig.field;
+    hiddenInput.value = value || '';
+
+    editor.addEventListener('input', () => {
+      hiddenInput.value = editor.innerHTML;
+    });
+
+    container.appendChild(editor);
+    container.appendChild(hiddenInput);
+
+    // Helper text
+    if (helperText) {
+      const helper = document.createElement('p');
+      helper.className = 'text-sm text-gray-500';
+      helper.textContent = helperText;
+      container.appendChild(helper);
+    }
+
+    this.fields.set(fieldConfig.field, hiddenInput);
+
+    return container;
+  }
+
+  /**
+   * Create code editor
+   */
+  createCodeEditor(fieldConfig, value, readonly, labelText, helperText) {
+    const container = document.createElement('div');
+    container.className = 'space-y-2';
+
+    // Label
+    if (labelText) {
+      const label = document.createElement('label');
+      label.className = 'block text-sm font-medium text-gray-700';
+      label.textContent = labelText;
+      if (fieldConfig.required) {
+        const asterisk = document.createElement('span');
+        asterisk.className = 'text-red-500 ml-1';
+        asterisk.textContent = '*';
+        label.appendChild(asterisk);
+      }
+      container.appendChild(label);
+    }
+
+    // Language indicator (if specified)
+    const language = fieldConfig.meta_data?.language || 'text';
+    if (language !== 'text') {
+      const langLabel = document.createElement('div');
+      langLabel.className = 'text-xs font-mono text-gray-500 bg-gray-100 px-2 py-1 rounded-t inline-block';
+      langLabel.textContent = language;
+      container.appendChild(langLabel);
+    }
+
+    // Textarea with monospace font
+    const textarea = document.createElement('textarea');
+    textarea.value = value || '';
+    textarea.disabled = readonly;
+    textarea.name = fieldConfig.field;
+    textarea.placeholder = fieldConfig.placeholder || `// Enter ${language} code...`;
+    textarea.className = 'w-full min-h-[200px] p-3 border border-gray-300 rounded-lg font-mono text-sm focus:ring-2 focus:ring-blue-500 bg-gray-50';
+    textarea.spellcheck = false;
+
+    // Enable tab key
+    textarea.addEventListener('keydown', (e) => {
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        textarea.value = textarea.value.substring(0, start) + '  ' + textarea.value.substring(end);
+        textarea.selectionStart = textarea.selectionEnd = start + 2;
+      }
+    });
+
+    container.appendChild(textarea);
+
+    // Helper text
+    if (helperText) {
+      const helper = document.createElement('p');
+      helper.className = 'text-sm text-gray-500';
+      helper.textContent = helperText;
+      container.appendChild(helper);
+    }
+
+    this.fields.set(fieldConfig.field, textarea);
 
     return container;
   }
