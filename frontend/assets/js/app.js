@@ -998,12 +998,29 @@ function createCollapsedSubmenuPopup(item) {
       gridItem.href = `#${subitem.route}`;
 
       const subicon = subitem.icon || 'ph-duotone ph-square';
-      const subiconColor = getIconColor(subitem.title, subitem.route, subitem);
+
+      // Check for custom colors
+      let subiconStyle = '';
+      let subiconColorClass = '';
+
+      if (subitem.icon_color_primary || subitem.icon_color_secondary) {
+        const primaryColor = subitem.icon_color_primary || '#3b82f6';
+        const secondaryColor = subitem.icon_color_secondary || '#93c5fd';
+
+        if (subicon.includes('ph-duotone')) {
+          subiconStyle = `style="color: ${primaryColor}; --ph-duotone-primary: ${primaryColor}; --ph-duotone-secondary: ${secondaryColor};"`;
+        } else {
+          subiconStyle = `style="color: ${primaryColor};"`;
+        }
+      } else {
+        subiconColorClass = getIconColor(subitem.title, subitem.route, subitem);
+      }
+
       const gridI18nKey = getMenuI18nKey(subitem.title);
       const gridI18nAttr = gridI18nKey ? `data-i18n="${gridI18nKey}"` : '';
 
       gridItem.innerHTML = `
-        <i class="${subicon} text-4xl ${subiconColor}"></i>
+        <i class="${subicon} text-4xl ${subiconColorClass}" ${subiconStyle}></i>
         <span class="text-xs text-center font-medium leading-tight" ${gridI18nAttr}>${subitem.title}</span>
       `;
 
@@ -1033,13 +1050,30 @@ function createCollapsedSubmenuPopup(item) {
         nestedTrigger.className = 'flex items-center justify-between px-4 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600 cursor-pointer transition-colors';
 
         const subicon = subitem.icon || 'ph-duotone ph-folder';
-        const subiconColor = getIconColor(subitem.title, subitem.route, subitem);
+
+        // Check for custom colors
+        let subiconStyle = '';
+        let subiconColorClass = '';
+
+        if (subitem.icon_color_primary || subitem.icon_color_secondary) {
+          const primaryColor = subitem.icon_color_primary || '#3b82f6';
+          const secondaryColor = subitem.icon_color_secondary || '#93c5fd';
+
+          if (subicon.includes('ph-duotone')) {
+            subiconStyle = `style="color: ${primaryColor}; --ph-duotone-primary: ${primaryColor}; --ph-duotone-secondary: ${secondaryColor};"`;
+          } else {
+            subiconStyle = `style="color: ${primaryColor};"`;
+          }
+        } else {
+          subiconColorClass = getIconColor(subitem.title, subitem.route, subitem);
+        }
+
         const nestedI18nKey = getMenuI18nKey(subitem.title);
         const nestedI18nAttr = nestedI18nKey ? `data-i18n="${nestedI18nKey}"` : '';
 
         nestedTrigger.innerHTML = `
           <div class="flex items-center gap-3">
-            <i class="${subicon} text-lg ${subiconColor}"></i>
+            <i class="${subicon} text-lg ${subiconColorClass}" ${subiconStyle}></i>
             <span class="text-sm font-medium" ${nestedI18nAttr}>${subitem.title}</span>
           </div>
           <i class="ph ph-caret-right text-xs"></i>
@@ -1103,12 +1137,29 @@ function createCollapsedSubmenuPopup(item) {
         sublink.href = `#${subitem.route}`;
 
         const subicon = subitem.icon || 'ph-duotone ph-square';
-        const subiconColor = getIconColor(subitem.title, subitem.route, subitem);
+
+        // Check for custom colors
+        let subiconStyle = '';
+        let subiconColorClass = '';
+
+        if (subitem.icon_color_primary || subitem.icon_color_secondary) {
+          const primaryColor = subitem.icon_color_primary || '#3b82f6';
+          const secondaryColor = subitem.icon_color_secondary || '#93c5fd';
+
+          if (subicon.includes('ph-duotone')) {
+            subiconStyle = `style="color: ${primaryColor}; --ph-duotone-primary: ${primaryColor}; --ph-duotone-secondary: ${secondaryColor};"`;
+          } else {
+            subiconStyle = `style="color: ${primaryColor};"`;
+          }
+        } else {
+          subiconColorClass = getIconColor(subitem.title, subitem.route, subitem);
+        }
+
         const sublinkI18nKey = getMenuI18nKey(subitem.title);
         const sublinkI18nAttr = sublinkI18nKey ? `data-i18n="${sublinkI18nKey}"` : '';
 
         sublink.innerHTML = `
-          <i class="${subicon} text-lg ${subiconColor}"></i>
+          <i class="${subicon} text-lg ${subiconColorClass}" ${subiconStyle}></i>
           <span ${sublinkI18nAttr}>${subitem.title}</span>
         `;
 
@@ -1245,11 +1296,28 @@ function createNestedPopup(item, parentPopup, level = 2) {
       const gridItem = document.createElement('a');
       gridItem.className = 'flex flex-col items-center gap-2 p-3 rounded-lg text-gray-600 hover:bg-blue-50 hover:text-blue-600 transition-colors cursor-pointer';
       const nestedIcon = nestedItem.icon || 'ph-duotone ph-circle';
-      const nestedIconColor = getIconColor(nestedItem.title, nestedItem.route, nestedItem);
+
+      // Check for custom colors
+      let nestedIconStyle = '';
+      let nestedIconColorClass = '';
+
+      if (nestedItem.icon_color_primary || nestedItem.icon_color_secondary) {
+        const primaryColor = nestedItem.icon_color_primary || '#3b82f6';
+        const secondaryColor = nestedItem.icon_color_secondary || '#93c5fd';
+
+        if (nestedIcon.includes('ph-duotone')) {
+          nestedIconStyle = `style="color: ${primaryColor}; --ph-duotone-primary: ${primaryColor}; --ph-duotone-secondary: ${secondaryColor};"`;
+        } else {
+          nestedIconStyle = `style="color: ${primaryColor};"`;
+        }
+      } else {
+        nestedIconColorClass = getIconColor(nestedItem.title, nestedItem.route, nestedItem);
+      }
+
       const nestedI18nKey = getMenuI18nKey(nestedItem.title);
       const nestedI18nAttr = nestedI18nKey ? `data-i18n="${nestedI18nKey}"` : '';
       gridItem.innerHTML = `
-        <i class="${nestedIcon} text-4xl ${nestedIconColor}"></i>
+        <i class="${nestedIcon} text-4xl ${nestedIconColorClass}" ${nestedIconStyle}></i>
         <span class="text-xs text-center font-medium leading-tight" ${nestedI18nAttr}>${nestedItem.title}</span>
       `;
       gridItem.href = `#${nestedItem.route}`;
@@ -1295,13 +1363,30 @@ function createNestedPopup(item, parentPopup, level = 2) {
         nestedTrigger.className = 'flex items-center justify-between px-4 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600 cursor-pointer transition-colors';
 
         const nestedIcon = nestedItem.icon || 'ph-duotone ph-folder';
-        const nestedIconColor = getIconColor(nestedItem.title, nestedItem.route, nestedItem);
+
+        // Check for custom colors
+        let nestedIconStyle = '';
+        let nestedIconColorClass = '';
+
+        if (nestedItem.icon_color_primary || nestedItem.icon_color_secondary) {
+          const primaryColor = nestedItem.icon_color_primary || '#3b82f6';
+          const secondaryColor = nestedItem.icon_color_secondary || '#93c5fd';
+
+          if (nestedIcon.includes('ph-duotone')) {
+            nestedIconStyle = `style="color: ${primaryColor}; --ph-duotone-primary: ${primaryColor}; --ph-duotone-secondary: ${secondaryColor};"`;
+          } else {
+            nestedIconStyle = `style="color: ${primaryColor};"`;
+          }
+        } else {
+          nestedIconColorClass = getIconColor(nestedItem.title, nestedItem.route, nestedItem);
+        }
+
         const nestedI18nKey = getMenuI18nKey(nestedItem.title);
         const nestedI18nAttr = nestedI18nKey ? `data-i18n="${nestedI18nKey}"` : '';
 
         nestedTrigger.innerHTML = `
           <div class="flex items-center gap-3">
-            <i class="${nestedIcon} text-base ${nestedIconColor}"></i>
+            <i class="${nestedIcon} text-base ${nestedIconColorClass}" ${nestedIconStyle}></i>
             <span class="text-sm font-medium" ${nestedI18nAttr}>${nestedItem.title}</span>
           </div>
           <i class="ph ph-caret-right text-xs"></i>
@@ -1365,11 +1450,28 @@ function createNestedPopup(item, parentPopup, level = 2) {
         nestedLink.href = `#${nestedItem.route}`;
 
         const nestedIcon = nestedItem.icon || 'ph-duotone ph-circle';
-        const nestedIconColor = getIconColor(nestedItem.title, nestedItem.route, nestedItem);
+
+        // Check for custom colors
+        let nestedIconStyle = '';
+        let nestedIconColorClass = '';
+
+        if (nestedItem.icon_color_primary || nestedItem.icon_color_secondary) {
+          const primaryColor = nestedItem.icon_color_primary || '#3b82f6';
+          const secondaryColor = nestedItem.icon_color_secondary || '#93c5fd';
+
+          if (nestedIcon.includes('ph-duotone')) {
+            nestedIconStyle = `style="color: ${primaryColor}; --ph-duotone-primary: ${primaryColor}; --ph-duotone-secondary: ${secondaryColor};"`;
+          } else {
+            nestedIconStyle = `style="color: ${primaryColor};"`;
+          }
+        } else {
+          nestedIconColorClass = getIconColor(nestedItem.title, nestedItem.route, nestedItem);
+        }
+
         const nestedI18nKey = getMenuI18nKey(nestedItem.title);
         const nestedI18nAttr = nestedI18nKey ? `data-i18n="${nestedI18nKey}"` : '';
         nestedLink.innerHTML = `
-          <i class="${nestedIcon} text-base ${nestedIconColor}"></i>
+          <i class="${nestedIcon} text-base ${nestedIconColorClass}" ${nestedIconStyle}></i>
           <span ${nestedI18nAttr}>${nestedItem.title}</span>
         `;
 
