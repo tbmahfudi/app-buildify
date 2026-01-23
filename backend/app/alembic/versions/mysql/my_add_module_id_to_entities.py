@@ -19,25 +19,31 @@ depends_on = None
 def upgrade():
     """Add module_id column to entity_definitions table"""
 
-    # Add module_id column (CHAR(36) for UUID in MySQL)
-    op.add_column('entity_definitions', sa.Column('module_id', sa.CHAR(36), nullable=True))
+    # Check if column already exists before adding
+    conn = op.get_bind()
+    inspector = sa.inspect(conn)
+    columns = [col['name'] for col in inspector.get_columns('entity_definitions')]
 
-    # Add foreign key constraint
-    op.create_foreign_key(
-        'fk_entity_definitions_module_id',
-        'entity_definitions',
-        'nocode_modules',
-        ['module_id'],
-        ['id']
-    )
+    if 'module_id' not in columns:
+        # Add module_id column (CHAR(36) for UUID in MySQL)
+        op.add_column('entity_definitions', sa.Column('module_id', sa.CHAR(36), nullable=True))
 
-    # Add index for better performance
-    op.create_index(
-        'ix_entity_definitions_module_id',
-        'entity_definitions',
-        ['module_id'],
-        unique=False
-    )
+        # Add foreign key constraint
+        op.create_foreign_key(
+            'fk_entity_definitions_module_id',
+            'entity_definitions',
+            'nocode_modules',
+            ['module_id'],
+            ['id']
+        )
+
+        # Add index for better performance
+        op.create_index(
+            'ix_entity_definitions_module_id',
+            'entity_definitions',
+            ['module_id'],
+            unique=False
+        )
 
 
 def downgrade():
