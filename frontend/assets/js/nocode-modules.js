@@ -374,12 +374,8 @@ window.validatePrefix = async function(prefix) {
 
     prefixValidationTimeout = setTimeout(async () => {
         try {
-            const response = await apiFetch(`${API_BASE}/validate/prefix`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ table_prefix: prefix })
+            const response = await apiFetch(`${API_BASE}/validate/prefix?table_prefix=${encodeURIComponent(prefix)}`, {
+                method: 'POST'
             });
 
             const result = await response.json();
