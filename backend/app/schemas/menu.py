@@ -13,6 +13,8 @@ class MenuItemBase(BaseModel):
     code: str = Field(..., description="Unique identifier for menu item", max_length=100)
     title: str = Field(..., description="Display title", max_length=100)
     icon: Optional[str] = Field(None, description="Icon class or emoji", max_length=100)
+    icon_color_primary: Optional[str] = Field(None, description="Primary color for duo-tone icons (e.g., '#3b82f6')", max_length=20)
+    icon_color_secondary: Optional[str] = Field(None, description="Secondary color for duo-tone icons (e.g., '#93c5fd')", max_length=20)
     route: Optional[str] = Field(None, description="Frontend route", max_length=255)
     description: Optional[str] = Field(None, description="Menu item description")
     permission: Optional[str] = Field(None, description="Required permission (e.g., 'users:read:tenant')", max_length=200)
@@ -36,6 +38,8 @@ class MenuItemUpdate(BaseModel):
     """Schema for updating a menu item"""
     title: Optional[str] = Field(None, max_length=100)
     icon: Optional[str] = Field(None, max_length=100)
+    icon_color_primary: Optional[str] = Field(None, max_length=20)
+    icon_color_secondary: Optional[str] = Field(None, max_length=20)
     route: Optional[str] = Field(None, max_length=255)
     description: Optional[str] = None
     permission: Optional[str] = Field(None, max_length=200)
@@ -76,6 +80,8 @@ class MenuItemTree(BaseModel):
     code: str
     title: str
     icon: Optional[str] = None
+    icon_color_primary: Optional[str] = None
+    icon_color_secondary: Optional[str] = None
     route: Optional[str] = None
     order: int
     target: str

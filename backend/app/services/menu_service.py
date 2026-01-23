@@ -400,6 +400,8 @@ class MenuService:
             'code': item.code,
             'title': item.title,
             'icon': item.icon,
+            'icon_color_primary': getattr(item, 'icon_color_primary', None),
+            'icon_color_secondary': getattr(item, 'icon_color_secondary', None),
             'route': item.route,
             'order': item.order,
             'target': item.target,
