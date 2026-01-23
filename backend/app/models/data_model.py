@@ -37,6 +37,8 @@ class EntityDefinition(Base):
     id = Column(GUID, primary_key=True, default=generate_uuid)
     # tenant_id: NULL = platform-level (shared across tenants), specific ID = tenant-specific
     tenant_id = Column(GUID, ForeignKey("tenants.id"), nullable=True, index=True)
+    # module_id: Associates entity with a specific module (optional)
+    module_id = Column(GUID, ForeignKey("nocode_modules.id"), nullable=True, index=True)
 
     # Basic Info
     name = Column(String(100), nullable=False)  # Technical name (snake_case)
@@ -86,6 +88,7 @@ class EntityDefinition(Base):
     is_deleted = Column(Boolean, default=False)
 
     # Relationships
+    module = relationship("NocodeModule", foreign_keys=[module_id], backref="entities")
     fields = relationship("FieldDefinition", foreign_keys="FieldDefinition.entity_id", back_populates="entity", cascade="all, delete-orphan")
     migrations = relationship("EntityMigration", back_populates="entity")
     indexes = relationship("IndexDefinition", back_populates="entity", cascade="all, delete-orphan")
