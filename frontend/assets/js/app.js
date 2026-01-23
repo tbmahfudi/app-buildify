@@ -518,6 +518,8 @@ function convertBackendMenuFormat(menuItems) {
         title: item.title,
         route: item.route,
         icon: item.icon,
+        icon_color_primary: item.icon_color_primary,
+        icon_color_secondary: item.icon_color_secondary,
         order: item.order,
         target: item.target || '_self'
       };
