@@ -903,7 +903,9 @@ export class DataModelPage {
                   <option value="phone">Phone</option>
                   <option value="json">JSON</option>
                   <option value="file">File Upload</option>
-                  <option value="lookup">Lookup/Reference</option>
+                  <option value="select">Select/Dropdown</option>
+                  <option value="reference">Reference/Foreign Key</option>
+                  <option value="lookup">Lookup (Legacy)</option>
                 </select>
               </div>
               <div>
@@ -949,6 +951,82 @@ export class DataModelPage {
               <label class="block text-sm font-medium text-gray-700 mb-1">Help Text</label>
               <input type="text" name="help_text" placeholder="Helper text shown to users"
                      class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+            </div>
+
+            <!-- Reference Field Configuration (hidden by default) -->
+            <div id="referenceConfig" style="display: none;" class="p-4 bg-blue-50 rounded-lg border border-blue-200">
+              <h4 class="font-medium text-sm text-gray-900 mb-3">
+                <i class="ph ph-link"></i> Reference Configuration
+              </h4>
+
+              <div class="mb-3">
+                <label class="block text-sm font-medium text-gray-700 mb-1">
+                  Reference Entity *
+                </label>
+                <select id="referenceEntitySelect" name="reference_entity_id"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                  <option value="">Select entity...</option>
+                </select>
+                <p class="text-xs text-gray-500 mt-1">The entity this field references</p>
+              </div>
+
+              <div class="mb-3">
+                <label class="block text-sm font-medium text-gray-700 mb-1">
+                  Display Field
+                </label>
+                <input type="text" name="reference_field" placeholder="e.g., name, title"
+                       class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                <p class="text-xs text-gray-500 mt-1">Field to show in dropdown (defaults to 'name')</p>
+              </div>
+
+              <div class="grid grid-cols-2 gap-4 mb-3">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">On Delete</label>
+                  <select name="on_delete" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                    <option value="NO ACTION">No Action (Default)</option>
+                    <option value="CASCADE">Cascade</option>
+                    <option value="SET NULL">Set Null</option>
+                    <option value="RESTRICT">Restrict</option>
+                  </select>
+                  <p class="text-xs text-gray-500 mt-1">When referenced record is deleted</p>
+                </div>
+
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">On Update</label>
+                  <select name="on_update" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                    <option value="NO ACTION">No Action (Default)</option>
+                    <option value="CASCADE">Cascade</option>
+                    <option value="SET NULL">Set Null</option>
+                    <option value="RESTRICT">Restrict</option>
+                  </select>
+                  <p class="text-xs text-gray-500 mt-1">When referenced record's ID is updated</p>
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Relationship Type</label>
+                <select name="relationship_type" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                  <option value="many-to-one">Many to One (Default)</option>
+                  <option value="one-to-one">One to One</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Select Field Configuration (hidden by default) -->
+            <div id="selectConfig" style="display: none;" class="p-4 bg-green-50 rounded-lg border border-green-200">
+              <h4 class="font-medium text-sm text-gray-900 mb-3">
+                <i class="ph ph-list"></i> Select Options Configuration
+              </h4>
+
+              <div class="mb-3">
+                <label class="block text-sm font-medium text-gray-700 mb-1">
+                  Options (one per line) *
+                </label>
+                <textarea id="selectOptionsTextarea" name="select_options" rows="6"
+                          placeholder="Low&#10;Medium&#10;High&#10;Critical"
+                          class="w-full px-3 py-2 border border-gray-300 rounded-lg font-mono text-sm"></textarea>
+                <p class="text-xs text-gray-500 mt-1">Enter each option on a new line</p>
+              </div>
             </div>
 
             <div class="grid grid-cols-3 gap-4">
@@ -1005,11 +1083,68 @@ export class DataModelPage {
       'phone': 'VARCHAR',
       'json': 'JSONB',
       'file': 'VARCHAR',
+      'select': 'VARCHAR',
+      'reference': 'UUID',
       'lookup': 'UUID'
     };
 
     if (typeMap[fieldType]) {
       dataTypeSelect.value = typeMap[fieldType];
+    }
+
+    // Show/hide configuration sections based on field type
+    const referenceConfig = document.getElementById('referenceConfig');
+    const selectConfig = document.getElementById('selectConfig');
+
+    if (referenceConfig && selectConfig) {
+      if (fieldType === 'reference') {
+        referenceConfig.style.display = 'block';
+        selectConfig.style.display = 'none';
+        this.loadReferenceEntities();
+        // Make reference fields required
+        document.getElementById('referenceEntitySelect').required = true;
+        document.getElementById('selectOptionsTextarea').required = false;
+      } else if (fieldType === 'select') {
+        selectConfig.style.display = 'block';
+        referenceConfig.style.display = 'none';
+        // Make select options required
+        document.getElementById('selectOptionsTextarea').required = true;
+        document.getElementById('referenceEntitySelect').required = false;
+      } else {
+        referenceConfig.style.display = 'none';
+        selectConfig.style.display = 'none';
+        // Remove required attributes
+        document.getElementById('referenceEntitySelect').required = false;
+        document.getElementById('selectOptionsTextarea').required = false;
+      }
+    }
+  }
+
+  async loadReferenceEntities() {
+    const moduleId = this.state.currentModule?.id;
+    if (!moduleId) return;
+
+    try {
+      const response = await fetch(`/api/v1/data-model/modules/${moduleId}/entities`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+
+      if (!response.ok) throw new Error('Failed to load entities');
+
+      const entities = await response.json();
+      const select = document.getElementById('referenceEntitySelect');
+
+      if (select) {
+        select.innerHTML = '<option value="">Select entity...</option>';
+        entities.forEach(entity => {
+          select.innerHTML += `<option value="${entity.id}">${entity.label || entity.name}</option>`;
+        });
+      }
+    } catch (error) {
+      console.error('Error loading reference entities:', error);
+      this.showNotification('Failed to load entities', 'error');
     }
   }
 
@@ -1020,10 +1155,12 @@ export class DataModelPage {
 
   async createField(entityId, form) {
     const formData = new FormData(form);
+    const fieldType = formData.get('field_type');
+
     const data = {
       name: formData.get('name'),
       label: formData.get('label'),
-      field_type: formData.get('field_type'),
+      field_type: fieldType,
       data_type: formData.get('data_type'),
       description: formData.get('description') || null,
       help_text: formData.get('help_text') || null,
@@ -1035,6 +1172,27 @@ export class DataModelPage {
       is_nullable: formData.get('is_required') !== 'on',
       display_order: 999
     };
+
+    // Add reference field configuration
+    if (fieldType === 'reference') {
+      data.reference_entity_id = formData.get('reference_entity_id') || null;
+      data.reference_field = formData.get('reference_field') || 'name';
+      data.on_delete = formData.get('on_delete') || 'NO ACTION';
+      data.on_update = formData.get('on_update') || 'NO ACTION';
+      data.relationship_type = formData.get('relationship_type') || 'many-to-one';
+    }
+
+    // Add select field configuration
+    if (fieldType === 'select') {
+      const selectOptions = formData.get('select_options');
+      if (selectOptions) {
+        // Split by newlines and filter out empty lines
+        const options = selectOptions.split('\n')
+          .map(opt => opt.trim())
+          .filter(opt => opt.length > 0);
+        data.allowed_values = options;
+      }
+    }
 
     try {
       const response = await apiFetch(`/data-model/entities/${entityId}/fields`, {

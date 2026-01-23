@@ -169,6 +169,10 @@ class FieldDefinition(Base):
     reference_field = Column(String(100))  # Field in referenced entity to display
     relationship_type = Column(String(50))  # 'many-to-one', 'one-to-one'
 
+    # FK Constraint Behavior
+    on_delete = Column(String(20), default="NO ACTION")  # 'CASCADE', 'SET NULL', 'RESTRICT', 'NO ACTION'
+    on_update = Column(String(20), default="NO ACTION")  # 'CASCADE', 'SET NULL', 'RESTRICT', 'NO ACTION'
+
     # Metadata
     meta_data = Column(JSONB, default=dict)
 
@@ -181,6 +185,14 @@ class FieldDefinition(Base):
 
     # Relationships
     entity = relationship("EntityDefinition", foreign_keys=[entity_id], back_populates="fields")
+    reference_entity = relationship("EntityDefinition", foreign_keys=[reference_entity_id])
+
+    @property
+    def reference_table(self):
+        """Compute reference table name from reference_entity_id"""
+        if self.reference_entity_id and self.reference_entity:
+            return self.reference_entity.table_name
+        return None
 
     # Table constraints
     __table_args__ = (
