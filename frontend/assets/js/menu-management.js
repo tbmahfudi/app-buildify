@@ -207,9 +207,8 @@ class MenuManagement {
     // Apply icon colors for duo-tone icons
     const iconClass = item.icon || 'ph-duotone ph-circle';
     const primaryColor = item.icon_color_primary || '#3b82f6';
-    const secondaryColor = item.icon_color_secondary || '#93c5fd';
     const iconStyle = iconClass.includes('ph-duotone')
-      ? `color: ${primaryColor}; --ph-duotone-primary: ${primaryColor}; --ph-duotone-secondary: ${secondaryColor};`
+      ? `color: ${primaryColor}; --ph-duotone-primary: ${primaryColor};`
       : `color: ${primaryColor};`;
 
     const html = `
@@ -371,13 +370,10 @@ class MenuManagement {
     document.getElementById('input-active').checked = item.is_active !== false;
     document.getElementById('input-visible').checked = item.is_visible !== false;
 
-    // Populate icon colors
+    // Populate icon color
     const primaryColor = item.icon_color_primary || '#3b82f6';
-    const secondaryColor = item.icon_color_secondary || '#93c5fd';
     document.getElementById('input-icon-color-primary').value = primaryColor;
     document.getElementById('input-icon-color-primary-text').value = primaryColor;
-    document.getElementById('input-icon-color-secondary').value = secondaryColor;
-    document.getElementById('input-icon-color-secondary-text').value = secondaryColor;
 
     this.updateIconPreview();
     this.populateParentOptions(item.parent_id);
@@ -451,7 +447,6 @@ class MenuManagement {
         title: formData.get('title'),
         icon: formData.get('icon') || null,
         icon_color_primary: formData.get('icon_color_primary') || '#3b82f6',
-        icon_color_secondary: formData.get('icon_color_secondary') || '#93c5fd',
         route: formData.get('route') || null,
         parent_id: formData.get('parent_id') || null,
         permission: formData.get('permission') || null,

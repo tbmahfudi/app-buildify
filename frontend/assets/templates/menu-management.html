@@ -126,36 +126,20 @@
           </p>
         </div>
 
-        <!-- Icon Colors (for duo-tone icons) -->
+        <!-- Icon Color (for duo-tone icons) -->
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">
-            Icon Colors (for duo-tone icons)
+            Icon Color (for duo-tone icons)
           </label>
-          <div class="flex gap-3">
-            <div class="flex-1">
-              <label class="block text-xs text-gray-600 mb-1">Primary Color</label>
-              <div class="flex gap-2">
-                <input type="color" id="input-icon-color-primary" name="icon_color_primary"
-                       class="w-12 h-10 border border-gray-300 rounded-lg cursor-pointer"
-                       value="#3b82f6">
-                <input type="text" id="input-icon-color-primary-text"
-                       class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-sm"
-                       value="#3b82f6" placeholder="#3b82f6">
-              </div>
-            </div>
-            <div class="flex-1">
-              <label class="block text-xs text-gray-600 mb-1">Secondary Color (Opacity)</label>
-              <div class="flex gap-2">
-                <input type="color" id="input-icon-color-secondary" name="icon_color_secondary"
-                       class="w-12 h-10 border border-gray-300 rounded-lg cursor-pointer"
-                       value="#93c5fd">
-                <input type="text" id="input-icon-color-secondary-text"
-                       class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-sm"
-                       value="#93c5fd" placeholder="#93c5fd">
-              </div>
-            </div>
+          <div class="flex gap-2">
+            <input type="color" id="input-icon-color-primary" name="icon_color_primary"
+                   class="w-12 h-10 border border-gray-300 rounded-lg cursor-pointer"
+                   value="#3b82f6">
+            <input type="text" id="input-icon-color-primary-text"
+                   class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-sm"
+                   value="#3b82f6" placeholder="#3b82f6">
           </div>
-          <p class="text-xs text-gray-500 mt-1">Colors apply to duo-tone icons only (ph-duotone)</p>
+          <p class="text-xs text-gray-500 mt-1">Primary color for duo-tone icons (secondary layer uses 35% opacity automatically)</p>
         </div>
 
         <!-- Route -->
