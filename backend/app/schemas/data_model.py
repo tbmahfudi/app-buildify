@@ -48,6 +48,11 @@ class FieldDefinitionBase(BaseModel):
     relationship_type: Optional[str] = None
     on_delete: str = Field("NO ACTION", description="FK constraint on delete: CASCADE, SET NULL, RESTRICT, NO ACTION")
     on_update: str = Field("NO ACTION", description="FK constraint on update: CASCADE, SET NULL, RESTRICT, NO ACTION")
+    lookup_display_template: Optional[str] = Field(None, description="Display template for lookup (e.g., '{name} ({email})')")
+    lookup_filter_field: Optional[str] = Field(None, description="Field to filter lookup by")
+    lookup_search_fields: Optional[List[str]] = Field(None, description="Fields to search in autocomplete")
+    lookup_allow_create: bool = Field(False, description="Allow quick-create from lookup")
+    lookup_recent_count: int = Field(5, description="Number of recent selections to show")
     meta_data: Dict[str, Any] = Field(default_factory=dict)
 
 
@@ -73,6 +78,11 @@ class FieldDefinitionUpdate(BaseModel):
     relationship_type: Optional[str] = None
     on_delete: Optional[str] = None
     on_update: Optional[str] = None
+    lookup_display_template: Optional[str] = None
+    lookup_filter_field: Optional[str] = None
+    lookup_search_fields: Optional[List[str]] = None
+    lookup_allow_create: Optional[bool] = None
+    lookup_recent_count: Optional[int] = None
     meta_data: Optional[Dict[str, Any]] = None
 
 

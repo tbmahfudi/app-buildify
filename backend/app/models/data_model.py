@@ -173,6 +173,13 @@ class FieldDefinition(Base):
     on_delete = Column(String(20), default="NO ACTION")  # 'CASCADE', 'SET NULL', 'RESTRICT', 'NO ACTION'
     on_update = Column(String(20), default="NO ACTION")  # 'CASCADE', 'SET NULL', 'RESTRICT', 'NO ACTION'
 
+    # Lookup/Reference Enhancements (Phase 5 Week 2)
+    lookup_display_template = Column(Text)  # e.g., "{name} ({email})"
+    lookup_filter_field = Column(String(100))  # Field to filter by
+    lookup_search_fields = Column(JSONB)  # ["name", "email", "code"]
+    lookup_allow_create = Column(Boolean, default=False)  # Quick-create button
+    lookup_recent_count = Column(Integer, default=5)  # Number of recent items
+
     # Metadata
     meta_data = Column(JSONB, default=dict)
 
