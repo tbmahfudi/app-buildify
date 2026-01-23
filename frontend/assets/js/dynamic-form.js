@@ -103,6 +103,24 @@ export class DynamicForm {
   createInput(fieldConfig, readonly, labelText, helperText) {
     const value = this.record?.data?.[fieldConfig.field] || fieldConfig.default || '';
 
+    // Check for input_type override first (Phase 5 Priority 2: Advanced Input Types)
+    if (fieldConfig.input_type) {
+      switch (fieldConfig.input_type) {
+        case 'color':
+          return this.createColorPicker(fieldConfig, value, readonly, labelText, helperText);
+        case 'rating':
+          return this.createRating(fieldConfig, value, readonly, labelText, helperText);
+        case 'currency':
+          return this.createCurrencyInput(fieldConfig, value, readonly, labelText, helperText);
+        case 'percentage':
+          return this.createPercentageInput(fieldConfig, value, readonly, labelText, helperText);
+        case 'slider':
+          return this.createSlider(fieldConfig, value, readonly, labelText, helperText);
+        // Future: rich-text, code-editor, tags, autocomplete
+      }
+    }
+
+    // Fall back to field_type mapping
     switch (fieldConfig.type) {
       case 'text':
       case 'email':
@@ -305,6 +323,350 @@ export class DynamicForm {
     this.fieldComponents.set(fieldConfig.field, component);
 
     component.inputElement.name = fieldConfig.field;
+
+    return container;
+  }
+
+  /**
+   * Create color picker input
+   */
+  createColorPicker(fieldConfig, value, readonly, labelText, helperText) {
+    const container = document.createElement('div');
+    container.className = 'space-y-2';
+
+    // Label
+    if (labelText) {
+      const label = document.createElement('label');
+      label.className = 'block text-sm font-medium text-gray-700';
+      label.textContent = labelText;
+      if (fieldConfig.required) {
+        const asterisk = document.createElement('span');
+        asterisk.className = 'text-red-500 ml-1';
+        asterisk.textContent = '*';
+        label.appendChild(asterisk);
+      }
+      container.appendChild(label);
+    }
+
+    // Color input wrapper
+    const inputWrapper = document.createElement('div');
+    inputWrapper.className = 'flex items-center gap-3';
+
+    // Color picker input
+    const colorInput = document.createElement('input');
+    colorInput.type = 'color';
+    colorInput.value = value || '#000000';
+    colorInput.disabled = readonly;
+    colorInput.name = fieldConfig.field;
+    colorInput.className = 'h-10 w-20 cursor-pointer border border-gray-300 rounded';
+
+    // Hex value display/input
+    const hexInput = document.createElement('input');
+    hexInput.type = 'text';
+    hexInput.value = value || '#000000';
+    hexInput.disabled = readonly;
+    hexInput.placeholder = '#000000';
+    hexInput.className = 'px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 font-mono text-sm';
+    hexInput.maxLength = 7;
+
+    // Sync color picker and hex input
+    colorInput.addEventListener('input', () => {
+      hexInput.value = colorInput.value;
+    });
+
+    hexInput.addEventListener('input', () => {
+      if (/^#[0-9A-F]{6}$/i.test(hexInput.value)) {
+        colorInput.value = hexInput.value;
+      }
+    });
+
+    inputWrapper.appendChild(colorInput);
+    inputWrapper.appendChild(hexInput);
+    container.appendChild(inputWrapper);
+
+    // Helper text
+    if (helperText) {
+      const helper = document.createElement('p');
+      helper.className = 'text-sm text-gray-500';
+      helper.textContent = helperText;
+      container.appendChild(helper);
+    }
+
+    this.fields.set(fieldConfig.field, colorInput);
+
+    return container;
+  }
+
+  /**
+   * Create star rating input
+   */
+  createRating(fieldConfig, value, readonly, labelText, helperText) {
+    const container = document.createElement('div');
+    container.className = 'space-y-2';
+
+    // Label
+    if (labelText) {
+      const label = document.createElement('label');
+      label.className = 'block text-sm font-medium text-gray-700';
+      label.textContent = labelText;
+      if (fieldConfig.required) {
+        const asterisk = document.createElement('span');
+        asterisk.className = 'text-red-500 ml-1';
+        asterisk.textContent = '*';
+        label.appendChild(asterisk);
+      }
+      container.appendChild(label);
+    }
+
+    const maxStars = fieldConfig.max_value || 5;
+    const currentRating = parseInt(value) || 0;
+
+    // Rating wrapper
+    const ratingWrapper = document.createElement('div');
+    ratingWrapper.className = 'flex items-center gap-1';
+
+    // Hidden input to store value
+    const hiddenInput = document.createElement('input');
+    hiddenInput.type = 'hidden';
+    hiddenInput.value = currentRating;
+    hiddenInput.name = fieldConfig.field;
+
+    // Create stars
+    for (let i = 1; i <= maxStars; i++) {
+      const star = document.createElement('span');
+      star.className = 'cursor-pointer text-3xl transition-colors';
+      star.textContent = i <= currentRating ? '⭐' : '☆';
+      star.dataset.rating = i;
+
+      if (!readonly) {
+        star.addEventListener('click', () => {
+          hiddenInput.value = i;
+          // Update all stars
+          ratingWrapper.querySelectorAll('span').forEach((s, idx) => {
+            s.textContent = (idx + 1) <= i ? '⭐' : '☆';
+          });
+        });
+
+        star.addEventListener('mouseenter', () => {
+          ratingWrapper.querySelectorAll('span').forEach((s, idx) => {
+            s.textContent = (idx + 1) <= i ? '⭐' : '☆';
+          });
+        });
+      }
+
+      ratingWrapper.appendChild(star);
+    }
+
+    // Reset on mouse leave if not readonly
+    if (!readonly) {
+      ratingWrapper.addEventListener('mouseleave', () => {
+        const currentValue = parseInt(hiddenInput.value) || 0;
+        ratingWrapper.querySelectorAll('span').forEach((s, idx) => {
+          s.textContent = (idx + 1) <= currentValue ? '⭐' : '☆';
+        });
+      });
+    }
+
+    container.appendChild(ratingWrapper);
+
+    // Helper text
+    if (helperText) {
+      const helper = document.createElement('p');
+      helper.className = 'text-sm text-gray-500';
+      helper.textContent = helperText;
+      container.appendChild(helper);
+    }
+
+    this.fields.set(fieldConfig.field, hiddenInput);
+    container.appendChild(hiddenInput);
+
+    return container;
+  }
+
+  /**
+   * Create currency input with formatting
+   */
+  createCurrencyInput(fieldConfig, value, readonly, labelText, helperText) {
+    const container = document.createElement('div');
+
+    const component = new FlexInput(container, {
+      type: 'number',
+      label: labelText,
+      value: value || '',
+      placeholder: fieldConfig.placeholder || '0.00',
+      required: fieldConfig.required || false,
+      readonly: readonly,
+      helperText: helperText,
+      step: '0.01',
+      min: fieldConfig.min_value || 0,
+      variant: 'outlined',
+      size: 'md'
+    });
+
+    this.fields.set(fieldConfig.field, component.inputElement);
+    this.fieldComponents.set(fieldConfig.field, component);
+    component.inputElement.name = fieldConfig.field;
+
+    // Add currency prefix (e.g., $, €, £)
+    const currencyPrefix = fieldConfig.prefix || fieldConfig.meta_data?.currency_symbol || '$';
+    this.addPrefixSuffix(component.inputElement, { prefix: currencyPrefix });
+
+    // Format on blur (add thousand separators)
+    component.inputElement.addEventListener('blur', (e) => {
+      if (e.target.value) {
+        const num = parseFloat(e.target.value);
+        e.target.value = num.toFixed(2);
+      }
+    });
+
+    return container;
+  }
+
+  /**
+   * Create percentage input with slider
+   */
+  createPercentageInput(fieldConfig, value, readonly, labelText, helperText) {
+    const container = document.createElement('div');
+    container.className = 'space-y-2';
+
+    // Label
+    if (labelText) {
+      const label = document.createElement('label');
+      label.className = 'block text-sm font-medium text-gray-700';
+      label.textContent = labelText;
+      if (fieldConfig.required) {
+        const asterisk = document.createElement('span');
+        asterisk.className = 'text-red-500 ml-1';
+        asterisk.textContent = '*';
+        label.appendChild(asterisk);
+      }
+      container.appendChild(label);
+    }
+
+    // Input wrapper with slider
+    const inputWrapper = document.createElement('div');
+    inputWrapper.className = 'flex items-center gap-3';
+
+    // Range slider
+    const slider = document.createElement('input');
+    slider.type = 'range';
+    slider.min = fieldConfig.min_value || 0;
+    slider.max = fieldConfig.max_value || 100;
+    slider.step = fieldConfig.step || 1;
+    slider.value = value || 0;
+    slider.disabled = readonly;
+    slider.className = 'flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer';
+
+    // Number input with % suffix
+    const numberInput = document.createElement('input');
+    numberInput.type = 'number';
+    numberInput.min = slider.min;
+    numberInput.max = slider.max;
+    numberInput.step = slider.step;
+    numberInput.value = value || 0;
+    numberInput.disabled = readonly;
+    numberInput.name = fieldConfig.field;
+    numberInput.className = 'w-20 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-right';
+
+    const percentLabel = document.createElement('span');
+    percentLabel.className = 'text-gray-600 font-medium';
+    percentLabel.textContent = '%';
+
+    // Sync slider and input
+    slider.addEventListener('input', () => {
+      numberInput.value = slider.value;
+    });
+
+    numberInput.addEventListener('input', () => {
+      slider.value = numberInput.value;
+    });
+
+    inputWrapper.appendChild(slider);
+    inputWrapper.appendChild(numberInput);
+    inputWrapper.appendChild(percentLabel);
+    container.appendChild(inputWrapper);
+
+    // Helper text
+    if (helperText) {
+      const helper = document.createElement('p');
+      helper.className = 'text-sm text-gray-500';
+      helper.textContent = helperText;
+      container.appendChild(helper);
+    }
+
+    this.fields.set(fieldConfig.field, numberInput);
+
+    return container;
+  }
+
+  /**
+   * Create range slider input
+   */
+  createSlider(fieldConfig, value, readonly, labelText, helperText) {
+    const container = document.createElement('div');
+    container.className = 'space-y-2';
+
+    // Label
+    if (labelText) {
+      const label = document.createElement('label');
+      label.className = 'block text-sm font-medium text-gray-700';
+      label.textContent = labelText;
+      if (fieldConfig.required) {
+        const asterisk = document.createElement('span');
+        asterisk.className = 'text-red-500 ml-1';
+        asterisk.textContent = '*';
+        label.appendChild(asterisk);
+      }
+      container.appendChild(label);
+    }
+
+    // Slider wrapper
+    const sliderWrapper = document.createElement('div');
+    sliderWrapper.className = 'flex items-center gap-3';
+
+    // Range slider
+    const slider = document.createElement('input');
+    slider.type = 'range';
+    slider.min = fieldConfig.min_value || fieldConfig.validators?.min || 0;
+    slider.max = fieldConfig.max_value || fieldConfig.validators?.max || 100;
+    slider.step = fieldConfig.step || fieldConfig.validators?.step || 1;
+    slider.value = value || slider.min;
+    slider.disabled = readonly;
+    slider.name = fieldConfig.field;
+    slider.className = 'flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer';
+
+    // Value display
+    const valueDisplay = document.createElement('span');
+    valueDisplay.className = 'text-sm font-semibold text-gray-700 min-w-[3rem] text-right';
+    valueDisplay.textContent = slider.value;
+
+    // Update display on slider change
+    slider.addEventListener('input', () => {
+      valueDisplay.textContent = slider.value;
+    });
+
+    sliderWrapper.appendChild(slider);
+    sliderWrapper.appendChild(valueDisplay);
+    container.appendChild(sliderWrapper);
+
+    // Min/Max labels
+    const labelsWrapper = document.createElement('div');
+    labelsWrapper.className = 'flex justify-between text-xs text-gray-500';
+    labelsWrapper.innerHTML = `
+      <span>${slider.min}</span>
+      <span>${slider.max}</span>
+    `;
+    container.appendChild(labelsWrapper);
+
+    // Helper text
+    if (helperText) {
+      const helper = document.createElement('p');
+      helper.className = 'text-sm text-gray-500 mt-1';
+      helper.textContent = helperText;
+      container.appendChild(helper);
+    }
+
+    this.fields.set(fieldConfig.field, slider);
 
     return container;
   }
