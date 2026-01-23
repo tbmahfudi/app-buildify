@@ -273,6 +273,8 @@ class MigrationGenerator:
             parts.append(f"REFERENCES {field.reference_table}(id)")
             if field.on_delete:
                 parts.append(f"ON DELETE {field.on_delete}")
+            if field.on_update:
+                parts.append(f"ON UPDATE {field.on_update}")
 
         return " ".join(parts)
 

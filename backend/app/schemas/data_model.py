@@ -46,6 +46,8 @@ class FieldDefinitionBase(BaseModel):
     reference_entity_id: Optional[UUID] = None
     reference_field: Optional[str] = None
     relationship_type: Optional[str] = None
+    on_delete: str = Field("NO ACTION", description="FK constraint on delete: CASCADE, SET NULL, RESTRICT, NO ACTION")
+    on_update: str = Field("NO ACTION", description="FK constraint on update: CASCADE, SET NULL, RESTRICT, NO ACTION")
     meta_data: Dict[str, Any] = Field(default_factory=dict)
 
 
@@ -66,6 +68,11 @@ class FieldDefinitionUpdate(BaseModel):
     allowed_values: Optional[Union[List[str], Dict[str, Any]]] = None  # Can be list or dict
     input_type: Optional[str] = None
     placeholder: Optional[str] = None
+    reference_entity_id: Optional[UUID] = None
+    reference_field: Optional[str] = None
+    relationship_type: Optional[str] = None
+    on_delete: Optional[str] = None
+    on_update: Optional[str] = None
     meta_data: Optional[Dict[str, Any]] = None
 
 
