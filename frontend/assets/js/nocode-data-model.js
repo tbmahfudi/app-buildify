@@ -150,7 +150,7 @@ export class DataModelPage {
 
   async loadModules() {
     try {
-      const response = await apiFetch('/nocode-modules');
+      const response = await apiFetch('/api/v1/nocode-modules');
 
       if (response.ok) {
         const data = await response.json();
@@ -767,29 +767,29 @@ export class DataModelPage {
     // Create modal
     const modal = document.createElement('div');
     modal.id = 'fieldManagerModal';
-    modal.className = 'fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50';
+    modal.className = 'fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50 p-4';
     modal.innerHTML = `
-      <div class="bg-white rounded-lg shadow-xl w-full max-w-5xl max-h-[90vh] flex flex-col">
+      <div class="bg-white rounded-lg shadow-xl w-full max-w-5xl max-h-[90vh] flex flex-col mx-auto">
         <!-- Header -->
-        <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-          <div>
-            <h2 class="text-xl font-semibold text-gray-900">
+        <div class="px-4 sm:px-6 py-4 border-b border-gray-200 flex items-center justify-between flex-shrink-0">
+          <div class="min-w-0 flex-1">
+            <h2 class="text-lg sm:text-xl font-semibold text-gray-900 truncate">
               <i class="ph ph-list-bullets"></i> Manage Fields: ${this.escapeHtml(entity.label)}
             </h2>
-            <p class="text-sm text-gray-500 mt-1">Add, edit, and organize fields for this entity</p>
+            <p class="text-xs sm:text-sm text-gray-500 mt-1 hidden sm:block">Add, edit, and organize fields for this entity</p>
           </div>
-          <button onclick="DataModelApp.closeFieldManager()" class="text-gray-400 hover:text-gray-600">
+          <button onclick="DataModelApp.closeFieldManager()" class="text-gray-400 hover:text-gray-600 ml-4 flex-shrink-0">
             <i class="ph ph-x text-2xl"></i>
           </button>
         </div>
 
         <!-- Body -->
-        <div class="flex-1 overflow-y-auto p-6">
-          <div class="mb-4 flex justify-between items-center">
+        <div class="flex-1 overflow-y-auto p-4 sm:p-6">
+          <div class="mb-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
             <div class="text-sm text-gray-600">
               ${fields.length} fields defined
             </div>
-            <button onclick="DataModelApp.showAddFieldModal('${entity.id}')" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+            <button onclick="DataModelApp.showAddFieldModal('${entity.id}')" class="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 whitespace-nowrap">
               <i class="ph ph-plus"></i> Add Field
             </button>
           </div>
@@ -805,8 +805,8 @@ export class DataModelPage {
         </div>
 
         <!-- Footer -->
-        <div class="px-6 py-4 border-t border-gray-200 flex justify-end">
-          <button onclick="DataModelApp.closeFieldManager()" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200">
+        <div class="px-4 sm:px-6 py-4 border-t border-gray-200 flex justify-end flex-shrink-0">
+          <button onclick="DataModelApp.closeFieldManager()" class="w-full sm:w-auto px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200">
             Done
           </button>
         </div>
@@ -863,15 +863,15 @@ export class DataModelPage {
 
     const modal = document.createElement('div');
     modal.id = 'addFieldModal';
-    modal.className = 'fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-[60]';
+    modal.className = 'fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-[60] p-4';
     modal.innerHTML = `
-      <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
-        <div class="px-6 py-4 border-b border-gray-200">
+      <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col mx-auto">
+        <div class="px-4 sm:px-6 py-4 border-b border-gray-200 flex-shrink-0">
           <h3 class="text-lg font-semibold text-gray-900">Add New Field</h3>
         </div>
-        <form id="addFieldForm" class="flex-1 flex flex-col">
-          <div class="flex-1 overflow-y-auto p-6 space-y-4">
-            <div class="grid grid-cols-2 gap-4">
+        <form id="addFieldForm" class="flex-1 flex flex-col min-h-0">
+          <div class="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 pb-64">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Field Name *</label>
                 <input type="text" name="name" required placeholder="customer_name"
@@ -885,7 +885,7 @@ export class DataModelPage {
               </div>
             </div>
 
-            <div class="grid grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Field Type *</label>
                 <select name="field_type" required onchange="DataModelApp.updateDataTypeOptions(this.value)"
@@ -927,7 +927,7 @@ export class DataModelPage {
               </div>
             </div>
 
-            <div class="grid grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Max Length</label>
                 <input type="number" name="max_length" placeholder="255"
@@ -979,7 +979,7 @@ export class DataModelPage {
                 <p class="text-xs text-gray-500 mt-1">Field to show in dropdown (defaults to 'name')</p>
               </div>
 
-              <div class="grid grid-cols-2 gap-4 mb-3">
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-3">
                 <div>
                   <label class="block text-sm font-medium text-gray-700 mb-1">On Delete</label>
                   <select name="on_delete" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
@@ -1029,7 +1029,7 @@ export class DataModelPage {
               </div>
             </div>
 
-            <div class="grid grid-cols-3 gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <label class="flex items-center gap-2 cursor-pointer">
                 <input type="checkbox" name="is_required" class="rounded text-blue-600">
                 <span class="text-sm text-gray-700">Required</span>
@@ -1045,12 +1045,12 @@ export class DataModelPage {
             </div>
           </div>
 
-          <div class="px-6 py-4 border-t border-gray-200 flex gap-3">
-            <button type="submit" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-              <i class="ph ph-plus"></i> Add Field
-            </button>
-            <button type="button" onclick="DataModelApp.closeAddFieldModal()" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200">
+          <div class="px-4 sm:px-6 py-4 border-t border-gray-200 flex flex-col-reverse sm:flex-row gap-3 flex-shrink-0">
+            <button type="button" onclick="DataModelApp.closeAddFieldModal()" class="w-full sm:w-auto px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200">
               Cancel
+            </button>
+            <button type="submit" class="w-full sm:flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+              <i class="ph ph-plus"></i> Add Field
             </button>
           </div>
         </form>
