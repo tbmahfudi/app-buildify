@@ -444,10 +444,24 @@ export class DataModelPage {
             <div class="space-y-6">
               <div>
                 <h4 class="font-semibold text-gray-900 mb-2">Basic Information</h4>
-                <dl class="grid grid-cols-2 gap-4">
+                <dl class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <dt class="text-sm text-gray-500">Name</dt>
+                    <dt class="text-sm text-gray-500">Technical Name</dt>
                     <dd class="text-sm font-medium text-gray-900">${this.escapeHtml(entity.name)}</dd>
+                  </div>
+                  <div>
+                    <dt class="text-sm text-gray-500">Display Label</dt>
+                    <dd class="text-sm font-medium text-gray-900">${this.escapeHtml(entity.label)}</dd>
+                  </div>
+                  <div>
+                    <dt class="text-sm text-gray-500">Plural Label</dt>
+                    <dd class="text-sm font-medium text-gray-900">${this.escapeHtml(entity.plural_label || 'N/A')}</dd>
+                  </div>
+                  <div>
+                    <dt class="text-sm text-gray-500">Icon</dt>
+                    <dd class="text-sm font-medium text-gray-900">
+                      ${entity.icon ? `<i class="ph-fill ph-${entity.icon} text-2xl text-gray-700"></i>` : 'N/A'}
+                    </dd>
                   </div>
                   <div>
                     <dt class="text-sm text-gray-500">Table Name</dt>
@@ -669,6 +683,17 @@ export class DataModelPage {
               </div>
             </div>
 
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Module</label>
+              <select name="module_id" id="editModuleSelect" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                <option value="">-- No Module (Standalone) --</option>
+                ${this.modules.filter(m => m.status === 'active' || m.status === 'draft').map(module =>
+                  `<option value="${module.id}" ${entity.module_id === module.id ? 'selected' : ''}>${this.escapeHtml(module.display_name || module.name)}</option>`
+                ).join('')}
+              </select>
+              <p class="text-xs text-gray-500 mt-1">Associate this entity with a module (optional)</p>
+            </div>
+
             <div class="space-y-2">
               <label class="flex items-center gap-2 cursor-pointer">
                 <input type="checkbox" name="is_audited" ${entity.is_audited ? 'checked' : ''} class="rounded text-blue-600">
@@ -716,12 +741,14 @@ export class DataModelPage {
 
   async updateEntity(entityId, form) {
     const formData = new FormData(form);
+    const moduleId = formData.get('module_id');
     const data = {
       label: formData.get('label'),
       plural_label: formData.get('plural_label') || null,
       description: formData.get('description') || null,
       category: formData.get('category') || null,
       icon: formData.get('icon') || null,
+      module_id: moduleId && moduleId !== '' ? moduleId : null,
       is_audited: formData.get('is_audited') === 'on',
       supports_soft_delete: formData.get('supports_soft_delete') === 'on',
       supports_attachments: formData.get('supports_attachments') === 'on',
@@ -1137,30 +1164,35 @@ export class DataModelPage {
   }
 
   async loadReferenceEntities() {
-    const moduleId = this.state.currentModule?.id;
-    if (!moduleId) return;
+    // Use already-loaded entities from this.entities
+    const select = document.getElementById('referenceEntitySelect');
+
+    if (!select) return;
 
     try {
-      const response = await fetch(`/api/v1/data-model/modules/${moduleId}/entities`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
+      // If entities haven't been loaded yet, load them
+      if (!this.entities || this.entities.length === 0) {
+        await this.loadEntities();
+      }
+
+      // Populate the dropdown with all available entities
+      select.innerHTML = '<option value="">Select entity...</option>';
+
+      // Filter to show only published or draft entities
+      const availableEntities = this.entities.filter(e =>
+        e.status === 'published' || e.status === 'draft' || e.status === 'active'
+      );
+
+      availableEntities.forEach(entity => {
+        select.innerHTML += `<option value="${entity.id}">${this.escapeHtml(entity.label || entity.name)}</option>`;
       });
 
-      if (!response.ok) throw new Error('Failed to load entities');
-
-      const entities = await response.json();
-      const select = document.getElementById('referenceEntitySelect');
-
-      if (select) {
-        select.innerHTML = '<option value="">Select entity...</option>';
-        entities.forEach(entity => {
-          select.innerHTML += `<option value="${entity.id}">${entity.label || entity.name}</option>`;
-        });
+      if (availableEntities.length === 0) {
+        select.innerHTML = '<option value="">No entities available</option>';
       }
     } catch (error) {
       console.error('Error loading reference entities:', error);
-      this.showNotification('Failed to load entities', 'error');
+      select.innerHTML = '<option value="">Error loading entities</option>';
     }
   }
 
