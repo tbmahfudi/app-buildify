@@ -150,7 +150,7 @@ export class DataModelPage {
 
   async loadModules() {
     try {
-      const response = await apiFetch('/api/v1/nocode-modules');
+      const response = await apiFetch('/nocode-modules');
 
       if (response.ok) {
         const data = await response.json();
@@ -165,6 +165,12 @@ export class DataModelPage {
       console.error('Error loading modules:', error);
       this.modules = [];
     }
+  }
+
+  getModuleName(moduleId) {
+    if (!moduleId) return null;
+    const module = this.modules.find(m => m.id === moduleId);
+    return module ? (module.display_name || module.name) : null;
   }
 
   populateModuleDropdown() {
@@ -254,6 +260,12 @@ export class DataModelPage {
             <i class="ph ph-tag"></i>
             <span>${entity.category || 'Uncategorized'}</span>
           </div>
+          ${entity.module_id ? `
+            <div class="flex items-center gap-2">
+              <i class="ph ph-package text-blue-600"></i>
+              <span>Module: ${this.escapeHtml(this.getModuleName(entity.module_id) || 'Unknown')}</span>
+            </div>
+          ` : ''}
           <div class="flex items-center gap-2">
             <i class="ph ph-list"></i>
             <span>${entity.field_count || 0} fields</span>
@@ -444,6 +456,10 @@ export class DataModelPage {
                   <div>
                     <dt class="text-sm text-gray-500">Category</dt>
                     <dd class="text-sm font-medium text-gray-900">${entity.category || 'N/A'}</dd>
+                  </div>
+                  <div>
+                    <dt class="text-sm text-gray-500">Module</dt>
+                    <dd class="text-sm font-medium text-gray-900">${entity.module_id ? this.escapeHtml(this.getModuleName(entity.module_id) || 'Unknown') : 'Standalone'}</dd>
                   </div>
                   <div>
                     <dt class="text-sm text-gray-500">Status</dt>
