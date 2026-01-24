@@ -17,6 +17,55 @@ export class DynamicForm {
     this.fieldComponents = new Map(); // Maps field name to Flex component instance
     this.calculatedFields = new Map(); // Maps calculated field name to formula
     this.fieldDependencies = new Map(); // Maps field name to dependent calculated fields
+    this.locale = this.getCurrentLocale(); // Current language locale
+  }
+
+  // ==================== Multi-language Support (Phase 5 Week 3-4) ====================
+
+  /**
+   * Get current locale from localStorage or default to 'en'
+   * @returns {string} - Current locale code (e.g., 'en', 'es', 'fr')
+   */
+  getCurrentLocale() {
+    return localStorage.getItem('app_locale') || 'en';
+  }
+
+  /**
+   * Set current locale and reload form
+   * @param {string} locale - Locale code to set
+   */
+  setLocale(locale) {
+    localStorage.setItem('app_locale', locale);
+    this.locale = locale;
+    // Reload form with new locale
+    this.render();
+  }
+
+  /**
+   * Get localized text for a field property
+   * @param {Object} fieldConfig - Field configuration
+   * @param {string} property - Property name ('label', 'help_text', 'placeholder', 'description')
+   * @returns {string} - Localized text or fallback to default
+   */
+  getLocalizedText(fieldConfig, property) {
+    const i18nProperty = `${property}_i18n`;
+
+    // Check if i18n version exists and has translation for current locale
+    if (fieldConfig[i18nProperty] && fieldConfig[i18nProperty][this.locale]) {
+      return fieldConfig[i18nProperty][this.locale];
+    }
+
+    // Fallback to default property
+    // Handle different property name mappings
+    const propertyMap = {
+      'label': 'title',
+      'help_text': 'help',
+      'placeholder': 'placeholder',
+      'description': 'description'
+    };
+
+    const fallbackProperty = propertyMap[property] || property;
+    return fieldConfig[fallbackProperty] || fieldConfig[property] || '';
   }
 
   /**
@@ -29,10 +78,17 @@ export class DynamicForm {
     form.className = 'dynamic-form space-y-4';
     form.id = 'dynamic-form';
 
-    this.metadata.form.fields.forEach(field => {
-      const formGroup = this.createFormGroup(field);
-      form.appendChild(formGroup);
-    });
+    // Check if field groups are defined
+    if (this.metadata.form.groups && this.metadata.form.groups.length > 0) {
+      // Render with field groups
+      this.renderFieldGroups(form);
+    } else {
+      // Render fields without groups (legacy mode)
+      this.metadata.form.fields.forEach(field => {
+        const formGroup = this.createFormGroup(field);
+        form.appendChild(formGroup);
+      });
+    }
 
     this.container.appendChild(form);
 
@@ -41,7 +97,129 @@ export class DynamicForm {
     this.initializeCalculatedFields();
     this.setupValidationListeners();
 
+    // Initialize conditional visibility
+    this.setupVisibilityListeners();
+    this.updateAllFieldVisibility();
+
+    // Initialize field dependencies (cascading dropdowns)
+    this.setupFieldDependencyListeners();
+
     return form;
+  }
+
+  /**
+   * Render form with field groups (Phase 5 Week 3-4)
+   * @param {HTMLFormElement} form - Form element to render groups into
+   */
+  renderFieldGroups(form) {
+    const groups = this.metadata.form.groups || [];
+
+    // Sort groups by display_order
+    const sortedGroups = [...groups].sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
+
+    // Create a map of field_name to fieldConfig for quick lookup
+    const fieldMap = new Map();
+    this.metadata.form.fields.forEach(field => {
+      fieldMap.set(field.field || field.name, field);
+    });
+
+    // Render each group
+    sortedGroups.forEach(group => {
+      if (!group.is_active) return; // Skip inactive groups
+
+      const groupSection = this.createFieldGroupSection(group, fieldMap);
+      form.appendChild(groupSection);
+    });
+
+    // Render ungrouped fields (fields not assigned to any group)
+    const groupedFieldNames = new Set();
+    sortedGroups.forEach(group => {
+      if (group.fields) {
+        group.fields.forEach(fieldName => groupedFieldNames.add(fieldName));
+      }
+    });
+
+    const ungroupedFields = this.metadata.form.fields.filter(field => {
+      const fieldName = field.field || field.name;
+      return !groupedFieldNames.has(fieldName);
+    });
+
+    if (ungroupedFields.length > 0) {
+      const ungroupedSection = document.createElement('div');
+      ungroupedSection.className = 'ungrouped-fields space-y-4';
+      ungroupedFields.forEach(field => {
+        const formGroup = this.createFormGroup(field);
+        ungroupedSection.appendChild(formGroup);
+      });
+      form.appendChild(ungroupedSection);
+    }
+  }
+
+  /**
+   * Create a field group section with collapsible functionality
+   * @param {Object} group - Group configuration
+   * @param {Map} fieldMap - Map of field names to field configs
+   * @returns {HTMLElement} - Field group section element
+   */
+  createFieldGroupSection(group, fieldMap) {
+    const section = document.createElement('div');
+    section.className = 'field-group mb-6';
+    section.dataset.groupId = group.id || group.name;
+
+    // Header
+    const header = document.createElement('div');
+    header.className = 'field-group-header flex items-center justify-between p-3 bg-gray-50 rounded-t-lg border border-gray-200 cursor-pointer hover:bg-gray-100 transition-colors';
+    header.innerHTML = `
+      <div class="flex items-center gap-2">
+        ${group.icon ? `<i class="ph ph-${group.icon} text-lg text-gray-600"></i>` : ''}
+        <h3 class="font-semibold text-gray-900">${group.label}</h3>
+        ${group.description ? `<span class="text-sm text-gray-500 ml-2">${group.description}</span>` : ''}
+      </div>
+      ${group.is_collapsible ? '<i class="ph ph-caret-down transition-transform text-gray-600"></i>' : ''}
+    `;
+
+    // Content container
+    const content = document.createElement('div');
+    content.className = 'field-group-content p-4 border border-t-0 border-gray-200 rounded-b-lg space-y-4 bg-white';
+
+    // Set initial collapsed state
+    if (group.is_collapsible && group.is_collapsed_default) {
+      content.style.display = 'none';
+      const caret = header.querySelector('.ph-caret-down');
+      if (caret) caret.classList.add('rotate-180');
+    }
+
+    // Add fields to group
+    const fieldNames = group.fields || [];
+    fieldNames.forEach(fieldName => {
+      const fieldConfig = fieldMap.get(fieldName);
+      if (fieldConfig) {
+        const formGroup = this.createFormGroup(fieldConfig);
+        content.appendChild(formGroup);
+      }
+    });
+
+    // Toggle collapse functionality
+    if (group.is_collapsible) {
+      header.addEventListener('click', () => {
+        const isHidden = content.style.display === 'none';
+        content.style.display = isHidden ? 'block' : 'none';
+
+        const caret = header.querySelector('.ph-caret-down');
+        if (caret) {
+          if (isHidden) {
+            caret.classList.remove('rotate-180');
+          } else {
+            caret.classList.add('rotate-180');
+          }
+        }
+      });
+    }
+
+    section.appendChild(header);
+    section.appendChild(content);
+
+    return section;
   }
 
   /**
@@ -67,16 +245,16 @@ export class DynamicForm {
     // If field is calculated, readonly, or user cannot edit, make it readonly
     const readonly = isCalculated || fieldConfig.readonly || !canEdit;
 
-    // Build label text
-    let labelText = fieldConfig.title;
+    // Build label text (with i18n support)
+    let labelText = this.getLocalizedText(fieldConfig, 'label');
 
     // Add indicator for calculated fields
     if (isCalculated) {
       labelText += ' 🧮'; // Calculator emoji to indicate calculated field
     }
 
-    // Add lock icon if readonly due to RBAC (show in helper text instead)
-    let helperText = fieldConfig.help || '';
+    // Build helper text (with i18n support)
+    let helperText = this.getLocalizedText(fieldConfig, 'help_text');
     if (isCalculated && fieldConfig.calculation_formula) {
       helperText = `📐 Calculated: ${fieldConfig.calculation_formula}` + (helperText ? '\n' + helperText : '');
     } else if (!canEdit && !fieldConfig.readonly) {
@@ -102,6 +280,9 @@ export class DynamicForm {
    */
   createInput(fieldConfig, readonly, labelText, helperText) {
     const value = this.record?.data?.[fieldConfig.field] || fieldConfig.default || '';
+
+    // Get localized placeholder
+    const placeholder = this.getLocalizedText(fieldConfig, 'placeholder');
 
     // Check for input_type override first (Phase 5 Priority 2: Advanced Input Types)
     if (fieldConfig.input_type) {
@@ -132,13 +313,13 @@ export class DynamicForm {
       case 'text':
       case 'email':
       case 'url':
-        return this.createTextInput(fieldConfig, value, readonly, labelText, helperText);
+        return this.createTextInput(fieldConfig, value, readonly, labelText, helperText, placeholder);
 
       case 'number':
-        return this.createNumberInput(fieldConfig, value, readonly, labelText, helperText);
+        return this.createNumberInput(fieldConfig, value, readonly, labelText, helperText, placeholder);
 
       case 'textarea':
-        return this.createTextarea(fieldConfig, value, readonly, labelText, helperText);
+        return this.createTextarea(fieldConfig, value, readonly, labelText, helperText, placeholder);
 
       case 'select':
         return this.createSelect(fieldConfig, value, readonly, labelText, helperText);
@@ -157,7 +338,7 @@ export class DynamicForm {
   /**
    * Create text input using FlexInput
    */
-  createTextInput(fieldConfig, value, readonly, labelText, helperText) {
+  createTextInput(fieldConfig, value, readonly, labelText, helperText, placeholder = '') {
     const container = document.createElement('div');
 
     const component = new FlexInput(container, {
@@ -165,7 +346,7 @@ export class DynamicForm {
             fieldConfig.type === 'url' ? 'url' : 'text',
       label: labelText,
       value: value || '',
-      placeholder: fieldConfig.placeholder || '',
+      placeholder: placeholder || fieldConfig.placeholder || '',
       required: fieldConfig.required || false,
       readonly: readonly,
       helperText: helperText,
@@ -191,14 +372,14 @@ export class DynamicForm {
   /**
    * Create number input using FlexInput
    */
-  createNumberInput(fieldConfig, value, readonly, labelText, helperText) {
+  createNumberInput(fieldConfig, value, readonly, labelText, helperText, placeholder = '') {
     const container = document.createElement('div');
 
     const component = new FlexInput(container, {
       type: 'number',
       label: labelText,
       value: value || '',
-      placeholder: fieldConfig.placeholder || '',
+      placeholder: placeholder || fieldConfig.placeholder || '',
       required: fieldConfig.required || false,
       readonly: readonly,
       helperText: helperText,
@@ -224,13 +405,13 @@ export class DynamicForm {
   /**
    * Create textarea using FlexTextarea
    */
-  createTextarea(fieldConfig, value, readonly, labelText, helperText) {
+  createTextarea(fieldConfig, value, readonly, labelText, helperText, placeholder = '') {
     const container = document.createElement('div');
 
     const component = new FlexTextarea(container, {
       label: labelText,
       value: value || '',
-      placeholder: fieldConfig.placeholder || '',
+      placeholder: placeholder || fieldConfig.placeholder || '',
       required: fieldConfig.required || false,
       readonly: readonly,
       helperText: helperText,
@@ -1569,6 +1750,432 @@ export class DynamicForm {
         element.value = result;
       }
     });
+  }
+
+  // ==================== Conditional Visibility (Phase 5 Week 3-4) ====================
+
+  /**
+   * Evaluate visibility rules for a field
+   * @param {Object} fieldConfig - Field configuration with visibility_rules
+   * @returns {boolean} - True if field should be visible
+   */
+  evaluateVisibilityRules(fieldConfig) {
+    // If no visibility rules, field is always visible
+    if (!fieldConfig.visibility_rules) {
+      return true;
+    }
+
+    const rules = fieldConfig.visibility_rules;
+    const operator = rules.operator || 'AND';
+    const conditions = rules.conditions || [];
+
+    // Evaluate each condition
+    const results = conditions.map(condition => {
+      const fieldValue = this.getFieldValue(condition.field);
+      return this.evaluateVisibilityCondition(fieldValue, condition.operator, condition.value);
+    });
+
+    // Apply logical operator
+    return operator === 'AND'
+      ? results.every(r => r)
+      : results.some(r => r);
+  }
+
+  /**
+   * Evaluate a single visibility condition
+   * @param {*} fieldValue - Current field value
+   * @param {string} operator - Comparison operator
+   * @param {*} compareValue - Value to compare against
+   * @returns {boolean} - True if condition is met
+   */
+  evaluateVisibilityCondition(fieldValue, operator, compareValue) {
+    // Convert to string for comparison if needed
+    const strValue = String(fieldValue || '').toLowerCase();
+    const strCompare = String(compareValue || '').toLowerCase();
+
+    switch (operator) {
+      case 'equals':
+        return fieldValue === compareValue || strValue === strCompare;
+
+      case 'not_equals':
+        return fieldValue !== compareValue && strValue !== strCompare;
+
+      case 'contains':
+        return strValue.includes(strCompare);
+
+      case 'not_contains':
+        return !strValue.includes(strCompare);
+
+      case 'in':
+        // compareValue should be an array
+        if (Array.isArray(compareValue)) {
+          return compareValue.includes(fieldValue) ||
+                 compareValue.map(v => String(v).toLowerCase()).includes(strValue);
+        }
+        return false;
+
+      case 'not_in':
+        if (Array.isArray(compareValue)) {
+          return !compareValue.includes(fieldValue) &&
+                 !compareValue.map(v => String(v).toLowerCase()).includes(strValue);
+        }
+        return true;
+
+      case 'greater_than':
+        return parseFloat(fieldValue) > parseFloat(compareValue);
+
+      case 'less_than':
+        return parseFloat(fieldValue) < parseFloat(compareValue);
+
+      case 'greater_or_equal':
+        return parseFloat(fieldValue) >= parseFloat(compareValue);
+
+      case 'less_or_equal':
+        return parseFloat(fieldValue) <= parseFloat(compareValue);
+
+      case 'is_empty':
+        return !fieldValue || strValue === '';
+
+      case 'is_not_empty':
+        return fieldValue && strValue !== '';
+
+      default:
+        console.warn(`Unknown visibility operator: ${operator}`);
+        return true;
+    }
+  }
+
+  /**
+   * Get current value of a field
+   * @param {string} fieldName - Field name
+   * @returns {*} - Current field value
+   */
+  getFieldValue(fieldName) {
+    const element = this.fields.get(fieldName);
+    if (!element) return null;
+
+    if (element.type === 'checkbox') {
+      return element.checked;
+    } else if (element.type === 'number') {
+      return element.value ? parseFloat(element.value) : null;
+    } else {
+      return element.value;
+    }
+  }
+
+  /**
+   * Update visibility for all fields based on their rules
+   */
+  updateAllFieldVisibility() {
+    this.metadata.form.fields.forEach(fieldConfig => {
+      this.updateFieldVisibility(fieldConfig);
+    });
+  }
+
+  /**
+   * Update visibility for a specific field
+   * @param {Object} fieldConfig - Field configuration
+   */
+  updateFieldVisibility(fieldConfig) {
+    const shouldShow = this.evaluateVisibilityRules(fieldConfig);
+    const element = this.fields.get(fieldConfig.field);
+
+    if (element) {
+      // Find the form group container (parent element)
+      let container = element.closest('.form-group, .mb-4, [class*="space-y"]');
+
+      // Fallback: traverse up to find a suitable container
+      if (!container) {
+        container = element.parentElement;
+        while (container && !container.classList.contains('form-group') &&
+               !container.classList.contains('mb-4')) {
+          container = container.parentElement;
+          // Stop at form level
+          if (container && container.tagName === 'FORM') {
+            container = element.parentElement;
+            break;
+          }
+        }
+      }
+
+      if (container) {
+        container.style.display = shouldShow ? '' : 'none';
+
+        // Mark field as hidden for validation purposes
+        element.dataset.hidden = shouldShow ? 'false' : 'true';
+
+        // Optionally disable hidden fields to prevent submission
+        if (!shouldShow) {
+          element.setAttribute('data-was-required', element.required);
+          element.required = false;
+        } else if (element.dataset.wasRequired === 'true') {
+          element.required = true;
+        }
+      }
+    }
+  }
+
+  /**
+   * Set up listeners for fields that affect visibility
+   */
+  setupVisibilityListeners() {
+    // Find all fields that have visibility rules
+    const fieldsWithRules = this.metadata.form.fields.filter(f => f.visibility_rules);
+
+    if (fieldsWithRules.length === 0) {
+      return; // No visibility rules to process
+    }
+
+    // Extract all fields that are referenced in visibility conditions
+    const watchedFields = new Set();
+    fieldsWithRules.forEach(fieldConfig => {
+      if (fieldConfig.visibility_rules && fieldConfig.visibility_rules.conditions) {
+        fieldConfig.visibility_rules.conditions.forEach(condition => {
+          watchedFields.add(condition.field);
+        });
+      }
+    });
+
+    // Add change listeners to watched fields
+    watchedFields.forEach(fieldName => {
+      const element = this.fields.get(fieldName);
+      if (element) {
+        const updateVisibility = () => {
+          // Update visibility for all fields that depend on this field
+          fieldsWithRules.forEach(fieldConfig => {
+            if (fieldConfig.visibility_rules &&
+                fieldConfig.visibility_rules.conditions.some(c => c.field === fieldName)) {
+              this.updateFieldVisibility(fieldConfig);
+            }
+          });
+        };
+
+        element.addEventListener('change', updateVisibility);
+        element.addEventListener('input', updateVisibility);
+      }
+    });
+  }
+
+  // ==================== Field Dependencies (Cascading Dropdowns) ====================
+
+  /**
+   * Set up listeners for fields that have dependencies (Phase 5 Week 3-4)
+   * When parent field changes, reload options for dependent fields
+   */
+  setupFieldDependencyListeners() {
+    // Find all fields that depend on other fields
+    const dependentFields = this.metadata.form.fields.filter(f => f.depends_on_field);
+
+    if (dependentFields.length === 0) {
+      return; // No dependencies to process
+    }
+
+    // Group dependent fields by their parent field
+    const dependencyMap = new Map();
+    dependentFields.forEach(fieldConfig => {
+      const parentField = fieldConfig.depends_on_field;
+      if (!dependencyMap.has(parentField)) {
+        dependencyMap.set(parentField, []);
+      }
+      dependencyMap.get(parentField).push(fieldConfig);
+    });
+
+    // Add change listeners to parent fields
+    dependencyMap.forEach((dependents, parentFieldName) => {
+      const parentElement = this.fields.get(parentFieldName);
+      if (parentElement) {
+        parentElement.addEventListener('change', async () => {
+          const parentValue = this.getFieldValue(parentFieldName);
+
+          // Update all dependent fields
+          for (const dependentConfig of dependents) {
+            await this.updateDependentField(dependentConfig, parentValue);
+          }
+        });
+
+        // Initialize dependent fields on first load
+        const initialValue = this.getFieldValue(parentFieldName);
+        if (initialValue) {
+          dependents.forEach(async (dependentConfig) => {
+            await this.updateDependentField(dependentConfig, initialValue);
+          });
+        }
+      }
+    });
+  }
+
+  /**
+   * Update a dependent field when its parent value changes
+   * @param {Object} fieldConfig - Dependent field configuration
+   * @param {*} parentValue - Value of parent field
+   */
+  async updateDependentField(fieldConfig, parentValue) {
+    const element = this.fields.get(fieldConfig.field);
+    if (!element) return;
+
+    // Clear current value and options
+    const currentValue = element.value;
+    element.value = '';
+
+    // Disable field while loading
+    element.disabled = true;
+
+    try {
+      // Load new options based on parent value
+      const options = await this.fetchDependentOptions(fieldConfig, parentValue);
+
+      // Update select options
+      if (element.tagName === 'SELECT') {
+        element.innerHTML = '<option value="">Select...</option>';
+        options.forEach(opt => {
+          const option = document.createElement('option');
+          option.value = opt.value;
+          option.textContent = opt.label;
+          element.appendChild(option);
+        });
+
+        // Try to restore previous value if it still exists in new options
+        if (currentValue && options.some(opt => opt.value === currentValue)) {
+          element.value = currentValue;
+        }
+      }
+    } catch (error) {
+      console.error(`Error updating dependent field ${fieldConfig.field}:`, error);
+
+      // Show error in UI
+      const component = this.fieldComponents.get(fieldConfig.field);
+      if (component && component.setError) {
+        component.setError('Failed to load options');
+      }
+    } finally {
+      // Re-enable field
+      element.disabled = false;
+    }
+  }
+
+  /**
+   * Fetch options for a dependent field based on parent value
+   * @param {Object} fieldConfig - Dependent field configuration
+   * @param {*} parentValue - Value of parent field
+   * @returns {Promise<Array>} - Array of {value, label} options
+   */
+  async fetchDependentOptions(fieldConfig, parentValue) {
+    // If reference field, fetch from entity records
+    if (fieldConfig.reference_entity_id) {
+      return await this.fetchReferenceOptions(fieldConfig, parentValue);
+    }
+
+    // If select field with dynamic options API
+    if (fieldConfig.meta_data?.options_api) {
+      return await this.fetchDynamicOptions(fieldConfig, parentValue);
+    }
+
+    // If static allowed_values with filter expression
+    if (fieldConfig.allowed_values && fieldConfig.filter_expression) {
+      return this.filterStaticOptions(fieldConfig, parentValue);
+    }
+
+    return [];
+  }
+
+  /**
+   * Fetch reference field options filtered by parent value
+   * @param {Object} fieldConfig - Field configuration
+   * @param {*} parentValue - Parent field value
+   * @returns {Promise<Array>} - Array of options
+   */
+  async fetchReferenceOptions(fieldConfig, parentValue) {
+    try {
+      // Build filter expression
+      let filter = {};
+      if (fieldConfig.filter_expression) {
+        // Replace {parent_field} with actual value
+        const filterKey = fieldConfig.depends_on_field;
+        filter[filterKey] = parentValue;
+      }
+
+      const params = new URLSearchParams({
+        limit: 100,
+        ...filter
+      });
+
+      const response = await fetch(
+        `/api/v1/dynamic-data/${fieldConfig.reference_entity_id}/records?${params}`
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const data = await response.json();
+      const records = data.data || data.records || data || [];
+
+      // Format as options
+      const displayField = fieldConfig.reference_field || 'name';
+      return records.map(record => ({
+        value: record.id,
+        label: record[displayField] || record.name || record.id
+      }));
+    } catch (error) {
+      console.error('Error fetching reference options:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Fetch dynamic options from API
+   * @param {Object} fieldConfig - Field configuration
+   * @param {*} parentValue - Parent field value
+   * @returns {Promise<Array>} - Array of options
+   */
+  async fetchDynamicOptions(fieldConfig, parentValue) {
+    try {
+      const apiUrl = fieldConfig.meta_data.options_api;
+      const params = new URLSearchParams();
+
+      if (fieldConfig.depends_on_field) {
+        params.append(fieldConfig.depends_on_field, parentValue);
+      }
+
+      const response = await fetch(`${apiUrl}?${params}`);
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data.options || data || [];
+    } catch (error) {
+      console.error('Error fetching dynamic options:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Filter static options based on parent value
+   * @param {Object} fieldConfig - Field configuration
+   * @param {*} parentValue - Parent field value
+   * @returns {Array} - Filtered options
+   */
+  filterStaticOptions(fieldConfig, parentValue) {
+    const options = fieldConfig.allowed_values || [];
+
+    // If options is array of strings, convert to {value, label}
+    let formattedOptions = Array.isArray(options)
+      ? options.map(opt => typeof opt === 'string' ? { value: opt, label: opt } : opt)
+      : Object.entries(options).map(([value, label]) => ({ value, label }));
+
+    // Apply filter expression if provided
+    if (fieldConfig.filter_expression) {
+      // Simple filter: check if option has matching property
+      // Example: filter_expression = "country_code = '{country}'"
+      formattedOptions = formattedOptions.filter(opt => {
+        // Check if option metadata matches parent value
+        return opt[fieldConfig.depends_on_field] === parentValue;
+      });
+    }
+
+    return formattedOptions;
   }
 
   /**

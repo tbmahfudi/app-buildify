@@ -180,6 +180,21 @@ class FieldDefinition(Base):
     lookup_allow_create = Column(Boolean, default=False)  # Quick-create button
     lookup_recent_count = Column(Integer, default=5)  # Number of recent items
 
+    # Conditional Visibility (Phase 5 Week 3-4)
+    visibility_rules = Column(JSONB)  # {"operator": "AND", "conditions": [...]}
+
+    # Field Dependencies (Phase 5 Week 3-4)
+    depends_on_field = Column(String(100))  # Parent field for cascading
+    filter_expression = Column(Text)  # Filter expression for dependent options
+
+    # Multi-language Support (Phase 5 Week 3-4)
+    label_i18n = Column(JSONB)  # {"en": "Name", "es": "Nombre"}
+    help_text_i18n = Column(JSONB)  # {"en": "Help", "es": "Ayuda"}
+    placeholder_i18n = Column(JSONB)  # {"en": "Enter...", "es": "Ingresar..."}
+
+    # Field Groups (Phase 5 Week 3-4)
+    field_group_id = Column(GUID, ForeignKey("field_groups.id", ondelete="SET NULL"), nullable=True)
+
     # Metadata
     meta_data = Column(JSONB, default=dict)
 
@@ -193,6 +208,7 @@ class FieldDefinition(Base):
     # Relationships
     entity = relationship("EntityDefinition", foreign_keys=[entity_id], back_populates="fields")
     reference_entity = relationship("EntityDefinition", foreign_keys=[reference_entity_id])
+    field_group = relationship("FieldGroup", foreign_keys=[field_group_id], back_populates="fields")
 
     @property
     def reference_table(self):
@@ -205,6 +221,60 @@ class FieldDefinition(Base):
     __table_args__ = (
         Index("idx_field_definitions_entity", "entity_id", postgresql_where=text("is_deleted = false")),
         Index("idx_field_definitions_type", "field_type"),
+        Index("idx_field_definitions_group", "field_group_id"),
+    )
+
+
+class FieldGroup(Base):
+    """
+    Field Group Model
+
+    Organizes fields into collapsible sections for better form organization.
+    Groups can have their own visibility rules and display order.
+    """
+    __tablename__ = "field_groups"
+
+    # Primary Key
+    id = Column(GUID, primary_key=True, default=generate_uuid)
+    entity_id = Column(GUID, ForeignKey("entity_definitions.id", ondelete="CASCADE"), nullable=False, index=True)
+    # tenant_id: NULL = platform-level (inherited from entity), specific ID = tenant-specific override
+    tenant_id = Column(GUID, ForeignKey("tenants.id"), nullable=True)
+
+    # Basic Info
+    name = Column(String(100), nullable=False)  # Technical name (snake_case)
+    label = Column(String(200), nullable=False)  # Display name
+    description = Column(Text)
+    icon = Column(String(50))  # Phosphor icon name
+
+    # Display Configuration
+    is_collapsible = Column(Boolean, default=True)
+    is_collapsed_default = Column(Boolean, default=False)
+    display_order = Column(Integer, default=0)
+
+    # Conditional Visibility (same format as field visibility_rules)
+    visibility_rules = Column(JSONB)  # {"operator": "AND", "conditions": [...]}
+
+    # Status
+    is_active = Column(Boolean, default=True)
+
+    # Metadata
+    meta_data = Column(JSONB, default=dict)
+
+    # Audit
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_by = Column(GUID, ForeignKey("users.id"))
+    updated_by = Column(GUID, ForeignKey("users.id"))
+    is_deleted = Column(Boolean, default=False)
+
+    # Relationships
+    entity = relationship("EntityDefinition", foreign_keys=[entity_id], backref="field_groups")
+    fields = relationship("FieldDefinition", foreign_keys="FieldDefinition.field_group_id", back_populates="field_group")
+
+    # Table constraints
+    __table_args__ = (
+        Index("idx_field_groups_entity", "entity_id"),
+        Index("idx_field_groups_display_order", "entity_id", "display_order"),
     )
 
 
