@@ -48,6 +48,18 @@ class FieldDefinitionBase(BaseModel):
     relationship_type: Optional[str] = None
     on_delete: str = Field("NO ACTION", description="FK constraint on delete: CASCADE, SET NULL, RESTRICT, NO ACTION")
     on_update: str = Field("NO ACTION", description="FK constraint on update: CASCADE, SET NULL, RESTRICT, NO ACTION")
+    lookup_display_template: Optional[str] = Field(None, description="Display template for lookup (e.g., '{name} ({email})')")
+    lookup_filter_field: Optional[str] = Field(None, description="Field to filter lookup by")
+    lookup_search_fields: Optional[List[str]] = Field(None, description="Fields to search in autocomplete")
+    lookup_allow_create: bool = Field(False, description="Allow quick-create from lookup")
+    lookup_recent_count: int = Field(5, description="Number of recent selections to show")
+    visibility_rules: Optional[Dict[str, Any]] = Field(None, description="Conditional visibility rules")
+    depends_on_field: Optional[str] = Field(None, description="Parent field for cascading dropdowns")
+    filter_expression: Optional[str] = Field(None, description="Filter expression for dependent fields")
+    label_i18n: Optional[Dict[str, str]] = Field(None, description="Multi-language labels")
+    help_text_i18n: Optional[Dict[str, str]] = Field(None, description="Multi-language help text")
+    placeholder_i18n: Optional[Dict[str, str]] = Field(None, description="Multi-language placeholders")
+    field_group_id: Optional[UUID] = Field(None, description="Field group ID for organization")
     meta_data: Dict[str, Any] = Field(default_factory=dict)
 
 
@@ -73,6 +85,18 @@ class FieldDefinitionUpdate(BaseModel):
     relationship_type: Optional[str] = None
     on_delete: Optional[str] = None
     on_update: Optional[str] = None
+    lookup_display_template: Optional[str] = None
+    lookup_filter_field: Optional[str] = None
+    lookup_search_fields: Optional[List[str]] = None
+    lookup_allow_create: Optional[bool] = None
+    lookup_recent_count: Optional[int] = None
+    visibility_rules: Optional[Dict[str, Any]] = None
+    depends_on_field: Optional[str] = None
+    filter_expression: Optional[str] = None
+    label_i18n: Optional[Dict[str, str]] = None
+    help_text_i18n: Optional[Dict[str, str]] = None
+    placeholder_i18n: Optional[Dict[str, str]] = None
+    field_group_id: Optional[UUID] = None
     meta_data: Optional[Dict[str, Any]] = None
 
 
@@ -81,6 +105,55 @@ class FieldDefinitionResponse(FieldDefinitionBase):
     id: UUID
     entity_id: UUID
     tenant_id: Optional[UUID]  # NULL for platform-level fields
+    created_at: datetime
+    updated_at: datetime
+    created_by: Optional[UUID]
+    updated_by: Optional[UUID]
+    is_deleted: bool
+
+    class Config:
+        from_attributes = True
+
+
+# ==================== Field Group Schemas ====================
+
+class FieldGroupBase(BaseModel):
+    """Base schema for field groups"""
+    name: str = Field(..., max_length=100, description="Technical group name (snake_case)")
+    label: str = Field(..., max_length=200, description="Display label")
+    description: Optional[str] = None
+    icon: Optional[str] = Field(None, description="Phosphor icon name")
+    is_collapsible: bool = True
+    is_collapsed_default: bool = False
+    display_order: int = 0
+    visibility_rules: Optional[Dict[str, Any]] = Field(None, description="Conditional visibility rules")
+    is_active: bool = True
+    meta_data: Dict[str, Any] = Field(default_factory=dict)
+
+
+class FieldGroupCreate(FieldGroupBase):
+    """Schema for creating a field group"""
+    pass
+
+
+class FieldGroupUpdate(BaseModel):
+    """Schema for updating a field group"""
+    label: Optional[str] = None
+    description: Optional[str] = None
+    icon: Optional[str] = None
+    is_collapsible: Optional[bool] = None
+    is_collapsed_default: Optional[bool] = None
+    display_order: Optional[int] = None
+    visibility_rules: Optional[Dict[str, Any]] = None
+    is_active: Optional[bool] = None
+    meta_data: Optional[Dict[str, Any]] = None
+
+
+class FieldGroupResponse(FieldGroupBase):
+    """Schema for field group response"""
+    id: UUID
+    entity_id: UUID
+    tenant_id: Optional[UUID]
     created_at: datetime
     updated_at: datetime
     created_by: Optional[UUID]
