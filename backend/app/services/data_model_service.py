@@ -784,6 +784,7 @@ class DataModelService:
 
             self.db.commit()
             self.db.refresh(migration)
+            self.db.refresh(entity)
 
             return migration
 
@@ -943,6 +944,7 @@ class DataModelService:
 
             self.db.commit()
             self.db.refresh(migration)
+            self.db.refresh(entity)
 
             return {
                 'id': migration.id,
@@ -950,8 +952,10 @@ class DataModelService:
                 'status': migration.status,
                 'executed_at': migration.executed_at,
                 'execution_time_ms': execution_time,
+                'entity_id': str(entity.id),
                 'entity_name': entity.name,
                 'entity_label': entity.label,
+                'entity_status': entity.status,
                 'message': f"Migration executed successfully in {execution_time}ms"
             }
 
