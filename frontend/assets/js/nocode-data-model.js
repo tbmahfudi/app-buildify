@@ -93,6 +93,8 @@ export class DataModelPage {
       closeMigrationPreviewModal: () => this.closeMigrationPreviewModal(),
       publishEntity: (entityId) => this.publishEntity(entityId),
       publishEntityFromPreview: (entityId) => this.publishEntityFromPreview(entityId),
+      generateMigration: (entityId) => this.generateMigration(entityId),
+      executeMigration: (migrationId) => this.executeMigration(migrationId),
       viewMigrations: (entityId) => this.viewMigrations(entityId),
       closeMigrationHistoryModal: () => this.closeMigrationHistoryModal(),
       viewMigrationDetails: (migrationId) => this.viewMigrationDetails(migrationId),
@@ -298,6 +300,20 @@ export class DataModelPage {
 
           <!-- Quick Actions -->
           <div class="flex gap-2 pt-2 border-t border-gray-200">
+            ${entity.status !== 'published' ? `
+            <button onclick="DataModelApp.generateMigration('${entity.id}')"
+                    class="flex-1 px-3 py-1.5 bg-violet-50 text-violet-700 rounded-lg hover:bg-violet-100 text-xs font-medium flex items-center justify-center gap-1"
+                    title="Generate migration SQL for review">
+              <i class="ph ph-file-code text-sm"></i> Generate Migration
+            </button>
+            ` : ''}
+            <button onclick="DataModelApp.viewMigrations('${entity.id}')"
+                    class="flex-1 px-3 py-1.5 bg-amber-50 text-amber-700 rounded-lg hover:bg-amber-100 text-xs font-medium flex items-center justify-center gap-1"
+                    title="View migration history">
+              <i class="ph ph-clock-clockwise text-sm"></i> Migrations
+            </button>
+          </div>
+          <div class="flex gap-2">
             <button onclick="DataModelApp.createReportFromEntity('${entity.id}')"
                     class="flex-1 px-3 py-1.5 bg-emerald-50 text-emerald-700 rounded-lg hover:bg-emerald-100 text-xs font-medium flex items-center justify-center gap-1"
                     title="Create a report based on this entity">
@@ -309,7 +325,7 @@ export class DataModelPage {
               <i class="ph ph-layout text-sm"></i> Page
             </button>
             <button onclick="DataModelApp.addEntityToMenu('${entity.id}')"
-                    class="flex-1 px-3 py-1.5 bg-amber-50 text-amber-700 rounded-lg hover:bg-amber-100 text-xs font-medium flex items-center justify-center gap-1"
+                    class="flex-1 px-3 py-1.5 bg-slate-50 text-slate-700 rounded-lg hover:bg-slate-100 text-xs font-medium flex items-center justify-center gap-1"
                     title="Add this entity to the menu">
               <i class="ph ph-list-plus text-sm"></i> Menu
             </button>
@@ -2227,6 +2243,84 @@ export class DataModelPage {
     }
   }
 
+  async generateMigration(entityId) {
+    try {
+      const confirmed = confirm('Generate migration for this entity? This will create a migration record that you can review and execute later.');
+      if (!confirmed) return;
+
+      const response = await apiFetch(`/data-model/entities/${entityId}/generate-migration`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authService.getToken()}`
+        },
+        body: JSON.stringify({ commit_message: 'Generated migration' })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        this.showError(error.detail || 'Failed to generate migration');
+        return;
+      }
+
+      const migration = await response.json();
+      this.showSuccess(`Migration generated successfully! Review it in Migration History.`);
+
+      // Reload entity list
+      await this.loadEntities();
+
+      // Open migration history modal to show the new migration
+      this.viewMigrations(entityId);
+    } catch (error) {
+      console.error('Error generating migration:', error);
+      this.showError('Error generating migration');
+    }
+  }
+
+  async executeMigration(migrationId) {
+    try {
+      const confirmed = confirm('Execute this migration? This will run the SQL script and update your database schema.');
+      if (!confirmed) return;
+
+      const response = await apiFetch(`/data-model/migrations/${migrationId}/execute`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${authService.getToken()}`
+        }
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        this.showError(error.detail || 'Failed to execute migration');
+        return;
+      }
+
+      const result = await response.json();
+      this.showSuccess(`Migration executed successfully in ${result.execution_time_ms}ms!`);
+
+      // Reload entity list and refresh migration history
+      await this.loadEntities();
+
+      // Get the entity ID from the current modal to refresh it
+      const modal = document.getElementById('migrationHistoryModal');
+      if (modal) {
+        // Close and reopen to refresh the list
+        this.closeMigrationHistoryModal();
+        // Give it a moment to close before reopening
+        setTimeout(() => {
+          // Find the entity that was just published
+          const entity = this.entities.find(e => e.status === 'published');
+          if (entity) {
+            this.viewMigrations(entity.id);
+          }
+        }, 100);
+      }
+    } catch (error) {
+      console.error('Error executing migration:', error);
+      this.showError('Error executing migration');
+    }
+  }
+
   async viewMigrations(entityId) {
     try {
       const response = await apiFetch(`/data-model/entities/${entityId}/migrations`);
@@ -2291,6 +2385,11 @@ export class DataModelPage {
                         <span class="text-sm text-gray-500">${migration.migration_type.toUpperCase()}</span>
                       </div>
                       <div class="flex items-center gap-2">
+                        ${migration.status === 'pending' ? `
+                          <button onclick="DataModelApp.executeMigration('${migration.id}')" class="px-3 py-1 bg-emerald-600 text-white text-sm rounded hover:bg-emerald-700">
+                            <i class="ph ph-play"></i> Run Migration
+                          </button>
+                        ` : ''}
                         ${migration.status === 'completed' && migration.down_script ? `
                           <button onclick="DataModelApp.rollbackMigration('${migration.id}')" class="px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700">
                             <i class="ph ph-arrow-counter-clockwise"></i> Rollback

@@ -314,6 +314,42 @@ async def preview_migration(
     return await service.preview_migration(entity_id)
 
 
+@router.post("/entities/{entity_id}/generate-migration", response_model=MigrationResponse)
+async def generate_migration(
+    entity_id: UUID,
+    request: PublishEntityRequest,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """
+    Generate and save migration without executing it
+
+    Creates a migration record with 'pending' status that can be reviewed
+    and executed later. This allows users to generate multiple migrations
+    and then run them in a specific order.
+    """
+    service = DataModelService(db, current_user)
+    return await service.generate_migration(entity_id, request.commit_message)
+
+
+@router.post("/migrations/{migration_id}/execute", response_model=MigrationResponse)
+async def execute_migration(
+    migration_id: UUID,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """
+    Execute a pending migration
+
+    Runs the UP script of a migration that was previously generated.
+    The migration must be in 'pending' status. After successful execution,
+    the entity will be marked as 'published' and the migration status will
+    be updated to 'completed'.
+    """
+    service = DataModelService(db, current_user)
+    return await service.execute_migration(migration_id)
+
+
 @router.post("/entities/{entity_id}/publish", response_model=MigrationResponse)
 async def publish_entity(
     entity_id: UUID,
