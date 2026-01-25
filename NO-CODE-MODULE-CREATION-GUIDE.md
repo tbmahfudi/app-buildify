@@ -405,17 +405,25 @@ Your module has these lifecycle stages:
    - Click "Generate Migration"
    - Review the SQL preview
    - Click "Confirm & Save Migration"
-   - **Repeat for:** `SLAPolicy`, `TicketComment`, `SupportTicket` (in this order due to dependencies)
+   - **Repeat for:** `SLAPolicy`, `SupportTicket`, `TicketComment` (in this order due to foreign key dependencies)
+
+> **⚠️ IMPORTANT - Migration Order:**
+> The order matters because of foreign key relationships:
+> - `TicketCategory` and `SLAPolicy` have no dependencies (can be first)
+> - `SupportTicket` references `TicketCategory` (must be after TicketCategory)
+> - `TicketComment` has a **required** foreign key to `SupportTicket` via `ticket_id` (must be last)
+>
+> **Correct Order:** TicketCategory → SLAPolicy → SupportTicket → TicketComment
 
 3. **Run Migrations:**
    - Click "Migration History" tab
-   - Select each pending migration
-   - Click "Run Migration"
-   - Verify success message
+   - Select each pending migration **in the same order**
+   - Click "Run Migration" for each one
+   - Verify success message after each migration
 
 4. **Publish All Entities:**
-   - Select each entity
-   - Click "Publish"
+   - After all migrations complete successfully
+   - Each entity should now have status "Published"
    - This makes them available for runtime CRUD operations
 
 **✅ Checkpoint:** You should now have 4 database tables created and visible in the Data Model Designer.
