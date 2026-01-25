@@ -569,6 +569,86 @@ class DataModelService:
             'estimated_impact': estimated_impact
         }
 
+    async def generate_migration(self, entity_id: UUID, commit_message: str = None):
+        """Generate and save migration without executing it"""
+        from app.services.migration_generator import MigrationGenerator
+        import time
+
+        entity = self.db.query(EntityDefinition).filter(
+            EntityDefinition.id == entity_id,
+            EntityDefinition.is_deleted == False
+        ).first()
+
+        if not entity:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Entity {entity_id} not found"
+            )
+
+        # Check permissions
+        if entity.tenant_id and entity.tenant_id != self.tenant_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You don't have permission to generate migration for this entity"
+            )
+
+        # Check if there's already a pending migration for this entity
+        existing_pending = self.db.query(EntityMigration).filter(
+            EntityMigration.entity_id == entity_id,
+            EntityMigration.status == 'pending'
+        ).first()
+
+        if existing_pending:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="There is already a pending migration for this entity. Please run or delete it first."
+            )
+
+        # Generate migration SQL
+        migration_gen = MigrationGenerator(self.db)
+        up_sql, down_sql = await migration_gen.generate_migration(entity)
+
+        # Get changes for logging
+        changes = await migration_gen.preview_changes(entity)
+
+        # Determine next version
+        next_version = (entity.version or 0) + 1
+
+        # Create migration record with 'pending' status
+        migration = EntityMigration(
+            entity_id=entity_id,
+            tenant_id=entity.tenant_id,
+            migration_name=f"{entity.name}_v{next_version}_{int(time.time())}",
+            migration_type='create' if entity.version == 0 or entity.version is None else 'alter',
+            from_version=entity.version if entity.version else None,
+            to_version=next_version,
+            up_script=up_sql,
+            down_script=down_sql,
+            status='pending',
+            changes=changes,
+            created_by=self.user_id,
+            commit_message=commit_message
+        )
+
+        self.db.add(migration)
+        self.db.commit()
+        self.db.refresh(migration)
+
+        return {
+            'id': migration.id,
+            'migration_name': migration.migration_name,
+            'migration_type': migration.migration_type,
+            'from_version': migration.from_version,
+            'to_version': migration.to_version,
+            'status': migration.status,
+            'up_script': migration.up_script,
+            'down_script': migration.down_script,
+            'changes': migration.changes,
+            'created_at': migration.created_at,
+            'entity_name': entity.name,
+            'entity_label': entity.label
+        }
+
     async def publish_entity(self, entity_id: UUID, commit_message: str = None):
         """Publish entity and execute migration"""
         from app.services.migration_generator import MigrationGenerator
@@ -747,6 +827,146 @@ class DataModelService:
             'migrations': migrations,
             'total': len(migrations)
         }
+
+    async def execute_migration(self, migration_id: UUID):
+        """Execute a pending migration"""
+        from datetime import datetime
+        from sqlalchemy import text
+        import time
+
+        migration = self.db.query(EntityMigration).filter(
+            EntityMigration.id == migration_id
+        ).first()
+
+        if not migration:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Migration {migration_id} not found"
+            )
+
+        # Check permissions
+        if migration.tenant_id and migration.tenant_id != self.tenant_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You don't have permission to execute this migration"
+            )
+
+        if migration.status != 'pending':
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Can only execute pending migrations. Current status: {migration.status}"
+            )
+
+        entity = self.db.query(EntityDefinition).filter(
+            EntityDefinition.id == migration.entity_id
+        ).first()
+
+        if not entity:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Entity not found for migration {migration_id}"
+            )
+
+        # Execute migration
+        try:
+            migration.status = 'running'
+            self.db.commit()
+
+            start_time = time.time()
+
+            # Execute UP script in transaction
+            self.db.execute(text(migration.up_script))
+
+            execution_time = int((time.time() - start_time) * 1000)
+
+            migration.status = 'completed'
+            migration.executed_at = datetime.utcnow()
+            migration.execution_time_ms = execution_time
+
+            # Update entity version and status
+            entity.version = migration.to_version
+            entity.status = 'published'
+
+            # Auto-generate EntityMetadata for published entity
+            try:
+                from app.services.metadata_sync_service import MetadataSyncService
+                metadata_sync = MetadataSyncService(self.db)
+                metadata_sync.auto_generate_metadata(
+                    entity_definition=entity,
+                    created_by=str(self.current_user.id)
+                )
+            except Exception as meta_error:
+                # Log error but don't fail the execution
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f"Failed to auto-generate metadata for {entity.name}: {str(meta_error)}")
+
+            # Auto-create menu item for published nocode entity
+            try:
+                from app.services.menu_service import MenuService
+                import logging
+                logger = logging.getLogger(__name__)
+
+                # Create menu item with route to dynamic entity list view
+                menu_data = {
+                    'code': f'nocode_entity_{entity.name}',
+                    'title': entity.label or entity.name.replace('_', ' ').title(),
+                    'route': f'dynamic/{entity.name}/list',
+                    'icon': entity.icon or 'ph-duotone ph-database',
+                    'parent_code': 'nocode_entities',
+                    'permission': None,
+                    'required_roles': [],
+                    'is_system': False,
+                    'is_active': True,
+                    'extra_data': {
+                        'entity_id': str(entity.id),
+                        'is_nocode': True
+                    }
+                }
+
+                # Ensure parent "No-Code Entities" menu exists
+                parent_menu = MenuService.get_or_create_nocode_parent(self.db, entity.tenant_id, str(self.current_user.id))
+
+                # Create menu item
+                MenuService.create_menu_item(
+                    db=self.db,
+                    user=self.current_user,
+                    menu_data=menu_data
+                )
+
+                logger.info(f"✅ Auto-created menu item for nocode entity: {entity.name}")
+
+            except Exception as menu_error:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.warning(f"Failed to auto-create menu item for {entity.name}: {str(menu_error)}")
+
+            self.db.commit()
+            self.db.refresh(migration)
+
+            return {
+                'id': migration.id,
+                'migration_name': migration.migration_name,
+                'status': migration.status,
+                'executed_at': migration.executed_at,
+                'execution_time_ms': execution_time,
+                'entity_name': entity.name,
+                'entity_label': entity.label,
+                'message': f"Migration executed successfully in {execution_time}ms"
+            }
+
+        except Exception as e:
+            self.db.rollback()
+            migration.status = 'failed'
+            migration.error_message = str(e)
+            self.db.commit()
+
+            import traceback
+            error_details = traceback.format_exc()
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Migration execution failed: {str(e)}\n\n{error_details}"
+            )
 
     async def rollback_migration(self, migration_id: UUID):
         """Rollback a migration"""
