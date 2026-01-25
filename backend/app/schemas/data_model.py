@@ -202,6 +202,7 @@ class EntityDefinitionUpdate(BaseModel):
     description: Optional[str] = None
     icon: Optional[str] = None
     category: Optional[str] = None
+    module_id: Optional[UUID] = None
     is_audited: Optional[bool] = None
     supports_soft_delete: Optional[bool] = None
     supports_attachments: Optional[bool] = None
