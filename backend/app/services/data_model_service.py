@@ -514,7 +514,7 @@ class DataModelService:
                 field_names=index_data['field_names'],
                 is_unique=index_data.get('is_unique', False),
                 is_active=True,
-                created_by=self.user_id
+                created_by=self.current_user.id
             )
             self.db.add(index)
 
@@ -626,7 +626,7 @@ class DataModelService:
             down_script=down_sql,
             status='pending',
             changes=changes,
-            created_by=self.user_id,
+            created_by=self.current_user.id,
             commit_message=commit_message
         )
 
@@ -702,7 +702,7 @@ class DataModelService:
             down_script=down_sql,
             status='pending',
             changes=changes,
-            created_by=self.user_id
+            created_by=self.current_user.id
         )
 
         self.db.add(migration)
