@@ -29,7 +29,8 @@ class FieldDefinitionBase(BaseModel):
     min_length: Optional[int] = None
     max_value: Optional[float] = None
     min_value: Optional[float] = None
-    decimal_places: Optional[int] = None
+    precision: Optional[int] = Field(None, description="Total number of digits for DECIMAL/NUMERIC (e.g., 5 in DECIMAL(5,2))")
+    decimal_places: Optional[int] = Field(None, description="Number of decimal places/scale (e.g., 2 in DECIMAL(5,2))")
     default_value: Optional[str] = None
     default_expression: Optional[str] = None
     validation_rules: List[Dict[str, Any]] = Field(default_factory=list)
@@ -44,6 +45,7 @@ class FieldDefinitionBase(BaseModel):
     prefix: Optional[str] = None
     suffix: Optional[str] = None
     reference_entity_id: Optional[UUID] = None
+    reference_table_name: Optional[str] = Field(None, description="Direct table name for system tables (users, tenants, etc.)")
     reference_field: Optional[str] = None
     relationship_type: Optional[str] = None
     on_delete: str = Field("NO ACTION", description="FK constraint on delete: CASCADE, SET NULL, RESTRICT, NO ACTION")
@@ -76,11 +78,15 @@ class FieldDefinitionUpdate(BaseModel):
     is_required: Optional[bool] = None
     is_readonly: Optional[bool] = None
     display_order: Optional[int] = None
+    max_length: Optional[int] = None
+    precision: Optional[int] = None
+    decimal_places: Optional[int] = None
     validation_rules: Optional[List[Dict[str, Any]]] = None
     allowed_values: Optional[Union[List[str], Dict[str, Any]]] = None  # Can be list or dict
     input_type: Optional[str] = None
     placeholder: Optional[str] = None
     reference_entity_id: Optional[UUID] = None
+    reference_table_name: Optional[str] = None
     reference_field: Optional[str] = None
     relationship_type: Optional[str] = None
     on_delete: Optional[str] = None
