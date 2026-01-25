@@ -1134,7 +1134,7 @@ export class DataModelPage {
             </div>
 
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
+              <div id="maxLengthField">
                 <label class="block text-sm font-medium text-gray-700 mb-1">Max Length</label>
                 <input type="number" name="max_length" placeholder="255"
                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
@@ -1144,6 +1144,22 @@ export class DataModelPage {
                 <label class="block text-sm font-medium text-gray-700 mb-1">Default Value</label>
                 <input type="text" name="default_value" placeholder=""
                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+              </div>
+            </div>
+
+            <!-- Decimal Precision Configuration (shown for decimal types) -->
+            <div id="decimalConfig" style="display: none;" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Precision (Total Digits)</label>
+                <input type="number" name="precision" placeholder="10" min="1" max="65"
+                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                <p class="text-xs text-gray-500 mt-1">Total number of digits (e.g., 5 in DECIMAL(5,2))</p>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Scale (Decimal Places)</label>
+                <input type="number" name="decimal_places" placeholder="2" min="0" max="30"
+                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                <p class="text-xs text-gray-500 mt-1">Digits after decimal point (e.g., 2 in DECIMAL(5,2))</p>
               </div>
             </div>
 
@@ -1301,6 +1317,19 @@ export class DataModelPage {
     // Show/hide configuration sections based on field type
     const referenceConfig = document.getElementById('referenceConfig');
     const selectConfig = document.getElementById('selectConfig');
+    const decimalConfig = document.getElementById('decimalConfig');
+    const maxLengthField = document.getElementById('maxLengthField');
+
+    // Show/hide decimal precision fields
+    if (decimalConfig) {
+      decimalConfig.style.display = fieldType === 'decimal' ? 'grid' : 'none';
+    }
+
+    // Show/hide max length field (only for string types)
+    if (maxLengthField) {
+      const stringTypes = ['string', 'email', 'url', 'phone', 'file'];
+      maxLengthField.style.display = stringTypes.includes(fieldType) ? 'block' : 'none';
+    }
 
     if (referenceConfig && selectConfig) {
       if (fieldType === 'reference') {
@@ -1341,17 +1370,24 @@ export class DataModelPage {
       // Populate the dropdown with all available entities
       select.innerHTML = '<option value="">Select entity...</option>';
 
+      // Add system entities group
+      select.innerHTML += '<optgroup label="System Entities">';
+      select.innerHTML += '<option value="SYSTEM:users">User</option>';
+      select.innerHTML += '<option value="SYSTEM:tenants">Tenant</option>';
+      select.innerHTML += '<option value="SYSTEM:roles">Role</option>';
+      select.innerHTML += '</optgroup>';
+
       // Filter to show only published or draft entities
       const availableEntities = this.entities.filter(e =>
         e.status === 'published' || e.status === 'draft' || e.status === 'active'
       );
 
-      availableEntities.forEach(entity => {
-        select.innerHTML += `<option value="${entity.id}">${this.escapeHtml(entity.label || entity.name)}</option>`;
-      });
-
-      if (availableEntities.length === 0) {
-        select.innerHTML = '<option value="">No entities available</option>';
+      if (availableEntities.length > 0) {
+        select.innerHTML += '<optgroup label="Custom Entities">';
+        availableEntities.forEach(entity => {
+          select.innerHTML += `<option value="${entity.id}">${this.escapeHtml(entity.label || entity.name)}</option>`;
+        });
+        select.innerHTML += '</optgroup>';
       }
     } catch (error) {
       console.error('Error loading reference entities:', error);
@@ -1376,6 +1412,8 @@ export class DataModelPage {
       description: formData.get('description') || null,
       help_text: formData.get('help_text') || null,
       max_length: formData.get('max_length') ? parseInt(formData.get('max_length')) : null,
+      precision: formData.get('precision') ? parseInt(formData.get('precision')) : null,
+      decimal_places: formData.get('decimal_places') ? parseInt(formData.get('decimal_places')) : null,
       default_value: formData.get('default_value') || null,
       is_required: formData.get('is_required') === 'on',
       is_unique: formData.get('is_unique') === 'on',
@@ -1386,7 +1424,18 @@ export class DataModelPage {
 
     // Add reference field configuration
     if (fieldType === 'reference') {
-      data.reference_entity_id = formData.get('reference_entity_id') || null;
+      const referenceEntityId = formData.get('reference_entity_id');
+
+      // Check if it's a system entity (prefixed with SYSTEM:)
+      if (referenceEntityId && referenceEntityId.startsWith('SYSTEM:')) {
+        // Extract table name from SYSTEM:tablename format
+        data.reference_table_name = referenceEntityId.substring(7); // Remove "SYSTEM:" prefix
+        data.reference_entity_id = null;
+      } else {
+        data.reference_entity_id = referenceEntityId || null;
+        data.reference_table_name = null;
+      }
+
       data.reference_field = formData.get('reference_field') || 'name';
       data.on_delete = formData.get('on_delete') || 'NO ACTION';
       data.on_update = formData.get('on_update') || 'NO ACTION';

@@ -245,7 +245,15 @@ class MigrationGenerator:
 
     def _generate_field_definition(self, field: FieldDefinition) -> str:
         """Generate SQL field definition"""
-        parts = [field.name, field.data_type]
+        # Handle data type with precision/scale for DECIMAL/NUMERIC types
+        data_type = field.data_type
+        if data_type and data_type.upper() in ['DECIMAL', 'NUMERIC']:
+            if field.precision and field.decimal_places is not None:
+                data_type = f"{data_type.upper()}({field.precision},{field.decimal_places})"
+            elif field.precision:
+                data_type = f"{data_type.upper()}({field.precision})"
+
+        parts = [field.name, data_type]
 
         # Primary key (assume 'id' field is always PK)
         if field.name == 'id':

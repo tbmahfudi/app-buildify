@@ -141,7 +141,8 @@ class FieldDefinition(Base):
     # Numeric Constraints
     max_value = Column(Numeric)
     min_value = Column(Numeric)
-    decimal_places = Column(Integer)
+    precision = Column(Integer)  # Total number of digits (for DECIMAL/NUMERIC types)
+    decimal_places = Column(Integer)  # Number of decimal places (scale)
 
     # Default Value
     default_value = Column(Text)
@@ -166,6 +167,7 @@ class FieldDefinition(Base):
 
     # Relationship Fields (for lookup/reference fields)
     reference_entity_id = Column(GUID, ForeignKey("entity_definitions.id"), nullable=True)
+    reference_table_name = Column(String(100))  # Direct table name for system tables (users, tenants, etc.)
     reference_field = Column(String(100))  # Field in referenced entity to display
     relationship_type = Column(String(50))  # 'many-to-one', 'one-to-one'
 
@@ -212,7 +214,11 @@ class FieldDefinition(Base):
 
     @property
     def reference_table(self):
-        """Compute reference table name from reference_entity_id"""
+        """Compute reference table name from reference_entity_id or reference_table_name"""
+        # For system tables, use direct table name
+        if self.reference_table_name:
+            return self.reference_table_name
+        # For custom entities, use entity's table name
         if self.reference_entity_id and self.reference_entity:
             return self.reference_entity.table_name
         return None
