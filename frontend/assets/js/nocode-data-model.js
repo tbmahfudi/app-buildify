@@ -47,6 +47,9 @@ export class DataModelPage {
     this.entities = [];
     this.modules = [];
     this.currentFilter = 'all'; // 'all', 'platform', 'tenant'
+    this.statusFilter = 'all'; // 'all', 'draft', 'published'
+    this.moduleFilter = 'all'; // 'all', 'with-module', 'standalone'
+    this.searchQuery = '';
   }
 
   async init() {
@@ -67,6 +70,9 @@ export class DataModelPage {
       viewRelationships: (id) => this.viewRelationships(id),
       cloneEntity: (id) => this.cloneEntity(id),
       filterEntities: (filter) => this.filterEntities(filter),
+      filterByStatus: (status) => this.filterByStatus(status),
+      filterByModule: (moduleFilter) => this.filterByModule(moduleFilter),
+      searchEntities: (event) => this.searchEntities(event),
       closeFieldManager: () => this.closeFieldManager(),
       showAddFieldModal: (id) => this.showAddFieldModal(id),
       closeAddFieldModal: () => this.closeAddFieldModal(),
@@ -112,22 +118,86 @@ export class DataModelPage {
     const filterContainer = document.querySelector('.filter-buttons');
     if (filterContainer) {
       filterContainer.innerHTML = `
-        <div class="flex gap-2">
-          <button onclick="DataModelApp.filterEntities('all')"
-                  class="filter-btn px-4 py-2 rounded-lg font-medium transition ${this.currentFilter === 'all' ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}"
-                  data-filter="all">
-            All
-          </button>
-          <button onclick="DataModelApp.filterEntities('platform')"
-                  class="filter-btn px-4 py-2 rounded-lg font-medium transition ${this.currentFilter === 'platform' ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}"
-                  data-filter="platform">
-            <i class="ph ph-planet"></i> Platform
-          </button>
-          <button onclick="DataModelApp.filterEntities('tenant')"
-                  class="filter-btn px-4 py-2 rounded-lg font-medium transition ${this.currentFilter === 'tenant' ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}"
-                  data-filter="tenant">
-            <i class="ph ph-building"></i> My Tenant
-          </button>
+        <div class="space-y-4">
+          <!-- Search Bar -->
+          <div class="flex items-center gap-3">
+            <div class="flex-1 relative">
+              <i class="ph ph-magnifying-glass absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+              <input type="text"
+                     placeholder="Search entities by name or label..."
+                     oninput="DataModelApp.searchEntities(event)"
+                     class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
+            </div>
+          </div>
+
+          <!-- Filter Groups -->
+          <div class="flex flex-wrap gap-4">
+            <!-- Scope Filter -->
+            <div class="flex gap-2 items-center">
+              <span class="text-xs font-semibold text-gray-500 uppercase">Scope:</span>
+              <div class="flex gap-2">
+                <button onclick="DataModelApp.filterEntities('all')"
+                        class="scope-filter-btn px-3 py-1.5 rounded-lg text-sm font-medium transition ${this.currentFilter === 'all' ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}"
+                        data-scope="all">
+                  All
+                </button>
+                <button onclick="DataModelApp.filterEntities('platform')"
+                        class="scope-filter-btn px-3 py-1.5 rounded-lg text-sm font-medium transition ${this.currentFilter === 'platform' ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}"
+                        data-scope="platform">
+                  <i class="ph ph-planet"></i> Platform
+                </button>
+                <button onclick="DataModelApp.filterEntities('tenant')"
+                        class="scope-filter-btn px-3 py-1.5 rounded-lg text-sm font-medium transition ${this.currentFilter === 'tenant' ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}"
+                        data-scope="tenant">
+                  <i class="ph ph-building"></i> My Tenant
+                </button>
+              </div>
+            </div>
+
+            <!-- Status Filter -->
+            <div class="flex gap-2 items-center">
+              <span class="text-xs font-semibold text-gray-500 uppercase">Status:</span>
+              <div class="flex gap-2">
+                <button onclick="DataModelApp.filterByStatus('all')"
+                        class="status-filter-btn px-3 py-1.5 rounded-lg text-sm font-medium transition ${this.statusFilter === 'all' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}"
+                        data-status="all">
+                  All
+                </button>
+                <button onclick="DataModelApp.filterByStatus('draft')"
+                        class="status-filter-btn px-3 py-1.5 rounded-lg text-sm font-medium transition ${this.statusFilter === 'draft' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}"
+                        data-status="draft">
+                  <i class="ph ph-file-dashed"></i> Draft
+                </button>
+                <button onclick="DataModelApp.filterByStatus('published')"
+                        class="status-filter-btn px-3 py-1.5 rounded-lg text-sm font-medium transition ${this.statusFilter === 'published' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}"
+                        data-status="published">
+                  <i class="ph ph-check-circle"></i> Published
+                </button>
+              </div>
+            </div>
+
+            <!-- Module Filter -->
+            <div class="flex gap-2 items-center">
+              <span class="text-xs font-semibold text-gray-500 uppercase">Module:</span>
+              <div class="flex gap-2">
+                <button onclick="DataModelApp.filterByModule('all')"
+                        class="module-filter-btn px-3 py-1.5 rounded-lg text-sm font-medium transition ${this.moduleFilter === 'all' ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}"
+                        data-module="all">
+                  All
+                </button>
+                <button onclick="DataModelApp.filterByModule('with-module')"
+                        class="module-filter-btn px-3 py-1.5 rounded-lg text-sm font-medium transition ${this.moduleFilter === 'with-module' ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}"
+                        data-module="with-module">
+                  <i class="ph ph-package"></i> With Module
+                </button>
+                <button onclick="DataModelApp.filterByModule('standalone')"
+                        class="module-filter-btn px-3 py-1.5 rounded-lg text-sm font-medium transition ${this.moduleFilter === 'standalone' ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}"
+                        data-module="standalone">
+                  <i class="ph ph-database"></i> Standalone
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       `;
     }
@@ -137,16 +207,55 @@ export class DataModelPage {
     this.currentFilter = filter;
 
     // Update button styles
-    document.querySelectorAll('.filter-btn').forEach(btn => {
+    document.querySelectorAll('.scope-filter-btn').forEach(btn => {
       btn.classList.remove('bg-purple-600', 'text-white');
       btn.classList.add('bg-gray-100', 'text-gray-700');
     });
-    const activeBtn = document.querySelector(`[data-filter="${filter}"]`);
+    const activeBtn = document.querySelector(`[data-scope="${filter}"]`);
     if (activeBtn) {
       activeBtn.classList.remove('bg-gray-100', 'text-gray-700');
       activeBtn.classList.add('bg-purple-600', 'text-white');
     }
 
+    this.renderEntities();
+  }
+
+  filterByStatus(status) {
+    this.statusFilter = status;
+
+    // Update button styles
+    document.querySelectorAll('.status-filter-btn').forEach(btn => {
+      btn.classList.remove('bg-blue-600', 'text-white');
+      btn.classList.add('bg-gray-100', 'text-gray-700');
+    });
+    const activeBtn = document.querySelector(`[data-status="${status}"]`);
+    if (activeBtn) {
+      activeBtn.classList.remove('bg-gray-100', 'text-gray-700');
+      activeBtn.classList.add('bg-blue-600', 'text-white');
+    }
+
+    this.renderEntities();
+  }
+
+  filterByModule(moduleFilter) {
+    this.moduleFilter = moduleFilter;
+
+    // Update button styles
+    document.querySelectorAll('.module-filter-btn').forEach(btn => {
+      btn.classList.remove('bg-green-600', 'text-white');
+      btn.classList.add('bg-gray-100', 'text-gray-700');
+    });
+    const activeBtn = document.querySelector(`[data-module="${moduleFilter}"]`);
+    if (activeBtn) {
+      activeBtn.classList.remove('bg-gray-100', 'text-gray-700');
+      activeBtn.classList.add('bg-green-600', 'text-white');
+    }
+
+    this.renderEntities();
+  }
+
+  searchEntities(event) {
+    this.searchQuery = event.target.value.toLowerCase();
     this.renderEntities();
   }
 
@@ -210,32 +319,70 @@ export class DataModelPage {
     const container = document.getElementById('entities-list');
     if (!container) return;
 
-    // Apply filter
+    // Apply all filters
     let filteredEntities = this.entities;
+
+    // Scope filter (platform/tenant)
     if (this.currentFilter === 'platform') {
-      filteredEntities = this.entities.filter(e => e.tenant_id === null);
+      filteredEntities = filteredEntities.filter(e => e.tenant_id === null);
     } else if (this.currentFilter === 'tenant') {
-      filteredEntities = this.entities.filter(e => e.tenant_id !== null);
+      filteredEntities = filteredEntities.filter(e => e.tenant_id !== null);
+    }
+
+    // Status filter
+    if (this.statusFilter !== 'all') {
+      filteredEntities = filteredEntities.filter(e => e.status === this.statusFilter);
+    }
+
+    // Module filter
+    if (this.moduleFilter === 'with-module') {
+      filteredEntities = filteredEntities.filter(e => e.module_id !== null);
+    } else if (this.moduleFilter === 'standalone') {
+      filteredEntities = filteredEntities.filter(e => e.module_id === null);
+    }
+
+    // Search filter
+    if (this.searchQuery) {
+      filteredEntities = filteredEntities.filter(e =>
+        e.name.toLowerCase().includes(this.searchQuery) ||
+        e.label.toLowerCase().includes(this.searchQuery) ||
+        (e.table_name && e.table_name.toLowerCase().includes(this.searchQuery)) ||
+        (e.description && e.description.toLowerCase().includes(this.searchQuery))
+      );
     }
 
     if (filteredEntities.length === 0) {
-      const message = this.currentFilter === 'platform'
-        ? 'No platform templates yet'
+      const message = this.searchQuery
+        ? `No entities found matching "${this.searchQuery}"`
+        : this.currentFilter === 'platform'
+        ? 'No platform templates match the current filters'
         : this.currentFilter === 'tenant'
-        ? 'No tenant-specific entities yet'
-        : 'No entities defined yet';
+        ? 'No tenant-specific entities match the current filters'
+        : 'No entities match the current filters';
 
       container.innerHTML = `
         <div class="col-span-full text-center py-12">
           <i class="ph-duotone ph-database text-6xl text-gray-300"></i>
           <h3 class="mt-4 text-lg font-medium text-gray-900">${message}</h3>
-          <p class="mt-2 text-gray-500">Create your first entity to get started</p>
-          <button onclick="DataModelApp.showCreateModal()" class="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-            <i class="ph ph-plus"></i> Create Entity
-          </button>
+          <p class="mt-2 text-gray-500">${this.searchQuery || this.statusFilter !== 'all' || this.moduleFilter !== 'all' ? 'Try adjusting your filters' : 'Create your first entity to get started'}</p>
+          ${!this.searchQuery && this.statusFilter === 'all' && this.moduleFilter === 'all' ? `
+            <button onclick="DataModelApp.showCreateModal()" class="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+              <i class="ph ph-plus"></i> Create Entity
+            </button>
+          ` : ''}
         </div>
       `;
       return;
+    }
+
+    // Update results count
+    const totalCount = this.entities.length;
+    const filteredCount = filteredEntities.length;
+    const resultsInfo = document.querySelector('.results-info');
+    if (resultsInfo) {
+      resultsInfo.textContent = filteredCount === totalCount
+        ? `Showing all ${totalCount} ${totalCount === 1 ? 'entity' : 'entities'}`
+        : `Showing ${filteredCount} of ${totalCount} ${totalCount === 1 ? 'entity' : 'entities'}`;
     }
 
     container.innerHTML = filteredEntities.map(entity => `
