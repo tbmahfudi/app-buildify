@@ -2296,23 +2296,19 @@ export class DataModelPage {
       }
 
       const result = await response.json();
-      this.showSuccess(`Migration executed successfully in ${result.execution_time_ms}ms!`);
+      this.showSuccess(`Migration executed successfully in ${result.execution_time_ms}ms! Entity is now ${result.entity_status}.`);
 
-      // Reload entity list and refresh migration history
+      // Reload entity list to show updated status
       await this.loadEntities();
 
-      // Get the entity ID from the current modal to refresh it
+      // Refresh migration history modal if it's open
       const modal = document.getElementById('migrationHistoryModal');
-      if (modal) {
+      if (modal && result.entity_id) {
         // Close and reopen to refresh the list
         this.closeMigrationHistoryModal();
-        // Give it a moment to close before reopening
+        // Give it a moment to close before reopening to see the refreshed data
         setTimeout(() => {
-          // Find the entity that was just published
-          const entity = this.entities.find(e => e.status === 'published');
-          if (entity) {
-            this.viewMigrations(entity.id);
-          }
+          this.viewMigrations(result.entity_id);
         }, 100);
       }
     } catch (error) {
