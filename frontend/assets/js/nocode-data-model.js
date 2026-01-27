@@ -1029,6 +1029,15 @@ export class DataModelPage {
 
   renderFieldItem(field, entityId) {
     const isSystem = field.is_system || false;
+
+    // Build reference information string
+    let referenceInfo = '';
+    if (field.field_type === 'reference' || field.field_type === 'lookup') {
+      const refSource = field.reference_table_name || field.reference_entity_id || 'Unknown';
+      const refField = field.reference_field || 'id';
+      referenceInfo = `<span class="text-blue-600"><i class="ph ph-arrow-right"></i> References: ${refSource}.${refField}</span>`;
+    }
+
     return `
       <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition">
         <div class="flex-1">
@@ -1038,10 +1047,11 @@ export class DataModelPage {
             ${field.is_unique ? '<span class="px-2 py-0.5 bg-purple-100 text-purple-700 rounded text-xs">Unique</span>' : ''}
             ${isSystem ? '<span class="px-2 py-0.5 bg-gray-200 text-gray-700 rounded text-xs">System</span>' : ''}
           </div>
-          <div class="text-sm text-gray-600 mt-1 flex items-center gap-4">
+          <div class="text-sm text-gray-600 mt-1 flex items-center gap-4 flex-wrap">
             <span><i class="ph ph-code"></i> ${field.name}</span>
-            <span><i class="ph ph-database"></i> ${field.data_type}${field.max_length ? '(' + field.max_length + ')' : ''}</span>
+            <span><i class="ph ph-database"></i> ${field.data_type}${field.max_length ? '(' + field.max_length + ')' : ''}${field.precision && field.decimal_places !== null ? '(' + field.precision + ',' + field.decimal_places + ')' : ''}</span>
             <span><i class="ph ph-tag"></i> ${field.field_type}</span>
+            ${referenceInfo}
           </div>
           ${field.description ? `<p class="text-sm text-gray-500 mt-1">${this.escapeHtml(field.description)}</p>` : ''}
         </div>
