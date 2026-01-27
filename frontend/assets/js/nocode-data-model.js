@@ -1070,7 +1070,7 @@ export class DataModelPage {
     if (!fieldsList) return;
 
     try {
-      const response = await apiFetch(`/data-model/entities/${entityId}/fields`, {
+      const response = await apiFetch(`/data-model/entities/${entityId}/fields?include_deleted=false`, {
         headers: { 'Authorization': `Bearer ${authService.getToken()}` }
       });
 
@@ -1097,7 +1097,7 @@ export class DataModelPage {
       // Update field count
       const countElement = fieldsList.parentElement.querySelector('.text-sm.text-gray-600');
       if (countElement) {
-        countElement.textContent = `${fields.length} fields defined`;
+        countElement.textContent = `${fields.length} field${fields.length !== 1 ? 's' : ''} defined`;
       }
     } catch (error) {
       console.error('Error refreshing field list:', error);
@@ -1573,7 +1573,16 @@ export class DataModelPage {
         await this.refreshFieldList(entityId);
       } else {
         const error = await response.json();
-        this.showError(error.detail || 'Failed to create field');
+
+        // Better error message for duplicate field names
+        let errorMessage = error.detail || 'Failed to create field';
+        if (error.details && error.details.database_error &&
+            error.details.database_error.includes('duplicate key value violates unique constraint')) {
+          const fieldName = data.name;
+          errorMessage = `A field named "${fieldName}" already exists for this entity. Please use a different name or check if the field was previously deleted.`;
+        }
+
+        this.showError(errorMessage);
       }
     } catch (error) {
       console.error('Error creating field:', error);

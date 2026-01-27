@@ -127,12 +127,13 @@ async def create_field(
 @router.get("/entities/{entity_id}/fields", response_model=List[FieldDefinitionResponse])
 async def list_fields(
     entity_id: UUID,
+    include_deleted: bool = Query(False, description="Include soft-deleted fields"),
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
 ):
     """List all fields for an entity"""
     service = DataModelService(db, current_user)
-    return await service.list_fields(entity_id)
+    return await service.list_fields(entity_id, include_deleted=include_deleted)
 
 
 @router.put("/entities/{entity_id}/fields/{field_id}", response_model=FieldDefinitionResponse)
