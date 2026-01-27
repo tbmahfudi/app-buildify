@@ -77,6 +77,7 @@ export class DataModelPage {
       showAddFieldModal: (id) => this.showAddFieldModal(id),
       closeAddFieldModal: () => this.closeAddFieldModal(),
       updateDataTypeOptions: (type) => this.updateDataTypeOptions(type),
+      onReferenceEntityChange: () => this.onReferenceEntityChange(),
       editField: (entityId, fieldId) => this.editField(entityId, fieldId),
       closeEditFieldModal: () => this.closeEditFieldModal(),
       deleteField: (entityId, fieldId) => this.deleteField(entityId, fieldId),
@@ -1063,6 +1064,47 @@ export class DataModelPage {
     if (modal) modal.remove();
   }
 
+  async refreshFieldList(entityId) {
+    // Refresh the field list in the existing field manager modal
+    const fieldsList = document.getElementById('fieldsList');
+    if (!fieldsList) return;
+
+    try {
+      const response = await apiFetch(`/data-model/entities/${entityId}/fields`, {
+        headers: { 'Authorization': `Bearer ${authService.getToken()}` }
+      });
+
+      if (!response.ok) {
+        this.showError('Failed to reload fields');
+        return;
+      }
+
+      const fields = await response.json();
+
+      if (fields.length === 0) {
+        fieldsList.innerHTML = `
+          <div class="text-center py-12 text-gray-500">
+            <i class="ph-duotone ph-list-bullets text-5xl"></i>
+            <p class="mt-2">No fields yet. Click "Add Field" to create one.</p>
+          </div>
+        `;
+      } else {
+        fieldsList.innerHTML = fields
+          .map(field => this.renderFieldItem(field, entityId))
+          .join('');
+      }
+
+      // Update field count
+      const countElement = fieldsList.parentElement.querySelector('.text-sm.text-gray-600');
+      if (countElement) {
+        countElement.textContent = `${fields.length} fields defined`;
+      }
+    } catch (error) {
+      console.error('Error refreshing field list:', error);
+      this.showError('Error refreshing field list');
+    }
+  }
+
   showAddFieldModal(entityId) {
     const existingModal = document.getElementById('addFieldModal');
     if (existingModal) existingModal.remove();
@@ -1186,6 +1228,7 @@ export class DataModelPage {
                   Reference Entity *
                 </label>
                 <select id="referenceEntitySelect" name="reference_entity_id"
+                        onchange="DataModelApp.onReferenceEntityChange()"
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg">
                   <option value="">Select entity...</option>
                 </select>
@@ -1196,9 +1239,11 @@ export class DataModelPage {
                 <label class="block text-sm font-medium text-gray-700 mb-1">
                   Display Field
                 </label>
-                <input type="text" name="reference_field" placeholder="e.g., name, title"
-                       class="w-full px-3 py-2 border border-gray-300 rounded-lg">
-                <p class="text-xs text-gray-500 mt-1">Field to show in dropdown (defaults to 'name')</p>
+                <select id="referenceFieldSelect" name="reference_field"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                  <option value="name">name</option>
+                </select>
+                <p class="text-xs text-gray-500 mt-1">Field to show in dropdown</p>
               </div>
 
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-3">
@@ -1395,6 +1440,63 @@ export class DataModelPage {
     }
   }
 
+  async onReferenceEntityChange() {
+    const entitySelect = document.getElementById('referenceEntitySelect');
+    const fieldSelect = document.getElementById('referenceFieldSelect');
+
+    if (!entitySelect || !fieldSelect) return;
+
+    const selectedValue = entitySelect.value;
+
+    // Reset field select
+    fieldSelect.innerHTML = '<option value="name">name (default)</option>';
+    fieldSelect.disabled = false;
+
+    if (!selectedValue) {
+      fieldSelect.disabled = true;
+      return;
+    }
+
+    try {
+      // Check if it's a system entity
+      if (selectedValue.startsWith('SYSTEM:')) {
+        const tableName = selectedValue.substring(7);
+
+        // Predefined fields for system entities
+        const systemFields = {
+          'users': ['id', 'email', 'username', 'full_name', 'first_name', 'last_name'],
+          'tenants': ['id', 'name', 'code', 'domain'],
+          'roles': ['id', 'name', 'code', 'description']
+        };
+
+        const fields = systemFields[tableName] || ['id', 'name'];
+        fieldSelect.innerHTML = fields.map(field =>
+          `<option value="${field}">${field}</option>`
+        ).join('');
+
+      } else {
+        // It's a custom entity - fetch its fields
+        const response = await apiFetch(`/data-model/entities/${selectedValue}/fields`, {
+          headers: { 'Authorization': `Bearer ${authService.getToken()}` }
+        });
+
+        if (response.ok) {
+          const fields = await response.json();
+
+          if (fields.length > 0) {
+            fieldSelect.innerHTML = fields
+              .filter(f => !f.is_deleted)
+              .map(field => `<option value="${field.name}">${this.escapeHtml(field.label || field.name)}</option>`)
+              .join('');
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error loading entity fields:', error);
+      fieldSelect.innerHTML = '<option value="name">name (default)</option>';
+    }
+  }
+
   closeAddFieldModal() {
     const modal = document.getElementById('addFieldModal');
     if (modal) modal.remove();
@@ -1467,8 +1569,8 @@ export class DataModelPage {
       if (response.ok) {
         this.closeAddFieldModal();
         this.showSuccess('Field created successfully');
-        // Reload field manager
-        await this.manageFields(entityId);
+        // Refresh the field list without closing the modal
+        await this.refreshFieldList(entityId);
       } else {
         const error = await response.json();
         this.showError(error.detail || 'Failed to create field');
@@ -1617,8 +1719,8 @@ export class DataModelPage {
       if (response.ok) {
         this.closeEditFieldModal();
         this.showSuccess('Field updated successfully');
-        // Reload field manager
-        await this.manageFields(entityId);
+        // Refresh the field list without closing the modal
+        await this.refreshFieldList(entityId);
       } else {
         const error = await response.json();
         this.showError(error.detail || 'Failed to update field');
@@ -1644,8 +1746,8 @@ export class DataModelPage {
 
       if (response.ok) {
         this.showSuccess('Field deleted successfully');
-        // Reload field manager
-        await this.manageFields(entityId);
+        // Refresh the field list without closing the modal
+        await this.refreshFieldList(entityId);
       } else {
         const error = await response.json();
         this.showError(error.detail || 'Failed to delete field');
