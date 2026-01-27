@@ -196,17 +196,30 @@ class DataModelService:
         """Add a field to an entity"""
         entity = await self.get_entity(entity_id)
 
-        # Check if field name already exists
-        existing = self.db.query(FieldDefinition).filter(
+        # Check if field name already exists (active)
+        existing_active = self.db.query(FieldDefinition).filter(
             FieldDefinition.entity_id == entity_id,
             FieldDefinition.name == field_data.name,
             FieldDefinition.is_deleted == False
         ).first()
 
-        if existing:
+        if existing_active:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Field with name '{field_data.name}' already exists"
+            )
+
+        # Check if field name exists but is soft-deleted
+        existing_deleted = self.db.query(FieldDefinition).filter(
+            FieldDefinition.entity_id == entity_id,
+            FieldDefinition.name == field_data.name,
+            FieldDefinition.is_deleted == True
+        ).first()
+
+        if existing_deleted:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"A field named '{field_data.name}' was previously deleted. Please use a different name (e.g., '{field_data.name}_2') or contact support to restore the deleted field."
             )
 
         field = FieldDefinition(
@@ -223,14 +236,18 @@ class DataModelService:
 
         return field
 
-    async def list_fields(self, entity_id: UUID):
+    async def list_fields(self, entity_id: UUID, include_deleted: bool = False):
         """List all fields for an entity"""
         await self.get_entity(entity_id)  # Verify entity exists
 
-        return self.db.query(FieldDefinition).filter(
-            FieldDefinition.entity_id == entity_id,
-            FieldDefinition.is_deleted == False
-        ).order_by(FieldDefinition.display_order).all()
+        query = self.db.query(FieldDefinition).filter(
+            FieldDefinition.entity_id == entity_id
+        )
+
+        if not include_deleted:
+            query = query.filter(FieldDefinition.is_deleted == False)
+
+        return query.order_by(FieldDefinition.display_order).all()
 
     async def update_field(self, entity_id: UUID, field_id: UUID, field_data: FieldDefinitionUpdate):
         """Update a field definition"""

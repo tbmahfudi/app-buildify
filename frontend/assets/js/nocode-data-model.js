@@ -1029,6 +1029,15 @@ export class DataModelPage {
 
   renderFieldItem(field, entityId) {
     const isSystem = field.is_system || false;
+
+    // Build reference information string
+    let referenceInfo = '';
+    if (field.field_type === 'reference' || field.field_type === 'lookup') {
+      const refSource = field.reference_table_name || field.reference_entity_id || 'Unknown';
+      const refField = field.reference_field || 'id';
+      referenceInfo = `<span class="text-blue-600"><i class="ph ph-arrow-right"></i> References: ${refSource}.${refField}</span>`;
+    }
+
     return `
       <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition">
         <div class="flex-1">
@@ -1038,10 +1047,11 @@ export class DataModelPage {
             ${field.is_unique ? '<span class="px-2 py-0.5 bg-purple-100 text-purple-700 rounded text-xs">Unique</span>' : ''}
             ${isSystem ? '<span class="px-2 py-0.5 bg-gray-200 text-gray-700 rounded text-xs">System</span>' : ''}
           </div>
-          <div class="text-sm text-gray-600 mt-1 flex items-center gap-4">
+          <div class="text-sm text-gray-600 mt-1 flex items-center gap-4 flex-wrap">
             <span><i class="ph ph-code"></i> ${field.name}</span>
-            <span><i class="ph ph-database"></i> ${field.data_type}${field.max_length ? '(' + field.max_length + ')' : ''}</span>
+            <span><i class="ph ph-database"></i> ${field.data_type}${field.max_length ? '(' + field.max_length + ')' : ''}${field.precision && field.decimal_places !== null ? '(' + field.precision + ',' + field.decimal_places + ')' : ''}</span>
             <span><i class="ph ph-tag"></i> ${field.field_type}</span>
+            ${referenceInfo}
           </div>
           ${field.description ? `<p class="text-sm text-gray-500 mt-1">${this.escapeHtml(field.description)}</p>` : ''}
         </div>
@@ -1070,7 +1080,7 @@ export class DataModelPage {
     if (!fieldsList) return;
 
     try {
-      const response = await apiFetch(`/data-model/entities/${entityId}/fields`, {
+      const response = await apiFetch(`/data-model/entities/${entityId}/fields?include_deleted=false`, {
         headers: { 'Authorization': `Bearer ${authService.getToken()}` }
       });
 
@@ -1097,7 +1107,7 @@ export class DataModelPage {
       // Update field count
       const countElement = fieldsList.parentElement.querySelector('.text-sm.text-gray-600');
       if (countElement) {
-        countElement.textContent = `${fields.length} fields defined`;
+        countElement.textContent = `${fields.length} field${fields.length !== 1 ? 's' : ''} defined`;
       }
     } catch (error) {
       console.error('Error refreshing field list:', error);
@@ -1573,7 +1583,16 @@ export class DataModelPage {
         await this.refreshFieldList(entityId);
       } else {
         const error = await response.json();
-        this.showError(error.detail || 'Failed to create field');
+
+        // Better error message for duplicate field names
+        let errorMessage = error.detail || 'Failed to create field';
+        if (error.details && error.details.database_error &&
+            error.details.database_error.includes('duplicate key value violates unique constraint')) {
+          const fieldName = data.name;
+          errorMessage = `A field named "${fieldName}" already exists for this entity. Please use a different name or check if the field was previously deleted.`;
+        }
+
+        this.showError(errorMessage);
       }
     } catch (error) {
       console.error('Error creating field:', error);
