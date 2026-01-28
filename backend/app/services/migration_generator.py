@@ -278,7 +278,9 @@ class MigrationGenerator:
 
         # Foreign key reference
         if field.reference_table:
-            parts.append(f"REFERENCES {field.reference_table}(id)")
+            # Use reference_field if specified, otherwise default to 'id'
+            ref_column = field.reference_field or 'id'
+            parts.append(f"REFERENCES {field.reference_table}({ref_column})")
             if field.on_delete:
                 parts.append(f"ON DELETE {field.on_delete}")
             if field.on_update:

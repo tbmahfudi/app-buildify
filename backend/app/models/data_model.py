@@ -168,7 +168,7 @@ class FieldDefinition(Base):
     # Relationship Fields (for lookup/reference fields)
     reference_entity_id = Column(GUID, ForeignKey("entity_definitions.id"), nullable=True)
     reference_table_name = Column(String(100))  # Direct table name for system tables (users, tenants, etc.)
-    reference_field = Column(String(100))  # Field in referenced entity to display
+    reference_field = Column(String(100))  # Target column in referenced table (for REFERENCES clause, e.g., 'id', 'code', 'username')
     relationship_type = Column(String(50))  # 'many-to-one', 'one-to-one'
 
     # FK Constraint Behavior

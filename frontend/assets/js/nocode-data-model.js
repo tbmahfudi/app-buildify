@@ -1345,13 +1345,15 @@ export class DataModelPage {
 
               <div class="mb-3">
                 <label class="block text-sm font-medium text-gray-700 mb-1">
-                  Display Field
+                  Referenced Column <span class="text-red-500">*</span>
                 </label>
                 <select id="referenceFieldSelect" name="reference_field"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-lg">
-                  <option value="name">name</option>
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg" required>
+                  <option value="id">id</option>
                 </select>
-                <p class="text-xs text-gray-500 mt-1">Field to show in dropdown</p>
+                <p class="text-xs text-gray-500 mt-1">
+                  Column in the referenced table to link to (usually the primary key like 'id', 'code', or unique field like 'username')
+                </p>
               </div>
 
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-3">
@@ -1557,7 +1559,7 @@ export class DataModelPage {
     const selectedValue = entitySelect.value;
 
     // Reset field select
-    fieldSelect.innerHTML = '<option value="name">name (default)</option>';
+    fieldSelect.innerHTML = '<option value="id">id (default)</option>';
     fieldSelect.disabled = false;
 
     if (!selectedValue) {
@@ -1579,7 +1581,7 @@ export class DataModelPage {
 
         const fields = systemFields[tableName] || ['id', 'name'];
         fieldSelect.innerHTML = fields.map(field =>
-          `<option value="${field}">${field}</option>`
+          `<option value="${field}"${field === 'id' ? ' selected' : ''}>${field}${field === 'id' ? ' (recommended)' : ''}</option>`
         ).join('');
 
       } else {
@@ -1591,17 +1593,23 @@ export class DataModelPage {
         if (response.ok) {
           const fields = await response.json();
 
-          if (fields.length > 0) {
-            fieldSelect.innerHTML = fields
-              .filter(f => !f.is_deleted)
-              .map(field => `<option value="${field.name}">${this.escapeHtml(field.label || field.name)}</option>`)
-              .join('');
-          }
+          // Always include system fields first
+          const systemFieldOptions = [
+            '<option value="id" selected>id (recommended)</option>',
+            '<option value="created_at">created_at</option>',
+            '<option value="updated_at">updated_at</option>'
+          ];
+
+          const customFieldOptions = fields
+            .filter(f => !f.is_deleted)
+            .map(field => `<option value="${field.name}">${this.escapeHtml(field.label || field.name)}</option>`);
+
+          fieldSelect.innerHTML = [...systemFieldOptions, ...customFieldOptions].join('');
         }
       }
     } catch (error) {
       console.error('Error loading entity fields:', error);
-      fieldSelect.innerHTML = '<option value="name">name (default)</option>';
+      fieldSelect.innerHTML = '<option value="id">id (default)</option>';
     }
   }
 
