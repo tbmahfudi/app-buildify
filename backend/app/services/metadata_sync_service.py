@@ -147,7 +147,7 @@ class MetadataSyncService:
 
             column = {
                 'field': field.name,
-                'label': field.label or field.name.replace('_', ' ').title(),
+                'title': field.label or field.name.replace('_', ' ').title(),
                 'type': field.field_type,
                 'sortable': True,
                 'filterable': True,
@@ -164,7 +164,7 @@ class MetadataSyncService:
             for field in entity_def.fields[:5]:
                 columns.append({
                     'field': field.name,
-                    'label': field.label or field.name.replace('_', ' ').title(),
+                    'title': field.label or field.name.replace('_', ' ').title(),
                     'type': field.field_type,
                     'sortable': True,
                     'filterable': True,
@@ -174,20 +174,12 @@ class MetadataSyncService:
 
         return {
             'columns': columns,
-            'default_sort': {
-                'field': entity_def.default_sort_field or 'created_at',
-                'direction': 'desc'
-            },
+            'default_sort': [[entity_def.default_sort_field or 'created_at', 'desc']],
             'default_page_size': 25,
             'enable_search': True,
             'enable_filters': True,
             'enable_export': True,
-            'actions': {
-                'view': True,
-                'edit': True,
-                'delete': True,
-                'create': True
-            }
+            'actions': ['view', 'edit', 'delete', 'create']
         }
 
     def _generate_form_config(self, entity_def: EntityDefinition) -> Dict[str, Any]:
