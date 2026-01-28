@@ -1133,7 +1133,8 @@ export class DataModelPage {
     if (field.field_type === 'reference' || field.field_type === 'lookup') {
       const refSource = field.reference_table_name || field.reference_entity_id || 'Unknown';
       const refField = field.reference_field || 'id';
-      referenceInfo = `<span class="text-blue-600"><i class="ph ph-arrow-right"></i> References: ${refSource}.${refField}</span>`;
+      const displayField = field.display_field || 'name';
+      referenceInfo = `<span class="text-blue-600"><i class="ph ph-arrow-right"></i> FK: ${refSource}.${refField} | Display: ${displayField}</span>`;
     }
 
     return `
@@ -1356,6 +1357,19 @@ export class DataModelPage {
                 </p>
               </div>
 
+              <div class="mb-3">
+                <label class="block text-sm font-medium text-gray-700 mb-1">
+                  Display Field <span class="text-red-500">*</span>
+                </label>
+                <select id="displayFieldSelect" name="display_field"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg" required>
+                  <option value="name">name</option>
+                </select>
+                <p class="text-xs text-gray-500 mt-1">
+                  Column to show in dropdown lists (e.g., 'name', 'full_name', 'email')
+                </p>
+              </div>
+
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-3">
                 <div>
                   <label class="block text-sm font-medium text-gray-700 mb-1">On Delete</label>
@@ -1552,18 +1566,22 @@ export class DataModelPage {
 
   async onReferenceEntityChange() {
     const entitySelect = document.getElementById('referenceEntitySelect');
-    const fieldSelect = document.getElementById('referenceFieldSelect');
+    const referenceFieldSelect = document.getElementById('referenceFieldSelect');
+    const displayFieldSelect = document.getElementById('displayFieldSelect');
 
-    if (!entitySelect || !fieldSelect) return;
+    if (!entitySelect || !referenceFieldSelect || !displayFieldSelect) return;
 
     const selectedValue = entitySelect.value;
 
-    // Reset field select
-    fieldSelect.innerHTML = '<option value="id">id (default)</option>';
-    fieldSelect.disabled = false;
+    // Reset field selects
+    referenceFieldSelect.innerHTML = '<option value="id">id (default)</option>';
+    displayFieldSelect.innerHTML = '<option value="name">name (default)</option>';
+    referenceFieldSelect.disabled = false;
+    displayFieldSelect.disabled = false;
 
     if (!selectedValue) {
-      fieldSelect.disabled = true;
+      referenceFieldSelect.disabled = true;
+      displayFieldSelect.disabled = true;
       return;
     }
 
@@ -1580,8 +1598,16 @@ export class DataModelPage {
         };
 
         const fields = systemFields[tableName] || ['id', 'name'];
-        fieldSelect.innerHTML = fields.map(field =>
+
+        // Populate reference field (FK target) - recommend 'id'
+        referenceFieldSelect.innerHTML = fields.map(field =>
           `<option value="${field}"${field === 'id' ? ' selected' : ''}>${field}${field === 'id' ? ' (recommended)' : ''}</option>`
+        ).join('');
+
+        // Populate display field (UI display) - recommend 'name' or similar
+        const displayFields = fields.filter(f => f !== 'id');
+        displayFieldSelect.innerHTML = displayFields.map(field =>
+          `<option value="${field}"${field === 'name' || field === 'full_name' ? ' selected' : ''}>${field}</option>`
         ).join('');
 
       } else {
@@ -1593,7 +1619,7 @@ export class DataModelPage {
         if (response.ok) {
           const fields = await response.json();
 
-          // Always include system fields first
+          // For reference field (FK target) - include system fields
           const systemFieldOptions = [
             '<option value="id" selected>id (recommended)</option>',
             '<option value="created_at">created_at</option>',
@@ -1604,12 +1630,20 @@ export class DataModelPage {
             .filter(f => !f.is_deleted)
             .map(field => `<option value="${field.name}">${this.escapeHtml(field.label || field.name)}</option>`);
 
-          fieldSelect.innerHTML = [...systemFieldOptions, ...customFieldOptions].join('');
+          referenceFieldSelect.innerHTML = [...systemFieldOptions, ...customFieldOptions].join('');
+
+          // For display field (UI display) - exclude system fields, prefer 'name'
+          const displayFieldOptions = fields
+            .filter(f => !f.is_deleted)
+            .map(field => `<option value="${field.name}"${field.name === 'name' ? ' selected' : ''}>${this.escapeHtml(field.label || field.name)}</option>`);
+
+          displayFieldSelect.innerHTML = displayFieldOptions.join('') || '<option value="name">name</option>';
         }
       }
     } catch (error) {
       console.error('Error loading entity fields:', error);
-      fieldSelect.innerHTML = '<option value="id">id (default)</option>';
+      referenceFieldSelect.innerHTML = '<option value="id">id (default)</option>';
+      displayFieldSelect.innerHTML = '<option value="name">name (default)</option>';
     }
   }
 
