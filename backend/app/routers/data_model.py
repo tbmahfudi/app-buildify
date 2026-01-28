@@ -173,6 +173,18 @@ async def restore_field(
     return await service.restore_field(entity_id, field_id)
 
 
+@router.delete("/entities/{entity_id}/fields/{field_id}/permanent")
+async def permanently_delete_field(
+    entity_id: UUID,
+    field_id: UUID,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """Permanently delete a soft-deleted field from database"""
+    service = DataModelService(db, current_user)
+    return await service.permanently_delete_field(entity_id, field_id)
+
+
 @router.get("/entities/{entity_id}/fields/deleted")
 async def list_deleted_fields(
     entity_id: UUID,
