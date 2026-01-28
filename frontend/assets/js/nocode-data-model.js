@@ -1084,11 +1084,18 @@ export class DataModelPage {
                           Deleted: ${new Date(field.updated_at).toLocaleDateString()}
                         </div>
                       </div>
-                      <button
-                        onclick="DataModelApp.restoreFieldFromModal('${entityId}', '${field.id}')"
-                        class="ml-4 px-3 py-1.5 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 whitespace-nowrap">
-                        <i class="ph ph-arrow-counter-clockwise"></i> Restore
-                      </button>
+                      <div class="ml-4 flex gap-2">
+                        <button
+                          onclick="DataModelApp.restoreFieldFromModal('${entityId}', '${field.id}')"
+                          class="px-3 py-1.5 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 whitespace-nowrap">
+                          <i class="ph ph-arrow-counter-clockwise"></i> Restore
+                        </button>
+                        <button
+                          onclick="DataModelApp.permanentlyDeleteFieldFromModal('${entityId}', '${field.id}', '${this.escapeHtml(field.name)}')"
+                          class="px-3 py-1.5 bg-red-600 text-white text-sm rounded hover:bg-red-700 whitespace-nowrap">
+                          <i class="ph ph-trash"></i> Delete Forever
+                        </button>
+                      </div>
                     </div>
                   </div>
                 `).join('')}
@@ -1116,6 +1123,34 @@ export class DataModelPage {
     await this.restoreField(entityId, fieldId);
     // Close the deleted fields modal
     this.closeDeletedFieldsModal();
+  }
+
+  async permanentlyDeleteFieldFromModal(entityId, fieldId, fieldName) {
+    if (!confirm(`Are you sure you want to PERMANENTLY delete the field "${fieldName}"?\n\nThis action CANNOT be undone. The field will be completely removed from the database.`)) {
+      return;
+    }
+
+    try {
+      const response = await apiFetch(`/data-model/entities/${entityId}/fields/${fieldId}/permanent`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${authService.getToken()}`
+        }
+      });
+
+      if (response.ok) {
+        this.showSuccess('Field permanently deleted from database');
+        // Refresh the deleted fields modal
+        this.closeDeletedFieldsModal();
+        await this.showDeletedFieldsModal(entityId);
+      } else {
+        const error = await response.json();
+        this.showError(error.detail || 'Failed to permanently delete field');
+      }
+    } catch (error) {
+      console.error('Error permanently deleting field:', error);
+      this.showError('Error permanently deleting field');
+    }
   }
 
   closeDeletedFieldsModal() {

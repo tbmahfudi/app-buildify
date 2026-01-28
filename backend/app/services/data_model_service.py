@@ -330,6 +330,26 @@ class DataModelService:
 
         return field
 
+    async def permanently_delete_field(self, entity_id: UUID, field_id: UUID):
+        """Permanently delete a soft-deleted field from database"""
+        field = self.db.query(FieldDefinition).filter(
+            FieldDefinition.id == field_id,
+            FieldDefinition.entity_id == entity_id,
+            FieldDefinition.is_deleted == True
+        ).first()
+
+        if not field:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Deleted field not found"
+            )
+
+        # Permanently delete from database
+        self.db.delete(field)
+        self.db.commit()
+
+        return {"message": f"Field '{field.name}' permanently deleted from database"}
+
     async def list_deleted_fields(self, entity_id: UUID):
         """List all soft-deleted fields for an entity"""
         entity = await self.get_entity(entity_id)
