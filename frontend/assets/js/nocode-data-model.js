@@ -1090,12 +1090,17 @@ export class DataModelPage {
                       </div>
                       <div class="ml-4 flex gap-2">
                         <button
-                          onclick="DataModelApp.restoreFieldFromModal('${entityId}', '${field.id}')"
+                          data-entity-id="${entityId}"
+                          data-field-id="${field.id}"
+                          onclick="DataModelApp.restoreFieldFromModal(this.dataset.entityId, this.dataset.fieldId)"
                           class="px-3 py-1.5 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 whitespace-nowrap">
                           <i class="ph ph-arrow-counter-clockwise"></i> Restore
                         </button>
                         <button
-                          onclick="DataModelApp.permanentlyDeleteFieldFromModal('${entityId}', '${field.id}', ${JSON.stringify(field.name)})"
+                          data-entity-id="${entityId}"
+                          data-field-id="${field.id}"
+                          data-field-name="${this.escapeHtml(field.name)}"
+                          onclick="DataModelApp.permanentlyDeleteFieldFromModal(this.dataset.entityId, this.dataset.fieldId, this.dataset.fieldName)"
                           class="px-3 py-1.5 bg-red-600 text-white text-sm rounded hover:bg-red-700 whitespace-nowrap">
                           <i class="ph ph-trash"></i> Delete Forever
                         </button>
