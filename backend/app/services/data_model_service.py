@@ -219,7 +219,14 @@ class DataModelService:
         if existing_deleted:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
-                detail=f"A field named '{field_data.name}' was previously deleted. Please use a different name (e.g., '{field_data.name}_2') or contact support to restore the deleted field."
+                detail={
+                    "message": f"A field named '{field_data.name}' was previously deleted.",
+                    "field_id": str(existing_deleted.id),
+                    "field_name": existing_deleted.name,
+                    "deleted_at": existing_deleted.updated_at.isoformat() if existing_deleted.updated_at else None,
+                    "can_restore": True,
+                    "suggestion": f"You can either restore the deleted field or use a different name (e.g., '{field_data.name}_2')"
+                }
             )
 
         field = FieldDefinition(
@@ -300,6 +307,39 @@ class DataModelService:
         self.db.commit()
 
         return {"message": "Field deleted successfully"}
+
+    async def restore_field(self, entity_id: UUID, field_id: UUID):
+        """Restore a soft-deleted field"""
+        field = self.db.query(FieldDefinition).filter(
+            FieldDefinition.id == field_id,
+            FieldDefinition.entity_id == entity_id,
+            FieldDefinition.is_deleted == True
+        ).first()
+
+        if not field:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Deleted field not found"
+            )
+
+        field.is_deleted = False
+        field.updated_by = self.current_user.id
+
+        self.db.commit()
+        self.db.refresh(field)
+
+        return field
+
+    async def list_deleted_fields(self, entity_id: UUID):
+        """List all soft-deleted fields for an entity"""
+        entity = await self.get_entity(entity_id)
+
+        deleted_fields = self.db.query(FieldDefinition).filter(
+            FieldDefinition.entity_id == entity_id,
+            FieldDefinition.is_deleted == True
+        ).order_by(FieldDefinition.updated_at.desc()).all()
+
+        return deleted_fields
 
     # ==================== Clone Methods ====================
 

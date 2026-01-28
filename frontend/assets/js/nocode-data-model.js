@@ -996,9 +996,14 @@ export class DataModelPage {
             <div class="text-sm text-gray-600">
               ${fields.length} fields defined
             </div>
-            <button onclick="DataModelApp.showAddFieldModal('${entity.id}')" class="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 whitespace-nowrap">
-              <i class="ph ph-plus"></i> Add Field
-            </button>
+            <div class="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+              <button onclick="DataModelApp.showDeletedFieldsModal('${entity.id}')" class="w-full sm:w-auto px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 whitespace-nowrap">
+                <i class="ph ph-trash"></i> View Deleted
+              </button>
+              <button onclick="DataModelApp.showAddFieldModal('${entity.id}')" class="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 whitespace-nowrap">
+                <i class="ph ph-plus"></i> Add Field
+              </button>
+            </div>
           </div>
 
           <div class="space-y-2" id="fieldsList">
@@ -1025,6 +1030,99 @@ export class DataModelPage {
     // Store current state
     this.currentEntity = entity;
     this.currentFields = fields;
+  }
+
+  async showDeletedFieldsModal(entityId) {
+    try {
+      const response = await apiFetch(`/data-model/entities/${entityId}/fields/deleted`, {
+        headers: { 'Authorization': `Bearer ${authService.getToken()}` }
+      });
+
+      if (!response.ok) {
+        this.showError('Failed to load deleted fields');
+        return;
+      }
+
+      const deletedFields = await response.json();
+
+      // Create modal
+      const modal = document.createElement('div');
+      modal.id = 'deletedFieldsModal';
+      modal.className = 'fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-[60] p-4';
+      modal.innerHTML = `
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[80vh] flex flex-col mx-auto">
+          <!-- Header -->
+          <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+            <h2 class="text-xl font-semibold text-gray-900">
+              <i class="ph ph-trash"></i> Deleted Fields
+            </h2>
+            <button onclick="DataModelApp.closeDeletedFieldsModal()" class="text-gray-400 hover:text-gray-600">
+              <i class="ph ph-x text-2xl"></i>
+            </button>
+          </div>
+
+          <!-- Body -->
+          <div class="flex-1 overflow-y-auto p-6">
+            ${deletedFields.length === 0 ? `
+              <div class="text-center py-12 text-gray-500">
+                <i class="ph-duotone ph-trash text-5xl"></i>
+                <p class="mt-2">No deleted fields</p>
+              </div>
+            ` : `
+              <div class="space-y-2">
+                ${deletedFields.map(field => `
+                  <div class="p-4 border border-gray-200 rounded-lg bg-gray-50">
+                    <div class="flex justify-between items-start">
+                      <div class="flex-1">
+                        <div class="flex items-center gap-2">
+                          <span class="font-medium text-gray-900">${this.escapeHtml(field.label || field.name)}</span>
+                          <span class="px-2 py-1 text-xs bg-gray-200 text-gray-700 rounded">${field.field_type}</span>
+                        </div>
+                        <div class="text-sm text-gray-500 mt-1">Field name: ${field.name}</div>
+                        ${field.description ? `<div class="text-sm text-gray-600 mt-1">${this.escapeHtml(field.description)}</div>` : ''}
+                        <div class="text-xs text-gray-400 mt-2">
+                          Deleted: ${new Date(field.updated_at).toLocaleDateString()}
+                        </div>
+                      </div>
+                      <button
+                        onclick="DataModelApp.restoreFieldFromModal('${entityId}', '${field.id}')"
+                        class="ml-4 px-3 py-1.5 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 whitespace-nowrap">
+                        <i class="ph ph-arrow-counter-clockwise"></i> Restore
+                      </button>
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+            `}
+          </div>
+
+          <!-- Footer -->
+          <div class="px-6 py-4 border-t border-gray-200 flex justify-end">
+            <button onclick="DataModelApp.closeDeletedFieldsModal()" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200">
+              Close
+            </button>
+          </div>
+        </div>
+      `;
+
+      document.body.appendChild(modal);
+    } catch (error) {
+      console.error('Error loading deleted fields:', error);
+      this.showError('Error loading deleted fields');
+    }
+  }
+
+  async restoreFieldFromModal(entityId, fieldId) {
+    await this.restoreField(entityId, fieldId);
+    // Close the deleted fields modal
+    this.closeDeletedFieldsModal();
+  }
+
+  closeDeletedFieldsModal() {
+    const modal = document.getElementById('deletedFieldsModal');
+    if (modal) {
+      modal.remove();
+    }
   }
 
   renderFieldItem(field, entityId) {
@@ -1584,15 +1682,26 @@ export class DataModelPage {
       } else {
         const error = await response.json();
 
-        // Better error message for duplicate field names
-        let errorMessage = error.detail || 'Failed to create field';
-        if (error.details && error.details.database_error &&
-            error.details.database_error.includes('duplicate key value violates unique constraint')) {
-          const fieldName = data.name;
-          errorMessage = `A field named "${fieldName}" already exists for this entity. Please use a different name or check if the field was previously deleted.`;
-        }
+        // Handle soft-deleted field conflict with restore option
+        if (typeof error.detail === 'object' && error.detail.can_restore) {
+          const fieldInfo = error.detail;
+          const message = `${fieldInfo.message}\n\n${fieldInfo.suggestion}`;
 
-        this.showError(errorMessage);
+          if (confirm(`${message}\n\nWould you like to restore the deleted field "${fieldInfo.field_name}"?`)) {
+            await this.restoreField(entityId, fieldInfo.field_id);
+            return;
+          }
+        } else {
+          // Better error message for duplicate field names
+          let errorMessage = error.detail || 'Failed to create field';
+          if (error.details && error.details.database_error &&
+              error.details.database_error.includes('duplicate key value violates unique constraint')) {
+            const fieldName = data.name;
+            errorMessage = `A field named "${fieldName}" already exists for this entity. Please use a different name or check if the field was previously deleted.`;
+          }
+
+          this.showError(errorMessage);
+        }
       }
     } catch (error) {
       console.error('Error creating field:', error);
@@ -1774,6 +1883,29 @@ export class DataModelPage {
     } catch (error) {
       console.error('Error deleting field:', error);
       this.showError('Error deleting field');
+    }
+  }
+
+  async restoreField(entityId, fieldId) {
+    try {
+      const response = await apiFetch(`/data-model/entities/${entityId}/fields/${fieldId}/restore`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${authService.getToken()}`
+        }
+      });
+
+      if (response.ok) {
+        this.showSuccess('Field restored successfully');
+        // Refresh the field list to show the restored field
+        await this.refreshFieldList(entityId);
+      } else {
+        const error = await response.json();
+        this.showError(error.detail || 'Failed to restore field');
+      }
+    } catch (error) {
+      console.error('Error restoring field:', error);
+      this.showError('Error restoring field');
     }
   }
 
