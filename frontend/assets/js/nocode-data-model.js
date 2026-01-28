@@ -1130,25 +1130,36 @@ export class DataModelPage {
   }
 
   async permanentlyDeleteFieldFromModal(entityId, fieldId, fieldName) {
+    console.log('permanentlyDeleteFieldFromModal called:', { entityId, fieldId, fieldName });
+
     if (!confirm(`Are you sure you want to PERMANENTLY delete the field "${fieldName}"?\n\nThis action CANNOT be undone. The field will be completely removed from the database.`)) {
+      console.log('User cancelled permanent delete');
       return;
     }
 
     try {
-      const response = await apiFetch(`/data-model/entities/${entityId}/fields/${fieldId}/permanent`, {
+      const url = `/data-model/entities/${entityId}/fields/${fieldId}/permanent`;
+      console.log('Sending DELETE request to:', url);
+
+      const response = await apiFetch(url, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${authService.getToken()}`
         }
       });
 
+      console.log('DELETE response status:', response.status, response.ok);
+
       if (response.ok) {
+        const result = await response.json();
+        console.log('DELETE success result:', result);
         this.showSuccess('Field permanently deleted from database');
         // Refresh the deleted fields modal
         this.closeDeletedFieldsModal();
         await this.showDeletedFieldsModal(entityId);
       } else {
         const error = await response.json();
+        console.error('DELETE failed with error:', error);
         this.showError(error.detail || 'Failed to permanently delete field');
       }
     } catch (error) {
