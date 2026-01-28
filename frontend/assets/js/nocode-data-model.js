@@ -1780,21 +1780,25 @@ export class DataModelPage {
     const existingModal = document.getElementById('editFieldModal');
     if (existingModal) existingModal.remove();
 
+    const isReference = field.field_type === 'reference' || field.field_type === 'lookup';
+    const isSelect = field.field_type === 'select';
+    const isDecimal = field.data_type === 'DECIMAL' || field.data_type === 'NUMERIC';
+
     const modal = document.createElement('div');
     modal.id = 'editFieldModal';
-    modal.className = 'fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-[60]';
+    modal.className = 'fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-[60] p-4';
     modal.innerHTML = `
-      <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
-        <div class="px-6 py-4 border-b border-gray-200">
-          <h3 class="text-lg font-semibold text-gray-900">Edit Field</h3>
+      <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col mx-auto">
+        <div class="px-4 sm:px-6 py-4 border-b border-gray-200 flex-shrink-0">
+          <h3 class="text-lg font-semibold text-gray-900">Edit Field: ${this.escapeHtml(field.label)}</h3>
         </div>
-        <form id="editFieldForm" class="flex-1 flex flex-col">
-          <div class="flex-1 overflow-y-auto p-6 space-y-4">
-            <div class="grid grid-cols-2 gap-4">
+        <form id="editFieldForm" class="flex-1 flex flex-col min-h-0">
+          <div class="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 pb-64">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Field Name *</label>
                 <input type="text" name="name" required value="${this.escapeHtml(field.name)}"
-                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-gray-100" disabled>
+                       class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100" disabled>
                 <p class="text-xs text-gray-500 mt-1">Cannot change after creation</p>
               </div>
               <div>
@@ -1804,24 +1808,145 @@ export class DataModelPage {
               </div>
             </div>
 
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Field Type *</label>
+                <input type="text" value="${field.field_type}"
+                       class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100" disabled>
+                <p class="text-xs text-gray-500 mt-1">Cannot change after creation</p>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Database Type *</label>
+                <input type="text" value="${field.data_type}"
+                       class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100" disabled>
+                <p class="text-xs text-gray-500 mt-1">Cannot change after creation</p>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div ${field.data_type !== 'VARCHAR' ? 'style="display:none;"' : ''}>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Max Length</label>
+                <input type="number" name="max_length" value="${field.max_length || ''}" placeholder="255"
+                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                <p class="text-xs text-gray-500 mt-1">For VARCHAR types</p>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Default Value</label>
+                <input type="text" name="default_value" value="${field.default_value || ''}" placeholder=""
+                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+              </div>
+            </div>
+
+            <!-- Decimal Precision Configuration (shown for decimal types) -->
+            <div ${!isDecimal ? 'style="display: none;"' : ''} class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Precision (Total Digits)</label>
+                <input type="number" name="precision" value="${field.precision || ''}" placeholder="10" min="1" max="65"
+                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                <p class="text-xs text-gray-500 mt-1">Total number of digits (e.g., 5 in DECIMAL(5,2))</p>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Scale (Decimal Places)</label>
+                <input type="number" name="decimal_places" value="${field.decimal_places !== null && field.decimal_places !== undefined ? field.decimal_places : ''}" placeholder="2" min="0" max="30"
+                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                <p class="text-xs text-gray-500 mt-1">Digits after decimal point (e.g., 2 in DECIMAL(5,2))</p>
+              </div>
+            </div>
+
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
-              <textarea name="description" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">${field.description || ''}</textarea>
+              <textarea name="description" rows="2" placeholder="Field description..."
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">${field.description || ''}</textarea>
             </div>
 
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Help Text</label>
-              <input type="text" name="help_text" value="${field.help_text || ''}"
+              <input type="text" name="help_text" value="${field.help_text || ''}" placeholder="Helper text shown to users"
                      class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
             </div>
 
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Default Value</label>
-              <input type="text" name="default_value" value="${field.default_value || ''}"
-                     class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+            <!-- Reference Field Configuration (shown for reference fields) -->
+            <div ${!isReference ? 'style="display: none;"' : ''} class="p-4 bg-blue-50 rounded-lg border border-blue-200">
+              <h4 class="font-medium text-sm text-gray-900 mb-3">
+                <i class="ph ph-link"></i> Reference Configuration
+              </h4>
+
+              <div class="mb-3">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Reference Entity *</label>
+                <input type="text" value="${field.reference_table_name || field.reference_entity_id || 'N/A'}"
+                       class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100" disabled>
+                <p class="text-xs text-gray-500 mt-1">Cannot change after creation</p>
+              </div>
+
+              <div class="mb-3">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Referenced Column *</label>
+                <input type="text" value="${field.reference_field || 'id'}"
+                       class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100" disabled>
+                <p class="text-xs text-gray-500 mt-1">Cannot change after creation</p>
+              </div>
+
+              <div class="mb-3">
+                <label class="block text-sm font-medium text-gray-700 mb-1">
+                  Display Field <span class="text-red-500">*</span>
+                </label>
+                <input type="text" name="display_field" value="${field.display_field || 'name'}" required
+                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                <p class="text-xs text-gray-500 mt-1">
+                  Column to show in dropdown lists (e.g., 'name', 'full_name', 'email')
+                </p>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-3">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">On Delete</label>
+                  <select name="on_delete" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                    <option value="NO ACTION" ${field.on_delete === 'NO ACTION' ? 'selected' : ''}>No Action (Default)</option>
+                    <option value="CASCADE" ${field.on_delete === 'CASCADE' ? 'selected' : ''}>Cascade</option>
+                    <option value="SET NULL" ${field.on_delete === 'SET NULL' ? 'selected' : ''}>Set Null</option>
+                    <option value="RESTRICT" ${field.on_delete === 'RESTRICT' ? 'selected' : ''}>Restrict</option>
+                  </select>
+                  <p class="text-xs text-gray-500 mt-1">When referenced record is deleted</p>
+                </div>
+
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">On Update</label>
+                  <select name="on_update" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                    <option value="NO ACTION" ${field.on_update === 'NO ACTION' ? 'selected' : ''}>No Action (Default)</option>
+                    <option value="CASCADE" ${field.on_update === 'CASCADE' ? 'selected' : ''}>Cascade</option>
+                    <option value="SET NULL" ${field.on_update === 'SET NULL' ? 'selected' : ''}>Set Null</option>
+                    <option value="RESTRICT" ${field.on_update === 'RESTRICT' ? 'selected' : ''}>Restrict</option>
+                  </select>
+                  <p class="text-xs text-gray-500 mt-1">When referenced record's ID is updated</p>
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Relationship Type</label>
+                <select name="relationship_type" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                  <option value="many-to-one" ${field.relationship_type === 'many-to-one' ? 'selected' : ''}>Many to One (Default)</option>
+                  <option value="one-to-one" ${field.relationship_type === 'one-to-one' ? 'selected' : ''}>One to One</option>
+                </select>
+              </div>
             </div>
 
-            <div class="grid grid-cols-3 gap-4">
+            <!-- Select Field Configuration (shown for select fields) -->
+            <div ${!isSelect ? 'style="display: none;"' : ''} class="p-4 bg-green-50 rounded-lg border border-green-200">
+              <h4 class="font-medium text-sm text-gray-900 mb-3">
+                <i class="ph ph-list"></i> Select Options Configuration
+              </h4>
+
+              <div class="mb-3">
+                <label class="block text-sm font-medium text-gray-700 mb-1">
+                  Options (one per line) *
+                </label>
+                <textarea name="select_options" rows="6"
+                          placeholder="Low&#10;Medium&#10;High&#10;Critical"
+                          class="w-full px-3 py-2 border border-gray-300 rounded-lg font-mono text-sm">${this.getSelectOptions(field)}</textarea>
+                <p class="text-xs text-gray-500 mt-1">Enter each option on a new line</p>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <label class="flex items-center gap-2 cursor-pointer">
                 <input type="checkbox" name="is_required" ${field.is_required ? 'checked' : ''} class="rounded text-blue-600">
                 <span class="text-sm text-gray-700">Required</span>
@@ -1837,12 +1962,12 @@ export class DataModelPage {
             </div>
           </div>
 
-          <div class="px-6 py-4 border-t border-gray-200 flex gap-3">
-            <button type="submit" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-              <i class="ph ph-check"></i> Save Changes
-            </button>
-            <button type="button" onclick="DataModelApp.closeEditFieldModal()" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200">
+          <div class="px-4 sm:px-6 py-4 border-t border-gray-200 flex flex-col-reverse sm:flex-row gap-3 flex-shrink-0">
+            <button type="button" onclick="DataModelApp.closeEditFieldModal()" class="w-full sm:w-auto px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200">
               Cancel
+            </button>
+            <button type="submit" class="w-full sm:flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+              <i class="ph ph-check"></i> Save Changes
             </button>
           </div>
         </form>
@@ -1863,6 +1988,21 @@ export class DataModelPage {
     if (modal) modal.remove();
   }
 
+  getSelectOptions(field) {
+    // Extract options from field_config JSON
+    if (field.field_config) {
+      try {
+        const config = typeof field.field_config === 'string' ? JSON.parse(field.field_config) : field.field_config;
+        if (config.choices && Array.isArray(config.choices)) {
+          return config.choices.join('\n');
+        }
+      } catch (e) {
+        console.error('Error parsing field_config:', e);
+      }
+    }
+    return '';
+  }
+
   async updateField(entityId, fieldId, form) {
     const formData = new FormData(form);
     const data = {
@@ -1875,6 +2015,29 @@ export class DataModelPage {
       is_indexed: formData.get('is_indexed') === 'on',
       is_nullable: formData.get('is_required') !== 'on'
     };
+
+    // Add optional fields if present
+    if (formData.get('max_length')) {
+      data.max_length = parseInt(formData.get('max_length'));
+    }
+    if (formData.get('precision')) {
+      data.precision = parseInt(formData.get('precision'));
+    }
+    if (formData.get('decimal_places')) {
+      data.decimal_places = parseInt(formData.get('decimal_places'));
+    }
+    if (formData.get('display_field')) {
+      data.display_field = formData.get('display_field');
+    }
+    if (formData.get('on_delete')) {
+      data.on_delete = formData.get('on_delete');
+    }
+    if (formData.get('on_update')) {
+      data.on_update = formData.get('on_update');
+    }
+    if (formData.get('relationship_type')) {
+      data.relationship_type = formData.get('relationship_type');
+    }
 
     try {
       const response = await apiFetch(`/data-model/entities/${entityId}/fields/${fieldId}`, {
