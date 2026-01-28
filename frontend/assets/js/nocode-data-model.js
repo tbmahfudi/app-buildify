@@ -1091,7 +1091,7 @@ export class DataModelPage {
                           <i class="ph ph-arrow-counter-clockwise"></i> Restore
                         </button>
                         <button
-                          onclick="DataModelApp.permanentlyDeleteFieldFromModal('${entityId}', '${field.id}', '${this.escapeHtml(field.name)}')"
+                          onclick="DataModelApp.permanentlyDeleteFieldFromModal('${entityId}', '${field.id}', ${JSON.stringify(field.name)})"
                           class="px-3 py-1.5 bg-red-600 text-white text-sm rounded hover:bg-red-700 whitespace-nowrap">
                           <i class="ph ph-trash"></i> Delete Forever
                         </button>
