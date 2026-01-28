@@ -86,8 +86,9 @@ export class DataModelPage {
       restoreFieldFromModal: (entityId, fieldId) => this.restoreFieldFromModal(entityId, fieldId),
       permanentlyDeleteFieldFromModal: (entityId, fieldId, fieldName) => this.permanentlyDeleteFieldFromModal(entityId, fieldId, fieldName),
       closeRelationshipViewer: () => this.closeRelationshipViewer(),
-      showAddRelationshipModal: () => this.showAddRelationshipModal(),
+      showAddRelationshipModal: (entityId) => this.showAddRelationshipModal(entityId),
       closeAddRelationshipModal: () => this.closeAddRelationshipModal(),
+      onRelationTargetEntityChange: (sourceEntityId) => this.onRelationTargetEntityChange(sourceEntityId),
       deleteRelationship: (id) => this.deleteRelationship(id),
       showEditEntityModal: (id) => this.showEditEntityModal(id),
       closeEditEntityModal: () => this.closeEditEntityModal(),
@@ -2292,21 +2293,40 @@ export class DataModelPage {
     if (modal) modal.remove();
   }
 
-  showAddRelationshipModal(entityId) {
+  async showAddRelationshipModal(entityId) {
+    // Load entities and fields for current entity
+    const [entitiesResponse, fieldsResponse] = await Promise.all([
+      apiFetch('/data-model/entities', {
+        headers: { 'Authorization': `Bearer ${authService.getToken()}` }
+      }),
+      apiFetch(`/data-model/entities/${entityId}/fields`, {
+        headers: { 'Authorization': `Bearer ${authService.getToken()}` }
+      })
+    ]);
+
+    const allEntities = entitiesResponse.ok ? await entitiesResponse.json() : [];
+    const currentEntityFields = fieldsResponse.ok ? await fieldsResponse.json() : [];
+
+    // Filter reference fields only
+    const referenceFields = currentEntityFields.filter(f =>
+      (f.field_type === 'reference' || f.field_type === 'lookup') && !f.is_deleted
+    );
+
     const modal = document.createElement('div');
     modal.id = 'addRelationshipModal';
-    modal.className = 'fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-[60]';
+    modal.className = 'fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-[60] p-4';
     modal.innerHTML = `
-      <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
-        <div class="px-6 py-4 border-b border-gray-200">
+      <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col mx-auto">
+        <div class="px-4 sm:px-6 py-4 border-b border-gray-200 flex-shrink-0">
           <h3 class="text-lg font-semibold text-gray-900">Add Relationship</h3>
         </div>
-        <form id="addRelationshipForm" class="flex-1 flex flex-col">
-          <div class="flex-1 overflow-y-auto p-6 space-y-4">
+        <form id="addRelationshipForm" class="flex-1 flex flex-col min-h-0">
+          <div class="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Relationship Name *</label>
               <input type="text" name="name" required placeholder="customer_orders"
                      class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500">
+              <p class="text-xs text-gray-500 mt-1">Technical name for this relationship</p>
             </div>
 
             <div>
@@ -2323,10 +2343,37 @@ export class DataModelPage {
             </div>
 
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Target Entity ID *</label>
-              <input type="text" name="target_entity_id" required placeholder="UUID of target entity"
-                     class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500">
-              <p class="text-xs text-gray-500 mt-1">Entity this relationship points to</p>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Target Entity *</label>
+              <select id="relationTargetEntitySelect" name="target_entity_id" required
+                      onchange="DataModelApp.onRelationTargetEntityChange('${entityId}')"
+                      class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500">
+                <option value="">Select target entity...</option>
+                ${allEntities.map(entity => `
+                  <option value="${entity.id}">${this.escapeHtml(entity.label)} (${entity.name})</option>
+                `).join('')}
+              </select>
+              <p class="text-xs text-gray-500 mt-1">The entity this relationship points to</p>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Source Field (Current Entity)</label>
+              <select id="relationSourceFieldSelect" name="source_field"
+                      class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500">
+                <option value="">Select field...</option>
+                ${referenceFields.map(field => `
+                  <option value="${field.name}">${this.escapeHtml(field.label || field.name)} (${field.name})</option>
+                `).join('')}
+              </select>
+              <p class="text-xs text-gray-500 mt-1">Reference field in the current entity linking to target</p>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Target Field (Linked Entity)</label>
+              <select id="relationTargetFieldSelect" name="target_field" disabled
+                      class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 disabled:bg-gray-100">
+                <option value="">Select target entity first...</option>
+              </select>
+              <p class="text-xs text-gray-500 mt-1">Reference field in the target entity</p>
             </div>
 
             <div>
@@ -2343,12 +2390,12 @@ export class DataModelPage {
             </div>
           </div>
 
-          <div class="px-6 py-4 border-t border-gray-200 flex gap-3">
-            <button type="submit" class="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
-              <i class="ph ph-plus"></i> Add Relationship
-            </button>
-            <button type="button" onclick="DataModelApp.closeAddRelationshipModal()" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200">
+          <div class="px-4 sm:px-6 py-4 border-t border-gray-200 flex flex-col-reverse sm:flex-row gap-3 flex-shrink-0">
+            <button type="button" onclick="DataModelApp.closeAddRelationshipModal()" class="w-full sm:w-auto px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200">
               Cancel
+            </button>
+            <button type="submit" class="w-full sm:flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+              <i class="ph ph-plus"></i> Add Relationship
             </button>
           </div>
         </form>
@@ -2366,6 +2413,54 @@ export class DataModelPage {
   closeAddRelationshipModal() {
     const modal = document.getElementById('addRelationshipModal');
     if (modal) modal.remove();
+  }
+
+  async onRelationTargetEntityChange(sourceEntityId) {
+    const entitySelect = document.getElementById('relationTargetEntitySelect');
+    const targetFieldSelect = document.getElementById('relationTargetFieldSelect');
+
+    if (!entitySelect || !targetFieldSelect) return;
+
+    const targetEntityId = entitySelect.value;
+
+    // Reset target field select
+    targetFieldSelect.innerHTML = '<option value="">Loading...</option>';
+    targetFieldSelect.disabled = true;
+
+    if (!targetEntityId) {
+      targetFieldSelect.innerHTML = '<option value="">Select target entity first...</option>';
+      return;
+    }
+
+    try {
+      // Fetch fields for target entity
+      const response = await apiFetch(`/data-model/entities/${targetEntityId}/fields`, {
+        headers: { 'Authorization': `Bearer ${authService.getToken()}` }
+      });
+
+      if (response.ok) {
+        const fields = await response.json();
+
+        // Filter only reference/lookup fields
+        const referenceFields = fields.filter(f =>
+          (f.field_type === 'reference' || f.field_type === 'lookup') && !f.is_deleted
+        );
+
+        if (referenceFields.length > 0) {
+          targetFieldSelect.innerHTML = '<option value="">Select field...</option>' +
+            referenceFields.map(field =>
+              `<option value="${field.name}">${this.escapeHtml(field.label || field.name)} (${field.name})</option>`
+            ).join('');
+        } else {
+          targetFieldSelect.innerHTML = '<option value="">No reference fields available</option>';
+        }
+
+        targetFieldSelect.disabled = false;
+      }
+    } catch (error) {
+      console.error('Error loading target entity fields:', error);
+      targetFieldSelect.innerHTML = '<option value="">Error loading fields</option>';
+    }
   }
 
   async createRelationship(sourceEntityId, form) {
