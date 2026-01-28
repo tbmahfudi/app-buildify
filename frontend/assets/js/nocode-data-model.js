@@ -81,6 +81,10 @@ export class DataModelPage {
       editField: (entityId, fieldId) => this.editField(entityId, fieldId),
       closeEditFieldModal: () => this.closeEditFieldModal(),
       deleteField: (entityId, fieldId) => this.deleteField(entityId, fieldId),
+      showDeletedFieldsModal: (entityId) => this.showDeletedFieldsModal(entityId),
+      closeDeletedFieldsModal: () => this.closeDeletedFieldsModal(),
+      restoreFieldFromModal: (entityId, fieldId) => this.restoreFieldFromModal(entityId, fieldId),
+      permanentlyDeleteFieldFromModal: (entityId, fieldId, fieldName) => this.permanentlyDeleteFieldFromModal(entityId, fieldId, fieldName),
       closeRelationshipViewer: () => this.closeRelationshipViewer(),
       showAddRelationshipModal: () => this.showAddRelationshipModal(),
       closeAddRelationshipModal: () => this.closeAddRelationshipModal(),
@@ -1091,7 +1095,7 @@ export class DataModelPage {
                           <i class="ph ph-arrow-counter-clockwise"></i> Restore
                         </button>
                         <button
-                          onclick="DataModelApp.permanentlyDeleteFieldFromModal('${entityId}', '${field.id}', '${this.escapeHtml(field.name)}')"
+                          onclick="DataModelApp.permanentlyDeleteFieldFromModal('${entityId}', '${field.id}', ${JSON.stringify(field.name)})"
                           class="px-3 py-1.5 bg-red-600 text-white text-sm rounded hover:bg-red-700 whitespace-nowrap">
                           <i class="ph ph-trash"></i> Delete Forever
                         </button>
