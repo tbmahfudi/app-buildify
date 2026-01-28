@@ -137,6 +137,10 @@ class MetadataSyncService:
         columns = []
 
         for field in entity_def.fields:
+            # Skip deleted fields
+            if field.is_deleted:
+                continue
+
             # Skip system fields
             if field.is_system:
                 continue
@@ -187,6 +191,10 @@ class MetadataSyncService:
         fields = []
 
         for field in entity_def.fields:
+            # Skip deleted fields
+            if field.is_deleted:
+                continue
+
             # Skip system fields
             if field.is_system:
                 continue

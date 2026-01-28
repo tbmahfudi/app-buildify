@@ -46,7 +46,8 @@ class FieldDefinitionBase(BaseModel):
     suffix: Optional[str] = None
     reference_entity_id: Optional[UUID] = None
     reference_table_name: Optional[str] = Field(None, description="Direct table name for system tables (users, tenants, etc.)")
-    reference_field: Optional[str] = None
+    reference_field: Optional[str] = Field(None, description="Target column in referenced table (e.g., 'id', 'code', 'username') - used in REFERENCES clause")
+    display_field: Optional[str] = Field(None, description="Column to display in UI dropdowns (e.g., 'name', 'full_name', 'email')")
     relationship_type: Optional[str] = None
     on_delete: str = Field("NO ACTION", description="FK constraint on delete: CASCADE, SET NULL, RESTRICT, NO ACTION")
     on_update: str = Field("NO ACTION", description="FK constraint on update: CASCADE, SET NULL, RESTRICT, NO ACTION")
@@ -87,7 +88,8 @@ class FieldDefinitionUpdate(BaseModel):
     placeholder: Optional[str] = None
     reference_entity_id: Optional[UUID] = None
     reference_table_name: Optional[str] = None
-    reference_field: Optional[str] = None
+    reference_field: Optional[str] = Field(None, description="Target column in referenced table (e.g., 'id', 'code', 'username') - used in REFERENCES clause")
+    display_field: Optional[str] = Field(None, description="Column to display in UI dropdowns (e.g., 'name', 'full_name', 'email')")
     relationship_type: Optional[str] = None
     on_delete: Optional[str] = None
     on_update: Optional[str] = None
@@ -414,7 +416,8 @@ class IntrospectedFieldDefinition(BaseModel):
     decimal_places: Optional[int] = None
     default_value: Optional[str] = None
     reference_table: Optional[str] = None
-    reference_field: Optional[str] = None
+    reference_field: Optional[str] = Field(None, description="Target column in referenced table (e.g., 'id', 'code', 'username') - used in REFERENCES clause")
+    display_field: Optional[str] = Field(None, description="Column to display in UI dropdowns (e.g., 'name', 'full_name', 'email')")
     relationship_type: Optional[str] = None
     display_order: int = 0
 

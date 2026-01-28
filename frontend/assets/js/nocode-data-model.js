@@ -996,9 +996,14 @@ export class DataModelPage {
             <div class="text-sm text-gray-600">
               ${fields.length} fields defined
             </div>
-            <button onclick="DataModelApp.showAddFieldModal('${entity.id}')" class="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 whitespace-nowrap">
-              <i class="ph ph-plus"></i> Add Field
-            </button>
+            <div class="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+              <button onclick="DataModelApp.showDeletedFieldsModal('${entity.id}')" class="w-full sm:w-auto px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 whitespace-nowrap">
+                <i class="ph ph-trash"></i> View Deleted
+              </button>
+              <button onclick="DataModelApp.showAddFieldModal('${entity.id}')" class="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 whitespace-nowrap">
+                <i class="ph ph-plus"></i> Add Field
+              </button>
+            </div>
           </div>
 
           <div class="space-y-2" id="fieldsList">
@@ -1027,6 +1032,99 @@ export class DataModelPage {
     this.currentFields = fields;
   }
 
+  async showDeletedFieldsModal(entityId) {
+    try {
+      const response = await apiFetch(`/data-model/entities/${entityId}/fields/deleted`, {
+        headers: { 'Authorization': `Bearer ${authService.getToken()}` }
+      });
+
+      if (!response.ok) {
+        this.showError('Failed to load deleted fields');
+        return;
+      }
+
+      const deletedFields = await response.json();
+
+      // Create modal
+      const modal = document.createElement('div');
+      modal.id = 'deletedFieldsModal';
+      modal.className = 'fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-[60] p-4';
+      modal.innerHTML = `
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[80vh] flex flex-col mx-auto">
+          <!-- Header -->
+          <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+            <h2 class="text-xl font-semibold text-gray-900">
+              <i class="ph ph-trash"></i> Deleted Fields
+            </h2>
+            <button onclick="DataModelApp.closeDeletedFieldsModal()" class="text-gray-400 hover:text-gray-600">
+              <i class="ph ph-x text-2xl"></i>
+            </button>
+          </div>
+
+          <!-- Body -->
+          <div class="flex-1 overflow-y-auto p-6">
+            ${deletedFields.length === 0 ? `
+              <div class="text-center py-12 text-gray-500">
+                <i class="ph-duotone ph-trash text-5xl"></i>
+                <p class="mt-2">No deleted fields</p>
+              </div>
+            ` : `
+              <div class="space-y-2">
+                ${deletedFields.map(field => `
+                  <div class="p-4 border border-gray-200 rounded-lg bg-gray-50">
+                    <div class="flex justify-between items-start">
+                      <div class="flex-1">
+                        <div class="flex items-center gap-2">
+                          <span class="font-medium text-gray-900">${this.escapeHtml(field.label || field.name)}</span>
+                          <span class="px-2 py-1 text-xs bg-gray-200 text-gray-700 rounded">${field.field_type}</span>
+                        </div>
+                        <div class="text-sm text-gray-500 mt-1">Field name: ${field.name}</div>
+                        ${field.description ? `<div class="text-sm text-gray-600 mt-1">${this.escapeHtml(field.description)}</div>` : ''}
+                        <div class="text-xs text-gray-400 mt-2">
+                          Deleted: ${new Date(field.updated_at).toLocaleDateString()}
+                        </div>
+                      </div>
+                      <button
+                        onclick="DataModelApp.restoreFieldFromModal('${entityId}', '${field.id}')"
+                        class="ml-4 px-3 py-1.5 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 whitespace-nowrap">
+                        <i class="ph ph-arrow-counter-clockwise"></i> Restore
+                      </button>
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+            `}
+          </div>
+
+          <!-- Footer -->
+          <div class="px-6 py-4 border-t border-gray-200 flex justify-end">
+            <button onclick="DataModelApp.closeDeletedFieldsModal()" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200">
+              Close
+            </button>
+          </div>
+        </div>
+      `;
+
+      document.body.appendChild(modal);
+    } catch (error) {
+      console.error('Error loading deleted fields:', error);
+      this.showError('Error loading deleted fields');
+    }
+  }
+
+  async restoreFieldFromModal(entityId, fieldId) {
+    await this.restoreField(entityId, fieldId);
+    // Close the deleted fields modal
+    this.closeDeletedFieldsModal();
+  }
+
+  closeDeletedFieldsModal() {
+    const modal = document.getElementById('deletedFieldsModal');
+    if (modal) {
+      modal.remove();
+    }
+  }
+
   renderFieldItem(field, entityId) {
     const isSystem = field.is_system || false;
 
@@ -1035,7 +1133,8 @@ export class DataModelPage {
     if (field.field_type === 'reference' || field.field_type === 'lookup') {
       const refSource = field.reference_table_name || field.reference_entity_id || 'Unknown';
       const refField = field.reference_field || 'id';
-      referenceInfo = `<span class="text-blue-600"><i class="ph ph-arrow-right"></i> References: ${refSource}.${refField}</span>`;
+      const displayField = field.display_field || 'name';
+      referenceInfo = `<span class="text-blue-600"><i class="ph ph-arrow-right"></i> FK: ${refSource}.${refField} | Display: ${displayField}</span>`;
     }
 
     return `
@@ -1247,13 +1346,28 @@ export class DataModelPage {
 
               <div class="mb-3">
                 <label class="block text-sm font-medium text-gray-700 mb-1">
-                  Display Field
+                  Referenced Column <span class="text-red-500">*</span>
                 </label>
                 <select id="referenceFieldSelect" name="reference_field"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg" required>
+                  <option value="id">id</option>
+                </select>
+                <p class="text-xs text-gray-500 mt-1">
+                  Column in the referenced table to link to (usually the primary key like 'id', 'code', or unique field like 'username')
+                </p>
+              </div>
+
+              <div class="mb-3">
+                <label class="block text-sm font-medium text-gray-700 mb-1">
+                  Display Field <span class="text-red-500">*</span>
+                </label>
+                <select id="displayFieldSelect" name="display_field"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg" required>
                   <option value="name">name</option>
                 </select>
-                <p class="text-xs text-gray-500 mt-1">Field to show in dropdown</p>
+                <p class="text-xs text-gray-500 mt-1">
+                  Column to show in dropdown lists (e.g., 'name', 'full_name', 'email')
+                </p>
               </div>
 
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-3">
@@ -1452,18 +1566,22 @@ export class DataModelPage {
 
   async onReferenceEntityChange() {
     const entitySelect = document.getElementById('referenceEntitySelect');
-    const fieldSelect = document.getElementById('referenceFieldSelect');
+    const referenceFieldSelect = document.getElementById('referenceFieldSelect');
+    const displayFieldSelect = document.getElementById('displayFieldSelect');
 
-    if (!entitySelect || !fieldSelect) return;
+    if (!entitySelect || !referenceFieldSelect || !displayFieldSelect) return;
 
     const selectedValue = entitySelect.value;
 
-    // Reset field select
-    fieldSelect.innerHTML = '<option value="name">name (default)</option>';
-    fieldSelect.disabled = false;
+    // Reset field selects
+    referenceFieldSelect.innerHTML = '<option value="id">id (default)</option>';
+    displayFieldSelect.innerHTML = '<option value="name">name (default)</option>';
+    referenceFieldSelect.disabled = false;
+    displayFieldSelect.disabled = false;
 
     if (!selectedValue) {
-      fieldSelect.disabled = true;
+      referenceFieldSelect.disabled = true;
+      displayFieldSelect.disabled = true;
       return;
     }
 
@@ -1480,8 +1598,16 @@ export class DataModelPage {
         };
 
         const fields = systemFields[tableName] || ['id', 'name'];
-        fieldSelect.innerHTML = fields.map(field =>
-          `<option value="${field}">${field}</option>`
+
+        // Populate reference field (FK target) - recommend 'id'
+        referenceFieldSelect.innerHTML = fields.map(field =>
+          `<option value="${field}"${field === 'id' ? ' selected' : ''}>${field}${field === 'id' ? ' (recommended)' : ''}</option>`
+        ).join('');
+
+        // Populate display field (UI display) - recommend 'name' or similar
+        const displayFields = fields.filter(f => f !== 'id');
+        displayFieldSelect.innerHTML = displayFields.map(field =>
+          `<option value="${field}"${field === 'name' || field === 'full_name' ? ' selected' : ''}>${field}</option>`
         ).join('');
 
       } else {
@@ -1493,17 +1619,31 @@ export class DataModelPage {
         if (response.ok) {
           const fields = await response.json();
 
-          if (fields.length > 0) {
-            fieldSelect.innerHTML = fields
-              .filter(f => !f.is_deleted)
-              .map(field => `<option value="${field.name}">${this.escapeHtml(field.label || field.name)}</option>`)
-              .join('');
-          }
+          // For reference field (FK target) - include system fields
+          const systemFieldOptions = [
+            '<option value="id" selected>id (recommended)</option>',
+            '<option value="created_at">created_at</option>',
+            '<option value="updated_at">updated_at</option>'
+          ];
+
+          const customFieldOptions = fields
+            .filter(f => !f.is_deleted)
+            .map(field => `<option value="${field.name}">${this.escapeHtml(field.label || field.name)}</option>`);
+
+          referenceFieldSelect.innerHTML = [...systemFieldOptions, ...customFieldOptions].join('');
+
+          // For display field (UI display) - exclude system fields, prefer 'name'
+          const displayFieldOptions = fields
+            .filter(f => !f.is_deleted)
+            .map(field => `<option value="${field.name}"${field.name === 'name' ? ' selected' : ''}>${this.escapeHtml(field.label || field.name)}</option>`);
+
+          displayFieldSelect.innerHTML = displayFieldOptions.join('') || '<option value="name">name</option>';
         }
       }
     } catch (error) {
       console.error('Error loading entity fields:', error);
-      fieldSelect.innerHTML = '<option value="name">name (default)</option>';
+      referenceFieldSelect.innerHTML = '<option value="id">id (default)</option>';
+      displayFieldSelect.innerHTML = '<option value="name">name (default)</option>';
     }
   }
 
@@ -1584,15 +1724,26 @@ export class DataModelPage {
       } else {
         const error = await response.json();
 
-        // Better error message for duplicate field names
-        let errorMessage = error.detail || 'Failed to create field';
-        if (error.details && error.details.database_error &&
-            error.details.database_error.includes('duplicate key value violates unique constraint')) {
-          const fieldName = data.name;
-          errorMessage = `A field named "${fieldName}" already exists for this entity. Please use a different name or check if the field was previously deleted.`;
-        }
+        // Handle soft-deleted field conflict with restore option
+        if (typeof error.detail === 'object' && error.detail.can_restore) {
+          const fieldInfo = error.detail;
+          const message = `${fieldInfo.message}\n\n${fieldInfo.suggestion}`;
 
-        this.showError(errorMessage);
+          if (confirm(`${message}\n\nWould you like to restore the deleted field "${fieldInfo.field_name}"?`)) {
+            await this.restoreField(entityId, fieldInfo.field_id);
+            return;
+          }
+        } else {
+          // Better error message for duplicate field names
+          let errorMessage = error.detail || 'Failed to create field';
+          if (error.details && error.details.database_error &&
+              error.details.database_error.includes('duplicate key value violates unique constraint')) {
+            const fieldName = data.name;
+            errorMessage = `A field named "${fieldName}" already exists for this entity. Please use a different name or check if the field was previously deleted.`;
+          }
+
+          this.showError(errorMessage);
+        }
       }
     } catch (error) {
       console.error('Error creating field:', error);
@@ -1774,6 +1925,29 @@ export class DataModelPage {
     } catch (error) {
       console.error('Error deleting field:', error);
       this.showError('Error deleting field');
+    }
+  }
+
+  async restoreField(entityId, fieldId) {
+    try {
+      const response = await apiFetch(`/data-model/entities/${entityId}/fields/${fieldId}/restore`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${authService.getToken()}`
+        }
+      });
+
+      if (response.ok) {
+        this.showSuccess('Field restored successfully');
+        // Refresh the field list to show the restored field
+        await this.refreshFieldList(entityId);
+      } else {
+        const error = await response.json();
+        this.showError(error.detail || 'Failed to restore field');
+      }
+    } catch (error) {
+      console.error('Error restoring field:', error);
+      this.showError('Error restoring field');
     }
   }
 
