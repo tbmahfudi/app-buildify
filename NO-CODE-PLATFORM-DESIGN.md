@@ -103,6 +103,179 @@ App-Buildify is a comprehensive no-code/low-code platform that enables sysadmin 
 
 **Status:** ✅ Complete
 
+##### Understanding Field Types
+
+The Data Model Designer supports different field types for various use cases. Understanding when to use each type is crucial for building efficient data models.
+
+###### Select/Dropdown Field
+A **select field** is a simple dropdown with **predefined static options** stored in the field definition itself.
+
+**Characteristics:**
+- Options are hardcoded in field config (not from database)
+- No database relationship
+- Simple list of values
+- Stored as plain text/string in database
+
+**Example:**
+```javascript
+Field: priority
+  Type: select
+  Options: ["Low", "Medium", "High", "Critical"]
+
+Database storage: VARCHAR column with value "High"
+```
+
+**When to use:**
+- Status fields (Draft, Published, Archived)
+- Priority levels
+- Simple categories (Small, Medium, Large)
+- Yes/No options (beyond boolean)
+- Any fixed list that rarely changes
+
+**Pros/Cons:**
+- ✅ Simple to set up
+- ✅ No extra tables needed
+- ✅ Fast queries
+- ❌ Can't add options dynamically via UI
+- ❌ No relational data
+- ❌ Harder to maintain if options change often
+
+###### Reference Field
+A **reference field** is an actual **column in your database table** that stores a foreign key.
+
+**Characteristics:**
+- Creates a physical column in the database
+- Stores the foreign key value (e.g., user ID)
+- Enforces foreign key constraint at database level
+- Defines which table/column to link to
+- Sets cascade behavior (ON DELETE, ON UPDATE)
+
+**Example:**
+```sql
+CREATE TABLE support_tickets (
+  id UUID PRIMARY KEY,
+  title VARCHAR(255),
+  assigned_to_user UUID REFERENCES users(id),  -- This is a reference field
+  status VARCHAR(50)
+);
+```
+
+**Configuration:**
+- `reference_entity_id` or `reference_table_name` - Target entity/table
+- `reference_field` - Target column for FK constraint (e.g., 'id', 'code')
+- `display_field` - Column to display in UI dropdowns (e.g., 'name', 'full_name')
+- `on_delete` - Cascade behavior when referenced record is deleted
+- `on_update` - Cascade behavior when referenced record's ID is updated
+
+**When to use:**
+- Options are in database
+- Small to medium list (< 100 items)
+- Need foreign key constraint
+- Simple selection (one field display)
+- Examples: category, department, basic lookups
+
+###### Lookup Field
+A **lookup field** is a special type of reference that provides **enhanced UI features** for selecting related records.
+
+**Characteristics:**
+- References another entity (like reference field)
+- Stores foreign key in database
+- **Enhanced autocomplete/search UI**
+- Can search across multiple fields
+- Shows formatted display template
+- Can quick-create related records
+
+**Example:**
+```javascript
+Field: customer
+  Type: lookup
+  Reference Entity: Customer
+  Referenced Column: id
+  Display Field: name
+  Search Fields: ["name", "email", "phone"]
+  Display Template: "{name} - {email}"
+  Allow Quick Create: true
+
+Database storage: UUID foreign key
+```
+
+**Advanced Features:**
+- `lookup_search_fields` - Multiple fields to search (["name", "email", "code"])
+- `lookup_display_template` - Format for dropdown display ("{name} ({code})")
+- `lookup_allow_create` - Enable quick-create button in dropdown
+- `lookup_recent_count` - Show N recent selections
+
+**When to use:**
+- Large list (100+ items)
+- Need to search multiple fields
+- Want autocomplete/typeahead
+- Show multiple fields in dropdown
+- Allow quick-create option
+- Examples: users, customers, products, complex entities
+
+###### Comparison: Select vs Reference vs Lookup
+
+| Feature | Select/Dropdown | Reference | Lookup |
+|---------|----------------|-----------|--------|
+| **Data Source** | Hardcoded list | Related table | Related table |
+| **Storage** | String/text | Foreign key | Foreign key |
+| **UI** | Simple dropdown | Simple dropdown | Autocomplete search |
+| **Searchable** | No | No | Yes (multiple fields) |
+| **Options Count** | Few (5-20) | Any | Many (100+) |
+| **Dynamic** | No | Yes | Yes |
+| **Quick Create** | N/A | No | Yes (optional) |
+| **Display Format** | Value only | Single field | Template with multiple fields |
+| **Database Relationship** | No | Yes | Yes |
+
+###### Relationships vs Reference Fields
+
+**Reference Field** (Database/Column Level) and **Relationship** (Application/Metadata Level) serve different purposes:
+
+**Reference Field (Required):**
+- Creates an actual database column with FK constraint
+- Stores the foreign key value
+- Enforces data integrity at database level
+- Required to link tables together
+
+**Relationship (Optional but Useful):**
+- Logical/semantic description of how entities relate
+- Documents the relationship between entities (metadata)
+- Defines relationship type (one-to-many, many-to-one, many-to-many, one-to-one)
+- Enables ORM features (reverse lookups, eager loading)
+- Powers UI features (showing related records)
+
+**How They Work Together:**
+
+```
+Step 1: Create Reference Field (Required)
+  Entity: SupportTicket
+  Field: assigned_to_user (Reference → users.id)
+
+  Result: Stores user_id in ticket table
+
+Step 2: Define Relationship (Optional, for features)
+  Relationship: "user_tickets"
+  Type: one-to-many
+  User HAS MANY SupportTickets via assigned_to_user field
+
+  Result: Can query "show me all tickets for this user"
+```
+
+**Key Differences:**
+
+| Aspect | Reference Field | Relationship |
+|--------|----------------|--------------|
+| **Level** | Database column | Application metadata |
+| **Physical?** | Yes - actual column | No - just documentation/config |
+| **Creates FK?** | Yes | No (references existing fields) |
+| **Required?** | Yes (to link tables) | Optional (for features) |
+| **Direction** | One-way (field → target) | Can be bi-directional |
+| **Purpose** | Store foreign key data | Enable app features |
+
+**Think of it like:**
+- **Reference Field** = The actual road connecting two cities
+- **Relationship** = The map showing how cities are connected
+
 #### 2. Workflow Designer
 **Purpose:** Visual workflow builder for approval processes
 
