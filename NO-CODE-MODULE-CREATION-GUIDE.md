@@ -283,6 +283,14 @@ Your module has these lifecycle stages:
 
 3. **Add Fields:** Click "Add Field" for each field below
 
+   > **💡 Note:** All entities automatically include these system fields (you don't need to add them):
+   > - `id` (UUID, Primary Key) - Unique identifier for each record
+   > - `created_at` (DateTime) - Timestamp when record was created
+   > - `updated_at` (DateTime) - Timestamp when record was last updated
+   > - `created_by` (UUID, FK to users) - User who created the record
+   > - `updated_by` (UUID, FK to users) - User who last updated the record
+   > - `is_deleted` (Boolean) - Soft delete flag
+
    | Field Name | Display Name | Type | Required | Settings |
    |------------|--------------|------|----------|----------|
    | `ticket_number` | Ticket Number | String | Yes | Max Length: 20, Unique: Yes, Indexed: Yes |
@@ -304,17 +312,42 @@ Your module has these lifecycle stages:
    | `attachments` | Attachments | JSON | No | |
 
 4. **Add Relationships:**
-   - Click "Add Relationship"
-   - **Name:** `comments`
-   - **Type:** One-to-Many
-   - **Target Entity:** `TicketComment` (will create later)
-   - **Foreign Key:** `ticket_id`
 
-5. **Add Indexes:**
-   - Click "Add Index"
-   - **Name:** `idx_ticket_status_priority`
-   - **Columns:** `status`, `priority`
-   - **Type:** B-Tree
+   > **💡 Understanding Relationships:**
+   > - **Source Entity** = Current entity (SupportTicket) - the "one" side
+   > - **Target Entity** = Related entity (TicketComment) - the "many" side
+   > - **Target Field** = Reference field in target entity that links back to source
+   > - The relationship represents: `SupportTicket.id` (auto-created) ← `TicketComment.ticket_id` (reference field)
+
+   - Click "Add Relationship"
+   - **Relationship Name:** `comments` (technical name)
+   - **Relationship Type:** One-to-Many
+   - **Target Entity:** `TicketComment` (will create later)
+   - **Source Field:** Leave empty (SupportTicket doesn't have a FK to comments)
+   - **Target Field:** `ticket_id` (the reference field in TicketComment that points to SupportTicket.id)
+   - **Description:** "Comments and updates on this ticket"
+
+   > **Note:** You'll create the TicketComment entity with the `ticket_id` reference field in Step 1.3 below.
+
+5. **Field Indexing:**
+
+   > **💡 Current Limitation:**
+   > - Individual field indexes can be set when adding/editing fields (checkbox "Indexed")
+   > - Composite indexes (multi-column indexes like `idx_ticket_status_priority`) are not yet available through the UI
+   > - For now, mark frequently queried fields as "Indexed" (already done for `ticket_number`)
+   > - Composite indexes can be added manually via SQL or will be available in a future platform update
+
+   Fields already marked as indexed:
+   - ✅ `ticket_number` (unique index)
+   - ✅ `category_id` (FK index, auto-created)
+   - ✅ `assigned_to` (FK index, auto-created)
+
+   **Optional:** Mark these fields as indexed for better query performance:
+   - `status` - frequently used in filters
+   - `priority` - frequently used in filters
+   - `sla_due_date` - used in SLA monitoring queries
+
+   To mark a field as indexed: Edit the field > Check "Indexed" > Save
 
 6. **Save as Draft** (Don't publish yet)
 
@@ -364,6 +397,13 @@ Your module has these lifecycle stages:
    | `comment_type` | Type | Select | Yes | Options: Internal Note, Customer Reply, Status Update |
    | `is_public` | Visible to Customer | Boolean | Yes | Default: False |
    | `attachments` | Attachments | JSON | No | |
+
+   > **💡 About the ticket_id Reference Field:**
+   > - This creates a foreign key relationship: `TicketComment.ticket_id` → `SupportTicket.id`
+   > - Each comment must belong to exactly one ticket (Required = Yes)
+   > - This is the "target field" referenced in the relationship we created in Step 1.1.4
+   > - Database will automatically create an index on `ticket_id` for performance
+   > - Database enforces referential integrity (can't create comment for non-existent ticket)
 
 4. **Save as Draft**
 
