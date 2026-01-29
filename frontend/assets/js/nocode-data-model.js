@@ -3144,6 +3144,10 @@ export class DataModelPage {
     const existingModal = document.getElementById('migrationHistoryModal');
     if (existingModal) existingModal.remove();
 
+    // Store migrations for later access (e.g., viewing details)
+    this.currentMigrations = migrations;
+    this.currentEntityId = entityId;
+
     const statusColors = {
       'pending': 'bg-gray-100 text-gray-700',
       'running': 'bg-blue-100 text-blue-700',
@@ -3258,13 +3262,60 @@ export class DataModelPage {
 
   async viewMigrationDetails(migrationId) {
     try {
-      // Get all migrations to find the specific one
-      const historyModal = document.getElementById('migrationHistoryModal');
-      if (!historyModal) return;
+      // Find the migration in the stored migrations
+      if (!this.currentMigrations) {
+        this.showError('Migration data not available');
+        return;
+      }
 
-      // Find migration in current data (simpler approach)
-      // In a real scenario, you'd fetch the specific migration
-      this.showInfo('Migration details viewer - to be implemented with expanded SQL view');
+      const migration = this.currentMigrations.find(m => m.id === migrationId);
+      if (!migration) {
+        this.showError('Migration not found');
+        return;
+      }
+
+      // Get entity info
+      let entityName = 'Unknown Entity';
+      if (this.currentEntityId) {
+        const entity = this.entities.find(e => e.id === this.currentEntityId);
+        if (entity) {
+          entityName = entity.label || entity.name;
+        }
+      }
+
+      // Format migration data to match the preview format
+      const previewData = {
+        entity_name: entityName,
+        operation: migration.migration_type.toUpperCase(),
+        table_name: migration.migration_name.split('_v')[0], // Extract table name from migration name
+        up_script: migration.up_script || '',
+        down_script: migration.down_script || '',
+        changes: migration.changes || {},
+        estimated_impact: {
+          risk_level: migration.status === 'completed' ? 'low' :
+                     migration.status === 'failed' ? 'high' : 'medium',
+          affected_records: 0,
+          breaking_changes: [],
+          warnings: []
+        }
+      };
+
+      // Add status-specific information to the preview
+      if (migration.status === 'completed') {
+        previewData.estimated_impact.warnings.push(`This migration was executed successfully on ${new Date(migration.executed_at).toLocaleString()}`);
+        if (migration.execution_time_ms) {
+          previewData.estimated_impact.warnings.push(`Execution time: ${migration.execution_time_ms}ms`);
+        }
+      } else if (migration.status === 'failed') {
+        if (migration.error_message) {
+          previewData.estimated_impact.breaking_changes.push(`Error: ${migration.error_message}`);
+        }
+      } else if (migration.status === 'pending') {
+        previewData.estimated_impact.warnings.push('This migration has not been executed yet');
+      }
+
+      // Show the migration preview modal
+      this.showMigrationPreviewModal(previewData);
     } catch (error) {
       console.error('Error viewing migration details:', error);
       this.showError('Error loading migration details');
