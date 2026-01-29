@@ -60,9 +60,14 @@ class MigrationGenerator:
         # Build CREATE TABLE statement
         up_sql_parts = [f"CREATE TABLE IF NOT EXISTS {table_name} ("]
 
-        # Add fields
-        field_definitions = []
+        # Add primary key first (ALWAYS include id field)
+        field_definitions = ["    id UUID PRIMARY KEY DEFAULT gen_random_uuid()"]
+
+        # Add user-defined fields
         for field in fields:
+            # Skip if user manually added 'id' field (shouldn't happen, but just in case)
+            if field.name == 'id':
+                continue
             field_def = self._generate_field_definition(field)
             field_definitions.append(f"    {field_def}")
 
