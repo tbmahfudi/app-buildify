@@ -428,6 +428,7 @@ class EntityMigration(Base):
 
     # Metadata
     changes = Column(JSONB)  # Detailed change log
+    commit_message = Column(Text)  # Optional commit message for this migration
 
     # Audit
     created_at = Column(DateTime, default=datetime.utcnow)
