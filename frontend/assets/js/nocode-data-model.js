@@ -2377,13 +2377,6 @@ export class DataModelPage {
             </div>
 
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Foreign Key Field</label>
-              <input type="text" name="foreign_key_field" placeholder="customer_id"
-                     class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500">
-              <p class="text-xs text-gray-500 mt-1">Field name storing the foreign key</p>
-            </div>
-
-            <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
               <textarea name="description" rows="2" placeholder="Relationship description..."
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"></textarea>
@@ -2465,12 +2458,20 @@ export class DataModelPage {
 
   async createRelationship(sourceEntityId, form) {
     const formData = new FormData(form);
+    const name = formData.get('name');
+    // Auto-generate label from name (convert snake_case to Title Case)
+    const label = name.split('_').map(word =>
+      word.charAt(0).toUpperCase() + word.slice(1)
+    ).join(' ');
+
     const data = {
-      name: formData.get('name'),
+      name: name,
+      label: label,
       source_entity_id: sourceEntityId,
       target_entity_id: formData.get('target_entity_id'),
       relationship_type: formData.get('relationship_type'),
-      foreign_key_field: formData.get('foreign_key_field') || null,
+      source_field_name: formData.get('source_field') || null,
+      target_field_name: formData.get('target_field') || null,
       description: formData.get('description') || null
     };
 
