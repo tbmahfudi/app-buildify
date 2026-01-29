@@ -1,6 +1,6 @@
 """Add commit_message column to entity_migrations
 
-Revision ID: mysql_add_commit_message_to_migrations
+Revision ID: mysql_add_commit_msg
 Revises: mysql_add_display_field
 Create Date: 2026-01-29 00:00:00.000000
 
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = 'mysql_add_commit_message_to_migrations'
+revision = 'mysql_add_commit_msg'
 down_revision = 'mysql_add_display_field'
 branch_labels = None
 depends_on = None
