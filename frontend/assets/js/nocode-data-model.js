@@ -3317,6 +3317,14 @@ export class DataModelPage {
     }
   }
 
+  showInfo(message) {
+    if (window.showNotification) {
+      window.showNotification(message, 'info');
+    } else {
+      alert(message);
+    }
+  }
+
   // ==================== Quick Actions ====================
 
   async createReportFromEntity(entityId) {
