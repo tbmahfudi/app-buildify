@@ -1312,6 +1312,9 @@ export class WorkflowsPage {
   }
 
   showVisualDesigner(workflow, states, transitions) {
+    // Close any open modals first (e.g., viewWorkflowModal)
+    this.closeViewModal();
+
     // Store current state
     this.currentWorkflow = workflow;
     this.currentStates = states;
