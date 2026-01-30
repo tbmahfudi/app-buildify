@@ -39,10 +39,12 @@ export class WorkflowsPage {
     this.currentTab = 'workflows';
     this.workflows = [];
     this.instances = [];
+    this.entities = [];
   }
 
   async init() {
     await this.loadWorkflows();
+    await this.loadEntities();
 
     // Make methods available globally for onclick handlers
     window.WorkflowApp = {
@@ -77,8 +79,50 @@ export class WorkflowsPage {
       showVersionHistory: (id) => this.showVersionHistory(id),
       closeVersionHistory: () => this.closeVersionHistory(),
       openMonitoringDashboard: () => this.openMonitoringDashboard(),
-      closeMonitoringDashboard: () => this.closeMonitoringDashboard()
+      closeMonitoringDashboard: () => this.closeMonitoringDashboard(),
+      onTriggerTypeChange: (triggerType) => this.onTriggerTypeChange(triggerType)
     };
+  }
+
+  async loadEntities() {
+    try {
+      const response = await apiFetch('/data-model/entities', {
+        headers: {
+          'Authorization': `Bearer ${authService.getToken()}`
+        }
+      });
+
+      if (response.ok) {
+        this.entities = await response.json();
+        this.populateEntitySelect();
+      }
+    } catch (error) {
+      console.error('Error loading entities:', error);
+    }
+  }
+
+  populateEntitySelect() {
+    const select = document.getElementById('workflow_entity_select');
+    if (!select) return;
+
+    select.innerHTML = '<option value="">-- No Entity (Manual Only) --</option>';
+    this.entities.forEach(entity => {
+      const option = document.createElement('option');
+      option.value = entity.id;
+      option.textContent = entity.display_name || entity.name;
+      select.appendChild(option);
+    });
+  }
+
+  onTriggerTypeChange(triggerType) {
+    const conditionsSection = document.getElementById('trigger-conditions-section');
+    if (!conditionsSection) return;
+
+    if (triggerType === 'automatic') {
+      conditionsSection.classList.remove('hidden');
+    } else {
+      conditionsSection.classList.add('hidden');
+    }
   }
 
   switchTab(tab) {
@@ -256,6 +300,12 @@ export class WorkflowsPage {
 
   showCreateModal() {
     const modal = document.getElementById('createWorkflowModal');
+    const form = document.getElementById('createWorkflowForm');
+    if (form) form.reset();
+    // Reset trigger conditions section visibility
+    this.onTriggerTypeChange('manual');
+    // Repopulate entity select
+    this.populateEntitySelect();
     if (modal) modal.classList.remove('hidden');
   }
 
@@ -264,19 +314,44 @@ export class WorkflowsPage {
     const form = document.getElementById('createWorkflowForm');
     if (modal) modal.classList.add('hidden');
     if (form) form.reset();
+    // Reset trigger conditions section
+    this.onTriggerTypeChange('manual');
   }
 
   async createWorkflow(event) {
     event.preventDefault();
     const formData = new FormData(event.target);
+    const triggerType = formData.get('trigger_type');
+
     const data = {
       name: formData.get('name'),
       label: formData.get('label'),
       description: formData.get('description') || '',
       category: formData.get('category') || '',
-      trigger_type: formData.get('trigger_type'),
+      trigger_type: triggerType,
       canvas_data: { nodes: [], edges: [] } // Empty canvas initially
     };
+
+    // Add entity_id if selected
+    const entityId = formData.get('entity_id');
+    if (entityId) {
+      data.entity_id = entityId;
+    }
+
+    // Add trigger_conditions for automatic workflows
+    if (triggerType === 'automatic') {
+      const triggerField = formData.get('trigger_field');
+      const triggerOperator = formData.get('trigger_operator');
+      const triggerValue = formData.get('trigger_value');
+
+      if (triggerField && triggerValue) {
+        data.trigger_conditions = {
+          field: triggerField,
+          operator: triggerOperator || 'contains',
+          value: triggerValue
+        };
+      }
+    }
 
     try {
       const response = await apiFetch('/workflows', {

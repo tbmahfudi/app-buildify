@@ -103,12 +103,47 @@
         </div>
 
         <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">Target Entity</label>
+          <select name="entity_id" id="workflow_entity_select" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
+            <option value="">-- No Entity (Manual Only) --</option>
+          </select>
+          <p class="text-xs text-gray-500 mt-1">Select the entity this workflow applies to (e.g., SupportTicket)</p>
+        </div>
+
+        <div>
           <label class="block text-sm font-medium text-gray-700 mb-2">Trigger Type</label>
-          <select name="trigger_type" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
+          <select name="trigger_type" id="workflow_trigger_type" onchange="WorkflowApp.onTriggerTypeChange(this.value)" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
             <option value="manual">Manual</option>
-            <option value="automatic">Automatic</option>
+            <option value="automatic">Automatic (On Entity Change)</option>
             <option value="scheduled">Scheduled</option>
           </select>
+        </div>
+
+        <!-- Automatic Trigger Conditions (shown when trigger_type is automatic) -->
+        <div id="trigger-conditions-section" class="hidden space-y-3 p-4 bg-purple-50 rounded-lg border border-purple-200">
+          <label class="block text-sm font-medium text-purple-800">Trigger Conditions</label>
+          <p class="text-xs text-purple-600 mb-2">Workflow triggers when these conditions are met on entity create/update</p>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Field to Monitor</label>
+            <input type="text" name="trigger_field" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" placeholder="e.g., tags, status, priority">
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Condition Operator</label>
+            <select name="trigger_operator" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
+              <option value="contains">Contains</option>
+              <option value="equals">Equals</option>
+              <option value="not_equals">Not Equals</option>
+              <option value="in">In List</option>
+              <option value="changed_to">Changed To</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Value</label>
+            <input type="text" name="trigger_value" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" placeholder="e.g., refund_requested">
+          </div>
         </div>
 
         <div class="flex justify-end gap-3 pt-4">
