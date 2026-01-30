@@ -474,17 +474,27 @@ Your module has these lifecycle stages:
 
 **Navigation:** No-Code Platform > Business Logic > Lookup Configuration
 
-#### Step 2.1: Create Priority Lookup
+> **💡 Understanding the Create Lookup Form:**
+> The lookup creation form dynamically shows different fields based on the selected **Source Type**:
+> - **Entity (Database Table):** Shows entity dropdown, display field, and value field inputs
+> - **Static List:** Shows a JSON textarea for entering static options
+> - **Custom Query:** Shows SQL query textarea and query parameters
+> - **External API:** Shows API endpoint, method, headers, and response mapping fields
+
+#### Step 2.1: Create Priority Lookup (Static List)
 
 1. **Click "Create Lookup"**
 
 2. **Basic Information:**
-   - **Name:** `ticket_priority`
-   - **Display Name:** `Ticket Priority`
-   - **Description:** `Priority levels for tickets`
-   - **Source Type:** Static List
+   | Field | Value |
+   |-------|-------|
+   | **Configuration Name** | `ticket_priority` |
+   | **Display Label** | `Ticket Priority` |
+   | **Description** | `Priority levels for tickets` |
+   | **Source Type** | `Static List` |
 
-3. **Static Options:**
+3. **Static Options (JSON):**
+   When you select "Static List" as the source type, a JSON textarea appears. Enter the following:
    ```json
    [
      { "value": "low", "label": "Low", "color": "#10b981" },
@@ -494,25 +504,33 @@ Your module has these lifecycle stages:
    ]
    ```
 
-4. **Settings:**
-   - **Cacheable:** Yes
-   - **Cache TTL:** 3600 seconds
-   - **Searchable:** Yes
+   > **💡 Static Options Format:**
+   > Each option must have `value` and `label` properties. Optional properties include:
+   > - `color` - Hex color code for visual styling (e.g., badges)
+   > - `icon` - Phosphor icon name for display
+   > - `metadata` - Any additional data as JSON object
 
-5. **Click "Save"**
+4. **Settings (checkboxes at bottom):**
+   - ☑️ **Enable Search:** Check this box
+   - ☑️ **Enable Caching:** Check this box
+
+5. **Click "Create Lookup"**
 
 ---
 
-#### Step 2.2: Create Status Lookup
+#### Step 2.2: Create Status Lookup (Static List)
 
 1. **Click "Create Lookup"**
 
 2. **Basic Information:**
-   - **Name:** `ticket_status`
-   - **Display Name:** `Ticket Status`
-   - **Source Type:** Static List
+   | Field | Value |
+   |-------|-------|
+   | **Configuration Name** | `ticket_status` |
+   | **Display Label** | `Ticket Status` |
+   | **Description** | `Ticket workflow status values` |
+   | **Source Type** | `Static List` |
 
-3. **Static Options:**
+3. **Static Options (JSON):**
    ```json
    [
      { "value": "new", "label": "New", "icon": "spark" },
@@ -524,52 +542,63 @@ Your module has these lifecycle stages:
    ]
    ```
 
-4. **Click "Save"**
+4. **Settings:**
+   - ☑️ **Enable Search:** Check this box
+   - ☑️ **Enable Caching:** Check this box
+
+5. **Click "Create Lookup"**
 
 ---
 
-#### Step 2.3: Create Category Lookup (Dynamic)
+#### Step 2.3: Create Category Lookup (Entity/Dynamic)
 
 1. **Click "Create Lookup"**
 
 2. **Basic Information:**
-   - **Name:** `ticket_categories`
-   - **Display Name:** `Ticket Categories`
-   - **Source Type:** Entity
+   | Field | Value |
+   |-------|-------|
+   | **Configuration Name** | `ticket_categories` |
+   | **Display Label** | `Ticket Categories` |
+   | **Description** | `Dynamic categories from database` |
+   | **Source Type** | `Entity (Database Table)` |
 
 3. **Entity Configuration:**
-   - **Entity:** `TicketCategory`
-   - **Value Field:** `id`
-   - **Label Field:** `name`
-   - **Filter:** `is_active = true`
-   - **Sort By:** `name ASC`
+   When you select "Entity (Database Table)" as source type, entity-specific fields appear:
 
-4. **Additional Fields to Return:**
-   - `description`
-   - `default_sla_hours`
-   - `assigned_team`
-   - `color_code`
+   | Field | Value |
+   |-------|-------|
+   | **Source Entity** | Select `TicketCategory` from dropdown |
+   | **Display Field** | `name` |
+   | **Value Field** | `id` |
 
-5. **Settings:**
-   - **Cacheable:** Yes
-   - **Cache TTL:** 1800 seconds
-   - **Searchable:** Yes
-   - **Allow Refresh:** Yes
+   > **💡 Entity Lookups:**
+   > - **Source Entity:** The database table to fetch options from
+   > - **Display Field:** The field shown to users (usually `name`)
+   > - **Value Field:** The field stored when selected (usually `id`)
 
-6. **Click "Save"**
+4. **Settings:**
+   - ☑️ **Enable Search:** Check this box
+   - ☑️ **Enable Caching:** Check this box
+
+5. **Click "Create Lookup"**
+
+> **Note:** Advanced entity options like filters (`is_active = true`), sorting, and additional return fields can be configured by editing the lookup after creation.
 
 ---
 
-#### Step 2.4: Create Team Lookup
+#### Step 2.4: Create Team Lookup (Static List)
 
 1. **Click "Create Lookup"**
 
 2. **Basic Information:**
-   - **Name:** `support_teams`
-   - **Display Name:** `Support Teams`
-   - **Source Type:** Static List
+   | Field | Value |
+   |-------|-------|
+   | **Configuration Name** | `support_teams` |
+   | **Display Label** | `Support Teams` |
+   | **Description** | `Available support team assignments` |
+   | **Source Type** | `Static List` |
 
-3. **Static Options:**
+3. **Static Options (JSON):**
    ```json
    [
      { "value": "tier1", "label": "Tier 1 Support" },
@@ -580,9 +609,13 @@ Your module has these lifecycle stages:
    ]
    ```
 
-4. **Click "Save"**
+4. **Settings:**
+   - ☑️ **Enable Search:** Check this box
+   - ☑️ **Enable Caching:** Check this box
 
-**✅ Checkpoint:** You should have 4 lookups configured. Test by opening any lookup and clicking "Preview Data".
+5. **Click "Create Lookup"**
+
+**✅ Checkpoint:** You should have 4 lookups configured. Test by clicking "Test" button on any lookup card to verify data retrieval.
 
 ---
 
