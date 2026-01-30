@@ -623,86 +623,206 @@ Your module has these lifecycle stages:
 
 **Navigation:** No-Code Platform > Business Logic > Workflow Designer
 
+> **💡 Understanding the Workflow Designer:**
+> The Workflow Designer provides a visual canvas for creating approval workflows. Key concepts:
+> - **States:** Nodes in the workflow (Start, Intermediate, Approval, Condition, End)
+> - **Transitions:** Connections between states with button labels
+> - **Trigger Types:** Manual, Automatic, or Scheduled workflow initiation
+
 #### Step 3.1: Create Refund Approval Workflow
 
 1. **Click "Create Workflow"**
 
 2. **Basic Information:**
-   - **Name:** `ticket_refund_approval`
-   - **Display Name:** `Ticket Refund Approval`
-   - **Description:** `Approval process for ticket refunds`
-   - **Entity:** `SupportTicket`
-   - **Start Condition:** `tags contains 'refund_requested'`
+   | Field | Value |
+   |-------|-------|
+   | **Workflow Name** | `ticket_refund_approval` |
+   | **Display Label** | `Ticket Refund Approval` |
+   | **Description** | `Approval process for ticket refunds` |
+   | **Category** | `Approvals` |
+   | **Trigger Type** | `manual` |
 
-3. **Design Workflow States:**
+3. **Click "Create Workflow"**
 
-   Click "Open Designer" to access the visual canvas.
+   The workflow is created with an empty canvas. You'll now see the workflow detail view with the visual canvas.
 
-   **State 1: Start**
-   - Type: Start
-   - Position: (100, 100)
-   - No configuration needed
+---
 
-   **State 2: Supervisor Review**
-   - Type: Approval
-   - Position: (300, 100)
-   - **Approver Type:** Role
-   - **Role:** `Support Supervisor`
-   - **Approval Type:** Sequential
-   - **SLA Hours:** 4
-   - **Actions on Approval:**
-     - Update `status` to `'pending_manager'`
-   - **Actions on Rejection:**
-     - Update `status` to `'closed'`
-     - Add comment: "Refund request rejected by supervisor"
+#### Step 3.2: Add Workflow States
 
-   **State 3: Manager Approval**
-   - Type: Approval
-   - Position: (500, 100)
-   - **Approver Type:** Role
-   - **Role:** `Support Manager`
-   - **SLA Hours:** 8
-   - **Actions on Approval:**
-     - Update `status` to `'approved'`
-     - Update `tags` to add `'refund_approved'`
-   - **Actions on Rejection:**
-     - Update `status` to `'closed'`
-     - Add comment: "Refund request rejected by manager"
+Click **"Add State"** button to add each state:
 
-   **State 4: Process Refund**
-   - Type: Task
-   - Position: (700, 100)
-   - **Assigned Role:** `Billing Team`
-   - **Task Description:** "Process refund for ticket"
-   - **Actions on Complete:**
-     - Update `status` to `'closed'`
-     - Add comment: "Refund processed successfully"
+**State 1: Start**
+| Field | Value |
+|-------|-------|
+| **State Name** | `start` |
+| **Label** | `Start` |
+| **State Type** | `start` |
+| **Description** | `Workflow entry point` |
 
-   **State 5: End**
-   - Type: End
-   - Position: (900, 100)
+**State 2: Supervisor Review**
+| Field | Value |
+|-------|-------|
+| **State Name** | `supervisor_review` |
+| **Label** | `Supervisor Review` |
+| **State Type** | `approval` |
+| **Description** | `Supervisor reviews refund request` |
+| **SLA Hours** | `4` |
+| **Requires Approval** | ☑️ Check this |
 
-4. **Create Transitions:**
-   - Start → Supervisor Review (automatic)
-   - Supervisor Review → Manager Approval (on approval)
-   - Supervisor Review → End (on rejection)
-   - Manager Approval → Process Refund (on approval)
-   - Manager Approval → End (on rejection)
-   - Process Refund → End (on completion)
+When "Requires Approval" is checked, additional fields appear:
+| Field | Value |
+|-------|-------|
+| **Approval Type** | `sequential` |
+| **Approver Roles** | `Support Supervisor` |
 
-5. **Save Workflow**
+**State 3: Manager Approval**
+| Field | Value |
+|-------|-------|
+| **State Name** | `manager_approval` |
+| **Label** | `Manager Approval` |
+| **State Type** | `approval` |
+| **Description** | `Manager final approval for refund` |
+| **SLA Hours** | `8` |
+| **Requires Approval** | ☑️ Check this |
+| **Approval Type** | `sequential` |
+| **Approver Roles** | `Support Manager` |
 
-6. **Test Workflow:**
-   - Click "Simulate"
-   - Enter test data (ticket with `refund_requested` tag)
-   - Step through the workflow
-   - Verify state transitions
+**State 4: Process Refund**
+| Field | Value |
+|-------|-------|
+| **State Name** | `process_refund` |
+| **Label** | `Process Refund` |
+| **State Type** | `intermediate` |
+| **Description** | `Billing team processes the refund` |
 
-7. **Activate Workflow:**
-   - Click "Activate"
-   - Confirm activation
+**State 5: End**
+| Field | Value |
+|-------|-------|
+| **State Name** | `end` |
+| **Label** | `End` |
+| **State Type** | `end` |
+| **Final State** | ☑️ Check this |
 
-**✅ Checkpoint:** Workflow should be active and visible in the Workflow List.
+> **💡 State Types & Colors:**
+> - **Start** (Green): Entry point of workflow
+> - **Intermediate** (Blue): Regular processing step
+> - **Approval** (Purple): Requires user approval
+> - **Condition** (Yellow): Decision/branching point
+> - **End** (Red): Terminal state
+
+---
+
+#### Step 3.3: Add Transitions
+
+Click **"Add Transition"** to connect states:
+
+**Transition 1: Start to Supervisor**
+| Field | Value |
+|-------|-------|
+| **Transition Name** | `to_supervisor` |
+| **From State** | `Start` |
+| **To State** | `Supervisor Review` |
+| **Button Label** | `Submit for Review` |
+| **Button Style** | `primary` (Blue) |
+
+**Transition 2: Supervisor Approves**
+| Field | Value |
+|-------|-------|
+| **Transition Name** | `supervisor_approved` |
+| **From State** | `Supervisor Review` |
+| **To State** | `Manager Approval` |
+| **Button Label** | `Approve` |
+| **Condition Type** | `approval` |
+| **Button Style** | `success` (Green) |
+
+**Transition 3: Supervisor Rejects**
+| Field | Value |
+|-------|-------|
+| **Transition Name** | `supervisor_rejected` |
+| **From State** | `Supervisor Review` |
+| **To State** | `End` |
+| **Button Label** | `Reject` |
+| **Condition Type** | `approval` |
+| **Button Style** | `danger` (Red) |
+
+**Transition 4: Manager Approves**
+| Field | Value |
+|-------|-------|
+| **Transition Name** | `manager_approved` |
+| **From State** | `Manager Approval` |
+| **To State** | `Process Refund` |
+| **Button Label** | `Approve` |
+| **Condition Type** | `approval` |
+| **Button Style** | `success` (Green) |
+
+**Transition 5: Manager Rejects**
+| Field | Value |
+|-------|-------|
+| **Transition Name** | `manager_rejected` |
+| **From State** | `Manager Approval` |
+| **To State** | `End` |
+| **Button Label** | `Reject` |
+| **Condition Type** | `approval` |
+| **Button Style** | `danger` (Red) |
+
+**Transition 6: Refund Complete**
+| Field | Value |
+|-------|-------|
+| **Transition Name** | `refund_complete` |
+| **From State** | `Process Refund` |
+| **To State** | `End` |
+| **Button Label** | `Complete` |
+| **Button Style** | `success` (Green) |
+
+> **💡 Button Styles:**
+> - `primary` (Blue) - Default action
+> - `success` (Green) - Positive action (approve, complete)
+> - `danger` (Red) - Negative action (reject, cancel)
+> - `warning` (Yellow) - Caution action
+
+---
+
+#### Step 3.4: Arrange States on Canvas
+
+The visual canvas shows your workflow as a diagram:
+- **Drag states** to reposition them for better visualization
+- States are color-coded by type (see legend in top-right)
+- Transitions appear as arrows between states with button labels
+
+Suggested layout:
+```
+[Start] → [Supervisor Review] → [Manager Approval] → [Process Refund] → [End]
+                    ↓                    ↓
+                  [End]                [End]
+```
+
+---
+
+#### Step 3.5: Test Workflow (Simulation)
+
+1. Click **"Simulate"** button
+2. Select initial state: `Start`
+3. Enter test data (JSON):
+   ```json
+   {
+     "ticket_id": "test-123",
+     "refund_amount": 50.00,
+     "reason": "Product defect"
+   }
+   ```
+4. Click through the transitions to verify the flow
+5. Verify state changes work as expected
+
+---
+
+#### Step 3.6: Publish Workflow
+
+1. Click **"Publish"** button (or toggle the publish switch)
+2. The workflow status changes from "Draft" to "Published"
+3. Published workflows are active and can be triggered
+
+**✅ Checkpoint:** Workflow should be published and visible in the Workflow List with a "Published" badge.
 
 ---
 
