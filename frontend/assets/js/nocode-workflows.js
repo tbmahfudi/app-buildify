@@ -1377,7 +1377,7 @@ export class WorkflowsPage {
     this.currentWorkflow = workflow;
     this.currentStates = states;
     this.currentTransitions = transitions;
-    this.initializeCanvas(workflowId);
+    this.initializeCanvas(workflow.id);
   }
 
   initializeCanvas(workflowId) {
