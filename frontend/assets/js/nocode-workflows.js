@@ -755,22 +755,9 @@ export class WorkflowsPage {
           <h3 class="text-lg font-semibold text-gray-900">Add Workflow State</h3>
         </div>
         <form id="addStateForm" class="p-6 space-y-4">
-          <div class="grid grid-cols-2 gap-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">State Name *</label>
-              <input type="text" name="name" required placeholder="pending_approval"
-                     class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Label *</label>
-              <input type="text" name="label" required placeholder="Pending Approval"
-                     class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-            </div>
-          </div>
-
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">State Type *</label>
-            <select name="state_type" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+            <select name="state_type" id="stateTypeSelect" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
               <option value="">Select type...</option>
               <option value="start">Start (Initial state)</option>
               <option value="intermediate">Intermediate (Processing state)</option>
@@ -780,34 +767,53 @@ export class WorkflowsPage {
             </select>
           </div>
 
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
-            <textarea name="description" rows="2" placeholder="State description..."
-                      class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"></textarea>
+          <!-- Basic Fields (hidden for Start/End) -->
+          <div id="basicFieldsSection" class="space-y-4">
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">State Name *</label>
+                <input type="text" name="name" id="stateName" required placeholder="pending_approval"
+                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Label *</label>
+                <input type="text" name="label" id="stateLabel" required placeholder="Pending Approval"
+                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+              <textarea name="description" id="stateDescription" rows="2" placeholder="State description..."
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"></textarea>
+            </div>
           </div>
 
-          <div class="grid grid-cols-2 gap-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Color</label>
-              <input type="text" name="color" placeholder="#3B82F6"
-                     class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+          <!-- Advanced Fields (hidden for Start/End) -->
+          <div id="advancedFieldsSection" class="space-y-4">
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Color</label>
+                <input type="text" name="color" placeholder="#3B82F6"
+                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">SLA Hours</label>
+                <input type="number" name="sla_hours" placeholder="24"
+                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+              </div>
             </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">SLA Hours</label>
-              <input type="number" name="sla_hours" placeholder="24"
-                     class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-            </div>
-          </div>
 
-          <div class="grid grid-cols-2 gap-4">
-            <label class="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" name="is_final" class="rounded text-blue-600">
-              <span class="text-sm text-gray-700">Final State</span>
-            </label>
-            <label class="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" name="requires_approval" id="requiresApproval" class="rounded text-blue-600" onchange="document.getElementById('approvalConfig').classList.toggle('hidden', !this.checked)">
-              <span class="text-sm text-gray-700">Requires Approval</span>
-            </label>
+            <div class="grid grid-cols-2 gap-4">
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" name="is_final" id="isFinalCheckbox" class="rounded text-blue-600">
+                <span class="text-sm text-gray-700">Final State</span>
+              </label>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" name="requires_approval" id="requiresApproval" class="rounded text-blue-600">
+                <span class="text-sm text-gray-700">Requires Approval</span>
+              </label>
+            </div>
           </div>
 
           <!-- Approval Configuration -->
@@ -837,6 +843,16 @@ export class WorkflowsPage {
             </div>
           </div>
 
+          <!-- Info message for Start/End states -->
+          <div id="simpleStateInfo" class="hidden bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div class="flex items-start gap-3">
+              <i class="ph ph-info text-blue-600 text-xl"></i>
+              <div>
+                <p class="text-sm text-blue-800" id="simpleStateMessage">This state type has pre-configured settings.</p>
+              </div>
+            </div>
+          </div>
+
           <div class="flex gap-3 pt-4 border-t">
             <button type="submit" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
               <i class="ph ph-plus"></i> Add State
@@ -850,6 +866,82 @@ export class WorkflowsPage {
     `;
 
     document.body.appendChild(modal);
+
+    // Handle state type change
+    const stateTypeSelect = document.getElementById('stateTypeSelect');
+    const basicFieldsSection = document.getElementById('basicFieldsSection');
+    const advancedFieldsSection = document.getElementById('advancedFieldsSection');
+    const approvalConfig = document.getElementById('approvalConfig');
+    const simpleStateInfo = document.getElementById('simpleStateInfo');
+    const simpleStateMessage = document.getElementById('simpleStateMessage');
+    const stateName = document.getElementById('stateName');
+    const stateLabel = document.getElementById('stateLabel');
+    const stateDescription = document.getElementById('stateDescription');
+    const isFinalCheckbox = document.getElementById('isFinalCheckbox');
+    const requiresApproval = document.getElementById('requiresApproval');
+
+    stateTypeSelect.addEventListener('change', (e) => {
+      const type = e.target.value;
+
+      // Reset visibility
+      basicFieldsSection.classList.remove('hidden');
+      advancedFieldsSection.classList.remove('hidden');
+      approvalConfig.classList.add('hidden');
+      simpleStateInfo.classList.add('hidden');
+
+      // Reset required attributes
+      stateName.required = true;
+      stateLabel.required = true;
+
+      switch (type) {
+        case 'start':
+          // Auto-fill and hide fields for Start state
+          stateName.value = 'start';
+          stateLabel.value = 'Start';
+          stateDescription.value = 'Workflow entry point';
+          basicFieldsSection.classList.add('hidden');
+          advancedFieldsSection.classList.add('hidden');
+          simpleStateInfo.classList.remove('hidden');
+          simpleStateMessage.textContent = 'Start state will be created with name "start" and label "Start". This is the entry point of the workflow.';
+          stateName.required = false;
+          stateLabel.required = false;
+          break;
+
+        case 'end':
+          // Auto-fill and hide fields for End state
+          stateName.value = 'end';
+          stateLabel.value = 'End';
+          stateDescription.value = 'Workflow completion';
+          isFinalCheckbox.checked = true;
+          basicFieldsSection.classList.add('hidden');
+          advancedFieldsSection.classList.add('hidden');
+          simpleStateInfo.classList.remove('hidden');
+          simpleStateMessage.textContent = 'End state will be created with name "end" and label "End". This is automatically marked as a final state.';
+          stateName.required = false;
+          stateLabel.required = false;
+          break;
+
+        case 'approval':
+          // Show approval config for approval type
+          requiresApproval.checked = true;
+          approvalConfig.classList.remove('hidden');
+          break;
+
+        default:
+          // Reset fields for other types
+          stateName.value = '';
+          stateLabel.value = '';
+          stateDescription.value = '';
+          isFinalCheckbox.checked = false;
+          requiresApproval.checked = false;
+          break;
+      }
+    });
+
+    // Handle requires approval checkbox
+    requiresApproval.addEventListener('change', (e) => {
+      approvalConfig.classList.toggle('hidden', !e.target.checked);
+    });
 
     document.getElementById('addStateForm').addEventListener('submit', (e) => {
       e.preventDefault();
