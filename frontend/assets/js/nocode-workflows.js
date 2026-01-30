@@ -1312,71 +1312,51 @@ export class WorkflowsPage {
   }
 
   showVisualDesigner(workflow, states, transitions) {
-    const modal = document.createElement('div');
-    modal.id = 'visualDesignerModal';
-    modal.className = 'fixed inset-0 bg-gray-900 bg-opacity-95 flex flex-col z-50';
-
-    modal.innerHTML = `
-      <div class="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
-        <div>
-          <h2 class="text-xl font-semibold text-gray-900">
-            <i class="ph ph-flow-arrow"></i> Visual Designer: ${this.escapeHtml(workflow.label)}
-          </h2>
-          <p class="text-sm text-gray-500 mt-1">Drag states to reposition • Click states to edit • Arrows show transitions</p>
-        </div>
-        <div class="flex gap-3">
-          <button onclick="WorkflowApp.simulateWorkflow('${workflow.id}')" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
-            <i class="ph ph-play"></i> Simulate
-          </button>
-          <button onclick="WorkflowApp.showVersionHistory('${workflow.id}')" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-            <i class="ph ph-clock-counter-clockwise"></i> Version History
-          </button>
-          <button onclick="WorkflowApp.closeVisualDesigner()" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">
-            <i class="ph ph-x"></i> Close
-          </button>
-        </div>
-      </div>
-
-      <div class="flex-1 relative bg-gray-50 overflow-hidden">
-        <svg id="workflowCanvas" class="absolute inset-0 w-full h-full" style="cursor: grab;">
-          <defs>
-            <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
-              <polygon points="0 0, 10 3, 0 6" fill="#6B7280" />
-            </marker>
-          </defs>
-          <g id="transitionLines"></g>
-          <g id="stateNodes"></g>
-        </svg>
-
-        <div class="absolute top-4 right-4 bg-white rounded-lg shadow-lg p-4 space-y-2 text-sm">
-          <div class="flex items-center gap-2">
-            <div class="w-4 h-4 rounded-full bg-green-500"></div>
-            <span>Start State</span>
-          </div>
-          <div class="flex items-center gap-2">
-            <div class="w-4 h-4 rounded-full bg-blue-500"></div>
-            <span>Intermediate</span>
-          </div>
-          <div class="flex items-center gap-2">
-            <div class="w-4 h-4 rounded-full bg-purple-500"></div>
-            <span>Approval</span>
-          </div>
-          <div class="flex items-center gap-2">
-            <div class="w-4 h-4 rounded-full bg-yellow-500"></div>
-            <span>Condition</span>
-          </div>
-          <div class="flex items-center gap-2">
-            <div class="w-4 h-4 rounded-full bg-red-500"></div>
-            <span>End State</span>
-          </div>
-        </div>
-      </div>
-    `;
-
-    document.body.appendChild(modal);
+    // Store current state
     this.currentWorkflow = workflow;
     this.currentStates = states;
     this.currentTransitions = transitions;
+
+    // Update designer title
+    const title = document.getElementById('designer-workflow-title');
+    if (title) {
+      title.innerHTML = `<i class="ph ph-flow-arrow"></i> Visual Designer: ${this.escapeHtml(workflow.label)}`;
+    }
+
+    // Setup button handlers
+    const btnAddState = document.getElementById('btn-add-state');
+    const btnAddTransition = document.getElementById('btn-add-transition');
+    const btnSimulate = document.getElementById('btn-simulate');
+    const btnVersionHistory = document.getElementById('btn-version-history');
+
+    if (btnAddState) {
+      btnAddState.onclick = () => this.showAddStateModal(workflow.id);
+    }
+    if (btnAddTransition) {
+      btnAddTransition.onclick = () => this.showAddTransitionModal(workflow.id);
+    }
+    if (btnSimulate) {
+      btnSimulate.onclick = () => this.simulateWorkflow(workflow.id);
+    }
+    if (btnVersionHistory) {
+      btnVersionHistory.onclick = () => this.showVersionHistory(workflow.id);
+    }
+
+    // Hide main content areas and tabs
+    document.getElementById('content-workflows')?.classList.add('hidden');
+    document.getElementById('content-instances')?.classList.add('hidden');
+    document.querySelector('.border-b.border-gray-200 nav')?.parentElement?.classList.add('hidden');
+
+    // Show visual designer content area
+    document.getElementById('content-visual-designer')?.classList.remove('hidden');
+
+    // Show/hide empty state based on states
+    const emptyState = document.getElementById('canvas-empty-state');
+    if (emptyState) {
+      emptyState.classList.toggle('hidden', states.length > 0);
+    }
+
+    // Initialize canvas
     this.initializeCanvas(workflow.id);
   }
 
@@ -1594,8 +1574,29 @@ export class WorkflowsPage {
   }
 
   closeVisualDesigner() {
-    const modal = document.getElementById('visualDesignerModal');
-    if (modal) modal.remove();
+    // Hide visual designer content area
+    document.getElementById('content-visual-designer')?.classList.add('hidden');
+
+    // Clear canvas
+    const stateNodes = document.getElementById('stateNodes');
+    const transitionLines = document.getElementById('transitionLines');
+    if (stateNodes) stateNodes.innerHTML = '';
+    if (transitionLines) transitionLines.innerHTML = '';
+
+    // Show tabs and workflows content
+    document.querySelector('.border-b.border-gray-200 nav')?.parentElement?.classList.remove('hidden');
+
+    // Show the appropriate content based on current tab
+    if (this.currentTab === 'instances') {
+      document.getElementById('content-instances')?.classList.remove('hidden');
+    } else {
+      document.getElementById('content-workflows')?.classList.remove('hidden');
+    }
+
+    // Clear current workflow data
+    this.currentWorkflow = null;
+    this.currentStates = [];
+    this.currentTransitions = [];
   }
 
   // ========== WORKFLOW SIMULATION ==========
