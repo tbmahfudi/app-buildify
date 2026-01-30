@@ -61,7 +61,8 @@ export class LookupsPage {
       showCreateCascadingModal: () => this.showCreateCascadingModal(),
       viewCascadingRule: (id) => this.viewCascadingRule(id),
       deleteCascadingRule: (id) => this.deleteCascadingRule(id),
-      onSourceTypeChange: (sourceType) => this.onSourceTypeChange(sourceType)
+      onSourceTypeChange: (sourceType) => this.onSourceTypeChange(sourceType),
+      onEntityChange: (entityId) => this.onEntityChange(entityId)
     };
   }
 
@@ -115,6 +116,78 @@ export class LookupsPage {
       case 'api':
         document.getElementById('api-fields')?.classList.remove('hidden');
         break;
+    }
+  }
+
+  async onEntityChange(entityId) {
+    const displayFieldSelect = document.getElementById('display_field_select');
+    const valueFieldSelect = document.getElementById('value_field_select');
+
+    if (!entityId) {
+      // Reset to default state
+      displayFieldSelect.innerHTML = '<option value="">-- Select Entity First --</option>';
+      valueFieldSelect.innerHTML = '<option value="">-- Select Entity First --</option>';
+      return;
+    }
+
+    // Show loading state
+    displayFieldSelect.innerHTML = '<option value="">Loading fields...</option>';
+    valueFieldSelect.innerHTML = '<option value="">Loading fields...</option>';
+
+    try {
+      // Fetch entity details with fields
+      const response = await apiFetch(`/data-model/entities/${entityId}`, {
+        headers: {
+          'Authorization': `Bearer ${authService.getToken()}`
+        }
+      });
+
+      if (response.ok) {
+        const entity = await response.json();
+        const fields = entity.fields || [];
+
+        // Populate display field dropdown
+        displayFieldSelect.innerHTML = '<option value="">-- Select Display Field --</option>';
+        valueFieldSelect.innerHTML = '<option value="">-- Select Value Field --</option>';
+
+        // Add id field first (common for value field)
+        valueFieldSelect.innerHTML += '<option value="id" selected>id (Primary Key)</option>';
+
+        fields.forEach(field => {
+          const displayOption = document.createElement('option');
+          displayOption.value = field.name;
+          displayOption.textContent = `${field.display_name || field.name} (${field.field_type})`;
+          // Pre-select 'name' for display field if available
+          if (field.name === 'name') {
+            displayOption.selected = true;
+          }
+          displayFieldSelect.appendChild(displayOption);
+
+          // Add to value field dropdown too (in case they want to use a different field)
+          const valueOption = document.createElement('option');
+          valueOption.value = field.name;
+          valueOption.textContent = `${field.display_name || field.name} (${field.field_type})`;
+          valueFieldSelect.appendChild(valueOption);
+        });
+      } else {
+        displayFieldSelect.innerHTML = '<option value="">Error loading fields</option>';
+        valueFieldSelect.innerHTML = '<option value="">Error loading fields</option>';
+      }
+    } catch (error) {
+      console.error('Error loading entity fields:', error);
+      displayFieldSelect.innerHTML = '<option value="">Error loading fields</option>';
+      valueFieldSelect.innerHTML = '<option value="">Error loading fields</option>';
+    }
+  }
+
+  resetEntityFieldSelects() {
+    const displayFieldSelect = document.getElementById('display_field_select');
+    const valueFieldSelect = document.getElementById('value_field_select');
+    if (displayFieldSelect) {
+      displayFieldSelect.innerHTML = '<option value="">-- Select Entity First --</option>';
+    }
+    if (valueFieldSelect) {
+      valueFieldSelect.innerHTML = '<option value="">-- Select Entity First --</option>';
     }
   }
 
@@ -294,6 +367,8 @@ export class LookupsPage {
     document.getElementById('createLookupForm').reset();
     // Reset to default source type (entity) field visibility
     this.onSourceTypeChange('entity');
+    // Reset entity field dropdowns to initial state
+    this.resetEntityFieldSelects();
     // Show the modal
     document.getElementById('createLookupModal').classList.remove('hidden');
   }
@@ -303,6 +378,8 @@ export class LookupsPage {
     document.getElementById('createLookupForm').reset();
     // Reset source type fields to default (entity)
     this.onSourceTypeChange('entity');
+    // Reset entity field dropdowns
+    this.resetEntityFieldSelects();
   }
 
   async createLookup(event) {
