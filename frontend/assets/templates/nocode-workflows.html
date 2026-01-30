@@ -69,6 +69,88 @@
     </div>
   </div>
 
+  <!-- Visual Designer (Content Area) -->
+  <div id="content-visual-designer" class="hidden">
+    <!-- Designer header with back button -->
+    <div class="px-6 pb-4">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-4">
+          <button onclick="WorkflowApp.closeVisualDesigner()" class="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition">
+            <i class="ph ph-arrow-left text-xl"></i>
+          </button>
+          <div>
+            <h2 id="designer-workflow-title" class="text-xl font-semibold text-gray-900">
+              <i class="ph ph-flow-arrow"></i> Visual Designer
+            </h2>
+            <p class="text-sm text-gray-500">Drag states to reposition • Click states to edit • Arrows show transitions</p>
+          </div>
+        </div>
+        <div class="flex gap-3">
+          <button id="btn-add-state" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700">
+            <i class="ph ph-plus-circle"></i> Add State
+          </button>
+          <button id="btn-add-transition" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+            <i class="ph ph-arrow-right"></i> Add Transition
+          </button>
+          <button id="btn-simulate" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+            <i class="ph ph-play"></i> Simulate
+          </button>
+          <button id="btn-version-history" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">
+            <i class="ph ph-clock-counter-clockwise"></i> History
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Canvas Container -->
+    <div class="px-6">
+      <div class="bg-white rounded-lg shadow-sm border border-gray-200 relative" style="height: calc(100vh - 280px); min-height: 500px;">
+        <svg id="workflowCanvas" class="absolute inset-0 w-full h-full" style="cursor: grab;">
+          <defs>
+            <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+              <polygon points="0 0, 10 3, 0 6" fill="#6B7280" />
+            </marker>
+          </defs>
+          <g id="transitionLines"></g>
+          <g id="stateNodes"></g>
+        </svg>
+
+        <!-- Legend -->
+        <div class="absolute top-4 right-4 bg-white rounded-lg shadow-lg p-4 space-y-2 text-sm border border-gray-200">
+          <div class="font-medium text-gray-700 mb-2">State Types</div>
+          <div class="flex items-center gap-2">
+            <div class="w-4 h-4 rounded-full bg-green-500"></div>
+            <span>Start</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <div class="w-4 h-4 rounded-full bg-blue-500"></div>
+            <span>Intermediate</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <div class="w-4 h-4 rounded-full bg-purple-500"></div>
+            <span>Approval</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <div class="w-4 h-4 rounded-full bg-yellow-500"></div>
+            <span>Condition</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <div class="w-4 h-4 rounded-full bg-red-500"></div>
+            <span>End</span>
+          </div>
+        </div>
+
+        <!-- Empty state message -->
+        <div id="canvas-empty-state" class="absolute inset-0 flex items-center justify-center">
+          <div class="text-center">
+            <i class="ph-duotone ph-flow-arrow text-6xl text-gray-300"></i>
+            <p class="text-gray-500 mt-4">No states yet. Click "Add State" to start building your workflow.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Create Workflow Modal -->
   <div id="createWorkflowModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
     <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
