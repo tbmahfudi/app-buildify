@@ -98,22 +98,81 @@
 
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-2">Source Type*</label>
-          <select name="source_type" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500">
+          <select name="source_type" required onchange="LookupApp.onSourceTypeChange(this.value)" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500">
             <option value="entity">Entity (Database Table)</option>
-            <option value="static">Static List</option>
-            <option value="query">Custom Query</option>
+            <option value="static_list">Static List</option>
+            <option value="custom_query">Custom Query</option>
             <option value="api">External API</option>
           </select>
         </div>
 
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-2">Display Field</label>
-          <input type="text" name="display_field" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500" placeholder="e.g., name">
+        <!-- Entity Source Fields -->
+        <div id="entity-fields" class="source-type-fields space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Source Entity*</label>
+            <select name="source_entity_id" id="source_entity_select" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500">
+              <option value="">-- Select Entity --</option>
+            </select>
+            <p class="text-xs text-gray-500 mt-1">Select the entity to load lookup data from</p>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Display Field</label>
+            <input type="text" name="display_field" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500" placeholder="e.g., name">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Value Field</label>
+            <input type="text" name="value_field" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500" placeholder="e.g., id">
+          </div>
         </div>
 
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-2">Value Field</label>
-          <input type="text" name="value_field" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500" placeholder="e.g., id">
+        <!-- Static List Fields -->
+        <div id="static-list-fields" class="source-type-fields space-y-4 hidden">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Static Options (JSON)*</label>
+            <textarea name="static_options" rows="8" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 font-mono text-sm" placeholder='[
+  { "value": "low", "label": "Low", "color": "#10b981" },
+  { "value": "medium", "label": "Medium", "color": "#f59e0b" },
+  { "value": "high", "label": "High", "color": "#ef4444" }
+]'></textarea>
+            <p class="text-xs text-gray-500 mt-1">Enter JSON array of options. Each option must have "value" and "label". Optional: "color", "icon", "metadata"</p>
+          </div>
+        </div>
+
+        <!-- Custom Query Fields -->
+        <div id="custom-query-fields" class="source-type-fields space-y-4 hidden">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">SQL Query*</label>
+            <textarea name="custom_query" rows="6" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 font-mono text-sm" placeholder="SELECT id AS value, name AS label FROM categories WHERE is_active = true ORDER BY name"></textarea>
+            <p class="text-xs text-gray-500 mt-1">Query must return "value" and "label" columns. Use "AS" to rename columns.</p>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Query Parameters (JSON)</label>
+            <textarea name="query_parameters" rows="3" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 font-mono text-sm" placeholder='{ "status": "active" }'></textarea>
+          </div>
+        </div>
+
+        <!-- API Fields -->
+        <div id="api-fields" class="source-type-fields space-y-4 hidden">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">API Endpoint*</label>
+            <input type="text" name="api_endpoint" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500" placeholder="https://api.example.com/options">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">HTTP Method</label>
+            <select name="api_method" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500">
+              <option value="GET">GET</option>
+              <option value="POST">POST</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Headers (JSON)</label>
+            <textarea name="api_headers" rows="3" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 font-mono text-sm" placeholder='{ "Authorization": "Bearer token" }'></textarea>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Response Mapping (JSON)</label>
+            <textarea name="api_response_mapping" rows="3" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 font-mono text-sm" placeholder='{ "data_path": "results", "value_field": "id", "label_field": "name" }'></textarea>
+            <p class="text-xs text-gray-500 mt-1">Map API response fields to lookup value and label</p>
+          </div>
         </div>
 
         <div class="grid grid-cols-2 gap-4">
