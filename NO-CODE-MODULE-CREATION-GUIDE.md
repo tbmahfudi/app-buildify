@@ -640,9 +640,22 @@ Your module has these lifecycle stages:
    | **Display Label** | `Ticket Refund Approval` |
    | **Description** | `Approval process for ticket refunds` |
    | **Category** | `Approvals` |
-   | **Trigger Type** | `manual` |
+   | **Target Entity** | Select `SupportTicket` from dropdown |
+   | **Trigger Type** | `Automatic (On Entity Change)` |
 
-3. **Click "Create Workflow"**
+3. **Trigger Conditions:**
+   When you select "Automatic" trigger type, the trigger conditions section appears:
+
+   | Field | Value |
+   |-------|-------|
+   | **Field to Monitor** | `tags` |
+   | **Condition Operator** | `Contains` |
+   | **Value** | `refund_requested` |
+
+   > **💡 How Automatic Triggers Work:**
+   > The workflow will automatically start when a SupportTicket is created or updated AND the `tags` field contains `refund_requested`. This is how workflows respond to entity changes without manual intervention.
+
+4. **Click "Create Workflow"**
 
    The workflow is created with an empty canvas. You'll now see the workflow detail view with the visual canvas.
 
