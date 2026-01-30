@@ -39,10 +39,12 @@ export class LookupsPage {
     this.currentTab = 'lookups';
     this.lookups = [];
     this.cascadingRules = [];
+    this.entities = [];
   }
 
   async init() {
     await this.loadLookups();
+    await this.loadEntities();
 
     // Make methods available globally for onclick handlers
     window.LookupApp = {
@@ -58,8 +60,62 @@ export class LookupsPage {
       viewData: (id) => this.viewData(id),
       showCreateCascadingModal: () => this.showCreateCascadingModal(),
       viewCascadingRule: (id) => this.viewCascadingRule(id),
-      deleteCascadingRule: (id) => this.deleteCascadingRule(id)
+      deleteCascadingRule: (id) => this.deleteCascadingRule(id),
+      onSourceTypeChange: (sourceType) => this.onSourceTypeChange(sourceType)
     };
+  }
+
+  async loadEntities() {
+    try {
+      const response = await apiFetch('/data-model/entities', {
+        headers: {
+          'Authorization': `Bearer ${authService.getToken()}`
+        }
+      });
+
+      if (response.ok) {
+        this.entities = await response.json();
+        this.populateEntitySelect();
+      }
+    } catch (error) {
+      console.error('Error loading entities:', error);
+    }
+  }
+
+  populateEntitySelect() {
+    const select = document.getElementById('source_entity_select');
+    if (!select) return;
+
+    select.innerHTML = '<option value="">-- Select Entity --</option>';
+    this.entities.forEach(entity => {
+      const option = document.createElement('option');
+      option.value = entity.id;
+      option.textContent = entity.display_name || entity.name;
+      select.appendChild(option);
+    });
+  }
+
+  onSourceTypeChange(sourceType) {
+    // Hide all source type field sections
+    document.querySelectorAll('.source-type-fields').forEach(section => {
+      section.classList.add('hidden');
+    });
+
+    // Show the relevant section
+    switch (sourceType) {
+      case 'entity':
+        document.getElementById('entity-fields')?.classList.remove('hidden');
+        break;
+      case 'static_list':
+        document.getElementById('static-list-fields')?.classList.remove('hidden');
+        break;
+      case 'custom_query':
+        document.getElementById('custom-query-fields')?.classList.remove('hidden');
+        break;
+      case 'api':
+        document.getElementById('api-fields')?.classList.remove('hidden');
+        break;
+    }
   }
 
   switchTab(tab) {
@@ -245,17 +301,116 @@ export class LookupsPage {
   async createLookup(event) {
     event.preventDefault();
     const formData = new FormData(event.target);
+    const sourceType = formData.get('source_type');
+
+    // Base data
     const data = {
       name: formData.get('name'),
       label: formData.get('label'),
       description: formData.get('description') || '',
-      source_type: formData.get('source_type'),
-      display_field: formData.get('display_field') || '',
-      value_field: formData.get('value_field') || 'id',
+      source_type: sourceType,
       enable_search: formData.get('enable_search') === 'on',
       enable_caching: formData.get('enable_caching') === 'on',
       is_active: true
     };
+
+    // Add source-type specific fields
+    switch (sourceType) {
+      case 'entity':
+        const entityId = formData.get('source_entity_id');
+        if (!entityId) {
+          this.showError('Please select a source entity');
+          return;
+        }
+        data.source_entity_id = entityId;
+        data.display_field = formData.get('display_field') || 'name';
+        data.value_field = formData.get('value_field') || 'id';
+        break;
+
+      case 'static_list':
+        const staticOptionsRaw = formData.get('static_options');
+        if (!staticOptionsRaw || !staticOptionsRaw.trim()) {
+          this.showError('Please enter static options JSON');
+          return;
+        }
+        try {
+          const staticOptions = JSON.parse(staticOptionsRaw);
+          if (!Array.isArray(staticOptions)) {
+            this.showError('Static options must be a JSON array');
+            return;
+          }
+          // Validate each option has value and label
+          for (const opt of staticOptions) {
+            if (!opt.value || !opt.label) {
+              this.showError('Each option must have "value" and "label" properties');
+              return;
+            }
+          }
+          data.static_options = staticOptions;
+          // For static lists, set display/value fields to label/value
+          data.display_field = 'label';
+          data.value_field = 'value';
+        } catch (e) {
+          this.showError('Invalid JSON format for static options: ' + e.message);
+          return;
+        }
+        break;
+
+      case 'custom_query':
+        const customQuery = formData.get('custom_query');
+        if (!customQuery || !customQuery.trim()) {
+          this.showError('Please enter a SQL query');
+          return;
+        }
+        data.custom_query = customQuery;
+        // Parse query parameters if provided
+        const queryParamsRaw = formData.get('query_parameters');
+        if (queryParamsRaw && queryParamsRaw.trim()) {
+          try {
+            data.query_parameters = JSON.parse(queryParamsRaw);
+          } catch (e) {
+            this.showError('Invalid JSON format for query parameters: ' + e.message);
+            return;
+          }
+        }
+        data.display_field = 'label';
+        data.value_field = 'value';
+        break;
+
+      case 'api':
+        const apiEndpoint = formData.get('api_endpoint');
+        if (!apiEndpoint || !apiEndpoint.trim()) {
+          this.showError('Please enter an API endpoint');
+          return;
+        }
+        data.api_endpoint = apiEndpoint;
+        data.api_method = formData.get('api_method') || 'GET';
+
+        // Parse API headers if provided
+        const apiHeadersRaw = formData.get('api_headers');
+        if (apiHeadersRaw && apiHeadersRaw.trim()) {
+          try {
+            data.api_headers = JSON.parse(apiHeadersRaw);
+          } catch (e) {
+            this.showError('Invalid JSON format for API headers: ' + e.message);
+            return;
+          }
+        }
+
+        // Parse response mapping if provided
+        const apiMappingRaw = formData.get('api_response_mapping');
+        if (apiMappingRaw && apiMappingRaw.trim()) {
+          try {
+            data.api_response_mapping = JSON.parse(apiMappingRaw);
+          } catch (e) {
+            this.showError('Invalid JSON format for response mapping: ' + e.message);
+            return;
+          }
+        }
+        data.display_field = 'label';
+        data.value_field = 'value';
+        break;
+    }
 
     try {
       const response = await apiFetch('/lookups/configurations', {
