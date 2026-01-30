@@ -290,12 +290,19 @@ export class LookupsPage {
   }
 
   showCreateModal() {
+    // Reset the form first
+    document.getElementById('createLookupForm').reset();
+    // Reset to default source type (entity) field visibility
+    this.onSourceTypeChange('entity');
+    // Show the modal
     document.getElementById('createLookupModal').classList.remove('hidden');
   }
 
   closeCreateModal() {
     document.getElementById('createLookupModal').classList.add('hidden');
     document.getElementById('createLookupForm').reset();
+    // Reset source type fields to default (entity)
+    this.onSourceTypeChange('entity');
   }
 
   async createLookup(event) {
