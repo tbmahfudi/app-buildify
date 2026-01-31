@@ -211,6 +211,87 @@ class WorkflowService:
 
         return workflow
 
+    async def simulate_workflow(self, workflow_id: UUID, simulation_data):
+        """Simulate a workflow execution for testing purposes"""
+        workflow = await self.get_workflow(workflow_id)
+
+        # Get all states and transitions
+        states = self.db.query(WorkflowState).filter(
+            WorkflowState.workflow_id == workflow_id,
+            WorkflowState.is_deleted == False
+        ).all()
+
+        transitions = self.db.query(WorkflowTransition).filter(
+            WorkflowTransition.workflow_id == workflow_id,
+            WorkflowTransition.is_deleted == False
+        ).all()
+
+        if not states:
+            return {
+                "success": False,
+                "steps": [],
+                "message": "Workflow has no states defined"
+            }
+
+        # Find start state or use provided initial state
+        start_state = None
+        if simulation_data.initial_state_id:
+            start_state = next((s for s in states if str(s.id) == str(simulation_data.initial_state_id)), None)
+
+        if not start_state:
+            start_state = next((s for s in states if s.state_type == 'start'), None)
+
+        if not start_state:
+            return {
+                "success": False,
+                "steps": [],
+                "message": "No start state found in workflow"
+            }
+
+        # Simulate workflow execution
+        simulation_steps = []
+        current_state = start_state
+        visited_states = set()
+        max_iterations = 20  # Prevent infinite loops
+
+        while current_state and len(simulation_steps) < max_iterations:
+            if current_state.id in visited_states and current_state.state_type != 'start':
+                break  # Prevent cycles
+
+            visited_states.add(current_state.id)
+
+            # Record step
+            action = "Started" if current_state.state_type == 'start' else (
+                "Completed" if current_state.is_final else "Transitioned"
+            )
+            simulation_steps.append({
+                "state": current_state.label,
+                "timestamp": datetime.utcnow(),
+                "action": action
+            })
+
+            # If final state, stop
+            if current_state.is_final or current_state.state_type == 'end':
+                break
+
+            # Find next transition
+            available_transitions = [t for t in transitions if str(t.from_state_id) == str(current_state.id)]
+
+            if not available_transitions:
+                break
+
+            # Take first available transition (in real simulation, this would be based on conditions)
+            next_transition = available_transitions[0]
+            next_state = next((s for s in states if str(s.id) == str(next_transition.to_state_id)), None)
+
+            current_state = next_state
+
+        return {
+            "success": True,
+            "steps": simulation_steps,
+            "message": f"Simulation completed successfully with {len(simulation_steps)} steps"
+        }
+
     # ==================== Workflow State Methods ====================
 
     async def create_state(self, workflow_id: UUID, state_data: WorkflowStateCreate):

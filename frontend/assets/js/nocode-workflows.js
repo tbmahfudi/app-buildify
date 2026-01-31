@@ -1076,13 +1076,17 @@ export class WorkflowsPage {
   }
 
   showTransitionManager(workflowId, states, transitions) {
+    // Close any open modals first
+    this.closeViewModal();
+    this.closeStateManager();
+
     // Store states for use in Add Transition modal
     this.currentStates = states;
     this.currentTransitionWorkflowId = workflowId;
 
     const modal = document.createElement('div');
     modal.id = 'transitionManagerModal';
-    modal.className = 'fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-[60]';
+    modal.className = 'fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-[100]';
     modal.innerHTML = `
       <div class="bg-white rounded-lg shadow-xl w-full max-w-5xl max-h-[90vh] flex flex-col">
         <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
@@ -1167,7 +1171,7 @@ export class WorkflowsPage {
     const states = this.currentStates || [];
     const modal = document.createElement('div');
     modal.id = 'addTransitionModal';
-    modal.className = 'fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-[70]';
+    modal.className = 'fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-[110]';
     modal.innerHTML = `
       <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl">
         <div class="px-6 py-4 border-b border-gray-200">
