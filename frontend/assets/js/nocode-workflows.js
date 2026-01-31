@@ -1076,6 +1076,10 @@ export class WorkflowsPage {
   }
 
   showTransitionManager(workflowId, states, transitions) {
+    // Store states for use in Add Transition modal
+    this.currentStates = states;
+    this.currentTransitionWorkflowId = workflowId;
+
     const modal = document.createElement('div');
     modal.id = 'transitionManagerModal';
     modal.className = 'fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-[60]';
@@ -1109,7 +1113,7 @@ export class WorkflowsPage {
                 <i class="ph-duotone ph-arrows-split text-5xl"></i>
                 <p class="mt-2">No transitions yet. Click "Add Transition" to create one.</p>
               </div>
-            ` : transitions.map(t => this.renderTransitionItem(t, states)).join('')}
+            ` : transitions.map(t => this.renderTransitionItem(t, states, workflowId)).join('')}
           </div>
         </div>
 
@@ -1124,7 +1128,7 @@ export class WorkflowsPage {
     document.body.appendChild(modal);
   }
 
-  renderTransitionItem(transition, states) {
+  renderTransitionItem(transition, states, workflowId) {
     const fromState = states.find(s => s.id === transition.from_state_id);
     const toState = states.find(s => s.id === transition.to_state_id);
 
@@ -1146,7 +1150,7 @@ export class WorkflowsPage {
           </div>
         </div>
         <div class="flex gap-2 ml-4">
-          <button onclick="WorkflowApp.deleteTransition('${this.currentWorkflow.id}', '${transition.id}')" class="px-3 py-1.5 bg-red-50 text-red-700 rounded hover:bg-red-100 text-sm">
+          <button onclick="WorkflowApp.deleteTransition('${workflowId}', '${transition.id}')" class="px-3 py-1.5 bg-red-50 text-red-700 rounded hover:bg-red-100 text-sm">
             <i class="ph ph-trash"></i> Delete
           </button>
         </div>
