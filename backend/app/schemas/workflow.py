@@ -241,3 +241,25 @@ class WorkflowHistoryResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+# ==================== Workflow Simulation Schemas ====================
+
+class WorkflowSimulationRequest(BaseModel):
+    """Schema for workflow simulation request"""
+    initial_state_id: Optional[UUID] = None
+    test_data: Dict[str, Any] = Field(default_factory=dict)
+
+
+class WorkflowSimulationStep(BaseModel):
+    """Schema for a simulation step"""
+    state: str
+    timestamp: datetime
+    action: str
+
+
+class WorkflowSimulationResponse(BaseModel):
+    """Schema for workflow simulation response"""
+    success: bool
+    steps: List[WorkflowSimulationStep] = Field(default_factory=list)
+    message: str

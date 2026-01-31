@@ -24,6 +24,8 @@ from app.schemas.workflow import (
     WorkflowInstanceResponse,
     WorkflowTransitionExecuteRequest,
     WorkflowHistoryResponse,
+    WorkflowSimulationRequest,
+    WorkflowSimulationResponse,
 )
 from app.services.workflow_service import WorkflowService
 
@@ -99,6 +101,18 @@ async def publish_workflow(
     """Publish a workflow to make it active"""
     service = WorkflowService(db, current_user)
     return await service.publish_workflow(workflow_id)
+
+
+@router.post("/{workflow_id}/simulate", response_model=WorkflowSimulationResponse)
+async def simulate_workflow(
+    workflow_id: UUID,
+    simulation: WorkflowSimulationRequest,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """Simulate a workflow execution for testing purposes"""
+    service = WorkflowService(db, current_user)
+    return await service.simulate_workflow(workflow_id, simulation)
 
 
 # ==================== Workflow State Endpoints ====================
