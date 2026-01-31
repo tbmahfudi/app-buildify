@@ -663,59 +663,103 @@ Your module has these lifecycle stages:
 
 #### Step 3.2: Add Workflow States
 
-Click **"Add State"** button to add each state:
+Click **"Add State"** button to add each state.
+
+> **💡 Add State Form Fields:**
+> The Add State form shows different fields based on the selected State Type:
+>
+> | Field | Description | Shown For |
+> |-------|-------------|-----------|
+> | **State Type** | Type of state (start, intermediate, end, approval, condition) | All |
+> | **State Name** | Technical name (lowercase, underscore) | intermediate, approval, condition |
+> | **Label** | Display name shown in UI | intermediate, approval, condition |
+> | **Description** | Brief state description | intermediate, approval, condition |
+> | **Color** | Hex color code for visual styling | intermediate, approval, condition |
+> | **SLA Hours** | Service level agreement time limit | intermediate, approval, condition |
+> | **Final State** | Marks this as a terminal state | intermediate, approval, condition |
+> | **Requires Approval** | Shows approval configuration | intermediate, approval, condition |
+>
+> **Approval Configuration** (shown when "Requires Approval" is checked):
+> | Field | Description |
+> |-------|-------------|
+> | **Approval Type** | any, all, majority, or sequential |
+> | **Approver Roles** | Comma-separated list of roles |
+> | **Auto-approve after (hours)** | Auto-approve if not actioned within time |
 
 **State 1: Start**
 | Field | Value |
 |-------|-------|
-| **State Name** | `start` |
-| **Label** | `Start` |
 | **State Type** | `start` |
-| **Description** | `Workflow entry point` |
+
+> **💡 Auto-Configuration:** When you select "Start" as the State Type, the form automatically configures the state with:
+> - State Name: `start`
+> - Label: `Start`
+> - Description: `Workflow entry point`
+>
+> No additional input is required. Click "Add State" to create.
 
 **State 2: Supervisor Review**
 | Field | Value |
 |-------|-------|
+| **State Type** | `approval` |
 | **State Name** | `supervisor_review` |
 | **Label** | `Supervisor Review` |
-| **State Type** | `approval` |
 | **Description** | `Supervisor reviews refund request` |
+| **Color** | (optional) Leave blank or enter hex color e.g., `#8B5CF6` |
 | **SLA Hours** | `4` |
-| **Requires Approval** | ☑️ Check this |
+| **Final State** | ☐ Leave unchecked |
+| **Requires Approval** | ☑️ Check this (auto-checked for approval type) |
 
-When "Requires Approval" is checked, additional fields appear:
+When "Requires Approval" is checked, the Approval Configuration section appears:
 | Field | Value |
 |-------|-------|
-| **Approval Type** | `sequential` |
+| **Approval Type** | `Sequential` |
 | **Approver Roles** | `Support Supervisor` |
+| **Auto-approve after (hours)** | (optional) Leave blank for no auto-approval |
 
 **State 3: Manager Approval**
 | Field | Value |
 |-------|-------|
+| **State Type** | `approval` |
 | **State Name** | `manager_approval` |
 | **Label** | `Manager Approval` |
-| **State Type** | `approval` |
 | **Description** | `Manager final approval for refund` |
+| **Color** | (optional) Leave blank or enter hex color |
 | **SLA Hours** | `8` |
+| **Final State** | ☐ Leave unchecked |
 | **Requires Approval** | ☑️ Check this |
-| **Approval Type** | `sequential` |
+
+Approval Configuration:
+| Field | Value |
+|-------|-------|
+| **Approval Type** | `Sequential` |
 | **Approver Roles** | `Support Manager` |
+| **Auto-approve after (hours)** | (optional) Leave blank |
 
 **State 4: Process Refund**
 | Field | Value |
 |-------|-------|
+| **State Type** | `intermediate` |
 | **State Name** | `process_refund` |
 | **Label** | `Process Refund` |
-| **State Type** | `intermediate` |
 | **Description** | `Billing team processes the refund` |
+| **Color** | (optional) Leave blank or enter hex color |
+| **SLA Hours** | (optional) Leave blank |
+| **Final State** | ☐ Leave unchecked |
+| **Requires Approval** | ☐ Leave unchecked |
 
 **State 5: End**
 | Field | Value |
 |-------|-------|
-| **State Name** | `end` |
-| **Label** | `End` |
 | **State Type** | `end` |
-| **Final State** | ☑️ Check this |
+
+> **💡 Auto-Configuration:** When you select "End" as the State Type, the form automatically configures the state with:
+> - State Name: `end`
+> - Label: `End`
+> - Description: `Workflow completion`
+> - Final State: Checked (automatically)
+>
+> No additional input is required. Click "Add State" to create.
 
 > **💡 State Types & Colors:**
 > - **Start** (Green): Entry point of workflow
@@ -728,7 +772,17 @@ When "Requires Approval" is checked, additional fields appear:
 
 #### Step 3.3: Add Transitions
 
-Click **"Add Transition"** to connect states:
+Click **"Add Transition"** to connect states.
+
+> **💡 Add Transition Form Fields:**
+> | Field | Description | Required |
+> |-------|-------------|----------|
+> | **Transition Name** | Technical name (lowercase, underscore) | Yes |
+> | **From State** | Starting state for this transition | Yes |
+> | **To State** | Destination state for this transition | Yes |
+> | **Button Label** | Text shown on the action button | Yes |
+> | **Condition Type** | `Always`, `Conditional`, or `Approval Required` | No (default: Always) |
+> | **Button Style** | `Primary` (Blue), `Success` (Green), `Danger` (Red), `Warning` (Yellow) | No (default: Primary) |
 
 **Transition 1: Start to Supervisor**
 | Field | Value |
@@ -737,7 +791,8 @@ Click **"Add Transition"** to connect states:
 | **From State** | `Start` |
 | **To State** | `Supervisor Review` |
 | **Button Label** | `Submit for Review` |
-| **Button Style** | `primary` (Blue) |
+| **Condition Type** | `Always` |
+| **Button Style** | `Primary (Blue)` |
 
 **Transition 2: Supervisor Approves**
 | Field | Value |
@@ -746,8 +801,8 @@ Click **"Add Transition"** to connect states:
 | **From State** | `Supervisor Review` |
 | **To State** | `Manager Approval` |
 | **Button Label** | `Approve` |
-| **Condition Type** | `approval` |
-| **Button Style** | `success` (Green) |
+| **Condition Type** | `Approval Required` |
+| **Button Style** | `Success (Green)` |
 
 **Transition 3: Supervisor Rejects**
 | Field | Value |
@@ -756,8 +811,8 @@ Click **"Add Transition"** to connect states:
 | **From State** | `Supervisor Review` |
 | **To State** | `End` |
 | **Button Label** | `Reject` |
-| **Condition Type** | `approval` |
-| **Button Style** | `danger` (Red) |
+| **Condition Type** | `Approval Required` |
+| **Button Style** | `Danger (Red)` |
 
 **Transition 4: Manager Approves**
 | Field | Value |
@@ -766,8 +821,8 @@ Click **"Add Transition"** to connect states:
 | **From State** | `Manager Approval` |
 | **To State** | `Process Refund` |
 | **Button Label** | `Approve` |
-| **Condition Type** | `approval` |
-| **Button Style** | `success` (Green) |
+| **Condition Type** | `Approval Required` |
+| **Button Style** | `Success (Green)` |
 
 **Transition 5: Manager Rejects**
 | Field | Value |
@@ -776,8 +831,8 @@ Click **"Add Transition"** to connect states:
 | **From State** | `Manager Approval` |
 | **To State** | `End` |
 | **Button Label** | `Reject` |
-| **Condition Type** | `approval` |
-| **Button Style** | `danger` (Red) |
+| **Condition Type** | `Approval Required` |
+| **Button Style** | `Danger (Red)` |
 
 **Transition 6: Refund Complete**
 | Field | Value |
@@ -786,13 +841,14 @@ Click **"Add Transition"** to connect states:
 | **From State** | `Process Refund` |
 | **To State** | `End` |
 | **Button Label** | `Complete` |
-| **Button Style** | `success` (Green) |
+| **Condition Type** | `Always` |
+| **Button Style** | `Success (Green)` |
 
 > **💡 Button Styles:**
-> - `primary` (Blue) - Default action
-> - `success` (Green) - Positive action (approve, complete)
-> - `danger` (Red) - Negative action (reject, cancel)
-> - `warning` (Yellow) - Caution action
+> - `Primary (Blue)` - Default action
+> - `Success (Green)` - Positive action (approve, complete)
+> - `Danger (Red)` - Negative action (reject, cancel)
+> - `Warning (Yellow)` - Caution action
 
 ---
 
