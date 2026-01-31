@@ -423,7 +423,7 @@ export class WorkflowsPage {
                 </div>
               ` : ''}
 
-              <div class="flex gap-3 pt-4 border-t">
+              <div class="flex flex-wrap gap-3 pt-4 border-t">
                 <button onclick="WorkflowApp.openVisualDesigner('${workflow.id}')" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700">
                   <i class="ph ph-flow-arrow"></i> Visual Designer
                 </button>
@@ -432,6 +432,9 @@ export class WorkflowsPage {
                 </button>
                 <button onclick="WorkflowApp.manageStates('${workflow.id}')" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
                   <i class="ph ph-circle"></i> Manage States
+                </button>
+                <button onclick="WorkflowApp.manageTransitions('${workflow.id}')" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+                  <i class="ph ph-arrows-split"></i> Manage Transitions
                 </button>
               </div>
             </div>

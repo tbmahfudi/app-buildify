@@ -164,6 +164,19 @@ async def list_transitions(
     return await service.list_transitions(workflow_id)
 
 
+@router.delete("/{workflow_id}/transitions/{transition_id}")
+async def delete_transition(
+    workflow_id: UUID,
+    transition_id: UUID,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """Delete a workflow transition"""
+    service = WorkflowService(db, current_user)
+    await service.delete_transition(workflow_id, transition_id)
+    return {"message": "Transition deleted successfully"}
+
+
 # ==================== Workflow Instance Endpoints ====================
 
 @router.post("/instances", response_model=WorkflowInstanceResponse)

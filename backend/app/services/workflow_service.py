@@ -301,6 +301,24 @@ class WorkflowService:
             WorkflowTransition.is_deleted == False
         ).all()
 
+    async def delete_transition(self, workflow_id: UUID, transition_id: UUID):
+        """Delete a workflow transition (soft delete)"""
+        await self.get_workflow(workflow_id)  # Verify workflow exists
+
+        transition = self.db.query(WorkflowTransition).filter(
+            WorkflowTransition.id == transition_id,
+            WorkflowTransition.workflow_id == workflow_id,
+            WorkflowTransition.is_deleted == False
+        ).first()
+
+        if not transition:
+            raise HTTPException(status_code=404, detail="Transition not found")
+
+        transition.is_deleted = True
+        self.db.commit()
+
+        return {"message": "Transition deleted successfully"}
+
     # ==================== Workflow Instance Methods ====================
 
     async def create_instance(self, instance_data: WorkflowInstanceCreate):
