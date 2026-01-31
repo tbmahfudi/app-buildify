@@ -653,7 +653,7 @@ export class WorkflowsPage {
   showStateManager(workflow, states) {
     const modal = document.createElement('div');
     modal.id = 'stateManagerModal';
-    modal.className = 'fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50';
+    modal.className = 'fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-[100]';
     modal.innerHTML = `
       <div class="bg-white rounded-lg shadow-xl w-full max-w-6xl max-h-[90vh] flex flex-col">
         <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
@@ -748,7 +748,7 @@ export class WorkflowsPage {
   showAddStateModal(workflowId) {
     const modal = document.createElement('div');
     modal.id = 'addStateModal';
-    modal.className = 'fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-[60]';
+    modal.className = 'fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-[110]';
     modal.innerHTML = `
       <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         <div class="px-6 py-4 border-b border-gray-200">
@@ -994,7 +994,12 @@ export class WorkflowsPage {
       if (response.ok) {
         this.closeAddStateModal();
         this.showSuccess('State created successfully');
-        await this.manageStates(workflowId);
+        // Refresh visual designer if open, otherwise refresh state manager
+        if (this.currentWorkflow && this.currentWorkflow.id === workflowId) {
+          await this.refreshVisualDesigner(workflowId);
+        } else {
+          await this.manageStates(workflowId);
+        }
       } else {
         const error = await response.json();
         this.showError(error.detail || 'Failed to create state');
@@ -1025,7 +1030,12 @@ export class WorkflowsPage {
 
       if (response.ok) {
         this.showSuccess('State deleted successfully');
-        await this.manageStates(workflowId);
+        // Refresh visual designer if open, otherwise refresh state manager
+        if (this.currentWorkflow && this.currentWorkflow.id === workflowId) {
+          await this.refreshVisualDesigner(workflowId);
+        } else {
+          await this.manageStates(workflowId);
+        }
       } else {
         const error = await response.json();
         this.showError(error.detail || 'Failed to delete state');
@@ -1453,6 +1463,42 @@ export class WorkflowsPage {
 
     // Initialize canvas
     this.initializeCanvas(workflow.id);
+  }
+
+  async refreshVisualDesigner(workflowId) {
+    try {
+      // Fetch updated states and transitions
+      const [statesResponse, transitionsResponse] = await Promise.all([
+        fetch(`/api/v1/workflows/${workflowId}/states`, {
+          headers: { 'Authorization': `Bearer ${authService.getToken()}` }
+        }),
+        fetch(`/api/v1/workflows/${workflowId}/transitions`, {
+          headers: { 'Authorization': `Bearer ${authService.getToken()}` }
+        })
+      ]);
+
+      if (statesResponse.ok && transitionsResponse.ok) {
+        this.currentStates = await statesResponse.json();
+        this.currentTransitions = await transitionsResponse.json();
+
+        // Clear and redraw canvas
+        const stateNodesGroup = document.getElementById('stateNodes');
+        const transitionLinesGroup = document.getElementById('transitionLines');
+        if (stateNodesGroup) stateNodesGroup.innerHTML = '';
+        if (transitionLinesGroup) transitionLinesGroup.innerHTML = '';
+
+        // Show/hide empty state
+        const emptyState = document.getElementById('canvas-empty-state');
+        if (emptyState) {
+          emptyState.classList.toggle('hidden', this.currentStates.length > 0);
+        }
+
+        // Reinitialize canvas
+        this.initializeCanvas(workflowId);
+      }
+    } catch (error) {
+      console.error('Error refreshing visual designer:', error);
+    }
   }
 
   initializeCanvas(workflowId) {
