@@ -1098,9 +1098,17 @@ export class AutomationsPage {
       const rule = await response.json();
       this.currentRule = rule;
 
-      // Ensure conditionGroups is always an array
-      if (Array.isArray(rule.conditions) && rule.conditions.length > 0) {
-        this.conditionGroups = rule.conditions;
+      // Parse conditions - handle both dictionary format (with groups) and legacy array format
+      if (rule.conditions && typeof rule.conditions === 'object') {
+        if (Array.isArray(rule.conditions.groups) && rule.conditions.groups.length > 0) {
+          // New dictionary format: { groups: [...], logic: 'AND' }
+          this.conditionGroups = rule.conditions.groups;
+        } else if (Array.isArray(rule.conditions) && rule.conditions.length > 0) {
+          // Legacy array format
+          this.conditionGroups = rule.conditions;
+        } else {
+          this.conditionGroups = [{ operator: 'AND', conditions: [] }];
+        }
       } else {
         this.conditionGroups = [{ operator: 'AND', conditions: [] }];
       }
@@ -1284,6 +1292,12 @@ export class AutomationsPage {
       });
     });
 
+    // Wrap groups in a dictionary as expected by the backend
+    const conditionsData = {
+      groups: groups,
+      logic: 'AND' // Default logic between groups
+    };
+
     try {
       const response = await apiFetch(`/automations/rules/${this.currentRule.id}`, {
         method: 'PUT',
@@ -1292,7 +1306,8 @@ export class AutomationsPage {
           'Authorization': `Bearer ${authService.getToken()}`
         },
         body: JSON.stringify({
-          conditions: groups
+          conditions: conditionsData,
+          has_conditions: groups.length > 0 && groups.some(g => g.conditions.length > 0)
         })
       });
 
@@ -1301,7 +1316,8 @@ export class AutomationsPage {
         this.showSuccess('Conditions saved successfully');
         await this.loadRules();
       } else {
-        this.showError('Failed to save conditions');
+        const error = await response.json();
+        this.showError(error.detail || 'Failed to save conditions');
       }
     } catch (error) {
       console.error('Error saving conditions:', error);
