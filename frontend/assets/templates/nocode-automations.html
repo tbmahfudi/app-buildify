@@ -154,15 +154,17 @@
               </div>
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">Entity*</label>
-                <select name="entity_id" id="automationEntitySelect" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
+                <select name="entity_id" id="automationEntitySelect" onchange="AutomationApp.onEntityChange(this.value)" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
                   <option value="">Select entity...</option>
                 </select>
               </div>
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-2">Watch Fields (optional)</label>
-              <input type="text" name="watch_fields" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="e.g., status, priority (comma-separated, for onUpdate)">
-              <p class="text-xs text-gray-500 mt-1">Leave empty to trigger on any field change</p>
+              <select name="watch_fields" id="watchFieldsSelect" multiple class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" style="min-height: 80px;">
+                <option value="" disabled>Select entity first...</option>
+              </select>
+              <p class="text-xs text-gray-500 mt-1">Hold Ctrl/Cmd to select multiple. Leave empty to trigger on any field change.</p>
             </div>
           </div>
 
