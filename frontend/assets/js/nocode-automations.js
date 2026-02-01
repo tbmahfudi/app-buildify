@@ -40,6 +40,8 @@ export class AutomationsPage {
     this.rules = [];
     this.executions = [];
     this.webhooks = [];
+    this.entities = [];
+    this.conditionGroups = [];
   }
 
   async init() {
@@ -1043,7 +1045,14 @@ export class AutomationsPage {
 
       const rule = await response.json();
       this.currentRule = rule;
-      this.conditionGroups = rule.conditions || [{ operator: 'AND', conditions: [] }];
+
+      // Ensure conditionGroups is always an array
+      if (Array.isArray(rule.conditions) && rule.conditions.length > 0) {
+        this.conditionGroups = rule.conditions;
+      } else {
+        this.conditionGroups = [{ operator: 'AND', conditions: [] }];
+      }
+
       this.showVisualConditionBuilder();
     } catch (error) {
       console.error('Error loading rule:', error);
@@ -1103,6 +1112,11 @@ export class AutomationsPage {
   renderConditionGroups() {
     const container = document.getElementById('conditionGroupsContainer');
     if (!container) return;
+
+    // Ensure conditionGroups is always an array
+    if (!Array.isArray(this.conditionGroups)) {
+      this.conditionGroups = [{ operator: 'AND', conditions: [] }];
+    }
 
     container.innerHTML = this.conditionGroups.map((group, groupIdx) => `
       <div class="border-2 border-gray-300 rounded-lg p-4 bg-gray-50">
