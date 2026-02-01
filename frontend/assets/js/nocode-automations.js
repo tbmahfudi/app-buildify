@@ -42,6 +42,7 @@ export class AutomationsPage {
     this.webhooks = [];
     this.entities = [];
     this.conditionGroups = [];
+    this.currentEntityFields = [];
   }
 
   async init() {
@@ -89,7 +90,8 @@ export class AutomationsPage {
       openMonitoringDashboard: () => this.openMonitoringDashboard(),
       closeMonitoringDashboard: () => this.closeMonitoringDashboard(),
       onTriggerTypeChange: (type) => this.onTriggerTypeChange(type),
-      onScheduleTypeChange: (type) => this.onScheduleTypeChange(type)
+      onScheduleTypeChange: (type) => this.onScheduleTypeChange(type),
+      onEntityChange: (entityId) => this.onEntityChange(entityId)
     };
 
     // Load entities for the entity select
@@ -160,6 +162,45 @@ export class AutomationsPage {
     } else {
       intervalOptions?.classList.remove('hidden');
       cronOptions?.classList.add('hidden');
+    }
+  }
+
+  async onEntityChange(entityId) {
+    const watchFieldsSelect = document.getElementById('watchFieldsSelect');
+    if (!watchFieldsSelect) return;
+
+    // Reset watch fields
+    watchFieldsSelect.innerHTML = '';
+
+    if (!entityId) {
+      watchFieldsSelect.innerHTML = '<option value="" disabled>Select entity first...</option>';
+      this.currentEntityFields = [];
+      return;
+    }
+
+    try {
+      const response = await apiFetch(`/data-model/entities/${entityId}/fields`, {
+        headers: { 'Authorization': `Bearer ${authService.getToken()}` }
+      });
+
+      if (response.ok) {
+        const fields = await response.json();
+        this.currentEntityFields = fields;
+
+        if (fields.length === 0) {
+          watchFieldsSelect.innerHTML = '<option value="" disabled>No fields available</option>';
+        } else {
+          fields.forEach(field => {
+            const option = document.createElement('option');
+            option.value = field.name;
+            option.textContent = field.label || field.name;
+            watchFieldsSelect.appendChild(option);
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error loading entity fields:', error);
+      watchFieldsSelect.innerHTML = '<option value="" disabled>Error loading fields</option>';
     }
   }
 
@@ -413,6 +454,13 @@ export class AutomationsPage {
     // Repopulate entity select
     this.populateEntitySelect();
 
+    // Reset watch fields
+    const watchFieldsSelect = document.getElementById('watchFieldsSelect');
+    if (watchFieldsSelect) {
+      watchFieldsSelect.innerHTML = '<option value="" disabled>Select entity first...</option>';
+    }
+    this.currentEntityFields = [];
+
     if (modal) modal.classList.remove('hidden');
   }
 
@@ -431,12 +479,16 @@ export class AutomationsPage {
 
     switch (triggerType) {
       case 'database':
+        // Get selected watch fields from multi-select
+        const watchFieldsSelect = document.getElementById('watchFieldsSelect');
+        const selectedWatchFields = watchFieldsSelect
+          ? Array.from(watchFieldsSelect.selectedOptions).map(opt => opt.value)
+          : [];
+
         triggerConfig = {
           event: formData.get('event_type'),
           entity_id: formData.get('entity_id') || null,
-          watch_fields: formData.get('watch_fields')
-            ? formData.get('watch_fields').split(',').map(f => f.trim()).filter(f => f)
-            : []
+          watch_fields: selectedWatchFields
         };
         break;
       case 'scheduled':
@@ -1053,6 +1105,21 @@ export class AutomationsPage {
         this.conditionGroups = [{ operator: 'AND', conditions: [] }];
       }
 
+      // Load entity fields if this is a database trigger
+      this.currentEntityFields = [];
+      if (rule.trigger_config?.entity_id) {
+        try {
+          const fieldsResponse = await apiFetch(`/data-model/entities/${rule.trigger_config.entity_id}/fields`, {
+            headers: { 'Authorization': `Bearer ${authService.getToken()}` }
+          });
+          if (fieldsResponse.ok) {
+            this.currentEntityFields = await fieldsResponse.json();
+          }
+        } catch (e) {
+          console.error('Error loading entity fields:', e);
+        }
+      }
+
       this.showVisualConditionBuilder();
     } catch (error) {
       console.error('Error loading rule:', error);
@@ -1118,6 +1185,11 @@ export class AutomationsPage {
       this.conditionGroups = [{ operator: 'AND', conditions: [] }];
     }
 
+    // Build field options from entity fields
+    const fieldOptions = this.currentEntityFields.length > 0
+      ? this.currentEntityFields.map(f => `<option value="${f.name}">${f.label || f.name}</option>`).join('')
+      : '<option value="">No fields available</option>';
+
     container.innerHTML = this.conditionGroups.map((group, groupIdx) => `
       <div class="border-2 border-gray-300 rounded-lg p-4 bg-gray-50">
         <div class="flex items-center justify-between mb-4">
@@ -1137,18 +1209,22 @@ export class AutomationsPage {
           ${(group.conditions || []).map((cond, condIdx) => `
             <div class="flex items-center gap-2 bg-white p-3 rounded border border-gray-200">
               <select class="flex-1 px-3 py-2 border border-gray-300 rounded text-sm" data-field="${groupIdx}-${condIdx}">
-                <option value="field1" ${cond.field === 'field1' ? 'selected' : ''}>Field 1</option>
-                <option value="field2" ${cond.field === 'field2' ? 'selected' : ''}>Field 2</option>
-                <option value="status" ${cond.field === 'status' ? 'selected' : ''}>Status</option>
+                ${this.currentEntityFields.map(f =>
+                  `<option value="${f.name}" ${cond.field === f.name ? 'selected' : ''}>${f.label || f.name}</option>`
+                ).join('') || '<option value="">No fields available</option>'}
               </select>
               <select class="px-3 py-2 border border-gray-300 rounded text-sm" data-operator="${groupIdx}-${condIdx}">
                 <option value="equals" ${cond.operator === 'equals' ? 'selected' : ''}>Equals</option>
                 <option value="not_equals" ${cond.operator === 'not_equals' ? 'selected' : ''}>Not Equals</option>
                 <option value="contains" ${cond.operator === 'contains' ? 'selected' : ''}>Contains</option>
+                <option value="not_contains" ${cond.operator === 'not_contains' ? 'selected' : ''}>Does Not Contain</option>
                 <option value="greater_than" ${cond.operator === 'greater_than' ? 'selected' : ''}>Greater Than</option>
                 <option value="less_than" ${cond.operator === 'less_than' ? 'selected' : ''}>Less Than</option>
+                <option value="is_null" ${cond.operator === 'is_null' ? 'selected' : ''}>Is Null</option>
+                <option value="is_not_null" ${cond.operator === 'is_not_null' ? 'selected' : ''}>Is Not Null</option>
+                <option value="in" ${cond.operator === 'in' ? 'selected' : ''}>In List</option>
               </select>
-              <input type="text" value="${cond.value || ''}" placeholder="Value" class="flex-1 px-3 py-2 border border-gray-300 rounded text-sm" data-value="${groupIdx}-${condIdx}">
+              <input type="text" value="${this.escapeHtml(cond.value || '')}" placeholder="Value" class="flex-1 px-3 py-2 border border-gray-300 rounded text-sm" data-value="${groupIdx}-${condIdx}">
               <button onclick="AutomationApp.removeCondition(${groupIdx}, ${condIdx})" class="text-red-600 hover:text-red-800">
                 <i class="ph ph-x text-lg"></i>
               </button>
