@@ -899,253 +899,175 @@ Suggested layout:
 
 **Navigation:** No-Code Platform > Business Logic > Automation Rules
 
+> **💡 Create Automation Rule Form Fields:**
+> The Create Automation Rule form has three sections:
+>
+> **Basic Information:**
+> | Field | Description |
+> |-------|-------------|
+> | **Rule Name** | Technical name (lowercase, underscore) |
+> | **Display Label** | User-friendly name shown in UI |
+> | **Description** | Brief description of what the rule does |
+> | **Category** | Organizational category (e.g., Ticket Management) |
+>
+> **Trigger Configuration:**
+> | Field | Description | Shown For |
+> |-------|-------------|-----------|
+> | **Trigger Type** | Database Event, Scheduled, Manual, or Webhook | All |
+> | **Event** | On Create, On Update, or On Delete | Database Event |
+> | **Entity** | Target entity to monitor | Database Event |
+> | **Watch Fields** | Specific fields to monitor for changes | Database Event (onUpdate) |
+> | **Schedule Type** | Interval or Cron Expression | Scheduled |
+> | **Run Every** | Interval value and unit (minutes/hours/days) | Scheduled (Interval) |
+> | **Cron Expression** | Cron format schedule | Scheduled (Cron) |
+>
+> **Execution Settings:**
+> | Field | Description | Default |
+> |-------|-------------|---------|
+> | **Active** | Rule will run automatically when triggered | Checked |
+> | **Run Asynchronously** | Execute in background | Checked |
+> | **Max Retries** | Number of retry attempts on failure | 3 |
+> | **Timeout (seconds)** | Maximum execution time | 30 |
+
 #### Step 4.1: Auto-Assign New Tickets
 
-1. **Click "Create Automation"**
+1. **Click "Create Rule"**
 
 2. **Basic Information:**
-   - **Name:** `auto_assign_new_tickets`
-   - **Display Name:** `Auto-Assign New Tickets`
-   - **Description:** `Automatically assign tickets based on category`
+   | Field | Value |
+   |-------|-------|
+   | **Rule Name** | `auto_assign_new_tickets` |
+   | **Display Label** | `Auto-Assign New Tickets` |
+   | **Description** | `Automatically assign tickets based on category` |
+   | **Category** | `Ticket Management` |
 
 3. **Trigger Configuration:**
-   - **Trigger Type:** Database Event
-   - **Event:** onCreate
-   - **Entity:** `SupportTicket`
+   | Field | Value |
+   |-------|-------|
+   | **Trigger Type** | `Database Event` |
+   | **Event** | `On Create` |
+   | **Entity** | `SupportTicket` |
+   | **Watch Fields** | (leave empty) |
 
-4. **Conditions:**
-   ```
-   AND Group 1:
-   - Field: status
-   - Operator: equals
-   - Value: 'new'
+4. **Execution Settings:**
+   | Field | Value |
+   |-------|-------|
+   | **Active** | ☑️ Checked |
+   | **Run Asynchronously** | ☑️ Checked |
+   | **Max Retries** | `3` |
+   | **Timeout (seconds)** | `30` |
 
-   AND:
-   - Field: category_id
-   - Operator: is not null
-   ```
+5. **Click "Create Rule"**
 
-5. **Actions:**
-
-   **Action 1: Lookup Category Details**
-   - Type: Query Data
-   - Entity: `TicketCategory`
-   - Filter: `id = {category_id}`
-   - Store Result As: `category`
-
-   **Action 2: Update Ticket Team**
-   - Type: Update Record
-   - Entity: `SupportTicket`
-   - Record ID: `{id}`
-   - Fields to Update:
-     - `assigned_team` = `{category.assigned_team}`
-     - `sla_due_date` = `NOW() + {category.default_sla_hours} HOURS`
-     - `status` = `'open'`
-
-   **Action 3: Create Comment**
-   - Type: Create Record
-   - Entity: `TicketComment`
-   - Fields:
-     - `ticket_id` = `{id}`
-     - `comment_text` = `"Ticket auto-assigned to {category.assigned_team}"`
-     - `comment_type` = `'Status Update'`
-     - `is_public` = `false`
-
-6. **Execution Settings:**
-   - **Enabled:** Yes
-   - **Run Asynchronously:** Yes
-   - **Max Retry:** 3
-   - **Timeout:** 30 seconds
-
-7. **Click "Save & Activate"**
+> **💡 Note:** After creating the rule, you can add conditions and actions using the visual builders accessible from the rule detail view.
 
 ---
 
 #### Step 4.2: SLA Monitoring & Escalation
 
-1. **Click "Create Automation"**
+1. **Click "Create Rule"**
 
 2. **Basic Information:**
-   - **Name:** `sla_monitoring_escalation`
-   - **Display Name:** `SLA Monitoring & Escalation`
-   - **Description:** `Monitor SLA violations and escalate tickets`
+   | Field | Value |
+   |-------|-------|
+   | **Rule Name** | `sla_monitoring_escalation` |
+   | **Display Label** | `SLA Monitoring & Escalation` |
+   | **Description** | `Monitor SLA violations and escalate tickets` |
+   | **Category** | `SLA Management` |
 
 3. **Trigger Configuration:**
-   - **Trigger Type:** Scheduled
-   - **Schedule:** Every 1 hour
-   - **Cron Expression:** `0 * * * *` (every hour at minute 0)
+   | Field | Value |
+   |-------|-------|
+   | **Trigger Type** | `Scheduled` |
+   | **Schedule Type** | `Cron Expression` |
+   | **Cron Expression** | `0 * * * *` (every hour at minute 0) |
 
-4. **Conditions:**
-   ```
-   AND Group 1:
-   - Field: status
-   - Operator: in
-   - Value: ['open', 'in_progress', 'pending']
+   Or using Interval:
+   | Field | Value |
+   |-------|-------|
+   | **Schedule Type** | `Interval` |
+   | **Run Every** | `1` `Hours` |
 
-   AND:
-   - Field: sla_due_date
-   - Operator: less than
-   - Value: NOW()
+4. **Execution Settings:**
+   | Field | Value |
+   |-------|-------|
+   | **Active** | ☑️ Checked |
+   | **Run Asynchronously** | ☑️ Checked |
+   | **Max Retries** | `3` |
+   | **Timeout (seconds)** | `60` |
 
-   AND:
-   - Field: tags
-   - Operator: does not contain
-   - Value: 'escalated'
-   ```
+5. **Click "Create Rule"**
 
-5. **Actions:**
-
-   **Action 1: Update Priority**
-   - Type: Update Record
-   - Entity: `SupportTicket`
-   - Filter: (conditions above)
-   - Fields to Update:
-     - `priority` = `'critical'`
-     - `tags` = ARRAY_APPEND(`tags`, `'escalated'`)
-
-   **Action 2: Create Alert Comment**
-   - Type: Create Record (Bulk)
-   - Entity: `TicketComment`
-   - For Each Record From: Query Results
-   - Fields:
-     - `ticket_id` = `{id}`
-     - `comment_text` = `"⚠️ SLA VIOLATION: Ticket escalated due to missed SLA"`
-     - `comment_type` = `'Status Update'`
-     - `is_public` = `false`
-
-   **Action 3: Send Email Notification**
-   - Type: Send Email
-   - Recipients: `{assigned_to.email}, support-manager@company.com`
-   - Subject: `"SLA Violation - Ticket #{ticket_number}"`
-   - Body Template:
-     ```
-     Ticket #{ticket_number} has exceeded its SLA deadline.
-
-     Subject: {subject}
-     Priority: {priority}
-     SLA Due: {sla_due_date}
-     Assigned To: {assigned_to.name}
-
-     Please take immediate action.
-     ```
-
-6. **Click "Save & Activate"**
+> **💡 Note:** After creating the rule, configure conditions and actions through the visual builders to filter for SLA violations and send notifications.
 
 ---
 
 #### Step 4.3: Status Change Notification
 
-1. **Click "Create Automation"**
+1. **Click "Create Rule"**
 
 2. **Basic Information:**
-   - **Name:** `ticket_status_notification`
-   - **Display Name:** `Ticket Status Change Notification`
-   - **Description:** `Notify customer when ticket status changes`
+   | Field | Value |
+   |-------|-------|
+   | **Rule Name** | `ticket_status_notification` |
+   | **Display Label** | `Ticket Status Change Notification` |
+   | **Description** | `Notify customer when ticket status changes` |
+   | **Category** | `Notifications` |
 
 3. **Trigger Configuration:**
-   - **Trigger Type:** Database Event
-   - **Event:** onUpdate
-   - **Entity:** `SupportTicket`
-   - **Watch Fields:** `status`
+   | Field | Value |
+   |-------|-------|
+   | **Trigger Type** | `Database Event` |
+   | **Event** | `On Update` |
+   | **Entity** | `SupportTicket` |
+   | **Watch Fields** | `status` |
 
-4. **Conditions:**
-   ```
-   AND Group 1:
-   - Field: status
-   - Operator: in
-   - Value: ['resolved', 'closed']
-   ```
+4. **Execution Settings:**
+   | Field | Value |
+   |-------|-------|
+   | **Active** | ☑️ Checked |
+   | **Run Asynchronously** | ☑️ Checked |
+   | **Max Retries** | `3` |
+   | **Timeout (seconds)** | `30` |
 
-5. **Actions:**
+5. **Click "Create Rule"**
 
-   **Action 1: Create Public Comment**
-   - Type: Create Record
-   - Entity: `TicketComment`
-   - Fields:
-     - `ticket_id` = `{id}`
-     - `comment_text` = `"Your ticket has been {status}. Resolution: {resolution_notes}"`
-     - `comment_type` = `'Status Update'`
-     - `is_public` = `true`
-
-   **Action 2: Send Email to Customer**
-   - Type: Send Email
-   - Recipients: `{customer_email}`
-   - Subject: `"Your Support Ticket #{ticket_number} - {status}"`
-   - Body Template:
-     ```
-     Dear {customer_name},
-
-     Your support ticket has been updated:
-
-     Ticket Number: {ticket_number}
-     Subject: {subject}
-     Status: {status}
-
-     Resolution Notes:
-     {resolution_notes}
-
-     If you have any questions, please reply to this email.
-
-     Thank you,
-     Support Team
-     ```
-
-6. **Click "Save & Activate"**
+> **💡 Note:** After creating the rule, use the visual builders to add conditions (status in ['resolved', 'closed']) and actions (create comment, send email).
 
 ---
 
 #### Step 4.4: Daily Ticket Summary Report
 
-1. **Click "Create Automation"**
+1. **Click "Create Rule"**
 
 2. **Basic Information:**
-   - **Name:** `daily_ticket_summary`
-   - **Display Name:** `Daily Ticket Summary Email`
-   - **Description:** `Send daily summary of ticket metrics to management`
+   | Field | Value |
+   |-------|-------|
+   | **Rule Name** | `daily_ticket_summary` |
+   | **Display Label** | `Daily Ticket Summary Email` |
+   | **Description** | `Send daily summary of ticket metrics to management` |
+   | **Category** | `Reports` |
 
 3. **Trigger Configuration:**
-   - **Trigger Type:** Scheduled
-   - **Schedule:** Daily at 8:00 AM
-   - **Cron Expression:** `0 8 * * *`
+   | Field | Value |
+   |-------|-------|
+   | **Trigger Type** | `Scheduled` |
+   | **Schedule Type** | `Cron Expression` |
+   | **Cron Expression** | `0 8 * * *` (Daily at 8:00 AM) |
 
-4. **Conditions:** (None - runs always)
+4. **Execution Settings:**
+   | Field | Value |
+   |-------|-------|
+   | **Active** | ☑️ Checked |
+   | **Run Asynchronously** | ☑️ Checked |
+   | **Max Retries** | `3` |
+   | **Timeout (seconds)** | `60` |
 
-5. **Actions:**
+5. **Click "Create Rule"**
 
-   **Action 1: Query Ticket Metrics**
-   - Type: Query Data
-   - Entity: `SupportTicket`
-   - Aggregations:
-     - COUNT(*) as total_tickets
-     - COUNT(*) WHERE status='new' as new_tickets
-     - COUNT(*) WHERE status='open' as open_tickets
-     - COUNT(*) WHERE status='resolved' as resolved_today
-     - COUNT(*) WHERE sla_due_date < NOW() as sla_violations
-   - Filter: `created_at >= NOW() - INTERVAL '24 hours'`
-   - Store Result As: `metrics`
+> **💡 Note:** After creating the rule, configure actions to query metrics and send the summary email through the visual action builder.
 
-   **Action 2: Send Summary Email**
-   - Type: Send Email
-   - Recipients: `support-manager@company.com`
-   - Subject: `"Daily Support Ticket Summary - {TODAY}"`
-   - Body Template:
-     ```
-     Daily Support Ticket Summary
-     Date: {TODAY}
-
-     📊 Metrics (Last 24 Hours):
-     - Total Tickets: {metrics.total_tickets}
-     - New Tickets: {metrics.new_tickets}
-     - Open Tickets: {metrics.open_tickets}
-     - Resolved Today: {metrics.resolved_today}
-     - SLA Violations: {metrics.sla_violations}
-
-     View full dashboard: [Dashboard Link]
-     ```
-
-6. **Click "Save & Activate"**
-
-**✅ Checkpoint:** You should have 4 active automation rules. Check the Automation Dashboard to see execution history.
+**✅ Checkpoint:** You should have 4 active automation rules. Check the Automation Rules list to see all rules and their status.
 
 ---
 

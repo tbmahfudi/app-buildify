@@ -101,41 +101,140 @@
       </div>
 
       <form id="createRuleForm" onsubmit="AutomationApp.createRule(event)" class="p-6 space-y-4">
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-2">Rule Name*</label>
-          <input type="text" name="name" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="e.g., send_welcome_email">
+        <!-- Basic Information -->
+        <div class="border-b border-gray-200 pb-4 mb-4">
+          <h4 class="text-sm font-semibold text-gray-900 mb-3">Basic Information</h4>
+
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Rule Name*</label>
+              <input type="text" name="name" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="e.g., auto_assign_tickets">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Display Label*</label>
+              <input type="text" name="label" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="e.g., Auto-Assign Tickets">
+            </div>
+          </div>
+
+          <div class="mt-4">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Description</label>
+            <textarea name="description" rows="2" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="Describe what this automation does..."></textarea>
+          </div>
+
+          <div class="mt-4">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Category</label>
+            <input type="text" name="category" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="e.g., Ticket Management">
+          </div>
         </div>
 
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-2">Display Label*</label>
-          <input type="text" name="label" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="e.g., Send Welcome Email">
+        <!-- Trigger Configuration -->
+        <div class="border-b border-gray-200 pb-4 mb-4">
+          <h4 class="text-sm font-semibold text-gray-900 mb-3">Trigger Configuration</h4>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Trigger Type*</label>
+            <select name="trigger_type" id="triggerTypeSelect" required onchange="AutomationApp.onTriggerTypeChange(this.value)" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
+              <option value="database">Database Event</option>
+              <option value="scheduled">Scheduled</option>
+              <option value="manual">Manual</option>
+              <option value="webhook">Webhook</option>
+            </select>
+          </div>
+
+          <!-- Database Event Options -->
+          <div id="databaseEventOptions" class="mt-4 space-y-4">
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Event*</label>
+                <select name="event_type" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
+                  <option value="onCreate">On Create</option>
+                  <option value="onUpdate">On Update</option>
+                  <option value="onDelete">On Delete</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Entity*</label>
+                <select name="entity_id" id="automationEntitySelect" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
+                  <option value="">Select entity...</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Watch Fields (optional)</label>
+              <input type="text" name="watch_fields" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="e.g., status, priority (comma-separated, for onUpdate)">
+              <p class="text-xs text-gray-500 mt-1">Leave empty to trigger on any field change</p>
+            </div>
+          </div>
+
+          <!-- Scheduled Options -->
+          <div id="scheduledOptions" class="mt-4 space-y-4 hidden">
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Schedule Type</label>
+                <select name="schedule_type" onchange="AutomationApp.onScheduleTypeChange(this.value)" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
+                  <option value="interval">Interval</option>
+                  <option value="cron">Cron Expression</option>
+                </select>
+              </div>
+              <div id="intervalOptions">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Run Every</label>
+                <div class="flex gap-2">
+                  <input type="number" name="interval_value" value="1" min="1" class="w-20 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
+                  <select name="interval_unit" class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
+                    <option value="minutes">Minutes</option>
+                    <option value="hours" selected>Hours</option>
+                    <option value="days">Days</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            <div id="cronOptions" class="hidden">
+              <label class="block text-sm font-medium text-gray-700 mb-2">Cron Expression</label>
+              <input type="text" name="cron_expression" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="e.g., 0 * * * * (every hour)">
+              <p class="text-xs text-gray-500 mt-1">Format: minute hour day month weekday</p>
+            </div>
+          </div>
+
+          <!-- Webhook Options -->
+          <div id="webhookOptions" class="mt-4 hidden">
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <p class="text-sm text-blue-800">
+                <i class="ph ph-info mr-2"></i>
+                A webhook URL will be generated after creating this rule. External systems can POST data to trigger this automation.
+              </p>
+            </div>
+          </div>
         </div>
 
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-2">Description</label>
-          <textarea name="description" rows="3" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="Describe what this automation does..."></textarea>
-        </div>
+        <!-- Execution Settings -->
+        <div class="border-b border-gray-200 pb-4 mb-4">
+          <h4 class="text-sm font-semibold text-gray-900 mb-3">Execution Settings</h4>
 
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-2">Category</label>
-          <input type="text" name="category" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="e.g., Email, Notifications">
-        </div>
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" name="is_active" checked class="rounded text-green-600">
+                <span class="text-sm text-gray-700">Active (rule will run automatically)</span>
+              </label>
+            </div>
+            <div>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" name="run_async" checked class="rounded text-green-600">
+                <span class="text-sm text-gray-700">Run Asynchronously</span>
+              </label>
+            </div>
+          </div>
 
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-2">Trigger Type*</label>
-          <select name="trigger_type" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
-            <option value="database">Database Event</option>
-            <option value="scheduled">Scheduled</option>
-            <option value="manual">Manual</option>
-            <option value="webhook">Webhook</option>
-          </select>
-        </div>
-
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-2">
-            <input type="checkbox" name="is_active" checked class="mr-2">
-            Active (rule will run automatically)
-          </label>
+          <div class="grid grid-cols-2 gap-4 mt-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Max Retries</label>
+              <input type="number" name="max_retries" value="3" min="0" max="10" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Timeout (seconds)</label>
+              <input type="number" name="timeout_seconds" value="30" min="1" max="300" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
+            </div>
+          </div>
         </div>
 
         <div class="flex justify-end gap-3 pt-4">
