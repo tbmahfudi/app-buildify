@@ -1548,12 +1548,19 @@ export class AutomationsPage {
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Fields to Update (JSON)</label>
-            <textarea data-action-field="${idx}-fields" rows="3"
-              placeholder='{\n  "status": "completed",\n  "resolved_at": "{{now}}",\n  "resolved_by": "{{user.id}}"\n}'
+            <textarea data-action-field="${idx}-fields" rows="5"
+              placeholder='{\n  "assigned_team": "{{category.assigned_team}}",\n  "sla_due_date": "{{now}} + {{category.default_sla_hours}} HOURS",\n  "status": "open"\n}'
               class="w-full px-3 py-2 border border-gray-300 rounded font-mono text-sm">${JSON.stringify(config.fields || {}, null, 2)}</textarea>
             <p class="mt-1 text-xs text-gray-500">
-              <i class="ph ph-info mr-1"></i> JSON format: <code class="bg-gray-100 px-1 rounded">{"field_name": "value"}</code>. Use <code class="bg-gray-100 px-1 rounded">{{record.field}}</code> or <code class="bg-gray-100 px-1 rounded">{{user.id}}</code> for dynamic values
+              <i class="ph ph-info mr-1"></i> JSON format. Available variables:
             </p>
+            <ul class="mt-1 text-xs text-gray-500 list-disc list-inside space-y-0.5">
+              <li><code class="bg-gray-100 px-1 rounded">{{record.field}}</code> - Current record fields</li>
+              <li><code class="bg-gray-100 px-1 rounded">{{category.field}}</code> - Related record fields (via foreign key)</li>
+              <li><code class="bg-gray-100 px-1 rounded">{{now}}</code> - Current timestamp</li>
+              <li><code class="bg-gray-100 px-1 rounded">{{now}} + N HOURS/DAYS</code> - Date calculation</li>
+              <li><code class="bg-gray-100 px-1 rounded">{{user.id}}</code> - Current user ID</li>
+            </ul>
           </div>
         `;
 
