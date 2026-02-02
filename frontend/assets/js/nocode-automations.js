@@ -41,8 +41,10 @@ export class AutomationsPage {
     this.executions = [];
     this.webhooks = [];
     this.entities = [];
+    this.workflows = [];
     this.conditionGroups = [];
     this.currentEntityFields = [];
+    this.actions = [];
   }
 
   async init() {
@@ -91,11 +93,29 @@ export class AutomationsPage {
       closeMonitoringDashboard: () => this.closeMonitoringDashboard(),
       onTriggerTypeChange: (type) => this.onTriggerTypeChange(type),
       onScheduleTypeChange: (type) => this.onScheduleTypeChange(type),
-      onEntityChange: (entityId) => this.onEntityChange(entityId)
+      onEntityChange: (entityId) => this.onEntityChange(entityId),
+      onActionTypeChange: (idx, type) => this.onActionTypeChange(idx, type)
     };
 
-    // Load entities for the entity select
+    // Load entities and workflows for the action builder
     await this.loadEntities();
+    await this.loadWorkflows();
+  }
+
+  async loadWorkflows() {
+    try {
+      const response = await apiFetch('/workflows/', {
+        headers: {
+          'Authorization': `Bearer ${authService.getToken()}`
+        }
+      });
+
+      if (response.ok) {
+        this.workflows = await response.json();
+      }
+    } catch (error) {
+      console.error('Error loading workflows:', error);
+    }
   }
 
   async loadEntities() {
@@ -1433,18 +1453,23 @@ export class AutomationsPage {
         <div class="flex-1 space-y-3">
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Action Type</label>
-            <select data-action-type="${idx}" class="w-full px-3 py-2 border border-gray-300 rounded">
+            <select data-action-type="${idx}" onchange="AutomationApp.onActionTypeChange(${idx}, this.value)" class="w-full px-3 py-2 border border-gray-300 rounded">
               <option value="send_email" ${action.type === 'send_email' ? 'selected' : ''}>Send Email</option>
               <option value="update_record" ${action.type === 'update_record' ? 'selected' : ''}>Update Record</option>
               <option value="create_record" ${action.type === 'create_record' ? 'selected' : ''}>Create Record</option>
+              <option value="delete_record" ${action.type === 'delete_record' ? 'selected' : ''}>Delete Record</option>
+              <option value="query_data" ${action.type === 'query_data' ? 'selected' : ''}>Query Data</option>
               <option value="webhook" ${action.type === 'webhook' ? 'selected' : ''}>Call Webhook</option>
               <option value="notification" ${action.type === 'notification' ? 'selected' : ''}>Send Notification</option>
+              <option value="assign_user" ${action.type === 'assign_user' ? 'selected' : ''}>Assign User</option>
+              <option value="run_workflow" ${action.type === 'run_workflow' ? 'selected' : ''}>Run Workflow</option>
+              <option value="set_variable" ${action.type === 'set_variable' ? 'selected' : ''}>Set Variable</option>
             </select>
           </div>
 
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Configuration (JSON)</label>
-            <textarea data-action-config="${idx}" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded font-mono text-sm">${JSON.stringify(action.config || {}, null, 2)}</textarea>
+          <!-- Type-specific configuration fields -->
+          <div id="action-config-${idx}" class="space-y-3">
+            ${this.renderActionConfigFields(idx, action)}
           </div>
 
           <div class="flex items-center gap-4">
@@ -1460,6 +1485,302 @@ export class AutomationsPage {
         </button>
       </div>
     `).join('');
+  }
+
+  renderActionConfigFields(idx, action) {
+    const config = action.config || {};
+    const type = action.type || 'send_email';
+
+    switch (type) {
+      case 'send_email':
+        return `
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">To (Email)</label>
+              <input type="text" data-action-field="${idx}-to" value="${this.escapeHtml(config.to || '')}"
+                placeholder="{{record.email}} or user@example.com" class="w-full px-3 py-2 border border-gray-300 rounded text-sm">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">CC (optional)</label>
+              <input type="text" data-action-field="${idx}-cc" value="${this.escapeHtml(config.cc || '')}"
+                placeholder="Comma-separated emails" class="w-full px-3 py-2 border border-gray-300 rounded text-sm">
+            </div>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Subject</label>
+            <input type="text" data-action-field="${idx}-subject" value="${this.escapeHtml(config.subject || '')}"
+              placeholder="Email subject - use {{field}} for variables" class="w-full px-3 py-2 border border-gray-300 rounded text-sm">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Body</label>
+            <textarea data-action-field="${idx}-body" rows="4"
+              placeholder="Email body - use {{field}} for variables" class="w-full px-3 py-2 border border-gray-300 rounded text-sm">${this.escapeHtml(config.body || '')}</textarea>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Template ID (optional)</label>
+            <input type="text" data-action-field="${idx}-template_id" value="${this.escapeHtml(config.template_id || '')}"
+              placeholder="Use predefined email template" class="w-full px-3 py-2 border border-gray-300 rounded text-sm">
+          </div>
+        `;
+
+      case 'update_record':
+        return `
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Entity</label>
+              <select data-action-field="${idx}-entity" class="w-full px-3 py-2 border border-gray-300 rounded text-sm">
+                <option value="">Select entity...</option>
+                ${this.entities.map(e => `<option value="${e.id}" ${config.entity === e.id || config.entity === e.name ? 'selected' : ''}>${e.display_name || e.name}</option>`).join('')}
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Record ID</label>
+              <input type="text" data-action-field="${idx}-record_id" value="${this.escapeHtml(config.record_id || '')}"
+                placeholder="{{record.id}} or specific UUID" class="w-full px-3 py-2 border border-gray-300 rounded text-sm">
+            </div>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Fields to Update (JSON)</label>
+            <textarea data-action-field="${idx}-fields" rows="3"
+              placeholder='{"status": "completed", "updated_by": "{{user.id}}"}'
+              class="w-full px-3 py-2 border border-gray-300 rounded font-mono text-sm">${JSON.stringify(config.fields || {}, null, 2)}</textarea>
+          </div>
+        `;
+
+      case 'create_record':
+        return `
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Entity</label>
+            <select data-action-field="${idx}-entity" class="w-full px-3 py-2 border border-gray-300 rounded text-sm">
+              <option value="">Select entity...</option>
+              ${this.entities.map(e => `<option value="${e.id}" ${config.entity === e.id || config.entity === e.name ? 'selected' : ''}>${e.display_name || e.name}</option>`).join('')}
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Record Data (JSON)</label>
+            <textarea data-action-field="${idx}-data" rows="4"
+              placeholder='{"name": "{{record.name}}", "status": "new", "created_by": "{{user.id}}"}'
+              class="w-full px-3 py-2 border border-gray-300 rounded font-mono text-sm">${JSON.stringify(config.data || {}, null, 2)}</textarea>
+          </div>
+        `;
+
+      case 'delete_record':
+        return `
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Entity</label>
+              <select data-action-field="${idx}-entity" class="w-full px-3 py-2 border border-gray-300 rounded text-sm">
+                <option value="">Select entity...</option>
+                ${this.entities.map(e => `<option value="${e.id}" ${config.entity === e.id || config.entity === e.name ? 'selected' : ''}>${e.display_name || e.name}</option>`).join('')}
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Record ID</label>
+              <input type="text" data-action-field="${idx}-record_id" value="${this.escapeHtml(config.record_id || '')}"
+                placeholder="{{record.id}} or specific UUID" class="w-full px-3 py-2 border border-gray-300 rounded text-sm">
+            </div>
+          </div>
+          <div class="bg-yellow-50 border border-yellow-200 rounded p-3 text-sm text-yellow-800">
+            <i class="ph ph-warning mr-1"></i> This action will soft-delete the specified record.
+          </div>
+        `;
+
+      case 'query_data':
+        return `
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Entity</label>
+            <select data-action-field="${idx}-entity" class="w-full px-3 py-2 border border-gray-300 rounded text-sm">
+              <option value="">Select entity...</option>
+              ${this.entities.map(e => `<option value="${e.id}" ${config.entity === e.id || config.entity === e.name ? 'selected' : ''}>${e.display_name || e.name}</option>`).join('')}
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Filters (JSON)</label>
+            <textarea data-action-field="${idx}-filters" rows="3"
+              placeholder='{"status": "open", "priority": {"$in": ["high", "critical"]}}'
+              class="w-full px-3 py-2 border border-gray-300 rounded font-mono text-sm">${JSON.stringify(config.filters || {}, null, 2)}</textarea>
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Aggregation</label>
+              <select data-action-field="${idx}-aggregation" class="w-full px-3 py-2 border border-gray-300 rounded text-sm">
+                <option value="" ${!config.aggregation ? 'selected' : ''}>None (return records)</option>
+                <option value="count" ${config.aggregation === 'count' ? 'selected' : ''}>Count</option>
+                <option value="sum" ${config.aggregation === 'sum' ? 'selected' : ''}>Sum</option>
+                <option value="avg" ${config.aggregation === 'avg' ? 'selected' : ''}>Average</option>
+                <option value="min" ${config.aggregation === 'min' ? 'selected' : ''}>Min</option>
+                <option value="max" ${config.aggregation === 'max' ? 'selected' : ''}>Max</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Aggregation Field</label>
+              <input type="text" data-action-field="${idx}-aggregation_field" value="${this.escapeHtml(config.aggregation_field || '')}"
+                placeholder="e.g., amount, hours" class="w-full px-3 py-2 border border-gray-300 rounded text-sm">
+            </div>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Store Result As</label>
+            <input type="text" data-action-field="${idx}-result_variable" value="${this.escapeHtml(config.result_variable || '')}"
+              placeholder="e.g., query_result (access via {{query_result}})" class="w-full px-3 py-2 border border-gray-300 rounded text-sm">
+          </div>
+        `;
+
+      case 'webhook':
+        return `
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">URL</label>
+              <input type="text" data-action-field="${idx}-url" value="${this.escapeHtml(config.url || '')}"
+                placeholder="https://api.example.com/webhook" class="w-full px-3 py-2 border border-gray-300 rounded text-sm">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Method</label>
+              <select data-action-field="${idx}-method" class="w-full px-3 py-2 border border-gray-300 rounded text-sm">
+                <option value="POST" ${config.method === 'POST' || !config.method ? 'selected' : ''}>POST</option>
+                <option value="GET" ${config.method === 'GET' ? 'selected' : ''}>GET</option>
+                <option value="PUT" ${config.method === 'PUT' ? 'selected' : ''}>PUT</option>
+                <option value="PATCH" ${config.method === 'PATCH' ? 'selected' : ''}>PATCH</option>
+                <option value="DELETE" ${config.method === 'DELETE' ? 'selected' : ''}>DELETE</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Headers (JSON)</label>
+            <textarea data-action-field="${idx}-headers" rows="2"
+              placeholder='{"Authorization": "Bearer {{api_key}}", "Content-Type": "application/json"}'
+              class="w-full px-3 py-2 border border-gray-300 rounded font-mono text-sm">${JSON.stringify(config.headers || {}, null, 2)}</textarea>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Body (JSON)</label>
+            <textarea data-action-field="${idx}-body" rows="3"
+              placeholder='{"ticket_id": "{{record.id}}", "status": "{{record.status}}"}'
+              class="w-full px-3 py-2 border border-gray-300 rounded font-mono text-sm">${JSON.stringify(config.body || {}, null, 2)}</textarea>
+          </div>
+        `;
+
+      case 'notification':
+        return `
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Notification Type</label>
+            <select data-action-field="${idx}-notification_type" class="w-full px-3 py-2 border border-gray-300 rounded text-sm">
+              <option value="in_app" ${config.notification_type === 'in_app' || !config.notification_type ? 'selected' : ''}>In-App Notification</option>
+              <option value="push" ${config.notification_type === 'push' ? 'selected' : ''}>Push Notification</option>
+              <option value="sms" ${config.notification_type === 'sms' ? 'selected' : ''}>SMS</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Recipients</label>
+            <input type="text" data-action-field="${idx}-recipients" value="${this.escapeHtml(config.recipients || '')}"
+              placeholder="{{record.assigned_to}} or user UUIDs (comma-separated)" class="w-full px-3 py-2 border border-gray-300 rounded text-sm">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Title</label>
+            <input type="text" data-action-field="${idx}-title" value="${this.escapeHtml(config.title || '')}"
+              placeholder="Notification title" class="w-full px-3 py-2 border border-gray-300 rounded text-sm">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Message</label>
+            <textarea data-action-field="${idx}-message" rows="2"
+              placeholder="Notification message - use {{field}} for variables" class="w-full px-3 py-2 border border-gray-300 rounded text-sm">${this.escapeHtml(config.message || '')}</textarea>
+          </div>
+        `;
+
+      case 'assign_user':
+        return `
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Entity</label>
+              <select data-action-field="${idx}-entity" class="w-full px-3 py-2 border border-gray-300 rounded text-sm">
+                <option value="">Select entity...</option>
+                ${this.entities.map(e => `<option value="${e.id}" ${config.entity === e.id || config.entity === e.name ? 'selected' : ''}>${e.display_name || e.name}</option>`).join('')}
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Record ID</label>
+              <input type="text" data-action-field="${idx}-record_id" value="${this.escapeHtml(config.record_id || '')}"
+                placeholder="{{record.id}}" class="w-full px-3 py-2 border border-gray-300 rounded text-sm">
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Assignment Field</label>
+              <input type="text" data-action-field="${idx}-assignment_field" value="${this.escapeHtml(config.assignment_field || 'assigned_to')}"
+                placeholder="e.g., assigned_to" class="w-full px-3 py-2 border border-gray-300 rounded text-sm">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Assign To</label>
+              <input type="text" data-action-field="${idx}-assign_to" value="${this.escapeHtml(config.assign_to || '')}"
+                placeholder="User UUID or {{user.id}}" class="w-full px-3 py-2 border border-gray-300 rounded text-sm">
+            </div>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Assignment Strategy</label>
+            <select data-action-field="${idx}-strategy" class="w-full px-3 py-2 border border-gray-300 rounded text-sm">
+              <option value="specific" ${config.strategy === 'specific' || !config.strategy ? 'selected' : ''}>Specific User</option>
+              <option value="round_robin" ${config.strategy === 'round_robin' ? 'selected' : ''}>Round Robin (from team)</option>
+              <option value="least_loaded" ${config.strategy === 'least_loaded' ? 'selected' : ''}>Least Loaded (from team)</option>
+            </select>
+          </div>
+        `;
+
+      case 'run_workflow':
+        return `
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Workflow</label>
+            <select data-action-field="${idx}-workflow_id" class="w-full px-3 py-2 border border-gray-300 rounded text-sm">
+              <option value="">Select workflow...</option>
+              ${(this.workflows || []).map(w => `<option value="${w.id}" ${config.workflow_id === w.id ? 'selected' : ''}>${w.label || w.name}</option>`).join('')}
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Initial Context Data (JSON)</label>
+            <textarea data-action-field="${idx}-context_data" rows="3"
+              placeholder='{"ticket_id": "{{record.id}}", "priority": "{{record.priority}}"}'
+              class="w-full px-3 py-2 border border-gray-300 rounded font-mono text-sm">${JSON.stringify(config.context_data || {}, null, 2)}</textarea>
+          </div>
+        `;
+
+      case 'set_variable':
+        return `
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Variable Name</label>
+              <input type="text" data-action-field="${idx}-variable_name" value="${this.escapeHtml(config.variable_name || '')}"
+                placeholder="e.g., my_variable" class="w-full px-3 py-2 border border-gray-300 rounded text-sm">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Value Type</label>
+              <select data-action-field="${idx}-value_type" class="w-full px-3 py-2 border border-gray-300 rounded text-sm">
+                <option value="static" ${config.value_type === 'static' || !config.value_type ? 'selected' : ''}>Static Value</option>
+                <option value="expression" ${config.value_type === 'expression' ? 'selected' : ''}>Expression</option>
+                <option value="from_record" ${config.value_type === 'from_record' ? 'selected' : ''}>From Record Field</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Value</label>
+            <input type="text" data-action-field="${idx}-value" value="${this.escapeHtml(config.value || '')}"
+              placeholder="Value or expression (e.g., {{record.status}})" class="w-full px-3 py-2 border border-gray-300 rounded text-sm">
+          </div>
+          <div class="bg-blue-50 border border-blue-200 rounded p-3 text-sm text-blue-800">
+            <i class="ph ph-info mr-1"></i> Access this variable later using <code class="bg-blue-100 px-1 rounded">{{variable_name}}</code>
+          </div>
+        `;
+
+      default:
+        return `
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Configuration (JSON)</label>
+            <textarea data-action-config="${idx}" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded font-mono text-sm">${JSON.stringify(config, null, 2)}</textarea>
+          </div>
+        `;
+    }
+  }
+
+  onActionTypeChange(idx, newType) {
+    this.actions[idx].type = newType;
+    this.actions[idx].config = {};
+    this.renderActions();
   }
 
   addAction() {
@@ -1491,26 +1812,34 @@ export class AutomationsPage {
   }
 
   async saveActions() {
-    // Collect action data from DOM
+    // Collect action data from DOM based on type-specific fields
     const actions = [];
+    let hasError = false;
+
     this.actions.forEach((action, idx) => {
+      if (hasError) return;
+
       const typeSelect = document.querySelector(`[data-action-type="${idx}"]`);
-      const configTextarea = document.querySelector(`[data-action-config="${idx}"]`);
       const continueCheckbox = document.querySelector(`[data-action-continue="${idx}"]`);
 
-      if (typeSelect && configTextarea) {
-        try {
-          actions.push({
-            type: typeSelect.value,
-            config: JSON.parse(configTextarea.value),
-            continue_on_error: continueCheckbox?.checked || false
-          });
-        } catch (e) {
-          this.showError(`Invalid JSON in action ${idx + 1}`);
-          return;
-        }
+      if (!typeSelect) return;
+
+      const type = typeSelect.value;
+      const config = this.collectActionConfig(idx, type);
+
+      if (config === null) {
+        hasError = true;
+        return;
       }
+
+      actions.push({
+        type,
+        config,
+        continue_on_error: continueCheckbox?.checked || false
+      });
     });
+
+    if (hasError) return;
 
     try {
       const response = await apiFetch(`/automations/rules/${this.currentRule.id}`, {
@@ -1537,6 +1866,132 @@ export class AutomationsPage {
     }
   }
 
+  collectActionConfig(idx, type) {
+    const getFieldValue = (field) => {
+      const el = document.querySelector(`[data-action-field="${idx}-${field}"]`);
+      return el ? el.value : '';
+    };
+
+    const parseJsonField = (field) => {
+      const value = getFieldValue(field);
+      if (!value || value.trim() === '' || value.trim() === '{}') return {};
+      try {
+        return JSON.parse(value);
+      } catch (e) {
+        this.showError(`Invalid JSON in action ${idx + 1} - ${field}`);
+        return null;
+      }
+    };
+
+    switch (type) {
+      case 'send_email':
+        return {
+          to: getFieldValue('to'),
+          cc: getFieldValue('cc'),
+          subject: getFieldValue('subject'),
+          body: getFieldValue('body'),
+          template_id: getFieldValue('template_id')
+        };
+
+      case 'update_record': {
+        const fields = parseJsonField('fields');
+        if (fields === null) return null;
+        return {
+          entity: getFieldValue('entity'),
+          record_id: getFieldValue('record_id'),
+          fields
+        };
+      }
+
+      case 'create_record': {
+        const data = parseJsonField('data');
+        if (data === null) return null;
+        return {
+          entity: getFieldValue('entity'),
+          data
+        };
+      }
+
+      case 'delete_record':
+        return {
+          entity: getFieldValue('entity'),
+          record_id: getFieldValue('record_id')
+        };
+
+      case 'query_data': {
+        const filters = parseJsonField('filters');
+        if (filters === null) return null;
+        return {
+          entity: getFieldValue('entity'),
+          filters,
+          aggregation: getFieldValue('aggregation'),
+          aggregation_field: getFieldValue('aggregation_field'),
+          result_variable: getFieldValue('result_variable')
+        };
+      }
+
+      case 'webhook': {
+        const headers = parseJsonField('headers');
+        if (headers === null) return null;
+        const body = parseJsonField('body');
+        if (body === null) return null;
+        return {
+          url: getFieldValue('url'),
+          method: getFieldValue('method'),
+          headers,
+          body
+        };
+      }
+
+      case 'notification':
+        return {
+          notification_type: getFieldValue('notification_type'),
+          recipients: getFieldValue('recipients'),
+          title: getFieldValue('title'),
+          message: getFieldValue('message')
+        };
+
+      case 'assign_user':
+        return {
+          entity: getFieldValue('entity'),
+          record_id: getFieldValue('record_id'),
+          assignment_field: getFieldValue('assignment_field'),
+          assign_to: getFieldValue('assign_to'),
+          strategy: getFieldValue('strategy')
+        };
+
+      case 'run_workflow': {
+        const contextData = parseJsonField('context_data');
+        if (contextData === null) return null;
+        return {
+          workflow_id: getFieldValue('workflow_id'),
+          context_data: contextData
+        };
+      }
+
+      case 'set_variable':
+        return {
+          variable_name: getFieldValue('variable_name'),
+          value_type: getFieldValue('value_type'),
+          value: getFieldValue('value')
+        };
+
+      default: {
+        // Fallback for unknown types - try to parse generic config textarea
+        const configTextarea = document.querySelector(`[data-action-config="${idx}"]`);
+        if (configTextarea) {
+          try {
+            return JSON.parse(configTextarea.value);
+          } catch (e) {
+            this.showError(`Invalid JSON in action ${idx + 1}`);
+            return null;
+          }
+        }
+        return {};
+      }
+    }
+  }
+
   closeVisualActionBuilder() {
     const modal = document.getElementById('visualActionBuilderModal');
     if (modal) modal.remove();
@@ -1560,16 +2015,47 @@ export class AutomationsPage {
         name: 'Update & Notify',
         description: 'Update a record and send notification',
         actions: [
-          { type: 'update_record', config: { entity: 'users', field: 'status', value: 'active' }, continue_on_error: false },
-          { type: 'notification', config: { message: 'Record updated successfully' }, continue_on_error: true }
+          { type: 'update_record', config: { entity: '', record_id: '{{record.id}}', fields: { status: 'active' } }, continue_on_error: false },
+          { type: 'notification', config: { notification_type: 'in_app', recipients: '{{record.assigned_to}}', title: 'Record Updated', message: 'Record has been updated' }, continue_on_error: true }
         ]
       },
       {
         name: 'Webhook Chain',
         description: 'Call external webhooks in sequence',
         actions: [
-          { type: 'webhook', config: { url: 'https://api.example.com/notify', method: 'POST' }, continue_on_error: true },
-          { type: 'webhook', config: { url: 'https://api.example.com/log', method: 'POST' }, continue_on_error: true }
+          { type: 'webhook', config: { url: 'https://api.example.com/notify', method: 'POST', headers: {}, body: {} }, continue_on_error: true },
+          { type: 'webhook', config: { url: 'https://api.example.com/log', method: 'POST', headers: {}, body: {} }, continue_on_error: true }
+        ]
+      },
+      {
+        name: 'Query & Email Report',
+        description: 'Query data metrics and send summary email',
+        actions: [
+          { type: 'query_data', config: { entity: '', filters: { status: 'open' }, aggregation: 'count', aggregation_field: '', result_variable: 'open_count' }, continue_on_error: false },
+          { type: 'send_email', config: { to: 'manager@example.com', subject: 'Daily Report', body: 'Total open items: {{open_count}}' }, continue_on_error: false }
+        ]
+      },
+      {
+        name: 'Auto-Assign Ticket',
+        description: 'Automatically assign new tickets to team',
+        actions: [
+          { type: 'assign_user', config: { entity: '', record_id: '{{record.id}}', assignment_field: 'assigned_to', assign_to: '', strategy: 'round_robin' }, continue_on_error: false },
+          { type: 'notification', config: { notification_type: 'in_app', recipients: '{{record.assigned_to}}', title: 'New Assignment', message: 'You have been assigned a new ticket' }, continue_on_error: true }
+        ]
+      },
+      {
+        name: 'Create Related Record',
+        description: 'Create a related record when triggered',
+        actions: [
+          { type: 'create_record', config: { entity: '', data: { parent_id: '{{record.id}}', status: 'new', created_from: 'automation' } }, continue_on_error: false }
+        ]
+      },
+      {
+        name: 'Set Variable & Conditional',
+        description: 'Set a variable for use in subsequent actions',
+        actions: [
+          { type: 'set_variable', config: { variable_name: 'priority_level', value_type: 'from_record', value: '{{record.priority}}' }, continue_on_error: false },
+          { type: 'notification', config: { notification_type: 'in_app', recipients: '{{record.created_by}}', title: 'Processing', message: 'Your request with priority {{priority_level}} is being processed' }, continue_on_error: true }
         ]
       }
     ];
