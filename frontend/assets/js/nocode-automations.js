@@ -137,9 +137,19 @@ export class AutomationsPage {
 
   populateEntitySelect() {
     const select = document.getElementById('automationEntitySelect');
-    if (!select) return;
+    if (!select) {
+      console.error('Entity select element not found');
+      return;
+    }
 
     select.innerHTML = '<option value="">Select entity...</option>';
+
+    if (!this.entities || this.entities.length === 0) {
+      select.innerHTML = '<option value="">No entities available - create entities first</option>';
+      console.warn('No entities loaded for automation rule');
+      return;
+    }
+
     this.entities.forEach(entity => {
       const option = document.createElement('option');
       option.value = entity.id;
@@ -462,7 +472,7 @@ export class AutomationsPage {
     return classes[status] || 'bg-gray-100 text-gray-800';
   }
 
-  showCreateModal() {
+  async showCreateModal() {
     const modal = document.getElementById('createRuleModal');
     const form = document.getElementById('createRuleForm');
     if (form) form.reset();
@@ -470,6 +480,11 @@ export class AutomationsPage {
     // Reset trigger type visibility
     this.onTriggerTypeChange('database');
     this.onScheduleTypeChange('interval');
+
+    // Ensure entities are loaded before populating select
+    if (!this.entities || this.entities.length === 0) {
+      await this.loadEntities();
+    }
 
     // Repopulate entity select
     this.populateEntitySelect();
