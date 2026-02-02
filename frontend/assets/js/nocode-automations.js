@@ -1595,10 +1595,13 @@ export class AutomationsPage {
             </select>
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Filters (JSON)</label>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Filters (JSON format)</label>
             <textarea data-action-field="${idx}-filters" rows="3"
-              placeholder='{"status": "open", "priority": {"$in": ["high", "critical"]}}'
+              placeholder='{"category_id": "{{record.category_id}}", "status": "open"}'
               class="w-full px-3 py-2 border border-gray-300 rounded font-mono text-sm">${JSON.stringify(config.filters || {}, null, 2)}</textarea>
+            <p class="mt-1 text-xs text-gray-500">
+              <i class="ph ph-info mr-1"></i> Use JSON format: <code class="bg-gray-100 px-1 rounded">{"field": "value"}</code> or <code class="bg-gray-100 px-1 rounded">{"field": "{{variable}}"}</code>. Leave empty <code class="bg-gray-100 px-1 rounded">{}</code> for no filters.
+            </p>
           </div>
           <div class="grid grid-cols-2 gap-3">
             <div>
