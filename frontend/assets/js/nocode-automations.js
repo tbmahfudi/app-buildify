@@ -1498,28 +1498,33 @@ export class AutomationsPage {
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">To (Email)</label>
               <input type="text" data-action-field="${idx}-to" value="${this.escapeHtml(config.to || '')}"
-                placeholder="{{record.email}} or user@example.com" class="w-full px-3 py-2 border border-gray-300 rounded text-sm">
+                placeholder="{{record.customer_email}}" class="w-full px-3 py-2 border border-gray-300 rounded text-sm">
+              <p class="mt-1 text-xs text-gray-500">Use <code class="bg-gray-100 px-1 rounded">{{record.field}}</code> for dynamic values or enter email directly</p>
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">CC (optional)</label>
               <input type="text" data-action-field="${idx}-cc" value="${this.escapeHtml(config.cc || '')}"
-                placeholder="Comma-separated emails" class="w-full px-3 py-2 border border-gray-300 rounded text-sm">
+                placeholder="manager@example.com, {{record.supervisor_email}}" class="w-full px-3 py-2 border border-gray-300 rounded text-sm">
+              <p class="mt-1 text-xs text-gray-500">Comma-separated list of email addresses</p>
             </div>
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Subject</label>
             <input type="text" data-action-field="${idx}-subject" value="${this.escapeHtml(config.subject || '')}"
-              placeholder="Email subject - use {{field}} for variables" class="w-full px-3 py-2 border border-gray-300 rounded text-sm">
+              placeholder="Ticket #{{record.ticket_number}} - Status Update" class="w-full px-3 py-2 border border-gray-300 rounded text-sm">
+            <p class="mt-1 text-xs text-gray-500">Use <code class="bg-gray-100 px-1 rounded">{{record.field}}</code> to include record data in subject</p>
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Body</label>
             <textarea data-action-field="${idx}-body" rows="4"
-              placeholder="Email body - use {{field}} for variables" class="w-full px-3 py-2 border border-gray-300 rounded text-sm">${this.escapeHtml(config.body || '')}</textarea>
+              placeholder="Dear {{record.customer_name}},\n\nYour ticket has been updated to status: {{record.status}}.\n\nBest regards,\nSupport Team" class="w-full px-3 py-2 border border-gray-300 rounded text-sm">${this.escapeHtml(config.body || '')}</textarea>
+            <p class="mt-1 text-xs text-gray-500">HTML supported. Use <code class="bg-gray-100 px-1 rounded">{{record.field}}</code> for dynamic content</p>
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Template ID (optional)</label>
             <input type="text" data-action-field="${idx}-template_id" value="${this.escapeHtml(config.template_id || '')}"
-              placeholder="Use predefined email template" class="w-full px-3 py-2 border border-gray-300 rounded text-sm">
+              placeholder="ticket_status_update" class="w-full px-3 py-2 border border-gray-300 rounded text-sm">
+            <p class="mt-1 text-xs text-gray-500">Use a predefined email template instead of custom body</p>
           </div>
         `;
 
@@ -1532,18 +1537,23 @@ export class AutomationsPage {
                 <option value="">Select entity...</option>
                 ${this.entities.map(e => `<option value="${e.id}" ${config.entity === e.id || config.entity === e.name ? 'selected' : ''}>${e.display_name || e.name}</option>`).join('')}
               </select>
+              <p class="mt-1 text-xs text-gray-500">The entity/table containing the record to update</p>
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Record ID</label>
               <input type="text" data-action-field="${idx}-record_id" value="${this.escapeHtml(config.record_id || '')}"
-                placeholder="{{record.id}} or specific UUID" class="w-full px-3 py-2 border border-gray-300 rounded text-sm">
+                placeholder="{{record.id}}" class="w-full px-3 py-2 border border-gray-300 rounded text-sm">
+              <p class="mt-1 text-xs text-gray-500">Use <code class="bg-gray-100 px-1 rounded">{{record.id}}</code> to update trigger record</p>
             </div>
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Fields to Update (JSON)</label>
             <textarea data-action-field="${idx}-fields" rows="3"
-              placeholder='{"status": "completed", "updated_by": "{{user.id}}"}'
+              placeholder='{\n  "status": "completed",\n  "resolved_at": "{{now}}",\n  "resolved_by": "{{user.id}}"\n}'
               class="w-full px-3 py-2 border border-gray-300 rounded font-mono text-sm">${JSON.stringify(config.fields || {}, null, 2)}</textarea>
+            <p class="mt-1 text-xs text-gray-500">
+              <i class="ph ph-info mr-1"></i> JSON format: <code class="bg-gray-100 px-1 rounded">{"field_name": "value"}</code>. Use <code class="bg-gray-100 px-1 rounded">{{record.field}}</code> or <code class="bg-gray-100 px-1 rounded">{{user.id}}</code> for dynamic values
+            </p>
           </div>
         `;
 
@@ -1555,12 +1565,16 @@ export class AutomationsPage {
               <option value="">Select entity...</option>
               ${this.entities.map(e => `<option value="${e.id}" ${config.entity === e.id || config.entity === e.name ? 'selected' : ''}>${e.display_name || e.name}</option>`).join('')}
             </select>
+            <p class="mt-1 text-xs text-gray-500">The entity/table where the new record will be created</p>
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Record Data (JSON)</label>
             <textarea data-action-field="${idx}-data" rows="4"
-              placeholder='{"name": "{{record.name}}", "status": "new", "created_by": "{{user.id}}"}'
+              placeholder='{\n  "title": "Follow-up: {{record.subject}}",\n  "parent_id": "{{record.id}}",\n  "status": "new",\n  "created_by": "{{user.id}}"\n}'
               class="w-full px-3 py-2 border border-gray-300 rounded font-mono text-sm">${JSON.stringify(config.data || {}, null, 2)}</textarea>
+            <p class="mt-1 text-xs text-gray-500">
+              <i class="ph ph-info mr-1"></i> JSON format: <code class="bg-gray-100 px-1 rounded">{"field_name": "value"}</code>. Use <code class="bg-gray-100 px-1 rounded">{{record.field}}</code> to copy values from trigger record
+            </p>
           </div>
         `;
 
@@ -1573,15 +1587,17 @@ export class AutomationsPage {
                 <option value="">Select entity...</option>
                 ${this.entities.map(e => `<option value="${e.id}" ${config.entity === e.id || config.entity === e.name ? 'selected' : ''}>${e.display_name || e.name}</option>`).join('')}
               </select>
+              <p class="mt-1 text-xs text-gray-500">The entity/table containing the record to delete</p>
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Record ID</label>
               <input type="text" data-action-field="${idx}-record_id" value="${this.escapeHtml(config.record_id || '')}"
-                placeholder="{{record.id}} or specific UUID" class="w-full px-3 py-2 border border-gray-300 rounded text-sm">
+                placeholder="{{record.related_id}}" class="w-full px-3 py-2 border border-gray-300 rounded text-sm">
+              <p class="mt-1 text-xs text-gray-500">Use <code class="bg-gray-100 px-1 rounded">{{record.field}}</code> or enter a specific UUID</p>
             </div>
           </div>
           <div class="bg-yellow-50 border border-yellow-200 rounded p-3 text-sm text-yellow-800">
-            <i class="ph ph-warning mr-1"></i> This action will soft-delete the specified record.
+            <i class="ph ph-warning mr-1"></i> This action will soft-delete the specified record (sets is_deleted=true). The record can be recovered if needed.
           </div>
         `;
 
@@ -1634,7 +1650,8 @@ export class AutomationsPage {
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">URL</label>
               <input type="text" data-action-field="${idx}-url" value="${this.escapeHtml(config.url || '')}"
-                placeholder="https://api.example.com/webhook" class="w-full px-3 py-2 border border-gray-300 rounded text-sm">
+                placeholder="https://api.example.com/webhooks/notify" class="w-full px-3 py-2 border border-gray-300 rounded text-sm">
+              <p class="mt-1 text-xs text-gray-500">The external API endpoint to call</p>
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Method</label>
@@ -1645,19 +1662,26 @@ export class AutomationsPage {
                 <option value="PATCH" ${config.method === 'PATCH' ? 'selected' : ''}>PATCH</option>
                 <option value="DELETE" ${config.method === 'DELETE' ? 'selected' : ''}>DELETE</option>
               </select>
+              <p class="mt-1 text-xs text-gray-500">HTTP method for the request</p>
             </div>
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Headers (JSON)</label>
             <textarea data-action-field="${idx}-headers" rows="2"
-              placeholder='{"Authorization": "Bearer {{api_key}}", "Content-Type": "application/json"}'
+              placeholder='{\n  "Authorization": "Bearer your-api-key",\n  "Content-Type": "application/json"\n}'
               class="w-full px-3 py-2 border border-gray-300 rounded font-mono text-sm">${JSON.stringify(config.headers || {}, null, 2)}</textarea>
+            <p class="mt-1 text-xs text-gray-500">
+              <i class="ph ph-info mr-1"></i> JSON format: <code class="bg-gray-100 px-1 rounded">{"Header-Name": "value"}</code>. Leave empty <code class="bg-gray-100 px-1 rounded">{}</code> for no custom headers
+            </p>
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Body (JSON)</label>
             <textarea data-action-field="${idx}-body" rows="3"
-              placeholder='{"ticket_id": "{{record.id}}", "status": "{{record.status}}"}'
+              placeholder='{\n  "event": "ticket_updated",\n  "ticket_id": "{{record.id}}",\n  "status": "{{record.status}}",\n  "timestamp": "{{now}}"\n}'
               class="w-full px-3 py-2 border border-gray-300 rounded font-mono text-sm">${JSON.stringify(config.body || {}, null, 2)}</textarea>
+            <p class="mt-1 text-xs text-gray-500">
+              <i class="ph ph-info mr-1"></i> JSON format. Use <code class="bg-gray-100 px-1 rounded">{{record.field}}</code> for dynamic values. Leave empty <code class="bg-gray-100 px-1 rounded">{}</code> for GET requests
+            </p>
           </div>
         `;
 
@@ -1670,21 +1694,25 @@ export class AutomationsPage {
               <option value="push" ${config.notification_type === 'push' ? 'selected' : ''}>Push Notification</option>
               <option value="sms" ${config.notification_type === 'sms' ? 'selected' : ''}>SMS</option>
             </select>
+            <p class="mt-1 text-xs text-gray-500">How the notification will be delivered to recipients</p>
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Recipients</label>
             <input type="text" data-action-field="${idx}-recipients" value="${this.escapeHtml(config.recipients || '')}"
-              placeholder="{{record.assigned_to}} or user UUIDs (comma-separated)" class="w-full px-3 py-2 border border-gray-300 rounded text-sm">
+              placeholder="{{record.assigned_to}}, {{record.created_by}}" class="w-full px-3 py-2 border border-gray-300 rounded text-sm">
+            <p class="mt-1 text-xs text-gray-500">Use <code class="bg-gray-100 px-1 rounded">{{record.user_field}}</code> or enter user UUIDs (comma-separated)</p>
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Title</label>
             <input type="text" data-action-field="${idx}-title" value="${this.escapeHtml(config.title || '')}"
-              placeholder="Notification title" class="w-full px-3 py-2 border border-gray-300 rounded text-sm">
+              placeholder="New Assignment: {{record.subject}}" class="w-full px-3 py-2 border border-gray-300 rounded text-sm">
+            <p class="mt-1 text-xs text-gray-500">Short title for the notification</p>
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Message</label>
             <textarea data-action-field="${idx}-message" rows="2"
-              placeholder="Notification message - use {{field}} for variables" class="w-full px-3 py-2 border border-gray-300 rounded text-sm">${this.escapeHtml(config.message || '')}</textarea>
+              placeholder="You have been assigned ticket #{{record.ticket_number}}: {{record.subject}}" class="w-full px-3 py-2 border border-gray-300 rounded text-sm">${this.escapeHtml(config.message || '')}</textarea>
+            <p class="mt-1 text-xs text-gray-500">Use <code class="bg-gray-100 px-1 rounded">{{record.field}}</code> for dynamic content</p>
           </div>
         `;
 
@@ -1697,23 +1725,27 @@ export class AutomationsPage {
                 <option value="">Select entity...</option>
                 ${this.entities.map(e => `<option value="${e.id}" ${config.entity === e.id || config.entity === e.name ? 'selected' : ''}>${e.display_name || e.name}</option>`).join('')}
               </select>
+              <p class="mt-1 text-xs text-gray-500">The entity containing the record to assign</p>
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Record ID</label>
               <input type="text" data-action-field="${idx}-record_id" value="${this.escapeHtml(config.record_id || '')}"
                 placeholder="{{record.id}}" class="w-full px-3 py-2 border border-gray-300 rounded text-sm">
+              <p class="mt-1 text-xs text-gray-500">Use <code class="bg-gray-100 px-1 rounded">{{record.id}}</code> to assign trigger record</p>
             </div>
           </div>
           <div class="grid grid-cols-2 gap-3">
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Assignment Field</label>
               <input type="text" data-action-field="${idx}-assignment_field" value="${this.escapeHtml(config.assignment_field || 'assigned_to')}"
-                placeholder="e.g., assigned_to" class="w-full px-3 py-2 border border-gray-300 rounded text-sm">
+                placeholder="assigned_to" class="w-full px-3 py-2 border border-gray-300 rounded text-sm">
+              <p class="mt-1 text-xs text-gray-500">The field that stores the user reference</p>
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Assign To</label>
               <input type="text" data-action-field="${idx}-assign_to" value="${this.escapeHtml(config.assign_to || '')}"
-                placeholder="User UUID or {{user.id}}" class="w-full px-3 py-2 border border-gray-300 rounded text-sm">
+                placeholder="{{user.id}} or specific-user-uuid" class="w-full px-3 py-2 border border-gray-300 rounded text-sm">
+              <p class="mt-1 text-xs text-gray-500">User UUID or variable (ignored for round_robin/least_loaded)</p>
             </div>
           </div>
           <div>
@@ -1723,6 +1755,9 @@ export class AutomationsPage {
               <option value="round_robin" ${config.strategy === 'round_robin' ? 'selected' : ''}>Round Robin (from team)</option>
               <option value="least_loaded" ${config.strategy === 'least_loaded' ? 'selected' : ''}>Least Loaded (from team)</option>
             </select>
+            <p class="mt-1 text-xs text-gray-500">
+              <b>Specific:</b> Assign to specified user | <b>Round Robin:</b> Rotate among team members | <b>Least Loaded:</b> Assign to user with fewest active items
+            </p>
           </div>
         `;
 
@@ -1734,12 +1769,16 @@ export class AutomationsPage {
               <option value="">Select workflow...</option>
               ${(this.workflows || []).map(w => `<option value="${w.id}" ${config.workflow_id === w.id ? 'selected' : ''}>${w.label || w.name}</option>`).join('')}
             </select>
+            <p class="mt-1 text-xs text-gray-500">The workflow to trigger. Must be published and active.</p>
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Initial Context Data (JSON)</label>
             <textarea data-action-field="${idx}-context_data" rows="3"
-              placeholder='{"ticket_id": "{{record.id}}", "priority": "{{record.priority}}"}'
+              placeholder='{\n  "entity_id": "{{record.id}}",\n  "ticket_number": "{{record.ticket_number}}",\n  "priority": "{{record.priority}}"\n}'
               class="w-full px-3 py-2 border border-gray-300 rounded font-mono text-sm">${JSON.stringify(config.context_data || {}, null, 2)}</textarea>
+            <p class="mt-1 text-xs text-gray-500">
+              <i class="ph ph-info mr-1"></i> JSON format. Pass data to the workflow using <code class="bg-gray-100 px-1 rounded">{{record.field}}</code>. Leave empty <code class="bg-gray-100 px-1 rounded">{}</code> for no initial data
+            </p>
           </div>
         `;
 
@@ -1749,7 +1788,8 @@ export class AutomationsPage {
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Variable Name</label>
               <input type="text" data-action-field="${idx}-variable_name" value="${this.escapeHtml(config.variable_name || '')}"
-                placeholder="e.g., my_variable" class="w-full px-3 py-2 border border-gray-300 rounded text-sm">
+                placeholder="total_count" class="w-full px-3 py-2 border border-gray-300 rounded text-sm">
+              <p class="mt-1 text-xs text-gray-500">Name to reference this variable (no spaces)</p>
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Value Type</label>
@@ -1758,15 +1798,19 @@ export class AutomationsPage {
                 <option value="expression" ${config.value_type === 'expression' ? 'selected' : ''}>Expression</option>
                 <option value="from_record" ${config.value_type === 'from_record' ? 'selected' : ''}>From Record Field</option>
               </select>
+              <p class="mt-1 text-xs text-gray-500">How the value will be determined</p>
             </div>
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Value</label>
             <input type="text" data-action-field="${idx}-value" value="${this.escapeHtml(config.value || '')}"
-              placeholder="Value or expression (e.g., {{record.status}})" class="w-full px-3 py-2 border border-gray-300 rounded text-sm">
+              placeholder="{{record.status}}" class="w-full px-3 py-2 border border-gray-300 rounded text-sm">
+            <p class="mt-1 text-xs text-gray-500">
+              <b>Static:</b> Enter a fixed value | <b>Expression:</b> Use <code class="bg-gray-100 px-1 rounded">{{record.field}}</code> | <b>From Record:</b> Field name only
+            </p>
           </div>
           <div class="bg-blue-50 border border-blue-200 rounded p-3 text-sm text-blue-800">
-            <i class="ph ph-info mr-1"></i> Access this variable later using <code class="bg-blue-100 px-1 rounded">{{variable_name}}</code>
+            <i class="ph ph-info mr-1"></i> Access this variable in subsequent actions using <code class="bg-blue-100 px-1 rounded">{{variable_name}}</code>
           </div>
         `;
 
