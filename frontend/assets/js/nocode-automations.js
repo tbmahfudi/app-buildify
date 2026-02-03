@@ -770,13 +770,13 @@ export class AutomationsPage {
   }
 
   showRuleBuilder(rule) {
-    // Get entity name for display
-    const entity = this.entities.find(e => e.id === rule.entity_id);
-    const entityName = entity ? (entity.display_name || entity.name) : rule.entity_id || 'N/A';
-
     // Parse trigger config
     const triggerConfig = rule.trigger_config || {};
     const executionConfig = rule.execution_config || {};
+
+    // Get entity name for display
+    const entity = this.entities.find(e => e.id === rule.entity_id) || this.entities.find(e => e.id === rule.trigger_config.entity_id);
+    const entityName = entity ? (entity.display_name || entity.name) : rule.entity_id || 'N/A';
 
     // Get trigger type display
     const triggerTypeMap = {
