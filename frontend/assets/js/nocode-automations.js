@@ -970,31 +970,18 @@ export class AutomationsPage {
   async updateRule(ruleId, form) {
     const formData = new FormData(form);
 
-    let triggerConditions = null;
-    let actions = null;
-
-    try {
-      const conditionsText = formData.get('trigger_conditions');
-      if (conditionsText && conditionsText.trim()) {
-        triggerConditions = JSON.parse(conditionsText);
-      }
-
-      const actionsText = formData.get('actions');
-      if (actionsText && actionsText.trim()) {
-        actions = JSON.parse(actionsText);
-      }
-    } catch (err) {
-      this.showError('Invalid JSON in conditions or actions');
-      return;
-    }
-
+    // Build data object with only editable fields
     const data = {
       label: formData.get('label'),
       description: formData.get('description') || null,
-      trigger_type: formData.get('trigger_type'),
-      trigger_conditions: triggerConditions,
-      actions: actions,
-      priority: parseInt(formData.get('priority')) || 0
+      category: formData.get('category') || null,
+      priority: parseInt(formData.get('priority')) || 0,
+      is_active: formData.get('is_active') === 'on',
+      execution_config: {
+        run_async: formData.get('run_async') === 'on',
+        max_retries: parseInt(formData.get('max_retries')) || 3,
+        timeout_seconds: parseInt(formData.get('timeout_seconds')) || 30
+      }
     };
 
     try {
