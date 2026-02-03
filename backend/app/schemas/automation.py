@@ -8,7 +8,7 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 # ==================== Automation Rule Schemas ====================
@@ -20,7 +20,7 @@ class AutomationRuleBase(BaseModel):
     description: Optional[str] = None
     category: Optional[str] = None
     trigger_type: str = Field(..., description="database_event, scheduled, user_action, webhook, manual")
-    trigger_config: Dict[str, Any] = Field(..., description="Trigger-specific configuration")
+    trigger_config: Dict[str, Any] = Field(default_factory=dict, description="Trigger-specific configuration")
     entity_id: Optional[UUID] = None
     event_type: Optional[str] = None
     trigger_timing: Optional[str] = None
@@ -30,7 +30,7 @@ class AutomationRuleBase(BaseModel):
     schedule_timezone: str = "UTC"
     has_conditions: bool = False
     conditions: Dict[str, Any] = Field(default_factory=dict)
-    actions: List[Dict[str, Any]] = Field(..., description="Array of actions to execute")
+    actions: List[Dict[str, Any]] = Field(default_factory=list, description="Array of actions to execute")
     execution_order: int = 0
     max_retries: int = 3
     retry_delay_seconds: int = 60
@@ -89,6 +89,21 @@ class AutomationRuleResponse(AutomationRuleBase):
     updated_by: Optional[UUID]
     deleted_at: Optional[datetime]
     is_deleted: bool
+
+    @field_validator('actions', mode='before')
+    @classmethod
+    def set_actions_default(cls, v):
+        return v if v is not None else []
+
+    @field_validator('conditions', mode='before')
+    @classmethod
+    def set_conditions_default(cls, v):
+        return v if v is not None else {}
+
+    @field_validator('trigger_config', mode='before')
+    @classmethod
+    def set_trigger_config_default(cls, v):
+        return v if v is not None else {}
 
     class Config:
         from_attributes = True
