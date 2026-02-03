@@ -770,76 +770,184 @@ export class AutomationsPage {
   }
 
   showRuleBuilder(rule) {
+    // Get entity name for display
+    const entity = this.entities.find(e => e.id === rule.entity_id);
+    const entityName = entity ? (entity.display_name || entity.name) : rule.entity_id || 'N/A';
+
+    // Parse trigger config
+    const triggerConfig = rule.trigger_config || {};
+    const executionConfig = rule.execution_config || {};
+
+    // Get trigger type display
+    const triggerTypeMap = {
+      'database': 'Database Event',
+      'scheduled': 'Scheduled',
+      'manual': 'Manual',
+      'webhook': 'Webhook'
+    };
+    const triggerTypeDisplay = triggerTypeMap[rule.trigger_type] || rule.trigger_type;
+
+    // Get event type for database triggers
+    const eventTypeMap = {
+      'onCreate': 'On Create',
+      'onUpdate': 'On Update',
+      'onDelete': 'On Delete'
+    };
+    const eventType = triggerConfig.event_type || rule.trigger_type;
+    const eventTypeDisplay = eventTypeMap[eventType] || eventType;
+
     const modal = document.createElement('div');
     modal.id = 'ruleBuilderModal';
     modal.className = 'fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50';
     modal.innerHTML = `
-      <div class="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+      <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
           <h3 class="text-lg font-semibold text-gray-900">
-            <i class="ph ph-gear"></i> Edit Automation Rule
+            <i class="ph ph-pencil"></i> Edit Automation Rule
           </h3>
           <button onclick="AutomationApp.closeRuleBuilder()" class="text-gray-400 hover:text-gray-600">
             <i class="ph ph-x text-2xl"></i>
           </button>
         </div>
+
         <form id="editRuleForm" class="p-6 space-y-4">
-          <div class="grid grid-cols-2 gap-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Rule Name *</label>
-              <input type="text" name="name" required value="${this.escapeHtml(rule.name)}"
-                     class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100" disabled>
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Label *</label>
-              <input type="text" name="label" required value="${this.escapeHtml(rule.label)}"
-                     class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-            </div>
-          </div>
+          <!-- Basic Information -->
+          <div class="border-b border-gray-200 pb-4 mb-4">
+            <h4 class="text-sm font-semibold text-gray-900 mb-3">Basic Information</h4>
 
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
-            <textarea name="description" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">${this.escapeHtml(rule.description || '')}</textarea>
-          </div>
-
-          <div class="grid grid-cols-2 gap-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Trigger Type</label>
-              <select name="trigger_type" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-                <option value="onCreate" ${rule.trigger_type === 'onCreate' ? 'selected' : ''}>On Create</option>
-                <option value="onUpdate" ${rule.trigger_type === 'onUpdate' ? 'selected' : ''}>On Update</option>
-                <option value="onDelete" ${rule.trigger_type === 'onDelete' ? 'selected' : ''}>On Delete</option>
-                <option value="scheduled" ${rule.trigger_type === 'scheduled' ? 'selected' : ''}>Scheduled</option>
-                <option value="manual" ${rule.trigger_type === 'manual' ? 'selected' : ''}>Manual</option>
-              </select>
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Rule Name</label>
+                <input type="text" name="name" value="${this.escapeHtml(rule.name)}"
+                  class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-500 cursor-not-allowed" disabled>
+                <p class="text-xs text-gray-500 mt-1">Rule name cannot be changed</p>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Display Label*</label>
+                <input type="text" name="label" required value="${this.escapeHtml(rule.label)}"
+                  class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
+              </div>
             </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Priority</label>
-              <input type="number" name="priority" value="${rule.priority || 0}"
-                     class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+
+            <div class="mt-4">
+              <label class="block text-sm font-medium text-gray-700 mb-2">Description</label>
+              <textarea name="description" rows="2" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="Describe what this automation does...">${this.escapeHtml(rule.description || '')}</textarea>
+            </div>
+
+            <div class="mt-4">
+              <label class="block text-sm font-medium text-gray-700 mb-2">Category</label>
+              <input type="text" name="category" value="${this.escapeHtml(rule.category || '')}" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="e.g., Ticket Management">
             </div>
           </div>
 
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Trigger Conditions (JSON)</label>
-            <textarea name="trigger_conditions" rows="4" placeholder='{"field": "status", "operator": "equals", "value": "active"}'
-                      class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 font-mono text-sm">${rule.trigger_conditions ? JSON.stringify(rule.trigger_conditions, null, 2) : ''}</textarea>
-            <p class="text-xs text-gray-500 mt-1">Define conditions for when this rule should execute</p>
+          <!-- Trigger Configuration (Read-only) -->
+          <div class="border-b border-gray-200 pb-4 mb-4">
+            <h4 class="text-sm font-semibold text-gray-900 mb-3">Trigger Configuration</h4>
+            <p class="text-xs text-gray-500 mb-3"><i class="ph ph-info"></i> Trigger settings cannot be changed after creation. Create a new rule if you need different trigger settings.</p>
+
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Trigger Type</label>
+                <input type="text" value="${triggerTypeDisplay}"
+                  class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-500 cursor-not-allowed" disabled>
+              </div>
+              ${rule.trigger_type === 'database' ? `
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Event</label>
+                <input type="text" value="${eventTypeDisplay}"
+                  class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-500 cursor-not-allowed" disabled>
+              </div>
+              ` : ''}
+            </div>
+
+            ${rule.trigger_type === 'database' ? `
+            <div class="mt-4">
+              <label class="block text-sm font-medium text-gray-700 mb-2">Entity</label>
+              <input type="text" value="${this.escapeHtml(entityName)}"
+                class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-500 cursor-not-allowed" disabled>
+            </div>
+            <div class="mt-4">
+              <label class="block text-sm font-medium text-gray-700 mb-2">Watch Fields</label>
+              <input type="text" value="${triggerConfig.watch_fields?.join(', ') || 'All fields'}"
+                class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-500 cursor-not-allowed" disabled>
+            </div>
+            ` : ''}
+
+            ${rule.trigger_type === 'scheduled' ? `
+            <div class="mt-4">
+              <label class="block text-sm font-medium text-gray-700 mb-2">Schedule</label>
+              <input type="text" value="${triggerConfig.cron_expression || triggerConfig.interval || 'Not configured'}"
+                class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-500 cursor-not-allowed" disabled>
+            </div>
+            ` : ''}
           </div>
 
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Actions (JSON)</label>
-            <textarea name="actions" rows="6" placeholder='[{"type": "send_email", "to": "user@example.com", "subject": "Notification"}]'
-                      class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 font-mono text-sm">${rule.actions ? JSON.stringify(rule.actions, null, 2) : '[]'}</textarea>
-            <p class="text-xs text-gray-500 mt-1">Define actions to execute when conditions are met</p>
+          <!-- Execution Settings -->
+          <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-4">
+            <h4 class="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+              <i class="ph ph-gear text-green-600"></i>
+              Execution Settings
+            </h4>
+
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" name="is_active" ${rule.is_active ? 'checked' : ''} class="rounded text-green-600">
+                  <span class="text-sm text-gray-700">Active (rule will run automatically)</span>
+                </label>
+              </div>
+              <div>
+                <label class="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" name="run_async" ${executionConfig.run_async !== false ? 'checked' : ''} class="rounded text-green-600">
+                  <span class="text-sm text-gray-700">Run Asynchronously</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4 mt-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Max Retries</label>
+                <input type="number" name="max_retries" value="${executionConfig.max_retries ?? 3}" min="0" max="10" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
+                <p class="text-xs text-gray-500 mt-1">Number of retry attempts on failure (0-10)</p>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Timeout (seconds)</label>
+                <input type="number" name="timeout_seconds" value="${executionConfig.timeout_seconds ?? 30}" min="1" max="300" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
+                <p class="text-xs text-gray-500 mt-1">Maximum execution time (1-300 seconds)</p>
+              </div>
+            </div>
+
+            <div class="mt-4">
+              <label class="block text-sm font-medium text-gray-700 mb-2">Priority</label>
+              <input type="number" name="priority" value="${rule.priority || 0}" min="0" max="100"
+                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
+              <p class="text-xs text-gray-500 mt-1">Higher priority rules execute first (0-100)</p>
+            </div>
           </div>
 
-          <div class="flex gap-3 pt-4 border-t">
-            <button type="submit" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-              <i class="ph ph-check"></i> Save Changes
-            </button>
-            <button type="button" onclick="AutomationApp.closeRuleBuilder()" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200">
+          <!-- Quick Actions -->
+          <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+            <h4 class="text-sm font-semibold text-blue-900 mb-3 flex items-center gap-2">
+              <i class="ph ph-lightning text-blue-600"></i>
+              Quick Actions
+            </h4>
+            <div class="flex gap-3">
+              <button type="button" onclick="AutomationApp.closeRuleBuilder(); AutomationApp.openVisualConditionBuilder('${rule.id}')" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm flex items-center gap-2">
+                <i class="ph ph-funnel"></i> Edit Conditions
+              </button>
+              <button type="button" onclick="AutomationApp.closeRuleBuilder(); AutomationApp.openVisualActionBuilder('${rule.id}')" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm flex items-center gap-2">
+                <i class="ph ph-play-circle"></i> Edit Actions
+              </button>
+            </div>
+          </div>
+
+          <div class="flex justify-end gap-3 pt-4">
+            <button type="button" onclick="AutomationApp.closeRuleBuilder()" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
               Cancel
+            </button>
+            <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2">
+              <i class="ph ph-check"></i>
+              Save Changes
             </button>
           </div>
         </form>
