@@ -327,6 +327,26 @@ export class AutomationsPage {
           </div>
         </div>
 
+        ${(rule.actions && rule.actions.length > 0) ? `
+        <div class="bg-gray-50 rounded-lg p-3 mb-4">
+          <h4 class="text-xs font-semibold text-gray-500 uppercase mb-2">Action Steps</h4>
+          <div class="space-y-2">
+            ${rule.actions.map((action, idx) => `
+              <div class="flex items-center gap-2 text-sm">
+                <span class="w-5 h-5 bg-green-100 text-green-700 rounded-full flex items-center justify-center text-xs font-bold">${idx + 1}</span>
+                <i class="ph ph-${this.getActionIcon(action.type)} text-gray-500"></i>
+                <span class="text-gray-700">${this.formatActionType(action.type)}</span>
+                ${action.config ? `<span class="text-gray-400 text-xs truncate max-w-[150px]">${this.getActionSummary(action)}</span>` : ''}
+              </div>
+            `).join('')}
+          </div>
+        </div>
+        ` : `
+        <div class="bg-gray-50 rounded-lg p-3 mb-4">
+          <p class="text-xs text-gray-500 italic">No actions configured yet</p>
+        </div>
+        `}
+
         <div class="flex gap-2">
           <button onclick="AutomationApp.viewRule('${rule.id}')" class="flex-1 px-3 py-2 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 text-sm font-medium">
             <i class="ph ph-eye"></i> View
@@ -2631,6 +2651,66 @@ export class AutomationsPage {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+  }
+
+  formatActionType(type) {
+    const typeLabels = {
+      'send_email': 'Send Email',
+      'update_record': 'Update Record',
+      'create_record': 'Create Record',
+      'delete_record': 'Delete Record',
+      'query_data': 'Query Data',
+      'webhook': 'Call Webhook',
+      'notification': 'Send Notification',
+      'assign_user': 'Assign User',
+      'run_workflow': 'Run Workflow',
+      'set_variable': 'Set Variable'
+    };
+    return typeLabels[type] || type;
+  }
+
+  getActionIcon(type) {
+    const icons = {
+      'send_email': 'envelope',
+      'update_record': 'pencil',
+      'create_record': 'plus-circle',
+      'delete_record': 'trash',
+      'query_data': 'database',
+      'webhook': 'globe',
+      'notification': 'bell',
+      'assign_user': 'user',
+      'run_workflow': 'git-branch',
+      'set_variable': 'code'
+    };
+    return icons[type] || 'play';
+  }
+
+  getActionSummary(action) {
+    const config = action.config || {};
+    switch (action.type) {
+      case 'send_email':
+        return config.to ? `to: ${config.to}` : '';
+      case 'update_record':
+      case 'create_record':
+      case 'delete_record':
+        const entity = this.entities.find(e => e.id === config.entity || e.name === config.entity);
+        return entity ? entity.display_name || entity.name : (config.entity || '');
+      case 'webhook':
+        return config.url ? config.url.substring(0, 30) + '...' : '';
+      case 'notification':
+        return config.title || '';
+      case 'assign_user':
+        return config.assignment_strategy || '';
+      case 'run_workflow':
+        const workflow = this.workflows?.find(w => w.id === config.workflow_id);
+        return workflow ? workflow.name : '';
+      case 'set_variable':
+        return config.variable_name || '';
+      case 'query_data':
+        return config.result_variable ? `-> ${config.result_variable}` : '';
+      default:
+        return '';
+    }
   }
 
   showSuccess(message) {
