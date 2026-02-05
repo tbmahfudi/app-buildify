@@ -6,7 +6,7 @@ class FieldMetadata(BaseModel):
     """Single field metadata for form configuration"""
     field: str = Field(..., description="Field name/key")
     title: str = Field(..., description="Display title for the field")
-    type: str = Field(..., description="Field type: text, number, date, boolean, select, etc.")
+    type: str = Field(default="text", description="Field type: text, number, date, boolean, select, etc.")
     required: bool = Field(default=False, description="Whether field is required")
     readonly: bool = Field(default=False, description="Whether field is read-only")
     default: Optional[Any] = Field(None, description="Default value")
@@ -17,6 +17,30 @@ class FieldMetadata(BaseModel):
     rbac_edit: Optional[List[str]] = Field(None, description="Roles that can edit this field")
     help_text: Optional[str] = Field(None, description="Help text for the field")
     placeholder: Optional[str] = Field(None, description="Placeholder text")
+
+    @field_validator('field', mode='before')
+    @classmethod
+    def normalize_field(cls, v, info):
+        """Use 'name' as 'field' if field is not provided"""
+        if v is None and info.data and 'name' in info.data:
+            return info.data['name']
+        return v
+
+    @field_validator('title', mode='before')
+    @classmethod
+    def normalize_title(cls, v, info):
+        """Use 'label' as 'title' if title is not provided"""
+        if v is None and info.data and 'label' in info.data:
+            return info.data['label']
+        return v
+
+    def __init__(self, **data):
+        # Handle name -> field and label -> title mapping before validation
+        if 'field' not in data and 'name' in data:
+            data['field'] = data.pop('name')
+        if 'title' not in data and 'label' in data:
+            data['title'] = data.pop('label')
+        super().__init__(**data)
 
     model_config = ConfigDict(
         json_schema_extra={
@@ -29,7 +53,8 @@ class FieldMetadata(BaseModel):
                 "validators": {"pattern": "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"},
                 "help_text": "Enter your email address"
             }
-        }
+        },
+        extra='ignore'  # Ignore extra fields like 'name', 'label', 'order', etc.
     )
 
 class ColumnMetadata(BaseModel):
@@ -96,11 +121,26 @@ class TableConfig(BaseModel):
 
 class FormConfig(BaseModel):
     """Form configuration"""
-    fields: List[FieldMetadata] = Field(..., description="Field definitions")
-    layout: Optional[Literal["vertical", "horizontal", "grid"]] = Field(default="vertical", description="Form layout type")
+    fields: List[FieldMetadata] = Field(default_factory=list, description="Field definitions")
+    layout: Optional[str] = Field(default="vertical", description="Form layout type")
     sections: Optional[List[Dict[str, Any]]] = Field(None, description="Form sections for grouping fields")
     submit_button_text: Optional[str] = Field(None, description="Custom submit button text")
     cancel_button_text: Optional[str] = Field(None, description="Custom cancel button text")
+
+    @field_validator('layout', mode='before')
+    @classmethod
+    def normalize_layout(cls, v):
+        """Normalize layout values to supported types"""
+        if v is None:
+            return "vertical"
+        # Map alternative layout names to supported values
+        layout_mapping = {
+            'single_column': 'vertical',
+            'two_column': 'horizontal',
+            'multi_column': 'grid',
+            'tabs': 'vertical',  # tabs layout falls back to vertical
+        }
+        return layout_mapping.get(v, v) if v in layout_mapping else v
 
     model_config = ConfigDict(
         json_schema_extra={
