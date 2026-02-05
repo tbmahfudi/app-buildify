@@ -1397,22 +1397,41 @@ export class AutomationsPage {
     `).join('');
   }
 
+  // Sync condition values from DOM back to the data model
+  syncConditionsFromDOM() {
+    this.conditionGroups.forEach((group, groupIdx) => {
+      group.conditions.forEach((cond, condIdx) => {
+        const fieldSelect = document.querySelector(`[data-field="${groupIdx}-${condIdx}"]`);
+        const operatorSelect = document.querySelector(`[data-operator="${groupIdx}-${condIdx}"]`);
+        const valueInput = document.querySelector(`[data-value="${groupIdx}-${condIdx}"]`);
+
+        if (fieldSelect) cond.field = fieldSelect.value;
+        if (operatorSelect) cond.operator = operatorSelect.value;
+        if (valueInput) cond.value = valueInput.value;
+      });
+    });
+  }
+
   addConditionGroup() {
+    this.syncConditionsFromDOM();
     this.conditionGroups.push({ operator: 'AND', conditions: [] });
     this.renderConditionGroups();
   }
 
   addCondition(groupIdx) {
+    this.syncConditionsFromDOM();
     this.conditionGroups[groupIdx].conditions.push({ field: '', operator: 'equals', value: '' });
     this.renderConditionGroups();
   }
 
   removeCondition(groupIdx, condIdx) {
+    this.syncConditionsFromDOM();
     this.conditionGroups[groupIdx].conditions.splice(condIdx, 1);
     this.renderConditionGroups();
   }
 
   removeConditionGroup(groupIdx) {
+    this.syncConditionsFromDOM();
     this.conditionGroups.splice(groupIdx, 1);
     this.renderConditionGroups();
   }
@@ -1962,12 +1981,135 @@ export class AutomationsPage {
   }
 
   onActionTypeChange(idx, newType) {
+    // Sync all other actions first to preserve their values
+    this.actions.forEach((action, i) => {
+      if (i !== idx) {
+        const typeSelect = document.querySelector(`[data-action-type="${i}"]`);
+        const continueCheckbox = document.querySelector(`[data-action-continue="${i}"]`);
+        if (typeSelect) {
+          action.type = typeSelect.value;
+          const config = this.collectActionConfigSafe(i, action.type);
+          if (config) action.config = config;
+        }
+        if (continueCheckbox) action.continue_on_error = continueCheckbox.checked;
+      }
+    });
+    // Now update the changed action
     this.actions[idx].type = newType;
     this.actions[idx].config = {};
     this.renderActions();
   }
 
+  // Sync action values from DOM back to the data model
+  syncActionsFromDOM() {
+    this.actions.forEach((action, idx) => {
+      const typeSelect = document.querySelector(`[data-action-type="${idx}"]`);
+      const continueCheckbox = document.querySelector(`[data-action-continue="${idx}"]`);
+
+      if (typeSelect) {
+        action.type = typeSelect.value;
+        // Use collectActionConfig but ignore errors during sync (just preserve what we can)
+        const config = this.collectActionConfigSafe(idx, action.type);
+        if (config) {
+          action.config = config;
+        }
+      }
+      if (continueCheckbox) {
+        action.continue_on_error = continueCheckbox.checked;
+      }
+    });
+  }
+
+  // Safe version of collectActionConfig that doesn't show errors (for syncing)
+  collectActionConfigSafe(idx, type) {
+    const getFieldValue = (field) => {
+      const el = document.querySelector(`[data-action-field="${idx}-${field}"]`);
+      return el ? el.value : '';
+    };
+
+    const parseJsonFieldSafe = (field) => {
+      const value = getFieldValue(field);
+      if (!value || value.trim() === '' || value.trim() === '{}') return {};
+      try {
+        return JSON.parse(value);
+      } catch (e) {
+        return {}; // Return empty object on error during sync
+      }
+    };
+
+    switch (type) {
+      case 'send_email':
+        return {
+          to: getFieldValue('to'),
+          cc: getFieldValue('cc'),
+          subject: getFieldValue('subject'),
+          body: getFieldValue('body'),
+          template_id: getFieldValue('template_id')
+        };
+      case 'update_record':
+        return {
+          entity: getFieldValue('entity'),
+          record_id: getFieldValue('record_id'),
+          fields: parseJsonFieldSafe('fields')
+        };
+      case 'create_record':
+        return {
+          entity: getFieldValue('entity'),
+          data: parseJsonFieldSafe('data')
+        };
+      case 'delete_record':
+        return {
+          entity: getFieldValue('entity'),
+          record_id: getFieldValue('record_id')
+        };
+      case 'query_data':
+        return {
+          entity: getFieldValue('entity'),
+          filters: parseJsonFieldSafe('filters'),
+          aggregation: getFieldValue('aggregation'),
+          aggregation_field: getFieldValue('aggregation_field'),
+          result_variable: getFieldValue('result_variable')
+        };
+      case 'webhook':
+        return {
+          url: getFieldValue('url'),
+          method: getFieldValue('method'),
+          headers: parseJsonFieldSafe('headers'),
+          body: parseJsonFieldSafe('body')
+        };
+      case 'notification':
+        return {
+          notification_type: getFieldValue('notification_type'),
+          recipients: getFieldValue('recipients'),
+          title: getFieldValue('title'),
+          message: getFieldValue('message')
+        };
+      case 'assign_user':
+        return {
+          entity: getFieldValue('entity'),
+          record_id: getFieldValue('record_id'),
+          assignment_field: getFieldValue('assignment_field'),
+          assign_to: getFieldValue('assign_to'),
+          strategy: getFieldValue('strategy')
+        };
+      case 'run_workflow':
+        return {
+          workflow_id: getFieldValue('workflow_id'),
+          context_data: parseJsonFieldSafe('context_data')
+        };
+      case 'set_variable':
+        return {
+          variable_name: getFieldValue('variable_name'),
+          value_type: getFieldValue('value_type'),
+          value: getFieldValue('value')
+        };
+      default:
+        return {};
+    }
+  }
+
   addAction() {
+    this.syncActionsFromDOM();
     this.actions.push({
       type: 'send_email',
       config: {},
@@ -1977,12 +2119,14 @@ export class AutomationsPage {
   }
 
   removeAction(idx) {
+    this.syncActionsFromDOM();
     this.actions.splice(idx, 1);
     this.renderActions();
   }
 
   moveActionUp(idx) {
     if (idx > 0) {
+      this.syncActionsFromDOM();
       [this.actions[idx - 1], this.actions[idx]] = [this.actions[idx], this.actions[idx - 1]];
       this.renderActions();
     }
@@ -1990,6 +2134,7 @@ export class AutomationsPage {
 
   moveActionDown(idx) {
     if (idx < this.actions.length - 1) {
+      this.syncActionsFromDOM();
       [this.actions[idx], this.actions[idx + 1]] = [this.actions[idx + 1], this.actions[idx]];
       this.renderActions();
     }
