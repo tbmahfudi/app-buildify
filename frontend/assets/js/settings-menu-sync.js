@@ -20,6 +20,7 @@ class MenuSyncPage {
         await this.loadSyncStatus();
         await this.loadMenuStructure();
         await this.loadSyncHistory();
+        await this.loadEntityMenuStatus();
     }
 
     setupEventListeners() {
@@ -57,6 +58,18 @@ class MenuSyncPage {
         const resetMenuBtn = document.getElementById('reset-menu-btn');
         if (resetMenuBtn) {
             resetMenuBtn.addEventListener('click', () => this.handleResetMenu());
+        }
+
+        // Regenerate entity menus button
+        const regenerateBtn = document.getElementById('regenerate-entity-menus-btn');
+        if (regenerateBtn) {
+            regenerateBtn.addEventListener('click', () => this.handleRegenerateEntityMenus());
+        }
+
+        // Refresh entity status button
+        const refreshEntityBtn = document.getElementById('refresh-entity-status-btn');
+        if (refreshEntityBtn) {
+            refreshEntityBtn.addEventListener('click', () => this.loadEntityMenuStatus());
         }
     }
 
@@ -444,6 +457,100 @@ class MenuSyncPage {
 
         // Show details in a modal or expand inline
         alert(`Sync Details:\n\nID: ${entry.id}\nDate: ${this.formatDate(entry.timestamp)}\nStatus: ${entry.status}\nItems: ${entry.items_synced}\nVersion: ${entry.version}\nUser: ${entry.user}`);
+    }
+
+    async loadEntityMenuStatus() {
+        try {
+            // Fetch published entities count
+            const entitiesResponse = await apiFetch('/data-model/entities?status=published');
+            let publishedCount = 0;
+
+            if (entitiesResponse.ok) {
+                const entitiesData = await entitiesResponse.json();
+                publishedCount = entitiesData.entities?.length || entitiesData.length || 0;
+            }
+
+            // Fetch nocode entity menu items count
+            const menuResponse = await apiFetch('/menu/admin');
+            let entityMenuCount = 0;
+
+            if (menuResponse.ok) {
+                const menuData = await menuResponse.json();
+                const menuItems = menuData.items || menuData;
+                // Count menu items that are nocode entity menus
+                entityMenuCount = menuItems.filter(item =>
+                    item.code?.startsWith('nocode_entity_') ||
+                    item.extra_data?.is_nocode === true
+                ).length;
+            }
+
+            // Update UI
+            const publishedEl = document.getElementById('published-entities-count');
+            const menuItemsEl = document.getElementById('entity-menu-items-count');
+            const statusBadge = document.getElementById('entity-menu-status-badge');
+
+            if (publishedEl) publishedEl.textContent = publishedCount;
+            if (menuItemsEl) menuItemsEl.textContent = entityMenuCount;
+
+            if (statusBadge) {
+                if (publishedCount === 0) {
+                    statusBadge.innerHTML = '<i class="ph ph-minus-circle mr-2"></i>No Entities';
+                    statusBadge.className = 'badge badge-lg bg-gray-100 text-gray-800';
+                } else if (entityMenuCount >= publishedCount) {
+                    statusBadge.innerHTML = '<i class="ph ph-check-circle mr-2"></i>All Synced';
+                    statusBadge.className = 'badge badge-lg bg-green-100 text-green-800';
+                } else if (entityMenuCount > 0) {
+                    statusBadge.innerHTML = `<i class="ph ph-warning-circle mr-2"></i>${publishedCount - entityMenuCount} Missing`;
+                    statusBadge.className = 'badge badge-lg bg-yellow-100 text-yellow-800';
+                } else {
+                    statusBadge.innerHTML = `<i class="ph ph-x-circle mr-2"></i>${publishedCount} Missing`;
+                    statusBadge.className = 'badge badge-lg bg-red-100 text-red-800';
+                }
+            }
+        } catch (error) {
+            console.error('Error loading entity menu status:', error);
+        }
+    }
+
+    async handleRegenerateEntityMenus() {
+        if (!confirm('This will create menu items for all published entities that don\'t have one yet.\n\nProceed?')) {
+            return;
+        }
+
+        const btn = document.getElementById('regenerate-entity-menus-btn');
+        const originalContent = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="ph ph-spinner ph-spin mr-2"></i>Regenerating...';
+
+        try {
+            const response = await apiFetch('/data-model/entities/regenerate-menus', {
+                method: 'POST'
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+                alert(`Entity menus regenerated successfully!\n\nCreated: ${result.created}\nSkipped (already exist): ${result.skipped}`);
+
+                // Refresh status
+                await this.loadEntityMenuStatus();
+
+                // Reload menu in sidebar
+                if (typeof loadMenu === 'function') {
+                    await loadMenu();
+                } else if (window.app?.loadMenu) {
+                    await window.app.loadMenu();
+                }
+            } else {
+                const error = await response.json();
+                throw new Error(error.detail || 'Failed to regenerate entity menus');
+            }
+        } catch (error) {
+            console.error('Error regenerating entity menus:', error);
+            alert(`Failed to regenerate entity menus: ${error.message}`);
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = originalContent;
+        }
     }
 
     formatDate(dateString) {
