@@ -952,14 +952,47 @@ Suggested layout:
 4. **Execution Settings:**
    | Field | Value |
    |-------|-------|
-   | **Active** | ☑️ Checked |
+   | **Start Active** | ☐ Unchecked (enable after testing) |
    | **Run Asynchronously** | ☑️ Checked |
    | **Max Retries** | `3` |
    | **Timeout (seconds)** | `30` |
 
-5. **Click "Create Rule"**
+5. **Click "Save"** to create the rule
 
-> **💡 Note:** After creating the rule, you can add conditions and actions using the visual builders accessible from the rule detail view.
+6. **Configure Conditions** (Click "Condition Builder" from rule detail):
+   | Setting | Value |
+   |---------|-------|
+   | **Enable Conditions** | ☑️ Checked |
+   | **Logic Operator** | `Match ALL conditions (AND)` |
+
+   | Field | Operator | Value |
+   |-------|----------|-------|
+   | `assigned_to` | `is_null` | (no value needed) |
+   | `status` | `equals` | `open` |
+
+7. **Configure Actions** (Click "Action Builder" from rule detail):
+
+   **Action 1: Assign User**
+   | Field | Value |
+   |-------|-------|
+   | **Action Type** | `Assign User` |
+   | **Entity** | `SupportTicket` |
+   | **Record ID** | `{{record.id}}` |
+   | **Assignment Field** | `assigned_to` |
+   | **Assignment Strategy** | `Round Robin` |
+   | **Continue on error** | ☑️ Checked |
+
+   **Action 2: Send Notification**
+   | Field | Value |
+   |-------|-------|
+   | **Action Type** | `Send Notification` |
+   | **Notification Type** | `In-App` |
+   | **Recipients** | `{{record.assigned_to}}` |
+   | **Title** | `New Ticket Assigned: #{{record.ticket_number}}` |
+   | **Message** | `You have been assigned ticket: {{record.subject}}` |
+   | **Continue on error** | ☑️ Checked |
+
+8. **Click "Save Actions"** then enable the rule from the list
 
 ---
 
@@ -991,14 +1024,47 @@ Suggested layout:
 4. **Execution Settings:**
    | Field | Value |
    |-------|-------|
-   | **Active** | ☑️ Checked |
+   | **Start Active** | ☐ Unchecked (enable after testing) |
    | **Run Asynchronously** | ☑️ Checked |
    | **Max Retries** | `3` |
    | **Timeout (seconds)** | `60` |
 
-5. **Click "Create Rule"**
+5. **Click "Save"** to create the rule
 
-> **💡 Note:** After creating the rule, configure conditions and actions through the visual builders to filter for SLA violations and send notifications.
+6. **Configure Actions** (Click "Action Builder" from rule detail):
+
+   **Action 1: Query Data** - Find SLA violations
+   | Field | Value |
+   |-------|-------|
+   | **Action Type** | `Query Data` |
+   | **Entity** | `SupportTicket` |
+   | **Aggregation** | `List (return records)` |
+   | **Filters** | `{"status": {"$in": ["open", "in_progress"]}, "sla_due_at": {"$lt": "{{now}}"}}` |
+   | **Store Result As** | `sla_violations` |
+   | **Continue on error** | ☑️ Checked |
+
+   **Action 2: Update Record** - Mark as escalated
+   | Field | Value |
+   |-------|-------|
+   | **Action Type** | `Update Record` |
+   | **Entity** | `SupportTicket` |
+   | **Record ID** | `{{sla_violations.*.id}}` |
+   | **Fields to Update** | |
+   | - `priority` | `critical` |
+   | - `is_escalated` | `true` |
+   | - `escalated_at` | `{{now}}` |
+   | **Continue on error** | ☑️ Checked |
+
+   **Action 3: Send Email** - Notify manager
+   | Field | Value |
+   |-------|-------|
+   | **Action Type** | `Send Email` |
+   | **To** | `support-manager@company.com` |
+   | **Subject** | `SLA Alert: {{sla_violations.length}} Tickets Overdue` |
+   | **Body** | `The following tickets have exceeded their SLA:\n\n{{#each sla_violations}}\n- #{{ticket_number}}: {{subject}} (Due: {{sla_due_at}})\n{{/each}}` |
+   | **Continue on error** | ☑️ Checked |
+
+7. **Click "Save Actions"** then enable the rule from the list
 
 ---
 
@@ -1025,14 +1091,59 @@ Suggested layout:
 4. **Execution Settings:**
    | Field | Value |
    |-------|-------|
-   | **Active** | ☑️ Checked |
+   | **Start Active** | ☐ Unchecked (enable after testing) |
    | **Run Asynchronously** | ☑️ Checked |
    | **Max Retries** | `3` |
    | **Timeout (seconds)** | `30` |
 
-5. **Click "Create Rule"**
+5. **Click "Save"** to create the rule
 
-> **💡 Note:** After creating the rule, use the visual builders to add conditions (status in ['resolved', 'closed']) and actions (create comment, send email).
+6. **Configure Conditions** (Click "Condition Builder" from rule detail):
+   | Setting | Value |
+   |---------|-------|
+   | **Enable Conditions** | ☑️ Checked |
+   | **Logic Operator** | `Match ANY condition (OR)` |
+
+   | Field | Operator | Value |
+   |-------|----------|-------|
+   | `status` | `equals` | `resolved` |
+   | `status` | `equals` | `closed` |
+   | `status` | `equals` | `in_progress` |
+
+7. **Configure Actions** (Click "Action Builder" from rule detail):
+
+   **Action 1: Set Variable** - Format status message
+   | Field | Value |
+   |-------|-------|
+   | **Action Type** | `Set Variable` |
+   | **Variable Name** | `status_message` |
+   | **Source Type** | `Expression` |
+   | **Value** | `Your ticket #{{record.ticket_number}} status changed to: {{record.status}}` |
+   | **Continue on error** | ☑️ Checked |
+
+   **Action 2: Send Email** - Customer notification
+   | Field | Value |
+   |-------|-------|
+   | **Action Type** | `Send Email` |
+   | **To** | `{{record.customer_email}}` |
+   | **CC** | (leave empty) |
+   | **Subject** | `Ticket #{{record.ticket_number}} - Status Update` |
+   | **Body** | `Dear {{record.customer_name}},\n\n{{status_message}}\n\nThank you for your patience.\n\nBest regards,\nSupport Team` |
+   | **Continue on error** | ☑️ Checked |
+
+   **Action 3: Create Record** - Add comment to ticket
+   | Field | Value |
+   |-------|-------|
+   | **Action Type** | `Create Record` |
+   | **Entity** | `TicketComment` |
+   | **Fields** | |
+   | - `ticket_id` | `{{record.id}}` |
+   | - `content` | `Status automatically changed to {{record.status}}` |
+   | - `is_internal` | `true` |
+   | - `comment_type` | `system` |
+   | **Continue on error** | ☑️ Checked |
+
+8. **Click "Save Actions"** then enable the rule from the list
 
 ---
 
@@ -1058,14 +1169,84 @@ Suggested layout:
 4. **Execution Settings:**
    | Field | Value |
    |-------|-------|
-   | **Active** | ☑️ Checked |
+   | **Start Active** | ☐ Unchecked (enable after testing) |
    | **Run Asynchronously** | ☑️ Checked |
    | **Max Retries** | `3` |
    | **Timeout (seconds)** | `60` |
 
-5. **Click "Create Rule"**
+5. **Click "Save"** to create the rule
 
-> **💡 Note:** After creating the rule, configure actions to query metrics and send the summary email through the visual action builder.
+6. **Configure Actions** (Click "Action Builder" from rule detail):
+
+   **Action 1: Query Data** - Count open tickets
+   | Field | Value |
+   |-------|-------|
+   | **Action Type** | `Query Data` |
+   | **Entity** | `SupportTicket` |
+   | **Aggregation** | `Count` |
+   | **Filters** | `{"status": "open"}` |
+   | **Store Result As** | `open_count` |
+   | **Continue on error** | ☑️ Checked |
+
+   **Action 2: Query Data** - Count resolved today
+   | Field | Value |
+   |-------|-------|
+   | **Action Type** | `Query Data` |
+   | **Entity** | `SupportTicket` |
+   | **Aggregation** | `Count` |
+   | **Filters** | `{"status": "resolved", "resolved_at": {"$gte": "{{today}}"}}` |
+   | **Store Result As** | `resolved_today` |
+   | **Continue on error** | ☑️ Checked |
+
+   **Action 3: Query Data** - Count SLA violations
+   | Field | Value |
+   |-------|-------|
+   | **Action Type** | `Query Data` |
+   | **Entity** | `SupportTicket` |
+   | **Aggregation** | `Count` |
+   | **Filters** | `{"is_escalated": true, "status": {"$nin": ["resolved", "closed"]}}` |
+   | **Store Result As** | `sla_violations` |
+   | **Continue on error** | ☑️ Checked |
+
+   **Action 4: Query Data** - Average resolution time
+   | Field | Value |
+   |-------|-------|
+   | **Action Type** | `Query Data` |
+   | **Entity** | `SupportTicket` |
+   | **Aggregation** | `Average` |
+   | **Aggregation Field** | `resolution_time_hours` |
+   | **Filters** | `{"status": "resolved", "resolved_at": {"$gte": "{{today}}"}}` |
+   | **Store Result As** | `avg_resolution_time` |
+   | **Continue on error** | ☑️ Checked |
+
+   **Action 5: Send Email** - Daily summary
+   | Field | Value |
+   |-------|-------|
+   | **Action Type** | `Send Email` |
+   | **To** | `support-manager@company.com, team-lead@company.com` |
+   | **Subject** | `Daily Support Ticket Summary - {{today}}` |
+   | **Body** | See template below |
+   | **Continue on error** | ☑️ Checked |
+
+   **Email Body Template:**
+   ```
+   Daily Support Ticket Summary
+   ============================
+
+   📊 Today's Metrics:
+
+   • Open Tickets: {{open_count}}
+   • Resolved Today: {{resolved_today}}
+   • SLA Violations: {{sla_violations}}
+   • Avg Resolution Time: {{avg_resolution_time}} hours
+
+   Please review any SLA violations and take necessary action.
+
+   ---
+   This is an automated report from the Support Module.
+   ```
+
+7. **Click "Save Actions"** then enable the rule from the list
 
 **✅ Checkpoint:** You should have 4 active automation rules. Check the Automation Rules list to see all rules and their status.
 
