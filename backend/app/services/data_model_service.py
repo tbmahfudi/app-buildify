@@ -824,13 +824,16 @@ class DataModelService:
                 import logging
                 logger = logging.getLogger(__name__)
 
+                # Ensure parent "No-Code Entities" menu exists first
+                parent_menu = MenuService.get_or_create_nocode_parent(self.db, entity.tenant_id, str(self.current_user.id))
+
                 # Create menu item with route to dynamic entity list view
                 menu_data = {
                     'code': f'nocode_entity_{entity.name}',
                     'title': entity.label or entity.name.replace('_', ' ').title(),
                     'route': f'dynamic/{entity.name}/list',
                     'icon': entity.icon or 'ph-duotone ph-database',
-                    'parent_code': 'nocode_entities',  # Will be created if not exists
+                    'parent_id': parent_menu.id,  # Link to parent "No-Code Entities" menu
                     'permission': None,  # Default permission - will be filtered by entity access control
                     'required_roles': [],
                     'is_system': False,
@@ -840,9 +843,6 @@ class DataModelService:
                         'is_nocode': True
                     }
                 }
-
-                # Ensure parent "No-Code Entities" menu exists
-                parent_menu = MenuService.get_or_create_nocode_parent(self.db, entity.tenant_id, str(self.current_user.id))
 
                 # Create menu item
                 MenuService.create_menu_item(
