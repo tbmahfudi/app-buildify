@@ -57,6 +57,58 @@
       </div>
     </div>
 
+    <!-- Regenerate Entity Menus Card -->
+    <div class="bg-white rounded-lg shadow-sm p-6">
+      <div class="flex items-start justify-between mb-6">
+        <div>
+          <h2 class="text-lg font-semibold text-gray-900 mb-1">
+            <i class="ph-duotone ph-database text-emerald-600 mr-2"></i>
+            No-Code Entity Menus
+          </h2>
+          <p class="text-sm text-gray-600">Regenerate menu items for published No-Code entities</p>
+        </div>
+        <div id="entity-menu-status-badge" class="badge badge-lg bg-gray-100 text-gray-800">
+          <i class="ph ph-question mr-2"></i>
+          Unknown
+        </div>
+      </div>
+
+      <div class="bg-blue-50 border-l-4 border-blue-500 p-4 rounded mb-6">
+        <div class="flex items-start gap-3">
+          <i class="ph-duotone ph-info text-blue-600 text-xl"></i>
+          <div>
+            <h3 class="font-semibold text-blue-900 mb-1">About Entity Menus</h3>
+            <p class="text-sm text-blue-800">
+              When you publish a No-Code entity, a menu item is automatically created under "No-Code Entities".
+              Use this tool to regenerate missing menu items for entities that were published before the menu system was set up.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        <div class="bg-gray-50 p-4 rounded-lg">
+          <div class="text-sm text-gray-600 mb-1">Published Entities</div>
+          <div id="published-entities-count" class="text-lg font-semibold text-gray-900">-</div>
+        </div>
+        <div class="bg-gray-50 p-4 rounded-lg">
+          <div class="text-sm text-gray-600 mb-1">Entity Menu Items</div>
+          <div id="entity-menu-items-count" class="text-lg font-semibold text-gray-900">-</div>
+        </div>
+      </div>
+
+      <div class="flex gap-3">
+        <button id="regenerate-entity-menus-btn" class="btn btn-primary bg-emerald-600 hover:bg-emerald-700">
+          <i class="ph ph-arrows-clockwise mr-2"></i>
+          Regenerate Entity Menus
+        </button>
+        <button id="refresh-entity-status-btn" class="btn btn-secondary">
+          <i class="ph ph-arrow-clockwise mr-2"></i>
+          Refresh
+        </button>
+      </div>
+    </div>
+
     <!-- Menu Structure Preview -->
     <div class="bg-white rounded-lg shadow-sm p-6">
       <div class="flex items-center justify-between mb-4">

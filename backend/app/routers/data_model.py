@@ -434,3 +434,84 @@ async def rollback_migration(
     """
     service = DataModelService(db, current_user)
     return await service.rollback_migration(migration_id)
+
+
+@router.post("/entities/regenerate-menus")
+async def regenerate_entity_menus(
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """
+    Regenerate menu items for all published entities.
+
+    This is a repair endpoint that creates missing menu items for entities
+    that were published but don't have corresponding menu entries.
+    """
+    from app.models.data_model import EntityDefinition
+    from app.models.menu_item import MenuItem
+    from app.services.menu_service import MenuService
+    from sqlalchemy import or_
+    import logging
+
+    logger = logging.getLogger(__name__)
+
+    # Get all published entities for current tenant
+    published_entities = db.query(EntityDefinition).filter(
+        EntityDefinition.status == 'published',
+        or_(
+            EntityDefinition.tenant_id == current_user.tenant_id,
+            EntityDefinition.tenant_id == None
+        )
+    ).all()
+
+    if not published_entities:
+        return {"success": True, "message": "No published entities found", "created": 0}
+
+    # Ensure parent menu exists
+    parent_menu = MenuService.get_or_create_nocode_parent(
+        db, current_user.tenant_id, str(current_user.id)
+    )
+
+    created_count = 0
+    skipped_count = 0
+
+    for entity in published_entities:
+        menu_code = f'nocode_entity_{entity.name}'
+
+        # Check if menu item already exists
+        existing = db.query(MenuItem).filter(MenuItem.code == menu_code).first()
+        if existing:
+            skipped_count += 1
+            continue
+
+        # Create menu item
+        try:
+            menu_data = {
+                'code': menu_code,
+                'title': entity.label or entity.name.replace('_', ' ').title(),
+                'route': f'dynamic/{entity.name}/list',
+                'icon': entity.icon or 'ph-duotone ph-database',
+                'parent_id': parent_menu.id,
+                'permission': None,
+                'required_roles': [],
+                'is_system': False,
+                'is_active': True,
+                'extra_data': {
+                    'entity_id': str(entity.id),
+                    'is_nocode': True
+                }
+            }
+
+            MenuService.create_menu_item(db=db, user=current_user, menu_data=menu_data)
+            created_count += 1
+            logger.info(f"Created menu item for entity: {entity.name}")
+        except Exception as e:
+            logger.error(f"Failed to create menu for {entity.name}: {str(e)}")
+
+    return {
+        "success": True,
+        "message": f"Created {created_count} menu items, skipped {skipped_count} existing",
+        "created": created_count,
+        "skipped": skipped_count,
+        "parent_menu_id": str(parent_menu.id)
+    }
