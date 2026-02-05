@@ -1397,22 +1397,41 @@ export class AutomationsPage {
     `).join('');
   }
 
+  // Sync condition values from DOM back to the data model
+  syncConditionsFromDOM() {
+    this.conditionGroups.forEach((group, groupIdx) => {
+      group.conditions.forEach((cond, condIdx) => {
+        const fieldSelect = document.querySelector(`[data-field="${groupIdx}-${condIdx}"]`);
+        const operatorSelect = document.querySelector(`[data-operator="${groupIdx}-${condIdx}"]`);
+        const valueInput = document.querySelector(`[data-value="${groupIdx}-${condIdx}"]`);
+
+        if (fieldSelect) cond.field = fieldSelect.value;
+        if (operatorSelect) cond.operator = operatorSelect.value;
+        if (valueInput) cond.value = valueInput.value;
+      });
+    });
+  }
+
   addConditionGroup() {
+    this.syncConditionsFromDOM();
     this.conditionGroups.push({ operator: 'AND', conditions: [] });
     this.renderConditionGroups();
   }
 
   addCondition(groupIdx) {
+    this.syncConditionsFromDOM();
     this.conditionGroups[groupIdx].conditions.push({ field: '', operator: 'equals', value: '' });
     this.renderConditionGroups();
   }
 
   removeCondition(groupIdx, condIdx) {
+    this.syncConditionsFromDOM();
     this.conditionGroups[groupIdx].conditions.splice(condIdx, 1);
     this.renderConditionGroups();
   }
 
   removeConditionGroup(groupIdx) {
+    this.syncConditionsFromDOM();
     this.conditionGroups.splice(groupIdx, 1);
     this.renderConditionGroups();
   }
