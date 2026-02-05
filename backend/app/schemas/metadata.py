@@ -1,5 +1,5 @@
-from pydantic import BaseModel, Field, ConfigDict
-from typing import Optional, List, Dict, Any, Literal
+from pydantic import BaseModel, Field, ConfigDict, field_validator
+from typing import Optional, List, Dict, Any, Literal, Union
 from datetime import datetime
 
 class FieldMetadata(BaseModel):
@@ -45,13 +45,39 @@ class ColumnMetadata(BaseModel):
 
 class TableConfig(BaseModel):
     """Table/Grid configuration"""
-    columns: List[ColumnMetadata] = Field(..., description="Column definitions")
-    default_sort: Optional[List[List[str]]] = Field(None, description="Default sort configuration [[field, asc/desc]]")
+    columns: List[ColumnMetadata] = Field(default_factory=list, description="Column definitions")
+    default_sort: Optional[Union[List[List[str]], Dict[str, str]]] = Field(None, description="Default sort configuration [[field, asc/desc]] or {field, direction}")
     default_filters: Optional[Dict[str, Any]] = Field(None, description="Default filters")
     page_size: int = Field(default=25, ge=1, le=100, description="Default page size")
-    actions: Optional[List[str]] = Field(None, description="Available actions: view, edit, delete")
+    actions: Optional[Union[List[str], Dict[str, bool]]] = Field(None, description="Available actions: view, edit, delete")
     selectable: bool = Field(default=False, description="Whether rows are selectable")
     exportable: bool = Field(default=False, description="Whether data can be exported")
+
+    @field_validator('default_sort', mode='before')
+    @classmethod
+    def normalize_default_sort(cls, v):
+        """Convert dict format {field, direction} to list format [[field, direction]]"""
+        if v is None:
+            return None
+        if isinstance(v, dict):
+            # Handle {field: "created_at", direction: "desc"} format
+            field = v.get('field')
+            direction = v.get('direction', 'asc')
+            if field:
+                return [[field, direction]]
+            return None
+        return v
+
+    @field_validator('actions', mode='before')
+    @classmethod
+    def normalize_actions(cls, v):
+        """Convert dict format {view: True, edit: True} to list format ["view", "edit"]"""
+        if v is None:
+            return None
+        if isinstance(v, dict):
+            # Handle {view: True, edit: True, delete: True} format
+            return [action for action, enabled in v.items() if enabled]
+        return v
 
     model_config = ConfigDict(
         json_schema_extra={
