@@ -46,7 +46,7 @@ class AutomationRuleBase(BaseModel):
 
 class AutomationRuleCreate(AutomationRuleBase):
     """Schema for creating an automation rule"""
-    pass
+    is_active: bool = False  # Default to inactive, user can enable from list
 
 
 class AutomationRuleUpdate(BaseModel):
