@@ -1698,17 +1698,16 @@ export class AutomationsPage {
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Fields to Update (JSON)</label>
             <textarea data-action-field="${idx}-fields" rows="5"
-              placeholder='{\n  "assigned_team": "{{category.assigned_team}}",\n  "sla_due_date": "{{now}} + {{category.default_sla_hours}} HOURS",\n  "status": "open"\n}'
+              placeholder='{\n  "priority": "critical",\n  "is_escalated": true,\n  "escalated_at": "{{now}}",\n  "assigned_to": "{{user.id}}"\n}'
               class="w-full px-3 py-2 border border-gray-300 rounded font-mono text-sm">${JSON.stringify(config.fields || {}, null, 2)}</textarea>
             <p class="mt-1 text-xs text-gray-500">
-              <i class="ph ph-info mr-1"></i> JSON format. Available variables:
+              <i class="ph ph-info mr-1"></i> JSON format. <b>Quote all template variables</b> like <code class="bg-gray-100 px-1 rounded">"{{now}}"</code>
             </p>
             <ul class="mt-1 text-xs text-gray-500 list-disc list-inside space-y-0.5">
-              <li><code class="bg-gray-100 px-1 rounded">{{record.field}}</code> - Current record fields</li>
-              <li><code class="bg-gray-100 px-1 rounded">{{category.field}}</code> - Related record fields (via foreign key)</li>
-              <li><code class="bg-gray-100 px-1 rounded">{{now}}</code> - Current timestamp</li>
-              <li><code class="bg-gray-100 px-1 rounded">{{now}} + N HOURS/DAYS</code> - Date calculation</li>
-              <li><code class="bg-gray-100 px-1 rounded">{{user.id}}</code> - Current user ID</li>
+              <li><code class="bg-gray-100 px-1 rounded">"{{record.field}}"</code> - Current record fields</li>
+              <li><code class="bg-gray-100 px-1 rounded">"{{now}}"</code> - Current timestamp</li>
+              <li><code class="bg-gray-100 px-1 rounded">"{{user.id}}"</code> - Current user ID</li>
+              <li>Use <code class="bg-gray-100 px-1 rounded">true</code> / <code class="bg-gray-100 px-1 rounded">false</code> for booleans (no quotes)</li>
             </ul>
           </div>
         `;
@@ -1729,7 +1728,7 @@ export class AutomationsPage {
               placeholder='{\n  "title": "Follow-up: {{record.subject}}",\n  "parent_id": "{{record.id}}",\n  "status": "new",\n  "created_by": "{{user.id}}"\n}'
               class="w-full px-3 py-2 border border-gray-300 rounded font-mono text-sm">${JSON.stringify(config.data || {}, null, 2)}</textarea>
             <p class="mt-1 text-xs text-gray-500">
-              <i class="ph ph-info mr-1"></i> JSON format: <code class="bg-gray-100 px-1 rounded">{"field_name": "value"}</code>. Use <code class="bg-gray-100 px-1 rounded">{{record.field}}</code> to copy values from trigger record
+              <i class="ph ph-info mr-1"></i> JSON format. <b>Quote template variables</b>: <code class="bg-gray-100 px-1 rounded">"{{record.field}}"</code>
             </p>
           </div>
         `;
@@ -2027,9 +2026,18 @@ export class AutomationsPage {
       return el ? el.value : '';
     };
 
+    // Pre-process JSON to handle unquoted template variables like {{now}}
+    const preprocessJson = (value) => {
+      let result = value;
+      result = result.replace(/:(\s*)({{[^}]+}})\s*([,}\]])/g, ':"$2"$3');
+      result = result.replace(/:(\s*)({{[^}]+}})\s*$/gm, ':"$2"');
+      return result;
+    };
+
     const parseJsonFieldSafe = (field) => {
-      const value = getFieldValue(field);
+      let value = getFieldValue(field);
       if (!value || value.trim() === '' || value.trim() === '{}') return {};
+      value = preprocessJson(value);
       try {
         return JSON.parse(value);
       } catch (e) {
@@ -2201,13 +2209,29 @@ export class AutomationsPage {
       return el ? el.value : '';
     };
 
+    // Pre-process JSON to handle unquoted template variables like {{now}}
+    const preprocessJson = (value) => {
+      // Wrap unquoted {{...}} in double quotes
+      // Match {{...}} that is not already inside quotes
+      let result = value;
+      // Replace unquoted template variables (those followed by comma, }, or whitespace)
+      result = result.replace(/:(\s*)({{[^}]+}})\s*([,}\]])/g, ':"$2"$3');
+      // Also handle template variables at end of object
+      result = result.replace(/:(\s*)({{[^}]+}})\s*$/gm, ':"$2"');
+      return result;
+    };
+
     const parseJsonField = (field) => {
-      const value = getFieldValue(field);
+      let value = getFieldValue(field);
       if (!value || value.trim() === '' || value.trim() === '{}') return {};
+
+      // Pre-process to handle template variables
+      value = preprocessJson(value);
+
       try {
         return JSON.parse(value);
       } catch (e) {
-        this.showError(`Invalid JSON in action ${idx + 1} - ${field}`);
+        this.showError(`Invalid JSON in action ${idx + 1} - ${field}. Make sure template variables like {{now}} are quoted: "{{now}}"`);
         return null;
       }
     };
