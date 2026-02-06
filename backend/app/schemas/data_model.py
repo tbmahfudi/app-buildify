@@ -379,9 +379,11 @@ class DatabaseObjectInfo(BaseModel):
     """Information about a database object"""
     name: str
     type: str  # 'table', 'view', 'materialized_view'
-    schema: str
+    db_schema: str = Field(alias='schema')
     comment: Optional[str] = None
     definition: Optional[str] = None  # SQL definition for views
+
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class DatabaseObjectsResponse(BaseModel):
@@ -395,8 +397,10 @@ class IntrospectRequest(BaseModel):
     """Request to introspect a database object"""
     object_name: str
     object_type: str  # 'table', 'view', 'materialized_view'
-    schema: str = 'public'
+    db_schema: str = Field(default='public', alias='schema')
     auto_save: bool = False
+
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class IntrospectedFieldDefinition(BaseModel):
@@ -473,8 +477,10 @@ class BatchIntrospectObject(BaseModel):
 class BatchIntrospectRequest(BaseModel):
     """Request for batch introspection"""
     objects: List[BatchIntrospectObject]
-    schema: str = 'public'
+    db_schema: str = Field(default='public', alias='schema')
     auto_save: bool = False
+
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class BatchIntrospectResponse(BaseModel):
