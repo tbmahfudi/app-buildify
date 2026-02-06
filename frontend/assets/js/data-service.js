@@ -17,28 +17,53 @@ class DataService {
       scope = null
     } = options;
 
-    const response = await apiFetch(`/data/${entity}/list`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        entity,
-        page,
-        page_size: pageSize,
-        filters,
-        sort,
-        search,
-        scope
-      })
-    });
+    // Build query params for GET request
+    const params = new URLSearchParams();
+    params.append('page', page);
+    params.append('page_size', pageSize);
 
-    return await response.json();
+    if (search) {
+      params.append('search', search);
+    }
+
+    if (sort && sort.length > 0) {
+      // Convert [[field, dir], ...] to "field:dir,field2:dir2" format
+      const sortStr = sort.map(s => `${s[0]}:${s[1]}`).join(',');
+      params.append('sort', sortStr);
+    }
+
+    if (filters && filters.length > 0) {
+      params.append('filters', JSON.stringify({ conditions: filters }));
+    }
+
+    const response = await apiFetch(`/dynamic-data/${entity}/records?${params.toString()}`);
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Failed to fetch records');
+    }
+
+    const data = await response.json();
+
+    // Normalize response to expected format
+    return {
+      rows: data.items || data.rows || [],
+      total: data.total || 0,
+      page: data.page || page,
+      pageSize: data.page_size || pageSize,
+      pages: data.pages || Math.ceil((data.total || 0) / pageSize)
+    };
   }
 
   /**
    * Get single record
    */
   async get(entity, id) {
-    const response = await apiFetch(`/data/${entity}/${id}`);
+    const response = await apiFetch(`/dynamic-data/${entity}/records/${id}`);
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Failed to fetch record');
+    }
     return await response.json();
   }
 
@@ -46,10 +71,10 @@ class DataService {
    * Create record
    */
   async create(entity, data, scope = null) {
-    const response = await apiFetch(`/data/${entity}`, {
+    const response = await apiFetch(`/dynamic-data/${entity}/records`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ entity, data, scope })
+      body: JSON.stringify({ data })
     });
 
     if (!response.ok) {
@@ -64,10 +89,10 @@ class DataService {
    * Update record
    */
   async update(entity, id, data, version = null) {
-    const response = await apiFetch(`/data/${entity}/${id}`, {
+    const response = await apiFetch(`/dynamic-data/${entity}/records/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ entity, id, data, version })
+      body: JSON.stringify({ data })
     });
 
     if (!response.ok) {
@@ -82,7 +107,7 @@ class DataService {
    * Delete record
    */
   async delete(entity, id) {
-    const response = await apiFetch(`/data/${entity}/${id}`, {
+    const response = await apiFetch(`/dynamic-data/${entity}/records/${id}`, {
       method: 'DELETE'
     });
 
@@ -98,11 +123,16 @@ class DataService {
    * Bulk operations
    */
   async bulk(entity, operation, records) {
-    const response = await apiFetch(`/data/${entity}/bulk`, {
+    const response = await apiFetch(`/dynamic-data/${entity}/bulk`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ entity, operation, records })
+      body: JSON.stringify({ operation, records })
     });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Bulk operation failed');
+    }
 
     return await response.json();
   }
