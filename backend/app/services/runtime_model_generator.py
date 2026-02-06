@@ -182,9 +182,9 @@ class RuntimeModelGenerator:
                     'default_value': f.default_value,
                     'lookup_config': f.lookup_config,
                     'validation_rules': f.validation_rules,
-                    'order': f.order
+                    'order': f.display_order
                 }
-                for f in sorted(entity_def.fields, key=lambda x: x.order or 0)
+                for f in sorted(entity_def.fields, key=lambda x: x.display_order or 0)
             ],
             'relationships': [
                 {
