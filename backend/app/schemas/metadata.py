@@ -68,6 +68,16 @@ class ColumnMetadata(BaseModel):
     rbac_view: Optional[List[str]] = Field(None, description="Roles that can view this column")
     align: Optional[Literal["left", "center", "right"]] = Field(None, description="Column alignment")
 
+    def __init__(self, **data):
+        # Handle label -> title mapping before validation
+        if 'title' not in data and 'label' in data:
+            data['title'] = data.pop('label')
+        super().__init__(**data)
+
+    model_config = ConfigDict(
+        extra='ignore'  # Ignore extra fields
+    )
+
 class TableConfig(BaseModel):
     """Table/Grid configuration"""
     columns: List[ColumnMetadata] = Field(default_factory=list, description="Column definitions")
