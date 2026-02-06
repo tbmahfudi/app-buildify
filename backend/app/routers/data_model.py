@@ -442,14 +442,16 @@ async def regenerate_entity_menus(
     current_user = Depends(get_current_user)
 ):
     """
-    Regenerate menu items for all published entities.
+    Regenerate menu items and metadata for all published entities.
 
-    This is a repair endpoint that creates missing menu items for entities
-    that were published but don't have corresponding menu entries.
+    This is a repair endpoint that creates missing menu items and EntityMetadata
+    for entities that were published but don't have corresponding entries.
     """
     from app.models.data_model import EntityDefinition
     from app.models.menu_item import MenuItem
+    from app.models.metadata import EntityMetadata
     from app.services.menu_service import MenuService
+    from app.services.metadata_sync_service import MetadataSyncService
     from sqlalchemy import or_
     import logging
 
@@ -472,19 +474,40 @@ async def regenerate_entity_menus(
         db, current_user.tenant_id, str(current_user.id)
     )
 
-    created_count = 0
-    skipped_count = 0
+    menu_created = 0
+    menu_skipped = 0
+    metadata_created = 0
+    metadata_skipped = 0
+
+    metadata_sync = MetadataSyncService(db)
 
     for entity in published_entities:
+        # --- Create/update EntityMetadata ---
+        try:
+            existing_metadata = db.query(EntityMetadata).filter(
+                EntityMetadata.entity_name == entity.name
+            ).first()
+
+            if existing_metadata:
+                metadata_skipped += 1
+            else:
+                metadata_sync.auto_generate_metadata(
+                    entity_definition=entity,
+                    created_by=str(current_user.id)
+                )
+                metadata_created += 1
+                logger.info(f"Created metadata for entity: {entity.name}")
+        except Exception as e:
+            logger.error(f"Failed to create metadata for {entity.name}: {str(e)}")
+
+        # --- Create menu item ---
         menu_code = f'nocode_entity_{entity.name}'
 
-        # Check if menu item already exists
-        existing = db.query(MenuItem).filter(MenuItem.code == menu_code).first()
-        if existing:
-            skipped_count += 1
+        existing_menu = db.query(MenuItem).filter(MenuItem.code == menu_code).first()
+        if existing_menu:
+            menu_skipped += 1
             continue
 
-        # Create menu item
         try:
             menu_data = {
                 'code': menu_code,
@@ -503,15 +526,17 @@ async def regenerate_entity_menus(
             }
 
             MenuService.create_menu_item(db=db, user=current_user, menu_data=menu_data)
-            created_count += 1
+            menu_created += 1
             logger.info(f"Created menu item for entity: {entity.name}")
         except Exception as e:
             logger.error(f"Failed to create menu for {entity.name}: {str(e)}")
 
     return {
         "success": True,
-        "message": f"Created {created_count} menu items, skipped {skipped_count} existing",
-        "created": created_count,
-        "skipped": skipped_count,
+        "message": f"Created {menu_created} menus, {metadata_created} metadata. Skipped {menu_skipped} menus, {metadata_skipped} metadata.",
+        "menus_created": menu_created,
+        "menus_skipped": menu_skipped,
+        "metadata_created": metadata_created,
+        "metadata_skipped": metadata_skipped,
         "parent_menu_id": str(parent_menu.id)
     }
