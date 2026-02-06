@@ -574,12 +574,28 @@ class MenuSyncPage {
     }
 }
 
-// Initialize the page when DOM is ready
+// Initialize the page when route is loaded
 let menuSyncPage;
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
+
+function initMenuSyncPage() {
+    // Only initialize if we're on the menu sync page
+    const container = document.getElementById('sync-now-btn') ||
+                      document.getElementById('regenerate-entity-menus-btn');
+    if (container) {
         menuSyncPage = new MenuSyncPage();
-    });
+    }
+}
+
+// Listen for route loaded events
+document.addEventListener('route:loaded', (event) => {
+    if (event.detail?.route === 'settings-menu-sync') {
+        initMenuSyncPage();
+    }
+});
+
+// Also check on DOMContentLoaded for direct page loads
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initMenuSyncPage);
 } else {
-    menuSyncPage = new MenuSyncPage();
+    initMenuSyncPage();
 }
