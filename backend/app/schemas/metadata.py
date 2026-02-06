@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, ConfigDict, field_validator
+from pydantic import BaseModel, Field, ConfigDict, field_validator, model_validator
 from typing import Optional, List, Dict, Any, Literal, Union
 from datetime import datetime
 
@@ -18,29 +18,16 @@ class FieldMetadata(BaseModel):
     help_text: Optional[str] = Field(None, description="Help text for the field")
     placeholder: Optional[str] = Field(None, description="Placeholder text")
 
-    @field_validator('field', mode='before')
+    @model_validator(mode='before')
     @classmethod
-    def normalize_field(cls, v, info):
-        """Use 'name' as 'field' if field is not provided"""
-        if v is None and info.data and 'name' in info.data:
-            return info.data['name']
-        return v
-
-    @field_validator('title', mode='before')
-    @classmethod
-    def normalize_title(cls, v, info):
-        """Use 'label' as 'title' if title is not provided"""
-        if v is None and info.data and 'label' in info.data:
-            return info.data['label']
-        return v
-
-    def __init__(self, **data):
-        # Handle name -> field and label -> title mapping before validation
-        if 'field' not in data and 'name' in data:
-            data['field'] = data.pop('name')
-        if 'title' not in data and 'label' in data:
-            data['title'] = data.pop('label')
-        super().__init__(**data)
+    def normalize_field_data(cls, data):
+        """Handle name -> field and label -> title mapping before validation"""
+        if isinstance(data, dict):
+            if 'field' not in data and 'name' in data:
+                data['field'] = data['name']
+            if 'title' not in data and 'label' in data:
+                data['title'] = data['label']
+        return data
 
     model_config = ConfigDict(
         json_schema_extra={
@@ -68,11 +55,14 @@ class ColumnMetadata(BaseModel):
     rbac_view: Optional[List[str]] = Field(None, description="Roles that can view this column")
     align: Optional[Literal["left", "center", "right"]] = Field(None, description="Column alignment")
 
-    def __init__(self, **data):
-        # Handle label -> title mapping before validation
-        if 'title' not in data and 'label' in data:
-            data['title'] = data.pop('label')
-        super().__init__(**data)
+    @model_validator(mode='before')
+    @classmethod
+    def normalize_column_data(cls, data):
+        """Handle label -> title mapping before validation"""
+        if isinstance(data, dict):
+            if 'title' not in data and 'label' in data:
+                data['title'] = data['label']
+        return data
 
     model_config = ConfigDict(
         extra='ignore'  # Ignore extra fields
