@@ -180,14 +180,14 @@ class MenuService:
                 continue
 
             module_code = tenant_module.module.name
-            logger.info(f"Processing module: {module_code}")
-            logger.info(f"  Manifest keys: {list(manifest.keys())}")
+            logger.debug(f"Processing module: {module_code}")
+            logger.debug(f"  Manifest keys: {list(manifest.keys())}")
 
             # Process parent menu items from navigation.menu_items
             navigation = manifest.get('navigation', {})
-            logger.info(f"  Navigation: {navigation}")
+            logger.debug(f"  Navigation: {navigation}")
             menu_items_config = navigation.get('menu_items', [])
-            logger.info(f"  menu_items_config: {menu_items_config}")
+            logger.debug(f"  menu_items_config: {menu_items_config}")
 
             for menu_item_config in menu_items_config:
                 # Create parent menu item
@@ -211,7 +211,7 @@ class MenuService:
                 # Explicitly set id to None to ensure it uses code for matching
                 parent_menu_item.id = None
 
-                logger.info(f"Created parent menu: code={parent_code}, id={parent_menu_item.id}")
+                logger.debug(f"Created parent menu: code={parent_code}, id={parent_menu_item.id}")
 
                 # Store parent code for child linking
                 parent_menu_codes[parent_code] = parent_menu_item
@@ -232,7 +232,7 @@ class MenuService:
                 parent_item = None
                 if menu_parent and menu_parent in parent_menu_codes:
                     parent_item = parent_menu_codes[menu_parent]
-                    logger.info(f"Route {route.get('path')} has parent: {menu_parent}")
+                    logger.debug(f"Route has parent: {menu_parent}")
 
                 # Create virtual MenuItem for module route
                 menu_item = MenuItem(
@@ -257,11 +257,11 @@ class MenuService:
                 # This avoids GUID type validation issues with non-UUID parent references
                 menu_item._parent_code = menu_parent if menu_parent in parent_menu_codes else None
 
-                logger.info(f"Created menu item: code={menu_item.code}, _parent_code={getattr(menu_item, '_parent_code', None)}, id={menu_item.id}")
+                logger.debug(f"Created menu item: code={menu_item.code}, _parent_code={getattr(menu_item, '_parent_code', None)}, id={menu_item.id}")
 
                 module_menu_items.append(menu_item)
 
-        logger.info(f"Total module menu items: {len(module_menu_items)}")
+        logger.debug(f"Total module menu items: {len(module_menu_items)}")
         return module_menu_items
 
     @staticmethod
@@ -286,14 +286,14 @@ class MenuService:
             BuilderPage.published == True  # Only show published pages
         ).order_by(BuilderPage.menu_order, BuilderPage.name).all()
 
-        logger.info(f"Found {len(builder_pages)} builder pages with show_in_menu=True")
+        logger.debug(f"Found builder pages with show_in_menu=True")
 
         builder_menu_items = []
 
         for page in builder_pages:
             # Check permission if specified
             if page.permission_code and page.permission_code not in permissions:
-                logger.info(f"Skipping builder page {page.name} - missing permission {page.permission_code}")
+                logger.debug(f"Skipping builder page {page.name} - missing permission {page.permission_code}")
                 continue
 
             # Create virtual MenuItem for builder page
@@ -320,11 +320,11 @@ class MenuService:
             if page.menu_parent:
                 menu_item._parent_code = page.menu_parent
 
-            logger.info(f"Created builder page menu item: {menu_item.code} ({menu_item.title}) -> {menu_item.route}")
+            logger.debug(f"Created builder page menu item: {menu_item.code} ({menu_item.title}) -> {menu_item.route}")
 
             builder_menu_items.append(menu_item)
 
-        logger.info(f"Total builder page menu items: {len(builder_menu_items)}")
+        logger.debug(f"Total builder page menu items: {len(builder_menu_items)}")
         return builder_menu_items
 
     @staticmethod
@@ -338,14 +338,14 @@ class MenuService:
         import logging
         logger = logging.getLogger(__name__)
 
-        logger.info(f"Building menu tree from {len(items)} items")
+        logger.debug(f"Building menu tree from {len(items)} items")
 
         # Create lookup map
         item_map = {}
         for item in items:
             item_id = str(item.id) if hasattr(item, 'id') and item.id else item.code
             item_map[item_id] = item
-            logger.info(f"  item_map[{item_id}] = {item.code} (parent_id={item.parent_id}, route={item.route})")
+            logger.debug(f"  item_map[{item_id}] = {item.code} (parent_id={item.parent_id}, route={item.route})")
 
         # Build tree
         tree = []
@@ -357,21 +357,21 @@ class MenuService:
             has_parent = False
             if hasattr(item, '_parent_code') and item._parent_code:
                 has_parent = True
-                logger.info(f"Item {item.code} has _parent_code={item._parent_code}, not a root item")
+                logger.debug(f"Item has _parent_code={item._parent_code}, not a root item")
             elif item.parent_id:
                 has_parent = True
-                logger.info(f"Item {item.code} has parent_id={item.parent_id}, not a root item")
+                logger.debug(f"Item has parent_id={item.parent_id}, not a root item")
 
             if not has_parent:
                 # Root item
-                logger.info(f"Processing root item: {item.code} (item_id={item_id})")
+                logger.debug(f"Processing root item: {item.code} (item_id={item_id})")
                 item_dict = MenuService._item_to_dict(item, item_map)
-                logger.info(f"  -> has {len(item_dict.get('children', []))} children")
+                logger.debug(f"  -> has children")
 
                 # Filter out parent menus with no children
                 # If the item has no route (parent-only) and no children, skip it
                 if not item_dict.get('route') and len(item_dict.get('children', [])) == 0:
-                    logger.info(f"  -> Filtering out {item.code} (no route and no children)")
+                    logger.debug(f"  -> Filtering out {item.code} (no route and no children)")
                     continue
 
                 tree.append(item_dict)
@@ -379,7 +379,7 @@ class MenuService:
         # Sort by order
         tree.sort(key=lambda x: x.get('order', 0))
 
-        logger.info(f"Final tree has {len(tree)} root items")
+        logger.debug(f"Final tree has {len(tree)} root items")
         return tree
 
     @staticmethod
@@ -393,7 +393,7 @@ class MenuService:
         logger = logging.getLogger(__name__)
 
         item_id = str(item.id) if hasattr(item, 'id') and item.id else item.code
-        logger.info(f"    _item_to_dict: {item.code}, item_id={item_id}")
+        logger.debug(f"    _item_to_dict: {item.code}, item_id={item_id}")
 
         result = {
             'id': item_id,
@@ -427,21 +427,21 @@ class MenuService:
             # First check for module item parent reference (_parent_code)
             if hasattr(child, '_parent_code') and child._parent_code:
                 child_parent_ref = child._parent_code
-                logger.info(f"      Checking child {child.code}: _parent_code={child_parent_ref}, item_id={item_id}, match={child_parent_ref == item_id}")
+                logger.debug(f"      Checking child {child.code}: _parent_code={child_parent_ref}, item_id={item_id}, match={child_parent_ref == item_id}")
             # Otherwise check database parent_id (UUID)
             elif child.parent_id:
                 child_parent_ref = str(child.parent_id)
-                logger.info(f"      Checking child {child.code}: parent_id={child_parent_ref}, item_id={item_id}, match={child_parent_ref == item_id}")
+                logger.debug(f"      Checking child {child.code}: parent_id={child_parent_ref}, item_id={item_id}, match={child_parent_ref == item_id}")
 
             if child_parent_ref and child_parent_ref == item_id:
-                logger.info(f"      -> MATCH! Adding child: {child.code}")
+                logger.debug(f"      -> MATCH! Adding child: {child.code}")
                 children.append(child)
 
         # Sort children by order and convert to dict
         for child in sorted(children, key=lambda x: x.order):
             result['children'].append(MenuService._item_to_dict(child, item_map))
 
-        logger.info(f"    {item.code} has {len(children)} children")
+        logger.debug(f"    item has children")
         return result
 
     @staticmethod
