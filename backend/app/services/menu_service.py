@@ -677,7 +677,6 @@ class MenuService:
             is_active=True,
             is_visible=True,
             tenant_id=tenant_id,
-            created_by=created_by,
             extra_data={
                 'is_nocode_parent': True,
                 'description': 'Dynamically generated entities from the No-Code platform'
