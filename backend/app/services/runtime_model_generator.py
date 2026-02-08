@@ -167,10 +167,10 @@ class RuntimeModelGenerator:
                     'id': str(f.id),
                     'name': f.name,
                     'field_type': f.field_type,
-                    'db_column_name': f.db_column_name,
+                    'db_column_name': f.name,  # Use name as db column name
                     'label': f.label,
                     'is_required': f.is_required,
-                    'is_primary_key': f.is_primary_key,
+                    'is_primary_key': f.name == 'id',  # Assume 'id' field is primary key
                     'is_unique': f.is_unique,
                     'is_indexed': f.is_indexed,
                     'max_length': f.max_length,
@@ -178,9 +178,9 @@ class RuntimeModelGenerator:
                     'min_value': f.min_value,
                     'max_value': f.max_value,
                     'precision': f.precision,
-                    'scale': f.scale,
+                    'scale': f.decimal_places,  # Use decimal_places as scale
                     'default_value': f.default_value,
-                    'lookup_config': f.lookup_config,
+                    'lookup_config': getattr(f, 'lookup_config', None),
                     'validation_rules': f.validation_rules,
                     'order': f.display_order
                 }
