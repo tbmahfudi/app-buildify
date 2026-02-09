@@ -224,23 +224,42 @@ class RuntimeModelGenerator:
             '__entity_definition__': entity_dict,  # Store metadata for reference
         }
 
-        # Check if any field is marked as primary key
-        has_primary_key = any(f.get('is_primary_key') for f in entity_dict['fields'])
+        # Determine which field should be the primary key
+        # Priority: 1) explicit is_primary_key, 2) field named 'id', 3) first field
+        fields = entity_dict['fields']
+        pk_field_name = None
 
-        # Always ensure an 'id' primary key column exists
-        if not has_primary_key:
-            attrs['id'] = Column('id', PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+        # Check for explicit primary key
+        for f in fields:
+            if f.get('is_primary_key'):
+                pk_field_name = f['db_column_name'] or f['name']
+                break
+
+        # If no explicit PK, look for 'id' field
+        if not pk_field_name:
+            for f in fields:
+                field_name = f['db_column_name'] or f['name']
+                if field_name == 'id':
+                    pk_field_name = 'id'
+                    break
+
+        # If still no PK, use the first field
+        if not pk_field_name and fields:
+            pk_field_name = fields[0]['db_column_name'] or fields[0]['name']
 
         # Add columns from FieldDefinitions
-        for field in entity_dict['fields']:
+        for field in fields:
+            # Mark the designated field as primary key
+            field_name = field['db_column_name'] or field['name']
+            if field_name == pk_field_name:
+                field = dict(field)  # Copy to avoid modifying original
+                field['is_primary_key'] = True
+
             column = self.field_mapper.to_sqlalchemy_column(
                 field,
                 include_foreign_key=False  # We'll handle relationships separately
             )
             column_name = field['db_column_name'] or field['name']
-            # Skip 'id' field if we already added it as primary key
-            if column_name == 'id' and not has_primary_key:
-                continue
             attrs[column_name] = column
 
         # Create model class dynamically
