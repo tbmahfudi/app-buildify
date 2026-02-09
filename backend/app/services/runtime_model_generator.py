@@ -6,7 +6,9 @@ SQLAlchemy ORM models at runtime. Models are cached for performance.
 """
 
 from typing import Type, Optional, Dict, Any
-from sqlalchemy import Column, ForeignKey, Table, MetaData
+from sqlalchemy import Column, ForeignKey, Table, MetaData, String
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID
+import uuid
 from sqlalchemy.orm import Session, relationship
 from sqlalchemy.ext.declarative import declarative_base
 from app.models.data_model import EntityDefinition, FieldDefinition, RelationshipDefinition
@@ -222,6 +224,13 @@ class RuntimeModelGenerator:
             '__entity_definition__': entity_dict,  # Store metadata for reference
         }
 
+        # Check if any field is marked as primary key
+        has_primary_key = any(f.get('is_primary_key') for f in entity_dict['fields'])
+
+        # Always ensure an 'id' primary key column exists
+        if not has_primary_key:
+            attrs['id'] = Column('id', PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
         # Add columns from FieldDefinitions
         for field in entity_dict['fields']:
             column = self.field_mapper.to_sqlalchemy_column(
@@ -229,6 +238,9 @@ class RuntimeModelGenerator:
                 include_foreign_key=False  # We'll handle relationships separately
             )
             column_name = field['db_column_name'] or field['name']
+            # Skip 'id' field if we already added it as primary key
+            if column_name == 'id' and not has_primary_key:
+                continue
             attrs[column_name] = column
 
         # Create model class dynamically
