@@ -191,14 +191,14 @@ class RuntimeModelGenerator:
                     'id': str(r.id),
                     'name': r.name,
                     'relationship_type': r.relationship_type,
-                    'target_entity': r.target_entity,
-                    'foreign_key_field': r.foreign_key_field,
-                    'related_field': r.related_field,
+                    'target_entity_id': str(r.target_entity_id) if r.target_entity_id else None,
+                    'source_field_name': r.source_field_name,
+                    'target_field_name': r.target_field_name,
                     'on_delete': r.on_delete,
-                    'is_required': r.is_required
+                    'on_update': r.on_update
                 }
-                for r in entity_def.relationships
-            ] if entity_def.relationships else []
+                for r in entity_def.source_relationships
+            ] if entity_def.source_relationships else []
         }
 
     def _generate_model(self, entity_def: EntityDefinition, entity_dict: dict) -> Type:
