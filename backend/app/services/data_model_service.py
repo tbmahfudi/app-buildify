@@ -87,9 +87,20 @@ class DataModelService:
         self.db.add(entity)
         self.db.flush()
 
-        # Create fields if provided
+        # Add system fields automatically
+        system_fields = self._get_system_fields(entity)
+        for field in system_fields:
+            field.entity_id = entity.id
+            field.tenant_id = target_tenant_id
+            field.created_by = self.current_user.id
+            field.updated_by = self.current_user.id
+            self.db.add(field)
+
+        # Create user-defined fields if provided
         if entity_data.fields:
-            for field_data in entity_data.fields:
+            # Start display_order after system fields
+            base_order = len(system_fields)
+            for idx, field_data in enumerate(entity_data.fields):
                 field = FieldDefinition(
                     **field_data.model_dump(),
                     entity_id=entity.id,
@@ -97,12 +108,117 @@ class DataModelService:
                     created_by=self.current_user.id,
                     updated_by=self.current_user.id
                 )
+                # Adjust display order to come after system fields
+                if field.display_order is None or field.display_order == 0:
+                    field.display_order = base_order + idx + 1
                 self.db.add(field)
 
         self.db.commit()
         self.db.refresh(entity)
 
         return entity
+
+    def _get_system_fields(self, entity: EntityDefinition) -> List[FieldDefinition]:
+        """
+        Generate system field definitions for an entity.
+
+        System fields are automatically included:
+        - id (UUID, Primary Key)
+        - created_at (DateTime)
+        - updated_at (DateTime)
+        - created_by (UUID, FK to users)
+        - updated_by (UUID, FK to users)
+        - is_deleted (Boolean) - if soft delete is enabled
+        """
+        fields = []
+
+        # id field - always included
+        fields.append(FieldDefinition(
+            name='id',
+            label='ID',
+            field_type='uuid',
+            data_type='UUID',
+            is_required=True,
+            is_unique=True,
+            is_indexed=True,
+            is_nullable=False,
+            is_readonly=True,
+            is_system=True,
+            display_order=-100,  # Always first
+            help_text='Unique identifier for this record'
+        ))
+
+        # Audit fields - if entity is audited (default is True)
+        if entity.is_audited:
+            fields.append(FieldDefinition(
+                name='created_at',
+                label='Created At',
+                field_type='datetime',
+                data_type='TIMESTAMP',
+                is_required=False,
+                is_nullable=True,
+                is_readonly=True,
+                is_system=True,
+                display_order=-90,
+                help_text='Timestamp when this record was created'
+            ))
+
+            fields.append(FieldDefinition(
+                name='updated_at',
+                label='Updated At',
+                field_type='datetime',
+                data_type='TIMESTAMP',
+                is_required=False,
+                is_nullable=True,
+                is_readonly=True,
+                is_system=True,
+                display_order=-89,
+                help_text='Timestamp when this record was last updated'
+            ))
+
+            fields.append(FieldDefinition(
+                name='created_by',
+                label='Created By',
+                field_type='uuid',
+                data_type='UUID',
+                is_required=False,
+                is_nullable=True,
+                is_readonly=True,
+                is_system=True,
+                display_order=-88,
+                help_text='User who created this record'
+            ))
+
+            fields.append(FieldDefinition(
+                name='updated_by',
+                label='Updated By',
+                field_type='uuid',
+                data_type='UUID',
+                is_required=False,
+                is_nullable=True,
+                is_readonly=True,
+                is_system=True,
+                display_order=-87,
+                help_text='User who last updated this record'
+            ))
+
+        # Soft delete field - if enabled (default is True)
+        if entity.supports_soft_delete:
+            fields.append(FieldDefinition(
+                name='is_deleted',
+                label='Is Deleted',
+                field_type='boolean',
+                data_type='BOOLEAN',
+                is_required=False,
+                is_nullable=False,
+                is_readonly=True,
+                is_system=True,
+                default_value='false',
+                display_order=-80,
+                help_text='Soft delete flag'
+            ))
+
+        return fields
 
     async def list_entities(
         self,
