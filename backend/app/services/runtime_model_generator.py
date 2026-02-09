@@ -280,7 +280,7 @@ class RuntimeModelGenerator:
         """
         rel_name = relationship_def['name']
         rel_type = relationship_def['relationship_type']
-        target_entity = relationship_def['target_entity']
+        target_entity_id = relationship_def.get('target_entity_id')
 
         # For now, we'll store the relationship metadata as class attribute
         # Actual SQLAlchemy relationship() calls require target model to exist
@@ -290,9 +290,9 @@ class RuntimeModelGenerator:
         model_class._nocode_relationships.append({
             'name': rel_name,
             'type': rel_type,
-            'target_entity': target_entity,
-            'foreign_key_field': relationship_def.get('foreign_key_field'),
-            'related_field': relationship_def.get('related_field'),
+            'target_entity_id': target_entity_id,
+            'source_field_name': relationship_def.get('source_field_name'),
+            'target_field_name': relationship_def.get('target_field_name'),
         })
 
         # TODO: Implement actual SQLAlchemy relationships
