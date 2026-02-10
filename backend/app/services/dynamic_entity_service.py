@@ -544,6 +544,11 @@ class DynamicEntityService:
                 continue
 
             field_def = field_map[field_name]
+            field_type = field_def.get('field_type', 'string')
+
+            # Normalize empty strings to None for non-string field types
+            if value == '' and field_type not in ('string', 'email', 'url', 'phone', 'text', 'textarea'):
+                value = None
 
             # Validate value
             is_valid, error_msg = self.field_mapper.validate_value(field_def, value)
@@ -552,7 +557,6 @@ class DynamicEntityService:
                 continue
 
             # Deserialize value
-            field_type = field_def['field_type']
             validated_value = self.field_mapper.deserialize_value(field_type, value)
 
             # Use db_column_name as key

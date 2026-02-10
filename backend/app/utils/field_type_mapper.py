@@ -239,11 +239,14 @@ class FieldTypeMapper:
 
         # Min/Max value validation (for numeric types)
         if field_type in ('integer', 'bigint', 'decimal', 'float', 'money'):
-            if 'min_value' in field_definition and value < field_definition['min_value']:
-                return False, f"{field_label} must be >= {field_definition['min_value']}"
+            min_val = field_definition.get('min_value')
+            max_val = field_definition.get('max_value')
 
-            if 'max_value' in field_definition and value > field_definition['max_value']:
-                return False, f"{field_label} must be <= {field_definition['max_value']}"
+            if min_val is not None and value < min_val:
+                return False, f"{field_label} must be >= {min_val}"
+
+            if max_val is not None and value > max_val:
+                return False, f"{field_label} must be <= {max_val}"
 
         # Length validation (for string types)
         if field_type in ('string', 'email', 'url', 'phone'):
