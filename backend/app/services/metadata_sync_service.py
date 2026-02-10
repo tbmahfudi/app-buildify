@@ -219,8 +219,25 @@ class MetadataSyncService:
             # Add field-specific configuration
             if field.field_type == 'choice':
                 form_field['options'] = json.loads(field.field_config).get('choices', []) if field.field_config else []
-            elif field.field_type == 'lookup':
-                form_field['lookup_config'] = json.loads(field.field_config) if field.field_config else {}
+            elif field.field_type in ('lookup', 'reference'):
+                # Include reference entity info so frontend can fetch lookup options
+                if field.reference_entity_id:
+                    form_field['reference_entity_id'] = str(field.reference_entity_id)
+                if field.reference_table_name:
+                    form_field['reference_table_name'] = field.reference_table_name
+                form_field['reference_field'] = field.reference_field or 'id'
+                form_field['display_field'] = field.display_field or 'name'
+                if field.lookup_search_fields:
+                    form_field['lookup_search_fields'] = field.lookup_search_fields
+                if field.lookup_allow_create:
+                    form_field['lookup_allow_create'] = field.lookup_allow_create
+                if field.lookup_display_template:
+                    form_field['lookup_display_template'] = field.lookup_display_template
+                # Also include depends_on_field for cascading lookups
+                if field.depends_on_field:
+                    form_field['depends_on_field'] = field.depends_on_field
+                if field.filter_expression:
+                    form_field['filter_expression'] = field.filter_expression
             elif field.field_type in ['string', 'email', 'url']:
                 form_field['max_length'] = field.max_length or 255
             elif field.field_type in ['integer', 'decimal']:
@@ -253,7 +270,8 @@ class MetadataSyncService:
             'decimal': 120,
             'uuid': 280,
             'choice': 150,
-            'lookup': 150
+            'lookup': 150,
+            'reference': 150
         }
         return width_map.get(field.field_type, 150)
 
@@ -271,6 +289,7 @@ class MetadataSyncService:
             'uuid': 'text',
             'choice': 'select',
             'lookup': 'select',
+            'reference': 'select',
             'json': 'json',
             'file': 'file',
             'url': 'url'

@@ -463,7 +463,96 @@ export class DynamicForm {
 
     component.selectElement.name = fieldConfig.field;
 
+    // Auto-fetch options for reference/lookup fields that have a reference_entity_id
+    if (fieldConfig.reference_entity_id && !fieldConfig.depends_on_field) {
+      this.loadReferenceFieldOptions(fieldConfig, component, value);
+    }
+
     return container;
+  }
+
+  /**
+   * Load options for a reference/lookup field from its referenced entity
+   * @param {Object} fieldConfig - Field configuration with reference_entity_id
+   * @param {Object} component - FlexSelect component instance
+   * @param {*} currentValue - Current field value to restore after loading
+   */
+  async loadReferenceFieldOptions(fieldConfig, component, currentValue) {
+    try {
+      // Show loading state
+      if (component.selectElement) {
+        component.selectElement.disabled = true;
+      }
+
+      const params = new URLSearchParams({ limit: '100' });
+
+      // Fetch records from the referenced entity
+      const response = await fetch(
+        `/api/v1/dynamic-data/${fieldConfig.reference_entity_id}/records?${params}`
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const data = await response.json();
+      const records = data.items || data.data || data.records || [];
+
+      // Format as options using display_field from field config
+      const displayField = fieldConfig.display_field || 'name';
+      const displayTemplate = fieldConfig.lookup_display_template;
+      const options = records.map(record => {
+        let label;
+        if (displayTemplate) {
+          // Apply display template, e.g., "{name} ({email})"
+          label = displayTemplate.replace(/\{(\w+)\}/g, (match, key) => record[key] || '');
+        } else {
+          label = record[displayField] || record.name || record.id;
+        }
+        return {
+          value: record.id,
+          label: label
+        };
+      });
+
+      // Update select options
+      if (component.selectElement) {
+        // Clear existing options except placeholder
+        component.selectElement.innerHTML = '';
+
+        // Add placeholder
+        const placeholderOpt = document.createElement('option');
+        placeholderOpt.value = '';
+        placeholderOpt.textContent = fieldConfig.required ? 'Select an option' : '-- Select --';
+        component.selectElement.appendChild(placeholderOpt);
+
+        // Add fetched options
+        options.forEach(opt => {
+          const option = document.createElement('option');
+          option.value = opt.value;
+          option.textContent = opt.label;
+          component.selectElement.appendChild(option);
+        });
+
+        // Restore current value if it exists in the options
+        if (currentValue && options.some(opt => opt.value === currentValue)) {
+          component.selectElement.value = currentValue;
+        }
+
+        // Re-enable
+        component.selectElement.disabled = false;
+
+        // Make searchable if many options
+        if (component.updateOptions) {
+          component.updateOptions(options);
+        }
+      }
+    } catch (error) {
+      console.error(`Error loading reference options for ${fieldConfig.field}:`, error);
+      if (component.selectElement) {
+        component.selectElement.disabled = false;
+      }
+    }
   }
 
   /**
