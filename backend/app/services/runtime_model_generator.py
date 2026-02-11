@@ -5,8 +5,8 @@ This service reads EntityDefinition metadata from the database and generates
 SQLAlchemy ORM models at runtime. Models are cached for performance.
 """
 
-from typing import Type, Optional, Dict, Any
-from sqlalchemy import Column, ForeignKey, Table, MetaData, String, DateTime, Boolean
+from typing import Type, Optional, Dict, Any, Set
+from sqlalchemy import Column, ForeignKey, Table, MetaData, String, DateTime, Boolean, text
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 import uuid
 from sqlalchemy.orm import Session, relationship
@@ -279,30 +279,26 @@ class RuntimeModelGenerator:
         # part of the user-defined field definitions. These must be present in
         # the model so that DynamicEntityService can populate them and so that
         # _model_to_dict can read them back from the database.
+        #
+        # We introspect the actual database table to only add columns that
+        # truly exist, since older tables may not have all system columns.
+        db_columns = self._get_table_columns(table_name, schema_name)
 
-        # Tenant isolation column
-        if 'tenant_id' not in user_field_names:
-            attrs['tenant_id'] = Column('tenant_id', PG_UUID(as_uuid=False), nullable=True)
+        # Map of system column name -> SQLAlchemy column definition
+        system_columns = {
+            'tenant_id': lambda: Column('tenant_id', PG_UUID(as_uuid=False), nullable=True),
+            'created_at': lambda: Column('created_at', DateTime, nullable=True),
+            'created_by': lambda: Column('created_by', PG_UUID(as_uuid=False), nullable=True),
+            'updated_at': lambda: Column('updated_at', DateTime, nullable=True),
+            'updated_by': lambda: Column('updated_by', PG_UUID(as_uuid=False), nullable=True),
+            'is_deleted': lambda: Column('is_deleted', Boolean, default=False, nullable=True),
+            'deleted_at': lambda: Column('deleted_at', DateTime, nullable=True),
+            'deleted_by': lambda: Column('deleted_by', PG_UUID(as_uuid=False), nullable=True),
+        }
 
-        # Audit columns (added by migration when entity.is_audited is True)
-        if entity_def.is_audited:
-            if 'created_at' not in user_field_names:
-                attrs['created_at'] = Column('created_at', DateTime, nullable=True)
-            if 'created_by' not in user_field_names:
-                attrs['created_by'] = Column('created_by', PG_UUID(as_uuid=False), nullable=True)
-            if 'updated_at' not in user_field_names:
-                attrs['updated_at'] = Column('updated_at', DateTime, nullable=True)
-            if 'updated_by' not in user_field_names:
-                attrs['updated_by'] = Column('updated_by', PG_UUID(as_uuid=False), nullable=True)
-
-        # Soft-delete columns (added by migration when entity.supports_soft_delete is True)
-        if entity_def.supports_soft_delete:
-            if 'is_deleted' not in user_field_names:
-                attrs['is_deleted'] = Column('is_deleted', Boolean, default=False, nullable=True)
-            if 'deleted_at' not in user_field_names:
-                attrs['deleted_at'] = Column('deleted_at', DateTime, nullable=True)
-            if 'deleted_by' not in user_field_names:
-                attrs['deleted_by'] = Column('deleted_by', PG_UUID(as_uuid=False), nullable=True)
+        for col_name, col_factory in system_columns.items():
+            if col_name not in user_field_names and col_name in db_columns:
+                attrs[col_name] = col_factory()
 
         # Create model class dynamically
         model_class_name = self._to_class_name(entity_dict['name'])
@@ -364,6 +360,24 @@ class RuntimeModelGenerator:
         #
         # For Phase 2, we'll handle relationships at the query level
         # rather than using SQLAlchemy's relationship() feature
+
+    def _get_table_columns(self, table_name: str, schema_name: str = 'public') -> Set[str]:
+        """
+        Introspect actual database table to get existing column names.
+
+        Returns:
+            Set of column names that exist in the database table.
+            Returns empty set if the table does not exist or on error.
+        """
+        try:
+            result = self.db.execute(text(
+                "SELECT column_name FROM information_schema.columns "
+                "WHERE table_schema = :schema AND table_name = :table"
+            ), {"schema": schema_name, "table": table_name})
+            return {row[0] for row in result}
+        except Exception as e:
+            logger.warning(f"Could not introspect table {schema_name}.{table_name}: {e}")
+            return set()
 
     def _to_class_name(self, entity_name: str) -> str:
         """
