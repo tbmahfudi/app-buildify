@@ -578,6 +578,19 @@ class DynamicEntityService:
 
         return validated_data
 
+    # Map system column names to their serialization field types
+    SYSTEM_FIELD_TYPES = {
+        'id': 'uuid',
+        'tenant_id': 'uuid',
+        'created_at': 'datetime',
+        'created_by': 'uuid',
+        'updated_at': 'datetime',
+        'updated_by': 'uuid',
+        'is_deleted': 'boolean',
+        'deleted_at': 'datetime',
+        'deleted_by': 'uuid',
+    }
+
     def _model_to_dict(self, record, field_defs: List[Dict]) -> Dict[str, Any]:
         """
         Convert SQLAlchemy model to dict with proper serialization
@@ -595,8 +608,8 @@ class DynamicEntityService:
         for column in record.__table__.columns:
             value = getattr(record, column.name)
 
-            # Serialize value
-            field_type = field_types.get(column.name, 'string')
+            # Determine field type: check user-defined fields first, then system fields
+            field_type = field_types.get(column.name) or self.SYSTEM_FIELD_TYPES.get(column.name, 'string')
             serialized_value = self.field_mapper.serialize_value(field_type, value)
 
             result[column.name] = serialized_value

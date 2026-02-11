@@ -6,7 +6,7 @@ SQLAlchemy ORM models at runtime. Models are cached for performance.
 """
 
 from typing import Type, Optional, Dict, Any
-from sqlalchemy import Column, ForeignKey, Table, MetaData, String
+from sqlalchemy import Column, ForeignKey, Table, MetaData, String, DateTime, Boolean
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 import uuid
 from sqlalchemy.orm import Session, relationship
@@ -224,28 +224,41 @@ class RuntimeModelGenerator:
             '__entity_definition__': entity_dict,  # Store metadata for reference
         }
 
-        # Determine which field should be the primary key
-        # Priority: 1) explicit is_primary_key, 2) field named 'id', 3) first field
+        # Collect user-defined field names to avoid duplicates with system fields
         fields = entity_dict['fields']
-        pk_field_name = None
-
-        # Check for explicit primary key
+        user_field_names = set()
         for f in fields:
-            if f.get('is_primary_key'):
-                pk_field_name = f['db_column_name'] or f['name']
-                break
+            user_field_names.add(f.get('db_column_name') or f['name'])
 
-        # If no explicit PK, look for 'id' field
-        if not pk_field_name:
+        # Always add 'id' primary key column if not defined by the user.
+        # The migration generator always creates: id UUID PRIMARY KEY DEFAULT gen_random_uuid()
+        has_user_id = 'id' in user_field_names
+        if not has_user_id:
+            attrs['id'] = Column('id', PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+        # Determine which field should be the primary key
+        # If we added a system 'id', it's already the PK.
+        # Otherwise: 1) explicit is_primary_key, 2) field named 'id', 3) first field
+        pk_field_name = None if has_user_id else 'id'
+
+        if has_user_id or not pk_field_name:
+            # Check for explicit primary key among user fields
             for f in fields:
-                field_name = f['db_column_name'] or f['name']
-                if field_name == 'id':
-                    pk_field_name = 'id'
+                if f.get('is_primary_key'):
+                    pk_field_name = f['db_column_name'] or f['name']
                     break
 
-        # If still no PK, use the first field
-        if not pk_field_name and fields:
-            pk_field_name = fields[0]['db_column_name'] or fields[0]['name']
+            # If no explicit PK, look for 'id' field
+            if not pk_field_name:
+                for f in fields:
+                    field_name = f['db_column_name'] or f['name']
+                    if field_name == 'id':
+                        pk_field_name = 'id'
+                        break
+
+            # If still no PK, use the first field
+            if not pk_field_name and fields:
+                pk_field_name = fields[0]['db_column_name'] or fields[0]['name']
 
         # Add columns from FieldDefinitions
         for field in fields:
@@ -261,6 +274,35 @@ class RuntimeModelGenerator:
             )
             column_name = field['db_column_name'] or field['name']
             attrs[column_name] = column
+
+        # Add system columns that the migration generator creates but are not
+        # part of the user-defined field definitions. These must be present in
+        # the model so that DynamicEntityService can populate them and so that
+        # _model_to_dict can read them back from the database.
+
+        # Tenant isolation column
+        if 'tenant_id' not in user_field_names:
+            attrs['tenant_id'] = Column('tenant_id', PG_UUID(as_uuid=False), nullable=True)
+
+        # Audit columns (added by migration when entity.is_audited is True)
+        if entity_def.is_audited:
+            if 'created_at' not in user_field_names:
+                attrs['created_at'] = Column('created_at', DateTime, nullable=True)
+            if 'created_by' not in user_field_names:
+                attrs['created_by'] = Column('created_by', PG_UUID(as_uuid=False), nullable=True)
+            if 'updated_at' not in user_field_names:
+                attrs['updated_at'] = Column('updated_at', DateTime, nullable=True)
+            if 'updated_by' not in user_field_names:
+                attrs['updated_by'] = Column('updated_by', PG_UUID(as_uuid=False), nullable=True)
+
+        # Soft-delete columns (added by migration when entity.supports_soft_delete is True)
+        if entity_def.supports_soft_delete:
+            if 'is_deleted' not in user_field_names:
+                attrs['is_deleted'] = Column('is_deleted', Boolean, default=False, nullable=True)
+            if 'deleted_at' not in user_field_names:
+                attrs['deleted_at'] = Column('deleted_at', DateTime, nullable=True)
+            if 'deleted_by' not in user_field_names:
+                attrs['deleted_by'] = Column('deleted_by', PG_UUID(as_uuid=False), nullable=True)
 
         # Create model class dynamically
         model_class_name = self._to_class_name(entity_dict['name'])
