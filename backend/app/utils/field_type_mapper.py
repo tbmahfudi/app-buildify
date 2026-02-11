@@ -251,12 +251,13 @@ class FieldTypeMapper:
         # Length validation (for string types)
         if field_type in ('string', 'email', 'url', 'phone'):
             if isinstance(value, str):
-                max_length = field_definition.get('max_length', 255)
+                max_length = field_definition.get('max_length') or 255
                 if len(value) > max_length:
                     return False, f"{field_label} must be <= {max_length} characters"
 
-                if 'min_length' in field_definition and len(value) < field_definition['min_length']:
-                    return False, f"{field_label} must be >= {field_definition['min_length']} characters"
+                min_length = field_definition.get('min_length')
+                if min_length is not None and len(value) < min_length:
+                    return False, f"{field_label} must be >= {min_length} characters"
 
         # Email format validation
         if field_type == 'email' and isinstance(value, str):
