@@ -86,15 +86,15 @@ async def create_record(
     try:
         result = await service.create_record(entity_name, request.data)
         return DynamicDataResponse(
-            id=result['id'],
+            id=result.get('id', ''),
             data=result
         )
     except ValueError as e:
         logger.error(f"Validation error creating {entity_name}: {e}")
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        logger.error(f"Error creating {entity_name}: {e}")
-        raise HTTPException(status_code=500, detail="Internal server error")
+        logger.error(f"Error creating {entity_name}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to create {entity_name} record: {str(e)}")
 
 
 @router.get(
@@ -208,8 +208,8 @@ async def list_records(
         logger.error(f"Error listing {entity_name}: {e}")
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        logger.error(f"Error listing {entity_name}: {e}")
-        raise HTTPException(status_code=500, detail="Internal server error")
+        logger.error(f"Error listing {entity_name}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to list {entity_name} records: {str(e)}")
 
 
 @router.get(
@@ -247,15 +247,15 @@ async def get_record(
     try:
         result = await service.get_record(entity_name, record_id)
         return DynamicDataResponse(
-            id=result['id'],
+            id=result.get('id', ''),
             data=result
         )
     except ValueError as e:
         logger.error(f"Record not found: {entity_name}/{record_id}")
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
-        logger.error(f"Error getting {entity_name}/{record_id}: {e}")
-        raise HTTPException(status_code=500, detail="Internal server error")
+        logger.error(f"Error getting {entity_name}/{record_id}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to get {entity_name} record: {str(e)}")
 
 
 @router.put(
@@ -305,7 +305,7 @@ async def update_record(
     try:
         result = await service.update_record(entity_name, record_id, request.data)
         return DynamicDataResponse(
-            id=result['id'],
+            id=result.get('id', ''),
             data=result
         )
     except ValueError as e:
@@ -314,8 +314,8 @@ async def update_record(
         else:
             raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        logger.error(f"Error updating {entity_name}/{record_id}: {e}")
-        raise HTTPException(status_code=500, detail="Internal server error")
+        logger.error(f"Error updating {entity_name}/{record_id}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to update {entity_name} record: {str(e)}")
 
 
 @router.delete(
@@ -352,8 +352,8 @@ async def delete_record(
         logger.error(f"Record not found: {entity_name}/{record_id}")
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
-        logger.error(f"Error deleting {entity_name}/{record_id}: {e}")
-        raise HTTPException(status_code=500, detail="Internal server error")
+        logger.error(f"Error deleting {entity_name}/{record_id}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to delete {entity_name} record: {str(e)}")
 
 
 # ==============================================================================
@@ -406,8 +406,8 @@ async def bulk_create_records(
         result = await service.bulk_create(entity_name, request.records)
         return DynamicDataBulkResponse(**result)
     except Exception as e:
-        logger.error(f"Error in bulk create for {entity_name}: {e}")
-        raise HTTPException(status_code=500, detail="Internal server error")
+        logger.error(f"Error in bulk create for {entity_name}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to bulk create {entity_name} records: {str(e)}")
 
 
 @router.put(
@@ -454,8 +454,8 @@ async def bulk_update_records(
         result = await service.bulk_update(entity_name, request.records)
         return DynamicDataBulkResponse(**result)
     except Exception as e:
-        logger.error(f"Error in bulk update for {entity_name}: {e}")
-        raise HTTPException(status_code=500, detail="Internal server error")
+        logger.error(f"Error in bulk update for {entity_name}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to bulk update {entity_name} records: {str(e)}")
 
 
 @router.delete(
@@ -497,8 +497,8 @@ async def bulk_delete_records(
         result = await service.bulk_delete(entity_name, request.ids)
         return DynamicDataBulkResponse(**result)
     except Exception as e:
-        logger.error(f"Error in bulk delete for {entity_name}: {e}")
-        raise HTTPException(status_code=500, detail="Internal server error")
+        logger.error(f"Error in bulk delete for {entity_name}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to bulk delete {entity_name} records: {str(e)}")
 
 
 # ==============================================================================
@@ -605,5 +605,5 @@ async def get_entity_metadata(
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
-        logger.error(f"Error getting metadata for {entity_name}: {e}")
-        raise HTTPException(status_code=500, detail="Internal server error")
+        logger.error(f"Error getting metadata for {entity_name}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to get metadata for {entity_name}: {str(e)}")

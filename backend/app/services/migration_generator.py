@@ -63,10 +63,13 @@ class MigrationGenerator:
         # Add primary key first (ALWAYS include id field)
         field_definitions = ["    id UUID PRIMARY KEY DEFAULT gen_random_uuid()"]
 
+        # Add tenant isolation field (always present for multi-tenant support)
+        field_definitions.append("    tenant_id UUID")
+
         # Add user-defined fields
         for field in fields:
-            # Skip if user manually added 'id' field (shouldn't happen, but just in case)
-            if field.name == 'id':
+            # Skip if user manually added 'id' or 'tenant_id' field
+            if field.name in ('id', 'tenant_id'):
                 continue
             field_def = self._generate_field_definition(field)
             field_definitions.append(f"    {field_def}")
