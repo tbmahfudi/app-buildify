@@ -162,6 +162,7 @@ class RuntimeModelGenerator:
             'name': entity_def.name,
             'table_name': entity_def.table_name,
             'schema_name': entity_def.schema_name or 'public',
+            'data_scope': getattr(entity_def, 'data_scope', 'tenant') or 'tenant',
             'label': entity_def.label,
             'plural_label': entity_def.plural_label,
             'fields': [
@@ -287,6 +288,9 @@ class RuntimeModelGenerator:
         # Map of system column name -> SQLAlchemy column definition
         system_columns = {
             'tenant_id': lambda: Column('tenant_id', PG_UUID(as_uuid=False), nullable=True),
+            'company_id': lambda: Column('company_id', PG_UUID(as_uuid=False), nullable=True),
+            'branch_id': lambda: Column('branch_id', PG_UUID(as_uuid=False), nullable=True),
+            'department_id': lambda: Column('department_id', PG_UUID(as_uuid=False), nullable=True),
             'created_at': lambda: Column('created_at', DateTime, nullable=True),
             'created_by': lambda: Column('created_by', PG_UUID(as_uuid=False), nullable=True),
             'updated_at': lambda: Column('updated_at', DateTime, nullable=True),

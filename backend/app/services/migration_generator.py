@@ -52,6 +52,30 @@ class MigrationGenerator:
         except Exception:
             return False
 
+    # Defines which org hierarchy columns to add for each data_scope level.
+    # Each level includes all columns from the levels above it.
+    SCOPE_COLUMNS = {
+        'platform': [],
+        'tenant': [
+            ("tenant_id", "UUID REFERENCES tenants(id)"),
+        ],
+        'company': [
+            ("tenant_id", "UUID REFERENCES tenants(id)"),
+            ("company_id", "UUID REFERENCES companies(id)"),
+        ],
+        'branch': [
+            ("tenant_id", "UUID REFERENCES tenants(id)"),
+            ("company_id", "UUID REFERENCES companies(id)"),
+            ("branch_id", "UUID REFERENCES branches(id)"),
+        ],
+        'department': [
+            ("tenant_id", "UUID REFERENCES tenants(id)"),
+            ("company_id", "UUID REFERENCES companies(id)"),
+            ("branch_id", "UUID REFERENCES branches(id)"),
+            ("department_id", "UUID REFERENCES departments(id)"),
+        ],
+    }
+
     async def _generate_create_table(self, entity: EntityDefinition) -> Tuple[str, str]:
         """Generate CREATE TABLE migration"""
         table_name = entity.table_name
@@ -63,13 +87,18 @@ class MigrationGenerator:
         # Add primary key first (ALWAYS include id field)
         field_definitions = ["    id UUID PRIMARY KEY DEFAULT gen_random_uuid()"]
 
-        # Add tenant isolation field (always present for multi-tenant support)
-        field_definitions.append("    tenant_id UUID")
+        # Add organizational hierarchy columns based on data_scope
+        data_scope = getattr(entity, 'data_scope', 'tenant') or 'tenant'
+        scope_columns = self.SCOPE_COLUMNS.get(data_scope, self.SCOPE_COLUMNS['tenant'])
+        scope_col_names = {col_name for col_name, _ in scope_columns}
+
+        for col_name, col_def in scope_columns:
+            field_definitions.append(f"    {col_name} {col_def}")
 
         # Add user-defined fields
         for field in fields:
-            # Skip if user manually added 'id' or 'tenant_id' field
-            if field.name in ('id', 'tenant_id'):
+            # Skip if user manually added system org columns
+            if field.name in ('id',) or field.name in scope_col_names:
                 continue
             field_def = self._generate_field_definition(field)
             field_definitions.append(f"    {field_def}")
@@ -146,7 +175,8 @@ class MigrationGenerator:
             if col_name not in desired_fields:
                 # Check if it's a system column
                 if col_name not in ['created_at', 'created_by', 'updated_at', 'updated_by',
-                                    'is_deleted', 'deleted_at', 'deleted_by', 'id', 'tenant_id']:
+                                    'is_deleted', 'deleted_at', 'deleted_by', 'id',
+                                    'tenant_id', 'company_id', 'branch_id', 'department_id']:
                     # DROP COLUMN
                     up_sql_parts.append(f"ALTER TABLE {table_name} DROP COLUMN IF EXISTS {col_name};")
                     # Note: We can't reliably reconstruct the down migration for dropped columns
@@ -374,7 +404,8 @@ class MigrationGenerator:
                 'added_columns': [name for name in desired_fields if name not in current_columns],
                 'removed_columns': [name for name in current_columns if name not in desired_fields and name not in
                                     ['created_at', 'created_by', 'updated_at', 'updated_by',
-                                     'is_deleted', 'deleted_at', 'deleted_by', 'id', 'tenant_id']],
+                                     'is_deleted', 'deleted_at', 'deleted_by', 'id',
+                                     'tenant_id', 'company_id', 'branch_id', 'department_id']],
                 'modified_columns': [],
                 'added_indexes': [name for name in desired_indexes if name not in current_indexes],
                 'removed_indexes': [name for name in current_indexes if name not in desired_indexes and
