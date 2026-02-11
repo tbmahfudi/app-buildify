@@ -17,6 +17,7 @@ from app.models.data_model import (
     IndexDefinition,
     EntityMigration,
 )
+from app.models.nocode_module import NocodeModule
 from app.models.base import generate_uuid
 from app.schemas.data_model import (
     EntityDefinitionCreate,
@@ -76,9 +77,22 @@ class DataModelService:
                 detail=f"Entity with name '{entity_data.name}' already exists at {scope} level"
             )
 
+        # Auto-prepend table_prefix from module if module_id is provided
+        entity_dict = entity_data.model_dump(exclude={'fields'})
+        if entity_data.module_id:
+            module = self.db.query(NocodeModule).filter(
+                NocodeModule.id == entity_data.module_id
+            ).first()
+            if module and module.table_prefix:
+                prefix = module.table_prefix
+                table_name = entity_dict.get('table_name', '')
+                # Only prepend if table_name doesn't already start with the prefix
+                if not table_name.startswith(f"{prefix}_"):
+                    entity_dict['table_name'] = f"{prefix}_{table_name}"
+
         # Create entity
         entity = EntityDefinition(
-            **entity_data.model_dump(exclude={'fields'}),
+            **entity_dict,
             tenant_id=target_tenant_id,
             created_by=self.current_user.id,
             updated_by=self.current_user.id
