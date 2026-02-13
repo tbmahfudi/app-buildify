@@ -71,6 +71,7 @@ class ModuleRegistryService:
                     registry_entry = ModuleRegistry(
                         name=name,
                         display_name=module_instance.display_name,
+                        module_type='code',
                         version=module_instance.version,
                         description=module_instance.manifest.get("description"),
                         category=module_instance.manifest.get("category"),
@@ -79,9 +80,8 @@ class ModuleRegistryService:
                         license=module_instance.manifest.get("license"),
                         manifest=module_instance.manifest,
                         is_installed=False,
-                        is_enabled=False,
                         is_core=module_instance.manifest.get("is_core", False),
-                        dependencies=module_instance.manifest.get("dependencies"),
+                        dependencies_json=module_instance.manifest.get("dependencies"),
                         subscription_tier=module_instance.manifest.get("subscription_tier"),
                         pricing_model=module_instance.manifest.get("pricing", {}).get("model"),
                         api_prefix=module_instance.manifest.get("api", {}).get("prefix"),
@@ -572,7 +572,7 @@ class ModuleRegistryService:
             "is_installed": registry_entry.is_installed,
             "is_core": registry_entry.is_core,
             "subscription_tier": registry_entry.subscription_tier,
-            "dependencies": registry_entry.dependencies,
+            "dependencies": registry_entry.dependencies_json,
             "manifest": registry_entry.manifest,
             "status": registry_entry.status,
         }

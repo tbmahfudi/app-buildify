@@ -425,8 +425,8 @@ async def get_module_components(
         )
 
     # Create snapshot (which includes all components)
-    from app.models.nocode_module import NocodeModule
-    module_obj = db.query(NocodeModule).filter(NocodeModule.id == module_id).first()
+    from app.models.nocode_module import Module
+    module_obj = db.query(Module).filter(Module.id == module_id).first()
     snapshot = await service._create_module_snapshot(module_obj)
 
     return ModuleComponentsResponse(

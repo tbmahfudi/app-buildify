@@ -14,7 +14,7 @@ from datetime import datetime
 
 from app.models.menu_item import MenuItem
 from app.models.user import User
-from app.models.module_registry import TenantModule
+from app.models.nocode_module import ModuleActivation as TenantModule
 from app.models.builder_page import BuilderPage
 
 

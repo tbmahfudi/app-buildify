@@ -38,7 +38,7 @@ class EntityDefinition(Base):
     # tenant_id: NULL = platform-level (shared across tenants), specific ID = tenant-specific
     tenant_id = Column(GUID, ForeignKey("tenants.id"), nullable=True, index=True)
     # module_id: Associates entity with a specific module (optional)
-    module_id = Column(GUID, ForeignKey("nocode_modules.id"), nullable=True, index=True)
+    module_id = Column(GUID, ForeignKey("modules.id"), nullable=True, index=True)
 
     # Basic Info
     name = Column(String(100), nullable=False)  # Technical name (snake_case)

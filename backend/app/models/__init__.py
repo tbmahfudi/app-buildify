@@ -31,9 +31,10 @@ from .login_attempt import LoginAttempt
 from .menu_item import MenuItem
 from .metadata import EntityMetadata
 
-# Module system
-from .module_registry import ModuleRegistry, TenantModule
-from .company_module import CompanyModule
+# Unified module system
+from .nocode_module import Module, ModuleActivation
+# Backward-compatible aliases
+from .nocode_module import ModuleRegistry, TenantModule, NocodeModule, CompanyModule
 
 # Event bus
 from .event_bus import Event, EventSubscription, EventHandler, EventArchive
@@ -78,7 +79,6 @@ from .lookup import (
 
 # No-Code Platform - Module System Foundation (Phase 4)
 from .nocode_module import (
-    NocodeModule,
     ModuleDependency,
     ModuleVersion,
 )
@@ -179,9 +179,13 @@ __all__ = [
     # Token revocation
     "TokenBlacklist",
 
-    # Module system
+    # Unified module system
+    "Module",
+    "ModuleActivation",
+    # Backward-compatible aliases
     "ModuleRegistry",
     "TenantModule",
+    "NocodeModule",
     "CompanyModule",
 
     # Event bus

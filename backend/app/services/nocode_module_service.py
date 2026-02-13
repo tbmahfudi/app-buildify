@@ -15,7 +15,10 @@ from sqlalchemy import func, or_
 from fastapi import HTTPException, status
 from packaging import version as pkg_version
 
-from app.models.nocode_module import NocodeModule, ModuleDependency, ModuleVersion
+from app.models.nocode_module import Module, ModuleDependency, ModuleVersion
+
+# Alias for backward compat within this service
+NocodeModule = Module
 from app.models.base import generate_uuid
 
 
@@ -98,6 +101,7 @@ class NocodeModuleService:
             name=name,
             display_name=display_name,
             description=description,
+            module_type='nocode',
             table_prefix=table_prefix,
             category=category,
             icon=icon or 'cube',
@@ -211,7 +215,7 @@ class NocodeModuleService:
         if color:
             module.color = color
         if config is not None:
-            module.config = config
+            module.configuration = config
 
         module.updated_by = self.current_user.id
         module.updated_at = datetime.utcnow()
@@ -583,7 +587,7 @@ class NocodeModuleService:
             "is_template": module.is_template,
             "tenant_id": str(module.tenant_id) if module.tenant_id else None,
             "permissions": module.permissions,
-            "config": module.config,
+            "config": module.configuration,
             "created_at": module.created_at.isoformat() if module.created_at else None,
             "updated_at": module.updated_at.isoformat() if module.updated_at else None,
             "published_at": module.published_at.isoformat() if module.published_at else None
