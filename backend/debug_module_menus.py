@@ -31,7 +31,7 @@ try:
         print(f"\n  Module: {mod.name}")
         print(f"    Display Name: {mod.display_name}")
         print(f"    Installed: {mod.is_installed}")
-        print(f"    Enabled: {mod.is_enabled}")
+        print(f"    Type: {mod.module_type}")
         print(f"    Manifest exists: {mod.manifest is not None}")
 
         if mod.manifest:

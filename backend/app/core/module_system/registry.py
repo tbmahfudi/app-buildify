@@ -230,7 +230,6 @@ class ModuleRegistryService:
 
         # Mark as uninstalled
         registry_entry.is_installed = False
-        registry_entry.is_enabled = False
 
         # Post-uninstall hook
         try:
