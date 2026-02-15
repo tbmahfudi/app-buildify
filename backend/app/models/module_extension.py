@@ -36,7 +36,7 @@ class ModuleEntityExtension(Base):
     # Extension source (module adding the extension)
     extending_module_id = Column(
         GUID,
-        ForeignKey('nocode_modules.id', ondelete='CASCADE'),
+        ForeignKey('modules.id', ondelete='CASCADE'),
         nullable=False,
         index=True
     )
@@ -44,7 +44,7 @@ class ModuleEntityExtension(Base):
     # Extension target
     target_module_id = Column(
         GUID,
-        ForeignKey('nocode_modules.id', ondelete='CASCADE'),
+        ForeignKey('modules.id', ondelete='CASCADE'),
         nullable=False
     )
     target_entity_id = Column(
@@ -67,12 +67,12 @@ class ModuleEntityExtension(Base):
 
     # Relationships
     extending_module = relationship(
-        "NocodeModule",
+        "Module",
         foreign_keys=[extending_module_id],
         backref="entity_extensions_created"
     )
     target_module = relationship(
-        "NocodeModule",
+        "Module",
         foreign_keys=[target_module_id],
         backref="entity_extensions_received"
     )
@@ -118,7 +118,7 @@ class ModuleScreenExtension(Base):
     # Extension source (module adding the extension)
     extending_module_id = Column(
         GUID,
-        ForeignKey('nocode_modules.id', ondelete='CASCADE'),
+        ForeignKey('modules.id', ondelete='CASCADE'),
         nullable=False,
         index=True
     )
@@ -126,7 +126,7 @@ class ModuleScreenExtension(Base):
     # Extension target
     target_module_id = Column(
         GUID,
-        ForeignKey('nocode_modules.id', ondelete='CASCADE'),
+        ForeignKey('modules.id', ondelete='CASCADE'),
         nullable=False
     )
     target_screen = Column(String(100), nullable=False)  # e.g., "employee_detail"
@@ -151,12 +151,12 @@ class ModuleScreenExtension(Base):
 
     # Relationships
     extending_module = relationship(
-        "NocodeModule",
+        "Module",
         foreign_keys=[extending_module_id],
         backref="screen_extensions_created"
     )
     target_module = relationship(
-        "NocodeModule",
+        "Module",
         foreign_keys=[target_module_id],
         backref="screen_extensions_received"
     )
@@ -211,7 +211,7 @@ class ModuleMenuExtension(Base):
     # Extension source (module adding the extension)
     extending_module_id = Column(
         GUID,
-        ForeignKey('nocode_modules.id', ondelete='CASCADE'),
+        ForeignKey('modules.id', ondelete='CASCADE'),
         nullable=False,
         index=True
     )
@@ -219,7 +219,7 @@ class ModuleMenuExtension(Base):
     # Extension target (NULL = add to root menu)
     target_module_id = Column(
         GUID,
-        ForeignKey('nocode_modules.id', ondelete='CASCADE')
+        ForeignKey('modules.id', ondelete='CASCADE')
     )
     target_menu_item = Column(String(100))  # Parent menu item (e.g., "hr_management")
 
@@ -239,12 +239,12 @@ class ModuleMenuExtension(Base):
 
     # Relationships
     extending_module = relationship(
-        "NocodeModule",
+        "Module",
         foreign_keys=[extending_module_id],
         backref="menu_extensions_created"
     )
     target_module = relationship(
-        "NocodeModule",
+        "Module",
         foreign_keys=[target_module_id],
         backref="menu_extensions_received"
     )

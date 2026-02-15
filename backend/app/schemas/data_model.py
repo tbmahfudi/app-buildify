@@ -184,6 +184,10 @@ class EntityDefinitionBase(BaseModel):
     entity_type: str = "custom"
     category: Optional[str] = None
     module_id: Optional[UUID] = Field(None, description="Associated module ID")
+    data_scope: str = Field(
+        "tenant",
+        description="Organizational isolation level: platform, tenant, company, branch, department"
+    )
     table_name: str = Field(..., max_length=100, description="Database table name")
     schema_name: str = "public"
     is_audited: bool = True
@@ -211,6 +215,7 @@ class EntityDefinitionUpdate(BaseModel):
     icon: Optional[str] = None
     category: Optional[str] = None
     module_id: Optional[UUID] = None
+    data_scope: Optional[str] = Field(None, description="Organizational isolation level")
     is_audited: Optional[bool] = None
     supports_soft_delete: Optional[bool] = None
     supports_attachments: Optional[bool] = None

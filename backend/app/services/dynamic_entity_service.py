@@ -32,6 +32,16 @@ class DynamicEntityService:
     - Bulk operations
     """
 
+    # Maps data_scope levels to the org columns they require, in hierarchical order.
+    # Each level includes all columns from the levels above it.
+    SCOPE_HIERARCHY = {
+        'platform': [],
+        'tenant': ['tenant_id'],
+        'company': ['tenant_id', 'company_id'],
+        'branch': ['tenant_id', 'company_id', 'branch_id'],
+        'department': ['tenant_id', 'company_id', 'branch_id', 'department_id'],
+    }
+
     def __init__(self, db: Session, current_user):
         """
         Initialize dynamic entity service
@@ -45,6 +55,35 @@ class DynamicEntityService:
         self.model_generator = RuntimeModelGenerator(db)
         self.query_builder = DynamicQueryBuilder()
         self.field_mapper = FieldTypeMapper()
+
+    def _get_org_context(self, model) -> Dict[str, Any]:
+        """
+        Build org hierarchy filter/populate values based on entity's data_scope
+        and the current user's organizational assignments.
+
+        Returns dict of column_name -> value for org columns that should be
+        set on create and filtered on read/update/delete.
+        """
+        entity_dict = getattr(model, '__entity_definition__', {})
+        data_scope = entity_dict.get('data_scope', 'tenant')
+        scope_cols = self.SCOPE_HIERARCHY.get(data_scope, self.SCOPE_HIERARCHY['tenant'])
+
+        context = {}
+        user = self.current_user
+
+        for col in scope_cols:
+            if not hasattr(model, col):
+                continue
+            if col == 'tenant_id' and user.tenant_id:
+                context['tenant_id'] = str(user.tenant_id)
+            elif col == 'company_id' and getattr(user, 'default_company_id', None):
+                context['company_id'] = str(user.default_company_id)
+            elif col == 'branch_id' and getattr(user, 'branch_id', None):
+                context['branch_id'] = str(user.branch_id)
+            elif col == 'department_id' and getattr(user, 'department_id', None):
+                context['department_id'] = str(user.department_id)
+
+        return context
 
     async def create_record(
         self,
@@ -73,9 +112,9 @@ class DynamicEntityService:
         # Validate data
         validated_data = self._validate_and_prepare_data(field_defs, data, is_create=True)
 
-        # Add system fields if they exist in model
-        if hasattr(model, 'tenant_id') and self.current_user.tenant_id:
-            validated_data['tenant_id'] = str(self.current_user.tenant_id)
+        # Add org hierarchy fields based on entity's data_scope
+        org_context = self._get_org_context(model)
+        validated_data.update(org_context)
 
         if hasattr(model, 'created_by'):
             validated_data['created_by'] = str(self.current_user.id)
@@ -155,9 +194,10 @@ class DynamicEntityService:
         # Base query
         query = self.db.query(model)
 
-        # Apply tenant filter (if applicable)
-        if hasattr(model, 'tenant_id') and self.current_user.tenant_id:
-            query = query.filter(model.tenant_id == str(self.current_user.tenant_id))
+        # Apply org hierarchy filters based on entity's data_scope
+        org_context = self._get_org_context(model)
+        for col_name, col_value in org_context.items():
+            query = query.filter(getattr(model, col_name) == col_value)
 
         # Apply filters
         if filters:
@@ -216,9 +256,10 @@ class DynamicEntityService:
 
         query = self.db.query(model).filter(model.id == record_id)
 
-        # Apply tenant filter
-        if hasattr(model, 'tenant_id') and self.current_user.tenant_id:
-            query = query.filter(model.tenant_id == str(self.current_user.tenant_id))
+        # Apply org hierarchy filters based on entity's data_scope
+        org_context = self._get_org_context(model)
+        for col_name, col_value in org_context.items():
+            query = query.filter(getattr(model, col_name) == col_value)
 
         record = query.first()
 
@@ -253,9 +294,10 @@ class DynamicEntityService:
 
         query = self.db.query(model).filter(model.id == record_id)
 
-        # Apply tenant filter
-        if hasattr(model, 'tenant_id') and self.current_user.tenant_id:
-            query = query.filter(model.tenant_id == str(self.current_user.tenant_id))
+        # Apply org hierarchy filters based on entity's data_scope
+        org_context = self._get_org_context(model)
+        for col_name, col_value in org_context.items():
+            query = query.filter(getattr(model, col_name) == col_value)
 
         record = query.first()
 
@@ -268,8 +310,9 @@ class DynamicEntityService:
         # Validate data
         validated_data = self._validate_and_prepare_data(field_defs, data, is_create=False)
 
-        # Update fields (exclude system fields)
-        protected_fields = ['id', 'created_at', 'created_by', 'tenant_id']
+        # Update fields (exclude system fields and org hierarchy columns)
+        protected_fields = ['id', 'created_at', 'created_by',
+                            'tenant_id', 'company_id', 'branch_id', 'department_id']
         for key, value in validated_data.items():
             if key not in protected_fields and hasattr(record, key):
                 setattr(record, key, value)
@@ -336,9 +379,10 @@ class DynamicEntityService:
 
         query = self.db.query(model).filter(model.id == record_id)
 
-        # Apply tenant filter
-        if hasattr(model, 'tenant_id') and self.current_user.tenant_id:
-            query = query.filter(model.tenant_id == str(self.current_user.tenant_id))
+        # Apply org hierarchy filters based on entity's data_scope
+        org_context = self._get_org_context(model)
+        for col_name, col_value in org_context.items():
+            query = query.filter(getattr(model, col_name) == col_value)
 
         record = query.first()
 
@@ -582,6 +626,9 @@ class DynamicEntityService:
     SYSTEM_FIELD_TYPES = {
         'id': 'uuid',
         'tenant_id': 'uuid',
+        'company_id': 'uuid',
+        'branch_id': 'uuid',
+        'department_id': 'uuid',
         'created_at': 'datetime',
         'created_by': 'uuid',
         'updated_at': 'datetime',

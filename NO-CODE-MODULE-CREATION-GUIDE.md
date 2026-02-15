@@ -162,7 +162,10 @@ Expected output should include:
 INFO  [alembic.runtime.migration] Running upgrade -> pg_nocode_module_system
 INFO  [alembic.runtime.migration] Running upgrade -> pg_module_services
 INFO  [alembic.runtime.migration] Running upgrade -> pg_module_extensions
+INFO  [alembic.runtime.migration] Running upgrade -> pg_unify_module_system
 ```
+
+> **Note:** The `pg_unify_module_system` migration merges the previously separate `module_registry` and `nocode_modules` tables into a unified `modules` table, and merges `tenant_modules` + `company_modules` into `module_activations`.
 
 ---
 
@@ -2589,7 +2592,7 @@ Congratulations! You've successfully created a complete **Customer Support Ticke
 
 ---
 
-**Document Version:** 2.0 (Updated for Phase 4)
-**Last Updated:** 2026-01-21
+**Document Version:** 2.1 (Updated for unified module system)
+**Last Updated:** 2026-02-13
 **Author:** Platform Team
 **Next Review:** After first user feedback

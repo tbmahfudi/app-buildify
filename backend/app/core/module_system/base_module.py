@@ -304,7 +304,7 @@ class BaseModule(ABC):
         logger.info(f"Running pre-uninstall checks for {self.name}")
 
         # Check if module is enabled for any tenants
-        from models.module_registry import TenantModule, ModuleRegistry
+        from app.models.nocode_module import Module as ModuleRegistry, ModuleActivation as TenantModule
 
         module = db_session.query(ModuleRegistry).filter(
             ModuleRegistry.name == self.name

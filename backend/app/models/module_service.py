@@ -30,7 +30,7 @@ class ModuleService(Base):
     # Module reference
     module_id = Column(
         GUID,
-        ForeignKey('nocode_modules.id', ondelete='CASCADE'),
+        ForeignKey('modules.id', ondelete='CASCADE'),
         nullable=False,
         index=True
     )
@@ -54,7 +54,7 @@ class ModuleService(Base):
     created_by = Column(GUID, ForeignKey('users.id'))
 
     # Relationships
-    module = relationship("NocodeModule", back_populates="services")
+    module = relationship("Module", back_populates="services")
     creator = relationship("User", foreign_keys=[created_by])
     access_logs = relationship(
         "ModuleServiceAccessLog",
@@ -91,7 +91,7 @@ class ModuleServiceAccessLog(Base):
     # Access details
     calling_module_id = Column(
         GUID,
-        ForeignKey('nocode_modules.id', ondelete='SET NULL'),
+        ForeignKey('modules.id', ondelete='SET NULL'),
         index=True
     )
     service_id = Column(
@@ -119,7 +119,7 @@ class ModuleServiceAccessLog(Base):
     accessed_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
 
     # Relationships
-    calling_module = relationship("NocodeModule", foreign_keys=[calling_module_id])
+    calling_module = relationship("Module", foreign_keys=[calling_module_id])
     service = relationship("ModuleService", back_populates="access_logs")
     user = relationship("User", foreign_keys=[user_id])
     tenant = relationship("Tenant", foreign_keys=[tenant_id])

@@ -38,7 +38,7 @@ class EntityDefinition(Base):
     # tenant_id: NULL = platform-level (shared across tenants), specific ID = tenant-specific
     tenant_id = Column(GUID, ForeignKey("tenants.id"), nullable=True, index=True)
     # module_id: Associates entity with a specific module (optional)
-    module_id = Column(GUID, ForeignKey("nocode_modules.id"), nullable=True, index=True)
+    module_id = Column(GUID, ForeignKey("modules.id"), nullable=True, index=True)
 
     # Basic Info
     name = Column(String(100), nullable=False)  # Technical name (snake_case)
@@ -50,6 +50,16 @@ class EntityDefinition(Base):
     # Type & Category
     entity_type = Column(String(50), default="custom")  # 'system', 'custom', 'virtual'
     category = Column(String(100))  # Grouping for UI
+
+    # Data scope - determines organizational isolation level for records
+    # Aligns with RBAC permission scopes (Permission.scope)
+    # Values: 'platform', 'tenant', 'company', 'branch', 'department'
+    # - platform: no org columns, data shared across all tenants
+    # - tenant: tenant_id column (default)
+    # - company: tenant_id + company_id columns
+    # - branch: tenant_id + company_id + branch_id columns
+    # - department: tenant_id + company_id + branch_id + department_id columns
+    data_scope = Column(String(20), default="tenant", nullable=False)
 
     # Table Info
     table_name = Column(String(100), nullable=False)  # Actual database table name

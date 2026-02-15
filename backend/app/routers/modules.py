@@ -227,7 +227,7 @@ async def get_module_info(
         is_installed=module.is_installed,
         is_core=module.is_core,
         subscription_tier=module.subscription_tier,
-        dependencies=module.dependencies,
+        dependencies=module.dependencies_json,
         status=module.status,
         homepage=module.homepage,
         repository=module.repository,
@@ -678,7 +678,7 @@ async def register_module(
             existing_module.author = manifest.get('author')
             existing_module.license = manifest.get('license')
             existing_module.manifest = manifest
-            existing_module.dependencies = manifest.get('dependencies')
+            existing_module.dependencies_json = manifest.get('dependencies')
             existing_module.subscription_tier = manifest.get('subscription_tier')
             existing_module.api_prefix = manifest.get('api', {}).get('prefix')
             existing_module.status = manifest.get('status', 'available')
@@ -712,6 +712,7 @@ async def register_module(
                 id=generate_uuid(),
                 name=module_name,
                 display_name=manifest.get('display_name', module_name),
+                module_type='code',
                 version=manifest.get('version', '1.0.0'),
                 description=manifest.get('description'),
                 category=manifest.get('category'),
@@ -719,12 +720,11 @@ async def register_module(
                 author=manifest.get('author'),
                 license=manifest.get('license'),
                 is_installed=True,
-                is_enabled=True,
                 is_core=manifest.get('is_core', False),
                 installed_at=datetime.utcnow(),
                 manifest=manifest,
                 configuration=manifest.get('configuration'),
-                dependencies=manifest.get('dependencies'),
+                dependencies_json=manifest.get('dependencies'),
                 subscription_tier=manifest.get('subscription_tier'),
                 api_prefix=manifest.get('api', {}).get('prefix'),
                 status=manifest.get('status', 'available'),
