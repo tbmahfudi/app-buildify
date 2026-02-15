@@ -1,4 +1,4 @@
-"""Unify module system: merge module_registry, nocode_modules, tenant_modules, company_modules
+"""Unify module system: merge module_registry, nocode_modules, tenant_modules
 
 Revision ID: pg_unify_module_system
 Revises: pg_module_extensions
@@ -6,7 +6,7 @@ Create Date: 2026-02-12 10:00:00.000000
 
 Merges the dual module system into a single unified model:
 - module_registry + nocode_modules -> modules
-- tenant_modules + company_modules -> module_activations
+- tenant_modules -> module_activations
 - Updates FKs in module_dependencies, module_versions, module_services, module_extensions
 """
 from alembic import op
@@ -24,7 +24,7 @@ depends_on = None
 def upgrade() -> None:
     """
     Merge module_registry and nocode_modules into unified 'modules' table,
-    and tenant_modules + company_modules into 'module_activations' table.
+    and tenant_modules into 'module_activations' table.
     """
 
     # ========================================================
@@ -338,7 +338,6 @@ def upgrade() -> None:
     # ========================================================
     # Step 7: Drop old tables
     # ========================================================
-    op.drop_table('company_modules')
     op.drop_table('tenant_modules')
     op.drop_table('nocode_modules')
     op.drop_table('module_registry')
@@ -426,24 +425,6 @@ def downgrade() -> None:
         sa.Column('disabled_by_user_id', UUID(as_uuid=False), sa.ForeignKey('users.id', ondelete='SET NULL')),
         sa.Column('usage_count', JSON),
         sa.Column('last_used_at', sa.DateTime),
-        sa.Column('created_at', sa.DateTime, server_default=sa.func.now(), nullable=False),
-        sa.Column('updated_at', sa.DateTime),
-    )
-
-    # Recreate company_modules
-    op.create_table(
-        'company_modules',
-        sa.Column('id', UUID(as_uuid=False), primary_key=True),
-        sa.Column('company_id', UUID(as_uuid=False), sa.ForeignKey('companies.id', ondelete='CASCADE'), nullable=False),
-        sa.Column('tenant_module_id', UUID(as_uuid=False), sa.ForeignKey('tenant_modules.id', ondelete='CASCADE'), nullable=False),
-        sa.Column('is_enabled', sa.Boolean, nullable=False, server_default='true'),
-        sa.Column('configuration', JSON),
-        sa.Column('enabled_features', JSON),
-        sa.Column('disabled_features', JSON),
-        sa.Column('customized_at', sa.DateTime),
-        sa.Column('customized_by_user_id', UUID(as_uuid=False), sa.ForeignKey('users.id', ondelete='SET NULL')),
-        sa.Column('last_accessed_at', sa.DateTime),
-        sa.Column('access_count', JSON),
         sa.Column('created_at', sa.DateTime, server_default=sa.func.now(), nullable=False),
         sa.Column('updated_at', sa.DateTime),
     )
