@@ -1,7 +1,7 @@
 # No-Code Platform - High-Level Design
 
 **Date:** 2026-01-02
-**Last Updated:** 2026-01-24
+**Last Updated:** 2026-02-13
 **Project:** App-Buildify
 **Purpose:** High-level design and architecture of the No-Code Platform
 
@@ -921,16 +921,34 @@ automations:read:all        - Read all automation rules
 
 **Status:** In Progress (started 2026-01-19)
 
+**Architecture Update (2026-02-13):** The module system has been **unified** — two previously separate systems (code-delivered `ModuleRegistry` + user-designed `NocodeModule`) are now merged into a single `Module` model with a `module_type` discriminator (`code`, `nocode`, `hybrid`). Module activation across organizational scopes uses the unified `ModuleActivation` model.
+
+**Unified Database Schema:**
+```
+modules                  -- Unified module registry (replaces module_registry + nocode_modules)
+├── module_type          -- 'code' | 'nocode' | 'hybrid'
+├── module_dependencies  -- Version-constrained dependencies
+├── module_versions      -- Version history
+└── module_activations   -- Per-scope enablement (replaces tenant_modules + company_modules)
+    ├── tenant_id        -- Always set
+    ├── company_id       -- Optional (company-level activation)
+    ├── branch_id        -- Optional (branch-level activation)
+    └── department_id    -- Optional (department-level activation)
+```
+
+**Backward-Compatible Aliases:** `ModuleRegistry`, `TenantModule`, `NocodeModule`, `CompanyModule` are all available as aliases pointing to the unified `Module` and `ModuleActivation` classes. Existing code continues to work without changes.
+
 **Priorities:**
 
 #### Priority 1: Module Definition & Registry (Week 1-2)
 **Purpose:** Core module infrastructure with semantic versioning and dependency management
 
 **Features:**
-1. **Module Metadata Model**
-   - Module definition table with versioning
+1. **Unified Module Model**
+   - Single `modules` table for all module types (code, nocode, hybrid)
+   - `module_type` discriminator to distinguish code-delivered vs user-designed modules
    - Semantic versioning (MAJOR.MINOR.PATCH)
-   - Dependency declaration (required, optional, conflicts)
+   - Dependency declaration (required, optional, conflicts) via `dependencies_json` column
    - Table naming convention: `{prefix}_{entity}` (max 10 char prefix, no underscore in prefix)
    - Organization hierarchy support (always include branch_id)
 
@@ -940,15 +958,23 @@ automations:read:all        - Read all automation rules
    - Module lifecycle management (draft, active, deprecated)
    - Module metadata API endpoints
 
-3. **Database Schema**
-   - nocode_modules table
-   - module_dependencies table
-   - module_versions table (version history)
-   - Add module_id FK to all no-code component tables
+3. **Unified Module Activation**
+   - Single `module_activations` table for all scope levels
+   - Multi-scope activation: tenant, company, branch, department
+   - `scope_level` computed property based on which scope fields are set
+   - Per-activation configuration JSON
+   - Replaces separate `tenant_modules` and `company_modules` tables
+
+4. **Database Schema**
+   - `modules` table (unified, with `module_type` discriminator)
+   - `module_activations` table (unified, multi-scope)
+   - `module_dependencies` table
+   - `module_versions` table (version history)
+   - `module_id` FK on all no-code component tables
 
 **Deliverables:**
-- Module registry database schema
-- Module API endpoints (`/api/v1/nocode-modules/*`)
+- Unified module database schema with migration
+- Module API endpoints (`/api/v1/nocode-modules/*`, `/api/v1/modules/*`)
 - Dependency resolver service
 - Module creation wizard UI
 
@@ -1385,10 +1411,11 @@ The platform achieves complete no-code capability when:
 
 ---
 
-**Document Version:** 8.0
-**Last Updated:** 2026-01-24
+**Document Version:** 9.0
+**Last Updated:** 2026-02-13
 **Next Review:** Phase 6 planning
 **Changelog:**
+- v9.0 (2026-02-13): Unified module system - Merged ModuleRegistry + NocodeModule into single Module model with module_type discriminator; merged TenantModule + CompanyModule into ModuleActivation with multi-scope support; updated Phase 4 architecture documentation
 - v8.0 (2026-01-24): Phase 5 complete - All priorities delivered (2,046 lines: calculated fields, validation, advanced inputs, groups, visibility, cascading, i18n)
 - v7.0 (2026-01-23): Phase 5 started - Select/Reference field types implemented, detailed Quick Wins plan, backend readiness assessment
 - v6.0 (2026-01-19): Reorganized phases, added Phase 4-7 structure, updated module system architecture
