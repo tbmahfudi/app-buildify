@@ -7,7 +7,7 @@ import { moduleManager } from './module-manager-enhanced.js';
 
 // Initialize on route load
 document.addEventListener('route:loaded', async (e) => {
-  if (e.detail.route === 'modules') {
+  if (e.detail.route === 'module-store') {
     await initModuleManager();
   }
 });
