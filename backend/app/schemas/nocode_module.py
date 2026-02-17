@@ -55,22 +55,47 @@ class NocodeModuleResponse(UUIDMixin, BaseModel):
     id: str
     name: str
     display_name: str
-    description: Optional[str]
-    version: str
-    table_prefix: str
-    category: Optional[str]
+    description: Optional[str] = None
+    version: str = "1.0.0"
+    table_prefix: Optional[str] = None
+    category: Optional[str] = None
     tags: List = Field(default_factory=list)
-    icon: str
-    color: str
-    status: str
-    is_core: bool
-    is_template: bool
-    tenant_id: Optional[str]
+    icon: Optional[str] = None
+    color: Optional[str] = None
+    status: str = "draft"
+    is_core: bool = False
+    is_template: bool = False
+    tenant_id: Optional[str] = None
     permissions: List = Field(default_factory=list)
     config: Dict = Field(default_factory=dict)
-    created_at: Optional[datetime]
-    updated_at: Optional[datetime]
-    published_at: Optional[datetime]
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+    published_at: Optional[datetime] = None
+
+    @field_validator('tags', 'permissions', mode='before')
+    @classmethod
+    def coerce_none_to_list(cls, v):
+        return v if v is not None else []
+
+    @field_validator('config', mode='before')
+    @classmethod
+    def coerce_none_to_dict(cls, v):
+        return v if v is not None else {}
+
+    @field_validator('is_core', 'is_template', mode='before')
+    @classmethod
+    def coerce_none_to_false(cls, v):
+        return v if v is not None else False
+
+    @field_validator('version', mode='before')
+    @classmethod
+    def coerce_none_version(cls, v):
+        return v if v is not None else "1.0.0"
+
+    @field_validator('status', mode='before')
+    @classmethod
+    def coerce_none_status(cls, v):
+        return v if v is not None else "draft"
 
     class Config:
         from_attributes = True
