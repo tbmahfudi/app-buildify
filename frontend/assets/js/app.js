@@ -1651,9 +1651,9 @@ async function loadRoute(route) {
       return;
     }
 
-    // Handle no-code platform routes (core features, not modules)
-    if (route === 'nocode-modules') {
-      console.log('Loading no-code modules page');
+    // Handle module management route
+    if (route === 'modules') {
+      console.log('Loading modules page');
       const bodyContent = await window.resourceLoader.loadTemplate('nocode-modules');
       content.innerHTML = bodyContent;
 
@@ -1661,11 +1661,11 @@ async function loadRoute(route) {
       try {
         await window.resourceLoader.loadScript('nocode-modules.js');
       } catch (error) {
-        console.warn('No-code modules script loading failed:', error);
+        console.warn('Modules script loading failed:', error);
       }
 
       document.dispatchEvent(new CustomEvent('route:loaded', {
-        detail: { route: 'nocode-modules', isModule: false }
+        detail: { route: 'modules', isModule: false }
       }));
       return;
     }

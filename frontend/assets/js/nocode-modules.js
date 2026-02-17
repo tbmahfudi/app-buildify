@@ -5,7 +5,7 @@
 
 import { apiFetch } from './api.js';
 
-const API_BASE = '/nocode-modules';
+const API_BASE = '/modules';
 let currentStep = 1;
 let allModules = [];
 let selectedModule = null;
@@ -26,7 +26,7 @@ const COLOR_OPTIONS = [
 
 // Initialize when route is loaded
 document.addEventListener('route:loaded', async (event) => {
-    if (event.detail.route === 'nocode-modules') {
+    if (event.detail.route === 'modules') {
         setTimeout(async () => {
             await loadModules();
             initializeIconPicker();

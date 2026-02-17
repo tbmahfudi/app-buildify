@@ -182,7 +182,7 @@
             },
             {
               "title": "Module Management",
-              "route": "nocode-modules",
+              "route": "modules",
               "icon": "ph-duotone ph-package",
               "iconColor": "text-indigo-600",
               "permission": "modules:read:tenant",

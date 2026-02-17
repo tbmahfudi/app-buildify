@@ -30,7 +30,7 @@ from app.schemas.nocode_module import (
 )
 from app.models.user import User
 
-router = APIRouter(prefix="/api/v1/nocode-modules", tags=["nocode-modules"])
+router = APIRouter(prefix="/api/v1/modules", tags=["modules"])
 
 
 # ==================== Module CRUD ====================

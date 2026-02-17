@@ -8,7 +8,7 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional, Union
 from uuid import UUID
 
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, field_validator
 
 
 # ==================== Field Definition Schemas ====================
@@ -64,6 +64,37 @@ class FieldDefinitionBase(BaseModel):
     placeholder_i18n: Optional[Dict[str, str]] = Field(None, description="Multi-language placeholders")
     field_group_id: Optional[UUID] = Field(None, description="Field group ID for organization")
     meta_data: Dict[str, Any] = Field(default_factory=dict)
+
+    @field_validator(
+        'is_required', 'is_unique', 'is_indexed', 'is_nullable',
+        'is_readonly', 'is_system', 'is_calculated', 'lookup_allow_create',
+        mode='before',
+    )
+    @classmethod
+    def coerce_none_to_false(cls, v):
+        return v if v is not None else False
+
+    @field_validator('validation_rules', mode='before')
+    @classmethod
+    def coerce_none_to_list(cls, v):
+        return v if v is not None else []
+
+    @field_validator('display_order', 'lookup_recent_count', mode='before')
+    @classmethod
+    def coerce_none_int(cls, v, info):
+        if v is not None:
+            return v
+        return 5 if info.field_name == 'lookup_recent_count' else 0
+
+    @field_validator('on_delete', 'on_update', mode='before')
+    @classmethod
+    def coerce_none_action(cls, v):
+        return v if v is not None else "NO ACTION"
+
+    @field_validator('meta_data', mode='before')
+    @classmethod
+    def coerce_none_to_dict(cls, v):
+        return v if v is not None else {}
 
 
 class FieldDefinitionCreate(FieldDefinitionBase):
@@ -200,6 +231,51 @@ class EntityDefinitionBase(BaseModel):
     default_sort_order: str = "ASC"
     records_per_page: int = 25
     meta_data: Dict[str, Any] = Field(default_factory=dict)
+
+    @field_validator(
+        'is_audited', 'is_versioned', 'supports_soft_delete',
+        'supports_attachments', 'supports_comments',
+        mode='before',
+    )
+    @classmethod
+    def coerce_none_bool(cls, v, info):
+        if v is not None:
+            return v
+        defaults = {
+            'is_audited': True, 'supports_soft_delete': True,
+            'supports_attachments': True, 'supports_comments': True,
+        }
+        return defaults.get(info.field_name, False)
+
+    @field_validator('entity_type', mode='before')
+    @classmethod
+    def coerce_none_entity_type(cls, v):
+        return v if v is not None else "custom"
+
+    @field_validator('data_scope', mode='before')
+    @classmethod
+    def coerce_none_data_scope(cls, v):
+        return v if v is not None else "tenant"
+
+    @field_validator('schema_name', mode='before')
+    @classmethod
+    def coerce_none_schema(cls, v):
+        return v if v is not None else "public"
+
+    @field_validator('default_sort_order', mode='before')
+    @classmethod
+    def coerce_none_sort_order(cls, v):
+        return v if v is not None else "ASC"
+
+    @field_validator('records_per_page', mode='before')
+    @classmethod
+    def coerce_none_records(cls, v):
+        return v if v is not None else 25
+
+    @field_validator('meta_data', mode='before')
+    @classmethod
+    def coerce_none_meta(cls, v):
+        return v if v is not None else {}
 
 
 class EntityDefinitionCreate(EntityDefinitionBase):
