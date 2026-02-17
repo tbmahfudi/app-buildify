@@ -148,7 +148,12 @@ class FieldDefinitionResponse(FieldDefinitionBase):
     updated_at: datetime
     created_by: Optional[UUID]
     updated_by: Optional[UUID]
-    is_deleted: bool
+    is_deleted: bool = False
+
+    @field_validator('is_deleted', mode='before')
+    @classmethod
+    def coerce_none_is_deleted(cls, v):
+        return v if v is not None else False
 
     class Config:
         from_attributes = True
@@ -168,6 +173,23 @@ class FieldGroupBase(BaseModel):
     visibility_rules: Optional[Dict[str, Any]] = Field(None, description="Conditional visibility rules")
     is_active: bool = True
     meta_data: Dict[str, Any] = Field(default_factory=dict)
+
+    @field_validator('is_collapsible', 'is_collapsed_default', 'is_active', mode='before')
+    @classmethod
+    def coerce_none_bool(cls, v, info):
+        if v is not None:
+            return v
+        return True if info.field_name in ('is_collapsible', 'is_active') else False
+
+    @field_validator('display_order', mode='before')
+    @classmethod
+    def coerce_none_order(cls, v):
+        return v if v is not None else 0
+
+    @field_validator('meta_data', mode='before')
+    @classmethod
+    def coerce_none_meta(cls, v):
+        return v if v is not None else {}
 
 
 class FieldGroupCreate(FieldGroupBase):
@@ -197,7 +219,12 @@ class FieldGroupResponse(FieldGroupBase):
     updated_at: datetime
     created_by: Optional[UUID]
     updated_by: Optional[UUID]
-    is_deleted: bool
+    is_deleted: bool = False
+
+    @field_validator('is_deleted', mode='before')
+    @classmethod
+    def coerce_none_is_deleted(cls, v):
+        return v if v is not None else False
 
     class Config:
         from_attributes = True
@@ -308,17 +335,34 @@ class EntityDefinitionResponse(EntityDefinitionBase):
     """Schema for entity definition response"""
     id: UUID
     tenant_id: Optional[UUID]  # NULL for platform-level entities
-    status: str
-    is_active: bool
-    version: int
-    parent_version_id: Optional[UUID]
+    status: str = "draft"
+    is_active: bool = True
+    version: int = 1
+    parent_version_id: Optional[UUID] = None
     created_at: datetime
     updated_at: datetime
     created_by: Optional[UUID]
     updated_by: Optional[UUID]
-    deleted_at: Optional[datetime]
-    is_deleted: bool
+    deleted_at: Optional[datetime] = None
+    is_deleted: bool = False
     fields: List[FieldDefinitionResponse] = Field(default_factory=list)
+
+    @field_validator('status', mode='before')
+    @classmethod
+    def coerce_none_status(cls, v):
+        return v if v is not None else "draft"
+
+    @field_validator('is_active', 'is_deleted', mode='before')
+    @classmethod
+    def coerce_none_response_bool(cls, v, info):
+        if v is not None:
+            return v
+        return True if info.field_name == 'is_active' else False
+
+    @field_validator('version', mode='before')
+    @classmethod
+    def coerce_none_version(cls, v):
+        return v if v is not None else 1
 
     class Config:
         from_attributes = True
@@ -346,6 +390,21 @@ class RelationshipDefinitionBase(BaseModel):
     display_in_target: bool = True
     meta_data: Dict[str, Any] = Field(default_factory=dict)
 
+    @field_validator('is_active', 'display_in_source', 'display_in_target', mode='before')
+    @classmethod
+    def coerce_none_bool(cls, v):
+        return v if v is not None else True
+
+    @field_validator('on_delete', 'on_update', mode='before')
+    @classmethod
+    def coerce_none_action(cls, v):
+        return v if v is not None else "NO ACTION"
+
+    @field_validator('meta_data', mode='before')
+    @classmethod
+    def coerce_none_meta(cls, v):
+        return v if v is not None else {}
+
 
 class RelationshipDefinitionCreate(RelationshipDefinitionBase):
     """Schema for creating a relationship definition"""
@@ -370,7 +429,12 @@ class RelationshipDefinitionResponse(RelationshipDefinitionBase):
     updated_at: datetime
     created_by: Optional[UUID]
     updated_by: Optional[UUID]
-    is_deleted: bool
+    is_deleted: bool = False
+
+    @field_validator('is_deleted', mode='before')
+    @classmethod
+    def coerce_none_is_deleted(cls, v):
+        return v if v is not None else False
 
     class Config:
         from_attributes = True
@@ -388,6 +452,18 @@ class IndexDefinitionBase(BaseModel):
     where_clause: Optional[str] = None
     is_active: bool = True
 
+    @field_validator('is_unique', 'is_partial', 'is_active', mode='before')
+    @classmethod
+    def coerce_none_bool(cls, v, info):
+        if v is not None:
+            return v
+        return True if info.field_name == 'is_active' else False
+
+    @field_validator('index_type', mode='before')
+    @classmethod
+    def coerce_none_index_type(cls, v):
+        return v if v is not None else "btree"
+
 
 class IndexDefinitionCreate(IndexDefinitionBase):
     """Schema for creating an index definition"""
@@ -401,7 +477,12 @@ class IndexDefinitionResponse(IndexDefinitionBase):
     tenant_id: Optional[UUID]  # NULL for platform-level indexes
     created_at: datetime
     created_by: Optional[UUID]
-    is_deleted: bool
+    is_deleted: bool = False
+
+    @field_validator('is_deleted', mode='before')
+    @classmethod
+    def coerce_none_is_deleted(cls, v):
+        return v if v is not None else False
 
     class Config:
         from_attributes = True
