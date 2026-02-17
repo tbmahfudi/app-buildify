@@ -98,7 +98,7 @@ class EntityDefinition(Base):
     is_deleted = Column(Boolean, default=False)
 
     # Relationships
-    module = relationship("NocodeModule", foreign_keys=[module_id], backref="entities")
+    module = relationship("Module", foreign_keys=[module_id], backref="entities")
     fields = relationship("FieldDefinition", foreign_keys="FieldDefinition.entity_id", back_populates="entity", cascade="all, delete-orphan")
     migrations = relationship("EntityMigration", back_populates="entity")
     indexes = relationship("IndexDefinition", back_populates="entity", cascade="all, delete-orphan")
