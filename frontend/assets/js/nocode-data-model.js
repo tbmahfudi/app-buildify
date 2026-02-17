@@ -267,7 +267,7 @@ export class DataModelPage {
 
   async loadModules() {
     try {
-      const response = await apiFetch('/nocode-modules');
+      const response = await apiFetch('/modules');
 
       if (response.ok) {
         const data = await response.json();
