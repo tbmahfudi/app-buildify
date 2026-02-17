@@ -65,6 +65,8 @@ function displayModules(modules) {
     const moduleList = document.getElementById('moduleList');
     const emptyState = document.getElementById('emptyState');
 
+    if (!moduleList || !emptyState) return;
+
     if (modules.length === 0) {
         moduleList.innerHTML = '';
         emptyState.style.display = 'block';
@@ -406,6 +408,7 @@ window.validatePrefix = async function(prefix) {
  */
 function initializeIconPicker() {
     const iconPicker = document.getElementById('iconPicker');
+    if (!iconPicker) return;
 
     iconPicker.innerHTML = ICON_OPTIONS.map(icon => `
         <div class="icon-picker-option ${icon === 'package' ? 'selected' : ''}"
@@ -435,6 +438,7 @@ window.selectIcon = function(icon) {
  */
 function initializeColorPicker() {
     const colorPicker = document.getElementById('colorPicker');
+    if (!colorPicker) return;
 
     colorPicker.innerHTML = COLOR_OPTIONS.map(color => `
         <div class="color-picker-option ${color === '#3b82f6' ? 'selected' : ''}"
