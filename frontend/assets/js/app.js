@@ -1651,7 +1651,7 @@ async function loadRoute(route) {
       return;
     }
 
-    // Handle module management route
+    // Handle module management route (nocode module creator)
     if (route === 'modules') {
       console.log('Loading modules page');
       const bodyContent = await window.resourceLoader.loadTemplate('nocode-modules');
@@ -1666,6 +1666,14 @@ async function loadRoute(route) {
 
       document.dispatchEvent(new CustomEvent('route:loaded', {
         detail: { route: 'modules', isModule: false }
+      }));
+      return;
+    }
+
+    // Handle module store route (code-module installer)
+    if (route === 'module-store') {
+      document.dispatchEvent(new CustomEvent('route:loaded', {
+        detail: { route: 'module-store', isModule: false }
       }));
       return;
     }
