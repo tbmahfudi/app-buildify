@@ -67,6 +67,9 @@ class Dashboard(Base):
     tenant_id = Column(GUID, nullable=False, index=True)
     # module_id: Associates dashboard with a specific module (optional)
     module_id = Column(GUID, ForeignKey("modules.id"), nullable=True, index=True)
+
+    # Basic info
+    name = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
     category = Column(String(100), nullable=True)
     tags = Column(JSON, nullable=True)  # List of tags for categorization
