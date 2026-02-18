@@ -185,7 +185,7 @@ export class ModuleManager {
     const list = document.getElementById('available-modules-list');
 
     try {
-      const response = await apiFetch('/modules/available');
+      const response = await apiFetch('/module-registry/available');
 
       if (!response.ok) {
         throw new Error('Failed to load modules');
@@ -336,7 +336,7 @@ export class ModuleManager {
 
     try {
       // Superusers see all tenant modules, regular users see only their tenant's modules
-      const endpoint = isSuperUser ? '/modules/enabled/all-tenants' : '/modules/enabled';
+      const endpoint = isSuperUser ? '/module-registry/enabled/all-tenants' : '/module-registry/enabled';
       console.log(`Loading enabled modules from endpoint: ${endpoint} (superuser: ${isSuperUser})`);
 
       const response = await apiFetch(endpoint);
@@ -467,7 +467,7 @@ export class ModuleManager {
     if (!confirm(`Install module "${moduleName}"?\n\nThis will make the module available platform-wide.`)) return;
 
     try {
-      const response = await apiFetch('/modules/install', {
+      const response = await apiFetch('/module-registry/install', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -495,7 +495,7 @@ export class ModuleManager {
     if (!confirm(`Uninstall module "${moduleName}"?\n\nThis will remove the module platform-wide. This action cannot be undone.`)) return;
 
     try {
-      const response = await apiFetch('/modules/uninstall', {
+      const response = await apiFetch('/module-registry/uninstall', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -626,7 +626,7 @@ export class ModuleManager {
         requestBody.tenant_id = tenantId;
       }
 
-      const response = await apiFetch('/modules/enable', {
+      const response = await apiFetch('/module-registry/enable', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -657,7 +657,7 @@ export class ModuleManager {
     if (!confirm(`Disable module "${moduleName}"?\n\nThis will remove the module from your tenant.`)) return;
 
     try {
-      const response = await apiFetch('/modules/disable', {
+      const response = await apiFetch('/module-registry/disable', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -698,7 +698,7 @@ export class ModuleManager {
     try {
       showToast('Syncing modules...', 'info');
 
-      const response = await apiFetch('/modules/sync', {
+      const response = await apiFetch('/module-registry/sync', {
         method: 'POST'
       });
 

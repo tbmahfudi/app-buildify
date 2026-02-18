@@ -57,7 +57,7 @@ export class BuilderConfigPanel {
 
     async loadModules() {
         try {
-            const response = await apiFetch('/modules/enabled');
+            const response = await apiFetch('/module-registry/enabled');
 
             if (response.ok) {
                 const data = await response.json();

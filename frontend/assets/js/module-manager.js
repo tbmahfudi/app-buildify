@@ -136,7 +136,7 @@ export class ModuleManager {
     const list = document.getElementById('available-modules-list');
 
     try {
-      const response = await apiFetch('/modules/available');
+      const response = await apiFetch('/module-registry/available');
 
       if (!response.ok) {
         throw new Error('Failed to load modules');
@@ -227,7 +227,7 @@ export class ModuleManager {
     const list = document.getElementById('enabled-modules-list');
 
     try {
-      const response = await apiFetch('/modules/enabled');
+      const response = await apiFetch('/module-registry/enabled');
 
       if (!response.ok) {
         throw new Error('Failed to load enabled modules');
@@ -315,7 +315,7 @@ export class ModuleManager {
     if (!confirm(`Install module "${moduleName}"?`)) return;
 
     try {
-      const response = await apiFetch('/modules/install', {
+      const response = await apiFetch('/module-registry/install', {
         method: 'POST',
         body: JSON.stringify({ module_name: moduleName })
       });
@@ -340,7 +340,7 @@ export class ModuleManager {
     if (!confirm(`Uninstall module "${moduleName}"? This cannot be undone.`)) return;
 
     try {
-      const response = await apiFetch('/modules/uninstall', {
+      const response = await apiFetch('/module-registry/uninstall', {
         method: 'POST',
         body: JSON.stringify({ module_name: moduleName })
       });
@@ -363,7 +363,7 @@ export class ModuleManager {
    */
   async enableModule(moduleName) {
     try {
-      const response = await apiFetch('/modules/enable', {
+      const response = await apiFetch('/module-registry/enable', {
         method: 'POST',
         body: JSON.stringify({ module_name: moduleName })
       });
@@ -391,7 +391,7 @@ export class ModuleManager {
     if (!confirm(`Disable module "${moduleName}"?`)) return;
 
     try {
-      const response = await apiFetch('/modules/disable', {
+      const response = await apiFetch('/module-registry/disable', {
         method: 'POST',
         body: JSON.stringify({ module_name: moduleName })
       });
@@ -427,7 +427,7 @@ export class ModuleManager {
     if (!confirm('Sync modules from filesystem?')) return;
 
     try {
-      const response = await apiFetch('/modules/sync', {
+      const response = await apiFetch('/module-registry/sync', {
         method: 'POST'
       });
 

@@ -97,7 +97,7 @@
             html += '<div class="section">';
             html += '<h2>2️⃣ Backend Module Status</h2>';
             try {
-                const response = await apiFetch('/modules/enabled/names');
+                const response = await apiFetch('/module-registry/enabled/names');
                 if (response.ok) {
                     const enabledModules = await response.json();
                     html += '<p class="info">Enabled modules from backend:</p>';

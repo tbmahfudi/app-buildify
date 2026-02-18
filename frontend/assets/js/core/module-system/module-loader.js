@@ -28,7 +28,7 @@ class ModuleLoader {
         return [];
       }
 
-      const response = await apiFetch('/modules/enabled/names');
+      const response = await apiFetch('/module-registry/enabled/names');
 
       if (!response.ok) {
         throw new Error(`Failed to fetch enabled modules: ${response.statusText}`);
