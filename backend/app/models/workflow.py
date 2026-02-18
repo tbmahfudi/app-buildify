@@ -36,10 +36,8 @@ class WorkflowDefinition(Base):
     id = Column(GUID, primary_key=True, default=generate_uuid)
     # tenant_id: NULL = platform-level (shared across tenants), specific ID = tenant-specific
     tenant_id = Column(GUID, ForeignKey("tenants.id"), nullable=True, index=True)
-
-    # Basic Info
-    name = Column(String(100), nullable=False)
-    label = Column(String(200), nullable=False)
+    # module_id: Associates workflow with a specific module (optional)
+    module_id = Column(GUID, ForeignKey("modules.id"), nullable=True, index=True)
     description = Column(Text)
     category = Column(String(100))
 

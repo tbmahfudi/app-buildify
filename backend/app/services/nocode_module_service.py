@@ -650,30 +650,23 @@ class NocodeModuleService:
         from app.models.report import ReportDefinition
         from app.models.dashboard import Dashboard
 
+        def _query_by_module_id(model):
+            """Query components by module_id, returning empty list if column doesn't exist yet"""
+            try:
+                return self.db.query(model).filter(
+                    model.module_id == module.id
+                ).all()
+            except Exception:
+                self.db.rollback()
+                return []
+
         # Fetch all components belonging to this module
-        entities = self.db.query(EntityDefinition).filter(
-            EntityDefinition.module_id == module.id
-        ).all()
-
-        workflows = self.db.query(WorkflowDefinition).filter(
-            WorkflowDefinition.module_id == module.id
-        ).all()
-
-        automations = self.db.query(AutomationRule).filter(
-            AutomationRule.module_id == module.id
-        ).all()
-
-        lookups = self.db.query(LookupConfiguration).filter(
-            LookupConfiguration.module_id == module.id
-        ).all()
-
-        reports = self.db.query(ReportDefinition).filter(
-            ReportDefinition.module_id == module.id
-        ).all()
-
-        dashboards = self.db.query(Dashboard).filter(
-            Dashboard.module_id == module.id
-        ).all()
+        entities = _query_by_module_id(EntityDefinition)
+        workflows = _query_by_module_id(WorkflowDefinition)
+        automations = _query_by_module_id(AutomationRule)
+        lookups = _query_by_module_id(LookupConfiguration)
+        reports = _query_by_module_id(ReportDefinition)
+        dashboards = _query_by_module_id(Dashboard)
 
         return {
             "module": {
