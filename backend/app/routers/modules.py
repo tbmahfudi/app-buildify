@@ -43,7 +43,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/v1/modules", tags=["modules"])
+router = APIRouter(prefix="/api/v1/module-registry", tags=["module-registry"])
 
 # Global module registry service instance
 # This will be initialized in main.py

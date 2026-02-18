@@ -53,7 +53,7 @@ async def register_with_core_platform(max_retries: int = 5):
         try:
             async with httpx.AsyncClient(timeout=10.0) as client:
                 response = await client.post(
-                    f"{settings.CORE_PLATFORM_URL}/api/v1/modules/register",
+                    f"{settings.CORE_PLATFORM_URL}/api/v1/module-registry/register",
                     json=registration_data
                 )
 

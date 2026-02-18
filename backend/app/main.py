@@ -139,7 +139,7 @@ async def module_access_middleware(request: Request, call_next):
             potential_module = path_parts[3]
 
             # Skip core endpoints
-            core_endpoints = ["auth", "org", "metadata", "data", "audit", "settings", "modules", "rbac", "reports", "dashboards", "scheduler", "menu", "health", "healthz", "system", "data-model", "workflows", "automations", "lookups", "dynamic-data"]
+            core_endpoints = ["auth", "org", "metadata", "data", "audit", "settings", "modules", "module-registry", "rbac", "reports", "dashboards", "scheduler", "menu", "health", "healthz", "system", "data-model", "workflows", "automations", "lookups", "dynamic-data"]
             if potential_module not in core_endpoints:
                 # This might be a module endpoint
                 # Check if module exists and is enabled

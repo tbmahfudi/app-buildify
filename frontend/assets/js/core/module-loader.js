@@ -173,7 +173,7 @@ class ModuleLoader {
      */
     async loadEnabledModules() {
         try {
-            const response = await fetch('/api/v1/modules/enabled', {
+            const response = await fetch('/api/v1/module-registry/enabled', {
                 headers: {
                     'Authorization': `Bearer ${localStorage.getItem('token')}`
                 }
