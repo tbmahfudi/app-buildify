@@ -59,9 +59,8 @@ class ReportDefinition(Base):
 
     id = Column(GUID, primary_key=True, index=True)
     tenant_id = Column(GUID, nullable=False, index=True)
-
-    # Basic info
-    name = Column(String(255), nullable=False)
+    # module_id: Associates report with a specific module (optional)
+    module_id = Column(GUID, ForeignKey("modules.id"), nullable=True, index=True)
     description = Column(Text, nullable=True)
     category = Column(String(100), nullable=True)
     report_type = Column(String(50), default="tabular")
