@@ -40,9 +40,11 @@ export class WorkflowsPage {
     this.workflows = [];
     this.instances = [];
     this.entities = [];
+    this.modulesMap = {};
   }
 
   async init() {
+    await this.loadModulesMap();
     await this.loadWorkflows();
     await this.loadEntities();
 
@@ -82,6 +84,20 @@ export class WorkflowsPage {
       closeMonitoringDashboard: () => this.closeMonitoringDashboard(),
       onTriggerTypeChange: (triggerType) => this.onTriggerTypeChange(triggerType)
     };
+  }
+
+  async loadModulesMap() {
+    try {
+      const response = await apiFetch('/modules');
+      if (response.ok) {
+        const data = await response.json();
+        const modules = Array.isArray(data) ? data : (data.modules || []);
+        this.modulesMap = {};
+        modules.forEach(m => { this.modulesMap[m.id] = m.display_name; });
+      }
+    } catch (error) {
+      console.error('Error loading modules map:', error);
+    }
   }
 
   async loadEntities() {
@@ -195,6 +211,7 @@ export class WorkflowsPage {
             <div class="flex items-center gap-2 mb-1">
               <h3 class="text-lg font-semibold text-gray-900">${this.escapeHtml(workflow.label)}</h3>
               ${workflow.tenant_id === null ? '<span class="px-2 py-0.5 bg-purple-100 text-purple-700 rounded text-xs font-medium">Platform</span>' : ''}
+              ${workflow.module_id && this.modulesMap[workflow.module_id] ? `<span class="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-xs font-medium"><i class="ph ph-package"></i> ${this.escapeHtml(this.modulesMap[workflow.module_id])}</span>` : ''}
             </div>
             <p class="text-sm text-gray-500 mt-1">${this.escapeHtml(workflow.description || 'No description')}</p>
           </div>
@@ -204,6 +221,12 @@ export class WorkflowsPage {
         </div>
 
         <div class="space-y-2 text-sm text-gray-600 mb-4">
+          ${workflow.module_id && this.modulesMap[workflow.module_id] ? `
+          <div class="flex items-center gap-2">
+            <i class="ph ph-package"></i>
+            <span>Module: ${this.escapeHtml(this.modulesMap[workflow.module_id])}</span>
+          </div>
+          ` : ''}
           <div class="flex items-center gap-2">
             <i class="ph ph-tag"></i>
             <span>${workflow.category || 'Uncategorized'}</span>
@@ -456,13 +479,10 @@ export class WorkflowsPage {
   }
 
   async togglePublish(id, isPublished) {
-    if (isPublished) {
-      this.showError('Unpublish feature coming soon');
-      return;
-    }
+    const action = isPublished ? 'unpublish' : 'publish';
 
     try {
-      const response = await apiFetch(`/workflows/${id}/publish`, {
+      const response = await apiFetch(`/workflows/${id}/${action}`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${authService.getToken()}`
@@ -471,13 +491,14 @@ export class WorkflowsPage {
 
       if (response.ok) {
         await this.loadWorkflows();
-        this.showSuccess('Workflow published successfully');
+        this.showSuccess(`Workflow ${action === 'publish' ? 'published' : 'unpublished'} successfully`);
       } else {
-        this.showError('Failed to publish workflow');
+        const error = await response.json().catch(() => ({}));
+        this.showError(error.detail || `Failed to ${action} workflow`);
       }
     } catch (error) {
-      console.error('Error publishing workflow:', error);
-      this.showError('Error publishing workflow');
+      console.error(`Error ${action}ing workflow:`, error);
+      this.showError(`Error ${action}ing workflow`);
     }
   }
 

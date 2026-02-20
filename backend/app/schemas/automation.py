@@ -74,6 +74,7 @@ class AutomationRuleResponse(AutomationRuleBase):
     """Schema for automation rule response"""
     id: UUID
     tenant_id: Optional[UUID]  # NULL for platform-level automation rules
+    module_id: Optional[UUID] = None
     next_run_at: Optional[datetime]
     last_run_at: Optional[datetime]
     is_active: bool

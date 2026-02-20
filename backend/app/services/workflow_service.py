@@ -211,6 +211,24 @@ class WorkflowService:
 
         return workflow
 
+    async def unpublish_workflow(self, workflow_id: UUID):
+        """Unpublish a workflow to revert it to draft"""
+        workflow = await self.get_workflow(workflow_id)
+
+        if not workflow.is_published:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Workflow is not published"
+            )
+
+        workflow.is_published = False
+        workflow.published_at = None
+
+        self.db.commit()
+        self.db.refresh(workflow)
+
+        return workflow
+
     async def simulate_workflow(self, workflow_id: UUID, simulation_data):
         """Simulate a workflow execution for testing purposes"""
         workflow = await self.get_workflow(workflow_id)

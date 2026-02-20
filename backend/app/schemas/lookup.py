@@ -93,6 +93,7 @@ class LookupConfigurationResponse(LookupConfigurationBase):
     """Schema for lookup configuration response"""
     id: UUID
     tenant_id: Optional[UUID]  # NULL for platform-level lookup configurations
+    module_id: Optional[UUID] = None
     is_active: bool
     created_at: datetime
     updated_at: datetime

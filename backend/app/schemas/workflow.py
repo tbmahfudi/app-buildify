@@ -163,6 +163,7 @@ class WorkflowDefinitionResponse(WorkflowDefinitionBase):
     """Schema for workflow definition response"""
     id: UUID
     tenant_id: Optional[UUID]  # NULL for platform-level workflows
+    module_id: Optional[UUID] = None
     version: int
     is_published: bool
     published_at: Optional[datetime]

@@ -103,6 +103,17 @@ async def publish_workflow(
     return await service.publish_workflow(workflow_id)
 
 
+@router.post("/{workflow_id}/unpublish", response_model=WorkflowDefinitionResponse)
+async def unpublish_workflow(
+    workflow_id: UUID,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """Unpublish a workflow to revert it to draft"""
+    service = WorkflowService(db, current_user)
+    return await service.unpublish_workflow(workflow_id)
+
+
 @router.post("/{workflow_id}/simulate", response_model=WorkflowSimulationResponse)
 async def simulate_workflow(
     workflow_id: UUID,
