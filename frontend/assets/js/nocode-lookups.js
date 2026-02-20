@@ -40,9 +40,11 @@ export class LookupsPage {
     this.lookups = [];
     this.cascadingRules = [];
     this.entities = [];
+    this.modulesMap = {};
   }
 
   async init() {
+    await this.loadModulesMap();
     await this.loadLookups();
     await this.loadEntities();
 
@@ -211,6 +213,20 @@ export class LookupsPage {
     }
   }
 
+  async loadModulesMap() {
+    try {
+      const response = await apiFetch('/modules');
+      if (response.ok) {
+        const data = await response.json();
+        const modules = Array.isArray(data) ? data : (data.modules || []);
+        this.modulesMap = {};
+        modules.forEach(m => { this.modulesMap[m.id] = m.display_name; });
+      }
+    } catch (error) {
+      console.error('Error loading modules map:', error);
+    }
+  }
+
   async loadLookups() {
     try {
       const response = await apiFetch('/lookups/configurations', {
@@ -255,6 +271,7 @@ export class LookupsPage {
             <div class="flex items-center gap-2 mb-1">
               <h3 class="text-lg font-semibold text-gray-900">${this.escapeHtml(lookup.label)}</h3>
               ${lookup.tenant_id === null ? '<span class="px-2 py-0.5 bg-purple-100 text-purple-700 rounded text-xs font-medium">Platform</span>' : ''}
+              ${lookup.module_id && this.modulesMap[lookup.module_id] ? `<span class="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-xs font-medium"><i class="ph ph-package"></i> ${this.escapeHtml(this.modulesMap[lookup.module_id])}</span>` : ''}
             </div>
             <p class="text-sm text-gray-500 mt-1">${this.escapeHtml(lookup.description || 'No description')}</p>
           </div>

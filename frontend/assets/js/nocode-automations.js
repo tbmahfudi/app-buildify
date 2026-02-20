@@ -45,9 +45,11 @@ export class AutomationsPage {
     this.conditionGroups = [];
     this.currentEntityFields = [];
     this.actions = [];
+    this.modulesMap = {};
   }
 
   async init() {
+    await this.loadModulesMap();
     await this.loadRules();
 
     // Make methods available globally for onclick handlers
@@ -257,6 +259,20 @@ export class AutomationsPage {
     }
   }
 
+  async loadModulesMap() {
+    try {
+      const response = await apiFetch('/modules');
+      if (response.ok) {
+        const data = await response.json();
+        const modules = Array.isArray(data) ? data : (data.modules || []);
+        this.modulesMap = {};
+        modules.forEach(m => { this.modulesMap[m.id] = m.display_name; });
+      }
+    } catch (error) {
+      console.error('Error loading modules map:', error);
+    }
+  }
+
   async loadRules() {
     try {
       const response = await apiFetch('/automations/rules', {
@@ -301,6 +317,7 @@ export class AutomationsPage {
             <div class="flex items-center gap-2 mb-1">
               <h3 class="text-lg font-semibold text-gray-900">${this.escapeHtml(rule.label)}</h3>
               ${rule.tenant_id === null ? '<span class="px-2 py-0.5 bg-purple-100 text-purple-700 rounded text-xs font-medium">Platform</span>' : ''}
+              ${rule.module_id && this.modulesMap[rule.module_id] ? `<span class="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-xs font-medium"><i class="ph ph-package"></i> ${this.escapeHtml(this.modulesMap[rule.module_id])}</span>` : ''}
             </div>
             <p class="text-sm text-gray-500 mt-1">${this.escapeHtml(rule.description || 'No description')}</p>
           </div>
@@ -313,6 +330,12 @@ export class AutomationsPage {
         </div>
 
         <div class="space-y-2 text-sm text-gray-600 mb-4">
+          ${rule.module_id && this.modulesMap[rule.module_id] ? `
+          <div class="flex items-center gap-2">
+            <i class="ph ph-package"></i>
+            <span>Module: ${this.escapeHtml(this.modulesMap[rule.module_id])}</span>
+          </div>
+          ` : ''}
           <div class="flex items-center gap-2">
             <i class="ph ph-lightning"></i>
             <span>Trigger: ${rule.trigger_type}</span>
