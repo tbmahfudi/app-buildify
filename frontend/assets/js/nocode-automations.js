@@ -494,9 +494,18 @@ export class AutomationsPage {
 
     container.innerHTML = this.webhooks.map(webhook => `
       <div class="bg-white border border-gray-200 rounded-lg p-6">
-        <h3 class="text-lg font-semibold text-gray-900 mb-2">${this.escapeHtml(webhook.label)}</h3>
+        <div class="flex items-center gap-2 mb-2">
+          <h3 class="text-lg font-semibold text-gray-900">${this.escapeHtml(webhook.label)}</h3>
+          ${webhook.module_id && this.modulesMap[webhook.module_id] ? `<span class="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-xs font-medium"><i class="ph ph-package"></i> ${this.escapeHtml(this.modulesMap[webhook.module_id])}</span>` : ''}
+        </div>
         <p class="text-sm text-gray-500 mb-4">${this.escapeHtml(webhook.description || 'No description')}</p>
         <div class="space-y-2 text-sm">
+          ${webhook.module_id && this.modulesMap[webhook.module_id] ? `
+          <div class="flex items-center gap-2 text-gray-600">
+            <i class="ph ph-package"></i>
+            <span>Module: ${this.escapeHtml(this.modulesMap[webhook.module_id])}</span>
+          </div>
+          ` : ''}
           <div class="flex items-center gap-2 text-gray-600">
             <i class="ph ph-arrows-left-right"></i>
             <span>Type: ${webhook.webhook_type}</span>
@@ -1218,6 +1227,15 @@ export class AutomationsPage {
                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"></textarea>
           </div>
 
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Module</label>
+            <select name="module_id" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+              <option value="">-- No Module --</option>
+              ${Object.entries(this.modulesMap).map(([id, name]) => `<option value="${id}">${this.escapeHtml(name)}</option>`).join('')}
+            </select>
+            <p class="text-xs text-gray-500 mt-1">Optionally assign this webhook to a module</p>
+          </div>
+
           <div class="flex gap-3 pt-4 border-t">
             <button type="submit" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
               <i class="ph ph-plus"></i> Create Webhook
@@ -1252,6 +1270,12 @@ export class AutomationsPage {
       url: formData.get('url') || null,
       description: formData.get('description') || null
     };
+
+    // Add module_id if selected
+    const moduleId = formData.get('module_id');
+    if (moduleId) {
+      data.module_id = moduleId;
+    }
 
     try {
       const response = await apiFetch('/automations/webhooks', {
