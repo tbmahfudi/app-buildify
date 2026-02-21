@@ -900,6 +900,15 @@ export class AutomationsPage {
               <label class="block text-sm font-medium text-gray-700 mb-2">Category</label>
               <input type="text" name="category" value="${this.escapeHtml(rule.category || '')}" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="e.g., Ticket Management">
             </div>
+
+            <div class="mt-4">
+              <label class="block text-sm font-medium text-gray-700 mb-2">Module</label>
+              <select name="module_id" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
+                <option value="">-- No Module --</option>
+                ${Object.entries(this.modulesMap).map(([id, name]) => `<option value="${id}" ${rule.module_id === id ? 'selected' : ''}>${this.escapeHtml(name)}</option>`).join('')}
+              </select>
+              <p class="text-xs text-gray-500 mt-1">Optionally assign this rule to a module</p>
+            </div>
           </div>
 
           <!-- Trigger Configuration (Read-only) -->
@@ -1039,6 +1048,7 @@ export class AutomationsPage {
       category: formData.get('category') || null,
       priority: parseInt(formData.get('priority')) || 0,
       is_active: formData.get('is_active') === 'on',
+      module_id: formData.get('module_id') || null,
       execution_config: {
         run_async: formData.get('run_async') === 'on',
         max_retries: parseInt(formData.get('max_retries')) || 3,
