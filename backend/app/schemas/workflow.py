@@ -143,12 +143,14 @@ class WorkflowDefinitionBase(BaseModel):
 
 class WorkflowDefinitionCreate(WorkflowDefinitionBase):
     """Schema for creating a workflow definition"""
+    module_id: Optional[UUID] = None
     states: Optional[List[WorkflowStateCreate]] = Field(default_factory=list)
     transitions: Optional[List[WorkflowTransitionCreate]] = Field(default_factory=list)
 
 
 class WorkflowDefinitionUpdate(BaseModel):
     """Schema for updating a workflow definition"""
+    module_id: Optional[UUID] = None
     label: Optional[str] = None
     description: Optional[str] = None
     category: Optional[str] = None

@@ -46,11 +46,13 @@ class AutomationRuleBase(BaseModel):
 
 class AutomationRuleCreate(AutomationRuleBase):
     """Schema for creating an automation rule"""
+    module_id: Optional[UUID] = None
     is_active: bool = False  # Default to inactive, user can enable from list
 
 
 class AutomationRuleUpdate(BaseModel):
     """Schema for updating an automation rule"""
+    module_id: Optional[UUID] = None
     label: Optional[str] = None
     description: Optional[str] = None
     category: Optional[str] = None
