@@ -59,6 +59,8 @@ export class LookupsPage {
       testLookup: (id) => this.testLookup(id),
       deleteLookup: (id) => this.deleteLookup(id),
       editLookup: (id) => this.editLookup(id),
+      closeEditModal: () => this.closeEditModal(),
+      saveLookupEdit: (event) => this.saveLookupEdit(event),
       viewData: (id) => this.viewData(id),
       showCreateCascadingModal: () => this.showCreateCascadingModal(),
       viewCascadingRule: (id) => this.viewCascadingRule(id),
@@ -221,10 +223,23 @@ export class LookupsPage {
         const modules = Array.isArray(data) ? data : (data.modules || []);
         this.modulesMap = {};
         modules.forEach(m => { this.modulesMap[m.id] = m.display_name; });
+        this.populateModuleSelect(modules);
       }
     } catch (error) {
       console.error('Error loading modules map:', error);
     }
+  }
+
+  populateModuleSelect(modules) {
+    const select = document.getElementById('lookup_module_select');
+    if (!select) return;
+    select.innerHTML = '<option value="">-- No Module --</option>';
+    modules.forEach(m => {
+      const option = document.createElement('option');
+      option.value = m.id;
+      option.textContent = m.display_name || m.name;
+      select.appendChild(option);
+    });
   }
 
   async loadLookups() {
@@ -281,6 +296,12 @@ export class LookupsPage {
         </div>
 
         <div class="space-y-2 text-sm text-gray-600 mb-4">
+          ${lookup.module_id && this.modulesMap[lookup.module_id] ? `
+          <div class="flex items-center gap-2">
+            <i class="ph ph-package"></i>
+            <span>Module: ${this.escapeHtml(this.modulesMap[lookup.module_id])}</span>
+          </div>
+          ` : ''}
           <div class="flex items-center gap-2">
             <i class="ph ph-database"></i>
             <span>Source: ${lookup.source_type}</span>
@@ -311,8 +332,11 @@ export class LookupsPage {
           <button onclick="LookupApp.viewLookup('${lookup.id}')" class="flex-1 px-3 py-2 bg-orange-50 text-orange-700 rounded-lg hover:bg-orange-100 text-sm font-medium">
             <i class="ph ph-eye"></i> View
           </button>
-          <button onclick="LookupApp.testLookup('${lookup.id}')" class="flex-1 px-3 py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 text-sm font-medium">
-            <i class="ph ph-play"></i> Test
+          <button onclick="LookupApp.editLookup('${lookup.id}')" class="flex-1 px-3 py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 text-sm font-medium">
+            <i class="ph ph-pencil"></i> Edit
+          </button>
+          <button onclick="LookupApp.testLookup('${lookup.id}')" class="px-3 py-2 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 text-sm">
+            <i class="ph ph-play"></i>
           </button>
           <button onclick="LookupApp.deleteLookup('${lookup.id}')" class="px-3 py-2 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 text-sm">
             <i class="ph ph-trash"></i>
@@ -414,6 +438,12 @@ export class LookupsPage {
       enable_caching: formData.get('enable_caching') === 'on',
       is_active: true
     };
+
+    // Add module_id if selected
+    const moduleId = formData.get('module_id');
+    if (moduleId) {
+      data.module_id = moduleId;
+    }
 
     // Add source-type specific fields
     switch (sourceType) {
@@ -666,8 +696,111 @@ export class LookupsPage {
     }
   }
 
-  editLookup(id) {
-    this.showError('Edit feature coming soon - will open configuration editor');
+  async editLookup(id) {
+    try {
+      const response = await apiFetch(`/lookups/configurations/${id}`, {
+        headers: {
+          'Authorization': `Bearer ${authService.getToken()}`
+        }
+      });
+
+      if (!response.ok) {
+        this.showError('Failed to load lookup configuration');
+        return;
+      }
+
+      const lookup = await response.json();
+
+      // Close view modal if open
+      document.getElementById('viewLookupModal')?.classList.add('hidden');
+
+      // Pre-fill the edit form
+      document.getElementById('edit_lookup_id').value = lookup.id;
+      document.getElementById('edit_lookup_label').value = lookup.label || '';
+      document.getElementById('edit_lookup_description').value = lookup.description || '';
+      document.getElementById('edit_lookup_display_field').value = lookup.display_field || '';
+      document.getElementById('edit_lookup_value_field').value = lookup.value_field || 'id';
+      document.getElementById('edit_lookup_placeholder').value = lookup.placeholder_text || '';
+      document.getElementById('edit_lookup_search').checked = lookup.enable_search !== false;
+      document.getElementById('edit_lookup_caching').checked = lookup.enable_caching !== false;
+      document.getElementById('edit_lookup_cache_ttl').value = lookup.cache_ttl_seconds || 3600;
+      document.getElementById('edit_lookup_active').checked = lookup.is_active !== false;
+
+      // Populate module select for edit form
+      const editModuleSelect = document.getElementById('edit_lookup_module_select');
+      if (editModuleSelect) {
+        editModuleSelect.innerHTML = '<option value="">-- No Module --</option>';
+        Object.entries(this.modulesMap).forEach(([moduleId, displayName]) => {
+          const option = document.createElement('option');
+          option.value = moduleId;
+          option.textContent = displayName;
+          if (lookup.module_id === moduleId) {
+            option.selected = true;
+          }
+          editModuleSelect.appendChild(option);
+        });
+      }
+
+      // Show edit modal
+      document.getElementById('editLookupModal').classList.remove('hidden');
+    } catch (error) {
+      console.error('Error loading lookup for edit:', error);
+      this.showError('Error loading lookup configuration');
+    }
+  }
+
+  closeEditModal() {
+    document.getElementById('editLookupModal')?.classList.add('hidden');
+    document.getElementById('editLookupForm')?.reset();
+  }
+
+  async saveLookupEdit(event) {
+    event.preventDefault();
+    const formData = new FormData(event.target);
+    const lookupId = formData.get('edit_lookup_id');
+
+    const updateData = {
+      label: formData.get('label'),
+      description: formData.get('description') || '',
+      display_field: formData.get('display_field') || null,
+      value_field: formData.get('value_field') || null,
+      placeholder_text: formData.get('placeholder_text') || null,
+      enable_search: formData.get('enable_search') === 'on',
+      enable_caching: formData.get('enable_caching') === 'on',
+      cache_ttl_seconds: parseInt(formData.get('cache_ttl_seconds')) || 3600,
+      is_active: formData.get('is_active') === 'on'
+    };
+
+    // Add module_id if selected
+    const moduleId = formData.get('module_id');
+    if (moduleId) {
+      updateData.module_id = moduleId;
+    } else {
+      updateData.module_id = null;
+    }
+
+    try {
+      const response = await apiFetch(`/lookups/configurations/${lookupId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authService.getToken()}`
+        },
+        body: JSON.stringify(updateData)
+      });
+
+      if (response.ok) {
+        this.closeEditModal();
+        await this.loadLookups();
+        this.showSuccess('Lookup configuration updated successfully');
+      } else {
+        const error = await response.json();
+        this.showError(error.detail || 'Failed to update lookup configuration');
+      }
+    } catch (error) {
+      console.error('Error updating lookup:', error);
+      this.showError('Error updating lookup configuration');
+    }
   }
 
   viewData(id) {

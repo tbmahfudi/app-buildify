@@ -267,10 +267,23 @@ export class AutomationsPage {
         const modules = Array.isArray(data) ? data : (data.modules || []);
         this.modulesMap = {};
         modules.forEach(m => { this.modulesMap[m.id] = m.display_name; });
+        this.populateModuleSelect(modules);
       }
     } catch (error) {
       console.error('Error loading modules map:', error);
     }
+  }
+
+  populateModuleSelect(modules) {
+    const select = document.getElementById('automation_module_select');
+    if (!select) return;
+    select.innerHTML = '<option value="">-- No Module --</option>';
+    modules.forEach(m => {
+      const option = document.createElement('option');
+      option.value = m.id;
+      option.textContent = m.display_name || m.name;
+      select.appendChild(option);
+    });
   }
 
   async loadRules() {
@@ -606,6 +619,12 @@ export class AutomationsPage {
       actions: [],
       is_active: formData.get('is_active') === 'on'
     };
+
+    // Add module_id if selected
+    const moduleId = formData.get('module_id');
+    if (moduleId) {
+      data.module_id = moduleId;
+    }
 
     try {
       const response = await apiFetch('/automations/rules', {

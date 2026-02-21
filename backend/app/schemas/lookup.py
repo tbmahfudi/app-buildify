@@ -62,11 +62,12 @@ class LookupConfigurationBase(BaseModel):
 
 class LookupConfigurationCreate(LookupConfigurationBase):
     """Schema for creating a lookup configuration"""
-    pass
+    module_id: Optional[UUID] = None
 
 
 class LookupConfigurationUpdate(BaseModel):
     """Schema for updating a lookup configuration"""
+    module_id: Optional[UUID] = None
     label: Optional[str] = None
     description: Optional[str] = None
     display_field: Optional[str] = None
