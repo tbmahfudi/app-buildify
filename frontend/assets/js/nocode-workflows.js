@@ -609,6 +609,13 @@ export class WorkflowsPage {
               </select>
             </div>
           </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Module</label>
+            <select name="module_id" id="edit_workflow_module_select" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
+              <option value="">-- No Module --</option>
+              ${Object.entries(this.modulesMap).map(([id, name]) => `<option value="${id}" ${workflow.module_id === id ? 'selected' : ''}>${this.escapeHtml(name)}</option>`).join('')}
+            </select>
+          </div>
           <div class="flex gap-3 pt-4 border-t">
             <button type="submit" class="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700">
               <i class="ph ph-check"></i> Save Changes
@@ -640,7 +647,8 @@ export class WorkflowsPage {
       label: formData.get('label'),
       description: formData.get('description') || null,
       category: formData.get('category') || null,
-      trigger_type: formData.get('trigger_type')
+      trigger_type: formData.get('trigger_type'),
+      module_id: formData.get('module_id') || null
     };
 
     try {
