@@ -213,11 +213,12 @@ class WebhookConfigBase(BaseModel):
 
 class WebhookConfigCreate(WebhookConfigBase):
     """Schema for creating a webhook config"""
-    pass
+    module_id: Optional[UUID] = None
 
 
 class WebhookConfigUpdate(BaseModel):
     """Schema for updating a webhook config"""
+    module_id: Optional[UUID] = None
     label: Optional[str] = None
     description: Optional[str] = None
     secret_token: Optional[str] = None
@@ -236,6 +237,7 @@ class WebhookConfigResponse(WebhookConfigBase):
     """Schema for webhook config response"""
     id: UUID
     tenant_id: Optional[UUID]  # NULL for platform-level webhook configs
+    module_id: Optional[UUID] = None
     is_active: bool
     total_calls: int
     successful_calls: int

@@ -252,6 +252,9 @@ class WebhookConfig(Base):
     # tenant_id: NULL = platform-level webhook, specific ID = tenant-specific webhook
     tenant_id = Column(GUID, ForeignKey("tenants.id"), nullable=True)
 
+    # module_id: Associates webhook with a specific module (optional)
+    module_id = Column(GUID, ForeignKey("modules.id"), nullable=True, index=True)
+
     # Basic Info
     name = Column(String(100), nullable=False)
     label = Column(String(200), nullable=False)
