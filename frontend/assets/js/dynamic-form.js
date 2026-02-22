@@ -486,9 +486,12 @@ export class DynamicForm {
 
       const params = new URLSearchParams({ limit: '100' });
 
+      // Prefer entity name for the API call (dynamic-data API uses entity name, not UUID)
+      const entityIdentifier = fieldConfig.reference_entity_name || fieldConfig.reference_entity_id;
+
       // Fetch records from the referenced entity
       const response = await fetch(
-        `/api/v1/dynamic-data/${fieldConfig.reference_entity_id}/records?${params}`
+        `/api/v1/dynamic-data/${entityIdentifier}/records?${params}`
       );
 
       if (!response.ok) {
@@ -2188,8 +2191,11 @@ export class DynamicForm {
         ...filter
       });
 
+      // Prefer entity name for the API call (dynamic-data API uses entity name, not UUID)
+      const entityIdentifier = fieldConfig.reference_entity_name || fieldConfig.reference_entity_id;
+
       const response = await fetch(
-        `/api/v1/dynamic-data/${fieldConfig.reference_entity_id}/records?${params}`
+        `/api/v1/dynamic-data/${entityIdentifier}/records?${params}`
       );
 
       if (!response.ok) {
@@ -2200,7 +2206,7 @@ export class DynamicForm {
       const records = data.data || data.records || data || [];
 
       // Format as options
-      const displayField = fieldConfig.reference_field || 'name';
+      const displayField = fieldConfig.display_field || fieldConfig.reference_field || 'name';
       return records.map(record => ({
         value: record.id,
         label: record[displayField] || record.name || record.id
