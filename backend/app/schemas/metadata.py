@@ -18,6 +18,7 @@ class FieldMetadata(BaseModel):
     help_text: Optional[str] = Field(None, description="Help text for the field")
     placeholder: Optional[str] = Field(None, description="Placeholder text")
     reference_entity_id: Optional[str] = Field(None, description="Referenced entity ID for lookup/reference fields")
+    reference_entity_name: Optional[str] = Field(None, description="Referenced entity name for API calls (e.g., 'TicketCategory')")
     reference_table_name: Optional[str] = Field(None, description="Referenced table name for system lookups")
     reference_field: Optional[str] = Field(None, description="Target column in referenced table (e.g., 'id')")
     display_field: Optional[str] = Field(None, description="Column to display in UI dropdown (e.g., 'name')")

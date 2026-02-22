@@ -217,12 +217,44 @@ class MetadataSyncService:
             }
 
             # Add field-specific configuration
-            if field.field_type == 'choice':
-                form_field['options'] = json.loads(field.field_config).get('choices', []) if field.field_config else []
+            if field.field_type in ('choice', 'select'):
+                # Build options list from allowed_values (set by frontend) or field_config (legacy)
+                options = []
+                if field.allowed_values:
+                    raw = field.allowed_values
+                    if isinstance(raw, str):
+                        try:
+                            raw = json.loads(raw)
+                        except (json.JSONDecodeError, TypeError):
+                            raw = []
+                    if isinstance(raw, list):
+                        for opt in raw:
+                            if isinstance(opt, dict):
+                                options.append({'value': opt.get('value', opt), 'label': opt.get('label', opt.get('value', opt))})
+                            else:
+                                options.append({'value': str(opt), 'label': str(opt)})
+                elif field.field_config:
+                    try:
+                        config = json.loads(field.field_config) if isinstance(field.field_config, str) else field.field_config
+                        raw_choices = config.get('choices', [])
+                        for choice in raw_choices:
+                            if isinstance(choice, dict):
+                                options.append({'value': choice.get('value', choice), 'label': choice.get('label', choice.get('value', choice))})
+                            else:
+                                options.append({'value': str(choice), 'label': str(choice)})
+                    except (json.JSONDecodeError, TypeError, AttributeError):
+                        pass
+                form_field['options'] = options
             elif field.field_type in ('lookup', 'reference'):
                 # Include reference entity info so frontend can fetch lookup options
                 if field.reference_entity_id:
                     form_field['reference_entity_id'] = str(field.reference_entity_id)
+                    # Include entity name so frontend can call the correct API endpoint
+                    try:
+                        if field.reference_entity:
+                            form_field['reference_entity_name'] = field.reference_entity.name
+                    except Exception:
+                        pass
                 if field.reference_table_name:
                     form_field['reference_table_name'] = field.reference_table_name
                 form_field['reference_field'] = field.reference_field or 'id'
@@ -287,12 +319,14 @@ class MetadataSyncService:
             'date': 'date',
             'datetime': 'datetime',
             'uuid': 'text',
+            'select': 'select',
             'choice': 'select',
             'lookup': 'select',
             'reference': 'select',
             'json': 'json',
             'file': 'file',
-            'url': 'url'
+            'url': 'url',
+            'phone': 'text',
         }
         return type_map.get(field_type, 'text')
 
@@ -375,6 +409,10 @@ class MetadataSyncService:
 
         return merged
 
+    def _get_field_name(self, field: Dict[str, Any]) -> str:
+        """Get field name from a field dict, supporting both 'name' and 'field' keys"""
+        return field.get('name') or field.get('field') or ''
+
     def _merge_form_config(
         self,
         existing: Dict[str, Any],
@@ -391,17 +429,17 @@ class MetadataSyncService:
         if not existing:
             return new
 
-        # Get existing fields by name
-        existing_fields = {f['name']: f for f in existing.get('fields', [])}
-        new_fields = {f['name']: f for f in new.get('fields', [])}
+        # Get existing fields by name - support both 'name' and 'field' keys
+        existing_fields = {self._get_field_name(f): f for f in existing.get('fields', [])}
+        new_fields = {self._get_field_name(f): f for f in new.get('fields', [])}
 
         # Merge fields
         merged_fields = []
 
         # First, add existing fields that still exist in new definition
         for field in existing.get('fields', []):
-            field_name = field['name']
-            if field_name in new_fields:
+            field_name = self._get_field_name(field)
+            if field_name and field_name in new_fields:
                 # Keep user customizations (order, visibility, help text, etc.)
                 # Update field metadata from new definition
                 merged_field = {**new_fields[field_name], **field}
