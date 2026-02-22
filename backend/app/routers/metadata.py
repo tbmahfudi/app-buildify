@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.core.audit import create_audit_log
 from app.core.dependencies import get_current_user, get_db, has_permission
+from app.models.data_model import EntityDefinition
 from app.models.metadata import EntityMetadata
 from app.models.user import User
 from app.schemas.metadata import (
@@ -18,6 +19,7 @@ from app.schemas.metadata import (
     FormConfig,
     TableConfig,
 )
+from app.services.metadata_sync_service import MetadataSyncService
 
 router = APIRouter(prefix="/api/v1/metadata", tags=["metadata"])
 logger = logging.getLogger(__name__)
@@ -270,5 +272,79 @@ def delete_entity_metadata(
         context_info={"entity_name": entity_name},
         status="success"
     )
-    
+
     return None
+
+
+@router.post("/entities/{entity_name}/regenerate", response_model=EntityMetadataResponse)
+def regenerate_entity_metadata(
+    entity_name: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(has_permission("metadata:update:tenant"))
+):
+    """
+    Force-regenerate metadata for a published entity from scratch.
+
+    Drops the existing stored metadata and rebuilds it entirely from the
+    entity definition.  Use this to pick up code-level fixes (e.g. updated
+    field-type mappings) without having to re-publish the entity through the
+    Data Model Designer.
+
+    Requires permission: metadata:update:tenant
+    """
+    # Find the published entity definition
+    entity_def = db.query(EntityDefinition).filter(
+        EntityDefinition.name == entity_name,
+        EntityDefinition.status == "published",
+        EntityDefinition.is_deleted == False,
+    ).first()
+
+    if not entity_def:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No published entity definition found for '{entity_name}'"
+        )
+
+    # Hard-delete any existing metadata so auto_generate_metadata starts fresh
+    existing = db.query(EntityMetadata).filter(
+        EntityMetadata.entity_name == entity_name
+    ).first()
+    if existing:
+        db.delete(existing)
+        db.commit()
+
+    # Regenerate
+    sync_service = MetadataSyncService(db)
+    metadata = sync_service.auto_generate_metadata(entity_def, str(current_user.id))
+
+    # Audit
+    create_audit_log(
+        db=db,
+        action="REGENERATE_METADATA",
+        user=current_user,
+        entity_type="entity_metadata",
+        entity_id=str(metadata.id),
+        context_info={"entity_name": entity_name},
+        status="success"
+    )
+
+    table_config = json.loads(metadata.table_config) if metadata.table_config else {}
+    form_config = json.loads(metadata.form_config) if metadata.form_config else {}
+
+    return EntityMetadataResponse(
+        id=str(metadata.id),
+        entity_name=metadata.entity_name,
+        display_name=metadata.display_name,
+        description=metadata.description,
+        icon=metadata.icon,
+        table=TableConfig(**table_config),
+        form=FormConfig(**form_config),
+        permissions={},
+        version=metadata.version,
+        is_active=metadata.is_active,
+        is_system=metadata.is_system,
+        created_at=metadata.created_at,
+        updated_at=metadata.updated_at,
+        created_by=str(metadata.created_by) if metadata.created_by else None,
+        updated_by=str(metadata.updated_by) if metadata.updated_by else None
+    )
