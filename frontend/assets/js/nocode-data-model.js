@@ -116,7 +116,9 @@ export class DataModelPage {
       createPageFromEntity: (id) => this.createPageFromEntity(id),
       addEntityToMenu: (id) => this.addEntityToMenu(id),
       // Icon selection
-      selectEntityIcon: (icon) => this.selectEntityIcon(icon)
+      selectEntityIcon: (icon) => this.selectEntityIcon(icon),
+      // Metadata
+      regenerateMetadata: (entityName) => this.regenerateMetadata(entityName)
     };
   }
 
@@ -483,6 +485,15 @@ export class DataModelPage {
               <i class="ph ph-list-plus text-sm"></i> Menu
             </button>
           </div>
+          ${entity.status === 'published' ? `
+          <div class="flex gap-2">
+            <button onclick="DataModelApp.regenerateMetadata('${entity.name}')"
+                    class="flex-1 px-3 py-1.5 bg-orange-50 text-orange-700 rounded-lg hover:bg-orange-100 text-xs font-medium flex items-center justify-center gap-1"
+                    title="Rebuild form/table metadata from the entity definition (fixes stale field types)">
+              <i class="ph ph-arrows-clockwise text-sm"></i> Regenerate Metadata
+            </button>
+          </div>
+          ` : ''}
         </div>
       </div>
     `).join('');
@@ -697,7 +708,12 @@ export class DataModelPage {
                   <button onclick="DataModelApp.publishEntity('${entity.id}')" class="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700">
                     <i class="ph ph-rocket-launch"></i> Publish
                   </button>
-                ` : ''}
+                ` : `
+                  <button onclick="DataModelApp.regenerateMetadata('${entity.name}')" class="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600"
+                          title="Rebuild form/table metadata from the entity definition (fixes stale field types)">
+                    <i class="ph ph-arrows-clockwise"></i> Regenerate Metadata
+                  </button>
+                `}
                 <button onclick="DataModelApp.viewMigrations('${entity.id}')" class="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700">
                   <i class="ph ph-clock-clockwise"></i> Migration History
                 </button>
@@ -3045,6 +3061,29 @@ export class DataModelPage {
     } catch (error) {
       console.error('Error publishing entity:', error);
       this.showError('Error publishing entity');
+    }
+  }
+
+  async regenerateMetadata(entityName) {
+    if (!confirm(`Regenerate metadata for "${entityName}"?\n\nThis rebuilds the auto-generated form and table configuration from scratch, fixing any stale field types (e.g. select/lookup fields showing as plain textboxes).\n\nAny manual metadata customisations will be lost.`)) return;
+
+    try {
+      const response = await apiFetch(`/metadata/entities/${entityName}/regenerate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        this.showError(error.detail || `Failed to regenerate metadata for "${entityName}"`);
+        return;
+      }
+
+      this.showSuccess(`Metadata for "${entityName}" regenerated successfully. Reload the form to see updated field types.`);
+      this.closeViewModal();
+    } catch (error) {
+      console.error('Error regenerating metadata:', error);
+      this.showError(`Error regenerating metadata for "${entityName}"`);
     }
   }
 
