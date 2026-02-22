@@ -409,6 +409,17 @@ class MetadataSyncService:
 
         return merged
 
+    # Field properties that are always derived from the entity definition.
+    # These must never be overridden by stale stored values when re-syncing.
+    _SCHEMA_DRIVEN_FIELD_KEYS = frozenset({
+        'type', 'required',
+        'options',
+        'reference_entity_id', 'reference_entity_name',
+        'reference_table_name', 'reference_field', 'display_field',
+        'lookup_search_fields', 'lookup_allow_create', 'lookup_display_template',
+        'depends_on_field', 'filter_expression',
+    })
+
     def _get_field_name(self, field: Dict[str, Any]) -> str:
         """Get field name from a field dict, supporting both 'name' and 'field' keys"""
         return field.get('name') or field.get('field') or ''
@@ -425,6 +436,9 @@ class MetadataSyncService:
         - Keep user-modified field orders and groupings
         - Add new fields from entity definition
         - Remove fields for deleted fields
+        - Always refresh schema-driven properties (type, options, reference info)
+          from the freshly-generated config so stale DB values can never override
+          a code-level fix to field-type mapping.
         """
         if not existing:
             return new
@@ -440,9 +454,17 @@ class MetadataSyncService:
         for field in existing.get('fields', []):
             field_name = self._get_field_name(field)
             if field_name and field_name in new_fields:
-                # Keep user customizations (order, visibility, help text, etc.)
-                # Update field metadata from new definition
-                merged_field = {**new_fields[field_name], **field}
+                new_field = new_fields[field_name]
+                # Start with new as base, layer existing on top to preserve
+                # user customisations (help_text, placeholder, rbac, etc.)
+                merged_field = {**new_field, **field}
+                # Always restore schema-driven keys from the freshly generated
+                # config so a code fix to type-mapping is picked up on re-sync.
+                for key in self._SCHEMA_DRIVEN_FIELD_KEYS:
+                    if key in new_field:
+                        merged_field[key] = new_field[key]
+                    else:
+                        merged_field.pop(key, None)
                 merged_fields.append(merged_field)
 
         # Add new fields not in existing config
