@@ -1865,6 +1865,7 @@ export class DataModelPage {
           <h3 class="text-lg font-semibold text-gray-900">Edit Field: ${this.escapeHtml(field.label)}</h3>
         </div>
         <form id="editFieldForm" class="flex-1 flex flex-col min-h-0">
+          <input type="hidden" name="field_type" value="${field.field_type}">
           <div class="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 pb-64">
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
@@ -2061,16 +2062,9 @@ export class DataModelPage {
   }
 
   getSelectOptions(field) {
-    // Extract options from field_config JSON
-    if (field.field_config) {
-      try {
-        const config = typeof field.field_config === 'string' ? JSON.parse(field.field_config) : field.field_config;
-        if (config.choices && Array.isArray(config.choices)) {
-          return config.choices.join('\n');
-        }
-      } catch (e) {
-        console.error('Error parsing field_config:', e);
-      }
+    // Options are stored in allowed_values on the API response
+    if (field.allowed_values && Array.isArray(field.allowed_values) && field.allowed_values.length > 0) {
+      return field.allowed_values.join('\n');
     }
     return '';
   }
@@ -2109,6 +2103,18 @@ export class DataModelPage {
     }
     if (formData.get('relationship_type')) {
       data.relationship_type = formData.get('relationship_type');
+    }
+
+    // Update select field options
+    if (formData.get('field_type') === 'select') {
+      const selectOptions = formData.get('select_options');
+      if (selectOptions) {
+        data.allowed_values = selectOptions.split('\n')
+          .map(opt => opt.trim())
+          .filter(opt => opt.length > 0);
+      } else {
+        data.allowed_values = [];
+      }
     }
 
     try {
