@@ -145,8 +145,30 @@ async def update_field(
     current_user = Depends(get_current_user)
 ):
     """Update a field definition"""
+    import logging
+    _logger = logging.getLogger(__name__)
+
     service = DataModelService(db, current_user)
-    return await service.update_field(entity_id, field_id, field)
+    updated_field = await service.update_field(entity_id, field_id, field)
+
+    # Re-sync EntityMetadata so that changes (e.g. allowed_values) are reflected
+    # in the stored form/table config used by the UI.
+    try:
+        from app.models.data_model import EntityDefinition
+        from app.services.metadata_sync_service import MetadataSyncService
+        entity_def = db.query(EntityDefinition).filter(
+            EntityDefinition.id == entity_id,
+            EntityDefinition.is_deleted == False,
+        ).first()
+        if entity_def and entity_def.status == "published":
+            MetadataSyncService(db).auto_generate_metadata(
+                entity_definition=entity_def,
+                created_by=str(current_user.id),
+            )
+    except Exception as e:
+        _logger.warning(f"Metadata re-sync after field update failed (non-fatal): {e}")
+
+    return updated_field
 
 
 @router.delete("/entities/{entity_id}/fields/{field_id}")
