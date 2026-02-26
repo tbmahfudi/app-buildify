@@ -444,6 +444,14 @@ export class DynamicForm {
       label: opt.label
     }));
 
+    // Hidden input keeps the selected value in the DOM so getValues() / getFormData()
+    // can read element.value without knowing about FlexSelect internals.
+    const hiddenInput = document.createElement('input');
+    hiddenInput.type = 'hidden';
+    hiddenInput.name = fieldConfig.field;
+    hiddenInput.value = value || '';
+    container.appendChild(hiddenInput);
+
     const component = new FlexSelect(container, {
       label: labelText,
       value: value || '',
@@ -454,14 +462,13 @@ export class DynamicForm {
       helperText: helperText,
       searchable: options.length > 10, // Make searchable if many options
       variant: 'outlined',
-      size: 'md'
+      size: 'md',
+      onChange: (val) => { hiddenInput.value = val ?? ''; }
     });
 
-    // Store references
-    this.fields.set(fieldConfig.field, component.selectElement);
+    // Store the hidden input so getValues() gets a real element with .value
+    this.fields.set(fieldConfig.field, hiddenInput);
     this.fieldComponents.set(fieldConfig.field, component);
-
-    component.selectElement.name = fieldConfig.field;
 
     // Auto-fetch options for reference/lookup fields that have a reference_entity_id
     if (fieldConfig.reference_entity_id && !fieldConfig.depends_on_field) {
