@@ -157,10 +157,24 @@ class RuntimeModelGenerator:
         Returns:
             Dictionary representation
         """
+        # Resolve the actual DB table name: if the entity belongs to a module that
+        # has a table_prefix, apply it now.  This mirrors the create_entity() logic
+        # in data_model_service but handles entities whose table_name was stored
+        # before a module was assigned (e.g. via import-from-database).
+        table_name = entity_def.table_name
+        if (
+            entity_def.module_id
+            and entity_def.module
+            and entity_def.module.table_prefix
+        ):
+            prefix = entity_def.module.table_prefix
+            if not table_name.startswith(f"{prefix}_"):
+                table_name = f"{prefix}_{table_name}"
+
         return {
             'id': str(entity_def.id),
             'name': entity_def.name,
-            'table_name': entity_def.table_name,
+            'table_name': table_name,
             'schema_name': entity_def.schema_name or 'public',
             'data_scope': getattr(entity_def, 'data_scope', 'tenant') or 'tenant',
             'label': entity_def.label,
