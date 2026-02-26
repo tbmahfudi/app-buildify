@@ -155,9 +155,10 @@ class FieldTypeMapper:
             'index': field_definition.get('is_indexed', False),
         }
 
-        # Add default value if specified
+        # Add default value if specified, coercing it to the correct Python type
+        # (e.g. DB-imported defaults arrive as SQL strings like 'false' / 'true')
         if 'default_value' in field_definition and field_definition['default_value'] is not None:
-            col_kwargs['default'] = field_definition['default_value']
+            col_kwargs['default'] = cls.deserialize_value(field_type, field_definition['default_value'])
 
         # Handle foreign keys for lookup/reference fields
         if include_foreign_key and field_type in ('lookup', 'reference'):
@@ -328,6 +329,13 @@ class FieldTypeMapper:
         """
         if value is None:
             return None
+
+        if field_type in ('boolean', 'checkbox'):
+            if isinstance(value, bool):
+                return value
+            if isinstance(value, str):
+                return value.lower() in ('true', '1', 'yes', 'on')
+            return bool(value)
 
         if field_type == 'date' and isinstance(value, str):
             return datetime.fromisoformat(value).date()
