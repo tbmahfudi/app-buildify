@@ -107,7 +107,8 @@ export default class FlexSelect extends BaseComponent {
      */
     createWrapper() {
         const wrapper = document.createElement('div');
-        wrapper.className = `flex-select-wrapper space-y-1.5 ${this.options.classes.join(' ')}`;
+        // `relative` ensures the component has a known boundary for focus/click detection.
+        wrapper.className = `flex-select-wrapper relative space-y-1.5 ${this.options.classes.join(' ')}`;
         return wrapper;
     }
 
@@ -188,12 +189,17 @@ export default class FlexSelect extends BaseComponent {
 
     /**
      * Create dropdown
+     *
+     * Uses `position: fixed` so the panel is never clipped by an ancestor's
+     * `overflow: hidden/auto` (e.g. a scrollable modal body).  The actual
+     * top/left/width are set dynamically in `_positionDropdown()`.
      */
     createDropdown() {
         const dropdown = document.createElement('div');
-        dropdown.className = `flex-select-dropdown absolute left-0 right-0 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg z-50 ${this.state.isOpen ? '' : 'hidden'}`;
+        // z-index must exceed the modal stack (FlexModal base = 1000, first modal = 1001).
+        dropdown.className = `flex-select-dropdown fixed bg-white border border-gray-300 rounded-lg shadow-lg overflow-y-auto ${this.state.isOpen ? '' : 'hidden'}`;
+        dropdown.style.zIndex = '9999';
         dropdown.style.maxHeight = this.options.maxHeight;
-        dropdown.style.overflowY = 'auto';
 
         if (this.options.searchable) {
             const searchBox = this.createSearchBox();
@@ -445,6 +451,35 @@ export default class FlexSelect extends BaseComponent {
     }
 
     /**
+     * Position the fixed dropdown below (or above) the trigger box.
+     * Must be called after render() so the elements are in the DOM.
+     */
+    _positionDropdown() {
+        const box = this.element.querySelector('.flex-select-box');
+        const dropdown = this.element.querySelector('.flex-select-dropdown');
+        if (!box || !dropdown || !this.state.isOpen) return;
+
+        const rect = box.getBoundingClientRect();
+        const viewportHeight = window.innerHeight;
+        const maxDropdownH = parseInt(this.options.maxHeight, 10) || 300;
+        const spaceBelow = viewportHeight - rect.bottom - 8;
+        const spaceAbove = rect.top - 8;
+
+        dropdown.style.left  = `${rect.left}px`;
+        dropdown.style.width = `${rect.width}px`;
+
+        if (spaceBelow >= Math.min(maxDropdownH, 150) || spaceBelow >= spaceAbove) {
+            // Open downward
+            dropdown.style.top    = `${rect.bottom + 4}px`;
+            dropdown.style.bottom = 'auto';
+        } else {
+            // Flip upward when there is more space above
+            dropdown.style.bottom = `${viewportHeight - rect.top + 4}px`;
+            dropdown.style.top    = 'auto';
+        }
+    }
+
+    /**
      * Open dropdown
      */
     open() {
@@ -454,6 +489,7 @@ export default class FlexSelect extends BaseComponent {
         this.state.focusedIndex = -1;
         this.render();
         this.attachEventListeners();
+        this._positionDropdown();
 
         if (this.searchInput) {
             this.searchInput.focus();
