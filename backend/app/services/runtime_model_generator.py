@@ -5,7 +5,7 @@ This service reads EntityDefinition metadata from the database and generates
 SQLAlchemy ORM models at runtime. Models are cached for performance.
 """
 
-from typing import Type, Optional, Dict, Any, Set
+from typing import Type, Optional, Dict, Any, Set, List
 from sqlalchemy import Column, ForeignKey, Table, MetaData, String, DateTime, Boolean, text
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 import uuid
@@ -231,25 +231,33 @@ class RuntimeModelGenerator:
         for f in fields:
             user_field_names.add(f.get('db_column_name') or f['name'])
 
-        # Always add 'id' primary key column if not defined by the user.
-        # The migration generator always creates: id UUID PRIMARY KEY DEFAULT gen_random_uuid()
+        # Introspect the real table early — needed to decide whether a system 'id'
+        # column should be added and to fall back to DB PK when no 'id' exists.
+        db_columns = self._get_table_columns(table_name, schema_name)
+
+        # Add the system 'id' UUID primary-key column only when:
+        #   • no user-defined field claims the 'id' column name, AND
+        #   • the real table actually has an 'id' column (imported tables whose PK
+        #     has a different name must not get a phantom 'id' column).
         has_user_id = 'id' in user_field_names
-        if not has_user_id:
+        system_id_added = False
+        if not has_user_id and 'id' in db_columns:
             attrs['id'] = Column('id', PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+            system_id_added = True
 
-        # Determine which field should be the primary key
-        # If we added a system 'id', it's already the PK.
-        # Otherwise: 1) explicit is_primary_key, 2) field named 'id', 3) first field
-        pk_field_name = None if has_user_id else 'id'
+        # Determine which field should be the primary key.
+        # Priority: system 'id' we just added → explicit is_primary_key → field named 'id'
+        #           → DB-introspected PK → first field.
+        pk_field_name = 'id' if system_id_added else None
 
-        if has_user_id or not pk_field_name:
+        if not system_id_added:
             # Check for explicit primary key among user fields
             for f in fields:
                 if f.get('is_primary_key'):
                     pk_field_name = f['db_column_name'] or f['name']
                     break
 
-            # If no explicit PK, look for 'id' field
+            # If no explicit PK, look for a user field named 'id'
             if not pk_field_name:
                 for f in fields:
                     field_name = f['db_column_name'] or f['name']
@@ -257,7 +265,13 @@ class RuntimeModelGenerator:
                         pk_field_name = 'id'
                         break
 
-            # If still no PK, use the first field
+            # Fall back to the actual DB primary-key column(s) from information_schema
+            if not pk_field_name:
+                db_pk_cols = self._get_primary_key_columns(table_name, schema_name)
+                if db_pk_cols:
+                    pk_field_name = db_pk_cols[0]
+
+            # Last resort: first user field
             if not pk_field_name and fields:
                 pk_field_name = fields[0]['db_column_name'] or fields[0]['name']
 
@@ -280,10 +294,7 @@ class RuntimeModelGenerator:
         # part of the user-defined field definitions. These must be present in
         # the model so that DynamicEntityService can populate them and so that
         # _model_to_dict can read them back from the database.
-        #
-        # We introspect the actual database table to only add columns that
-        # truly exist, since older tables may not have all system columns.
-        db_columns = self._get_table_columns(table_name, schema_name)
+        # (db_columns was already fetched above for the id/PK decision.)
 
         # Map of system column name -> SQLAlchemy column definition
         system_columns = {
@@ -382,6 +393,35 @@ class RuntimeModelGenerator:
         except Exception as e:
             logger.warning(f"Could not introspect table {schema_name}.{table_name}: {e}")
             return set()
+
+    def _get_primary_key_columns(self, table_name: str, schema_name: str = 'public') -> List[str]:
+        """
+        Return the primary-key column names for a table, in key ordinal order.
+
+        Used as a fallback when no user-defined field is marked is_primary_key
+        and the table has no 'id' column (e.g. tables imported from an external DB
+        whose PK is named differently).
+
+        Returns:
+            List of PK column names, empty list if the table/PK cannot be found.
+        """
+        try:
+            result = self.db.execute(text("""
+                SELECT kcu.column_name
+                FROM information_schema.table_constraints tc
+                JOIN information_schema.key_column_usage kcu
+                    ON tc.constraint_name = kcu.constraint_name
+                   AND tc.table_schema    = kcu.table_schema
+                   AND tc.table_name     = kcu.table_name
+                WHERE tc.constraint_type = 'PRIMARY KEY'
+                  AND tc.table_schema = :schema
+                  AND tc.table_name   = :table
+                ORDER BY kcu.ordinal_position
+            """), {"schema": schema_name, "table": table_name})
+            return [row[0] for row in result]
+        except Exception as e:
+            logger.warning(f"Could not get PK columns for {schema_name}.{table_name}: {e}")
+            return []
 
     def _to_class_name(self, entity_name: str) -> str:
         """
