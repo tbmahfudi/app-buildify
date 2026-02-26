@@ -3,6 +3,7 @@
  * Now uses Flex* components for consistent UI
  */
 import { canViewField, canEditField } from './rbac.js';
+import { apiFetch, getAuthToken } from './api.js';
 import FlexInput from './components/flex-input.js';
 import FlexTextarea from './components/flex-textarea.js';
 import FlexSelect from './components/flex-select.js';
@@ -492,10 +493,8 @@ export class DynamicForm {
       // Prefer entity name for the API call (dynamic-data API uses entity name, not UUID)
       const entityIdentifier = fieldConfig.reference_entity_name || fieldConfig.reference_entity_id;
 
-      // Fetch records from the referenced entity
-      const response = await fetch(
-        `/api/v1/dynamic-data/${entityIdentifier}/records?${params}`
-      );
+      // Fetch records from the referenced entity (apiFetch adds the auth token)
+      const response = await apiFetch(`/dynamic-data/${entityIdentifier}/records?${params}`);
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
@@ -1140,7 +1139,10 @@ export class DynamicForm {
 
     if (source === 'api' && fieldConfig.meta_data?.api_url) {
       try {
-        const response = await fetch(`${fieldConfig.meta_data.api_url}?q=${encodeURIComponent(query)}`);
+        const token = getAuthToken();
+        const response = await fetch(`${fieldConfig.meta_data.api_url}?q=${encodeURIComponent(query)}`, {
+          headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+        });
         const data = await response.json();
         return data.results || data;
       } catch (error) {
@@ -2193,16 +2195,14 @@ export class DynamicForm {
       // Prefer entity name for the API call (dynamic-data API uses entity name, not UUID)
       const entityIdentifier = fieldConfig.reference_entity_name || fieldConfig.reference_entity_id;
 
-      const response = await fetch(
-        `/api/v1/dynamic-data/${entityIdentifier}/records?${params}`
-      );
+      const response = await apiFetch(`/dynamic-data/${entityIdentifier}/records?${params}`);
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
       }
 
       const data = await response.json();
-      const records = data.data || data.records || data || [];
+      const records = data.items || data.data || data.records || [];
 
       // Format as options
       const displayField = fieldConfig.display_field || fieldConfig.reference_field || 'name';
@@ -2231,7 +2231,10 @@ export class DynamicForm {
         params.append(fieldConfig.depends_on_field, parentValue);
       }
 
-      const response = await fetch(`${apiUrl}?${params}`);
+      const token = getAuthToken();
+      const response = await fetch(`${apiUrl}?${params}`, {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      });
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
