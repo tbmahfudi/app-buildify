@@ -159,6 +159,11 @@ class FieldTypeMapper:
         # (e.g. DB-imported defaults arrive as SQL strings like 'false' / 'true')
         if 'default_value' in field_definition and field_definition['default_value'] is not None:
             col_kwargs['default'] = cls.deserialize_value(field_type, field_definition['default_value'])
+        elif field_type == 'uuid' and col_kwargs.get('primary_key'):
+            # UUID primary keys always need a Python-side default so SQLAlchemy can
+            # generate the value when no explicit id is supplied (e.g. user-defined id
+            # fields imported from an existing database schema).
+            col_kwargs['default'] = uuid.uuid4
 
         # Handle foreign keys for lookup/reference fields
         if include_foreign_key and field_type in ('lookup', 'reference'):
