@@ -329,6 +329,13 @@ class FieldTypeMapper:
         if value is None:
             return None
 
+        if field_type in ('boolean', 'checkbox'):
+            if isinstance(value, bool):
+                return value
+            if isinstance(value, str):
+                return value.lower() in ('true', '1', 'yes', 'on')
+            return bool(value)
+
         if field_type == 'date' and isinstance(value, str):
             return datetime.fromisoformat(value).date()
 

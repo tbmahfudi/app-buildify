@@ -1332,13 +1332,28 @@ export class DynamicForm {
   getValues() {
     const values = {};
 
+    // Build a quick field-type lookup from metadata so we can coerce values correctly.
+    const fieldTypeMap = {};
+    if (this.metadata?.form?.fields) {
+      this.metadata.form.fields.forEach(f => { fieldTypeMap[f.field] = f.type; });
+    }
+
     this.fields.forEach((element, field) => {
       if (element.type === 'checkbox') {
         values[field] = element.checked;
       } else if (element.type === 'number') {
         values[field] = element.value ? parseFloat(element.value) : null;
       } else {
-        values[field] = element.value;
+        const rawValue = element.value;
+        const fieldType = fieldTypeMap[field];
+        // Coerce boolean fields regardless of how they were rendered (checkbox or
+        // fallback textbox from stale metadata) so the backend always receives a
+        // proper JSON boolean instead of the strings "true" / "false".
+        if (fieldType === 'boolean' || fieldType === 'checkbox') {
+          values[field] = rawValue === true || rawValue === 'true' || rawValue === '1';
+        } else {
+          values[field] = rawValue;
+        }
       }
     });
 
