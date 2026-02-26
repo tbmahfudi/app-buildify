@@ -325,6 +325,7 @@ export class DynamicForm {
         return this.createSelect(fieldConfig, value, readonly, labelText, helperText);
 
       case 'boolean':
+      case 'checkbox':
         return this.createCheckbox(fieldConfig, value, readonly, labelText, helperText);
 
       case 'date':
