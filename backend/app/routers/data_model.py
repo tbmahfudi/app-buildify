@@ -510,15 +510,18 @@ async def regenerate_entity_menus(
                 EntityMetadata.entity_name == entity.name
             ).first()
 
+            # auto_generate_metadata handles both create and update (sync_metadata).
+            # Always call it so existing metadata is refreshed with current field
+            # definitions (e.g. newly-set allowed_values for select fields).
+            metadata_sync.auto_generate_metadata(
+                entity_definition=entity,
+                created_by=str(current_user.id)
+            )
             if existing_metadata:
-                metadata_skipped += 1
+                metadata_skipped += 1  # repurposed as "updated" count for now
             else:
-                metadata_sync.auto_generate_metadata(
-                    entity_definition=entity,
-                    created_by=str(current_user.id)
-                )
                 metadata_created += 1
-                logger.info(f"Created metadata for entity: {entity.name}")
+            logger.info(f"{'Updated' if existing_metadata else 'Created'} metadata for entity: {entity.name}")
         except Exception as e:
             logger.error(f"Failed to create metadata for {entity.name}: {str(e)}")
 

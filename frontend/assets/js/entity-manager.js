@@ -93,18 +93,31 @@ export class EntityManager {
    */
   convertEntityDefToMetadata(entityDef) {
     // Convert entity definition fields to metadata format
-    const fields = entityDef.fields.map(field => ({
-      name: field.name,
-      label: field.label || field.name,
-      type: field.field_type,
-      required: field.required || false,
-      max_length: field.max_length,
-      decimal_places: field.decimal_places,
-      options: field.options,
-      default_value: field.default_value,
-      help_text: field.help_text,
-      validation_rules: field.validation_rules
-    }));
+    const fields = entityDef.fields.map(field => {
+      // Convert raw allowed_values (string array) to the {value, label} format
+      // expected by DynamicForm's createSelect / FlexSelect.
+      let options;
+      if (field.allowed_values && Array.isArray(field.allowed_values)) {
+        options = field.allowed_values.map(v =>
+          typeof v === 'object' && v !== null ? v : { value: String(v), label: String(v) }
+        );
+      } else if (field.options) {
+        options = field.options;
+      }
+
+      return {
+        name: field.name,
+        label: field.label || field.name,
+        type: field.field_type,
+        required: field.is_required || field.required || false,
+        max_length: field.max_length,
+        decimal_places: field.decimal_places,
+        options,
+        default_value: field.default_value,
+        help_text: field.help_text,
+        validation_rules: field.validation_rules
+      };
+    });
 
     // Convert to table columns
     const columns = entityDef.fields

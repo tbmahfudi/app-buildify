@@ -487,11 +487,6 @@ export class DynamicForm {
    */
   async loadReferenceFieldOptions(fieldConfig, component, currentValue) {
     try {
-      // Show loading state
-      if (component.selectElement) {
-        component.selectElement.disabled = true;
-      }
-
       const params = new URLSearchParams({ limit: '100' });
 
       // Prefer entity name for the API call (dynamic-data API uses entity name, not UUID)
@@ -526,43 +521,22 @@ export class DynamicForm {
         };
       });
 
-      // Update select options
-      if (component.selectElement) {
-        // Clear existing options except placeholder
-        component.selectElement.innerHTML = '';
+      // Update FlexSelect with the fetched options and restore any existing value.
+      // FlexSelect exposes setOptions() for this purpose; fall back to updateOptions()
+      // for older versions of the component.
+      if (component.setOptions) {
+        component.setOptions(options);
+      } else if (component.updateOptions) {
+        component.updateOptions(options);
+      }
 
-        // Add placeholder
-        const placeholderOpt = document.createElement('option');
-        placeholderOpt.value = '';
-        placeholderOpt.textContent = fieldConfig.required ? 'Select an option' : '-- Select --';
-        component.selectElement.appendChild(placeholderOpt);
-
-        // Add fetched options
-        options.forEach(opt => {
-          const option = document.createElement('option');
-          option.value = opt.value;
-          option.textContent = opt.label;
-          component.selectElement.appendChild(option);
-        });
-
-        // Restore current value if it exists in the options
-        if (currentValue && options.some(opt => opt.value === currentValue)) {
-          component.selectElement.value = currentValue;
-        }
-
-        // Re-enable
-        component.selectElement.disabled = false;
-
-        // Make searchable if many options
-        if (component.updateOptions) {
-          component.updateOptions(options);
+      if (currentValue && options.some(opt => String(opt.value) === String(currentValue))) {
+        if (component.setValue) {
+          component.setValue(currentValue);
         }
       }
     } catch (error) {
       console.error(`Error loading reference options for ${fieldConfig.field}:`, error);
-      if (component.selectElement) {
-        component.selectElement.disabled = false;
-      }
     }
   }
 
@@ -2139,18 +2113,20 @@ export class DynamicForm {
       // Load new options based on parent value
       const options = await this.fetchDependentOptions(fieldConfig, parentValue);
 
-      // Update select options
-      if (element.tagName === 'SELECT') {
-        element.innerHTML = '<option value="">Select...</option>';
-        options.forEach(opt => {
-          const option = document.createElement('option');
-          option.value = opt.value;
-          option.textContent = opt.label;
-          element.appendChild(option);
-        });
-
+      // Update the FlexSelect component with the new options.
+      // `this.fields` holds the hidden input; `this.fieldComponents` holds the FlexSelect.
+      const component = this.fieldComponents.get(fieldConfig.field || fieldConfig.name);
+      if (component) {
+        if (component.setOptions) {
+          component.setOptions(options);
+        } else if (component.updateOptions) {
+          component.updateOptions(options);
+        }
         // Try to restore previous value if it still exists in new options
-        if (currentValue && options.some(opt => opt.value === currentValue)) {
+        if (currentValue && options.some(opt => String(opt.value) === String(currentValue))) {
+          if (component.setValue) {
+            component.setValue(currentValue);
+          }
           element.value = currentValue;
         }
       }
