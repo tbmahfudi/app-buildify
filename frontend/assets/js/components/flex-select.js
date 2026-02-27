@@ -99,6 +99,13 @@ export default class FlexSelect extends BaseComponent {
         this.element.appendChild(wrapper);
 
         this.dropdownElement = dropdown;
+
+        // Re-align the panel whenever the DOM is rebuilt while open, e.g. after
+        // setOptions() / setValue() are called while the dropdown is visible.
+        if (this.state.isOpen) {
+            this._alignDropdown();
+        }
+
         this.emit('render');
     }
 
@@ -200,7 +207,9 @@ export default class FlexSelect extends BaseComponent {
         // With no `relative` on the wrapper that ancestor is the modal dialog wrapper,
         // which is ABOVE the modal body's `overflow-y:auto` — so the panel is never
         // clipped.  z-index 1100 exceeds FlexModal's stack (base 1000, first modal 1001).
-        dropdown.className = `flex-select-dropdown absolute left-0 right-0 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg ${this.state.isOpen ? '' : 'hidden'}`;
+        // left / top / width are set dynamically by _alignDropdown() so the panel
+        // always matches the trigger box regardless of its position in the page.
+        dropdown.className = `flex-select-dropdown absolute bg-white border border-gray-300 rounded-lg shadow-lg ${this.state.isOpen ? '' : 'hidden'}`;
         dropdown.style.zIndex = '1100';
         dropdown.style.maxHeight = this.options.maxHeight;
         dropdown.style.overflowY = 'auto';
@@ -466,6 +475,31 @@ export default class FlexSelect extends BaseComponent {
     }
 
     /**
+     * Align the dropdown panel to the trigger box.
+     *
+     * The dropdown is `position:absolute` whose containing block is the nearest
+     * `position:relative` ancestor (typically the modal dialog wrapper).  We use
+     * getBoundingClientRect() on both the trigger box and that containing block
+     * (via offsetParent) to compute the correct left / top / width so the panel
+     * sits directly below the trigger regardless of where it is in the page.
+     */
+    _alignDropdown() {
+        const box = this.element.querySelector('.flex-select-box');
+        const dropdown = this.element.querySelector('.flex-select-dropdown');
+        if (!box || !dropdown) return;
+
+        const boxRect = box.getBoundingClientRect();
+        // offsetParent is the element's containing block (first non-static ancestor).
+        const cb = dropdown.offsetParent || document.body;
+        const cbRect = cb.getBoundingClientRect();
+
+        dropdown.style.left  = `${boxRect.left  - cbRect.left + cb.scrollLeft}px`;
+        dropdown.style.top   = `${boxRect.bottom - cbRect.top  + cb.scrollTop  + 4}px`;
+        dropdown.style.width = `${boxRect.width}px`;
+        dropdown.style.right = 'auto';
+    }
+
+    /**
      * Open dropdown
      */
     open() {
@@ -475,6 +509,7 @@ export default class FlexSelect extends BaseComponent {
         this.state.focusedIndex = -1;
         this.render();
         this.attachEventListeners();
+        this._alignDropdown();
 
         if (this.searchInput) {
             this.searchInput.focus();
