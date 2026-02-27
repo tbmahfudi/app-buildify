@@ -589,6 +589,18 @@ body.density-compact .shadow-sm {
 }
 
 /* ============================================
+   FLEX-SELECT COMPONENT
+   ============================================ */
+
+/* Hide the scrollbar track inside the options scroller so option highlights
+   always fill the full panel width.  Scrolling still works via mouse wheel
+   and touch — users just don't see the scrollbar indicator.
+   Firefox / IE are handled via inline style (scrollbarWidth / msOverflowStyle). */
+.flex-select-scroller::-webkit-scrollbar {
+  display: none;
+}
+
+/* ============================================
    EXISTING STYLES
    ============================================ */
 

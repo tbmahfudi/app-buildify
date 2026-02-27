@@ -231,10 +231,19 @@ export default class FlexSelect extends BaseComponent {
         // Scrolling lives in an inner container so the outer dropdown can use
         // `overflow: hidden` for proper border-radius clipping without losing
         // the ability to scroll long option lists.
+        //
+        // The scrollbar is hidden via CSS (.flex-select-scroller in app.css) and
+        // inline styles below.  Hiding the scrollbar eliminates the right-side gap
+        // that appears when the scrollbar track reduces the content area — options
+        // always fill the full inner width.  Users can still scroll with mouse
+        // wheel or touch; they just don't see the scrollbar indicator.
         const scroller = document.createElement('div');
         scroller.className = 'flex-select-scroller';
         scroller.style.overflowY = 'auto';
         scroller.style.maxHeight = this.options.maxHeight;
+        // Hide scrollbar track (Firefox / IE — WebKit handled via app.css)
+        scroller.style.scrollbarWidth = 'none';
+        scroller.style.msOverflowStyle = 'none';
 
         const optionsList = this.createOptionsList();
         scroller.appendChild(optionsList);
@@ -339,11 +348,15 @@ export default class FlexSelect extends BaseComponent {
         const box = this.element.querySelector('.flex-select-box');
         if (!box) return;
 
-        // stopPropagation prevents the triggering click from bubbling to the
-        // document outside-click handler, which would otherwise see the now-detached
-        // old box element (replaced by render()) as "outside" and close immediately.
-        box.addEventListener('click', (e) => {
-            e.stopPropagation();
+        // Using a flag instead of stopPropagation: stopPropagation would prevent
+        // OTHER open FlexSelect instances from seeing the click (they need it to
+        // trigger their own outside-click close logic).  The flag approach lets
+        // the event propagate normally so sibling dropdowns close, while still
+        // preventing this instance from closing itself on the very click that
+        // opened it (which would happen because render() detaches the old box,
+        // making element.contains(oldBox) return false in the doc handler).
+        box.addEventListener('click', () => {
+            this._skipNextOutsideClick = true;
             this.toggle();
         });
         box.addEventListener('keydown', (e) => this.handleKeyDown(e));
@@ -365,6 +378,12 @@ export default class FlexSelect extends BaseComponent {
             document.removeEventListener('click', this._docClickHandler);
         }
         this._docClickHandler = (e) => {
+            // Skip the click that triggered open/close on this instance's box —
+            // that box click sets _skipNextOutsideClick so we don't double-close.
+            if (this._skipNextOutsideClick) {
+                this._skipNextOutsideClick = false;
+                return;
+            }
             if (!this.element.contains(e.target)) {
                 this.close();
             }
