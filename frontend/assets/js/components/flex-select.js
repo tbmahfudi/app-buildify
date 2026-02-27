@@ -213,6 +213,11 @@ export default class FlexSelect extends BaseComponent {
         dropdown.style.zIndex = '1100';
         dropdown.style.maxHeight = this.options.maxHeight;
         dropdown.style.overflowY = 'auto';
+        // The wrapper uses `space-y-1.5` which would add margin-top to every
+        // non-first child, including this absolutely-positioned panel.  For
+        // absolute elements `top` positions the *margin-box* edge, so that
+        // margin stacks on top of the JS gap set by _alignDropdown().  Zero it.
+        dropdown.style.marginTop = '0';
 
         if (this.options.searchable) {
             const searchBox = this.createSearchBox();
@@ -247,7 +252,7 @@ export default class FlexSelect extends BaseComponent {
      */
     createOptionsList() {
         const list = document.createElement('div');
-        list.className = 'flex-select-options';
+        list.className = 'flex-select-options w-full';
 
         const filtered = this.getFilteredOptions();
 
@@ -273,7 +278,7 @@ export default class FlexSelect extends BaseComponent {
         const optionEl = document.createElement('div');
         const sizeClasses = FlexSelect.SIZES[this.options.size].option;
 
-        optionEl.className = `flex-select-option ${sizeClasses} cursor-pointer hover:bg-indigo-50 ${option.disabled ? 'opacity-50 cursor-not-allowed' : ''}`;
+        optionEl.className = `flex-select-option w-full block ${sizeClasses} cursor-pointer hover:bg-indigo-50 ${option.disabled ? 'opacity-50 cursor-not-allowed' : ''}`;
         optionEl.dataset.value = option.value;
         optionEl.dataset.index = index;
 
