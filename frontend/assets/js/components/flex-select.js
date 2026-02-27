@@ -209,10 +209,14 @@ export default class FlexSelect extends BaseComponent {
         // clipped.  z-index 1100 exceeds FlexModal's stack (base 1000, first modal 1001).
         // left / top / width are set dynamically by _alignDropdown() so the panel
         // always matches the trigger box regardless of its position in the page.
-        dropdown.className = `flex-select-dropdown absolute bg-white border border-gray-300 rounded-lg shadow-lg ${this.state.isOpen ? '' : 'hidden'}`;
+        //
+        // `overflow: hidden` (both axes) is intentional: it clips child backgrounds
+        // to the rounded-lg corners in ALL browsers.  Firefox does NOT clip to
+        // border-radius when only overflow-y is non-visible; Chrome does.  Using
+        // `overflow: hidden` on the outer shell and a separate inner scroller div
+        // gives consistent corner clipping everywhere.
+        dropdown.className = `flex-select-dropdown absolute overflow-hidden bg-white border border-gray-300 rounded-lg shadow-lg ${this.state.isOpen ? '' : 'hidden'}`;
         dropdown.style.zIndex = '1100';
-        dropdown.style.maxHeight = this.options.maxHeight;
-        dropdown.style.overflowY = 'auto';
         // The wrapper uses `space-y-1.5` which would add margin-top to every
         // non-first child, including this absolutely-positioned panel.  For
         // absolute elements `top` positions the *margin-box* edge, so that
@@ -224,8 +228,17 @@ export default class FlexSelect extends BaseComponent {
             dropdown.appendChild(searchBox);
         }
 
+        // Scrolling lives in an inner container so the outer dropdown can use
+        // `overflow: hidden` for proper border-radius clipping without losing
+        // the ability to scroll long option lists.
+        const scroller = document.createElement('div');
+        scroller.className = 'flex-select-scroller';
+        scroller.style.overflowY = 'auto';
+        scroller.style.maxHeight = this.options.maxHeight;
+
         const optionsList = this.createOptionsList();
-        dropdown.appendChild(optionsList);
+        scroller.appendChild(optionsList);
+        dropdown.appendChild(scroller);
 
         return dropdown;
     }
@@ -561,12 +574,12 @@ export default class FlexSelect extends BaseComponent {
         const dropdown = this.element.querySelector('.flex-select-dropdown');
         if (!dropdown) return;
 
-        const searchBox = dropdown.querySelector('.p-2');
         const newOptionsList = this.createOptionsList();
-
         const oldOptionsList = dropdown.querySelector('.flex-select-options');
         if (oldOptionsList) {
-            dropdown.replaceChild(newOptionsList, oldOptionsList);
+            // Replace within the actual parent (may be the inner scroller, not
+            // the dropdown directly) so the nesting stays correct.
+            oldOptionsList.parentNode.replaceChild(newOptionsList, oldOptionsList);
         }
     }
 
