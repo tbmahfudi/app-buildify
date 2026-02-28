@@ -230,7 +230,7 @@ async function handleTenantFormSubmit(event) {
 }
 
 function setupLivePreview() {
-  const fields = ['setting-theme', 'setting-density', 'setting-sidebar-state', 'setting-language', 'setting-timezone'];
+  const fields = ['setting-theme', 'setting-density', 'setting-sidebar-state', 'setting-toggle-position', 'setting-language', 'setting-timezone'];
   fields.forEach((id) => {
     const element = document.getElementById(id);
     if (element) {

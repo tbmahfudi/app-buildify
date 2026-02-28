@@ -112,12 +112,15 @@ class MenuSyncPage {
             }
         } catch (error) {
             console.error('Error loading menu structure:', error);
-            document.getElementById('menu-structure-preview').innerHTML = `
-                <div class="text-center py-4 text-gray-500">
-                    <i class="ph ph-warning-circle text-2xl mb-2"></i>
-                    <p>Failed to load menu structure</p>
-                </div>
-            `;
+            const preview = document.getElementById('menu-structure-preview');
+            if (preview) {
+                preview.innerHTML = `
+                    <div class="text-center py-4 text-gray-500">
+                        <i class="ph ph-warning-circle text-2xl mb-2"></i>
+                        <p>Failed to load menu structure</p>
+                    </div>
+                `;
+            }
         }
     }
 
@@ -451,8 +454,9 @@ class MenuSyncPage {
     }
 
     viewSyncDetails(entryId) {
-        // Find the entry
-        const entry = this.syncHistory.find(e => e.id === entryId);
+        // Find the entry — coerce both sides to string because the id from the API
+        // may be a number while onclick passes it as a string literal.
+        const entry = this.syncHistory.find(e => String(e.id) === String(entryId));
         if (!entry) return;
 
         // Show details in a modal or expand inline
