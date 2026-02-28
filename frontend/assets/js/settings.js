@@ -1,5 +1,49 @@
 import { apiFetch } from './api.js';
 import { positionSidebarToggle } from './app.js';
+import FlexSelect from './components/flex-select.js';
+
+// ---------------------------------------------------------------------------
+// FlexSelect instances — keyed by field id (without the "-container" suffix)
+// ---------------------------------------------------------------------------
+const flexSelects = new Map();
+
+// Options for every settings select field
+const SELECT_OPTIONS = {
+  'setting-theme': [
+    { value: 'light',  label: 'Light' },
+    { value: 'dark',   label: 'Dark'  },
+  ],
+  'setting-density': [
+    { value: 'comfortable', label: 'Comfortable' },
+    { value: 'normal',      label: 'Normal'      },
+    { value: 'compact',     label: 'Compact'     },
+  ],
+  'setting-sidebar-state': [
+    { value: 'expanded',  label: 'Expanded (Full menu)'   },
+    { value: 'collapsed', label: 'Collapsed (Icons only)' },
+  ],
+  'setting-toggle-position': [
+    { value: 'sidebar-header', label: 'Sidebar Header'         },
+    { value: 'before-logo',    label: 'Before Logo'            },
+    { value: 'between',        label: 'Between Logo & Title'   },
+    { value: 'after-title',    label: 'After Platform Title'   },
+  ],
+  'setting-language': [
+    { value: 'en', label: 'English'                        },
+    { value: 'es', label: 'Español (Spanish)'              },
+    { value: 'fr', label: 'Français (French)'              },
+    { value: 'de', label: 'Deutsch (German)'               },
+    { value: 'id', label: 'Bahasa Indonesia (Indonesian)'  },
+  ],
+  'setting-timezone': [
+    { value: 'UTC',                 label: 'UTC'           },
+    { value: 'America/New_York',    label: 'Eastern Time'  },
+    { value: 'America/Chicago',     label: 'Central Time'  },
+    { value: 'America/Los_Angeles', label: 'Pacific Time'  },
+    { value: 'Europe/London',       label: 'London'        },
+    { value: 'Asia/Tokyo',          label: 'Tokyo'         },
+  ],
+};
 
 // Initialize settings on app load
 document.addEventListener('DOMContentLoaded', () => {
@@ -13,6 +57,30 @@ document.addEventListener('route:loaded', (event) => {
     setTimeout(() => initSettingsPage(), 0);
   }
 });
+
+/**
+ * Create FlexSelect instances for every settings field.
+ * Called on each route load — destroys any stale instances first since
+ * the DOM is re-rendered on each navigation.
+ */
+function initFlexSelects() {
+  flexSelects.forEach((fs) => { try { fs.destroy(); } catch (_) {} });
+  flexSelects.clear();
+
+  Object.entries(SELECT_OPTIONS).forEach(([id, options]) => {
+    const container = document.getElementById(`${id}-container`);
+    if (!container) return;
+
+    const fs = new FlexSelect(container, {
+      options,
+      searchable: false,
+      clearable: false,
+      placeholder: 'Select...',
+      onChange: () => updatePreview(),
+    });
+    flexSelects.set(id, fs);
+  });
+}
 
 /**
  * Load and apply user settings globally on app initialization
@@ -54,6 +122,10 @@ async function initSettingsPage() {
   }
 
   const firstInit = !userForm.dataset.initialized;
+
+  // Always (re-)create FlexSelect instances — the DOM is re-rendered on each
+  // route load so existing element references are stale.
+  initFlexSelects();
 
   await loadUserSettings();
 
@@ -229,31 +301,21 @@ async function handleTenantFormSubmit(event) {
   }
 }
 
+/**
+ * Wire up live-preview.  The FlexSelect onChange callbacks already call
+ * updatePreview() — this function just triggers an initial render.
+ */
 function setupLivePreview() {
-  const fields = ['setting-theme', 'setting-density', 'setting-sidebar-state', 'setting-toggle-position', 'setting-language', 'setting-timezone'];
-  fields.forEach((id) => {
-    const element = document.getElementById(id);
-    if (element) {
-      element.addEventListener('change', updatePreview);
-    }
-  });
-
   updatePreview();
 }
 
 function updatePreview() {
-  setTextContent('preview-theme', getSelectValue('setting-theme'));
-  setTextContent('preview-density', getSelectValue('setting-density'));
-
-  const sidebarSelect = document.getElementById('setting-sidebar-state');
-  setTextContent('preview-sidebar-state', sidebarSelect?.selectedOptions[0]?.text || 'Expanded');
-
-  const togglePositionSelect = document.getElementById('setting-toggle-position');
-  setTextContent('preview-toggle-position', togglePositionSelect?.selectedOptions[0]?.text || 'After Platform Title');
-
-  const languageSelect = document.getElementById('setting-language');
-  setTextContent('preview-language', languageSelect?.selectedOptions[0]?.text || '');
-  setTextContent('preview-timezone', getSelectValue('setting-timezone'));
+  setTextContent('preview-theme',           getSelectLabel('setting-theme'));
+  setTextContent('preview-density',         getSelectLabel('setting-density'));
+  setTextContent('preview-sidebar-state',   getSelectLabel('setting-sidebar-state'));
+  setTextContent('preview-toggle-position', getSelectLabel('setting-toggle-position'));
+  setTextContent('preview-language',        getSelectLabel('setting-language'));
+  setTextContent('preview-timezone',        getSelectLabel('setting-timezone'));
 }
 
 function applyTheme(theme) {
@@ -386,17 +448,41 @@ function getToneIcon(tone) {
   }
 }
 
+// ---------------------------------------------------------------------------
+// FlexSelect helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Set the selected value on a FlexSelect field.
+ */
 function setSelectValue(id, value, fallback) {
-  const element = document.getElementById(id);
-  if (element) {
-    element.value = value || fallback;
+  const component = flexSelects.get(id);
+  if (component) {
+    component.setValue(value || fallback);
   }
 }
 
+/**
+ * Get the current value from a FlexSelect field.
+ */
 function getSelectValue(id) {
-  const element = document.getElementById(id);
-  return element ? element.value : '';
+  const component = flexSelects.get(id);
+  return component ? (component.getValue() ?? '') : '';
 }
+
+/**
+ * Get the display label for the currently selected option.
+ * Used by updatePreview() to show human-readable text.
+ */
+function getSelectLabel(id) {
+  const value = getSelectValue(id);
+  const option = SELECT_OPTIONS[id]?.find((o) => o.value === value);
+  return option ? option.label : value;
+}
+
+// ---------------------------------------------------------------------------
+// Input / text helpers (unchanged from original)
+// ---------------------------------------------------------------------------
 
 function setInputValue(id, value) {
   const element = document.getElementById(id);
