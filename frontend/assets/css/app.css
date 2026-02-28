@@ -420,11 +420,11 @@ body.density-compact .user-name {
   font-size: calc(0.8rem);
 }
 
-/* Compact mode for cards and content */
+/* Compact mode for cards and content 
 body.density-compact .bg-white,
 body.density-compact .bg-gray-50 {
   padding: calc(1rem * 0.6) !important;
-}
+}*/
 
 body.density-compact h1,
 body.density-compact .text-2xl {
