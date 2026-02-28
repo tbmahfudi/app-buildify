@@ -196,7 +196,9 @@ export class DynamicRouteRegistry {
     await table.render();
 
     // Setup row actions
-    table.onRowAction = (action, recordId) => {
+    // DynamicTable passes the full row object; extract .id for URL construction
+    table.onRowAction = (action, row) => {
+      const recordId = (row && typeof row === 'object') ? row.id : row;
       switch (action) {
         case 'view':
           window.location.hash = `dynamic/${entityName}/${recordId}`;

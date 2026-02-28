@@ -183,7 +183,7 @@ class MetadataSyncService:
             'enable_search': True,
             'enable_filters': True,
             'enable_export': True,
-            'actions': ['view', 'edit', 'delete', 'create']
+            'actions': ['view', 'edit', 'delete']
         }
 
     def _generate_form_config(self, entity_def: EntityDefinition) -> Dict[str, Any]:

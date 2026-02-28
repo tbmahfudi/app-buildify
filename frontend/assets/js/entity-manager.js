@@ -138,8 +138,9 @@ export class EntityManager {
       fields,
       table: {
         columns,
-        default_sort: [{ field: 'created_at', order: 'desc' }],
-        page_size: 25
+        default_sort: [['created_at', 'desc']],
+        page_size: 25,
+        actions: ['view', 'edit', 'delete']
       },
       form: {
         fields: fields.filter(f => !['id', 'created_at', 'updated_at'].includes(f.name))
@@ -499,8 +500,13 @@ export class EntityManager {
       throw new Error(`Failed to load record: ${response.status}`);
     }
     const result = await response.json();
-    // dynamic-data returns { id, data } format
-    return result.data || result;
+    // dynamic-data returns { id, data } format; data already contains id
+    const record = result.data || result;
+    // Ensure id is set at the top level for saveRecord()
+    if (!record.id && result.id) {
+      record.id = result.id;
+    }
+    return record;
   }
 
   /**
