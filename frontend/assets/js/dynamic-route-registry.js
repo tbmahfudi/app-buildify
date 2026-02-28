@@ -167,30 +167,41 @@ export class DynamicRouteRegistry {
    * Render list view
    */
   async renderList(entityName, metadata, container) {
+    const icon = metadata.icon ? `<i class="ph-duotone ph-${metadata.icon} text-blue-600"></i>` : '<i class="ph-duotone ph-table text-blue-600"></i>';
+    const displayName = metadata.display_name || entityName;
+
     container.innerHTML = `
-      <div class="px-4 sm:px-6 lg:px-8">
-        <div class="sm:flex sm:items-center mb-6">
-          <div class="sm:flex-auto">
-            <h1 class="text-2xl font-semibold text-gray-900">${metadata.display_name || entityName}</h1>
-            <p class="mt-2 text-sm text-gray-700">Manage ${metadata.display_name || entityName} records</p>
-          </div>
-          <div class="mt-4 sm:mt-0 sm:ml-16 sm:flex-none">
-            <button type="button" id="btn-create-${entityName}" class="inline-flex items-center justify-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 sm:w-auto">
-              <i class="ph ph-plus mr-2"></i>
-              Create ${metadata.display_name || entityName}
+      <div class="space-y-6">
+        <!-- Page header -->
+        <div class="bg-white border-b border-gray-200 px-6 py-4">
+          <div class="flex items-center justify-between">
+            <div>
+              <h2 class="text-2xl font-bold text-gray-900 flex items-center gap-3">
+                ${icon}
+                ${displayName}
+              </h2>
+              <p class="text-sm text-gray-600 mt-1">
+                ${metadata.description || `Manage ${displayName} records`}
+              </p>
+            </div>
+            <button type="button" id="btn-create-${entityName}"
+              class="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 active:bg-blue-800 shadow-sm hover:shadow-md transition-all font-medium text-sm">
+              <i class="ph ph-plus"></i>
+              Add ${displayName}
             </button>
           </div>
         </div>
-        <div id="dynamic-table-container"></div>
+
+        <!-- Table area (DynamicTable renders search bar + card here) -->
+        <div class="px-6" id="dynamic-table-container"></div>
       </div>
     `;
 
-    // Setup create button
     document.getElementById(`btn-create-${entityName}`).addEventListener('click', () => {
       window.location.hash = `dynamic/${entityName}/create`;
     });
 
-    // Render dynamic table
+    // Render dynamic table (includes its own search/filter bar)
     const tableContainer = document.getElementById('dynamic-table-container');
     const table = new DynamicTable(tableContainer, entityName, metadata);
     await table.render();
@@ -338,8 +349,8 @@ export class DynamicRouteRegistry {
         throw new Error('Failed to load record');
       }
 
+      // Pass the full { id, data } API response so DynamicForm reads record.data[field]
       const result = await response.json();
-      const record = result.data;
 
       container.innerHTML = `
         <div class="px-4 sm:px-6 lg:px-8">
@@ -365,7 +376,7 @@ export class DynamicRouteRegistry {
       `;
 
       const formContainer = document.getElementById('dynamic-form-container');
-      const form = new DynamicForm(formContainer, metadata, record);
+      const form = new DynamicForm(formContainer, metadata, result);
       const formElement = form.render();
 
       // Handle form submission

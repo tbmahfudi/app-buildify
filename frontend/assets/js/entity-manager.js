@@ -106,6 +106,7 @@ export class EntityManager {
       }
 
       return {
+        field: field.name,
         name: field.name,
         label: field.label || field.name,
         type: field.field_type,
@@ -499,14 +500,8 @@ export class EntityManager {
     if (!response.ok) {
       throw new Error(`Failed to load record: ${response.status}`);
     }
-    const result = await response.json();
-    // dynamic-data returns { id, data } format; data already contains id
-    const record = result.data || result;
-    // Ensure id is set at the top level for saveRecord()
-    if (!record.id && result.id) {
-      record.id = result.id;
-    }
-    return record;
+    // Return the full { id, data } API response so DynamicForm can read record.data[field]
+    return await response.json();
   }
 
   /**
