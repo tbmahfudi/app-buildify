@@ -227,6 +227,11 @@ export class DynamicForm {
    * Create form group for a field with RBAC support
    */
   createFormGroup(fieldConfig) {
+    // Normalize: some metadata uses 'name' instead of 'field' as the key property
+    if (!fieldConfig.field && fieldConfig.name) {
+      fieldConfig.field = fieldConfig.name;
+    }
+
     // Check if user can view this field
     if (!canViewField(fieldConfig)) {
       // If user cannot view the field, return empty div
@@ -280,7 +285,9 @@ export class DynamicForm {
    * Create input element based on field type
    */
   createInput(fieldConfig, readonly, labelText, helperText) {
-    const value = this.record?.data?.[fieldConfig.field] || fieldConfig.default || '';
+    // Support both wrapped format { data: { field: val } } and flat format { field: val }
+    const fieldKey = fieldConfig.field || fieldConfig.name;
+    const value = this.record?.data?.[fieldKey] ?? this.record?.[fieldKey] ?? fieldConfig.default ?? '';
 
     // Get localized placeholder
     const placeholder = this.getLocalizedText(fieldConfig, 'placeholder');
