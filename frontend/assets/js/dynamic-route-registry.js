@@ -419,22 +419,25 @@ export class DynamicRouteRegistry {
    */
   renderRecordFields(record, metadata) {
     if (!metadata.form || !metadata.form.fields) {
-      return Object.entries(record).map(([key, value]) => `
+      const entries = record ? Object.entries(record) : [];
+      return entries.map(([key, value]) => `
         <div class="sm:col-span-1">
           <dt class="text-sm font-medium text-gray-500">${key}</dt>
-          <dd class="mt-1 text-sm text-gray-900">${value || '-'}</dd>
+          <dd class="mt-1 text-sm text-gray-900">${value != null ? value : '-'}</dd>
         </div>
       `).join('');
     }
 
     return metadata.form.fields.map(field => {
-      const value = record[field.name];
+      // Support both 'field' and 'name' as the key property (metadata sources differ)
+      const fieldKey = field.field || field.name;
+      const value = record ? (record[fieldKey] ?? null) : null;
       const displayValue = this.formatFieldValue(value, field);
 
       return `
         <div class="sm:col-span-1">
-          <dt class="text-sm font-medium text-gray-500">${field.label || field.name}</dt>
-          <dd class="mt-1 text-sm text-gray-900">${displayValue}</dd>
+          <dt class="text-sm font-medium text-gray-500">${field.label || fieldKey || ''}</dt>
+          <dd class="mt-1 text-sm text-gray-900">${displayValue ?? '-'}</dd>
         </div>
       `;
     }).join('');

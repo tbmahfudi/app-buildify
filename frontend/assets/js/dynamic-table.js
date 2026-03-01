@@ -255,8 +255,8 @@ export class DynamicTable {
       headerRow.appendChild(th);
     });
 
-    // Actions column header
-    if (this.metadata.table.actions && this.metadata.table.actions.length > 0) {
+    // Actions column header (exclude 'create' which is page-level only)
+    if (this._getRowActions().length > 0) {
       const th = document.createElement('th');
       th.className = 'px-6 py-3 text-right text-xs font-semibold text-gray-700 uppercase tracking-wider';
       th.textContent = 'Actions';
@@ -291,15 +291,16 @@ export class DynamicTable {
       tr.appendChild(td);
     });
 
-    // Action buttons
-    if (this.metadata.table.actions && this.metadata.table.actions.length > 0) {
+    // Action buttons (exclude 'create' which is page-level only)
+    const rowActions = this._getRowActions();
+    if (rowActions.length > 0) {
       const td = document.createElement('td');
       td.className = 'px-6 py-4 text-right';
 
       const group = document.createElement('div');
       group.className = 'flex justify-end gap-1';
 
-      this.metadata.table.actions.forEach(action => {
+      rowActions.forEach(action => {
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.title = action.charAt(0).toUpperCase() + action.slice(1);
@@ -446,6 +447,13 @@ export class DynamicTable {
         ...col,
         options: formFieldMap.get(col.field)?.options || []
       }));
+  }
+
+  /**
+   * Returns row-level actions, excluding 'create' which belongs at page level only.
+   */
+  _getRowActions() {
+    return (this.metadata.table.actions || []).filter(a => a !== 'create');
   }
 
   /**
