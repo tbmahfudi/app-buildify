@@ -182,7 +182,8 @@ In Phase 4, all no-code components (entities, workflows, automations, etc.) must
 
 1. **Navigate to Module Management**
    - Click "Module Management" in the main navigation
-   - Or go directly to: `http://your-domain/nocode-modules.html`
+   - The module management page loads within the main app shell (hash route `#modules`)
+   - There is no standalone `nocode-modules.html` page; it is a template rendered inside `index.html`
 
 2. **Click "Create Module"**
 
@@ -1308,30 +1309,37 @@ If you want to customize the UI beyond auto-generation:
 1. **Select Entity:** `SupportTicket`
 
 2. **Table Configuration:**
+
+   > **💡 Key naming notes:**
+   > - Sort uses snake_case key `default_sort` with array-of-arrays format `[["field", "dir"]]`
+   > - Column fields use `"field"` (DB column name) and `"title"` (display label)
+   > - Row actions: do **not** include `"create"` — that is page-level only
+
    ```json
    {
      "columns": [
-       { "field": "ticket_number", "visible": true, "width": 120, "pinned": true },
-       { "field": "subject", "visible": true, "width": 300 },
-       { "field": "priority", "visible": true, "width": 100, "cellRenderer": "badge" },
-       { "field": "status", "visible": true, "width": 120, "cellRenderer": "badge" },
-       { "field": "customer_name", "visible": true, "width": 150 },
-       { "field": "assigned_to", "visible": true, "width": 150 },
-       { "field": "sla_due_date", "visible": true, "width": 150, "cellRenderer": "date" },
-       { "field": "created_at", "visible": true, "width": 150, "cellRenderer": "datetime" }
+       { "field": "ticket_number", "title": "Ticket #", "visible": true, "width": 120 },
+       { "field": "subject", "title": "Subject", "visible": true, "width": 300 },
+       { "field": "priority", "title": "Priority", "visible": true, "width": 100, "type": "select" },
+       { "field": "status", "title": "Status", "visible": true, "width": 120, "type": "select" },
+       { "field": "customer_name", "title": "Customer", "visible": true, "width": 150 },
+       { "field": "assigned_to", "title": "Assigned To", "visible": true, "width": 150 },
+       { "field": "sla_due_date", "title": "SLA Due", "visible": true, "width": 150, "type": "datetime" },
+       { "field": "created_at", "title": "Created", "visible": true, "width": 150, "type": "datetime" }
      ],
-     "defaultSort": [
-       { "field": "created_at", "order": "desc" }
-     ],
-     "defaultFilters": [
+     "default_sort": [["created_at", "desc"]],
+     "default_filters": [
        { "field": "status", "operator": "in", "value": ["new", "open", "in_progress"] }
      ],
-     "rowActions": ["view", "edit", "delete"],
-     "bulkActions": ["delete", "export"]
+     "actions": ["view", "edit", "delete"],
+     "page_size": 25
    }
    ```
 
 3. **Form Configuration:**
+
+   > **💡 Key naming note:** Form fields use `"name"` (not `"field"`) as the identifier property, matching the auto-generated metadata from the system.
+
    ```json
    {
      "layout": "tabs",
@@ -1340,39 +1348,39 @@ If you want to customize the UI beyond auto-generation:
          "name": "basic_info",
          "label": "Basic Information",
          "fields": [
-           { "field": "ticket_number", "readonly": true, "autogenerate": true },
-           { "field": "subject", "required": true },
-           { "field": "description", "widget": "textarea", "rows": 4 },
-           { "field": "priority", "widget": "select", "lookup": "ticket_priority" },
-           { "field": "status", "widget": "select", "lookup": "ticket_status" },
-           { "field": "category_id", "widget": "lookup", "lookup": "ticket_categories" }
+           { "name": "ticket_number", "label": "Ticket #", "readonly": true },
+           { "name": "subject", "label": "Subject", "required": true },
+           { "name": "description", "label": "Description", "type": "text" },
+           { "name": "priority", "label": "Priority", "type": "select", "lookup": "ticket_priority" },
+           { "name": "status", "label": "Status", "type": "select", "lookup": "ticket_status" },
+           { "name": "category_id", "label": "Category", "type": "reference", "lookup": "ticket_categories" }
          ]
        },
        {
          "name": "customer_info",
          "label": "Customer Information",
          "fields": [
-           { "field": "customer_name", "required": true },
-           { "field": "customer_email", "required": true, "validation": "email" },
-           { "field": "customer_phone", "validation": "phone" }
+           { "name": "customer_name", "label": "Customer Name", "required": true },
+           { "name": "customer_email", "label": "Email", "type": "email", "required": true },
+           { "name": "customer_phone", "label": "Phone", "type": "phone" }
          ]
        },
        {
          "name": "assignment",
          "label": "Assignment & SLA",
          "fields": [
-           { "field": "assigned_to", "widget": "user-select" },
-           { "field": "assigned_team", "widget": "select", "lookup": "support_teams" },
-           { "field": "sla_due_date", "widget": "datetime" },
-           { "field": "estimated_hours" },
-           { "field": "actual_hours" }
+           { "name": "assigned_to", "label": "Assigned To", "type": "reference" },
+           { "name": "assigned_team", "label": "Team", "type": "select", "lookup": "support_teams" },
+           { "name": "sla_due_date", "label": "SLA Due Date", "type": "datetime" },
+           { "name": "estimated_hours", "label": "Est. Hours", "type": "decimal" },
+           { "name": "actual_hours", "label": "Actual Hours", "type": "decimal" }
          ]
        },
        {
          "name": "resolution",
          "label": "Resolution",
          "fields": [
-           { "field": "resolution_notes", "widget": "textarea", "rows": 4 }
+           { "name": "resolution_notes", "label": "Resolution Notes", "type": "text" }
          ]
        }
      ]
@@ -1838,13 +1846,16 @@ This is an optional step to create a customer-facing portal using GrapeJS Page B
      };
 
      try {
+       // The create endpoint expects { data: { ...fields } }, not a bare flat object
        const response = await apiFetch('/dynamic-data/SupportTicket/records', {
          method: 'POST',
-         body: JSON.stringify(formData)
+         body: JSON.stringify({ data: formData })
        });
 
-       if (response.success) {
-         showSuccess(`Ticket created: ${response.data.ticket_number}`);
+       if (response.ok) {
+         const result = await response.json();
+         // Response is { id, data: { ...fields } }
+         showSuccess(`Ticket created: ${result.data.ticket_number}`);
          resetForm();
        }
      } catch (error) {
@@ -1883,8 +1894,18 @@ Create a custom detailed view for tickets with comments, history, and actions.
 4. **Load Data Dynamically:**
    ```javascript
    const ticketId = getRouteParam('id');
+   // Single record response is { id, data: { ...fields } }
    const ticket = await apiFetch(`/dynamic-data/SupportTicket/records/${ticketId}`);
-   const comments = await apiFetch(`/dynamic-data/TicketComment/records?filter=ticket_id:${ticketId}&sort=created_at:desc`);
+
+   // List filtering uses JSON array format, not ?filter=key:value
+   const filters = encodeURIComponent(JSON.stringify([
+     { field: 'ticket_id', operator: 'eq', value: ticketId }
+   ]));
+   // Note: relationship traversal (GET /SupportTicket/{id}/comments) returns 501 Not Implemented;
+   // filter the related entity directly instead.
+   const comments = await apiFetch(
+     `/dynamic-data/TicketComment/records?filters=${filters}&sort=created_at:desc`
+   );
    ```
 
 5. **Save & Publish**
@@ -2065,31 +2086,28 @@ Before deploying to production:
 
 ### Deployment Steps
 
-1. **Export Configuration (from staging):**
+1. **Export/Import Configuration:**
+
+   > **⚠️ NOT YET IMPLEMENTED:** Dedicated export and import endpoints (`/data-model/export`, `/workflows/export`, `/automations/export`, etc.) do not exist yet. Use one of these manual approaches in the meantime:
+   > - **Database snapshot/restore** – take a DB dump from staging and restore to production
+   > - **Manual re-creation** – recreate entities, workflows, and automations via the UI in the target environment
+   > - **Direct API scripting** – use the CRUD endpoints to script the re-creation of each resource
+
+2. **Run Migrations in Production:**
    ```bash
-   # Export entities
-   POST /api/v1/data-model/export
+   # After recreating entity definitions, generate and execute migrations:
 
-   # Export workflows
-   POST /api/v1/workflows/export
+   # 1. Preview the migration SQL
+   GET /api/v1/data-model/entities/{entity_id}/preview-migration
 
-   # Export automations
-   POST /api/v1/automations/export
-   ```
+   # 2. Generate a pending migration record
+   POST /api/v1/data-model/entities/{entity_id}/generate-migration
 
-2. **Import to Production:**
-   ```bash
-   # Import entities
-   POST /api/v1/data-model/import
+   # 3. Execute the migration (identified by its own ID)
+   POST /api/v1/data-model/migrations/{migration_id}/execute
 
-   # Run migrations
-   POST /api/v1/data-model/{entity}/migrations/run
-
-   # Import workflows
-   POST /api/v1/workflows/import
-
-   # Import automations
-   POST /api/v1/automations/import
+   # Or use the one-step publish (generates + executes migration):
+   POST /api/v1/data-model/entities/{entity_id}/publish
    ```
 
 3. **Activate Features:**
@@ -2174,58 +2192,138 @@ Before deploying to production:
 
 ```
 # Dynamic Data CRUD
-GET    /api/v1/dynamic-data/{entity}/records
-POST   /api/v1/dynamic-data/{entity}/records
-GET    /api/v1/dynamic-data/{entity}/records/{id}
-PUT    /api/v1/dynamic-data/{entity}/records/{id}
-DELETE /api/v1/dynamic-data/{entity}/records/{id}
+GET    /api/v1/dynamic-data/{entity}/records        # list with filtering, sorting, pagination
+POST   /api/v1/dynamic-data/{entity}/records        # create record
+GET    /api/v1/dynamic-data/{entity}/records/{id}   # get single record -> { id, data: {...} }
+PUT    /api/v1/dynamic-data/{entity}/records/{id}   # update record
+DELETE /api/v1/dynamic-data/{entity}/records/{id}   # delete record
+POST   /api/v1/dynamic-data/{entity}/records/bulk   # bulk create
+PUT    /api/v1/dynamic-data/{entity}/records/bulk   # bulk update
+DELETE /api/v1/dynamic-data/{entity}/records/bulk   # bulk delete
+GET    /api/v1/dynamic-data/{entity}/metadata       # entity field definitions
+
+# Note: Relationship traversal (GET /{entity}/{id}/{relationship}) is defined
+# but returns HTTP 501 Not Implemented.
 
 # Lookups
-GET    /api/v1/lookups/{lookup_name}/values
-POST   /api/v1/lookups/{lookup_name}/refresh
+GET    /api/v1/lookups/configurations               # list all lookup configurations
+GET    /api/v1/lookups/configurations/{config_id}   # get one lookup configuration
+GET    /api/v1/lookups/configurations/{config_id}/data  # fetch the actual option values
+# Note: /{lookup_name}/values and /{lookup_name}/refresh do not exist.
 
 # Workflows
-POST   /api/v1/workflows/{workflow_id}/instances
+POST   /api/v1/workflows                            # create workflow definition
+GET    /api/v1/workflows/{workflow_id}              # get workflow
+POST   /api/v1/workflows/{workflow_id}/publish      # publish workflow
+POST   /api/v1/workflows/{workflow_id}/unpublish    # revert to draft
+POST   /api/v1/workflows/{workflow_id}/states       # add state
+PUT    /api/v1/workflows/{workflow_id}/states/{state_id}       # update state
+DELETE /api/v1/workflows/{workflow_id}/states/{state_id}       # delete state
+POST   /api/v1/workflows/{workflow_id}/transitions  # add transition
+DELETE /api/v1/workflows/{workflow_id}/transitions/{transition_id}
+POST   /api/v1/workflows/{workflow_id}/simulate     # simulate workflow
+POST   /api/v1/workflows/instances                  # create instance (NOT under /{workflow_id}/)
 GET    /api/v1/workflows/instances/{instance_id}
-POST   /api/v1/workflows/instances/{instance_id}/approve
-POST   /api/v1/workflows/instances/{instance_id}/reject
+POST   /api/v1/workflows/instances/{instance_id}/execute    # execute a transition (approve/reject/advance)
+GET    /api/v1/workflows/instances/{instance_id}/history
+GET    /api/v1/workflows/instances/{instance_id}/available-transitions
+# Note: /approve and /reject are NOT separate endpoints; use /execute for all transitions.
 
 # Reports
-POST   /api/v1/reports/{report_id}/execute
-GET    /api/v1/reports/{report_id}/export/{format}
+POST   /api/v1/reports/definitions                  # create report definition
+GET    /api/v1/reports/definitions/{report_id}      # get report definition
+POST   /api/v1/reports/execute                      # execute report (report definition in body)
+POST   /api/v1/reports/execute/export               # export report (PDF, Excel, CSV, JSON)
+GET    /api/v1/reports/executions/history           # execution history
+GET    /api/v1/reports/templates                    # list report templates
+# Note: /reports/{report_id}/execute does not exist; the execute endpoint takes no {report_id} in path.
 
 # Dashboards
-GET    /api/v1/dashboards/{dashboard_id}
-GET    /api/v1/dashboards/{dashboard_id}/widgets/{widget_id}/data
+GET    /api/v1/dashboards                           # list dashboards
+POST   /api/v1/dashboards                           # create dashboard
+GET    /api/v1/dashboards/{dashboard_id}            # get dashboard with pages and widgets
+PUT    /api/v1/dashboards/{dashboard_id}            # update dashboard
+DELETE /api/v1/dashboards/{dashboard_id}            # delete dashboard
+POST   /api/v1/dashboards/{dashboard_id}/clone      # clone dashboard
+POST   /api/v1/dashboards/pages                     # add page to dashboard
+POST   /api/v1/dashboards/widgets                   # add widget to page
+PUT    /api/v1/dashboards/widgets/{widget_id}       # update widget config
+DELETE /api/v1/dashboards/widgets/{widget_id}       # delete widget
+POST   /api/v1/dashboards/widgets/data              # fetch widget data (POST, config in body)
+POST   /api/v1/dashboards/widgets/bulk-update       # update multiple widgets at once
+# Note: GET /dashboards/{id}/widgets/{widget_id}/data does not exist; use POST /dashboards/widgets/data.
+
+# Module Management
+GET    /api/v1/modules                              # list modules
+POST   /api/v1/modules                              # create module
+GET    /api/v1/modules/{module_id}                  # get module
+PUT    /api/v1/modules/{module_id}                  # update module
+DELETE /api/v1/modules/{module_id}                  # delete module
+POST   /api/v1/modules/{module_id}/publish          # publish module (Draft -> Active)
+POST   /api/v1/modules/{module_id}/versions         # create new version (patch/minor/major)
+GET    /api/v1/modules/{module_id}/versions         # list version history
+GET    /api/v1/modules/{module_id}/dependencies     # list dependencies
+POST   /api/v1/modules/{module_id}/dependencies     # add dependency
+DELETE /api/v1/modules/{module_id}/dependencies/{dependency_id}
+GET    /api/v1/modules/{module_id}/components       # list all module components
+POST   /api/v1/modules/validate/prefix              # validate table prefix uniqueness
+POST   /api/v1/modules/validate/name                # validate module name uniqueness
+
+# Module Extensions
+POST   /api/v1/module-extensions/entity            # add fields to another module's entity
+GET    /api/v1/module-extensions/entity            # list entity extensions
+GET    /api/v1/module-extensions/entity/{entity_name}/records/{record_id}  # get record + extensions
+POST   /api/v1/module-extensions/screen            # add tab/section to another module's screen
+GET    /api/v1/module-extensions/screen            # list screen extensions
+POST   /api/v1/module-extensions/menu              # add submenu to another module's menu
+GET    /api/v1/module-extensions/menu              # list menu extensions
 ```
 
 ### F. JavaScript Helper Functions
 
 ```javascript
-// Fetch data from dynamic entity
-async function fetchTickets(filters = {}) {
-  const queryString = new URLSearchParams(filters).toString();
-  return await apiFetch(`/dynamic-data/SupportTicket/records?${queryString}`);
+// Fetch data from dynamic entity using JSON filters
+async function fetchTickets(filters = []) {
+  // filters is an array of {field, operator, value} objects
+  const params = new URLSearchParams();
+  if (filters.length) params.set('filters', JSON.stringify(filters));
+  return await apiFetch(`/dynamic-data/SupportTicket/records?${params.toString()}`);
+}
+
+// Fetch comments for a ticket (filter by field, not relationship traversal)
+async function fetchTicketComments(ticketId) {
+  const filters = JSON.stringify([{ field: 'ticket_id', operator: 'eq', value: ticketId }]);
+  return await apiFetch(`/dynamic-data/TicketComment/records?filters=${encodeURIComponent(filters)}`);
 }
 
 // Create new ticket
 async function createTicket(ticketData) {
   return await apiFetch('/dynamic-data/SupportTicket/records', {
     method: 'POST',
-    body: JSON.stringify(ticketData)
+    body: JSON.stringify({ data: ticketData })
   });
 }
 
-// Get lookup values
-async function getLookupValues(lookupName) {
-  return await apiFetch(`/lookups/${lookupName}/values`);
+// Get lookup configuration values
+async function getLookupValues(configId) {
+  // configId is the numeric ID of the lookup configuration, not a name slug
+  return await apiFetch(`/lookups/configurations/${configId}/data`);
 }
 
-// Trigger workflow
-async function triggerWorkflow(workflowId, entityId) {
-  return await apiFetch(`/workflows/${workflowId}/instances`, {
+// Create workflow instance
+async function createWorkflowInstance(workflowId, entityId) {
+  // Note: instances endpoint is NOT nested under workflow_id
+  return await apiFetch('/workflows/instances', {
     method: 'POST',
-    body: JSON.stringify({ entity_id: entityId })
+    body: JSON.stringify({ workflow_id: workflowId, entity_id: entityId })
+  });
+}
+
+// Execute a workflow transition (approve, reject, or advance)
+async function executeTransition(instanceId, transitionId, comment) {
+  return await apiFetch(`/workflows/instances/${instanceId}/execute`, {
+    method: 'POST',
+    body: JSON.stringify({ transition_id: transitionId, comment })
   });
 }
 ```
@@ -2470,7 +2568,7 @@ Check that all components are complete:
 
 ### Step 2: Publish Module
 
-**API Endpoint:** `POST /api/v1/nocode-modules/{module_id}/publish`
+**API Endpoint:** `POST /api/v1/modules/{module_id}/publish`
 
 **Request:**
 ```json
@@ -2505,7 +2603,7 @@ When you make changes to an active module:
 - Workflow logic changes
 - Not backward compatible
 
-**API Endpoint:** `POST /api/v1/nocode-modules/{module_id}/versions`
+**API Endpoint:** `POST /api/v1/modules/{module_id}/versions`
 
 **Request:**
 ```json
@@ -2592,7 +2690,43 @@ Congratulations! You've successfully created a complete **Customer Support Ticke
 
 ---
 
-**Document Version:** 2.1 (Updated for unified module system)
-**Last Updated:** 2026-02-13
+## Known Discrepancies vs Actual System
+
+This section records gaps between the guide and the current implementation, updated after system audit on 2026-03-01.
+
+### ✅ Fixed in this document
+
+| # | Area | Was documented as | Corrected to |
+|---|------|-------------------|--------------|
+| 1 | Module page navigation | `/nocode-modules.html` standalone page | Hash route `#modules` inside `index.html` |
+| 2 | Module API prefix | `/api/v1/nocode-modules/` | `/api/v1/modules/` |
+| 3 | Workflow instance URL | `POST .../workflows/{id}/instances` | `POST .../workflows/instances` |
+| 4 | Workflow approve/reject | Separate `/approve` + `/reject` endpoints | Single `/execute` endpoint for all transitions |
+| 5 | Migration run URL | `/{entity}/migrations/run` | `/migrations/{migration_id}/execute` |
+| 6 | Lookup endpoints | `/{name}/values`, `/{name}/refresh` | `/configurations/{id}/data` |
+| 7 | Report execute URL | `POST /reports/{id}/execute` | `POST /reports/execute` (no `{id}` in path) |
+| 8 | Dashboard widget data | `GET /dashboards/{id}/widgets/{id}/data` | `POST /dashboards/widgets/data` |
+| 9 | Metadata sort format | `"defaultSort": [{"field": "x", "order": "desc"}]` | `"default_sort": [["x", "desc"]]` |
+| 10 | Metadata form field key | `"field"` property | `"name"` property |
+| 11 | Filter query syntax | `?filter=key:value` URL param | `?filters=<JSON array>` |
+| 12 | Create record body | `JSON.stringify(formData)` flat object | `JSON.stringify({ data: formData })` |
+| 13 | JS helper `getLookupValues` | Called with name slug | Needs numeric `config_id` |
+| 14 | JS helper `triggerWorkflow` | Used `/{workflow_id}/instances` path | Uses `/instances` path |
+
+### ⚠️ Not yet implemented (left as-is in the guide)
+
+| # | Feature | Status |
+|---|---------|--------|
+| 1 | **Export/Import** — `/data-model/export`, `/workflows/export`, `/automations/export` etc. | **Not implemented.** Section now has a note with the manual workaround. |
+| 2 | **Relationship traversal** — `GET /{entity}/{id}/{relationship}` | Endpoint exists but returns **HTTP 501 Not Implemented**. Guide custom page code updated to filter directly instead. |
+| 3 | **Bulk actions on list table** — `"bulkActions": ["delete", "export"]` in table config | The `DynamicTable` component does not implement bulk selection yet. Config key accepted but not rendered. |
+| 4 | **Auto table-prefix from module** — Table name auto-prefixed with module's `table_prefix` | Entity `module_id` FK exists; auto-prefixing behavior in `DataModelService` is not confirmed. Users may need to set the table name manually including the prefix. |
+| 5 | **Module Deprecated/Archived lifecycle** — UI to deprecate or archive a module | Module publish endpoint exists. Deprecation/archival management UI is not yet built. |
+| 6 | **Report parameter binding** — Pass named parameters to `POST /reports/execute` | Report definitions support parameters but the frontend execution UI may not expose all parameter types yet. |
+
+---
+
+**Document Version:** 2.2 (Corrected API endpoints, formats, and added discrepancy log)
+**Last Updated:** 2026-03-01
 **Author:** Platform Team
 **Next Review:** After first user feedback
