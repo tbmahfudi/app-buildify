@@ -1302,96 +1302,81 @@ The platform automatically generates CRUD UI when you publish entities. Let's ve
 
 #### Step 5.2: Customize Entity Metadata (Optional)
 
-If you want to customize the UI beyond auto-generation:
+> **⚠️ NO UI SCREEN EXISTS FOR THIS.** There is no "Entity Metadata" config page in the frontend. The metadata is auto-generated and managed as follows:
 
-**Navigation:** No-Code Platform > Platform Configuration > Entity Metadata
+**How metadata works:**
 
-1. **Select Entity:** `SupportTicket`
+1. When you **publish an entity** (Step 5.1), the backend auto-generates `table_config` and `form_config` from the field definitions you created in the Data Model Designer. This is the only step required for a working CRUD UI.
 
-2. **Table Configuration:**
+2. If field types look wrong after publishing (e.g. a select field renders as a plain textbox), open the **Data Model Designer** (`No-Code Platform > Data & Schema > Data Model Designer`), find the `SupportTicket` entity card, and click the **"Regenerate Metadata"** button (tooltip: *"Rebuild form/table metadata from the entity definition"*). This calls `POST /api/v1/metadata/entities/SupportTicket/regenerate` and rebuilds the config from scratch.
 
-   > **💡 Key naming notes:**
-   > - Sort uses snake_case key `default_sort` with array-of-arrays format `[["field", "dir"]]`
-   > - Column fields use `"field"` (DB column name) and `"title"` (display label)
-   > - Row actions: do **not** include `"create"` — that is page-level only
+3. For **advanced customisation** beyond what auto-generation provides, you must call the API directly — there is no frontend form for this:
 
+   ```
+   PUT /api/v1/metadata/entities/SupportTicket
+   ```
+
+   **Actual `table_config` schema** (`TableConfig`):
    ```json
    {
      "columns": [
-       { "field": "ticket_number", "title": "Ticket #", "visible": true, "width": 120 },
-       { "field": "subject", "title": "Subject", "visible": true, "width": 300 },
-       { "field": "priority", "title": "Priority", "visible": true, "width": 100, "type": "select" },
-       { "field": "status", "title": "Status", "visible": true, "width": 120, "type": "select" },
-       { "field": "customer_name", "title": "Customer", "visible": true, "width": 150 },
-       { "field": "assigned_to", "title": "Assigned To", "visible": true, "width": 150 },
-       { "field": "sla_due_date", "title": "SLA Due", "visible": true, "width": 150, "type": "datetime" },
-       { "field": "created_at", "title": "Created", "visible": true, "width": 150, "type": "datetime" }
+       { "field": "ticket_number", "title": "Ticket #", "width": 120, "sortable": true, "filterable": true },
+       { "field": "subject",       "title": "Subject",  "width": 300, "sortable": true, "filterable": true },
+       { "field": "priority",      "title": "Priority", "width": 100, "format": "select" },
+       { "field": "status",        "title": "Status",   "width": 120, "format": "select" },
+       { "field": "customer_name", "title": "Customer", "width": 150 },
+       { "field": "assigned_to",   "title": "Assigned To", "width": 150 },
+       { "field": "sla_due_date",  "title": "SLA Due",  "width": 150, "format": "date" },
+       { "field": "created_at",    "title": "Created",  "width": 150, "format": "date" }
      ],
      "default_sort": [["created_at", "desc"]],
-     "default_filters": [
-       { "field": "status", "operator": "in", "value": ["new", "open", "in_progress"] }
-     ],
+     "default_filters": {},
      "actions": ["view", "edit", "delete"],
-     "page_size": 25
+     "page_size": 25,
+     "selectable": false,
+     "exportable": false
    }
    ```
 
-3. **Form Configuration:**
+   > **Column schema notes:**
+   > - `"field"` + `"title"` are required. `"label"` is normalised to `"title"` automatically.
+   > - `"format"` is for rendering hints (`"date"`, `"currency"`, `"percentage"`) — there is no `"type"` or `"visible"` property on columns; unknown keys are silently ignored.
+   > - `"default_sort"` is `[["field", "asc|desc"]]` array-of-arrays.
 
-   > **💡 Key naming note:** Form fields use `"name"` (not `"field"`) as the identifier property, matching the auto-generated metadata from the system.
-
+   **Actual `form_config` schema** (`FormConfig`):
    ```json
    {
-     "layout": "tabs",
-     "tabs": [
-       {
-         "name": "basic_info",
-         "label": "Basic Information",
-         "fields": [
-           { "name": "ticket_number", "label": "Ticket #", "readonly": true },
-           { "name": "subject", "label": "Subject", "required": true },
-           { "name": "description", "label": "Description", "type": "text" },
-           { "name": "priority", "label": "Priority", "type": "select", "lookup": "ticket_priority" },
-           { "name": "status", "label": "Status", "type": "select", "lookup": "ticket_status" },
-           { "name": "category_id", "label": "Category", "type": "reference", "lookup": "ticket_categories" }
-         ]
-       },
-       {
-         "name": "customer_info",
-         "label": "Customer Information",
-         "fields": [
-           { "name": "customer_name", "label": "Customer Name", "required": true },
-           { "name": "customer_email", "label": "Email", "type": "email", "required": true },
-           { "name": "customer_phone", "label": "Phone", "type": "phone" }
-         ]
-       },
-       {
-         "name": "assignment",
-         "label": "Assignment & SLA",
-         "fields": [
-           { "name": "assigned_to", "label": "Assigned To", "type": "reference" },
-           { "name": "assigned_team", "label": "Team", "type": "select", "lookup": "support_teams" },
-           { "name": "sla_due_date", "label": "SLA Due Date", "type": "datetime" },
-           { "name": "estimated_hours", "label": "Est. Hours", "type": "decimal" },
-           { "name": "actual_hours", "label": "Actual Hours", "type": "decimal" }
-         ]
-       },
-       {
-         "name": "resolution",
-         "label": "Resolution",
-         "fields": [
-           { "name": "resolution_notes", "label": "Resolution Notes", "type": "text" }
-         ]
-       }
-     ]
+     "layout": "vertical",
+     "fields": [
+       { "field": "ticket_number", "title": "Ticket #",      "type": "text",      "readonly": true },
+       { "field": "subject",       "title": "Subject",       "type": "text",      "required": true },
+       { "field": "description",   "title": "Description",   "type": "text" },
+       { "field": "priority",      "title": "Priority",      "type": "select",    "options": [] },
+       { "field": "status",        "title": "Status",        "type": "select",    "options": [] },
+       { "field": "category_id",   "title": "Category",      "type": "reference",
+         "reference_entity_name": "TicketCategory", "reference_field": "id", "display_field": "name" },
+       { "field": "customer_name", "title": "Customer Name", "type": "text",      "required": true },
+       { "field": "customer_email","title": "Email",         "type": "email",     "required": true },
+       { "field": "customer_phone","title": "Phone",         "type": "text" },
+       { "field": "assigned_to",   "title": "Assigned To",   "type": "reference" },
+       { "field": "assigned_team", "title": "Team",          "type": "select",    "options": [] },
+       { "field": "sla_due_date",  "title": "SLA Due Date",  "type": "date" },
+       { "field": "estimated_hours","title": "Est. Hours",   "type": "number" },
+       { "field": "actual_hours",  "title": "Actual Hours",  "type": "number" },
+       { "field": "resolution_notes","title": "Resolution Notes", "type": "text" }
+     ],
+     "sections": null,
+     "submit_button_text": "Save",
+     "cancel_button_text": "Cancel"
    }
    ```
 
-4. **Click "Save"**
+   > **Form schema notes:**
+   > - `"fields"` is a **flat list** — there is no `"tabs"` key. The `"tabs"` layout value is normalised to `"vertical"`.
+   > - Field identifier key is `"field"`, display key is `"title"`. Both `"name"` and `"label"` are accepted aliases and normalised automatically.
+   > - Supported `"layout"` values: `"vertical"`, `"horizontal"`, `"grid"`.
 
-5. **Refresh the UI** - Navigate back to Support Tickets list to see changes
-
-**✅ Checkpoint:** Your CRUD UI should be fully functional with custom layouts.
+**✅ Checkpoint:** Publishing the entity (Step 5.1) is all that is needed for a working CRUD UI. Use "Regenerate Metadata" if types look wrong. Direct API editing is only needed for fine-tuning column widths, sort defaults, or RBAC visibility rules.
 
 ---
 
@@ -2707,11 +2692,15 @@ This section records gaps between the guide and the current implementation, upda
 | 7 | Report execute URL | `POST /reports/{id}/execute` | `POST /reports/execute` (no `{id}` in path) |
 | 8 | Dashboard widget data | `GET /dashboards/{id}/widgets/{id}/data` | `POST /dashboards/widgets/data` |
 | 9 | Metadata sort format | `"defaultSort": [{"field": "x", "order": "desc"}]` | `"default_sort": [["x", "desc"]]` |
-| 10 | Metadata form field key | `"field"` property | `"name"` property |
+| 10 | Metadata form field key | Stated `"name"` as the only valid key | Both `"field"` and `"name"` accepted; schema normalises `name→field` |
 | 11 | Filter query syntax | `?filter=key:value` URL param | `?filters=<JSON array>` |
 | 12 | Create record body | `JSON.stringify(formData)` flat object | `JSON.stringify({ data: formData })` |
 | 13 | JS helper `getLookupValues` | Called with name slug | Needs numeric `config_id` |
 | 14 | JS helper `triggerWorkflow` | Used `/{workflow_id}/instances` path | Uses `/instances` path |
+| 15 | Step 5.2 navigation | "No-Code Platform > Platform Configuration > Entity Metadata" | **Screen does not exist.** Metadata is auto-generated on entity publish. |
+| 16 | Step 5.2 table column schema | `"visible"`, `"type"` properties on columns | `ColumnMetadata` has no `visible` or `type`; use `"format"` for render hints |
+| 17 | Step 5.2 form layout | `"layout": "tabs"` with `"tabs": [...]` structure | `FormConfig` uses a flat `"fields": [...]` list; `"tabs"` maps to `"vertical"` |
+| 18 | Step 5.2 form field keys | `"name"` + `"label"` in form config examples | Canonical keys are `"field"` + `"title"`; aliases are normalised automatically |
 
 ### ⚠️ Not yet implemented (left as-is in the guide)
 
@@ -2719,14 +2708,15 @@ This section records gaps between the guide and the current implementation, upda
 |---|---------|--------|
 | 1 | **Export/Import** — `/data-model/export`, `/workflows/export`, `/automations/export` etc. | **Not implemented.** Section now has a note with the manual workaround. |
 | 2 | **Relationship traversal** — `GET /{entity}/{id}/{relationship}` | Endpoint exists but returns **HTTP 501 Not Implemented**. Guide custom page code updated to filter directly instead. |
-| 3 | **Bulk actions on list table** — `"bulkActions": ["delete", "export"]` in table config | The `DynamicTable` component does not implement bulk selection yet. Config key accepted but not rendered. |
+| 3 | **Bulk actions on list table** — `selectable`/`exportable` in table config | `TableConfig` accepts these fields but `DynamicTable` component has not implemented bulk selection UI yet. |
 | 4 | **Auto table-prefix from module** — Table name auto-prefixed with module's `table_prefix` | Entity `module_id` FK exists; auto-prefixing behavior in `DataModelService` is not confirmed. Users may need to set the table name manually including the prefix. |
 | 5 | **Module Deprecated/Archived lifecycle** — UI to deprecate or archive a module | Module publish endpoint exists. Deprecation/archival management UI is not yet built. |
 | 6 | **Report parameter binding** — Pass named parameters to `POST /reports/execute` | Report definitions support parameters but the frontend execution UI may not expose all parameter types yet. |
+| 7 | **Metadata editor UI** — Frontend screen to edit `table_config` / `form_config` JSON | **Not yet built.** The backend `PUT /api/v1/metadata/entities/{name}` endpoint exists and works, but there is no UI screen with a JSON editor or form for it. Customisation requires direct API calls. |
 
 ---
 
-**Document Version:** 2.2 (Corrected API endpoints, formats, and added discrepancy log)
+**Document Version:** 2.3 (Step 5.2 rewritten: no UI screen exists; correct schemas documented)
 **Last Updated:** 2026-03-01
 **Author:** Platform Team
 **Next Review:** After first user feedback
