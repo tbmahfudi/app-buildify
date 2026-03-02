@@ -112,7 +112,7 @@ function buildFilters() {
   }
 
   // User email filter
-  const userEmail = document.getElementById('filter-user')?.value;
+  const userEmail = document.getElementById('search-user')?.value;
   if (userEmail) {
     filters.push({ field: 'user_email', operator: 'like', value: `%${userEmail}%` });
   }
@@ -359,7 +359,7 @@ function clearFilters() {
   document.getElementById('filter-action').value = '';
   document.getElementById('filter-entity-type').value = '';
   document.getElementById('filter-status').value = '';
-  document.getElementById('filter-user').value = '';
+  document.getElementById('search-user').value = '';
   document.getElementById('filter-date-from').value = '';
   document.getElementById('filter-date-to').value = '';
   document.getElementById('filter-search').value = '';

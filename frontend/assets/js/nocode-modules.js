@@ -127,7 +127,7 @@ function createModuleCard(module) {
  * Filter modules based on search and filters
  */
 window.filterModules = function() {
-    const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+    const searchTerm = document.getElementById('search-modules').value.toLowerCase();
     const statusFilter = document.getElementById('statusFilter').value;
     const categoryFilter = document.getElementById('categoryFilter').value;
 
