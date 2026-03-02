@@ -2704,15 +2704,15 @@ This section records gaps between the guide and the current implementation, upda
 
 ### ⚠️ Not yet implemented (left as-is in the guide)
 
-| # | Feature | Status |
-|---|---------|--------|
-| 1 | **Export/Import** — `/data-model/export`, `/workflows/export`, `/automations/export` etc. | **Not implemented.** Section now has a note with the manual workaround. |
-| 2 | **Relationship traversal** — `GET /{entity}/{id}/{relationship}` | Endpoint exists but returns **HTTP 501 Not Implemented**. Guide custom page code updated to filter directly instead. |
-| 3 | **Bulk actions on list table** — `selectable`/`exportable` in table config | `TableConfig` accepts these fields but `DynamicTable` component has not implemented bulk selection UI yet. |
-| 4 | **Auto table-prefix from module** — Table name auto-prefixed with module's `table_prefix` | Entity `module_id` FK exists; auto-prefixing behavior in `DataModelService` is not confirmed. Users may need to set the table name manually including the prefix. |
-| 5 | **Module Deprecated/Archived lifecycle** — UI to deprecate or archive a module | Module publish endpoint exists. Deprecation/archival management UI is not yet built. |
-| 6 | **Report parameter binding** — Pass named parameters to `POST /reports/execute` | Report definitions support parameters but the frontend execution UI may not expose all parameter types yet. |
-| 7 | **Metadata editor UI** — Frontend screen to edit `table_config` / `form_config` JSON | **Not yet built.** The backend `PUT /api/v1/metadata/entities/{name}` endpoint exists and works, but there is no UI screen with a JSON editor or form for it. Customisation requires direct API calls. |
+| # | Feature | Guide Section | Status |
+|---|---------|---------------|--------|
+| 1 | **Export/Import** — `/data-model/export`, `/workflows/export`, `/automations/export` etc. | Going Live › Deployment Steps | **Not implemented.** Section now has a note with the manual workaround. |
+| 2 | **Relationship traversal** — `GET /{entity}/{id}/{relationship}` | Going Live › API Reference | Endpoint exists but returns **HTTP 501 Not Implemented**. Guide custom page code updated to filter directly instead. |
+| 3 | **Bulk actions on list table** — `selectable`/`exportable` in table config | Phase 5 › Step 5.2: Customize Entity Metadata | `TableConfig` accepts these fields but `DynamicTable` component has not implemented bulk selection UI yet. |
+| 4 | **Auto table-prefix from module** — Table name auto-prefixed with module's `table_prefix` | Phase 4 › Module System Setup › Step 2: Table Prefix | Entity `module_id` FK exists; auto-prefixing behavior in `DataModelService` is not confirmed. Users may need to set the table name manually including the prefix. |
+| 5 | **Module Deprecated/Archived lifecycle** — UI to deprecate or archive a module | Step 0.2: Understanding Module Status | Module publish endpoint exists. Deprecation/archival management UI is not yet built. |
+| 6 | **Report parameter binding** — Pass named parameters to `POST /reports/execute` | Phase 6 › Step 6.1: Create Ticket Analytics Report | Report definitions support parameters but the frontend execution UI may not expose all parameter types yet. |
+| 7 | **Metadata editor UI** — Frontend screen to edit `table_config` / `form_config` JSON | Phase 5 › Step 5.2: Customize Entity Metadata | **Not yet built.** The backend `PUT /api/v1/metadata/entities/{name}` endpoint exists and works, but there is no UI screen with a JSON editor or form for it. Customisation requires direct API calls. |
 
 ---
 
