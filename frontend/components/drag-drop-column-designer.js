@@ -19,7 +19,7 @@ export class DragDropColumnDesigner {
         this.selectedColumns = [];
         this.currentColumn = null;
         this.onColumnsChange = options.onColumnsChange || (() => {});
-        this._listenersAttached = false; // Prevent duplicate persistent listeners
+        this._listenerController = null; // AbortController for clean listener teardown
 
         this.init();
     }
@@ -320,91 +320,89 @@ export class DragDropColumnDesigner {
     }
 
     attachEventListeners() {
-        // Persistent listeners are attached only once — they live on elements that
-        // survive innerHTML re-renders (this.container, #field-search, etc.).
-        // Re-calling attachEventListeners() after refreshSelectedColumns() /
-        // refreshProperties() would otherwise stack duplicate handlers and cause
-        // every second click to show "Column already added".
-        if (!this._listenersAttached) {
-            this._listenersAttached = true;
+        // Abort all previously registered listeners so nothing ever stacks up,
+        // regardless of which part of the DOM was re-rendered.
+        if (this._listenerController) {
+            this._listenerController.abort();
+        }
+        this._listenerController = new AbortController();
+        const sig = this._listenerController.signal;
 
-            // Field search
-            document.getElementById('field-search')?.addEventListener('input', (e) => {
-                this.filterFields(e.target.value);
-            });
+        // Field search
+        document.getElementById('field-search')?.addEventListener('input', (e) => {
+            this.filterFields(e.target.value);
+        }, { signal: sig });
 
-            // Add all / Clear all buttons
-            document.getElementById('add-all-btn')?.addEventListener('click', () => {
-                this.addAllFields();
-            });
+        // Add all / Clear all buttons
+        document.getElementById('add-all-btn')?.addEventListener('click', () => {
+            this.addAllFields();
+        }, { signal: sig });
 
-            document.getElementById('clear-all-btn')?.addEventListener('click', () => {
-                this.clearAllColumns();
-            });
+        document.getElementById('clear-all-btn')?.addEventListener('click', () => {
+            this.clearAllColumns();
+        }, { signal: sig });
 
-            // Delegated click handler: add-field, remove-column, select-column
-            this.container.addEventListener('click', (e) => {
-                const addBtn = e.target.closest('.add-field-btn');
-                if (addBtn) {
-                    const field = JSON.parse(addBtn.dataset.field);
+        // Delegated click handler: add-field, remove-column, select-column
+        this.container.addEventListener('click', (e) => {
+            const addBtn = e.target.closest('.add-field-btn');
+            if (addBtn) {
+                const field = JSON.parse(addBtn.dataset.field);
+                this.addColumn(field);
+            }
+
+            const removeBtn = e.target.closest('.remove-column-btn');
+            if (removeBtn) {
+                const index = parseInt(removeBtn.dataset.index);
+                this.removeColumn(index);
+            }
+
+            const columnItem = e.target.closest('.column-item');
+            if (columnItem && !e.target.closest('.remove-column-btn')) {
+                const index = parseInt(columnItem.dataset.index);
+                this.selectColumn(index);
+            }
+        }, { signal: sig });
+
+        // Drop zone for columns
+        const columnsList = document.getElementById('selected-columns-list');
+        if (columnsList) {
+            columnsList.addEventListener('dragover', (e) => {
+                e.preventDefault();
+            }, { signal: sig });
+
+            columnsList.addEventListener('drop', (e) => {
+                e.preventDefault();
+                const fieldData = e.dataTransfer.getData('field');
+                if (fieldData) {
+                    const field = JSON.parse(fieldData);
                     this.addColumn(field);
                 }
-
-                const removeBtn = e.target.closest('.remove-column-btn');
-                if (removeBtn) {
-                    const index = parseInt(removeBtn.dataset.index);
-                    this.removeColumn(index);
-                }
-
-                const columnItem = e.target.closest('.column-item');
-                if (columnItem && !e.target.closest('.remove-column-btn')) {
-                    const index = parseInt(columnItem.dataset.index);
-                    this.selectColumn(index);
-                }
-            });
-
-            // Drop zone for columns (the container element persists across re-renders)
-            const columnsList = document.getElementById('selected-columns-list');
-            if (columnsList) {
-                columnsList.addEventListener('dragover', (e) => {
-                    e.preventDefault();
-                });
-
-                columnsList.addEventListener('drop', (e) => {
-                    e.preventDefault();
-                    const fieldData = e.dataTransfer.getData('field');
-                    if (fieldData) {
-                        const field = JSON.parse(fieldData);
-                        this.addColumn(field);
-                    }
-                });
-            }
+            }, { signal: sig });
         }
 
-        // Drag and drop for available fields — elements may be recreated by
-        // setAvailableFields() / setEntities(), so re-attach each time.
+        // Drag and drop for available fields
         document.querySelectorAll('.field-item').forEach(item => {
             item.addEventListener('dragstart', (e) => {
                 e.dataTransfer.setData('field', item.dataset.field);
-            });
+            }, { signal: sig });
         });
 
         // Drag and drop for reordering columns
         document.querySelectorAll('.column-item').forEach(item => {
             item.addEventListener('dragstart', (e) => {
                 e.dataTransfer.setData('columnIndex', item.dataset.index);
-            });
+            }, { signal: sig });
 
             item.addEventListener('dragover', (e) => {
                 e.preventDefault();
-            });
+            }, { signal: sig });
 
             item.addEventListener('drop', (e) => {
                 e.preventDefault();
                 const fromIndex = parseInt(e.dataTransfer.getData('columnIndex'));
                 const toIndex = parseInt(item.dataset.index);
                 this.reorderColumn(fromIndex, toIndex);
-            });
+            }, { signal: sig });
         });
 
         // Property change listeners
@@ -414,7 +412,7 @@ export class DragDropColumnDesigner {
                 this.refreshSelectedColumns();
                 this.notifyChange();
             }
-        });
+        }, { signal: sig });
 
         document.getElementById('column-aggregate')?.addEventListener('change', (e) => {
             if (this.currentColumn !== null) {
@@ -422,7 +420,7 @@ export class DragDropColumnDesigner {
                 this.refreshSelectedColumns();
                 this.notifyChange();
             }
-        });
+        }, { signal: sig });
 
         document.getElementById('column-format')?.addEventListener('change', (e) => {
             if (this.currentColumn !== null) {
@@ -430,28 +428,28 @@ export class DragDropColumnDesigner {
                 this.refreshSelectedColumns();
                 this.notifyChange();
             }
-        });
+        }, { signal: sig });
 
         document.getElementById('column-sortable')?.addEventListener('change', (e) => {
             if (this.currentColumn !== null) {
                 this.selectedColumns[this.currentColumn].sortable = e.target.checked;
                 this.notifyChange();
             }
-        });
+        }, { signal: sig });
 
         document.getElementById('column-width')?.addEventListener('change', (e) => {
             if (this.currentColumn !== null) {
                 this.selectedColumns[this.currentColumn].width = e.target.value;
                 this.notifyChange();
             }
-        });
+        }, { signal: sig });
 
         document.getElementById('column-align')?.addEventListener('change', (e) => {
             if (this.currentColumn !== null) {
                 this.selectedColumns[this.currentColumn].align = e.target.value;
                 this.notifyChange();
             }
-        });
+        }, { signal: sig });
     }
 
     filterFields(searchTerm) {
