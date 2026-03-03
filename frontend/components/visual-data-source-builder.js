@@ -57,8 +57,10 @@ export class VisualDataSourceBuilder {
             }
 
             // Process system entities
+            // /metadata/entities may return { entities: [...], total: N } or a plain array
             if (sysRes.ok) {
-                const systemEntities = await sysRes.json();
+                const sysData = await sysRes.json();
+                const systemEntities = Array.isArray(sysData) ? sysData : (sysData.entities || []);
                 systemEntities.forEach(e => {
                     allEntities.push({
                         entity_name: e.entity_name || e.name,
@@ -73,7 +75,8 @@ export class VisualDataSourceBuilder {
 
             // Process nocode entities — resolve module_id to a display name
             if (nocodeRes.ok) {
-                const nocodeEntities = await nocodeRes.json();
+                const nocodeData = await nocodeRes.json();
+                const nocodeEntities = Array.isArray(nocodeData) ? nocodeData : (nocodeData.entities || nocodeData.items || []);
                 nocodeEntities.forEach(e => {
                     const moduleLabel = e.module_id
                         ? (this.moduleMap[e.module_id] || e.module_id)
