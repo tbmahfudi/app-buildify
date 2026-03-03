@@ -570,6 +570,16 @@ export class DragDropColumnDesigner {
         this.attachEventListeners();
     }
 
+    async setEntities(entityNames) {
+        this.options.entities = entityNames || [];
+        await this.loadAvailableFields();
+        const list = document.getElementById('available-fields-list');
+        if (list) {
+            list.innerHTML = this.renderAvailableFields();
+            this.attachEventListeners();
+        }
+    }
+
     notifyChange() {
         this.onColumnsChange(this.selectedColumns);
     }

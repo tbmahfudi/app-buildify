@@ -34,7 +34,11 @@
   <!-- Tab Navigation -->
   <div class="bg-white border-b border-gray-200">
     <nav class="flex px-4 overflow-x-auto">
-      <button class="tab-btn flex items-center gap-2 px-5 py-3 text-sm font-medium whitespace-nowrap border-b-2 border-blue-600 text-blue-600 transition-colors" data-step="data-source">
+      <button class="tab-btn flex items-center gap-2 px-5 py-3 text-sm font-medium whitespace-nowrap border-b-2 border-blue-600 text-blue-600 transition-colors" data-step="properties">
+        <i class="ph-duotone ph-note-pencil text-base"></i>
+        Properties
+      </button>
+      <button class="tab-btn flex items-center gap-2 px-5 py-3 text-sm font-medium whitespace-nowrap border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 transition-colors" data-step="data-source">
         <i class="ph-duotone ph-database text-base"></i>
         Data Source
       </button>
@@ -61,8 +65,70 @@
   <div class="flex-1 flex overflow-hidden">
     <!-- Step Content Area -->
     <div class="flex-1 bg-gray-50 overflow-auto">
+
+      <!-- Step 0: Properties -->
+      <div id="step-properties" class="step-content p-6">
+        <div class="max-w-2xl mx-auto">
+          <h2 class="text-lg font-semibold text-gray-900 mb-5">Report Properties</h2>
+          <div class="bg-white rounded-lg border border-gray-200 p-6 space-y-5">
+
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Report Name <span class="text-red-500">*</span></label>
+                <input id="prop-name" type="text" class="form-input w-full" placeholder="e.g. Monthly Sales Summary" />
+                <p class="text-xs text-gray-400 mt-1">Unique identifier used in the system</p>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Report Title</label>
+                <input id="prop-title" type="text" class="form-input w-full" placeholder="e.g. Monthly Sales Summary Report" />
+                <p class="text-xs text-gray-400 mt-1">Displayed to users at the top of the report</p>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Module / Category</label>
+                <input id="prop-category" type="text" class="form-input w-full" placeholder="e.g. Sales, Finance, HR" list="category-suggestions" />
+                <datalist id="category-suggestions">
+                  <option value="Sales">
+                  <option value="Finance">
+                  <option value="HR">
+                  <option value="Operations">
+                  <option value="Marketing">
+                  <option value="Inventory">
+                  <option value="General">
+                </datalist>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Report Type</label>
+                <select id="prop-type" class="form-select w-full">
+                  <option value="tabular">Tabular — rows &amp; columns</option>
+                  <option value="summary">Summary — grouped totals</option>
+                  <option value="chart">Chart — visualisation</option>
+                  <option value="dashboard">Dashboard — mixed widgets</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+              <textarea id="prop-description" class="form-input w-full" rows="3" placeholder="Describe what this report shows and who should use it…"></textarea>
+            </div>
+
+            <div class="flex items-center gap-3 pt-1">
+              <input id="prop-public" type="checkbox" class="checkbox" />
+              <div>
+                <label for="prop-public" class="text-sm font-medium text-gray-700">Make report public</label>
+                <p class="text-xs text-gray-400">All users can see this report in the shared report library</p>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
       <!-- Step 1: Data Source -->
-      <div id="step-data-source" class="step-content p-6">
+      <div id="step-data-source" class="step-content hidden p-6">
         <div class="max-w-5xl mx-auto">
           <div id="data-source-builder-container"></div>
         </div>
@@ -95,6 +161,7 @@
           <div id="template-library-container"></div>
         </div>
       </div>
+
     </div>
 
     <!-- Right Sidebar: Live Preview -->
@@ -128,11 +195,15 @@
     constructor() {
       this.reportId = null;
       this.currentStep = 0;
-      this.steps = ['data-source', 'columns', 'visualization', 'parameters', 'template'];
+      this.steps = ['properties', 'data-source', 'columns', 'visualization', 'parameters', 'template'];
 
       this.reportData = {
-        name: 'New Report',
+        name: '',
+        title: '',
+        category: '',
         report_type: 'tabular',
+        description: '',
+        is_public: false,
         data_source: {},
         columns: [],
         chart_config: {},
@@ -168,6 +239,13 @@
       this.components.dataSource = new VisualDataSourceBuilder(document.querySelector('#data-source-builder-container'), {
         onDataSourceChange: (dataSource) => {
           this.reportData.data_source = dataSource;
+          // Update column designer to show only fields from selected entities
+          const entityNames = (dataSource.entities || []).map(e =>
+            typeof e === 'string' ? e : e.entity_name
+          );
+          if (this.components.columns) {
+            this.components.columns.setEntities(entityNames);
+          }
           this.updatePreview();
         }
       });
@@ -218,6 +296,27 @@
         });
       });
 
+      // Sync Properties form fields to reportData in real time
+      document.getElementById('prop-name')?.addEventListener('input', (e) => {
+        this.reportData.name = e.target.value;
+        document.getElementById('report-title').textContent = e.target.value || 'New Report';
+      });
+      document.getElementById('prop-title')?.addEventListener('input', (e) => {
+        this.reportData.title = e.target.value;
+      });
+      document.getElementById('prop-category')?.addEventListener('input', (e) => {
+        this.reportData.category = e.target.value;
+      });
+      document.getElementById('prop-type')?.addEventListener('change', (e) => {
+        this.reportData.report_type = e.target.value;
+      });
+      document.getElementById('prop-description')?.addEventListener('input', (e) => {
+        this.reportData.description = e.target.value;
+      });
+      document.getElementById('prop-public')?.addEventListener('change', (e) => {
+        this.reportData.is_public = e.target.checked;
+      });
+
       document.getElementById('save-report-btn')?.addEventListener('click', () => this.saveReport());
       document.getElementById('run-report-btn')?.addEventListener('click', () => this.runReport());
       document.getElementById('preview-report-btn')?.addEventListener('click', () => this.updatePreview());
@@ -242,11 +341,23 @@
       });
     }
 
+    fillPropertiesForm() {
+      const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ''; };
+      set('prop-name', this.reportData.name);
+      set('prop-title', this.reportData.title);
+      set('prop-category', this.reportData.category);
+      set('prop-type', this.reportData.report_type || 'tabular');
+      set('prop-description', this.reportData.description);
+      const pub = document.getElementById('prop-public');
+      if (pub) pub.checked = !!this.reportData.is_public;
+    }
+
     async loadReport(reportId) {
       try {
         const response = await apiFetch(`/reports/definitions/${reportId}`);
         this.reportData = await response.json();
-        document.getElementById('report-title').textContent = this.reportData.name;
+        document.getElementById('report-title').textContent = this.reportData.name || 'New Report';
+        this.fillPropertiesForm();
         this.updatePreview();
       } catch (error) {
         console.error('Failed to load report:', error);
@@ -254,9 +365,12 @@
     }
 
     async saveReport() {
-      const reportName = prompt('Report name:', this.reportData.name);
-      if (!reportName) return;
-      this.reportData.name = reportName;
+      if (!this.reportData.name) {
+        this.showStep(0);
+        document.getElementById('prop-name')?.focus();
+        alert('Please enter a report name first.');
+        return;
+      }
 
       try {
         const url = this.reportId ? `/reports/definitions/${this.reportId}` : '/reports/definitions';
@@ -264,7 +378,7 @@
         const response = await apiFetch(url, { method, body: JSON.stringify(this.reportData) });
         const result = await response.json();
         this.reportId = result.id;
-        document.getElementById('report-title').textContent = reportName;
+        document.getElementById('report-title').textContent = this.reportData.name;
       } catch (error) {
         console.error('Failed to save report:', error);
       }
@@ -280,25 +394,26 @@
 
     updatePreview() {
       if (this.components.preview) {
-        this.components.preview.updateReportConfig(this.reportData);
+        this.components.preview.updateReportConfig?.(this.reportData);
       }
     }
 
     applyTemplate(template) {
       this.reportData = { ...this.reportData, ...template.config };
+      this.fillPropertiesForm();
       this.updatePreview();
       this.showStep(0);
     }
 
     clearReport() {
       this.reportData = {
-        name: 'New Report',
-        report_type: 'tabular',
-        data_source: {},
-        columns: [],
-        chart_config: {},
-        parameters: []
+        name: '', title: '', category: '', report_type: 'tabular',
+        description: '', is_public: false,
+        data_source: {}, columns: [], chart_config: {}, parameters: []
       };
+      this.reportId = null;
+      this.fillPropertiesForm();
+      document.getElementById('report-title').textContent = 'New Report';
 
       if (this.components.dataSource) this.components.dataSource.clear?.();
       if (this.components.columns) this.components.columns.clear?.();
