@@ -1,238 +1,127 @@
 <div class="report-designer-page h-screen flex flex-col overflow-hidden">
   <!-- Header -->
-  <div class="bg-white border-b border-gray-200 px-6 py-4">
+  <div class="bg-white border-b border-gray-200 px-6 py-3">
     <div class="flex items-center justify-between">
       <div class="flex items-center space-x-4">
         <button id="back-to-reports" class="text-gray-500 hover:text-gray-700">
           <i class="ph ph-arrow-left text-xl"></i>
         </button>
         <div>
-          <h1 class="text-2xl font-bold text-gray-900 flex items-center gap-3">
+          <h1 class="text-xl font-bold text-gray-900 flex items-center gap-2">
             <i class="ph-duotone ph-file-plus text-emerald-600"></i>
             <span id="report-title">New Report</span>
           </h1>
-          <p class="text-sm text-gray-600 mt-1">Design and build custom reports with visual tools</p>
+          <p class="text-xs text-gray-500 mt-0.5">Design and build custom reports with visual tools</p>
         </div>
       </div>
-      <div class="flex items-center space-x-3">
-        <button id="preview-report-btn" class="btn btn-secondary">
-          <i class="ph ph-eye mr-2"></i>
-          Preview
+      <div class="flex items-center space-x-2">
+        <button id="preview-report-btn" class="btn btn-secondary btn-sm">
+          <i class="ph ph-eye mr-1.5"></i>Preview
         </button>
-        <button id="save-report-btn" class="btn btn-primary">
-          <i class="ph ph-floppy-disk mr-2"></i>
-          Save Report
+        <button id="save-report-btn" class="btn btn-primary btn-sm">
+          <i class="ph ph-floppy-disk mr-1.5"></i>Save
         </button>
-        <button id="run-report-btn" class="btn btn-success">
-          <i class="ph ph-play mr-2"></i>
-          Run Report
+        <button id="run-report-btn" class="btn btn-success btn-sm">
+          <i class="ph ph-play mr-1.5"></i>Run
+        </button>
+        <button id="clear-report-btn" class="btn btn-secondary btn-sm text-red-600 hover:text-red-700">
+          <i class="ph ph-trash mr-1.5"></i>Clear
         </button>
       </div>
     </div>
   </div>
 
+  <!-- Tab Navigation -->
+  <div class="bg-white border-b border-gray-200">
+    <nav class="flex px-4 overflow-x-auto">
+      <button class="tab-btn flex items-center gap-2 px-5 py-3 text-sm font-medium whitespace-nowrap border-b-2 border-blue-600 text-blue-600 transition-colors" data-step="data-source">
+        <i class="ph-duotone ph-database text-base"></i>
+        Data Source
+      </button>
+      <button class="tab-btn flex items-center gap-2 px-5 py-3 text-sm font-medium whitespace-nowrap border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 transition-colors" data-step="columns">
+        <i class="ph-duotone ph-columns text-base"></i>
+        Columns
+      </button>
+      <button class="tab-btn flex items-center gap-2 px-5 py-3 text-sm font-medium whitespace-nowrap border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 transition-colors" data-step="visualization">
+        <i class="ph-duotone ph-chart-bar text-base"></i>
+        Visualization
+      </button>
+      <button class="tab-btn flex items-center gap-2 px-5 py-3 text-sm font-medium whitespace-nowrap border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 transition-colors" data-step="parameters">
+        <i class="ph-duotone ph-sliders text-base"></i>
+        Parameters
+      </button>
+      <button class="tab-btn flex items-center gap-2 px-5 py-3 text-sm font-medium whitespace-nowrap border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 transition-colors" data-step="template">
+        <i class="ph-duotone ph-copy text-base"></i>
+        Template
+      </button>
+    </nav>
+  </div>
+
   <!-- Main Content -->
   <div class="flex-1 flex overflow-hidden">
-    <!-- Left Sidebar: Steps -->
-    <div class="w-64 bg-white border-r border-gray-200 overflow-y-auto">
-      <div class="p-4">
-        <h3 class="text-sm font-semibold text-gray-900 mb-3">Report Builder Steps</h3>
-        <div class="space-y-2">
-          <button class="designer-step-btn w-full text-left px-4 py-3 rounded-lg bg-blue-50 border-l-4 border-blue-600" data-step="data-source">
-            <div class="flex items-center space-x-3">
-              <i class="ph-duotone ph-database text-blue-600 text-xl"></i>
-              <div class="flex-1">
-                <div class="font-medium text-gray-900">1. Data Source</div>
-                <div class="text-xs text-gray-500">Select entities & joins</div>
-              </div>
-              <i class="ph ph-check-circle text-green-600 hidden step-complete-icon"></i>
-            </div>
-          </button>
-
-          <button class="designer-step-btn w-full text-left px-4 py-3 rounded-lg hover:bg-gray-50 border-l-4 border-transparent" data-step="columns">
-            <div class="flex items-center space-x-3">
-              <i class="ph-duotone ph-columns text-gray-400 text-xl"></i>
-              <div class="flex-1">
-                <div class="font-medium text-gray-700">2. Columns</div>
-                <div class="text-xs text-gray-500">Choose fields & formatting</div>
-              </div>
-              <i class="ph ph-check-circle text-green-600 hidden step-complete-icon"></i>
-            </div>
-          </button>
-
-          <button class="designer-step-btn w-full text-left px-4 py-3 rounded-lg hover:bg-gray-50 border-l-4 border-transparent" data-step="visualization">
-            <div class="flex items-center space-x-3">
-              <i class="ph-duotone ph-chart-bar text-gray-400 text-xl"></i>
-              <div class="flex-1">
-                <div class="font-medium text-gray-700">3. Visualization</div>
-                <div class="text-xs text-gray-500">Chart type & options</div>
-              </div>
-              <i class="ph ph-check-circle text-green-600 hidden step-complete-icon"></i>
-            </div>
-          </button>
-
-          <button class="designer-step-btn w-full text-left px-4 py-3 rounded-lg hover:bg-gray-50 border-l-4 border-transparent" data-step="parameters">
-            <div class="flex items-center space-x-3">
-              <i class="ph-duotone ph-sliders text-gray-400 text-xl"></i>
-              <div class="flex-1">
-                <div class="font-medium text-gray-700">4. Parameters</div>
-                <div class="text-xs text-gray-500">Filters & variables</div>
-              </div>
-              <i class="ph ph-check-circle text-green-600 hidden step-complete-icon"></i>
-            </div>
-          </button>
-
-          <button class="designer-step-btn w-full text-left px-4 py-3 rounded-lg hover:bg-gray-50 border-l-4 border-transparent" data-step="template">
-            <div class="flex items-center space-x-3">
-              <i class="ph-duotone ph-copy text-gray-400 text-xl"></i>
-              <div class="flex-1">
-                <div class="font-medium text-gray-700">5. Template</div>
-                <div class="text-xs text-gray-500">Use pre-built template</div>
-              </div>
-            </div>
-          </button>
+    <!-- Step Content Area -->
+    <div class="flex-1 bg-gray-50 overflow-auto">
+      <!-- Step 1: Data Source -->
+      <div id="step-data-source" class="step-content p-6">
+        <div class="max-w-5xl mx-auto">
+          <div id="data-source-builder-container"></div>
         </div>
       </div>
 
-      <!-- Quick Actions -->
-      <div class="p-4 border-t border-gray-200">
-        <h4 class="text-xs font-semibold text-gray-600 mb-2 uppercase">Quick Actions</h4>
-        <div class="space-y-1">
-          <button id="clear-report-btn" class="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded flex items-center space-x-2">
-            <i class="ph ph-trash"></i>
-            <span>Clear All</span>
-          </button>
-          <button id="duplicate-report-btn" class="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded flex items-center space-x-2">
-            <i class="ph ph-copy"></i>
-            <span>Duplicate</span>
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Center: Designer Area -->
-    <div class="flex-1 flex flex-col overflow-hidden">
-      <!-- Step Content Area -->
-      <div class="flex-1 bg-white overflow-auto">
-        <!-- Step 1: Data Source -->
-        <div id="step-data-source" class="step-content p-6">
-          <div class="max-w-5xl mx-auto">
-            <h2 class="text-xl font-semibold text-gray-900 mb-4">Select Data Source</h2>
-            <div id="data-source-builder-container">
-              <!-- Visual Data Source Builder component -->
-            </div>
-          </div>
-        </div>
-
-        <!-- Step 2: Columns -->
-        <div id="step-columns" class="step-content hidden p-6">
-          <div class="max-w-5xl mx-auto">
-            <h2 class="text-xl font-semibold text-gray-900 mb-4">Design Columns</h2>
-            <div id="column-designer-container">
-              <!-- Drag-Drop Column Designer component -->
-            </div>
-          </div>
-        </div>
-
-        <!-- Step 3: Visualization -->
-        <div id="step-visualization" class="step-content hidden p-6">
-          <div class="max-w-5xl mx-auto">
-            <h2 class="text-xl font-semibold text-gray-900 mb-4">Choose Visualization</h2>
-            <div id="chart-builder-container">
-              <!-- Visual Chart Builder component -->
-            </div>
-          </div>
-        </div>
-
-        <!-- Step 4: Parameters -->
-        <div id="step-parameters" class="step-content hidden p-6">
-          <div class="max-w-5xl mx-auto">
-            <h2 class="text-xl font-semibold text-gray-900 mb-4">Configure Parameters</h2>
-            <div id="parameter-ui-container">
-              <!-- Enhanced Parameter UI component -->
-            </div>
-          </div>
-        </div>
-
-        <!-- Step 5: Template -->
-        <div id="step-template" class="step-content hidden p-6">
-          <div class="max-w-5xl mx-auto">
-            <h2 class="text-xl font-semibold text-gray-900 mb-4">Choose Template</h2>
-            <div id="template-library-container">
-              <!-- Report Template Library component -->
-            </div>
-          </div>
+      <!-- Step 2: Columns -->
+      <div id="step-columns" class="step-content hidden p-6">
+        <div class="max-w-5xl mx-auto">
+          <div id="column-designer-container"></div>
         </div>
       </div>
 
-      <!-- Bottom Navigation -->
-      <div class="bg-white border-t border-gray-200 px-6 py-4 flex items-center justify-between">
-        <button id="prev-step-btn" class="btn btn-secondary" disabled>
-          <i class="ph ph-caret-left mr-2"></i>
-          Previous
-        </button>
-        <div class="flex items-center space-x-2">
-          <span class="step-indicator active" data-step="0"></span>
-          <span class="step-indicator" data-step="1"></span>
-          <span class="step-indicator" data-step="2"></span>
-          <span class="step-indicator" data-step="3"></span>
-          <span class="step-indicator" data-step="4"></span>
+      <!-- Step 3: Visualization -->
+      <div id="step-visualization" class="step-content hidden p-6">
+        <div class="max-w-5xl mx-auto">
+          <div id="chart-builder-container"></div>
         </div>
-        <button id="next-step-btn" class="btn btn-primary">
-          Next
-          <i class="ph ph-caret-right ml-2"></i>
-        </button>
+      </div>
+
+      <!-- Step 4: Parameters -->
+      <div id="step-parameters" class="step-content hidden p-6">
+        <div class="max-w-5xl mx-auto">
+          <div id="parameter-ui-container"></div>
+        </div>
+      </div>
+
+      <!-- Step 5: Template -->
+      <div id="step-template" class="step-content hidden p-6">
+        <div class="max-w-5xl mx-auto">
+          <div id="template-library-container"></div>
+        </div>
       </div>
     </div>
 
     <!-- Right Sidebar: Live Preview -->
-    <div class="w-96 bg-white border-l border-gray-200 overflow-y-auto">
-      <div id="live-preview-container" class="h-full">
-        <!-- Split-Pane Live Preview component -->
-        <div class="p-4">
-          <div class="flex items-center justify-between mb-3">
-            <h3 class="text-sm font-semibold text-gray-900">Live Preview</h3>
-            <button id="toggle-preview-btn" class="text-sm text-blue-600 hover:text-blue-700">
-              <i class="ph ph-eye-slash"></i>
-            </button>
-          </div>
-          <div id="preview-content" class="bg-gray-50 rounded-lg p-4 min-h-[200px]">
-            <div class="text-center text-gray-500">
-              <i class="ph ph-file-text text-4xl mb-2"></i>
-              <p class="text-sm">Configure your report to see preview</p>
-            </div>
-          </div>
+    <div class="w-80 bg-white border-l border-gray-200 flex flex-col overflow-hidden">
+      <div class="flex items-center justify-between px-4 py-3 border-b border-gray-200">
+        <h3 class="text-sm font-semibold text-gray-900">Live Preview</h3>
+        <button id="toggle-preview-btn" class="text-gray-400 hover:text-gray-600">
+          <i class="ph ph-eye-slash text-base"></i>
+        </button>
+      </div>
+      <div id="preview-content" class="flex-1 overflow-auto p-4 bg-gray-50">
+        <div class="text-center text-gray-400 mt-8">
+          <i class="ph ph-file-text text-4xl mb-2"></i>
+          <p class="text-sm">Configure your report to see a preview</p>
         </div>
       </div>
     </div>
   </div>
 </div>
 
-<style>
-  .step-indicator {
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    background-color: #E5E7EB;
-    transition: background-color 0.2s;
-  }
-
-  .step-indicator.active {
-    background-color: #3B82F6;
-  }
-
-  .step-indicator.completed {
-    background-color: #10B981;
-  }
-</style>
-
 <script type="module">
-  import { VisualDataSourceBuilder } from '../components/visual-data-source-builder.js';
-  import { DragDropColumnDesigner } from '../components/drag-drop-column-designer.js';
-  import { VisualChartBuilder } from '../components/visual-chart-builder.js';
-  import { EnhancedParameterUI } from '../components/enhanced-parameter-ui.js';
-  import { ReportTemplateLibrary } from '../components/report-template-library.js';
-  import { SplitPaneLivePreview } from '../components/split-pane-live-preview.js';
+  import { VisualDataSourceBuilder } from '/components/visual-data-source-builder.js';
+  import { DragDropColumnDesigner } from '/components/drag-drop-column-designer.js';
+  import { VisualChartBuilder } from '/components/visual-chart-builder.js';
+  import { EnhancedParameterUI } from '/components/enhanced-parameter-ui.js';
+  import { ReportTemplateLibrary } from '/components/report-template-library.js';
+  import { SplitPaneLivePreview } from '/components/split-pane-live-preview.js';
   import { apiFetch } from '/assets/js/api.js';
 
   class ReportDesigner {
@@ -263,7 +152,6 @@
     }
 
     async init() {
-      // Check if editing existing report
       const urlParams = new URLSearchParams(window.location.search);
       this.reportId = urlParams.get('id');
 
@@ -271,14 +159,12 @@
         await this.loadReport(this.reportId);
       }
 
-      // Initialize components
       this.initializeComponents();
       this.setupEventListeners();
       this.showStep(0);
     }
 
     initializeComponents() {
-      // Data Source Builder
       this.components.dataSource = new VisualDataSourceBuilder(document.querySelector('#data-source-builder-container'), {
         onDataSourceChange: (dataSource) => {
           this.reportData.data_source = dataSource;
@@ -286,7 +172,6 @@
         }
       });
 
-      // Column Designer
       this.components.columns = new DragDropColumnDesigner(document.querySelector('#column-designer-container'), {
         onColumnsChange: (columns) => {
           this.reportData.columns = columns;
@@ -294,7 +179,6 @@
         }
       });
 
-      // Chart Builder
       this.components.chart = new VisualChartBuilder(document.querySelector('#chart-builder-container'), {
         onChartChange: (chartConfig) => {
           this.reportData.chart_config = chartConfig;
@@ -302,7 +186,6 @@
         }
       });
 
-      // Parameter UI
       this.components.parameters = new EnhancedParameterUI(document.querySelector('#parameter-ui-container'), {
         onParametersChange: (parameters) => {
           this.reportData.parameters = parameters;
@@ -310,14 +193,12 @@
         }
       });
 
-      // Template Library
       this.components.template = new ReportTemplateLibrary(document.querySelector('#template-library-container'), {
         onTemplateSelect: (template) => {
           this.applyTemplate(template);
         }
       });
 
-      // Live Preview
       this.components.preview = new SplitPaneLivePreview(document.querySelector('#preview-content'), {
         reportConfig: this.reportData,
         autoRefresh: true
@@ -325,160 +206,67 @@
     }
 
     setupEventListeners() {
-      // Back button
       document.getElementById('back-to-reports')?.addEventListener('click', () => {
-        window.location.href = '/reports-list';
+        window.location.hash = '#/reports-list';
       });
 
-      // Step navigation buttons
-      document.querySelectorAll('.designer-step-btn').forEach(btn => {
+      document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
           const step = e.currentTarget.dataset.step;
           const stepIndex = this.steps.indexOf(step);
-          if (stepIndex !== -1) {
-            this.showStep(stepIndex);
-          }
+          if (stepIndex !== -1) this.showStep(stepIndex);
         });
       });
 
-      // Previous/Next buttons
-      document.getElementById('prev-step-btn')?.addEventListener('click', () => {
-        this.previousStep();
-      });
-
-      document.getElementById('next-step-btn')?.addEventListener('click', () => {
-        this.nextStep();
-      });
-
-      // Save button
-      document.getElementById('save-report-btn')?.addEventListener('click', () => {
-        this.saveReport();
-      });
-
-      // Run button
-      document.getElementById('run-report-btn')?.addEventListener('click', () => {
-        this.runReport();
-      });
-
-      // Preview button
-      document.getElementById('preview-report-btn')?.addEventListener('click', () => {
-        this.updatePreview();
-      });
-
-      // Clear button
+      document.getElementById('save-report-btn')?.addEventListener('click', () => this.saveReport());
+      document.getElementById('run-report-btn')?.addEventListener('click', () => this.runReport());
+      document.getElementById('preview-report-btn')?.addEventListener('click', () => this.updatePreview());
       document.getElementById('clear-report-btn')?.addEventListener('click', () => {
-        if (confirm('Clear all report configuration?')) {
-          this.clearReport();
-        }
+        if (confirm('Clear all report configuration?')) this.clearReport();
       });
     }
 
     showStep(stepIndex) {
       if (stepIndex < 0 || stepIndex >= this.steps.length) return;
-
       this.currentStep = stepIndex;
 
-      // Hide all step contents
-      document.querySelectorAll('.step-content').forEach(content => {
-        content.classList.add('hidden');
+      document.querySelectorAll('.step-content').forEach(el => el.classList.add('hidden'));
+      document.getElementById(`step-${this.steps[stepIndex]}`)?.classList.remove('hidden');
+
+      document.querySelectorAll('.tab-btn').forEach((btn, index) => {
+        const active = index === stepIndex;
+        btn.classList.toggle('border-blue-600', active);
+        btn.classList.toggle('text-blue-600', active);
+        btn.classList.toggle('border-transparent', !active);
+        btn.classList.toggle('text-gray-500', !active);
       });
-
-      // Show current step
-      const stepName = this.steps[stepIndex];
-      document.getElementById(`step-${stepName}`)?.classList.remove('hidden');
-
-      // Update step buttons
-      document.querySelectorAll('.designer-step-btn').forEach((btn, index) => {
-        if (index === stepIndex) {
-          btn.classList.add('bg-blue-50', 'border-blue-600');
-          btn.classList.remove('border-transparent');
-          btn.querySelector('i').classList.remove('text-gray-400');
-          btn.querySelector('i').classList.add('text-blue-600');
-        } else {
-          btn.classList.remove('bg-blue-50', 'border-blue-600');
-          btn.classList.add('border-transparent');
-          btn.querySelector('i').classList.add('text-gray-400');
-          btn.querySelector('i').classList.remove('text-blue-600');
-        }
-      });
-
-      // Update step indicators
-      document.querySelectorAll('.step-indicator').forEach((indicator, index) => {
-        indicator.classList.toggle('active', index === stepIndex);
-        indicator.classList.toggle('completed', index < stepIndex);
-      });
-
-      // Update prev/next buttons
-      const prevBtn = document.getElementById('prev-step-btn');
-      const nextBtn = document.getElementById('next-step-btn');
-
-      if (prevBtn) prevBtn.disabled = stepIndex === 0;
-      if (nextBtn) nextBtn.disabled = stepIndex === this.steps.length - 1;
-    }
-
-    previousStep() {
-      this.showStep(this.currentStep - 1);
-    }
-
-    nextStep() {
-      this.showStep(this.currentStep + 1);
     }
 
     async loadReport(reportId) {
       try {
-        const response = await apiFetch(`/api/v1/reports/${reportId}`);
+        const response = await apiFetch(`/reports/definitions/${reportId}`);
         this.reportData = await response.json();
-
-        // Update UI
         document.getElementById('report-title').textContent = this.reportData.name;
-
-        // Load data into components
-        if (this.components.dataSource) {
-          this.components.dataSource.setDataSource(this.reportData.data_source);
-        }
-        if (this.components.columns) {
-          this.components.columns.setColumns(this.reportData.columns);
-        }
-        if (this.components.chart) {
-          this.components.chart.setChartConfig(this.reportData.chart_config);
-        }
-        if (this.components.parameters) {
-          this.components.parameters.setParameters(this.reportData.parameters);
-        }
-
         this.updatePreview();
       } catch (error) {
         console.error('Failed to load report:', error);
-        alert('Failed to load report');
       }
     }
 
     async saveReport() {
       const reportName = prompt('Report name:', this.reportData.name);
       if (!reportName) return;
-
       this.reportData.name = reportName;
 
       try {
-        const url = this.reportId
-          ? `/api/v1/reports/${this.reportId}`
-          : '/api/v1/reports';
-
+        const url = this.reportId ? `/reports/definitions/${this.reportId}` : '/reports/definitions';
         const method = this.reportId ? 'PUT' : 'POST';
-
-        const response = await apiFetch(url, {
-          method: method,
-          body: JSON.stringify(this.reportData)
-        });
-
+        const response = await apiFetch(url, { method, body: JSON.stringify(this.reportData) });
         const result = await response.json();
         this.reportId = result.id;
-
-        alert('Report saved successfully!');
         document.getElementById('report-title').textContent = reportName;
       } catch (error) {
         console.error('Failed to save report:', error);
-        alert('Failed to save report');
       }
     }
 
@@ -487,8 +275,7 @@
         alert('Please save the report first');
         return;
       }
-
-      window.location.href = `/report-viewer?id=${this.reportId}`;
+      window.location.hash = `#/report-viewer/${this.reportId}`;
     }
 
     updatePreview() {
@@ -499,18 +286,6 @@
 
     applyTemplate(template) {
       this.reportData = { ...this.reportData, ...template.config };
-
-      // Update all components
-      if (this.components.dataSource) {
-        this.components.dataSource.setDataSource(this.reportData.data_source);
-      }
-      if (this.components.columns) {
-        this.components.columns.setColumns(this.reportData.columns);
-      }
-      if (this.components.chart) {
-        this.components.chart.setChartConfig(this.reportData.chart_config);
-      }
-
       this.updatePreview();
       this.showStep(0);
     }
@@ -525,20 +300,16 @@
         parameters: []
       };
 
-      // Clear all components
-      if (this.components.dataSource) this.components.dataSource.clear();
-      if (this.components.columns) this.components.columns.clear();
-      if (this.components.chart) this.components.chart.clear();
-      if (this.components.parameters) this.components.parameters.clear();
+      if (this.components.dataSource) this.components.dataSource.clear?.();
+      if (this.components.columns) this.components.columns.clear?.();
+      if (this.components.chart) this.components.chart.clear?.();
+      if (this.components.parameters) this.components.parameters.clear?.();
 
       this.updatePreview();
       this.showStep(0);
     }
   }
 
-  // Initialize designer when page loads
   const designer = new ReportDesigner();
-
-  // Make it globally accessible for debugging
   window.reportDesigner = designer;
 </script>

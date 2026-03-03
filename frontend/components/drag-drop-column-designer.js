@@ -29,30 +29,45 @@ export class DragDropColumnDesigner {
     }
 
     async loadAvailableFields() {
-        // Get available fields from selected entities
         const entities = this.options.entities || [];
 
+        // If no entities specified, discover all available entity names
+        const entityNames = entities.length > 0 ? entities : await this._fetchAllEntityNames();
+
         this.availableFields = [];
-        for (const entityName of entities) {
+        for (const entityName of entityNames) {
             try {
                 const response = await apiFetch(`/metadata/entities/${entityName}`);
                 if (!response.ok) continue;
 
                 const metadata = await response.json();
-                const fields = metadata.fields || [];
+                // API returns fields under table.columns, not a top-level fields array
+                const columns = metadata.table?.columns || metadata.form?.fields || [];
 
-                fields.forEach(field => {
+                columns.forEach(col => {
+                    const name = col.field || col.name;
                     this.availableFields.push({
                         entity: entityName,
-                        name: field.name,
-                        label: field.label || field.name,
-                        type: field.type || 'string',
-                        displayName: `${entityName}.${field.name}`
+                        name,
+                        label: col.title || col.label || name,
+                        type: col.format || col.type || 'string',
+                        displayName: `${entityName}.${name}`
                     });
                 });
             } catch (error) {
                 console.error(`Failed to load fields for ${entityName}:`, error);
             }
+        }
+    }
+
+    async _fetchAllEntityNames() {
+        try {
+            const response = await apiFetch('/metadata/entities');
+            if (!response.ok) return [];
+            const data = await response.json();
+            return Array.isArray(data) ? data : (data.entities || []);
+        } catch {
+            return [];
         }
     }
 
