@@ -57,18 +57,21 @@ export class VisualDataSourceBuilder {
             }
 
             // Process system entities
-            // /metadata/entities may return { entities: [...], total: N } or a plain array
+            // /metadata/entities returns { entities: ["name1","name2",...], total: N }
+            // — each item is a plain string (entity name), not a full object.
             if (sysRes.ok) {
                 const sysData = await sysRes.json();
                 const systemEntities = Array.isArray(sysData) ? sysData : (sysData.entities || []);
                 systemEntities.forEach(e => {
+                    const entityName = typeof e === 'string' ? e : (e.entity_name || e.name);
+                    const displayName = typeof e === 'string' ? e : (e.display_name || e.label || entityName);
                     allEntities.push({
-                        entity_name: e.entity_name || e.name,
-                        display_name: e.display_name || e.label || e.name,
+                        entity_name: entityName,
+                        display_name: displayName,
                         fields: e.fields || [],
                         type: 'system',
                         module: null,
-                        icon: e.icon || 'ph-duotone ph-table'
+                        icon: (typeof e === 'object' && e.icon) || 'ph-duotone ph-table'
                     });
                 });
             }
