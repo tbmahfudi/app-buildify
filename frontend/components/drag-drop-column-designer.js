@@ -19,6 +19,7 @@ export class DragDropColumnDesigner {
         this.selectedColumns = [];
         this.currentColumn = null;
         this.onColumnsChange = options.onColumnsChange || (() => {});
+        this._listenersAttached = false; // Prevent duplicate persistent listeners
 
         this.init();
     }
@@ -319,64 +320,74 @@ export class DragDropColumnDesigner {
     }
 
     attachEventListeners() {
-        // Field search
-        document.getElementById('field-search')?.addEventListener('input', (e) => {
-            this.filterFields(e.target.value);
-        });
+        // Persistent listeners are attached only once — they live on elements that
+        // survive innerHTML re-renders (this.container, #field-search, etc.).
+        // Re-calling attachEventListeners() after refreshSelectedColumns() /
+        // refreshProperties() would otherwise stack duplicate handlers and cause
+        // every second click to show "Column already added".
+        if (!this._listenersAttached) {
+            this._listenersAttached = true;
 
-        // Add all / Clear all buttons
-        document.getElementById('add-all-btn')?.addEventListener('click', () => {
-            this.addAllFields();
-        });
+            // Field search
+            document.getElementById('field-search')?.addEventListener('input', (e) => {
+                this.filterFields(e.target.value);
+            });
 
-        document.getElementById('clear-all-btn')?.addEventListener('click', () => {
-            this.clearAllColumns();
-        });
+            // Add all / Clear all buttons
+            document.getElementById('add-all-btn')?.addEventListener('click', () => {
+                this.addAllFields();
+            });
 
-        // Drag and drop for available fields
+            document.getElementById('clear-all-btn')?.addEventListener('click', () => {
+                this.clearAllColumns();
+            });
+
+            // Delegated click handler: add-field, remove-column, select-column
+            this.container.addEventListener('click', (e) => {
+                const addBtn = e.target.closest('.add-field-btn');
+                if (addBtn) {
+                    const field = JSON.parse(addBtn.dataset.field);
+                    this.addColumn(field);
+                }
+
+                const removeBtn = e.target.closest('.remove-column-btn');
+                if (removeBtn) {
+                    const index = parseInt(removeBtn.dataset.index);
+                    this.removeColumn(index);
+                }
+
+                const columnItem = e.target.closest('.column-item');
+                if (columnItem && !e.target.closest('.remove-column-btn')) {
+                    const index = parseInt(columnItem.dataset.index);
+                    this.selectColumn(index);
+                }
+            });
+
+            // Drop zone for columns (the container element persists across re-renders)
+            const columnsList = document.getElementById('selected-columns-list');
+            if (columnsList) {
+                columnsList.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                });
+
+                columnsList.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    const fieldData = e.dataTransfer.getData('field');
+                    if (fieldData) {
+                        const field = JSON.parse(fieldData);
+                        this.addColumn(field);
+                    }
+                });
+            }
+        }
+
+        // Drag and drop for available fields — elements may be recreated by
+        // setAvailableFields() / setEntities(), so re-attach each time.
         document.querySelectorAll('.field-item').forEach(item => {
             item.addEventListener('dragstart', (e) => {
                 e.dataTransfer.setData('field', item.dataset.field);
             });
         });
-
-        // Add field buttons
-        this.container.addEventListener('click', (e) => {
-            const addBtn = e.target.closest('.add-field-btn');
-            if (addBtn) {
-                const field = JSON.parse(addBtn.dataset.field);
-                this.addColumn(field);
-            }
-
-            const removeBtn = e.target.closest('.remove-column-btn');
-            if (removeBtn) {
-                const index = parseInt(removeBtn.dataset.index);
-                this.removeColumn(index);
-            }
-
-            const columnItem = e.target.closest('.column-item');
-            if (columnItem && !e.target.closest('.remove-column-btn')) {
-                const index = parseInt(columnItem.dataset.index);
-                this.selectColumn(index);
-            }
-        });
-
-        // Drop zone for columns
-        const columnsList = document.getElementById('selected-columns-list');
-        if (columnsList) {
-            columnsList.addEventListener('dragover', (e) => {
-                e.preventDefault();
-            });
-
-            columnsList.addEventListener('drop', (e) => {
-                e.preventDefault();
-                const fieldData = e.dataTransfer.getData('field');
-                if (fieldData) {
-                    const field = JSON.parse(fieldData);
-                    this.addColumn(field);
-                }
-            });
-        }
 
         // Drag and drop for reordering columns
         document.querySelectorAll('.column-item').forEach(item => {
