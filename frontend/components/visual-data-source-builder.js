@@ -35,50 +35,64 @@ export class VisualDataSourceBuilder {
 
     async loadEntities() {
         try {
-            // Load both system and nocode entities
-            const responses = await Promise.all([
+            // Load system entities, nocode entities, and modules in parallel
+            const [sysRes, nocodeRes, modulesRes] = await Promise.all([
                 apiFetch('/metadata/entities').catch(() => ({ ok: false })),
-                apiFetch('/data-model/entities?status=published').catch(() => ({ ok: false }))
+                apiFetch('/data-model/entities?status=published').catch(() => ({ ok: false })),
+                apiFetch('/modules').catch(() => ({ ok: false }))
             ]);
 
             const allEntities = [];
 
+            // Build module id → display_name lookup
+            this.moduleMap = {};
+            if (modulesRes.ok) {
+                const modulesData = await modulesRes.json();
+                const moduleList = modulesData.modules || modulesData;
+                if (Array.isArray(moduleList)) {
+                    moduleList.forEach(m => {
+                        this.moduleMap[m.id] = m.display_name || m.name;
+                    });
+                }
+            }
+
             // Process system entities
-            // /metadata/entities returns { entities: [...names], total: N }
-            if (responses[0].ok) {
-                const data = await responses[0].json();
-                const entityNames = Array.isArray(data) ? data : (data.entities || []);
-                entityNames.forEach(e => {
-                    const name = typeof e === 'string' ? e : (e.entity_name || e.name);
+            if (sysRes.ok) {
+                const systemEntities = await sysRes.json();
+                systemEntities.forEach(e => {
                     allEntities.push({
-                        entity_name: name,
-                        display_name: (typeof e === 'object' && (e.display_name || e.label)) || name,
-                        fields: (typeof e === 'object' && e.fields) || [],
+                        entity_name: e.entity_name || e.name,
+                        display_name: e.display_name || e.label || e.name,
+                        fields: e.fields || [],
                         type: 'system',
-                        icon: (typeof e === 'object' && e.icon) || 'ph-duotone ph-table'
+                        module: null,
+                        icon: e.icon || 'ph-duotone ph-table'
                     });
                 });
             }
 
-            // Process nocode entities
-            if (responses[1].ok) {
-                const nocodeEntities = await responses[1].json();
+            // Process nocode entities — resolve module_id to a display name
+            if (nocodeRes.ok) {
+                const nocodeEntities = await nocodeRes.json();
                 nocodeEntities.forEach(e => {
+                    const moduleLabel = e.module_id
+                        ? (this.moduleMap[e.module_id] || e.module_id)
+                        : (e.category || 'General');
                     allEntities.push({
                         entity_name: e.name,
                         display_name: e.label || e.name,
                         fields: e.fields || [],
                         type: 'nocode',
+                        module: moduleLabel,
                         icon: e.icon || 'ph-duotone ph-database'
                     });
                 });
             }
 
-            // Deduplicate by entity_name — nocode version wins over system if both exist
+            // Deduplicate by entity_name — nocode wins over system if names clash
             const seen = new Map();
             for (const e of allEntities) {
-                const existing = seen.get(e.entity_name);
-                if (!existing || e.type === 'nocode') {
+                if (!seen.has(e.entity_name) || e.type === 'nocode') {
                     seen.set(e.entity_name, e);
                 }
             }
@@ -205,31 +219,59 @@ export class VisualDataSourceBuilder {
             return '<p class="text-sm text-gray-500">Loading entities...</p>';
         }
 
-        const systemEntities = this.entities.filter(e => e.type === 'system');
-        const nocodeEntities = this.entities.filter(e => e.type === 'nocode');
-
-        const renderGroup = (label, entities, badgeClass) => entities.length === 0 ? '' : `
-            <div class="mb-1 mt-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">${label}</div>
-            ${entities.map(entity => `
-                <div
-                    class="entity-palette-item p-2.5 bg-white border border-gray-200 rounded cursor-move hover:border-blue-500 hover:shadow-sm transition-all mb-1.5"
-                    draggable="true"
-                    data-entity="${entity.entity_name}"
-                >
-                    <div class="flex items-center gap-2">
-                        <i class="${entity.icon} text-blue-600 text-base"></i>
-                        <div class="flex-1 min-w-0">
-                            <div class="text-sm font-medium text-gray-900 truncate">${this.escapeHtml(entity.display_name)}</div>
-                            <div class="text-xs text-gray-400 truncate">${entity.entity_name}</div>
-                        </div>
-                        <span class="text-xs px-1.5 py-0.5 rounded ${badgeClass} shrink-0">${label}</span>
+        const renderCard = (entity) => `
+            <div
+                class="entity-palette-item p-2.5 bg-white border border-gray-200 rounded cursor-move hover:border-blue-500 hover:shadow-sm transition-all mb-1.5"
+                draggable="true"
+                data-entity="${entity.entity_name}"
+            >
+                <div class="flex items-center gap-2">
+                    <i class="${entity.icon} text-blue-600 text-base"></i>
+                    <div class="flex-1 min-w-0">
+                        <div class="text-sm font-medium text-gray-900 truncate">${this.escapeHtml(entity.display_name)}</div>
+                        <div class="text-xs text-gray-400 truncate">${entity.entity_name}</div>
                     </div>
                 </div>
-            `).join('')}
+            </div>
         `;
 
-        return renderGroup('System', systemEntities, 'bg-blue-50 text-blue-600')
-             + renderGroup('Custom', nocodeEntities, 'bg-emerald-50 text-emerald-600');
+        const renderSection = (label, entities, badgeClass, icon) => `
+            <div class="mb-1 mt-3 flex items-center gap-1.5">
+                <i class="${icon} text-xs text-gray-400"></i>
+                <span class="text-xs font-semibold text-gray-500 uppercase tracking-wide">${label}</span>
+                <span class="ml-auto text-xs px-1.5 py-0.5 rounded ${badgeClass}">${entities.length}</span>
+            </div>
+            ${entities.map(renderCard).join('')}
+        `;
+
+        // System group (flat)
+        const systemEntities = this.entities.filter(e => e.type === 'system');
+
+        // Custom entities grouped by module
+        const nocodeEntities = this.entities.filter(e => e.type === 'nocode');
+        const moduleGroups = new Map();
+        nocodeEntities.forEach(e => {
+            const key = e.module || 'General';
+            if (!moduleGroups.has(key)) moduleGroups.set(key, []);
+            moduleGroups.get(key).push(e);
+        });
+
+        // Sort module groups alphabetically, keeping General last
+        const sortedGroups = Array.from(moduleGroups.entries()).sort(([a], [b]) => {
+            if (a === 'General') return 1;
+            if (b === 'General') return -1;
+            return a.localeCompare(b);
+        });
+
+        const systemHtml = systemEntities.length
+            ? renderSection('System', systemEntities, 'bg-blue-50 text-blue-600', 'ph ph-gear')
+            : '';
+
+        const customHtml = sortedGroups.map(([moduleName, entities]) =>
+            renderSection(moduleName, entities, 'bg-emerald-50 text-emerald-600', 'ph ph-cube')
+        ).join('');
+
+        return systemHtml + customHtml;
     }
 
     renderSelectedEntities() {
