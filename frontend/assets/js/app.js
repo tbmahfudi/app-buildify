@@ -1754,15 +1754,16 @@ async function loadRoute(route) {
     if (route === 'report-designer' || route.startsWith('report-designer?')) {
       console.log('Loading report designer page');
 
-      // The report-designer component is self-contained, just load it
-      content.innerHTML = '<div id="report-designer-container"></div>';
+      const bodyContent = await window.resourceLoader.loadTemplate('report-designer');
+      content.innerHTML = bodyContent;
 
-      // Load the JavaScript file
-      try {
-        await window.resourceLoader.loadScript('report-designer.js');
-      } catch (error) {
-        console.warn('Report designer script loading failed:', error);
-      }
+      // Re-execute inline module scripts (scripts injected via innerHTML don't run automatically)
+      content.querySelectorAll('script').forEach(oldScript => {
+        const newScript = document.createElement('script');
+        newScript.type = oldScript.type || 'text/javascript';
+        newScript.textContent = oldScript.textContent;
+        oldScript.replaceWith(newScript);
+      });
 
       document.dispatchEvent(new CustomEvent('route:loaded', {
         detail: { route: 'report-designer', isModule: false }

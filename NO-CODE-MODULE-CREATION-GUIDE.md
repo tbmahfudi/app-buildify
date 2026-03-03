@@ -2677,46 +2677,41 @@ Congratulations! You've successfully created a complete **Customer Support Ticke
 
 ## Known Discrepancies vs Actual System
 
-This section records gaps between the guide and the current implementation, updated after system audit on 2026-03-01.
+This section records gaps between the guide and the current implementation, updated after system audit on 2026-03-01. ✅ = corrected in this document. ⚠️ = not yet implemented in the system.
 
-### ✅ Fixed in this document
+| Feature | Guide Section | Details |
+|---------|---------------|---------|
+| ✅ Module page navigation | Phase 4 › Step 0.1: Create the Support Module | Was `/nocode-modules.html` standalone page — corrected to hash route `#modules` inside `index.html` |
+| ✅ Module API prefix | Phase 4 › Module System Setup | Was `/api/v1/nocode-modules/` — corrected to `/api/v1/modules/` |
+| ✅ Workflow instance URL | Phase 3 › Step 3.5: Test Workflow | Was `POST .../workflows/{id}/instances` — corrected to `POST .../workflows/instances` |
+| ✅ Workflow approve/reject | Phase 3 › Step 3.5: Test Workflow | Was separate `/approve` + `/reject` endpoints — corrected to single `/execute` endpoint for all transitions |
+| ✅ Migration run URL | Phase 1 › Step 1.5: Generate and Run Migrations | Was `/{entity}/migrations/run` — corrected to `/migrations/{migration_id}/execute` |
+| ✅ Lookup endpoints | Phase 2 › Lookup Configuration | Was `/{name}/values`, `/{name}/refresh` — corrected to `/configurations/{id}/data` |
+| ✅ Report execute URL | Phase 6 › Step 6.1: Create Ticket Analytics Report | Was `POST /reports/{id}/execute` — corrected to `POST /reports/execute` (no `{id}` in path) |
+| ✅ Dashboard widget data | Phase 7 › Step 7.1: Create Support Metrics Dashboard | Was `GET /dashboards/{id}/widgets/{id}/data` — corrected to `POST /dashboards/widgets/data` |
+| ✅ Metadata sort format | Phase 5 › Step 5.2: Customize Entity Metadata | Was `"defaultSort": [{"field": "x", "order": "desc"}]` — corrected to `"default_sort": [["x", "desc"]]` |
+| ✅ Metadata form field key | Phase 5 › Step 5.2: Customize Entity Metadata | Was stated `"name"` as the only valid key — both `"field"` and `"name"` are accepted; schema normalises `name→field` |
+| ✅ Filter query syntax | Phase 9 › Custom Pages | Was `?filter=key:value` URL param — corrected to `?filters=<JSON array>` |
+| ✅ Create record body | Phase 9 › Custom Pages | Was `JSON.stringify(formData)` flat object — corrected to `JSON.stringify({ data: formData })` |
+| ✅ JS helper `getLookupValues` | Phase 9 › Custom Pages | Was called with name slug — corrected to require numeric `config_id` |
+| ✅ JS helper `triggerWorkflow` | Phase 3 › Step 3.5: Test Workflow | Was using `/{workflow_id}/instances` path — corrected to `/instances` path |
+| ✅ Step 5.2 navigation | Phase 5 › Step 5.2: Customize Entity Metadata | Was "No-Code Platform > Platform Configuration > Entity Metadata" — screen does not exist; metadata is auto-generated on entity publish |
+| ✅ Step 5.2 table column schema | Phase 5 › Step 5.2: Customize Entity Metadata | Was using `"visible"` and `"type"` on columns — `ColumnMetadata` has neither; use `"format"` for render hints |
+| ✅ Step 5.2 form layout | Phase 5 › Step 5.2: Customize Entity Metadata | Was `"layout": "tabs"` with `"tabs": [...]` structure — `FormConfig` uses a flat `"fields": [...]` list; `"tabs"` maps to `"vertical"` |
+| ✅ Step 5.2 form field keys | Phase 5 › Step 5.2: Customize Entity Metadata | Was `"name"` + `"label"` in examples — canonical keys are `"field"` + `"title"`; aliases are normalised automatically |
+| ⚠️ Export/Import | Going Live › Deployment Steps | `/data-model/export`, `/workflows/export`, `/automations/export` are **not implemented**. Section has a manual workaround note. |
+| ⚠️ Relationship traversal | Going Live › API Reference | `GET /{entity}/{id}/{relationship}` exists but returns **HTTP 501**. Guide custom page code updated to filter directly instead. |
+| ⚠️ Bulk actions on list table | Phase 5 › Step 5.2: Customize Entity Metadata | `TableConfig` accepts `selectable`/`exportable` but `DynamicTable` has no bulk selection UI yet — config is silently ignored. |
+| ⚠️ Auto table-prefix from module | Phase 4 › Step 2: Table Prefix | `module_id` FK exists but auto-prefixing in `DataModelService` is unconfirmed. Users may need to set the full prefixed table name manually. |
+| ⚠️ Module Deprecated/Archived lifecycle | Step 0.2: Understanding Module Status | Module publish endpoint exists but UI to deprecate or archive a module is not yet built. |
+| ⚠️ Report parameter binding | Phase 6 › Step 6.1: Create Ticket Analytics Report | Report definitions support named parameters but the frontend execution UI may not expose all parameter types for `POST /reports/execute`. |
+| ⚠️ Metadata editor UI | Phase 5 › Step 5.2: Customize Entity Metadata | Backend `PUT /api/v1/metadata/entities/{name}` works but there is no UI screen to edit `table_config` / `form_config`. Customisation requires direct API calls. |
 
-| # | Area | Was documented as | Corrected to |
-|---|------|-------------------|--------------|
-| 1 | Module page navigation | `/nocode-modules.html` standalone page | Hash route `#modules` inside `index.html` |
-| 2 | Module API prefix | `/api/v1/nocode-modules/` | `/api/v1/modules/` |
-| 3 | Workflow instance URL | `POST .../workflows/{id}/instances` | `POST .../workflows/instances` |
-| 4 | Workflow approve/reject | Separate `/approve` + `/reject` endpoints | Single `/execute` endpoint for all transitions |
-| 5 | Migration run URL | `/{entity}/migrations/run` | `/migrations/{migration_id}/execute` |
-| 6 | Lookup endpoints | `/{name}/values`, `/{name}/refresh` | `/configurations/{id}/data` |
-| 7 | Report execute URL | `POST /reports/{id}/execute` | `POST /reports/execute` (no `{id}` in path) |
-| 8 | Dashboard widget data | `GET /dashboards/{id}/widgets/{id}/data` | `POST /dashboards/widgets/data` |
-| 9 | Metadata sort format | `"defaultSort": [{"field": "x", "order": "desc"}]` | `"default_sort": [["x", "desc"]]` |
-| 10 | Metadata form field key | Stated `"name"` as the only valid key | Both `"field"` and `"name"` accepted; schema normalises `name→field` |
-| 11 | Filter query syntax | `?filter=key:value` URL param | `?filters=<JSON array>` |
-| 12 | Create record body | `JSON.stringify(formData)` flat object | `JSON.stringify({ data: formData })` |
-| 13 | JS helper `getLookupValues` | Called with name slug | Needs numeric `config_id` |
-| 14 | JS helper `triggerWorkflow` | Used `/{workflow_id}/instances` path | Uses `/instances` path |
-| 15 | Step 5.2 navigation | "No-Code Platform > Platform Configuration > Entity Metadata" | **Screen does not exist.** Metadata is auto-generated on entity publish. |
-| 16 | Step 5.2 table column schema | `"visible"`, `"type"` properties on columns | `ColumnMetadata` has no `visible` or `type`; use `"format"` for render hints |
-| 17 | Step 5.2 form layout | `"layout": "tabs"` with `"tabs": [...]` structure | `FormConfig` uses a flat `"fields": [...]` list; `"tabs"` maps to `"vertical"` |
-| 18 | Step 5.2 form field keys | `"name"` + `"label"` in form config examples | Canonical keys are `"field"` + `"title"`; aliases are normalised automatically |
-
-### ⚠️ Not yet implemented (left as-is in the guide)
-
-| # | Feature | Status |
-|---|---------|--------|
-| 1 | **Export/Import** — `/data-model/export`, `/workflows/export`, `/automations/export` etc. | **Not implemented.** Section now has a note with the manual workaround. |
-| 2 | **Relationship traversal** — `GET /{entity}/{id}/{relationship}` | Endpoint exists but returns **HTTP 501 Not Implemented**. Guide custom page code updated to filter directly instead. |
-| 3 | **Bulk actions on list table** — `selectable`/`exportable` in table config | `TableConfig` accepts these fields but `DynamicTable` component has not implemented bulk selection UI yet. |
-| 4 | **Auto table-prefix from module** — Table name auto-prefixed with module's `table_prefix` | Entity `module_id` FK exists; auto-prefixing behavior in `DataModelService` is not confirmed. Users may need to set the table name manually including the prefix. |
-| 5 | **Module Deprecated/Archived lifecycle** — UI to deprecate or archive a module | Module publish endpoint exists. Deprecation/archival management UI is not yet built. |
-| 6 | **Report parameter binding** — Pass named parameters to `POST /reports/execute` | Report definitions support parameters but the frontend execution UI may not expose all parameter types yet. |
-| 7 | **Metadata editor UI** — Frontend screen to edit `table_config` / `form_config` JSON | **Not yet built.** The backend `PUT /api/v1/metadata/entities/{name}` endpoint exists and works, but there is no UI screen with a JSON editor or form for it. Customisation requires direct API calls. |
+**Legend:** ✅ Corrected in this document &nbsp;·&nbsp; ⚠️ Not yet implemented in the system
 
 ---
 
-**Document Version:** 2.3 (Step 5.2 rewritten: no UI screen exists; correct schemas documented)
+**Document Version:** 2.4 (Merged fixed/not-implemented tables into single Feature | Guide Section | Details table)
 **Last Updated:** 2026-03-01
 **Author:** Platform Team
 **Next Review:** After first user feedback
