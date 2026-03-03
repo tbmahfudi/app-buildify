@@ -44,15 +44,18 @@ export class VisualDataSourceBuilder {
             const allEntities = [];
 
             // Process system entities
+            // /metadata/entities returns { entities: [...names], total: N }
             if (responses[0].ok) {
-                const systemEntities = await responses[0].json();
-                systemEntities.forEach(e => {
+                const data = await responses[0].json();
+                const entityNames = Array.isArray(data) ? data : (data.entities || []);
+                entityNames.forEach(e => {
+                    const name = typeof e === 'string' ? e : (e.entity_name || e.name);
                     allEntities.push({
-                        entity_name: e.entity_name || e.name,
-                        display_name: e.display_name || e.label || e.name,
-                        fields: e.fields || [],
+                        entity_name: name,
+                        display_name: (typeof e === 'object' && (e.display_name || e.label)) || name,
+                        fields: (typeof e === 'object' && e.fields) || [],
                         type: 'system',
-                        icon: e.icon || 'ph-duotone ph-table'
+                        icon: (typeof e === 'object' && e.icon) || 'ph-duotone ph-table'
                     });
                 });
             }
