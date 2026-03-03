@@ -74,7 +74,15 @@ export class VisualDataSourceBuilder {
                 });
             }
 
-            this.entities = allEntities;
+            // Deduplicate by entity_name — nocode version wins over system if both exist
+            const seen = new Map();
+            for (const e of allEntities) {
+                const existing = seen.get(e.entity_name);
+                if (!existing || e.type === 'nocode') {
+                    seen.set(e.entity_name, e);
+                }
+            }
+            this.entities = Array.from(seen.values());
         } catch (error) {
             console.error('Failed to load entities:', error);
             this.entities = [];
@@ -197,21 +205,31 @@ export class VisualDataSourceBuilder {
             return '<p class="text-sm text-gray-500">Loading entities...</p>';
         }
 
-        return this.entities.map(entity => `
-            <div
-                class="entity-palette-item p-3 bg-white border border-gray-200 rounded cursor-move hover:border-blue-500 hover:shadow transition-all"
-                draggable="true"
-                data-entity="${entity.entity_name}"
-            >
-                <div class="flex items-center">
-                    <i class="${entity.icon} text-blue-600 mr-2"></i>
-                    <div class="flex-1">
-                        <div class="text-sm font-medium text-gray-900">${this.escapeHtml(entity.display_name)}</div>
-                        <div class="text-xs text-gray-500">${entity.type}</div>
+        const systemEntities = this.entities.filter(e => e.type === 'system');
+        const nocodeEntities = this.entities.filter(e => e.type === 'nocode');
+
+        const renderGroup = (label, entities, badgeClass) => entities.length === 0 ? '' : `
+            <div class="mb-1 mt-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">${label}</div>
+            ${entities.map(entity => `
+                <div
+                    class="entity-palette-item p-2.5 bg-white border border-gray-200 rounded cursor-move hover:border-blue-500 hover:shadow-sm transition-all mb-1.5"
+                    draggable="true"
+                    data-entity="${entity.entity_name}"
+                >
+                    <div class="flex items-center gap-2">
+                        <i class="${entity.icon} text-blue-600 text-base"></i>
+                        <div class="flex-1 min-w-0">
+                            <div class="text-sm font-medium text-gray-900 truncate">${this.escapeHtml(entity.display_name)}</div>
+                            <div class="text-xs text-gray-400 truncate">${entity.entity_name}</div>
+                        </div>
+                        <span class="text-xs px-1.5 py-0.5 rounded ${badgeClass} shrink-0">${label}</span>
                     </div>
                 </div>
-            </div>
-        `).join('');
+            `).join('')}
+        `;
+
+        return renderGroup('System', systemEntities, 'bg-blue-50 text-blue-600')
+             + renderGroup('Custom', nocodeEntities, 'bg-emerald-50 text-emerald-600');
     }
 
     renderSelectedEntities() {
@@ -648,7 +666,7 @@ export class VisualDataSourceBuilder {
             const query = this.buildQuery();
 
             // Execute query and get preview data
-            const response = await apiFetch('/api/v1/reports/preview', {
+            const response = await apiFetch('/reports/preview', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
