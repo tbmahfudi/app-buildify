@@ -279,7 +279,7 @@
 
     initializeComponents() {
       // Data Source Builder
-      this.components.dataSource = new VisualDataSourceBuilder('#data-source-builder-container', {
+      this.components.dataSource = new VisualDataSourceBuilder(document.querySelector('#data-source-builder-container'), {
         onDataSourceChange: (dataSource) => {
           this.reportData.data_source = dataSource;
           this.updatePreview();
@@ -287,7 +287,7 @@
       });
 
       // Column Designer
-      this.components.columns = new DragDropColumnDesigner('#column-designer-container', {
+      this.components.columns = new DragDropColumnDesigner(document.querySelector('#column-designer-container'), {
         onColumnsChange: (columns) => {
           this.reportData.columns = columns;
           this.updatePreview();
@@ -295,7 +295,7 @@
       });
 
       // Chart Builder
-      this.components.chart = new VisualChartBuilder('#chart-builder-container', {
+      this.components.chart = new VisualChartBuilder(document.querySelector('#chart-builder-container'), {
         onChartChange: (chartConfig) => {
           this.reportData.chart_config = chartConfig;
           this.updatePreview();
@@ -303,7 +303,7 @@
       });
 
       // Parameter UI
-      this.components.parameters = new EnhancedParameterUI('#parameter-ui-container', {
+      this.components.parameters = new EnhancedParameterUI(document.querySelector('#parameter-ui-container'), {
         onParametersChange: (parameters) => {
           this.reportData.parameters = parameters;
           this.updatePreview();
@@ -311,14 +311,14 @@
       });
 
       // Template Library
-      this.components.template = new ReportTemplateLibrary('#template-library-container', {
+      this.components.template = new ReportTemplateLibrary(document.querySelector('#template-library-container'), {
         onTemplateSelect: (template) => {
           this.applyTemplate(template);
         }
       });
 
       // Live Preview
-      this.components.preview = new SplitPaneLivePreview('#preview-content', {
+      this.components.preview = new SplitPaneLivePreview(document.querySelector('#preview-content'), {
         reportConfig: this.reportData,
         autoRefresh: true
       });
