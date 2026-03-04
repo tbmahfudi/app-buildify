@@ -270,10 +270,13 @@ class ReportService:
             col_label = col.get('label', col_name)
             aggregation = col.get('aggregation', 'none')
 
+            # Quote the alias so multi-word labels don't break SQL syntax
+            quoted_label = f'"{col_label}"'
+
             if aggregation and aggregation != 'none':
-                select_fields.append(f"{aggregation.upper()}({col_name}) as {col_label}")
+                select_fields.append(f"{aggregation.upper()}({col_name}) as {quoted_label}")
             else:
-                select_fields.append(f"{col_name} as {col_label}")
+                select_fields.append(f"{col_name} as {quoted_label}")
 
         if not select_fields:
             select_fields = ['*']
@@ -281,8 +284,13 @@ class ReportService:
         # Build FROM clause
         from_clause = f"{base_entity}"
 
-        # Build WHERE clause - use parameterized query for tenant_id
-        where_conditions = ["tenant_id = :tenant_id"]
+        # Build WHERE clause
+        # Only filter by tenant_id when the value is actually set (superusers may have None)
+        where_conditions = []
+        query_params: dict = {}
+        if tenant_id is not None:
+            where_conditions.append("tenant_id = :tenant_id")
+            query_params["tenant_id"] = str(tenant_id)
 
         # Add filter conditions from query config
         if query_config.get('filters'):
@@ -313,18 +321,19 @@ class ReportService:
         if query_config.get('limit'):
             limit_clause = f"LIMIT {query_config['limit']}"
 
-        # Construct full query
+        # Construct full query — omit WHERE entirely when there are no conditions
+        where_clause = f"WHERE {' AND '.join(where_conditions)}" if where_conditions else ""
+
         sql = f"""
             SELECT {', '.join(select_fields)}
             FROM {from_clause}
-            WHERE {' AND '.join(where_conditions)}
+            {where_clause}
             {group_by_clause}
             {order_by_clause}
             {limit_clause}
         """
 
-        # Execute query with parameterized tenant_id
-        result = db.execute(text(sql), {"tenant_id": str(tenant_id)})
+        result = db.execute(text(sql), query_params)
         rows = result.fetchall()
 
         # Convert to list of dicts
