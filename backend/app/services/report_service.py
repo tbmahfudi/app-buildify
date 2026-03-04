@@ -268,7 +268,7 @@ class ReportService:
         for col in columns_config:
             col_name = col.get('name')
             col_label = col.get('label', col_name)
-            aggregation = col.get('aggregation', 'none')
+            aggregation = col.get('aggregation') or col.get('aggregate') or 'none'
 
             # Quote the alias so multi-word labels don't break SQL syntax
             quoted_label = f'"{col_label}"'
