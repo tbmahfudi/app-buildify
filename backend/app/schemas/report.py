@@ -215,7 +215,7 @@ class ReportPreviewRequest(BaseModel):
     base_entity: Optional[str] = Field(None, description="Primary entity/table to query")
     columns_config: Optional[List[Dict[str, Any]]] = Field(None, description="Column definitions")
     query_config: Optional[Dict[str, Any]] = Field(None, description="Filters, order, group-by config")
-    parameters: Optional[Dict[str, Any]] = Field(None, description="Parameter values")
+    parameters: Optional[Any] = Field(None, description="Parameter values dict or parameter definition list — both accepted")
     limit: int = Field(10, ge=1, le=500, description="Maximum rows to return")
 
 

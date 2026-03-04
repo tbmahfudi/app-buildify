@@ -289,12 +289,16 @@ def preview_report(
     # Cap the limit inside query_config so the builder respects it
     _TempDef.query_config = {**_TempDef.query_config, "limit": request.limit}
 
+    # parameters may arrive as a list of definitions (from the report designer)
+    # rather than a dict of values — only pass a dict through to the query builder.
+    param_values = request.parameters if isinstance(request.parameters, dict) else None
+
     try:
         result = ReportService._build_and_execute_query(
             db=db,
             tenant_id=current_user.tenant_id,
             report_def=_TempDef,
-            parameters=request.parameters,
+            parameters=param_values,
         )
         return ReportPreviewResponse(
             data=result["data"],
