@@ -24,6 +24,8 @@ from app.schemas.report import (
     ReportDefinitionUpdate,
     ReportExecutionRequest,
     ReportExecutionResponse,
+    ReportPreviewRequest,
+    ReportPreviewResponse,
     ReportScheduleCreate,
     ReportScheduleResponse,
     ReportScheduleUpdate,
@@ -255,6 +257,56 @@ def execute_and_export_report(
         raise HTTPException(status_code=status.HTTP_501_NOT_IMPLEMENTED, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+
+
+@router.post("/preview", response_model=ReportPreviewResponse)
+def preview_report(
+    request: ReportPreviewRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(has_permission("reports:execute:tenant"))
+):
+    """
+    Execute an ad-hoc preview of a report without saving it.
+
+    Accepts a partial report config and returns up to `limit` rows.
+    Requires permission: reports:execute:tenant
+    """
+    from app.models.report import ReportDefinition
+    from sqlalchemy import text
+
+    if not request.base_entity:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="base_entity is required for preview"
+        )
+
+    # Build a transient definition object reusing the existing query builder
+    class _TempDef:
+        base_entity = request.base_entity
+        columns_config = request.columns_config or []
+        query_config = (request.query_config or {})
+
+    # Cap the limit inside query_config so the builder respects it
+    _TempDef.query_config = {**_TempDef.query_config, "limit": request.limit}
+
+    try:
+        result = ReportService._build_and_execute_query(
+            db=db,
+            tenant_id=current_user.tenant_id,
+            report_def=_TempDef,
+            parameters=request.parameters,
+        )
+        return ReportPreviewResponse(
+            data=result["data"],
+            columns=result["columns"],
+            row_count=result["row_count"],
+        )
+    except Exception as e:
+        logger.error(f"Report preview error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Preview failed: {str(e)}"
+        )
 
 
 @router.get("/executions/history")

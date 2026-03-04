@@ -210,6 +210,22 @@ class ReportDefinitionResponse(ReportDefinitionBase):
 
 # Report Execution Schemas
 
+class ReportPreviewRequest(BaseModel):
+    """Ad-hoc report preview request — no saved report ID required."""
+    base_entity: Optional[str] = Field(None, description="Primary entity/table to query")
+    columns_config: Optional[List[Dict[str, Any]]] = Field(None, description="Column definitions")
+    query_config: Optional[Dict[str, Any]] = Field(None, description="Filters, order, group-by config")
+    parameters: Optional[Dict[str, Any]] = Field(None, description="Parameter values")
+    limit: int = Field(10, ge=1, le=500, description="Maximum rows to return")
+
+
+class ReportPreviewResponse(BaseModel):
+    """Ad-hoc report preview response."""
+    data: List[Dict[str, Any]]
+    columns: List[str]
+    row_count: int
+
+
 class ReportExecutionRequest(BaseModel):
     """Report execution request."""
     report_definition_id: int
