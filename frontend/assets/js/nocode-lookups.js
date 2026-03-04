@@ -11,6 +11,7 @@
 
 import { authService } from './auth-service.js';
 import { apiFetch } from './api.js';
+import { setFlexOptions, setFlexValue } from './utils/upgrade-select.js';
 
 let lookupsPage = null;
 
@@ -88,16 +89,11 @@ export class LookupsPage {
   }
 
   populateEntitySelect() {
-    const select = document.getElementById('source_entity_select');
-    if (!select) return;
-
-    select.innerHTML = '<option value="">-- Select Entity --</option>';
-    this.entities.forEach(entity => {
-      const option = document.createElement('option');
-      option.value = entity.id;
-      option.textContent = entity.display_name || entity.name;
-      select.appendChild(option);
-    });
+    setFlexOptions(
+      'source_entity_select',
+      this.entities.map(e => ({ value: e.id, label: e.display_name || e.name })),
+      '-- Select Entity --'
+    );
   }
 
   onSourceTypeChange(sourceType) {
@@ -124,75 +120,49 @@ export class LookupsPage {
   }
 
   async onEntityChange(entityId) {
-    const displayFieldSelect = document.getElementById('display_field_select');
-    const valueFieldSelect = document.getElementById('value_field_select');
-
     if (!entityId) {
-      // Reset to default state
-      displayFieldSelect.innerHTML = '<option value="">-- Select Entity First --</option>';
-      valueFieldSelect.innerHTML = '<option value="">-- Select Entity First --</option>';
+      setFlexOptions('display_field_select', [], '-- Select Entity First --');
+      setFlexOptions('value_field_select', [], '-- Select Entity First --');
       return;
     }
 
-    // Show loading state
-    displayFieldSelect.innerHTML = '<option value="">Loading fields...</option>';
-    valueFieldSelect.innerHTML = '<option value="">Loading fields...</option>';
+    setFlexOptions('display_field_select', [], 'Loading fields...');
+    setFlexOptions('value_field_select', [], 'Loading fields...');
 
     try {
-      // Fetch entity details with fields
       const response = await apiFetch(`/data-model/entities/${entityId}`, {
-        headers: {
-          'Authorization': `Bearer ${authService.getToken()}`
-        }
+        headers: { 'Authorization': `Bearer ${authService.getToken()}` }
       });
 
       if (response.ok) {
         const entity = await response.json();
         const fields = entity.fields || [];
+        const fieldOpts = fields.map(f => ({
+          value: f.name,
+          label: `${f.display_name || f.name} (${f.field_type})`
+        }));
 
-        // Populate display field dropdown
-        displayFieldSelect.innerHTML = '<option value="">-- Select Display Field --</option>';
-        valueFieldSelect.innerHTML = '<option value="">-- Select Value Field --</option>';
+        setFlexOptions('display_field_select', fieldOpts, '-- Select Display Field --');
+        setFlexOptions('value_field_select', [{ value: 'id', label: 'id (Primary Key)' }, ...fieldOpts], '-- Select Value Field --');
 
-        // Add id field first (common for value field)
-        valueFieldSelect.innerHTML += '<option value="id" selected>id (Primary Key)</option>';
-
-        fields.forEach(field => {
-          const displayOption = document.createElement('option');
-          displayOption.value = field.name;
-          displayOption.textContent = `${field.display_name || field.name} (${field.field_type})`;
-          // Pre-select 'name' for display field if available
-          if (field.name === 'name') {
-            displayOption.selected = true;
-          }
-          displayFieldSelect.appendChild(displayOption);
-
-          // Add to value field dropdown too (in case they want to use a different field)
-          const valueOption = document.createElement('option');
-          valueOption.value = field.name;
-          valueOption.textContent = `${field.display_name || field.name} (${field.field_type})`;
-          valueFieldSelect.appendChild(valueOption);
-        });
+        // Pre-select 'name' for display and 'id' for value
+        const nameField = fields.find(f => f.name === 'name');
+        if (nameField) setFlexValue('display_field_select', 'name');
+        setFlexValue('value_field_select', 'id');
       } else {
-        displayFieldSelect.innerHTML = '<option value="">Error loading fields</option>';
-        valueFieldSelect.innerHTML = '<option value="">Error loading fields</option>';
+        setFlexOptions('display_field_select', [], 'Error loading fields');
+        setFlexOptions('value_field_select', [], 'Error loading fields');
       }
     } catch (error) {
       console.error('Error loading entity fields:', error);
-      displayFieldSelect.innerHTML = '<option value="">Error loading fields</option>';
-      valueFieldSelect.innerHTML = '<option value="">Error loading fields</option>';
+      setFlexOptions('display_field_select', [], 'Error loading fields');
+      setFlexOptions('value_field_select', [], 'Error loading fields');
     }
   }
 
   resetEntityFieldSelects() {
-    const displayFieldSelect = document.getElementById('display_field_select');
-    const valueFieldSelect = document.getElementById('value_field_select');
-    if (displayFieldSelect) {
-      displayFieldSelect.innerHTML = '<option value="">-- Select Entity First --</option>';
-    }
-    if (valueFieldSelect) {
-      valueFieldSelect.innerHTML = '<option value="">-- Select Entity First --</option>';
-    }
+    setFlexOptions('display_field_select', [], '-- Select Entity First --');
+    setFlexOptions('value_field_select', [], '-- Select Entity First --');
   }
 
   switchTab(tab) {
@@ -231,15 +201,11 @@ export class LookupsPage {
   }
 
   populateModuleSelect(modules) {
-    const select = document.getElementById('lookup_module_select');
-    if (!select) return;
-    select.innerHTML = '<option value="">-- No Module --</option>';
-    modules.forEach(m => {
-      const option = document.createElement('option');
-      option.value = m.id;
-      option.textContent = m.display_name || m.name;
-      select.appendChild(option);
-    });
+    setFlexOptions(
+      'lookup_module_select',
+      modules.map(m => ({ value: m.id, label: m.display_name || m.name })),
+      '-- No Module --'
+    );
   }
 
   async loadLookups() {
@@ -727,19 +693,9 @@ export class LookupsPage {
       document.getElementById('edit_lookup_active').checked = lookup.is_active !== false;
 
       // Populate module select for edit form
-      const editModuleSelect = document.getElementById('edit_lookup_module_select');
-      if (editModuleSelect) {
-        editModuleSelect.innerHTML = '<option value="">-- No Module --</option>';
-        Object.entries(this.modulesMap).forEach(([moduleId, displayName]) => {
-          const option = document.createElement('option');
-          option.value = moduleId;
-          option.textContent = displayName;
-          if (lookup.module_id === moduleId) {
-            option.selected = true;
-          }
-          editModuleSelect.appendChild(option);
-        });
-      }
+      const moduleOpts = Object.entries(this.modulesMap).map(([id, label]) => ({ value: id, label }));
+      setFlexOptions('edit_lookup_module_select', moduleOpts, '-- No Module --');
+      if (lookup.module_id) setFlexValue('edit_lookup_module_select', lookup.module_id);
 
       // Show edit modal
       document.getElementById('editLookupModal').classList.remove('hidden');

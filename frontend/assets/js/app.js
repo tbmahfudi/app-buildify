@@ -3,6 +3,7 @@ import { showToast, showLoading, hideLoading } from './ui-utils.js';
 import { filterMenuByRole, applyRBACToElements } from './rbac.js';
 import { moduleLoader, moduleRegistry } from './core/module-system/index.js';
 import { dynamicRouteRegistry } from './dynamic-route-registry.js';
+import { upgradeAllSelects } from './utils/upgrade-select.js';
 
 // Module-level state (not polluting global namespace)
 const appState = {
@@ -159,6 +160,19 @@ export async function initApp() {
   window.addEventListener('hashchange', () => {
     const route = window.location.hash.slice(1) || 'dashboard';
     loadRoute(route);
+  });
+
+  // Expose globally so non-module scripts (e.g. security-admin.js) can call it too.
+  window.upgradeAllSelects = upgradeAllSelects;
+
+  // Auto-upgrade native <select> elements to FlexSelect after every route load.
+  // A short delay lets page-specific scripts run first (so dynamically inserted
+  // options are present before the upgrade reads them).
+  document.addEventListener('route:loaded', () => {
+    setTimeout(() => {
+      const content = document.getElementById('content') || document.body;
+      upgradeAllSelects(content);
+    }, 50);
   });
 
   // Setup i18n translation hooks

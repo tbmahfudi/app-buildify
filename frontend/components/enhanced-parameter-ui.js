@@ -5,6 +5,7 @@
  */
 
 import { showNotification } from '../assets/js/notifications.js';
+import { upgradeAllSelects } from '../assets/js/utils/upgrade-select.js';
 
 export class EnhancedParameterUI {
     constructor(container, options = {}) {
@@ -37,6 +38,7 @@ export class EnhancedParameterUI {
             </div>
         `;
 
+        upgradeAllSelects(this.container);
         this.attachEventListeners();
     }
 

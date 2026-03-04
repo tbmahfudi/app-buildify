@@ -4,6 +4,7 @@
  */
 
 import { apiFetch } from './api.js';
+import { setFlexOptions } from './utils/upgrade-select.js';
 
 // Tab management
 document.querySelectorAll('.scheduler-tab-btn').forEach(btn => {
@@ -209,8 +210,7 @@ async function loadExecutions() {
 async function loadConfigurationsDropdown() {
   try {
     // Placeholder - would load from API
-    const select = document.getElementById('job-config-id');
-    select.innerHTML = '<option value="1">System Configuration</option>';
+    setFlexOptions('job-config-id', [{ value: '1', label: 'System Configuration' }]);
   } catch (error) {
     console.error('Error loading configurations:', error);
   }

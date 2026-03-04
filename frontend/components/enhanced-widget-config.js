@@ -20,6 +20,7 @@
  */
 
 import { apiFetch } from '../assets/js/api.js';
+import { upgradeAllSelects } from '../assets/js/utils/upgrade-select.js';
 
 export class EnhancedWidgetConfig {
     constructor(container, options = {}) {
@@ -95,6 +96,8 @@ export class EnhancedWidgetConfig {
                 </div>
             </div>
         `;
+
+        upgradeAllSelects(this.container);
     }
 
     renderPanelTabs() {

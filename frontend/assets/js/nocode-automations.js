@@ -11,6 +11,7 @@
 
 import { authService } from './auth-service.js';
 import { apiFetch } from './api.js';
+import { setFlexOptions } from './utils/upgrade-select.js';
 
 let automationsPage = null;
 
@@ -138,26 +139,16 @@ export class AutomationsPage {
   }
 
   populateEntitySelect() {
-    const select = document.getElementById('automationEntitySelect');
-    if (!select) {
-      console.error('Entity select element not found');
-      return;
-    }
-
-    select.innerHTML = '<option value="">Select entity...</option>';
-
     if (!this.entities || this.entities.length === 0) {
-      select.innerHTML = '<option value="">No entities available - create entities first</option>';
       console.warn('No entities loaded for automation rule');
+      setFlexOptions('automationEntitySelect', [], 'No entities available - create entities first');
       return;
     }
-
-    this.entities.forEach(entity => {
-      const option = document.createElement('option');
-      option.value = entity.id;
-      option.textContent = entity.display_name || entity.name;
-      select.appendChild(option);
-    });
+    setFlexOptions(
+      'automationEntitySelect',
+      this.entities.map(e => ({ value: e.id, label: e.display_name || e.name })),
+      'Select entity...'
+    );
   }
 
   onTriggerTypeChange(type) {
@@ -198,14 +189,8 @@ export class AutomationsPage {
   }
 
   async onEntityChange(entityId) {
-    const watchFieldsSelect = document.getElementById('watchFieldsSelect');
-    if (!watchFieldsSelect) return;
-
-    // Reset watch fields
-    watchFieldsSelect.innerHTML = '';
-
     if (!entityId) {
-      watchFieldsSelect.innerHTML = '<option value="" disabled>Select entity first...</option>';
+      setFlexOptions('watchFieldsSelect', [], 'Select entity first...');
       this.currentEntityFields = [];
       return;
     }
@@ -218,21 +203,15 @@ export class AutomationsPage {
       if (response.ok) {
         const fields = await response.json();
         this.currentEntityFields = fields;
-
-        if (fields.length === 0) {
-          watchFieldsSelect.innerHTML = '<option value="" disabled>No fields available</option>';
-        } else {
-          fields.forEach(field => {
-            const option = document.createElement('option');
-            option.value = field.name;
-            option.textContent = field.label || field.name;
-            watchFieldsSelect.appendChild(option);
-          });
-        }
+        setFlexOptions(
+          'watchFieldsSelect',
+          fields.length === 0 ? [] : fields.map(f => ({ value: f.name, label: f.label || f.name })),
+          fields.length === 0 ? 'No fields available' : undefined
+        );
       }
     } catch (error) {
       console.error('Error loading entity fields:', error);
-      watchFieldsSelect.innerHTML = '<option value="" disabled>Error loading fields</option>';
+      setFlexOptions('watchFieldsSelect', [], 'Error loading fields');
     }
   }
 
@@ -275,15 +254,11 @@ export class AutomationsPage {
   }
 
   populateModuleSelect(modules) {
-    const select = document.getElementById('automation_module_select');
-    if (!select) return;
-    select.innerHTML = '<option value="">-- No Module --</option>';
-    modules.forEach(m => {
-      const option = document.createElement('option');
-      option.value = m.id;
-      option.textContent = m.display_name || m.name;
-      select.appendChild(option);
-    });
+    setFlexOptions(
+      'automation_module_select',
+      modules.map(m => ({ value: m.id, label: m.display_name || m.name })),
+      '-- No Module --'
+    );
   }
 
   async loadRules() {
@@ -555,10 +530,7 @@ export class AutomationsPage {
     this.populateEntitySelect();
 
     // Reset watch fields
-    const watchFieldsSelect = document.getElementById('watchFieldsSelect');
-    if (watchFieldsSelect) {
-      watchFieldsSelect.innerHTML = '<option value="" disabled>Select entity first...</option>';
-    }
+    setFlexOptions('watchFieldsSelect', [], 'Select entity first...');
     this.currentEntityFields = [];
 
     if (modal) modal.classList.remove('hidden');
@@ -579,11 +551,13 @@ export class AutomationsPage {
 
     switch (triggerType) {
       case 'database':
-        // Get selected watch fields from multi-select
-        const watchFieldsSelect = document.getElementById('watchFieldsSelect');
-        const selectedWatchFields = watchFieldsSelect
-          ? Array.from(watchFieldsSelect.selectedOptions).map(opt => opt.value)
-          : [];
+        // Get selected watch fields from multi-select (FlexSelect or native)
+        const watchFieldsEl = document.getElementById('watchFieldsSelect');
+        const selectedWatchFields = watchFieldsEl?._flexSelect
+          ? [].concat(watchFieldsEl._flexSelect.getValue() ?? [])
+          : watchFieldsEl
+            ? Array.from(watchFieldsEl.selectedOptions ?? []).map(o => o.value)
+            : [];
 
         triggerConfig = {
           event: formData.get('event_type'),

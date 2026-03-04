@@ -11,6 +11,7 @@
 
 import { authService } from './auth-service.js';
 import { apiFetch } from './api.js';
+import { setFlexOptions } from './utils/upgrade-select.js';
 
 let workflowsPage = null;
 
@@ -102,15 +103,11 @@ export class WorkflowsPage {
   }
 
   populateModuleSelect(modules) {
-    const select = document.getElementById('workflow_module_select');
-    if (!select) return;
-    select.innerHTML = '<option value="">-- No Module --</option>';
-    modules.forEach(m => {
-      const option = document.createElement('option');
-      option.value = m.id;
-      option.textContent = m.display_name || m.name;
-      select.appendChild(option);
-    });
+    setFlexOptions(
+      'workflow_module_select',
+      modules.map(m => ({ value: m.id, label: m.display_name || m.name })),
+      '-- No Module --'
+    );
   }
 
   async loadEntities() {
@@ -131,16 +128,11 @@ export class WorkflowsPage {
   }
 
   populateEntitySelect() {
-    const select = document.getElementById('workflow_entity_select');
-    if (!select) return;
-
-    select.innerHTML = '<option value="">-- No Entity (Manual Only) --</option>';
-    this.entities.forEach(entity => {
-      const option = document.createElement('option');
-      option.value = entity.id;
-      option.textContent = entity.display_name || entity.name;
-      select.appendChild(option);
-    });
+    setFlexOptions(
+      'workflow_entity_select',
+      this.entities.map(e => ({ value: e.id, label: e.display_name || e.name })),
+      '-- No Entity (Manual Only) --'
+    );
   }
 
   onTriggerTypeChange(triggerType) {
