@@ -317,6 +317,7 @@ def preview_report(
             {
                 "name": c.get("name"),
                 "label": c.get("alias") or c.get("label") or c.get("name"),
+                "aggregation": c.get("aggregate") or c.get("aggregation"),
             }
             for c in request.columns
         ]
