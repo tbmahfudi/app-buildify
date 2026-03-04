@@ -271,23 +271,22 @@ def preview_report(
     Accepts a partial report config and returns up to `limit` rows.
     Requires permission: reports:execute:tenant
     """
-    from app.models.report import ReportDefinition
-    from sqlalchemy import text
-
+    # Return empty result when no entity has been chosen yet (preview triggered
+    # before the user selects a base entity in the designer).
     if not request.base_entity:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="base_entity is required for preview"
-        )
+        return ReportPreviewResponse(data=[], columns=[], row_count=0)
+
+    # Strip columns that have no field name yet — the report designer adds
+    # placeholder column rows with name="" before the user picks a field,
+    # which would produce invalid SQL like "SELECT  as  FROM …".
+    raw_columns = request.columns_config or []
+    valid_columns = [c for c in raw_columns if c.get("name")]
 
     # Build a transient definition object reusing the existing query builder
     class _TempDef:
         base_entity = request.base_entity
-        columns_config = request.columns_config or []
-        query_config = (request.query_config or {})
-
-    # Cap the limit inside query_config so the builder respects it
-    _TempDef.query_config = {**_TempDef.query_config, "limit": request.limit}
+        columns_config = valid_columns
+        query_config = {**(request.query_config or {}), "limit": request.limit}
 
     # parameters may arrive as a list of definitions (from the report designer)
     # rather than a dict of values — only pass a dict through to the query builder.
