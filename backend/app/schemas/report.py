@@ -211,12 +211,25 @@ class ReportDefinitionResponse(ReportDefinitionBase):
 # Report Execution Schemas
 
 class ReportPreviewRequest(BaseModel):
-    """Ad-hoc report preview request — no saved report ID required."""
-    base_entity: Optional[str] = Field(None, description="Primary entity/table to query")
-    columns_config: Optional[List[Dict[str, Any]]] = Field(None, description="Column definitions")
+    """Ad-hoc report preview request — no saved report ID required.
+
+    Accepts both the legacy flat format (base_entity / columns_config) and the
+    report-designer format (data_source / columns) so the frontend can POST its
+    live reportData object directly.
+    """
+    # Legacy flat fields
+    base_entity: Optional[str] = Field(None, description="Primary entity/table to query (flat format)")
+    columns_config: Optional[List[Dict[str, Any]]] = Field(None, description="Column definitions (flat format)")
     query_config: Optional[Dict[str, Any]] = Field(None, description="Filters, order, group-by config")
     parameters: Optional[Any] = Field(None, description="Parameter values dict or parameter definition list — both accepted")
     limit: int = Field(10, ge=1, le=500, description="Maximum rows to return")
+
+    # Report-designer format (frontend sends the full reportData object)
+    data_source: Optional[Dict[str, Any]] = Field(None, description="Nested data source config from report designer")
+    columns: Optional[List[Dict[str, Any]]] = Field(None, description="Column list from report designer (uses 'alias' as label)")
+
+    class Config:
+        extra = "allow"  # absorb any other top-level reportData fields without error
 
 
 class ReportPreviewResponse(BaseModel):
