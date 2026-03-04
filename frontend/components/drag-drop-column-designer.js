@@ -10,6 +10,7 @@
 
 import { apiFetch } from '../assets/js/api.js';
 import { showNotification } from '../assets/js/notifications.js';
+import { upgradeAllSelects } from '../assets/js/utils/upgrade-select.js';
 
 export class DragDropColumnDesigner {
     constructor(container, options = {}) {
@@ -558,7 +559,9 @@ export class DragDropColumnDesigner {
     }
 
     refreshProperties() {
-        document.getElementById('column-properties').innerHTML = this.renderColumnProperties();
+        const panel = document.getElementById('column-properties');
+        panel.innerHTML = this.renderColumnProperties();
+        upgradeAllSelects(panel);
         this.attachEventListeners(); // Re-attach after render
     }
 

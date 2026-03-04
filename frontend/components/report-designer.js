@@ -15,6 +15,7 @@ import { dataService } from '../assets/js/data-service.js';
 import { metadataService } from '../assets/js/metadata-service.js';
 import { showNotification } from '../assets/js/notifications.js';
 import { apiFetch } from '../assets/js/api.js';
+import { upgradeAllSelects } from '../assets/js/utils/upgrade-select.js';
 
 export class ReportDesigner {
     constructor(container, reportId = null) {
@@ -240,6 +241,7 @@ export class ReportDesigner {
                 break;
         }
 
+        upgradeAllSelects(stepContainer);
         this._attachStepEventListeners();
     }
 

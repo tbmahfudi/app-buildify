@@ -5,6 +5,7 @@
  */
 
 import { showNotification } from '../assets/js/notifications.js';
+import { upgradeAllSelects } from '../assets/js/utils/upgrade-select.js';
 
 export class VisualChartBuilder {
     constructor(container, options = {}) {
@@ -62,6 +63,7 @@ export class VisualChartBuilder {
             </div>
         `;
 
+        upgradeAllSelects(this.container);
         this.attachEventListeners();
     }
 

@@ -185,6 +185,9 @@ class SecurityAdmin {
       </div>
     `;
 
+    // Upgrade native <select> elements to FlexSelect
+    window.upgradeAllSelects?.(container);
+
     // Attach event listeners
     this.attachEventListeners();
   }
@@ -964,6 +967,7 @@ class SecurityAdmin {
     `;
 
     document.body.appendChild(modal);
+    window.upgradeAllSelects?.(modal);
   }
 
   editPolicy(policyId) {

@@ -12,6 +12,7 @@
 import { dashboardService } from '../assets/js/dashboard-service.js';
 import { reportService } from '../assets/js/report-service.js';
 import { showNotification } from '../assets/js/notifications.js';
+import { upgradeAllSelects } from '../assets/js/utils/upgrade-select.js';
 
 export class DashboardDesigner {
     constructor(container, dashboardId = null) {
@@ -181,6 +182,7 @@ export class DashboardDesigner {
                 break;
         }
 
+        upgradeAllSelects(stepContainer);
         this._attachStepEventListeners();
     }
 
