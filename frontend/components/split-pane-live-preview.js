@@ -147,7 +147,7 @@ export class SplitPaneLivePreview {
 
         try {
             // Build preview request from current report config
-            const response = await apiFetch('/api/v1/reports/preview', {
+            const response = await apiFetch('/reports/preview', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
