@@ -271,23 +271,67 @@ def preview_report(
     Accepts a partial report config and returns up to `limit` rows.
     Requires permission: reports:execute:tenant
     """
-    from app.models.report import ReportDefinition
-    from sqlalchemy import text
+    from app.models.data_model import EntityDefinition
+    import re
 
-    if not request.base_entity:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="base_entity is required for preview"
-        )
+    # ── 1. Resolve entity name ───────────────────────────────────────────────
+    # Accept flat `base_entity` (legacy) OR nested `data_source.base_entity`
+    # (report-designer format).
+    data_source: dict = request.data_source or {}
+    entity_name: str = request.base_entity or data_source.get("base_entity", "") or ""
 
-    # Build a transient definition object reusing the existing query builder
+    if not entity_name:
+        return ReportPreviewResponse(data=[], columns=[], row_count=0)
+
+    # ── 2. Resolve entity name → actual DB table name ────────────────────────
+    # The frontend sends the PascalCase entity name (e.g. "TicketCategory").
+    # We need the real table name stored in EntityDefinition.table_name.
+    table_name: str = entity_name  # fallback: use as-is
+    entity_def = None
+
+    # Try via entity_id embedded in data_source.entities[0].fields[0]
+    ds_entities = data_source.get("entities", [])
+    if ds_entities and isinstance(ds_entities[0], dict):
+        fields = ds_entities[0].get("fields", [])
+        if fields and fields[0].get("entity_id"):
+            entity_def = db.query(EntityDefinition).filter(
+                EntityDefinition.id == fields[0]["entity_id"]
+            ).first()
+
+    # Fallback: convert PascalCase → snake_case and look up by name
+    if not entity_def:
+        snake_name = re.sub(r"(?<!^)(?=[A-Z])", "_", entity_name).lower()
+        entity_def = db.query(EntityDefinition).filter(
+            EntityDefinition.name == snake_name
+        ).first()
+
+    if entity_def:
+        table_name = entity_def.table_name
+
+    # ── 3. Resolve columns ───────────────────────────────────────────────────
+    # Accept `columns_config` (legacy flat format) or `columns` (report-designer
+    # format, where the display label lives in `alias`).
+    raw_columns = request.columns_config or []
+    if not raw_columns and request.columns:
+        raw_columns = [
+            {
+                "name": c.get("name"),
+                "label": c.get("alias") or c.get("label") or c.get("name"),
+            }
+            for c in request.columns
+        ]
+
+    # Drop placeholder rows where the field name hasn't been chosen yet
+    # (they'd produce "SELECT  as  FROM …" → SQL error).
+    valid_columns = [c for c in raw_columns if c.get("name")]
+
+    # ── 4. Build transient report definition and run query ───────────────────
     class _TempDef:
-        base_entity = request.base_entity
-        columns_config = request.columns_config or []
-        query_config = (request.query_config or {})
+        pass
 
-    # Cap the limit inside query_config so the builder respects it
-    _TempDef.query_config = {**_TempDef.query_config, "limit": request.limit}
+    _TempDef.base_entity = table_name
+    _TempDef.columns_config = valid_columns
+    _TempDef.query_config = {**(request.query_config or {}), "limit": request.limit}
 
     # parameters may arrive as a list of definitions (from the report designer)
     # rather than a dict of values — only pass a dict through to the query builder.
