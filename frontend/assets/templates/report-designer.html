@@ -136,8 +136,9 @@
 
       <!-- Step 2: Columns -->
       <div id="step-columns" class="step-content hidden p-6">
-        <div class="max-w-5xl mx-auto">
+        <div class="max-w-5xl mx-auto space-y-6">
           <div id="column-designer-container"></div>
+          <div id="group-by-designer-container"></div>
         </div>
       </div>
 
@@ -185,6 +186,7 @@
 <script type="module">
   import { VisualDataSourceBuilder } from '/components/visual-data-source-builder.js';
   import { DragDropColumnDesigner } from '/components/drag-drop-column-designer.js';
+  import { GroupByDesigner } from '/components/group-by-designer.js';
   import { VisualChartBuilder } from '/components/visual-chart-builder.js';
   import { EnhancedParameterUI } from '/components/enhanced-parameter-ui.js';
   import { ReportTemplateLibrary } from '/components/report-template-library.js';
@@ -206,6 +208,7 @@
         is_public: false,
         data_source: {},
         columns: [],
+        query_config: { group_by: [], order_by: [], filters: {}, limit: null },
         chart_config: {},
         parameters: []
       };
@@ -213,6 +216,7 @@
       this.components = {
         dataSource: null,
         columns: null,
+        groupBy: null,
         chart: null,
         parameters: null,
         template: null,
@@ -253,6 +257,20 @@
       this.components.columns = new DragDropColumnDesigner(document.querySelector('#column-designer-container'), {
         onColumnsChange: (columns) => {
           this.reportData.columns = columns;
+          // Feed updated fields into GroupByDesigner so it stays in sync
+          if (this.components.groupBy) {
+            this.components.groupBy.setAvailableFields(columns);
+          }
+          this.updatePreview();
+        }
+      });
+
+      this.components.groupBy = new GroupByDesigner(document.querySelector('#group-by-designer-container'), {
+        onGroupByChange: (groupBy) => {
+          this.reportData.query_config = {
+            ...this.reportData.query_config,
+            group_by: groupBy
+          };
           this.updatePreview();
         }
       });
@@ -356,8 +374,22 @@
       try {
         const response = await apiFetch(`/reports/definitions/${reportId}`);
         this.reportData = await response.json();
+        // Ensure query_config always exists
+        this.reportData.query_config = this.reportData.query_config || {};
+        this.reportData.query_config.group_by = this.reportData.query_config.group_by || [];
+
         document.getElementById('report-title').textContent = this.reportData.name || 'New Report';
         this.fillPropertiesForm();
+
+        // Restore group-by state after column designer has fields
+        if (this.components.columns && this.reportData.columns?.length) {
+          this.components.columns.setColumns(this.reportData.columns);
+          if (this.components.groupBy) {
+            this.components.groupBy.setAvailableFields(this.reportData.columns);
+            this.components.groupBy.setGroupBy(this.reportData.query_config.group_by);
+          }
+        }
+
         this.updatePreview();
       } catch (error) {
         console.error('Failed to load report:', error);
@@ -409,7 +441,9 @@
       this.reportData = {
         name: '', title: '', category: '', report_type: 'tabular',
         description: '', is_public: false,
-        data_source: {}, columns: [], chart_config: {}, parameters: []
+        data_source: {}, columns: [],
+        query_config: { group_by: [], order_by: [], filters: {}, limit: null },
+        chart_config: {}, parameters: []
       };
       this.reportId = null;
       this.fillPropertiesForm();
@@ -417,6 +451,7 @@
 
       if (this.components.dataSource) this.components.dataSource.clear?.();
       if (this.components.columns) this.components.columns.clear?.();
+      if (this.components.groupBy) this.components.groupBy.setGroupBy([]);
       if (this.components.chart) this.components.chart.clear?.();
       if (this.components.parameters) this.components.parameters.clear?.();
 
