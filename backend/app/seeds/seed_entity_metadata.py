@@ -1,35 +1,29 @@
 """
-Seed Entity Metadata for Core Entities
+Seed UI Config for Core System Entities
 
-This script creates metadata definitions for core system entities:
-- Users
-- Companies
-- Branches
-- Departments
-
-The metadata defines table/grid configuration and form configuration for each entity.
+This script seeds table_config, form_config, and permissions directly onto
+EntityDefinition rows for core system entities (users, companies, branches,
+departments).  The entity_metadata table no longer exists; UI config now lives
+on entity_definitions.
 """
 
 import sys
-import json
 from pathlib import Path
 
-# Add parent directory to path
 sys.path.append(str(Path(__file__).parent.parent.parent))
 
 from sqlalchemy.orm import Session
 from app.core.db import SessionLocal
-from app.models.metadata import EntityMetadata
+from app.models.data_model import EntityDefinition
 
 
-def create_users_metadata(db: Session):
-    """Create metadata for users entity"""
-    metadata = EntityMetadata(
-        entity_name="users",
-        display_name="Users",
-        description="System users with roles and permissions",
-        icon="bi-people-fill",
-        table_config=json.dumps({
+# ---------------------------------------------------------------------------
+# Per-entity config payloads
+# ---------------------------------------------------------------------------
+
+_ENTITY_CONFIGS = {
+    "users": {
+        "table_config": {
             "columns": [
                 {"field": "email", "title": "Email", "sortable": True, "filterable": True},
                 {"field": "full_name", "title": "Full Name", "sortable": True, "filterable": True},
@@ -41,8 +35,8 @@ def create_users_metadata(db: Session):
             "actions": ["view", "edit", "delete"],
             "selectable": True,
             "exportable": True,
-        }),
-        form_config=json.dumps({
+        },
+        "form_config": {
             "fields": [
                 {"field": "email", "title": "Email", "type": "email", "required": True},
                 {"field": "full_name", "title": "Full Name", "type": "text", "required": True},
@@ -52,29 +46,16 @@ def create_users_metadata(db: Session):
             "layout": "vertical",
             "submit_button_text": "Save User",
             "cancel_button_text": "Cancel",
-        }),
-        permissions=json.dumps({
+        },
+        "permissions": {
             "create": ["users:create"],
             "read": ["users:read"],
             "update": ["users:update"],
             "delete": ["users:delete"],
-        }),
-        version=1,
-        is_active=True,
-        is_system=True,
-    )
-
-    db.add(metadata)
-
-
-def create_companies_metadata(db: Session):
-    """Create metadata for companies entity"""
-    metadata = EntityMetadata(
-        entity_name="companies",
-        display_name="Companies",
-        description="Organizations and companies in the system",
-        icon="bi-building",
-        table_config=json.dumps({
+        },
+    },
+    "companies": {
+        "table_config": {
             "columns": [
                 {"field": "name", "title": "Company Name", "sortable": True, "filterable": True},
                 {"field": "code", "title": "Code", "sortable": True, "filterable": True},
@@ -87,8 +68,8 @@ def create_companies_metadata(db: Session):
             "actions": ["view", "edit", "delete"],
             "selectable": True,
             "exportable": True,
-        }),
-        form_config=json.dumps({
+        },
+        "form_config": {
             "fields": [
                 {"field": "name", "title": "Company Name", "type": "text", "required": True},
                 {"field": "code", "title": "Code", "type": "text", "required": True},
@@ -102,29 +83,16 @@ def create_companies_metadata(db: Session):
             "layout": "vertical",
             "submit_button_text": "Save Company",
             "cancel_button_text": "Cancel",
-        }),
-        permissions=json.dumps({
+        },
+        "permissions": {
             "create": ["companies:create"],
             "read": ["companies:read"],
             "update": ["companies:update"],
             "delete": ["companies:delete"],
-        }),
-        version=1,
-        is_active=True,
-        is_system=True,
-    )
-
-    db.add(metadata)
-
-
-def create_branches_metadata(db: Session):
-    """Create metadata for branches entity"""
-    metadata = EntityMetadata(
-        entity_name="branches",
-        display_name="Branches",
-        description="Company branches and locations",
-        icon="bi-diagram-3",
-        table_config=json.dumps({
+        },
+    },
+    "branches": {
+        "table_config": {
             "columns": [
                 {"field": "name", "title": "Branch Name", "sortable": True, "filterable": True},
                 {"field": "code", "title": "Code", "sortable": True, "filterable": True},
@@ -138,8 +106,8 @@ def create_branches_metadata(db: Session):
             "actions": ["view", "edit", "delete"],
             "selectable": True,
             "exportable": True,
-        }),
-        form_config=json.dumps({
+        },
+        "form_config": {
             "fields": [
                 {"field": "name", "title": "Branch Name", "type": "text", "required": True},
                 {"field": "code", "title": "Code", "type": "text", "required": True},
@@ -158,29 +126,16 @@ def create_branches_metadata(db: Session):
             "layout": "vertical",
             "submit_button_text": "Save Branch",
             "cancel_button_text": "Cancel",
-        }),
-        permissions=json.dumps({
+        },
+        "permissions": {
             "create": ["branches:create"],
             "read": ["branches:read"],
             "update": ["branches:update"],
             "delete": ["branches:delete"],
-        }),
-        version=1,
-        is_active=True,
-        is_system=True,
-    )
-
-    db.add(metadata)
-
-
-def create_departments_metadata(db: Session):
-    """Create metadata for departments entity"""
-    metadata = EntityMetadata(
-        entity_name="departments",
-        display_name="Departments",
-        description="Organizational departments",
-        icon="bi-people",
-        table_config=json.dumps({
+        },
+    },
+    "departments": {
+        "table_config": {
             "columns": [
                 {"field": "name", "title": "Department Name", "sortable": True, "filterable": True},
                 {"field": "code", "title": "Code", "sortable": True, "filterable": True},
@@ -193,8 +148,8 @@ def create_departments_metadata(db: Session):
             "actions": ["view", "edit", "delete"],
             "selectable": True,
             "exportable": True,
-        }),
-        form_config=json.dumps({
+        },
+        "form_config": {
             "fields": [
                 {"field": "name", "title": "Department Name", "type": "text", "required": True},
                 {"field": "code", "title": "Code", "type": "text", "required": True},
@@ -204,70 +159,51 @@ def create_departments_metadata(db: Session):
             "layout": "vertical",
             "submit_button_text": "Save Department",
             "cancel_button_text": "Cancel",
-        }),
-        permissions=json.dumps({
+        },
+        "permissions": {
             "create": ["departments:create"],
             "read": ["departments:read"],
             "update": ["departments:update"],
             "delete": ["departments:delete"],
-        }),
-        version=1,
-        is_active=True,
-        is_system=True,
-    )
-
-    db.add(metadata)
+        },
+    },
+}
 
 
 def seed_entity_metadata():
-    """Seed all entity metadata"""
+    """Seed UI config onto EntityDefinition rows for core system entities."""
     db = SessionLocal()
 
     try:
-        print("🌱 Seeding entity metadata...")
+        print("Seeding entity UI config...")
 
-        # Check if metadata already exists
-        existing = db.query(EntityMetadata).filter(
-            EntityMetadata.entity_name.in_(["users", "companies", "branches", "departments"])
+        entity_names = list(_ENTITY_CONFIGS.keys())
+        entities = db.query(EntityDefinition).filter(
+            EntityDefinition.name.in_(entity_names)
         ).all()
+        entity_map = {e.name: e for e in entities}
 
-        existing_names = {m.entity_name for m in existing}
+        for name, config in _ENTITY_CONFIGS.items():
+            entity = entity_map.get(name)
+            if entity is None:
+                print(f"  - Entity '{name}' not found in entity_definitions, skipping")
+                continue
 
-        # Create metadata for entities that don't exist
-        if "users" not in existing_names:
-            print("  ✓ Creating users metadata")
-            create_users_metadata(db)
-            db.flush()  # Force ID generation immediately
-        else:
-            print("  - Users metadata already exists")
+            if entity.table_config is not None:
+                print(f"  - UI config for '{name}' already exists, skipping")
+                continue
 
-        if "companies" not in existing_names:
-            print("  ✓ Creating companies metadata")
-            create_companies_metadata(db)
-            db.flush()  # Force ID generation immediately
-        else:
-            print("  - Companies metadata already exists")
-
-        if "branches" not in existing_names:
-            print("  ✓ Creating branches metadata")
-            create_branches_metadata(db)
-            db.flush()  # Force ID generation immediately
-        else:
-            print("  - Branches metadata already exists")
-
-        if "departments" not in existing_names:
-            print("  ✓ Creating departments metadata")
-            create_departments_metadata(db)
-            db.flush()  # Force ID generation immediately
-        else:
-            print("  - Departments metadata already exists")
+            entity.table_config = config["table_config"]
+            entity.form_config = config["form_config"]
+            entity.permissions = config["permissions"]
+            print(f"  + Seeded UI config for '{name}'")
 
         db.commit()
-        print("✅ Entity metadata seeded successfully!")
+        print("Entity UI config seeded successfully!")
 
     except Exception as e:
         db.rollback()
-        print(f"❌ Error seeding entity metadata: {e}")
+        print(f"Error seeding entity UI config: {e}")
         raise
     finally:
         db.close()

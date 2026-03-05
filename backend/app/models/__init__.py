@@ -29,8 +29,6 @@ from .department import Department
 from .group import Group
 from .login_attempt import LoginAttempt
 from .menu_item import MenuItem
-from .metadata import EntityMetadata
-
 # Unified module system
 from .nocode_module import Module, ModuleActivation
 # Backward-compatible aliases
@@ -174,7 +172,6 @@ __all__ = [
     "AuditLog",
     "UserSettings",
     "TenantSettings",
-    "EntityMetadata",
 
     # Token revocation
     "TokenBlacklist",
