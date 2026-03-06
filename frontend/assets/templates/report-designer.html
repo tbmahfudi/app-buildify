@@ -87,17 +87,11 @@
 
             <div class="grid grid-cols-2 gap-4">
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Module / Category</label>
-                <input id="prop-category" type="text" class="form-input w-full" placeholder="e.g. Sales, Finance, HR" list="category-suggestions" />
-                <datalist id="category-suggestions">
-                  <option value="Sales">
-                  <option value="Finance">
-                  <option value="HR">
-                  <option value="Operations">
-                  <option value="Marketing">
-                  <option value="Inventory">
-                  <option value="General">
-                </datalist>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Module</label>
+                <select id="prop-module" class="form-select w-full">
+                  <option value="">-- No Module --</option>
+                </select>
+                <p class="text-xs text-gray-400 mt-1">Auto-detected from data source entity or workflow</p>
               </div>
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Report Type</label>
@@ -203,6 +197,7 @@
         name: '',
         title: '',
         category: '',
+        module_id: null,
         report_type: 'tabular',
         description: '',
         is_public: false,
@@ -212,6 +207,9 @@
         chart_config: {},
         parameters: []
       };
+
+      this.modules = [];       // [{ id, name, display_name }]
+      this.entityModuleMap = {}; // entity_name → module_id
 
       this.components = {
         dataSource: null,
@@ -230,6 +228,8 @@
       const urlParams = new URLSearchParams(window.location.search);
       this.reportId = urlParams.get('id');
 
+      await this.loadModules();
+
       if (this.reportId) {
         await this.loadReport(this.reportId);
       }
@@ -239,10 +239,67 @@
       this.showStep(0);
     }
 
+    async loadModules() {
+      try {
+        const [modulesRes, entitiesRes] = await Promise.all([
+          apiFetch('/modules'),
+          apiFetch('/data-model/entities?status=published').catch(() => ({ ok: false }))
+        ]);
+
+        if (modulesRes.ok) {
+          const data = await modulesRes.json();
+          this.modules = Array.isArray(data) ? data : (data.modules || []);
+          this.populateModuleDropdown();
+        }
+
+        if (entitiesRes.ok) {
+          const data = await entitiesRes.json();
+          const entities = Array.isArray(data) ? data : (data.entities || data.items || []);
+          entities.forEach(e => {
+            if (e.module_id) this.entityModuleMap[e.name] = e.module_id;
+          });
+        }
+      } catch (e) {
+        console.warn('Failed to load modules:', e);
+      }
+    }
+
+    populateModuleDropdown() {
+      const sel = document.getElementById('prop-module');
+      if (!sel) return;
+      sel.innerHTML = '<option value="">-- No Module --</option>';
+      this.modules.forEach(m => {
+        const opt = document.createElement('option');
+        opt.value = m.id;
+        opt.textContent = m.display_name || m.name;
+        sel.appendChild(opt);
+      });
+      // Set current value if already loaded
+      if (this.reportData.module_id) sel.value = this.reportData.module_id;
+    }
+
+    // Detect module from first entity in data source that has a known module_id
+    autoDetectModule(dataSource) {
+      const entities = (dataSource.entities || []).map(e =>
+        typeof e === 'string' ? e : e.entity_name
+      );
+      for (const name of entities) {
+        const moduleId = this.entityModuleMap[name];
+        if (moduleId) {
+          this.reportData.module_id = moduleId;
+          const sel = document.getElementById('prop-module');
+          if (sel) sel.value = moduleId;
+          return;
+        }
+      }
+    }
+
     initializeComponents() {
       this.components.dataSource = new VisualDataSourceBuilder(document.querySelector('#data-source-builder-container'), {
         onDataSourceChange: (dataSource) => {
           this.reportData.data_source = dataSource;
+          // Auto-detect module from selected entities
+          if (!this.reportData.module_id) this.autoDetectModule(dataSource);
           // Update column designer to show only fields from selected entities
           const entityNames = (dataSource.entities || []).map(e =>
             typeof e === 'string' ? e : e.entity_name
@@ -322,8 +379,8 @@
       document.getElementById('prop-title')?.addEventListener('input', (e) => {
         this.reportData.title = e.target.value;
       });
-      document.getElementById('prop-category')?.addEventListener('input', (e) => {
-        this.reportData.category = e.target.value;
+      document.getElementById('prop-module')?.addEventListener('change', (e) => {
+        this.reportData.module_id = e.target.value || null;
       });
       document.getElementById('prop-type')?.addEventListener('change', (e) => {
         this.reportData.report_type = e.target.value;
@@ -363,11 +420,16 @@
       const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ''; };
       set('prop-name', this.reportData.name);
       set('prop-title', this.reportData.title);
-      set('prop-category', this.reportData.category);
       set('prop-type', this.reportData.report_type || 'tabular');
       set('prop-description', this.reportData.description);
       const pub = document.getElementById('prop-public');
       if (pub) pub.checked = !!this.reportData.is_public;
+      // Module dropdown — populate first if modules are loaded
+      if (this.modules.length) {
+        this.populateModuleDropdown();
+      } else {
+        // Modules not yet loaded; populateModuleDropdown() will set value when ready
+      }
     }
 
     async loadReport(reportId) {
@@ -439,7 +501,7 @@
 
     clearReport() {
       this.reportData = {
-        name: '', title: '', category: '', report_type: 'tabular',
+        name: '', title: '', category: '', module_id: null, report_type: 'tabular',
         description: '', is_public: false,
         data_source: {}, columns: [],
         query_config: { group_by: [], order_by: [], filters: {}, limit: null },
