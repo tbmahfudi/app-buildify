@@ -236,6 +236,14 @@
 
       this.initializeComponents();
       this.setupEventListeners();
+
+      // Restore column + group-by state now that components exist
+      if (this.reportData.columns?.length) {
+        this.components.columns.setColumns(this.reportData.columns);
+        this.components.groupBy.setAvailableFields(this.reportData.columns);
+        this.components.groupBy.setGroupBy(this.reportData.query_config?.group_by || []);
+      }
+
       this.showStep(0);
     }
 
@@ -442,16 +450,6 @@
 
         document.getElementById('report-title').textContent = this.reportData.name || 'New Report';
         this.fillPropertiesForm();
-
-        // Restore group-by state after column designer has fields
-        if (this.components.columns && this.reportData.columns?.length) {
-          this.components.columns.setColumns(this.reportData.columns);
-          if (this.components.groupBy) {
-            this.components.groupBy.setAvailableFields(this.reportData.columns);
-            this.components.groupBy.setGroupBy(this.reportData.query_config.group_by);
-          }
-        }
-
         this.updatePreview();
       } catch (error) {
         console.error('Failed to load report:', error);
