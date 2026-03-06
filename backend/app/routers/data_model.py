@@ -471,7 +471,6 @@ async def regenerate_entity_menus(
     """
     from app.models.data_model import EntityDefinition
     from app.models.menu_item import MenuItem
-    from app.models.metadata import EntityMetadata
     from app.services.menu_service import MenuService
     from app.services.metadata_sync_service import MetadataSyncService
     from sqlalchemy import or_
@@ -504,24 +503,22 @@ async def regenerate_entity_menus(
     metadata_sync = MetadataSyncService(db)
 
     for entity in published_entities:
-        # --- Create/update EntityMetadata ---
+        # --- Create/update UI config on EntityDefinition ---
         try:
-            existing_metadata = db.query(EntityMetadata).filter(
-                EntityMetadata.entity_name == entity.name
-            ).first()
+            had_config = entity.table_config is not None
 
             # auto_generate_metadata handles both create and update (sync_metadata).
-            # Always call it so existing metadata is refreshed with current field
+            # Always call it so existing config is refreshed with current field
             # definitions (e.g. newly-set allowed_values for select fields).
             metadata_sync.auto_generate_metadata(
                 entity_definition=entity,
                 created_by=str(current_user.id)
             )
-            if existing_metadata:
+            if had_config:
                 metadata_skipped += 1  # repurposed as "updated" count for now
             else:
                 metadata_created += 1
-            logger.info(f"{'Updated' if existing_metadata else 'Created'} metadata for entity: {entity.name}")
+            logger.info(f"{'Updated' if had_config else 'Created'} UI config for entity: {entity.name}")
         except Exception as e:
             logger.error(f"Failed to create metadata for {entity.name}: {str(e)}")
 

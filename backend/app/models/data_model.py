@@ -85,6 +85,11 @@ class EntityDefinition(Base):
     # Metadata
     meta_data = Column(JSONB, default=dict)  # Extended configuration
 
+    # UI configuration (consolidated from entity_metadata)
+    table_config = Column(JSONB, nullable=True)   # Generated table/grid config
+    form_config = Column(JSONB, nullable=True)    # Generated form config
+    permissions = Column(JSONB, nullable=True)    # {role: [actions]} RBAC permissions
+
     # Versioning
     version = Column(Integer, default=1)
     parent_version_id = Column(GUID, ForeignKey("entity_definitions.id"), nullable=True)
