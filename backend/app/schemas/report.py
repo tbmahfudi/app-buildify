@@ -159,6 +159,7 @@ class ReportDefinitionBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
     description: Optional[str] = None
     category: Optional[str] = None
+    module_id: Optional[UUID] = None
     report_type: ReportType = ReportType.TABULAR
     base_entity: str = Field(..., description="Base entity/table")
     query_config: Optional[QueryConfig] = None
@@ -182,6 +183,7 @@ class ReportDefinitionUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=255)
     description: Optional[str] = None
     category: Optional[str] = None
+    module_id: Optional[UUID] = None
     report_type: Optional[ReportType] = None
     base_entity: Optional[str] = None
     query_config: Optional[QueryConfig] = None
