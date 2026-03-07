@@ -1,100 +1,57 @@
 /**
  * Reports List Page
  *
- * Shows all report definitions with create / edit / delete / run actions.
- * Follows the same route:loaded pattern as workflows and data-model pages.
- * Routed via #/reports
+ * Populates the reports-list.html template with live data.
+ * Follows the nocode-workflows / nocode-data-model pattern:
+ *   app.js  →  loadTemplate('reports-list')  →  loadScript('reports-list-page.js')
+ *           →  route:loaded { route: 'reports' }
+ *           →  this file responds and fills in the DOM
  */
 
 import { apiFetch } from './api.js';
 import { showNotification } from './notifications.js';
 
+let allReports = [];
+
 document.addEventListener('route:loaded', async (event) => {
     if (event.detail.route !== 'reports') return;
 
-    const content = document.getElementById('content');
-    if (!content) return;
-
-    content.innerHTML = `
-        <div id="reports-list-app">
-            <!-- Header -->
-            <div class="bg-white border-b border-gray-200 px-6 py-4">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <h1 class="text-2xl font-bold text-gray-900 flex items-center gap-3">
-                            <i class="ph-duotone ph-chart-bar text-blue-600"></i>
-                            Reports
-                        </h1>
-                        <p class="text-sm text-gray-600 mt-1">Create and manage custom reports</p>
-                    </div>
-                    <button id="btn-create-report"
-                        class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center gap-2">
-                        <i class="ph ph-plus"></i>
-                        Create Report
-                    </button>
-                </div>
-            </div>
-
-            <!-- Search + type filter -->
-            <div class="px-6 py-4 bg-gray-50 border-b border-gray-200">
-                <div class="flex gap-3 items-center">
-                    <input id="rp-search" type="text" placeholder="Search reports…"
-                        class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
-                    <select id="rp-type-filter"
-                        class="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-400">
-                        <option value="">All Types</option>
-                        <option value="tabular">Tabular</option>
-                        <option value="summary">Summary</option>
-                        <option value="chart">Chart</option>
-                        <option value="dashboard">Dashboard</option>
-                    </select>
-                </div>
-            </div>
-
-            <!-- Reports grid -->
-            <div class="px-6 py-6">
-                <div id="reports-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    <div class="col-span-full text-center py-12">
-                        <i class="ph-duotone ph-spinner text-4xl text-gray-400 animate-spin"></i>
-                        <p class="text-gray-600 mt-2">Loading reports…</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    `;
-
-    document.getElementById('btn-create-report')?.addEventListener('click', () => {
+    // Wire up static controls already in the template
+    document.getElementById('create-report-btn')?.addEventListener('click', () => {
         window.location.hash = '#/reports/designer';
     });
 
-    // Load all reports
-    let allReports = [];
+    document.getElementById('rp-search')?.addEventListener('input', applyFilters);
+    document.getElementById('rp-type-filter')?.addEventListener('change', applyFilters);
+
+    await loadReports();
+});
+
+async function loadReports() {
     try {
         const res = await apiFetch('/reports/definitions?limit=200');
         if (res.ok) {
             const data = await res.json();
             allReports = Array.isArray(data) ? data : (data.items || data.reports || []);
+        } else {
+            allReports = [];
         }
     } catch (e) {
         console.error('Failed to load reports:', e);
+        allReports = [];
     }
-
     renderGrid(allReports);
+}
 
-    // Live search + filter
-    const applyFilters = () => {
-        const q    = (document.getElementById('rp-search')?.value || '').toLowerCase();
-        const type = document.getElementById('rp-type-filter')?.value || '';
-        renderGrid(allReports.filter(r => {
-            const matchQ    = !q    || r.name.toLowerCase().includes(q) || (r.description || '').toLowerCase().includes(q);
-            const matchType = !type || r.report_type === type;
-            return matchQ && matchType;
-        }));
-    };
-
-    document.getElementById('rp-search')?.addEventListener('input', applyFilters);
-    document.getElementById('rp-type-filter')?.addEventListener('change', applyFilters);
-});
+function applyFilters() {
+    const q    = (document.getElementById('rp-search')?.value || '').toLowerCase();
+    const type = document.getElementById('rp-type-filter')?.value || '';
+    renderGrid(allReports.filter(r => {
+        const matchQ    = !q    || r.name.toLowerCase().includes(q) || (r.description || '').toLowerCase().includes(q);
+        const matchType = !type || r.report_type === type;
+        return matchQ && matchType;
+    }));
+}
 
 function renderGrid(reports) {
     const grid = document.getElementById('reports-grid');
@@ -128,9 +85,9 @@ function renderGrid(reports) {
     };
 
     grid.innerHTML = reports.map(r => {
-        const badge = typeColors[r.report_type] || 'bg-gray-100 text-gray-600';
-        const icon  = typeIcons[r.report_type]  || 'ph-file-text';
-        const date  = r.updated_at ? new Date(r.updated_at).toLocaleDateString() : '';
+        const badge    = typeColors[r.report_type] || 'bg-gray-100 text-gray-600';
+        const icon     = typeIcons[r.report_type]  || 'ph-file-text';
+        const date     = r.updated_at ? new Date(r.updated_at).toLocaleDateString() : '';
         const safeName = (r.name || '').replace(/'/g, "\\'");
         return `
         <div class="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow flex flex-col">
@@ -179,8 +136,7 @@ window.reportsList_delete = async (reportId, reportName) => {
         const res = await apiFetch(`/reports/definitions/${reportId}`, { method: 'DELETE' });
         if (res.ok || res.status === 204) {
             showNotification('Report deleted', 'success');
-            // Re-fire the route to refresh the grid
-            document.dispatchEvent(new CustomEvent('route:loaded', { detail: { route: 'reports' } }));
+            await loadReports();
         } else {
             showNotification('Failed to delete report', 'error');
         }
