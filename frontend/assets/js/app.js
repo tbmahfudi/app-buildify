@@ -1786,16 +1786,14 @@ async function loadRoute(route) {
     if (route === 'reports/designer' || route.startsWith('reports/designer/') ||
         route === 'report-designer' || route.startsWith('report-designer?')) {
       console.log('Loading report designer page');
-      const bodyContent = await window.resourceLoader.loadTemplate('report-designer');
+      const bodyContent = await window.resourceLoader.loadTemplate('reports-designer');
       content.innerHTML = bodyContent;
 
-      // Re-execute inline module scripts (scripts injected via innerHTML don't run automatically)
-      content.querySelectorAll('script').forEach(oldScript => {
-        const newScript = document.createElement('script');
-        newScript.type = oldScript.type || 'text/javascript';
-        newScript.textContent = oldScript.textContent;
-        oldScript.replaceWith(newScript);
-      });
+      try {
+        await window.resourceLoader.loadScript('report-designer-page.js');
+      } catch (error) {
+        console.warn('Report designer script loading failed:', error);
+      }
 
       document.dispatchEvent(new CustomEvent('route:loaded', {
         detail: { route, isModule: false }
