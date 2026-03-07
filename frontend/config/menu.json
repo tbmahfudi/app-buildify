@@ -103,22 +103,11 @@
           "iconColor": "text-emerald-600",
           "submenu": [
             {
-              "title": "Create Report",
-              "route": "report-designer",
-              "icon": "ph-duotone ph-file-plus",
+              "title": "Reports",
+              "route": "reports",
+              "icon": "ph-duotone ph-chart-bar",
               "iconColor": "text-emerald-600",
-              "permission": "reports:create:tenant",
-              "badge": "NEW",
-              "badgeColor": "bg-green-500"
-            },
-            {
-              "title": "My Reports",
-              "route": "reports-list",
-              "icon": "ph-duotone ph-files",
-              "iconColor": "text-emerald-500",
-              "permission": "reports:read:tenant",
-              "badge": "NEW",
-              "badgeColor": "bg-green-500"
+              "permission": "reports:read:tenant"
             },
             {
               "title": "Create Dashboard",

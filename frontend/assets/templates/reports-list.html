@@ -1,46 +1,45 @@
-<div class="container mx-auto p-6">
+<div id="reports-list-app">
     <!-- Header -->
-    <div class="flex justify-between items-center mb-6">
-        <div>
-            <h1 class="text-2xl font-bold text-gray-900">My Reports</h1>
-            <p class="text-sm text-gray-600 mt-1">Create, manage, and execute custom reports</p>
-        </div>
-        <button id="create-report-btn" class="btn btn-primary">
-            <i class="ph-duotone ph-plus mr-2"></i>
-            Create Report
-        </button>
-    </div>
-
-    <!-- Filters -->
-    <div class="card p-4 mb-6">
-        <div class="flex gap-4 items-end">
-            <div class="flex-1">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Search Reports</label>
-                <input
-                    type="text"
-                    id="search-reports"
-                    class="form-input"
-                    placeholder="Search by name or description..."
-                />
+    <div class="bg-white border-b border-gray-200 px-6 py-4">
+        <div class="flex items-center justify-between">
+            <div>
+                <h1 class="text-2xl font-bold text-gray-900 flex items-center gap-3">
+                    <i class="ph-duotone ph-chart-bar text-blue-600"></i>
+                    Reports
+                </h1>
+                <p class="text-sm text-gray-600 mt-1">Create and manage custom reports</p>
             </div>
-            <div class="w-48">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Category</label>
-                <select id="filter-category" class="form-select">
-                    <option value="">All Categories</option>
-                    <option value="sales">Sales</option>
-                    <option value="financial">Financial</option>
-                    <option value="operational">Operational</option>
-                    <option value="custom">Custom</option>
-                </select>
-            </div>
-            <button id="clear-filters-btn" class="btn btn-secondary">
-                Clear Filters
+            <button id="create-report-btn"
+                class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center gap-2">
+                <i class="ph ph-plus"></i>
+                Create Report
             </button>
         </div>
     </div>
 
-    <!-- Reports Table -->
-    <div class="card">
-        <div id="reports-table-container"></div>
+    <!-- Search + type filter -->
+    <div class="px-6 py-4 bg-gray-50 border-b border-gray-200">
+        <div class="flex gap-3 items-center">
+            <input id="rp-search" type="text" placeholder="Search reports…"
+                class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
+            <select id="rp-type-filter"
+                class="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-400">
+                <option value="">All Types</option>
+                <option value="tabular">Tabular</option>
+                <option value="summary">Summary</option>
+                <option value="chart">Chart</option>
+                <option value="dashboard">Dashboard</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- Reports grid — populated by reports-list-page.js -->
+    <div class="px-6 py-6">
+        <div id="reports-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div class="col-span-full text-center py-12">
+                <i class="ph-duotone ph-spinner text-4xl text-gray-400 animate-spin"></i>
+                <p class="text-gray-600 mt-2">Loading reports…</p>
+            </div>
+        </div>
     </div>
 </div>

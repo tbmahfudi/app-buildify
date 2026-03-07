@@ -1764,34 +1764,12 @@ async function loadRoute(route) {
       return;
     }
 
-    // Handle report designer route
-    if (route === 'report-designer' || route.startsWith('report-designer?')) {
-      console.log('Loading report designer page');
-
-      const bodyContent = await window.resourceLoader.loadTemplate('report-designer');
-      content.innerHTML = bodyContent;
-
-      // Re-execute inline module scripts (scripts injected via innerHTML don't run automatically)
-      content.querySelectorAll('script').forEach(oldScript => {
-        const newScript = document.createElement('script');
-        newScript.type = oldScript.type || 'text/javascript';
-        newScript.textContent = oldScript.textContent;
-        oldScript.replaceWith(newScript);
-      });
-
-      document.dispatchEvent(new CustomEvent('route:loaded', {
-        detail: { route: 'report-designer', isModule: false }
-      }));
-      return;
-    }
-
-    // Handle reports list route
-    if (route === 'reports-list') {
+    // ── Reports list ──────────────────────────────────────────────────────────
+    if (route === 'reports' || route === 'reports-list') {
       console.log('Loading reports list page');
       const bodyContent = await window.resourceLoader.loadTemplate('reports-list');
       content.innerHTML = bodyContent;
 
-      // Load the JavaScript file
       try {
         await window.resourceLoader.loadScript('reports-list-page.js');
       } catch (error) {
@@ -1799,7 +1777,43 @@ async function loadRoute(route) {
       }
 
       document.dispatchEvent(new CustomEvent('route:loaded', {
-        detail: { route: 'reports-list', isModule: false }
+        detail: { route: 'reports', isModule: false }
+      }));
+      return;
+    }
+
+    // ── Report designer (create or edit) ─────────────────────────────────────
+    if (route === 'reports/designer' || route.startsWith('reports/designer/')) {
+      console.log('Loading report designer page');
+      const bodyContent = await window.resourceLoader.loadTemplate('reports-designer');
+      content.innerHTML = bodyContent;
+
+      try {
+        await window.resourceLoader.loadScript('report-designer-page.js');
+      } catch (error) {
+        console.warn('Report designer script loading failed:', error);
+      }
+
+      document.dispatchEvent(new CustomEvent('route:loaded', {
+        detail: { route, isModule: false }
+      }));
+      return;
+    }
+
+    // Legacy route kept for backward compatibility
+    if (route === 'report-designer' || route.startsWith('report-designer?')) {
+      console.log('Loading report designer page (legacy route)');
+      const bodyContent = await window.resourceLoader.loadTemplate('reports-designer');
+      content.innerHTML = bodyContent;
+
+      try {
+        await window.resourceLoader.loadScript('report-designer-page.js');
+      } catch (error) {
+        console.warn('Report designer script loading failed:', error);
+      }
+
+      document.dispatchEvent(new CustomEvent('route:loaded', {
+        detail: { route: 'reports/designer', isModule: false }
       }));
       return;
     }
