@@ -103,29 +103,29 @@
           "iconColor": "text-emerald-600",
           "submenu": [
             {
-              "title": "Reports",
-              "route": "reports",
-              "icon": "ph-duotone ph-chart-bar",
+              "title": "Create Report",
+              "route": "reports/designer",
+              "icon": "ph-duotone ph-file-plus",
               "iconColor": "text-emerald-600",
-              "permission": "reports:read:tenant"
+              "permission": "reports:create:tenant",
+              "badge": "NEW",
+              "badgeColor": "bg-green-500"
             },
             {
-              "title": "Create Dashboard",
-              "route": "dashboard-designer",
+              "title": "My Reports",
+              "route": "reports",
+              "icon": "ph-duotone ph-files",
+              "iconColor": "text-emerald-500",
+              "permission": "reports:read:tenant",
+              "badge": "NEW",
+              "badgeColor": "bg-green-500"
+            },
+            {
+              "title": "Dashboards",
+              "route": "dashboards",
               "icon": "ph-duotone ph-squares-four",
               "iconColor": "text-violet-600",
-              "permission": "dashboards:create:tenant",
-              "badge": "NEW",
-              "badgeColor": "bg-green-500"
-            },
-            {
-              "title": "My Dashboards",
-              "route": "dashboards-list",
-              "icon": "ph-duotone ph-layout",
-              "iconColor": "text-violet-500",
-              "permission": "dashboards:read:tenant",
-              "badge": "NEW",
-              "badgeColor": "bg-green-500"
+              "permission": "dashboards:read:tenant"
             }
           ]
         },

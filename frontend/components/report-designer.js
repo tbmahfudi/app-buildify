@@ -24,11 +24,9 @@ export class ReportDesigner {
         this.reportData = this._getDefaultReportData();
         this.currentStep = 1;
         this.totalSteps = 5;
-        this.availableFields = []; // Fields for the selected entity
-        this.availableEntities = []; // Entity list (name + label only)
-        this.entityFieldMap = {};   // entity_name → [{name, label, field_type}]
-        this.entitiesLoaded = false;
-        this.modules = [];          // [{id, name, display_name}]
+        this.availableFields = []; // Store fields from selected entity
+        this.availableEntities = []; // Store all available entities (standard + nocode)
+        this.entitiesLoaded = false; // Flag to track if entities are loaded
     }
 
     _getDefaultReportData() {
@@ -36,7 +34,6 @@ export class ReportDesigner {
             name: '',
             description: '',
             category: '',
-            module_id: null,
             report_type: 'tabular',
             base_entity: '',
             query_config: {
@@ -56,93 +53,57 @@ export class ReportDesigner {
         };
     }
 
-    /** Helpers for aggregate function filtering by field type */
-    static _numericTypes = new Set(['integer', 'decimal', 'float', 'number', 'currency', 'percentage', 'double', 'numeric', 'int', 'bigint', 'smallint']);
-    static _dateTypes    = new Set(['date', 'datetime', 'timestamp', 'time']);
-
-    static _aggregatesFor(fieldType) {
-        const t = (fieldType || '').toLowerCase();
-        if (ReportDesigner._numericTypes.has(t)) {
-            return [
-                { value: 'none',           label: 'None' },
-                { value: 'sum',            label: 'SUM' },
-                { value: 'avg',            label: 'AVG' },
-                { value: 'count',          label: 'COUNT' },
-                { value: 'count_distinct', label: 'COUNT DISTINCT' },
-                { value: 'min',            label: 'MIN' },
-                { value: 'max',            label: 'MAX' },
-            ];
-        }
-        if (ReportDesigner._dateTypes.has(t)) {
-            return [
-                { value: 'none',           label: 'None' },
-                { value: 'count',          label: 'COUNT' },
-                { value: 'count_distinct', label: 'COUNT DISTINCT' },
-                { value: 'min',            label: 'MIN (earliest)' },
-                { value: 'max',            label: 'MAX (latest)' },
-            ];
-        }
-        // string, boolean, lookup, etc.
-        return [
-            { value: 'none',           label: 'None' },
-            { value: 'count',          label: 'COUNT' },
-            { value: 'count_distinct', label: 'COUNT DISTINCT' },
-        ];
-    }
-
-    /** Load modules for the module dropdown */
-    async loadModules() {
-        try {
-            const res = await apiFetch('/modules');
-            if (res.ok) {
-                const data = await res.json();
-                this.modules = Array.isArray(data) ? data : (data.modules || []);
-            }
-        } catch (e) {
-            console.warn('Failed to load modules:', e);
-        }
-    }
-
     /**
-     * Load all available entities from data-model API and build entityFieldMap.
-     * Does NOT pre-populate availableFields — fields are only surfaced when
-     * the user selects a specific entity.
+     * Load all available entities (standard + nocode)
      */
     async loadAvailableEntities() {
         if (this.entitiesLoaded) {
-            return;
+            return; // Already loaded
         }
 
         try {
             const allEntities = [];
 
-            // Single call to data-model entities — includes fields and metadata
-            const response = await apiFetch('/data-model/entities?status=published');
-            if (response.ok) {
-                const data = await response.json();
-                const entities = Array.isArray(data) ? data : (data.entities || data.items || []);
-                entities.forEach(entity => {
-                    allEntities.push({
-                        name: entity.name,
-                        label: entity.label || entity.name,
-                        type: 'nocode',
-                        icon: entity.icon || 'database'
+            // Load standard entities from metadata service
+            try {
+                const response = await apiFetch('/metadata/entities');
+                if (response.ok) {
+                    const systemEntities = await response.json();
+                    systemEntities.forEach(entity => {
+                        allEntities.push({
+                            name: entity.entity_name || entity.name,
+                            label: entity.display_name || entity.label || entity.name,
+                            type: 'system',
+                            icon: entity.icon || 'table'
+                        });
                     });
-                    // Build field map — fields come from entity.fields
-                    if (Array.isArray(entity.fields)) {
-                        this.entityFieldMap[entity.name] = entity.fields.map(f => ({
-                            name: f.name,
-                            label: f.label || f.name,
-                            field_type: f.field_type || f.data_type || 'string'
-                        }));
-                    }
-                });
+                }
+            } catch (error) {
+                console.warn('Failed to load standard entities:', error);
+            }
+
+            // Load nocode entities (published only)
+            try {
+                const response = await apiFetch('/data-model/entities?status=published');
+                if (response.ok) {
+                    const nocodeEntities = await response.json();
+                    nocodeEntities.forEach(entity => {
+                        allEntities.push({
+                            name: entity.name,
+                            label: entity.label || entity.name,
+                            type: 'nocode',
+                            icon: entity.icon || 'database'
+                        });
+                    });
+                }
+            } catch (error) {
+                console.warn('Failed to load nocode entities:', error);
             }
 
             this.availableEntities = allEntities;
             this.entitiesLoaded = true;
 
-            console.log(`✓ Loaded ${allEntities.length} entities for reports`);
+            console.log(`✓ Loaded ${allEntities.length} entities for reports (${allEntities.filter(e => e.type === 'system').length} standard, ${allEntities.filter(e => e.type === 'nocode').length} nocode)`);
 
         } catch (error) {
             console.error('Error loading entities for reports:', error);
@@ -151,12 +112,12 @@ export class ReportDesigner {
     }
 
     async render() {
-        // Load entities + modules first so entityFieldMap is ready before loadReport uses it
-        await Promise.all([this.loadAvailableEntities(), this.loadModules()]);
-
         if (this.reportId) {
             await this.loadReport();
         }
+
+        // Load entities upfront
+        await this.loadAvailableEntities();
 
         this.container.innerHTML = `
             <div class="report-designer">
@@ -285,10 +246,6 @@ export class ReportDesigner {
     }
 
     _renderBasicInfoStep() {
-        const moduleOptions = this.modules.map(m =>
-            `<option value="${m.id}" ${this.reportData.module_id === m.id ? 'selected' : ''}>${m.display_name || m.name}</option>`
-        ).join('');
-
         return `
             <h3 class="text-xl font-bold mb-4">Basic Information</h3>
             <div class="space-y-4">
@@ -304,11 +261,9 @@ export class ReportDesigner {
                 </div>
                 <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Module</label>
-                        <select id="report-module" class="input-field">
-                            <option value="">-- No Module --</option>
-                            ${moduleOptions}
-                        </select>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                        <input type="text" id="report-category" value="${this.reportData.category || ''}"
+                            class="input-field" placeholder="e.g., Financial, Operations">
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Report Type</label>
@@ -404,56 +359,49 @@ export class ReportDesigner {
     }
 
     _renderColumnConfig(column, index) {
-        const noFields = this.availableFields.length === 0;
-
-        // Determine field type for the current column value
-        const fieldMeta = this.availableFields.find(f => f.name === column.name);
-        const fieldType = column.data_type || (fieldMeta ? fieldMeta.field_type : 'string');
-
-        const fieldOptions = noFields
-            ? `<option value="${column.name || ''}">${column.name || 'Select entity first'}</option>`
-            : this.availableFields.map(field => {
-                const typeLabel = field.field_type ? ` (${field.field_type})` : '';
-                return `<option value="${field.name}" ${column.name === field.name ? 'selected' : ''}>${field.label || field.name}${typeLabel}</option>`;
-              }).join('');
-
-        const aggregates = ReportDesigner._aggregatesFor(fieldType);
-        const aggOptions = aggregates.map(a =>
-            `<option value="${a.value}" ${column.aggregation === a.value ? 'selected' : ''}>${a.label}</option>`
-        ).join('');
+        // Build field dropdown options
+        const fieldOptions = this.availableFields.length > 0
+            ? this.availableFields.map(field =>
+                `<option value="${field.name}" ${column.name === field.name ? 'selected' : ''}>${field.label || field.name}</option>`
+              ).join('')
+            : `<option value="${column.name}">${column.name || 'Select entity first'}</option>`;
 
         return `
             <div class="column-config border rounded p-4 bg-gray-50" data-index="${index}">
                 <div class="grid grid-cols-3 gap-4">
                     <div>
-                        <label class="block text-sm font-medium mb-1">Field</label>
-                        <select class="input-field column-name" ${noFields ? 'disabled' : ''}>
-                            <option value="">Select a field…</option>
+                        <label class="block text-sm font-medium mb-1">Field Name</label>
+                        <select class="input-field column-name" ${this.availableFields.length === 0 ? 'disabled' : ''}>
+                            <option value="">Select a field...</option>
                             ${fieldOptions}
                         </select>
-                        ${noFields ? '<p class="text-xs text-amber-600 mt-1">Select a base entity first</p>' : ''}
-                        ${fieldMeta ? `<p class="text-xs text-gray-400 mt-0.5">Type: ${fieldMeta.field_type || 'string'}</p>` : ''}
+                        ${this.availableFields.length === 0 ? '<p class="text-xs text-amber-600 mt-1">Select a base entity first</p>' : ''}
                     </div>
                     <div>
                         <label class="block text-sm font-medium mb-1">Display Label</label>
-                        <input type="text" class="input-field column-label" value="${column.label || ''}"
+                        <input type="text" class="input-field column-label" value="${column.label}"
                             placeholder="Display Label">
                     </div>
                     <div>
                         <label class="block text-sm font-medium mb-1">Aggregation</label>
                         <select class="input-field column-aggregation">
-                            ${aggOptions}
+                            <option value="none" ${column.aggregation === 'none' ? 'selected' : ''}>None</option>
+                            <option value="sum" ${column.aggregation === 'sum' ? 'selected' : ''}>SUM</option>
+                            <option value="avg" ${column.aggregation === 'avg' ? 'selected' : ''}>AVG</option>
+                            <option value="count" ${column.aggregation === 'count' ? 'selected' : ''}>COUNT</option>
+                            <option value="min" ${column.aggregation === 'min' ? 'selected' : ''}>MIN</option>
+                            <option value="max" ${column.aggregation === 'max' ? 'selected' : ''}>MAX</option>
                         </select>
                     </div>
                 </div>
                 <div class="flex justify-between items-center mt-3">
                     <div class="flex gap-4">
                         <label class="flex items-center text-sm">
-                            <input type="checkbox" class="column-visible mr-1" ${column.visible !== false ? 'checked' : ''}>
+                            <input type="checkbox" class="column-visible mr-1" ${column.visible ? 'checked' : ''}>
                             Visible
                         </label>
                         <label class="flex items-center text-sm">
-                            <input type="checkbox" class="column-sortable mr-1" ${column.sortable !== false ? 'checked' : ''}>
+                            <input type="checkbox" class="column-sortable mr-1" ${column.sortable ? 'checked' : ''}>
                             Sortable
                         </label>
                     </div>
@@ -669,26 +617,50 @@ export class ReportDesigner {
                 allowed_users: loadedData.allowed_users || []
             };
 
-            // Fields will be resolved from entityFieldMap after loadAvailableEntities() runs
-            // (called in render() after loadReport())
+            // Load entity fields if base entity is set
             if (this.reportData.base_entity) {
-                this.loadEntityFields(this.reportData.base_entity);
+                await this.loadEntityFields(this.reportData.base_entity);
             }
         } catch (error) {
             showNotification('Failed to load report: ' + error.message, 'error');
         }
     }
 
-    loadEntityFields(entityName) {
-        // Use the pre-built map from loadAvailableEntities (no extra API call needed)
-        this.availableFields = this.entityFieldMap[entityName] || [];
+    async loadEntityFields(entityName) {
+        try {
+            const metadata = await metadataService.getMetadata(entityName);
 
-        if (this.currentStep === 3) {
-            this._renderCurrentStep();
-        }
+            // Extract fields from metadata - try form.fields first, then table.columns
+            const formFields = metadata.form?.fields || [];
+            const tableColumns = metadata.table?.columns || [];
 
-        if (this.availableFields.length > 0) {
+            // Prefer form fields as they have more complete information
+            if (formFields.length > 0) {
+                this.availableFields = formFields.map(field => ({
+                    name: field.field,
+                    label: field.title,
+                    type: field.type
+                }));
+            } else if (tableColumns.length > 0) {
+                this.availableFields = tableColumns.map(col => ({
+                    name: col.field,
+                    label: col.title,
+                    type: 'string'
+                }));
+            } else {
+                this.availableFields = [];
+            }
+
+            // If we're on step 3 (columns), re-render to update dropdowns
+            if (this.currentStep === 3) {
+                this._renderCurrentStep();
+            }
+
             showNotification(`Loaded ${this.availableFields.length} fields from ${entityName}`, 'success');
+        } catch (error) {
+            console.error('Failed to load entity fields:', error);
+            showNotification('Failed to load entity fields: ' + error.message, 'error');
+            this.availableFields = [];
         }
     }
 
@@ -736,12 +708,10 @@ export class ReportDesigner {
         // Step 2: Data Source - Base Entity change
         const baseEntity = document.getElementById('base-entity');
         if (baseEntity) {
-            baseEntity.addEventListener('change', (e) => {
+            baseEntity.addEventListener('change', async (e) => {
                 this.reportData.base_entity = e.target.value;
                 if (e.target.value) {
-                    this.loadEntityFields(e.target.value);
-                } else {
-                    this.availableFields = [];
+                    await this.loadEntityFields(e.target.value);
                 }
             });
         }
@@ -757,26 +727,17 @@ export class ReportDesigner {
             this.loadEntityFields(this.reportData.base_entity);
         }
 
-        // Column field dropdowns — auto-fill label and refresh aggregate options by type
+        // Add event listeners for column field dropdowns
         document.querySelectorAll('.column-name').forEach((select, index) => {
             select.addEventListener('change', (e) => {
                 const fieldName = e.target.value;
                 const field = this.availableFields.find(f => f.name === fieldName);
-                const colEl = e.target.closest('.column-config');
 
                 if (field) {
                     // Auto-populate label if empty
-                    const labelInput = colEl.querySelector('.column-label');
+                    const labelInput = e.target.closest('.column-config').querySelector('.column-label');
                     if (labelInput && !labelInput.value) {
                         labelInput.value = field.label || field.name;
-                    }
-                    // Refresh aggregation options based on field type
-                    const aggSel = colEl.querySelector('.column-aggregation');
-                    if (aggSel) {
-                        const aggs = ReportDesigner._aggregatesFor(field.field_type);
-                        aggSel.innerHTML = aggs.map(a =>
-                            `<option value="${a.value}">${a.label}</option>`
-                        ).join('');
                     }
                 }
             });
@@ -834,33 +795,20 @@ export class ReportDesigner {
     }
 
     _collectStepData() {
+        // Collect data from current step before moving to next
         switch (this.currentStep) {
             case 1:
                 this.reportData.name = document.getElementById('report-name')?.value || '';
                 this.reportData.description = document.getElementById('report-description')?.value || '';
+                this.reportData.category = document.getElementById('report-category')?.value || '';
                 this.reportData.report_type = document.getElementById('report-type')?.value || 'tabular';
-                this.reportData.module_id = document.getElementById('report-module')?.value || null;
                 this.reportData.is_public = document.getElementById('report-public')?.checked || false;
                 break;
             case 2:
                 this.reportData.base_entity = document.getElementById('base-entity')?.value || '';
                 this.reportData.query_config.limit = parseInt(document.getElementById('query-limit')?.value) || null;
                 break;
-            case 3:
-                // Collect column configs from DOM
-                document.querySelectorAll('.column-config').forEach((el, idx) => {
-                    const col = this.reportData.columns_config[idx];
-                    if (!col) return;
-                    col.name = el.querySelector('.column-name')?.value || col.name;
-                    col.label = el.querySelector('.column-label')?.value || col.label;
-                    col.aggregation = el.querySelector('.column-aggregation')?.value || 'none';
-                    col.visible = el.querySelector('.column-visible')?.checked ?? true;
-                    col.sortable = el.querySelector('.column-sortable')?.checked ?? true;
-                    // Store field type for aggregate filtering on re-render
-                    const fieldMeta = this.availableFields.find(f => f.name === col.name);
-                    if (fieldMeta) col.data_type = fieldMeta.field_type;
-                });
-                break;
+            // Add more cases as needed
         }
     }
 
