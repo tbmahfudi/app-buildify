@@ -31,149 +31,172 @@
     </div>
   </div>
 
-  <!-- Tab Navigation -->
+  <!-- Tab Navigation (wizard steps) -->
   <div class="bg-white border-b border-gray-200">
     <nav class="flex px-4 overflow-x-auto">
       <button class="tab-btn flex items-center gap-2 px-5 py-3 text-sm font-medium whitespace-nowrap border-b-2 border-blue-600 text-blue-600 transition-colors" data-step="properties">
-        <i class="ph-duotone ph-note-pencil text-base"></i>
+        <span class="tab-step-num flex items-center justify-center w-5 h-5 rounded-full text-xs font-bold bg-blue-600 text-white">1</span>
         Properties
       </button>
       <button class="tab-btn flex items-center gap-2 px-5 py-3 text-sm font-medium whitespace-nowrap border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 transition-colors" data-step="data-source">
-        <i class="ph-duotone ph-database text-base"></i>
+        <span class="tab-step-num flex items-center justify-center w-5 h-5 rounded-full text-xs font-bold bg-gray-300 text-gray-600">2</span>
         Data Source
       </button>
       <button class="tab-btn flex items-center gap-2 px-5 py-3 text-sm font-medium whitespace-nowrap border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 transition-colors" data-step="columns">
-        <i class="ph-duotone ph-columns text-base"></i>
+        <span class="tab-step-num flex items-center justify-center w-5 h-5 rounded-full text-xs font-bold bg-gray-300 text-gray-600">3</span>
         Columns
       </button>
       <button class="tab-btn flex items-center gap-2 px-5 py-3 text-sm font-medium whitespace-nowrap border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 transition-colors" data-step="visualization">
-        <i class="ph-duotone ph-chart-bar text-base"></i>
+        <span class="tab-step-num flex items-center justify-center w-5 h-5 rounded-full text-xs font-bold bg-gray-300 text-gray-600">4</span>
         Visualization
       </button>
       <button class="tab-btn flex items-center gap-2 px-5 py-3 text-sm font-medium whitespace-nowrap border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 transition-colors" data-step="parameters">
-        <i class="ph-duotone ph-sliders text-base"></i>
+        <span class="tab-step-num flex items-center justify-center w-5 h-5 rounded-full text-xs font-bold bg-gray-300 text-gray-600">5</span>
         Parameters
-      </button>
-      <button class="tab-btn flex items-center gap-2 px-5 py-3 text-sm font-medium whitespace-nowrap border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 transition-colors" data-step="template">
-        <i class="ph-duotone ph-copy text-base"></i>
-        Template
       </button>
     </nav>
   </div>
 
-  <!-- Main Content -->
-  <div class="flex-1 flex overflow-hidden">
-    <!-- Step Content Area -->
-    <div class="flex-1 bg-gray-50 overflow-auto">
+  <!-- Wizard Prev / Next strip -->
+  <div class="bg-gray-50 border-b border-gray-200 px-6 py-2 flex items-center justify-between">
+    <button id="wizard-prev-btn" class="btn btn-secondary btn-sm" disabled>
+      <i class="ph ph-arrow-left mr-1.5"></i>Previous
+    </button>
+    <span id="wizard-step-label" class="text-sm text-gray-500 font-medium">Step 1 of 5 — Properties</span>
+    <button id="wizard-next-btn" class="btn btn-secondary btn-sm">
+      Next<i class="ph ph-arrow-right ml-1.5"></i>
+    </button>
+  </div>
 
-      <!-- Step 0: Properties -->
-      <div id="step-properties" class="step-content p-6">
-        <div class="max-w-2xl mx-auto">
-          <h2 class="text-lg font-semibold text-gray-900 mb-5">Report Properties</h2>
-          <div class="bg-white rounded-lg border border-gray-200 p-6 space-y-5">
+  <!-- Main Content (full width — no right sidebar) -->
+  <div class="flex-1 overflow-auto bg-gray-50">
 
-            <div class="grid grid-cols-2 gap-4">
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Report Name <span class="text-red-500">*</span></label>
-                <input id="prop-name" type="text" class="form-input w-full" placeholder="e.g. Monthly Sales Summary" />
-                <p class="text-xs text-gray-400 mt-1">Unique identifier used in the system</p>
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Report Title</label>
-                <input id="prop-title" type="text" class="form-input w-full" placeholder="e.g. Monthly Sales Summary Report" />
-                <p class="text-xs text-gray-400 mt-1">Displayed to users at the top of the report</p>
-              </div>
-            </div>
+    <!-- Step 0: Properties -->
+    <div id="step-properties" class="step-content p-6">
+      <div class="max-w-2xl mx-auto">
+        <h2 class="text-lg font-semibold text-gray-900 mb-5">Report Properties</h2>
+        <div class="bg-white rounded-lg border border-gray-200 p-6 space-y-5">
 
-            <div class="grid grid-cols-2 gap-4">
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Module</label>
-                <select id="prop-module" class="form-select w-full">
-                  <option value="">-- No Module --</option>
-                </select>
-                <p class="text-xs text-gray-400 mt-1">Auto-detected from data source entity or workflow</p>
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Report Type</label>
-                <select id="prop-type" class="form-select w-full">
-                  <option value="tabular">Tabular — rows &amp; columns</option>
-                  <option value="summary">Summary — grouped totals</option>
-                  <option value="chart">Chart — visualisation</option>
-                  <option value="dashboard">Dashboard — mixed widgets</option>
-                </select>
-              </div>
-            </div>
-
+          <div class="grid grid-cols-2 gap-4">
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
-              <textarea id="prop-description" class="form-input w-full" rows="3" placeholder="Describe what this report shows and who should use it…"></textarea>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Report Name <span class="text-red-500">*</span></label>
+              <input id="prop-name" type="text" class="form-input w-full" placeholder="e.g. Monthly Sales Summary" />
+              <p class="text-xs text-gray-400 mt-1">Unique identifier used in the system</p>
             </div>
-
-            <div class="flex items-center gap-3 pt-1">
-              <input id="prop-public" type="checkbox" class="checkbox" />
-              <div>
-                <label for="prop-public" class="text-sm font-medium text-gray-700">Make report public</label>
-                <p class="text-xs text-gray-400">All users can see this report in the shared report library</p>
-              </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Report Title</label>
+              <input id="prop-title" type="text" class="form-input w-full" placeholder="e.g. Monthly Sales Summary Report" />
+              <p class="text-xs text-gray-400 mt-1">Displayed to users at the top of the report</p>
             </div>
-
           </div>
+
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Module</label>
+              <select id="prop-module" class="form-select w-full">
+                <option value="">-- No Module (Standalone) --</option>
+              </select>
+              <p class="text-xs text-gray-400 mt-1">Auto-detected from data source entity</p>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Report Type</label>
+              <select id="prop-type" class="form-select w-full">
+                <option value="tabular">Tabular — rows &amp; columns</option>
+                <option value="summary">Summary — grouped totals</option>
+                <option value="chart">Chart — visualisation</option>
+                <option value="dashboard">Dashboard — mixed widgets</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+            <textarea id="prop-description" class="form-input w-full" rows="3" placeholder="Describe what this report shows and who should use it…"></textarea>
+          </div>
+
+          <div class="flex items-center gap-3 pt-1">
+            <input id="prop-public" type="checkbox" class="checkbox" />
+            <div>
+              <label for="prop-public" class="text-sm font-medium text-gray-700">Make report public</label>
+              <p class="text-xs text-gray-400">All users can see this report in the shared report library</p>
+            </div>
+          </div>
+
         </div>
       </div>
-
-      <!-- Step 1: Data Source -->
-      <div id="step-data-source" class="step-content hidden p-6">
-        <div class="max-w-5xl mx-auto">
-          <div id="data-source-builder-container"></div>
-        </div>
-      </div>
-
-      <!-- Step 2: Columns -->
-      <div id="step-columns" class="step-content hidden p-6">
-        <div class="max-w-5xl mx-auto space-y-6">
-          <div id="column-designer-container"></div>
-          <div id="group-by-designer-container"></div>
-        </div>
-      </div>
-
-      <!-- Step 3: Visualization -->
-      <div id="step-visualization" class="step-content hidden p-6">
-        <div class="max-w-5xl mx-auto">
-          <div id="chart-builder-container"></div>
-        </div>
-      </div>
-
-      <!-- Step 4: Parameters -->
-      <div id="step-parameters" class="step-content hidden p-6">
-        <div class="max-w-5xl mx-auto">
-          <div id="parameter-ui-container"></div>
-        </div>
-      </div>
-
-      <!-- Step 5: Template -->
-      <div id="step-template" class="step-content hidden p-6">
-        <div class="max-w-5xl mx-auto">
-          <div id="template-library-container"></div>
-        </div>
-      </div>
-
     </div>
 
-    <!-- Right Sidebar: Live Preview -->
-    <div class="w-80 bg-white border-l border-gray-200 flex flex-col overflow-hidden">
-      <div class="flex items-center justify-between px-4 py-3 border-b border-gray-200">
-        <h3 class="text-sm font-semibold text-gray-900">Live Preview</h3>
-        <button id="toggle-preview-btn" class="text-gray-400 hover:text-gray-600">
-          <i class="ph ph-eye-slash text-base"></i>
+    <!-- Step 1: Data Source -->
+    <div id="step-data-source" class="step-content hidden p-6">
+      <div class="max-w-5xl mx-auto">
+        <div id="data-source-builder-container"></div>
+      </div>
+    </div>
+
+    <!-- Step 2: Columns -->
+    <div id="step-columns" class="step-content hidden p-6">
+      <div class="max-w-5xl mx-auto space-y-6">
+        <div id="column-designer-container"></div>
+        <div id="group-by-designer-container"></div>
+      </div>
+    </div>
+
+    <!-- Step 3: Visualization -->
+    <div id="step-visualization" class="step-content hidden p-6">
+      <div class="max-w-5xl mx-auto">
+        <div id="chart-builder-container"></div>
+      </div>
+    </div>
+
+    <!-- Step 4: Parameters -->
+    <div id="step-parameters" class="step-content hidden p-6">
+      <div class="max-w-5xl mx-auto">
+        <div id="parameter-ui-container"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ── Preview Modal ──────────────────────────────────────────────────────── -->
+<div id="preview-modal" class="fixed inset-0 bg-black/50 z-50 hidden items-center justify-center">
+  <div class="bg-white rounded-xl shadow-2xl flex flex-col" style="width:80vw;height:80vh">
+    <div class="flex items-center justify-between px-5 py-4 border-b border-gray-200">
+      <h3 class="text-base font-semibold text-gray-900 flex items-center gap-2">
+        <i class="ph-duotone ph-eye text-blue-600"></i>
+        Report Preview
+      </h3>
+      <button id="close-preview-modal" class="text-gray-400 hover:text-gray-600">
+        <i class="ph ph-x text-xl"></i>
+      </button>
+    </div>
+    <div id="preview-content" class="flex-1 overflow-auto p-5 bg-gray-50">
+      <div class="text-center text-gray-400 mt-12">
+        <i class="ph ph-file-text text-5xl mb-3"></i>
+        <p class="text-sm">Configure your report to see a preview</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Template Picker Modal (shown for new reports) ─────────────────────── -->
+<div id="template-modal" class="fixed inset-0 bg-black/50 z-50 hidden items-center justify-center">
+  <div class="bg-white rounded-xl shadow-2xl flex flex-col" style="width:72vw;max-height:82vh">
+    <div class="flex items-center justify-between px-5 py-4 border-b border-gray-200">
+      <div>
+        <h3 class="text-base font-semibold text-gray-900">Choose a Starting Template</h3>
+        <p class="text-xs text-gray-500 mt-0.5">Pick a template to pre-configure your report, or start blank</p>
+      </div>
+      <div class="flex items-center gap-3">
+        <button id="skip-template-btn" class="btn btn-secondary btn-sm">
+          <i class="ph ph-arrow-right mr-1.5"></i>Start Blank
+        </button>
+        <button id="close-template-modal" class="text-gray-400 hover:text-gray-600">
+          <i class="ph ph-x text-xl"></i>
         </button>
       </div>
-      <div id="preview-content" class="flex-1 overflow-auto p-4 bg-gray-50">
-        <div class="text-center text-gray-400 mt-8">
-          <i class="ph ph-file-text text-4xl mb-2"></i>
-          <p class="text-sm">Configure your report to see a preview</p>
-        </div>
-      </div>
     </div>
+    <div id="template-library-container" class="flex-1 overflow-auto p-5"></div>
   </div>
 </div>
 
@@ -188,38 +211,29 @@
   import { apiFetch } from '/assets/js/api.js';
   import { upgradeAllSelects, setFlexValue } from '/assets/js/utils/upgrade-select.js';
 
+  const STEP_LABELS = ['Properties', 'Data Source', 'Columns', 'Visualization', 'Parameters'];
+
   class ReportDesigner {
     constructor() {
       this.reportId = null;
       this.currentStep = 0;
-      this.steps = ['properties', 'data-source', 'columns', 'visualization', 'parameters', 'template'];
+      this.steps = ['properties', 'data-source', 'columns', 'visualization', 'parameters'];
 
       this.reportData = {
-        name: '',
-        title: '',
-        category: '',
-        module_id: null,
-        report_type: 'tabular',
-        description: '',
-        is_public: false,
-        data_source: {},
-        columns: [],
+        name: '', title: '', category: '', module_id: null,
+        report_type: 'tabular', description: '', is_public: false,
+        data_source: {}, columns: [],
         query_config: { group_by: [], order_by: [], filters: {}, limit: null },
-        chart_config: {},
-        parameters: []
+        chart_config: {}, parameters: []
       };
 
-      this.modules = [];       // [{ id, name, display_name }]
-      this.entityModuleMap = {}; // entity_name → module_id
+      this.modules = [];
+      this.entityModuleMap = {};  // entity_name → module_id
+      this.entityFieldsMap = {};  // entity_name → fields[]  (from entities API)
 
       this.components = {
-        dataSource: null,
-        columns: null,
-        groupBy: null,
-        chart: null,
-        parameters: null,
-        template: null,
-        preview: null
+        dataSource: null, columns: null, groupBy: null,
+        chart: null, parameters: null, template: null, preview: null
       };
 
       this.init();
@@ -235,14 +249,12 @@
         await this.loadReport(this.reportId);
       }
 
-      // Upgrade all <select> elements in the Properties panel to FlexSelect
-      // before setting up event listeners so the listeners bind to the hidden inputs
+      // Upgrade Properties dropdowns to FlexSelect before binding change listeners
       upgradeAllSelects(document.getElementById('step-properties'));
 
       this.initializeComponents();
       this.setupEventListeners();
 
-      // Restore column + group-by state now that components exist
       if (this.reportData.columns?.length) {
         this.components.columns.setColumns(this.reportData.columns);
         this.components.groupBy.setAvailableFields(this.reportData.columns);
@@ -250,7 +262,14 @@
       }
 
       this.showStep(0);
+
+      // Show template picker only for new reports
+      if (!this.reportId) {
+        this._openTemplateModal();
+      }
     }
+
+    // ── Data Loading ──────────────────────────────────────────────────────────
 
     async loadModules() {
       try {
@@ -261,7 +280,9 @@
 
         if (modulesRes.ok) {
           const data = await modulesRes.json();
-          this.modules = Array.isArray(data) ? data : (data.modules || []);
+          const all = Array.isArray(data) ? data : (data.modules || []);
+          // Same filter as the "Create Entity" module dropdown
+          this.modules = all.filter(m => m.status === 'active' || m.status === 'draft');
           this.populateModuleDropdown();
         }
 
@@ -270,28 +291,28 @@
           const entities = Array.isArray(data) ? data : (data.entities || data.items || []);
           entities.forEach(e => {
             if (e.module_id) this.entityModuleMap[e.name] = e.module_id;
+            // Store fields from the entities API response (task 6)
+            if (Array.isArray(e.fields)) this.entityFieldsMap[e.name] = e.fields;
           });
         }
-      } catch (e) {
-        console.warn('Failed to load modules:', e);
+      } catch (err) {
+        console.warn('Failed to load modules/entities:', err);
       }
     }
 
     populateModuleDropdown() {
       const sel = document.getElementById('prop-module');
-      if (!sel) return;
-      sel.innerHTML = '<option value="">-- No Module --</option>';
+      if (!sel || sel.tagName !== 'SELECT') return;
+      sel.innerHTML = '<option value="">-- No Module (Standalone) --</option>';
       this.modules.forEach(m => {
         const opt = document.createElement('option');
         opt.value = m.id;
         opt.textContent = m.display_name || m.name;
         sel.appendChild(opt);
       });
-      // Set current value if already loaded
       if (this.reportData.module_id) sel.value = this.reportData.module_id;
     }
 
-    // Detect module from first entity in data source that has a known module_id
     autoDetectModule(dataSource) {
       const entities = (dataSource.entities || []).map(e =>
         typeof e === 'string' ? e : e.entity_name
@@ -306,84 +327,135 @@
       }
     }
 
-    initializeComponents() {
-      this.components.dataSource = new VisualDataSourceBuilder(document.querySelector('#data-source-builder-container'), {
-        onDataSourceChange: (dataSource) => {
-          this.reportData.data_source = dataSource;
-          // Auto-detect module from selected entities
-          if (!this.reportData.module_id) this.autoDetectModule(dataSource);
-          // Update column designer to show only fields from selected entities
-          const entityNames = (dataSource.entities || []).map(e =>
-            typeof e === 'string' ? e : e.entity_name
-          );
-          if (this.components.columns) {
-            this.components.columns.setEntities(entityNames);
-          }
-          this.updatePreview();
-        }
+    // Build available fields from preloaded entityFieldsMap (avoids extra API calls)
+    _buildFieldsFromEntities(entityNames) {
+      const fields = [];
+      entityNames.forEach(entityName => {
+        const entityFields = this.entityFieldsMap[entityName] || [];
+        entityFields.forEach(f => {
+          const name = f.name || f.field;
+          if (!name) return;
+          fields.push({
+            entity: entityName,
+            name,
+            label: f.label || f.title || name,
+            type: f.type || f.format || 'string',
+            displayName: `${entityName}.${name}`
+          });
+        });
       });
-
-      this.components.columns = new DragDropColumnDesigner(document.querySelector('#column-designer-container'), {
-        onColumnsChange: (columns) => {
-          this.reportData.columns = columns;
-          // Feed updated fields into GroupByDesigner so it stays in sync
-          if (this.components.groupBy) {
-            this.components.groupBy.setAvailableFields(columns);
-          }
-          this.updatePreview();
-        }
-      });
-
-      this.components.groupBy = new GroupByDesigner(document.querySelector('#group-by-designer-container'), {
-        onGroupByChange: (groupBy) => {
-          this.reportData.query_config = {
-            ...this.reportData.query_config,
-            group_by: groupBy
-          };
-          this.updatePreview();
-        }
-      });
-
-      this.components.chart = new VisualChartBuilder(document.querySelector('#chart-builder-container'), {
-        onChartChange: (chartConfig) => {
-          this.reportData.chart_config = chartConfig;
-          this.updatePreview();
-        }
-      });
-
-      this.components.parameters = new EnhancedParameterUI(document.querySelector('#parameter-ui-container'), {
-        onParametersChange: (parameters) => {
-          this.reportData.parameters = parameters;
-          this.updatePreview();
-        }
-      });
-
-      this.components.template = new ReportTemplateLibrary(document.querySelector('#template-library-container'), {
-        onTemplateSelect: (template) => {
-          this.applyTemplate(template);
-        }
-      });
-
-      this.components.preview = new SplitPaneLivePreview(document.querySelector('#preview-content'), {
-        reportConfig: this.reportData,
-        autoRefresh: true
-      });
+      return fields;
     }
+
+    // ── Components ────────────────────────────────────────────────────────────
+
+    initializeComponents() {
+      this.components.dataSource = new VisualDataSourceBuilder(
+        document.querySelector('#data-source-builder-container'), {
+          onDataSourceChange: (dataSource) => {
+            this.reportData.data_source = dataSource;
+            if (!this.reportData.module_id) this.autoDetectModule(dataSource);
+
+            const entityNames = (dataSource.entities || []).map(e =>
+              typeof e === 'string' ? e : e.entity_name
+            );
+
+            if (this.components.columns) {
+              const fields = this._buildFieldsFromEntities(entityNames);
+              if (fields.length > 0) {
+                // Use preloaded fields from entities API (task 6)
+                this.components.columns.setAvailableFields(fields);
+              } else {
+                // Fallback: load via metadata endpoint
+                this.components.columns.setEntities(entityNames);
+              }
+            }
+          }
+        }
+      );
+
+      // Start with empty available fields (task 5)
+      this.components.columns = new DragDropColumnDesigner(
+        document.querySelector('#column-designer-container'), {
+          entities: [],
+          onColumnsChange: (columns) => {
+            this.reportData.columns = columns;
+            if (this.components.groupBy) {
+              this.components.groupBy.setAvailableFields(columns);
+            }
+          }
+        }
+      );
+
+      this.components.groupBy = new GroupByDesigner(
+        document.querySelector('#group-by-designer-container'), {
+          onGroupByChange: (groupBy) => {
+            this.reportData.query_config = {
+              ...this.reportData.query_config, group_by: groupBy
+            };
+          }
+        }
+      );
+
+      this.components.chart = new VisualChartBuilder(
+        document.querySelector('#chart-builder-container'), {
+          onChartChange: (chartConfig) => {
+            this.reportData.chart_config = chartConfig;
+          }
+        }
+      );
+
+      this.components.parameters = new EnhancedParameterUI(
+        document.querySelector('#parameter-ui-container'), {
+          onParametersChange: (parameters) => {
+            this.reportData.parameters = parameters;
+          }
+        }
+      );
+
+      // Template component renders inside the modal
+      this.components.template = new ReportTemplateLibrary(
+        document.querySelector('#template-library-container'), {
+          onTemplateSelect: (template) => {
+            this.applyTemplate(template);
+            this._closeTemplateModal();
+          }
+        }
+      );
+
+      // Preview component renders inside the preview modal
+      this.components.preview = new SplitPaneLivePreview(
+        document.querySelector('#preview-content'), {
+          reportConfig: this.reportData,
+          autoRefresh: false
+        }
+      );
+    }
+
+    // ── Event Listeners ───────────────────────────────────────────────────────
 
     setupEventListeners() {
       document.getElementById('back-to-reports')?.addEventListener('click', () => {
         window.location.hash = '#/reports-list';
       });
 
+      // Tab clicks → direct step navigation
       document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
-          const step = e.currentTarget.dataset.step;
-          const stepIndex = this.steps.indexOf(step);
+          const stepIndex = this.steps.indexOf(e.currentTarget.dataset.step);
           if (stepIndex !== -1) this.showStep(stepIndex);
         });
       });
 
-      // Sync Properties form fields to reportData in real time
+      // Wizard prev / next
+      document.getElementById('wizard-prev-btn')?.addEventListener('click', () => {
+        if (this.currentStep > 0) this.showStep(this.currentStep - 1);
+      });
+      document.getElementById('wizard-next-btn')?.addEventListener('click', () => {
+        if (this.currentStep < this.steps.length - 1) this.showStep(this.currentStep + 1);
+      });
+
+      // Properties form → reportData sync
       document.getElementById('prop-name')?.addEventListener('input', (e) => {
         this.reportData.name = e.target.value;
         document.getElementById('report-title').textContent = e.target.value || 'New Report';
@@ -404,13 +476,37 @@
         this.reportData.is_public = e.target.checked;
       });
 
+      // Header buttons
       document.getElementById('save-report-btn')?.addEventListener('click', () => this.saveReport());
       document.getElementById('run-report-btn')?.addEventListener('click', () => this.runReport());
-      document.getElementById('preview-report-btn')?.addEventListener('click', () => this.updatePreview());
       document.getElementById('clear-report-btn')?.addEventListener('click', () => {
         if (confirm('Clear all report configuration?')) this.clearReport();
       });
+
+      // Preview modal
+      document.getElementById('preview-report-btn')?.addEventListener('click', () => {
+        this._openPreviewModal();
+      });
+      document.getElementById('close-preview-modal')?.addEventListener('click', () => {
+        this._closePreviewModal();
+      });
+      document.getElementById('preview-modal')?.addEventListener('click', (e) => {
+        if (e.target === e.currentTarget) this._closePreviewModal();
+      });
+
+      // Template modal
+      document.getElementById('skip-template-btn')?.addEventListener('click', () => {
+        this._closeTemplateModal();
+      });
+      document.getElementById('close-template-modal')?.addEventListener('click', () => {
+        this._closeTemplateModal();
+      });
+      document.getElementById('template-modal')?.addEventListener('click', (e) => {
+        if (e.target === e.currentTarget) this._closeTemplateModal();
+      });
     }
+
+    // ── Step Navigation ───────────────────────────────────────────────────────
 
     showStep(stepIndex) {
       if (stepIndex < 0 || stepIndex >= this.steps.length) return;
@@ -419,14 +515,70 @@
       document.querySelectorAll('.step-content').forEach(el => el.classList.add('hidden'));
       document.getElementById(`step-${this.steps[stepIndex]}`)?.classList.remove('hidden');
 
-      document.querySelectorAll('.tab-btn').forEach((btn, index) => {
-        const active = index === stepIndex;
+      const total = this.steps.length;
+      document.querySelectorAll('.tab-btn').forEach((btn, i) => {
+        const active = i === stepIndex;
+        const done   = i < stepIndex;
         btn.classList.toggle('border-blue-600', active);
         btn.classList.toggle('text-blue-600', active);
         btn.classList.toggle('border-transparent', !active);
-        btn.classList.toggle('text-gray-500', !active);
+        btn.classList.toggle('text-gray-500', !active && !done);
+        btn.classList.toggle('text-green-600', done);
+
+        const num = btn.querySelector('.tab-step-num');
+        if (num) {
+          num.className = `tab-step-num flex items-center justify-center w-5 h-5 rounded-full text-xs font-bold
+            ${active ? 'bg-blue-600 text-white' : done ? 'bg-green-500 text-white' : 'bg-gray-300 text-gray-600'}`;
+          num.textContent = done ? '✓' : String(i + 1);
+        }
       });
+
+      // Update wizard strip
+      const label = document.getElementById('wizard-step-label');
+      if (label) label.textContent = `Step ${stepIndex + 1} of ${total} — ${STEP_LABELS[stepIndex]}`;
+
+      const prevBtn = document.getElementById('wizard-prev-btn');
+      const nextBtn = document.getElementById('wizard-next-btn');
+      if (prevBtn) prevBtn.disabled = stepIndex === 0;
+      if (nextBtn) nextBtn.disabled = stepIndex === total - 1;
     }
+
+    // ── Modals ────────────────────────────────────────────────────────────────
+
+    _openPreviewModal() {
+      const modal = document.getElementById('preview-modal');
+      if (modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        this.updatePreview();
+      }
+    }
+
+    _closePreviewModal() {
+      const modal = document.getElementById('preview-modal');
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      }
+    }
+
+    _openTemplateModal() {
+      const modal = document.getElementById('template-modal');
+      if (modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+      }
+    }
+
+    _closeTemplateModal() {
+      const modal = document.getElementById('template-modal');
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      }
+    }
+
+    // ── Report Operations ─────────────────────────────────────────────────────
 
     fillPropertiesForm() {
       const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ''; };
@@ -436,27 +588,19 @@
       set('prop-description', this.reportData.description);
       const pub = document.getElementById('prop-public');
       if (pub) pub.checked = !!this.reportData.is_public;
-      // Module dropdown — populate first if modules are loaded
-      if (this.modules.length) {
-        this.populateModuleDropdown();
-      } else {
-        // Modules not yet loaded; populateModuleDropdown() will set value when ready
-      }
+      if (this.modules.length) this.populateModuleDropdown();
     }
 
     async loadReport(reportId) {
       try {
         const response = await apiFetch(`/reports/definitions/${reportId}`);
         this.reportData = await response.json();
-        // Ensure query_config always exists
         this.reportData.query_config = this.reportData.query_config || {};
         this.reportData.query_config.group_by = this.reportData.query_config.group_by || [];
-
         document.getElementById('report-title').textContent = this.reportData.name || 'New Report';
         this.fillPropertiesForm();
-        this.updatePreview();
-      } catch (error) {
-        console.error('Failed to load report:', error);
+      } catch (err) {
+        console.error('Failed to load report:', err);
       }
     }
 
@@ -467,24 +611,20 @@
         alert('Please enter a report name first.');
         return;
       }
-
       try {
-        const url = this.reportId ? `/reports/definitions/${this.reportId}` : '/reports/definitions';
+        const url    = this.reportId ? `/reports/definitions/${this.reportId}` : '/reports/definitions';
         const method = this.reportId ? 'PUT' : 'POST';
-        const response = await apiFetch(url, { method, body: JSON.stringify(this.reportData) });
-        const result = await response.json();
+        const res    = await apiFetch(url, { method, body: JSON.stringify(this.reportData) });
+        const result = await res.json();
         this.reportId = result.id;
         document.getElementById('report-title').textContent = this.reportData.name;
-      } catch (error) {
-        console.error('Failed to save report:', error);
+      } catch (err) {
+        console.error('Failed to save report:', err);
       }
     }
 
     async runReport() {
-      if (!this.reportId) {
-        alert('Please save the report first');
-        return;
-      }
+      if (!this.reportId) { alert('Please save the report first'); return; }
       window.location.hash = `#/report-viewer/${this.reportId}`;
     }
 
@@ -497,7 +637,6 @@
     applyTemplate(template) {
       this.reportData = { ...this.reportData, ...template.config };
       this.fillPropertiesForm();
-      this.updatePreview();
       this.showStep(0);
     }
 
@@ -514,12 +653,14 @@
       document.getElementById('report-title').textContent = 'New Report';
 
       if (this.components.dataSource) this.components.dataSource.clear?.();
-      if (this.components.columns) this.components.columns.clear?.();
+      if (this.components.columns) {
+        this.components.columns.setAvailableFields([]);
+        this.components.columns.clear?.();
+      }
       if (this.components.groupBy) this.components.groupBy.setGroupBy([]);
       if (this.components.chart) this.components.chart.clear?.();
       if (this.components.parameters) this.components.parameters.clear?.();
 
-      this.updatePreview();
       this.showStep(0);
     }
   }
