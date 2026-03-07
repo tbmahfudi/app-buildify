@@ -59,7 +59,7 @@
 
   <!-- Wizard Prev / Next strip -->
   <div class="bg-gray-50 border-b border-gray-200 px-6 py-2 flex items-center justify-between">
-    <button id="wizard-prev-btn" class="btn btn-secondary btn-sm" disabled>
+    <button id="wizard-prev-btn" class="btn btn-secondary btn-sm invisible">
       <i class="ph ph-arrow-left mr-1.5"></i>Previous
     </button>
     <span id="wizard-step-label" class="text-sm text-gray-500 font-medium">Step 1 of 5 — Properties</span>
@@ -335,11 +335,17 @@
         entityFields.forEach(f => {
           const name = f.name || f.field;
           if (!name) return;
+          // field_type is the semantic type (integer, decimal, string, date…)
+          // data_type is the DB type (INTEGER, DECIMAL, VARCHAR, TIMESTAMP…)
+          const fieldType = f.field_type || f.type || f.format || 'string';
+          const dataType  = f.data_type  || '';
           fields.push({
             entity: entityName,
             name,
-            label: f.label || f.title || name,
-            type: f.type || f.format || 'string',
+            label:      f.label || f.title || name,
+            type:       fieldType,
+            field_type: fieldType,
+            data_type:  dataType,
             displayName: `${entityName}.${name}`
           });
         });
@@ -537,10 +543,11 @@
       const label = document.getElementById('wizard-step-label');
       if (label) label.textContent = `Step ${stepIndex + 1} of ${total} — ${STEP_LABELS[stepIndex]}`;
 
+      // Hide the button at the boundary (invisible keeps layout; won't reflow the strip)
       const prevBtn = document.getElementById('wizard-prev-btn');
       const nextBtn = document.getElementById('wizard-next-btn');
-      if (prevBtn) prevBtn.disabled = stepIndex === 0;
-      if (nextBtn) nextBtn.disabled = stepIndex === total - 1;
+      prevBtn?.classList.toggle('invisible', stepIndex === 0);
+      nextBtn?.classList.toggle('invisible', stepIndex === total - 1);
     }
 
     // ── Modals ────────────────────────────────────────────────────────────────

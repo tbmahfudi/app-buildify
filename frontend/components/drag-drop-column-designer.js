@@ -225,6 +225,10 @@ export class DragDropColumnDesigner {
 
         const column = this.selectedColumns[this.currentColumn];
 
+        // Determine which aggregate options are available for this field's type
+        const isNumeric = this._isNumericType(column.type) || this._isNumericType(column.data_type);
+        const isDate    = this._isDateType(column.type)    || this._isDateType(column.data_type);
+
         return `
             <div class="space-y-4">
                 <!-- Column Name -->
@@ -256,21 +260,23 @@ export class DragDropColumnDesigner {
                     <input
                         type="text"
                         class="form-input w-full bg-gray-50"
-                        value="${column.type}"
+                        value="${this.escapeHtml(column.field_type || column.type)}"
                         readonly
                     />
                 </div>
 
-                <!-- Aggregate Function -->
+                <!-- Aggregate Function — options restricted by data type -->
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Aggregate</label>
                     <select id="column-aggregate" class="form-select w-full">
                         <option value="">None</option>
+                        ${isNumeric ? `
                         <option value="SUM" ${column.aggregate === 'SUM' ? 'selected' : ''}>SUM</option>
-                        <option value="AVG" ${column.aggregate === 'AVG' ? 'selected' : ''}>AVG</option>
+                        <option value="AVG" ${column.aggregate === 'AVG' ? 'selected' : ''}>AVG</option>` : ''}
                         <option value="COUNT" ${column.aggregate === 'COUNT' ? 'selected' : ''}>COUNT</option>
+                        ${(isNumeric || isDate) ? `
                         <option value="MIN" ${column.aggregate === 'MIN' ? 'selected' : ''}>MIN</option>
-                        <option value="MAX" ${column.aggregate === 'MAX' ? 'selected' : ''}>MAX</option>
+                        <option value="MAX" ${column.aggregate === 'MAX' ? 'selected' : ''}>MAX</option>` : ''}
                     </select>
                 </div>
 
@@ -598,6 +604,21 @@ export class DragDropColumnDesigner {
 
     notifyChange() {
         this.onColumnsChange(this.selectedColumns);
+    }
+
+    // Numeric types support SUM / AVG / MIN / MAX aggregates
+    _isNumericType(type) {
+        if (!type) return false;
+        const t = type.toLowerCase();
+        return ['integer', 'int', 'bigint', 'smallint', 'decimal', 'numeric',
+                'float', 'double', 'real', 'money', 'number', 'currency'].includes(t);
+    }
+
+    // Date/time types support MIN / MAX aggregates (but not SUM / AVG)
+    _isDateType(type) {
+        if (!type) return false;
+        const t = type.toLowerCase();
+        return ['date', 'datetime', 'timestamp', 'time'].some(d => t.includes(d));
     }
 
     escapeHtml(text) {
