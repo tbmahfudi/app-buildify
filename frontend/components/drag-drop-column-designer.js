@@ -33,9 +33,13 @@ export class DragDropColumnDesigner {
     async loadAvailableFields() {
         const entities = this.options.entities || [];
 
-        // If no entities specified, discover all available entity names
-        const entityNames = entities.length > 0 ? entities : await this._fetchAllEntityNames();
+        // If no entities specified, show empty panel (user must pick a data source first)
+        if (entities.length === 0) {
+            this.availableFields = [];
+            return;
+        }
 
+        const entityNames = entities;
         this.availableFields = [];
         for (const entityName of entityNames) {
             try {
