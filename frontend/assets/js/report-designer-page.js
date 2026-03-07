@@ -9,23 +9,17 @@ import { ReportDesigner } from '../../components/report-designer.js';
 document.addEventListener('route:loaded', async (event) => {
     const route = event.detail.route;
 
-    // Check if this is a report designer route
-    // Matches: reports/designer or reports/designer/123
+    // Matches: reports/designer  OR  reports/designer/123
     const match = route.match(/^reports\/designer(?:\/(\d+))?$/);
-
     if (!match) return;
 
     const reportId = match[1] ? parseInt(match[1]) : null;
 
-    // Get or create app-content container
-    let container = document.getElementById('app-content');
-    if (!container) {
-        const content = document.getElementById('content');
-        content.innerHTML = '<div id="app-content"></div>';
-        container = document.getElementById('app-content');
-    }
+    const content = document.getElementById('content');
+    if (!content) return;
+    content.innerHTML = '<div id="app-content"></div>';
+    const container = document.getElementById('app-content');
 
-    // Create and render the designer
     const designer = new ReportDesigner(container, reportId);
     await designer.render();
 });
