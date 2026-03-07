@@ -1,9 +1,86 @@
-<div id="app-content" class="min-h-screen bg-gray-50">
-    <!-- Populated by report-designer-page.js -->
-    <div class="flex items-center justify-center h-64">
-        <div class="text-center">
-            <div class="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
-            <p class="mt-3 text-gray-600">Loading designer…</p>
+<div class="report-designer-page h-screen flex flex-col overflow-hidden">
+  <!-- Header -->
+  <div class="bg-white border-b border-gray-200 px-6 py-3">
+    <div class="flex items-center justify-between">
+      <div class="flex items-center space-x-4">
+        <button id="back-to-reports" class="text-gray-500 hover:text-gray-700">
+          <i class="ph ph-arrow-left text-xl"></i>
+        </button>
+        <div>
+          <h1 class="text-xl font-bold text-gray-900 flex items-center gap-2">
+            <i class="ph-duotone ph-file-plus text-emerald-600"></i>
+            <span id="report-title">New Report</span>
+          </h1>
+          <p class="text-xs text-gray-500 mt-0.5">Design and build custom reports with visual tools</p>
         </div>
+      </div>
+      <div class="flex items-center space-x-2">
+        <button id="preview-report-btn" class="btn btn-secondary btn-sm">
+          <i class="ph ph-eye mr-1.5"></i>Preview
+        </button>
+        <button id="save-report-btn" class="btn btn-primary btn-sm">
+          <i class="ph ph-floppy-disk mr-1.5"></i>Save
+        </button>
+        <button id="run-report-btn" class="btn btn-success btn-sm">
+          <i class="ph ph-play mr-1.5"></i>Run
+        </button>
+        <button id="clear-report-btn" class="btn btn-secondary btn-sm text-red-600 hover:text-red-700">
+          <i class="ph ph-trash mr-1.5"></i>Clear
+        </button>
+      </div>
     </div>
+  </div>
+
+  <!-- Tab Navigation -->
+  <div class="bg-white border-b border-gray-200">
+    <nav class="flex px-4 overflow-x-auto">
+      <button class="tab-btn flex items-center gap-2 px-5 py-3 text-sm font-medium whitespace-nowrap border-b-2 border-blue-600 text-blue-600 transition-colors" data-step="1">
+        <i class="ph-duotone ph-note-pencil text-base"></i>
+        Basic Info
+      </button>
+      <button class="tab-btn flex items-center gap-2 px-5 py-3 text-sm font-medium whitespace-nowrap border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 transition-colors" data-step="2">
+        <i class="ph-duotone ph-database text-base"></i>
+        Data Source
+      </button>
+      <button class="tab-btn flex items-center gap-2 px-5 py-3 text-sm font-medium whitespace-nowrap border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 transition-colors" data-step="3">
+        <i class="ph-duotone ph-columns text-base"></i>
+        Columns
+      </button>
+      <button class="tab-btn flex items-center gap-2 px-5 py-3 text-sm font-medium whitespace-nowrap border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 transition-colors" data-step="4">
+        <i class="ph-duotone ph-sliders text-base"></i>
+        Parameters
+      </button>
+      <button class="tab-btn flex items-center gap-2 px-5 py-3 text-sm font-medium whitespace-nowrap border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 transition-colors" data-step="5">
+        <i class="ph-duotone ph-paint-brush text-base"></i>
+        Formatting
+      </button>
+    </nav>
+  </div>
+
+  <!-- Main Content -->
+  <div class="flex-1 flex overflow-hidden">
+    <!-- Center: Designer Area (populated by report-designer-page.js) -->
+    <div id="app-content" class="flex-1 bg-gray-50 overflow-auto flex items-center justify-center">
+      <div class="text-center">
+        <div class="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
+        <p class="mt-3 text-gray-600">Loading designer…</p>
+      </div>
+    </div>
+
+    <!-- Right Sidebar: Live Preview -->
+    <div class="w-80 bg-white border-l border-gray-200 flex flex-col overflow-hidden">
+      <div class="flex items-center justify-between px-4 py-3 border-b border-gray-200">
+        <h3 class="text-sm font-semibold text-gray-900">Live Preview</h3>
+        <button id="toggle-preview-btn" class="text-gray-400 hover:text-gray-600">
+          <i class="ph ph-eye-slash text-base"></i>
+        </button>
+      </div>
+      <div id="preview-content" class="flex-1 overflow-auto p-4 bg-gray-50">
+        <div class="text-center text-gray-400 mt-8">
+          <i class="ph ph-file-text text-4xl mb-2"></i>
+          <p class="text-sm">Configure your report to see a preview</p>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>

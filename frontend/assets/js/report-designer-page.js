@@ -26,4 +26,33 @@ document.addEventListener('route:loaded', async (event) => {
 
     const designer = new ReportDesigner(container, reportId);
     await designer.render();
+
+    // Wire template tab nav to designer step navigation
+    document.querySelectorAll('.tab-btn[data-step]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const step = parseInt(btn.dataset.step);
+            if (!isNaN(step)) {
+                designer.goToStep(step);
+                document.querySelectorAll('.tab-btn').forEach(b => {
+                    const active = b === btn;
+                    b.classList.toggle('border-blue-600', active);
+                    b.classList.toggle('text-blue-600', active);
+                    b.classList.toggle('border-transparent', !active);
+                    b.classList.toggle('text-gray-500', !active);
+                });
+            }
+        });
+    });
+
+    // Keep tab nav in sync when designer moves between steps
+    document.addEventListener('designer:step-changed', (e) => {
+        const step = e.detail?.step;
+        document.querySelectorAll('.tab-btn[data-step]').forEach(btn => {
+            const active = parseInt(btn.dataset.step) === step;
+            btn.classList.toggle('border-blue-600', active);
+            btn.classList.toggle('text-blue-600', active);
+            btn.classList.toggle('border-transparent', !active);
+            btn.classList.toggle('text-gray-500', !active);
+        });
+    });
 });

@@ -817,6 +817,7 @@ export class ReportDesigner {
             this._collectStepData();
             this.currentStep--;
             this.render();
+            this._emitStepChanged();
         }
     }
 
@@ -826,8 +827,24 @@ export class ReportDesigner {
             if (this.currentStep < this.totalSteps) {
                 this.currentStep++;
                 this.render();
+                this._emitStepChanged();
             }
         }
+    }
+
+    goToStep(step) {
+        if (step >= 1 && step <= this.totalSteps) {
+            this._collectStepData();
+            this.currentStep = step;
+            this.render();
+            this._emitStepChanged();
+        }
+    }
+
+    _emitStepChanged() {
+        document.dispatchEvent(new CustomEvent('designer:step-changed', {
+            detail: { step: this.currentStep }
+        }));
     }
 
     _validateCurrentStep() {
