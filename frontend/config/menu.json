@@ -110,22 +110,11 @@
               "permission": "reports:read:tenant"
             },
             {
-              "title": "Create Dashboard",
-              "route": "dashboard-designer",
+              "title": "Dashboards",
+              "route": "dashboards",
               "icon": "ph-duotone ph-squares-four",
               "iconColor": "text-violet-600",
-              "permission": "dashboards:create:tenant",
-              "badge": "NEW",
-              "badgeColor": "bg-green-500"
-            },
-            {
-              "title": "My Dashboards",
-              "route": "dashboards-list",
-              "icon": "ph-duotone ph-layout",
-              "iconColor": "text-violet-500",
-              "permission": "dashboards:read:tenant",
-              "badge": "NEW",
-              "badgeColor": "bg-green-500"
+              "permission": "dashboards:read:tenant"
             }
           ]
         },
