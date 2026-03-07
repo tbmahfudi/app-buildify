@@ -1,31 +1,29 @@
 /**
  * Report Designer Page Handler
- * Handles routing for report designer with dynamic report IDs
+ *
+ * Responds to route:loaded events dispatched by app.js after
+ * loadTemplate('reports-designer') + loadScript('report-designer-page.js').
+ *
+ * Supported routes:
+ *   reports/designer          → create new report
+ *   reports/designer/123      → edit existing report (id = 123)
  */
 
 import { ReportDesigner } from '../../components/report-designer.js';
 
-// Listen for report designer routes
 document.addEventListener('route:loaded', async (event) => {
     const route = event.detail.route;
 
-    // Check if this is a report designer route
-    // Matches: reports/designer or reports/designer/123
+    // Matches: reports/designer  OR  reports/designer/123
     const match = route.match(/^reports\/designer(?:\/(\d+))?$/);
-
     if (!match) return;
 
     const reportId = match[1] ? parseInt(match[1]) : null;
 
-    // Get or create app-content container
-    let container = document.getElementById('app-content');
-    if (!container) {
-        const content = document.getElementById('content');
-        content.innerHTML = '<div id="app-content"></div>';
-        container = document.getElementById('app-content');
-    }
+    // Template provides #app-content; replace loading spinner with designer
+    const container = document.getElementById('app-content');
+    if (!container) return;
 
-    // Create and render the designer
     const designer = new ReportDesigner(container, reportId);
     await designer.render();
 });
