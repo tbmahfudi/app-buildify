@@ -199,7 +199,9 @@ class ReportService:
             raise ValueError("Report definition not found or access denied")
 
         # Create execution record
+        import uuid
         execution = ReportExecution(
+            id=uuid.uuid4(),
             tenant_id=tenant_id,
             report_definition_id=request.report_definition_id,
             executed_by=user_id,
@@ -260,10 +262,21 @@ class ReportService:
         parameters: Optional[Dict[str, Any]]
     ) -> Dict[str, Any]:
         """Build and execute the report query."""
-        # This is a simplified version - in production, you'd want a more robust query builder
         base_entity = report_def.base_entity
-        columns_config = report_def.columns_config or []
         query_config = report_def.query_config or {}
+
+        # Resolve columns: prefer columns_config (legacy), fall back to columns (designer format)
+        columns_config = report_def.columns_config or []
+        if not columns_config and hasattr(report_def, 'columns') and report_def.columns:
+            columns_config = [
+                {
+                    "name": c.get("name"),
+                    "label": c.get("alias") or c.get("label") or c.get("name"),
+                    "aggregation": c.get("aggregate") or c.get("aggregation"),
+                }
+                for c in report_def.columns
+                if c.get("name")
+            ]
 
         # Build SELECT clause
         select_fields = []
@@ -448,7 +461,9 @@ class ReportService:
             cache_entry.expires_at = expires_at
         else:
             # Create new cache entry
+            import uuid as _uuid
             cache_entry = ReportCache(
+                id=_uuid.uuid4(),
                 tenant_id=tenant_id,
                 report_definition_id=report_id,
                 cache_key=cache_key,

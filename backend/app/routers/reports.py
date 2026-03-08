@@ -434,7 +434,9 @@ def create_report_schedule(
         raise not_found_exception("Report", str(schedule_data.report_definition_id))
 
     # Create schedule
+    import uuid as _uuid
     db_schedule = ReportSchedule(
+        id=_uuid.uuid4(),
         tenant_id=current_user.tenant_id,
         created_by=current_user.id,
         **schedule_data.model_dump()
@@ -557,7 +559,7 @@ def list_report_templates(
 
 @router.post("/templates/{template_id}/use", response_model=ReportDefinitionResponse)
 def create_from_template(
-    template_id: int,
+    template_id: UUID,
     name: str,
     db: Session = Depends(get_db),
     current_user: User = Depends(has_permission("reports:templates:create:tenant"))
@@ -575,12 +577,15 @@ def create_from_template(
         raise not_found_exception("Template", str(template_id))
 
     # Create report from template config
-    template_config = template.template_config
+    import uuid as _uuid
+    template_config = template.template_config or {}
     db_report = ReportDefinition(
+        id=_uuid.uuid4(),
         tenant_id=current_user.tenant_id,
         created_by=current_user.id,
         name=name,
-        **template_config
+        **{k: v for k, v in template_config.items()
+           if k not in ('id', 'tenant_id', 'created_by', 'created_at', 'updated_at')}
     )
     db.add(db_report)
 
