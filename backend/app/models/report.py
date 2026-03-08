@@ -64,22 +64,26 @@ class ReportDefinition(Base):
 
     # Basic info
     name = Column(String(255), nullable=False)
+    title = Column(String(255), nullable=True)  # Display title (separate from internal name)
     description = Column(Text, nullable=True)
     category = Column(String(100), nullable=True)
     report_type = Column(String(50), default="tabular")
 
     # Data source
-    base_entity = Column(String(100), nullable=False)  # Main table/entity
+    base_entity = Column(String(100), nullable=True)  # Main table/entity (derived from data_source)
+    data_source = Column(JSON, nullable=True)  # Full data source config from report designer
     query_config = Column(JSON, nullable=True)  # Joins, filters, etc.
 
     # Columns configuration
     columns_config = Column(JSON, nullable=True)  # Column definitions, ordering, formatting
+    columns = Column(JSON, nullable=True)  # Raw columns list from report designer
 
     # Parameters
     parameters = Column(JSON, nullable=True)  # List of parameter definitions
 
     # Visualization
-    visualization_config = Column(JSON, nullable=True)  # Chart configs if applicable
+    chart_config = Column(JSON, nullable=True)  # Chart config from visual designer
+    visualization_config = Column(JSON, nullable=True)  # Chart configs if applicable (legacy)
 
     # Formatting
     formatting_rules = Column(JSON, nullable=True)  # Conditional formatting

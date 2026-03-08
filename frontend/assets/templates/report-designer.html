@@ -209,6 +209,7 @@
   import { ReportTemplateLibrary } from '/components/report-template-library.js';
   import { SplitPaneLivePreview } from '/components/split-pane-live-preview.js';
   import { apiFetch } from '/assets/js/api.js';
+  import { showNotification } from '/assets/js/notifications.js';
   import { upgradeAllSelects, setFlexValue } from '/assets/js/utils/upgrade-select.js';
 
   const STEP_LABELS = ['Properties', 'Data Source', 'Columns', 'Visualization', 'Parameters'];
@@ -240,8 +241,14 @@
     }
 
     async init() {
+      // Support both query param (?id=uuid) and hash path (/reports/designer/uuid)
       const urlParams = new URLSearchParams(window.location.search);
       this.reportId = urlParams.get('id');
+      if (!this.reportId) {
+        // Extract ID from hash path: #/reports/designer/{id} or #/report-designer/{id}
+        const hashMatch = window.location.hash.match(/(?:reports\/designer|report-designer)\/([^?#]+)/);
+        if (hashMatch) this.reportId = hashMatch[1];
+      }
 
       await this.loadModules();
 
@@ -255,10 +262,23 @@
       this.initializeComponents();
       this.setupEventListeners();
 
-      if (this.reportData.columns?.length) {
-        this.components.columns.setColumns(this.reportData.columns);
-        this.components.groupBy.setAvailableFields(this.reportData.columns);
-        this.components.groupBy.setGroupBy(this.reportData.query_config?.group_by || []);
+      // Restore saved component state when editing an existing report
+      if (this.reportId) {
+        // Columns + group-by (synchronous)
+        if (this.reportData.columns?.length) {
+          this.components.columns.setColumns(this.reportData.columns);
+          this.components.groupBy.setAvailableFields(this.reportData.columns);
+          this.components.groupBy.setGroupBy(this.reportData.query_config?.group_by || []);
+        }
+        // Chart config (synchronous)
+        if (this.reportData.chart_config && this.components.chart) {
+          this.components.chart.setChartConfig(this.reportData.chart_config);
+        }
+        // Parameters (synchronous)
+        if (this.reportData.parameters?.length && this.components.parameters) {
+          this.components.parameters.setParameters(this.reportData.parameters);
+        }
+        // data_source is restored via options.initialDataSource inside VisualDataSourceBuilder
       }
 
       this.showStep(0);
@@ -358,6 +378,8 @@
     initializeComponents() {
       this.components.dataSource = new VisualDataSourceBuilder(
         document.querySelector('#data-source-builder-container'), {
+          // Restore saved data source when editing an existing report
+          initialDataSource: this.reportData.data_source || null,
           onDataSourceChange: (dataSource) => {
             this.reportData.data_source = dataSource;
             if (!this.reportData.module_id) this.autoDetectModule(dataSource);
@@ -369,10 +391,8 @@
             if (this.components.columns) {
               const fields = this._buildFieldsFromEntities(entityNames);
               if (fields.length > 0) {
-                // Use preloaded fields from entities API (task 6)
                 this.components.columns.setAvailableFields(fields);
               } else {
-                // Fallback: load via metadata endpoint
                 this.components.columns.setEntities(entityNames);
               }
             }
@@ -615,18 +635,28 @@
       if (!this.reportData.name) {
         this.showStep(0);
         document.getElementById('prop-name')?.focus();
-        alert('Please enter a report name first.');
+        showNotification('Please enter a report name first.', 'warning');
         return;
       }
+      const btn = document.getElementById('save-report-btn');
+      if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
       try {
         const url    = this.reportId ? `/reports/definitions/${this.reportId}` : '/reports/definitions';
         const method = this.reportId ? 'PUT' : 'POST';
         const res    = await apiFetch(url, { method, body: JSON.stringify(this.reportData) });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.detail || `HTTP ${res.status}`);
+        }
         const result = await res.json();
         this.reportId = result.id;
         document.getElementById('report-title').textContent = this.reportData.name;
+        showNotification('Report saved successfully', 'success');
       } catch (err) {
         console.error('Failed to save report:', err);
+        showNotification('Failed to save: ' + err.message, 'error');
+      } finally {
+        if (btn) { btn.disabled = false; btn.textContent = 'Save'; }
       }
     }
 

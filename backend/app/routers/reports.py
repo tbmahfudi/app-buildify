@@ -6,6 +6,7 @@ import logging
 import os
 from datetime import datetime
 from typing import List, Optional
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from fastapi.responses import StreamingResponse
@@ -89,7 +90,7 @@ def list_report_definitions(
 
 @router.get("/definitions/{report_id}", response_model=ReportDefinitionResponse)
 def get_report_definition(
-    report_id: int,
+    report_id: UUID,
     db: Session = Depends(get_db),
     current_user: User = Depends(has_permission("reports:read:tenant"))
 ):
@@ -113,7 +114,7 @@ def get_report_definition(
 
 @router.put("/definitions/{report_id}", response_model=ReportDefinitionResponse)
 def update_report_definition(
-    report_id: int,
+    report_id: UUID,
     report_data: ReportDefinitionUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(has_permission("reports:update:own"))
@@ -138,7 +139,7 @@ def update_report_definition(
 
 @router.delete("/definitions/{report_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_report_definition(
-    report_id: int,
+    report_id: UUID,
     db: Session = Depends(get_db),
     current_user: User = Depends(has_permission("reports:delete:own"))
 ):
@@ -360,7 +361,7 @@ def preview_report(
 
 @router.get("/executions/history")
 def get_execution_history(
-    report_id: Optional[int] = None,
+    report_id: Optional[UUID] = None,
     skip: int = 0,
     limit: int = 50,
     db: Session = Depends(get_db),
@@ -433,7 +434,9 @@ def create_report_schedule(
         raise not_found_exception("Report", str(schedule_data.report_definition_id))
 
     # Create schedule
+    import uuid as _uuid
     db_schedule = ReportSchedule(
+        id=_uuid.uuid4(),
         tenant_id=current_user.tenant_id,
         created_by=current_user.id,
         **schedule_data.model_dump()
@@ -447,7 +450,7 @@ def create_report_schedule(
 
 @router.get("/schedules", response_model=List[ReportScheduleResponse])
 def list_report_schedules(
-    report_id: Optional[int] = None,
+    report_id: Optional[UUID] = None,
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
@@ -473,7 +476,7 @@ def list_report_schedules(
 
 @router.put("/schedules/{schedule_id}", response_model=ReportScheduleResponse)
 def update_report_schedule(
-    schedule_id: int,
+    schedule_id: UUID,
     schedule_data: ReportScheduleUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(has_permission("reports:schedule:update:own"))
@@ -504,7 +507,7 @@ def update_report_schedule(
 
 @router.delete("/schedules/{schedule_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_report_schedule(
-    schedule_id: int,
+    schedule_id: UUID,
     db: Session = Depends(get_db),
     current_user: User = Depends(has_permission("reports:schedule:delete:own"))
 ):
@@ -556,7 +559,7 @@ def list_report_templates(
 
 @router.post("/templates/{template_id}/use", response_model=ReportDefinitionResponse)
 def create_from_template(
-    template_id: int,
+    template_id: UUID,
     name: str,
     db: Session = Depends(get_db),
     current_user: User = Depends(has_permission("reports:templates:create:tenant"))
@@ -574,12 +577,15 @@ def create_from_template(
         raise not_found_exception("Template", str(template_id))
 
     # Create report from template config
-    template_config = template.template_config
+    import uuid as _uuid
+    template_config = template.template_config or {}
     db_report = ReportDefinition(
+        id=_uuid.uuid4(),
         tenant_id=current_user.tenant_id,
         created_by=current_user.id,
         name=name,
-        **template_config
+        **{k: v for k, v in template_config.items()
+           if k not in ('id', 'tenant_id', 'created_by', 'created_at', 'updated_at')}
     )
     db.add(db_report)
 

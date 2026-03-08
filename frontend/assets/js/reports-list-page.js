@@ -113,11 +113,11 @@ function renderGrid(reports) {
                     class="flex-1 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50 rounded-lg transition flex items-center justify-center gap-1">
                     <i class="ph ph-pencil-simple"></i> Edit
                 </button>
-                <button onclick="window.reportsList_run(${r.id})"
+                <button onclick="window.reportsList_run('${r.id}')"
                     class="flex-1 py-1.5 text-sm font-medium text-green-600 hover:bg-green-50 rounded-lg transition flex items-center justify-center gap-1">
                     <i class="ph ph-play"></i> Run
                 </button>
-                <button onclick="window.reportsList_delete(${r.id}, '${safeName}')"
+                <button onclick="window.reportsList_delete('${r.id}', '${safeName}')"
                     class="py-1.5 px-3 text-sm font-medium text-red-500 hover:bg-red-50 rounded-lg transition">
                     <i class="ph ph-trash"></i>
                 </button>

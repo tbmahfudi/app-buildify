@@ -157,20 +157,30 @@ class ChartConfig(BaseModel):
 class ReportDefinitionBase(BaseModel):
     """Base report definition schema."""
     name: str = Field(..., min_length=1, max_length=255)
+    title: Optional[str] = Field(None, description="Display title shown to users")
     description: Optional[str] = None
     category: Optional[str] = None
     module_id: Optional[UUID] = None
     report_type: ReportType = ReportType.TABULAR
-    base_entity: str = Field(..., description="Base entity/table")
-    query_config: Optional[QueryConfig] = None
-    columns_config: Optional[List[ColumnConfig]] = None
-    parameters: Optional[List[ReportParameter]] = None
-    visualization_config: Optional[ChartConfig] = None
+    # base_entity is optional — derived from data_source on save if not provided
+    base_entity: Optional[str] = Field(None, description="Base entity/table (auto-derived from data_source)")
+    # Designer format fields
+    data_source: Optional[Dict[str, Any]] = Field(None, description="Data source config from visual designer")
+    columns: Optional[List[Dict[str, Any]]] = Field(None, description="Selected columns from drag-drop designer")
+    chart_config: Optional[Dict[str, Any]] = Field(None, description="Chart config from visual designer")
+    # Legacy / processed format fields
+    query_config: Optional[Dict[str, Any]] = None
+    columns_config: Optional[List[Dict[str, Any]]] = None
+    parameters: Optional[List[Any]] = None
+    visualization_config: Optional[Dict[str, Any]] = None
     formatting_rules: Optional[List[ConditionalFormat]] = None
     is_public: bool = False
     allowed_roles: Optional[List[int]] = None
     allowed_users: Optional[List[int]] = None
     is_template: bool = False
+
+    class Config:
+        extra = "allow"  # Accept any extra fields from the frontend without erroring
 
 
 class ReportDefinitionCreate(ReportDefinitionBase):
@@ -181,25 +191,32 @@ class ReportDefinitionCreate(ReportDefinitionBase):
 class ReportDefinitionUpdate(BaseModel):
     """Update report definition schema."""
     name: Optional[str] = Field(None, min_length=1, max_length=255)
+    title: Optional[str] = None
     description: Optional[str] = None
     category: Optional[str] = None
     module_id: Optional[UUID] = None
     report_type: Optional[ReportType] = None
     base_entity: Optional[str] = None
-    query_config: Optional[QueryConfig] = None
-    columns_config: Optional[List[ColumnConfig]] = None
-    parameters: Optional[List[ReportParameter]] = None
-    visualization_config: Optional[ChartConfig] = None
+    data_source: Optional[Dict[str, Any]] = None
+    columns: Optional[List[Dict[str, Any]]] = None
+    chart_config: Optional[Dict[str, Any]] = None
+    query_config: Optional[Dict[str, Any]] = None
+    columns_config: Optional[List[Dict[str, Any]]] = None
+    parameters: Optional[List[Any]] = None
+    visualization_config: Optional[Dict[str, Any]] = None
     formatting_rules: Optional[List[ConditionalFormat]] = None
     is_public: Optional[bool] = None
     allowed_roles: Optional[List[int]] = None
     allowed_users: Optional[List[int]] = None
     is_active: Optional[bool] = None
 
+    class Config:
+        extra = "allow"
+
 
 class ReportDefinitionResponse(ReportDefinitionBase):
     """Report definition response schema."""
-    id: int
+    id: UUID
     tenant_id: UUID
     created_by: UUID
     created_at: datetime
@@ -208,6 +225,7 @@ class ReportDefinitionResponse(ReportDefinitionBase):
 
     class Config:
         from_attributes = True
+        extra = "allow"
 
 
 # Report Execution Schemas
@@ -243,7 +261,7 @@ class ReportPreviewResponse(BaseModel):
 
 class ReportExecutionRequest(BaseModel):
     """Report execution request."""
-    report_definition_id: int
+    report_definition_id: UUID
     parameters: Optional[Dict[str, Any]] = Field(None, description="Parameter values")
     export_format: Optional[ExportFormat] = None
     use_cache: bool = Field(True, description="Use cached results if available")
@@ -251,8 +269,8 @@ class ReportExecutionRequest(BaseModel):
 
 class ReportExecutionResponse(BaseModel):
     """Report execution response."""
-    id: int
-    report_definition_id: int
+    id: UUID
+    report_definition_id: UUID
     status: str
     executed_by: UUID
     executed_at: datetime
@@ -272,7 +290,7 @@ class ReportExecutionResponse(BaseModel):
 
 class ReportScheduleBase(BaseModel):
     """Base report schedule schema."""
-    report_definition_id: int
+    report_definition_id: UUID
     name: str = Field(..., min_length=1, max_length=255)
     is_active: bool = True
     cron_expression: str = Field(..., description="Cron expression for scheduling")
@@ -304,7 +322,7 @@ class ReportScheduleUpdate(BaseModel):
 
 class ReportScheduleResponse(ReportScheduleBase):
     """Report schedule response schema."""
-    id: int
+    id: UUID
     tenant_id: UUID
     created_by: UUID
     created_at: datetime
@@ -320,7 +338,7 @@ class ReportScheduleResponse(ReportScheduleBase):
 
 class ReportTemplateResponse(BaseModel):
     """Report template response schema."""
-    id: int
+    id: UUID
     name: str
     description: Optional[str]
     category: Optional[str]
