@@ -66,7 +66,7 @@ export class SplitPaneLivePreview {
                 <div class="text-center py-12">
                     <i class="ph ph-chart-bar text-6xl text-gray-300 mb-4"></i>
                     <p class="text-gray-500">Configure your report to see a preview</p>
-                    <button onclick="splitPaneLivePreview.loadPreview()" class="btn btn-primary mt-4">
+                    <button id="load-preview-btn" class="btn btn-primary mt-4">
                         <i class="ph ph-eye mr-2"></i>
                         Load Preview
                     </button>
@@ -126,6 +126,10 @@ export class SplitPaneLivePreview {
         });
 
         document.getElementById('refresh-preview')?.addEventListener('click', () => {
+            this.loadPreview();
+        });
+
+        document.getElementById('load-preview-btn')?.addEventListener('click', () => {
             this.loadPreview();
         });
 
