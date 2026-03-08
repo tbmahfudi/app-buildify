@@ -28,6 +28,34 @@ class ReportService:
     """Service for report operations."""
 
     @staticmethod
+    def _normalize_report_dict(report_dict: dict) -> dict:
+        """
+        Normalize a report data dict so it always has base_entity set.
+
+        Handles both the legacy format (base_entity / columns_config) and the
+        visual designer format (data_source / columns / chart_config).
+        """
+        # Derive base_entity from data_source if not provided
+        if not report_dict.get('base_entity'):
+            data_source = report_dict.get('data_source') or {}
+            entities = data_source.get('entities', [])
+            if entities:
+                first = entities[0]
+                if isinstance(first, dict):
+                    report_dict['base_entity'] = first.get('entity_name') or first.get('name') or ''
+                elif isinstance(first, str):
+                    report_dict['base_entity'] = first
+
+        # Remove extra keys not in the model to avoid SQLAlchemy errors
+        model_columns = {
+            'name', 'title', 'description', 'category', 'module_id', 'report_type',
+            'base_entity', 'data_source', 'query_config', 'columns_config', 'columns',
+            'chart_config', 'parameters', 'visualization_config', 'formatting_rules',
+            'is_public', 'allowed_roles', 'allowed_users', 'is_template', 'is_active',
+        }
+        return {k: v for k, v in report_dict.items() if k in model_columns}
+
+    @staticmethod
     def create_report_definition(
         db: Session,
         tenant_id: int,
@@ -35,25 +63,12 @@ class ReportService:
         report_data: ReportDefinitionCreate
     ) -> ReportDefinition:
         """Create a new report definition."""
-        # Convert Pydantic models to dict for JSON columns
         report_dict = report_data.model_dump()
+        report_dict = ReportService._normalize_report_dict(report_dict)
 
-        # Extract JSON fields
-        json_fields = ['query_config', 'columns_config', 'parameters',
-                      'visualization_config', 'formatting_rules',
-                      'allowed_roles', 'allowed_users']
-
-        for field in json_fields:
-            if field in report_dict and report_dict[field] is not None:
-                if isinstance(report_dict[field], list):
-                    report_dict[field] = [
-                        item.model_dump() if hasattr(item, 'model_dump') else item
-                        for item in report_dict[field]
-                    ]
-                elif hasattr(report_dict[field], 'model_dump'):
-                    report_dict[field] = report_dict[field].model_dump()
-
+        import uuid
         db_report = ReportDefinition(
+            id=uuid.uuid4(),
             tenant_id=tenant_id,
             created_by=user_id,
             **report_dict
@@ -135,24 +150,11 @@ class ReportService:
             return None
 
         update_data = report_data.model_dump(exclude_unset=True)
-
-        # Convert Pydantic models to dict for JSON columns
-        json_fields = ['query_config', 'columns_config', 'parameters',
-                      'visualization_config', 'formatting_rules',
-                      'allowed_roles', 'allowed_users']
-
-        for field in json_fields:
-            if field in update_data and update_data[field] is not None:
-                if isinstance(update_data[field], list):
-                    update_data[field] = [
-                        item.model_dump() if hasattr(item, 'model_dump') else item
-                        for item in update_data[field]
-                    ]
-                elif hasattr(update_data[field], 'model_dump'):
-                    update_data[field] = update_data[field].model_dump()
+        update_data = ReportService._normalize_report_dict(update_data)
 
         for field, value in update_data.items():
-            setattr(db_report, field, value)
+            if hasattr(db_report, field):
+                setattr(db_report, field, value)
 
         db_report.updated_at = datetime.utcnow()
         db.commit()

@@ -6,6 +6,7 @@ import logging
 import os
 from datetime import datetime
 from typing import List, Optional
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from fastapi.responses import StreamingResponse
@@ -89,7 +90,7 @@ def list_report_definitions(
 
 @router.get("/definitions/{report_id}", response_model=ReportDefinitionResponse)
 def get_report_definition(
-    report_id: int,
+    report_id: UUID,
     db: Session = Depends(get_db),
     current_user: User = Depends(has_permission("reports:read:tenant"))
 ):
@@ -113,7 +114,7 @@ def get_report_definition(
 
 @router.put("/definitions/{report_id}", response_model=ReportDefinitionResponse)
 def update_report_definition(
-    report_id: int,
+    report_id: UUID,
     report_data: ReportDefinitionUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(has_permission("reports:update:own"))
@@ -138,7 +139,7 @@ def update_report_definition(
 
 @router.delete("/definitions/{report_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_report_definition(
-    report_id: int,
+    report_id: UUID,
     db: Session = Depends(get_db),
     current_user: User = Depends(has_permission("reports:delete:own"))
 ):
@@ -360,7 +361,7 @@ def preview_report(
 
 @router.get("/executions/history")
 def get_execution_history(
-    report_id: Optional[int] = None,
+    report_id: Optional[UUID] = None,
     skip: int = 0,
     limit: int = 50,
     db: Session = Depends(get_db),
@@ -447,7 +448,7 @@ def create_report_schedule(
 
 @router.get("/schedules", response_model=List[ReportScheduleResponse])
 def list_report_schedules(
-    report_id: Optional[int] = None,
+    report_id: Optional[UUID] = None,
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
@@ -473,7 +474,7 @@ def list_report_schedules(
 
 @router.put("/schedules/{schedule_id}", response_model=ReportScheduleResponse)
 def update_report_schedule(
-    schedule_id: int,
+    schedule_id: UUID,
     schedule_data: ReportScheduleUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(has_permission("reports:schedule:update:own"))
@@ -504,7 +505,7 @@ def update_report_schedule(
 
 @router.delete("/schedules/{schedule_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_report_schedule(
-    schedule_id: int,
+    schedule_id: UUID,
     db: Session = Depends(get_db),
     current_user: User = Depends(has_permission("reports:schedule:delete:own"))
 ):

@@ -1803,6 +1803,13 @@ async function loadRoute(route) {
       return;
     }
 
+    // ── Report viewer (run / view report) ────────────────────────────────────
+    if (route.startsWith('report-viewer/') || route.startsWith('reports/viewer/')) {
+      const reportId = route.split('/').pop();
+      window.location.hash = `#/reports/designer/${reportId}`;
+      return;
+    }
+
     // Handle dashboard designer route
     if (route === 'dashboard-designer' || route.startsWith('dashboard-designer?')) {
       console.log('Loading dashboard designer page');

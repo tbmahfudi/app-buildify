@@ -240,8 +240,14 @@
     }
 
     async init() {
+      // Support both query param (?id=uuid) and hash path (/reports/designer/uuid)
       const urlParams = new URLSearchParams(window.location.search);
       this.reportId = urlParams.get('id');
+      if (!this.reportId) {
+        // Extract ID from hash path: #/reports/designer/{id} or #/report-designer/{id}
+        const hashMatch = window.location.hash.match(/(?:reports\/designer|report-designer)\/([^?#]+)/);
+        if (hashMatch) this.reportId = hashMatch[1];
+      }
 
       await this.loadModules();
 
