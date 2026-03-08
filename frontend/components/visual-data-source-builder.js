@@ -357,6 +357,11 @@ export class VisualDataSourceBuilder {
         }
 
         this.createCytoscapeInstance();
+
+        // Restore saved state if provided via options
+        if (this.options.initialDataSource) {
+            this._restoreDataSource(this.options.initialDataSource);
+        }
     }
 
     async loadCytoscapeLibrary() {
@@ -772,6 +777,71 @@ export class VisualDataSourceBuilder {
             joins: this.joins,
             filters: this.filters
         };
+    }
+
+    /**
+     * Restore previously saved data source state (entities, joins, filters).
+     * Called automatically when options.initialDataSource is provided, or
+     * can be called manually after initialization.
+     */
+    setDataSource(dataSource) {
+        if (!dataSource) return;
+        this._restoreDataSource(dataSource);
+    }
+
+    _restoreDataSource(dataSource) {
+        if (!dataSource) return;
+
+        // Clear existing canvas state
+        this.selectedEntities = [];
+        this.joins = [];
+        this.filters = dataSource.filters || [];
+        if (this.cy) this.cy.elements().remove();
+
+        // Restore entities
+        const entityList = dataSource.entities || [];
+        entityList.forEach(saved => {
+            const entityName = typeof saved === 'string' ? saved
+                : (saved.entity_name || saved.name || '');
+            if (!entityName) return;
+
+            // Find the matching loaded entity object, or reconstruct a minimal one
+            const found = this.entities.find(e => e.entity_name === entityName);
+            const entity = found || { entity_name: entityName, display_name: entityName };
+
+            this.selectedEntities.push(entity);
+
+            if (this.cy) {
+                this.cy.add({
+                    group: 'nodes',
+                    data: { id: entityName, label: entity.display_name || entityName }
+                });
+            }
+        });
+
+        // Restore joins
+        const joinList = dataSource.joins || [];
+        joinList.forEach((join, idx) => {
+            this.joins.push(join);
+            if (this.cy) {
+                const from = join.from_entity || join.left_entity;
+                const to   = join.to_entity   || join.right_entity;
+                if (from && to) {
+                    this.cy.add({
+                        group: 'edges',
+                        data: {
+                            id: `join-${idx}`,
+                            source: from,
+                            target: to,
+                            label: join.join_type || 'INNER JOIN'
+                        }
+                    });
+                }
+            }
+        });
+
+        if (this.cy && this.selectedEntities.length) this.autoLayout();
+        this.refreshUI();
     }
 
     getDataSource() {
