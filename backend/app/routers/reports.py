@@ -12,9 +12,12 @@ from fastapi import APIRouter, Depends, HTTPException, Response, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
+from fastapi import Query as QueryParam
+
 from app.core.dependencies import get_current_user, get_db, has_permission
 from app.core.exceptions_helpers import not_found_exception
 from app.core.response_builders import build_list_response
+from app.models.data_model import EntityDefinition, FieldDefinition, RelationshipDefinition
 from app.models.user import User
 from app.schemas.report import (
     ExportFormat,
@@ -37,6 +40,118 @@ from app.services.report_service import ReportService
 
 router = APIRouter(prefix="/api/v1/reports", tags=["reports"])
 logger = logging.getLogger(__name__)
+
+
+# Join Suggestion Endpoint
+
+@router.get("/entities/join-suggestions")
+def get_join_suggestions(
+    entities: str = QueryParam(..., description="Comma-separated entity names"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(has_permission("reports:read:tenant")),
+):
+    """
+    Derive possible JOIN conditions for a set of entities.
+
+    Scans two sources:
+    1. FieldDefinition rows that have reference_entity_id pointing to another
+       entity in the list (FK / lookup fields — e.g. invoice.customer_id → customers.id).
+    2. RelationshipDefinition rows where both source and target are in the list
+       (one-to-many, many-to-many, one-to-one relationships).
+
+    Returns a list of join suggestion objects:
+        {
+          from_entity, from_field,
+          to_entity,   to_field,
+          join_type,               # always "LEFT" as a safe default
+          confidence,              # "high" | "medium"
+          label,                   # human-readable description
+          source                   # "field_reference" | "relationship_definition"
+        }
+    """
+    entity_names = [e.strip() for e in entities.split(",") if e.strip()]
+    if len(entity_names) < 2:
+        return []
+
+    # Load matching EntityDefinition rows (tenant-scoped or global)
+    entity_rows = (
+        db.query(EntityDefinition)
+        .filter(
+            EntityDefinition.name.in_(entity_names),
+            EntityDefinition.is_deleted == False,
+        )
+        .all()
+    )
+
+    entity_by_id   = {str(e.id): e for e in entity_rows}
+    entity_by_name = {e.name: e for e in entity_rows}
+    entity_ids     = [e.id for e in entity_rows]
+
+    suggestions = []
+    seen = set()  # deduplicate (from_entity, from_field, to_entity, to_field)
+
+    # ── Source 1: FieldDefinition FK references ─────────────────────────────
+    for entity in entity_rows:
+        for field in entity.fields:
+            if field.is_deleted:
+                continue
+            if not field.reference_entity_id:
+                continue
+            ref_id = str(field.reference_entity_id)
+            ref_entity = entity_by_id.get(ref_id)
+            if ref_entity is None:
+                continue  # referenced entity not in the selected set
+            to_field = field.reference_field or "id"
+            key = (entity.name, field.name, ref_entity.name, to_field)
+            if key in seen:
+                continue
+            seen.add(key)
+            suggestions.append({
+                "from_entity": entity.name,
+                "from_field":  field.name,
+                "to_entity":   ref_entity.name,
+                "to_field":    to_field,
+                "join_type":   "LEFT",
+                "confidence":  "high",
+                "label":       f"{entity.label or entity.name}.{field.label or field.name} → {ref_entity.label or ref_entity.name}",
+                "source":      "field_reference",
+            })
+
+    # ── Source 2: RelationshipDefinition ────────────────────────────────────
+    rels = (
+        db.query(RelationshipDefinition)
+        .filter(
+            RelationshipDefinition.source_entity_id.in_(entity_ids),
+            RelationshipDefinition.target_entity_id.in_(entity_ids),
+            RelationshipDefinition.is_deleted == False,
+            RelationshipDefinition.is_active == True,
+        )
+        .all()
+    )
+
+    for rel in rels:
+        src = entity_by_id.get(str(rel.source_entity_id))
+        tgt = entity_by_id.get(str(rel.target_entity_id))
+        if not src or not tgt:
+            continue
+        from_field = rel.source_field_name or "id"
+        to_field   = rel.target_field_name or "id"
+        key = (src.name, from_field, tgt.name, to_field)
+        if key in seen:
+            continue
+        seen.add(key)
+        suggestions.append({
+            "from_entity": src.name,
+            "from_field":  from_field,
+            "to_entity":   tgt.name,
+            "to_field":    to_field,
+            "join_type":   "LEFT",
+            "confidence":  "high",
+            "label":       rel.label or f"{src.label or src.name} → {tgt.label or tgt.name}",
+            "source":      "relationship_definition",
+        })
+
+    return suggestions
 
 
 # Report Definition Endpoints

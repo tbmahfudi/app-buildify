@@ -199,6 +199,7 @@ export class VisualDataSourceBuilder {
                         <div id="joins-list" class="space-y-2">
                             ${this.renderJoins()}
                         </div>
+                        <div id="join-suggestions-panel" class="mt-2 space-y-1"></div>
                     </div>
 
                     <!-- Filters -->
@@ -522,7 +523,7 @@ export class VisualDataSourceBuilder {
         });
     }
 
-    addEntityToCanvas(entityName) {
+    async addEntityToCanvas(entityName) {
         const entity = this.entities.find(e => e.entity_name === entityName);
         if (!entity) return;
 
@@ -552,6 +553,11 @@ export class VisualDataSourceBuilder {
         // Refresh UI
         this.refreshUI();
         this.notifyChange();
+
+        // When we have 2+ entities, auto-fetch join suggestions
+        if (this.selectedEntities.length >= 2) {
+            await this._refreshJoinSuggestions();
+        }
     }
 
     removeEntity(entityName) {
@@ -614,6 +620,7 @@ export class VisualDataSourceBuilder {
         document.getElementById('selected-entities-list').innerHTML = this.renderSelectedEntities();
         document.getElementById('joins-list').innerHTML = this.renderJoins();
         document.getElementById('filters-list').innerHTML = this.renderFilters();
+        this._renderJoinSuggestionsPanel();
     }
 
     filterEntityPalette(searchTerm) {
@@ -638,51 +645,235 @@ export class VisualDataSourceBuilder {
         });
     }
 
-    showAddJoinDialog() {
+    async showAddJoinDialog() {
         if (this.selectedEntities.length < 2) {
             showNotification('Add at least 2 entities first', 'warning');
             return;
         }
+        // Fetch suggestions then show modal
+        await this._refreshJoinSuggestions();
+        this._openJoinModal();
+    }
 
-        // Simple prompt-based join for now
-        // TODO: Create proper modal dialog
-        const fromEntity = prompt('From entity:', this.selectedEntities[0].entity_name);
-        if (!fromEntity) return;
+    // ── Join Suggestion Logic ─────────────────────────────────────────────────
 
-        const fromField = prompt('From field:');
-        if (!fromField) return;
+    async _refreshJoinSuggestions() {
+        const names = this.selectedEntities.map(e => e.entity_name).join(',');
+        try {
+            const res = await apiFetch(`/reports/entities/join-suggestions?entities=${encodeURIComponent(names)}`);
+            if (res.ok) {
+                const data = await res.json();
+                this._joinSuggestions = Array.isArray(data) ? data : [];
+            } else {
+                this._joinSuggestions = [];
+            }
+        } catch {
+            this._joinSuggestions = [];
+        }
+        this._renderJoinSuggestionsPanel();
+    }
 
-        const toEntity = prompt('To entity:', this.selectedEntities[1]?.entity_name || '');
-        if (!toEntity) return;
+    _renderJoinSuggestionsPanel() {
+        const panel = document.getElementById('join-suggestions-panel');
+        if (!panel) return;
 
-        const toField = prompt('To field:');
-        if (!toField) return;
+        const suggestions = (this._joinSuggestions || []).filter(s =>
+            // Hide suggestions already added as joins
+            !this.joins.some(j =>
+                j.from_entity === s.from_entity && j.from_field === s.from_field &&
+                j.to_entity   === s.to_entity   && j.to_field   === s.to_field
+            )
+        );
 
-        const joinType = prompt('Join type (INNER, LEFT, RIGHT):', 'INNER');
-
-        this.joins.push({
-            type: joinType || 'INNER',
-            from_entity: fromEntity,
-            from_field: fromField,
-            to_entity: toEntity,
-            to_field: toField
-        });
-
-        // Add edge to graph if both entities exist
-        if (this.cy && this.cy.getElementById(fromEntity).length && this.cy.getElementById(toEntity).length) {
-            this.cy.add({
-                group: 'edges',
-                data: {
-                    id: `${fromEntity}_${toEntity}`,
-                    source: fromEntity,
-                    target: toEntity,
-                    label: joinType
-                }
-            });
+        if (suggestions.length === 0) {
+            panel.innerHTML = this.selectedEntities.length >= 2
+                ? '<p class="text-xs text-gray-400 italic">No automatic joins found — use manual form below.</p>'
+                : '';
+            return;
         }
 
+        panel.innerHTML = `
+            <div class="mb-1 text-xs font-semibold text-gray-500 uppercase tracking-wide">Suggested Joins</div>
+            ${suggestions.map((s, i) => `
+                <div class="flex items-center justify-between gap-2 p-2 bg-blue-50 border border-blue-100 rounded mb-1">
+                    <div class="text-xs text-gray-700 truncate flex-1" title="${this.escapeHtml(s.label)}">
+                        <i class="ph ph-link text-blue-400 mr-1"></i>
+                        <span class="font-medium">${this.escapeHtml(s.from_entity)}</span>.<span class="text-blue-600">${this.escapeHtml(s.from_field)}</span>
+                        <span class="text-gray-400 mx-1">=</span>
+                        <span class="font-medium">${this.escapeHtml(s.to_entity)}</span>.<span class="text-blue-600">${this.escapeHtml(s.to_field)}</span>
+                        <span class="ml-1 text-gray-400">(${this.escapeHtml(s.join_type)})</span>
+                    </div>
+                    <button class="add-suggested-join-btn flex-shrink-0 px-2 py-0.5 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition"
+                        data-suggestion-index="${i}">
+                        Add
+                    </button>
+                </div>
+            `).join('')}
+        `;
+
+        // Wire add buttons
+        panel.querySelectorAll('.add-suggested-join-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const idx = parseInt(btn.dataset.suggestionIndex);
+                const s = suggestions[idx];
+                if (s) this._addSuggestedJoin(s);
+            });
+        });
+    }
+
+    _addSuggestedJoin(suggestion) {
+        this.joins.push({
+            type:        suggestion.join_type || 'LEFT',
+            from_entity: suggestion.from_entity,
+            from_field:  suggestion.from_field,
+            to_entity:   suggestion.to_entity,
+            to_field:    suggestion.to_field,
+        });
+
+        this._addJoinEdge(suggestion.from_entity, suggestion.to_entity, suggestion.join_type || 'LEFT');
         this.refreshUI();
+        this._renderJoinSuggestionsPanel(); // re-render to hide the added suggestion
         this.notifyChange();
+    }
+
+    _openJoinModal() {
+        const entityOptions = this.selectedEntities.map(e =>
+            `<option value="${this.escapeHtml(e.entity_name)}">${this.escapeHtml(e.display_name)}</option>`
+        ).join('');
+
+        // Reuse existing modal element or create one
+        let modal = document.getElementById('join-manual-modal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'join-manual-modal';
+            modal.className = 'fixed inset-0 z-50 flex items-center justify-center bg-black/40';
+            document.body.appendChild(modal);
+        }
+
+        modal.innerHTML = `
+            <div class="bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-base font-semibold text-gray-900">Add Join</h3>
+                    <button id="close-join-modal" class="text-gray-400 hover:text-gray-600"><i class="ph ph-x text-lg"></i></button>
+                </div>
+
+                <div id="modal-join-suggestions-panel" class="mb-4 space-y-1"></div>
+
+                <details class="group">
+                    <summary class="text-xs font-medium text-gray-500 cursor-pointer hover:text-gray-700 mb-3 select-none">
+                        <i class="ph ph-pencil mr-1"></i>Manual join
+                    </summary>
+                    <div class="space-y-3 mt-2">
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="block text-xs font-medium text-gray-600 mb-1">From Entity</label>
+                                <select id="join-from-entity" class="form-select w-full text-sm">${entityOptions}</select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-gray-600 mb-1">From Field</label>
+                                <input id="join-from-field" type="text" class="form-input w-full text-sm" placeholder="e.g. customer_id" />
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-gray-600 mb-1">To Entity</label>
+                                <select id="join-to-entity" class="form-select w-full text-sm">${entityOptions}</select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-gray-600 mb-1">To Field</label>
+                                <input id="join-to-field" type="text" class="form-input w-full text-sm" placeholder="e.g. id" />
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 mb-1">Join Type</label>
+                            <select id="join-type" class="form-select w-full text-sm">
+                                <option value="LEFT">LEFT (keep all rows from left table)</option>
+                                <option value="INNER">INNER (only matching rows)</option>
+                                <option value="RIGHT">RIGHT (keep all rows from right table)</option>
+                            </select>
+                        </div>
+                        <button id="confirm-manual-join" class="w-full py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition">
+                            Add Join
+                        </button>
+                    </div>
+                </details>
+            </div>
+        `;
+
+        modal.classList.remove('hidden');
+
+        // Populate suggestion panel inside modal
+        const innerPanel = modal.querySelector('#modal-join-suggestions-panel');
+        if (innerPanel) {
+            const suggestions = (this._joinSuggestions || []).filter(s =>
+                !this.joins.some(j =>
+                    j.from_entity === s.from_entity && j.from_field === s.from_field &&
+                    j.to_entity   === s.to_entity   && j.to_field   === s.to_field
+                )
+            );
+            if (suggestions.length > 0) {
+                innerPanel.innerHTML = `
+                    <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Suggested</p>
+                    ${suggestions.map((s, i) => `
+                        <div class="flex items-center justify-between gap-2 p-2 bg-blue-50 border border-blue-100 rounded mb-1">
+                            <span class="text-xs text-gray-700 truncate flex-1">
+                                <span class="font-medium">${this.escapeHtml(s.from_entity)}</span>.<span class="text-blue-600">${this.escapeHtml(s.from_field)}</span>
+                                = <span class="font-medium">${this.escapeHtml(s.to_entity)}</span>.<span class="text-blue-600">${this.escapeHtml(s.to_field)}</span>
+                            </span>
+                            <button class="modal-add-suggestion flex-shrink-0 px-2 py-0.5 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
+                                data-idx="${i}">Add</button>
+                        </div>
+                    `).join('')}
+                `;
+                innerPanel.querySelectorAll('.modal-add-suggestion').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        const s = suggestions[parseInt(btn.dataset.idx)];
+                        if (s) {
+                            this._addSuggestedJoin(s);
+                            btn.closest('div.flex')?.remove();
+                        }
+                    });
+                });
+            }
+        }
+
+        // Close handlers
+        const close = () => modal.classList.add('hidden');
+        modal.querySelector('#close-join-modal').addEventListener('click', close);
+        modal.addEventListener('click', e => { if (e.target === modal) close(); });
+
+        // Manual add handler
+        modal.querySelector('#confirm-manual-join').addEventListener('click', () => {
+            const fromEntity = modal.querySelector('#join-from-entity').value;
+            const fromField  = modal.querySelector('#join-from-field').value.trim();
+            const toEntity   = modal.querySelector('#join-to-entity').value;
+            const toField    = modal.querySelector('#join-to-field').value.trim();
+            const joinType   = modal.querySelector('#join-type').value;
+
+            if (!fromField || !toField) {
+                showNotification('Please fill in both field names', 'warning');
+                return;
+            }
+            if (fromEntity === toEntity) {
+                showNotification('From and To entity must be different', 'warning');
+                return;
+            }
+
+            this.joins.push({ type: joinType, from_entity: fromEntity, from_field: fromField, to_entity: toEntity, to_field: toField });
+            this._addJoinEdge(fromEntity, toEntity, joinType);
+            this.refreshUI();
+            this.notifyChange();
+            close();
+        });
+    }
+
+    _addJoinEdge(fromEntity, toEntity, joinType) {
+        if (!this.cy) return;
+        if (!this.cy.getElementById(fromEntity).length || !this.cy.getElementById(toEntity).length) return;
+        const edgeId = `${fromEntity}__${toEntity}`;
+        if (this.cy.getElementById(edgeId).length) return; // already exists
+        this.cy.add({
+            group: 'edges',
+            data: { id: edgeId, source: fromEntity, target: toEntity, label: joinType }
+        });
     }
 
     showAddFilterDialog() {
@@ -845,6 +1036,11 @@ export class VisualDataSourceBuilder {
 
         if (this.cy && this.selectedEntities.length) this.autoLayout();
         this.refreshUI();
+
+        // Auto-load suggestions for the restored entity set
+        if (this.selectedEntities.length >= 2) {
+            this._refreshJoinSuggestions();
+        }
     }
 
     getDataSource() {
