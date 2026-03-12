@@ -31,11 +31,20 @@ class ExportFormat(str, Enum):
 
 
 class ReportType(str, Enum):
-    """Report types."""
-    TABULAR = "tabular"
-    SUMMARY = "summary"
-    CHART = "chart"
-    DASHBOARD = "dashboard"
+    """
+    Report output types.
+
+    - tabular  : plain rows-and-columns table (default)
+    - summary  : grouped/aggregated totals (like a GROUP BY view)
+    - crosstab : pivot/matrix — rows × columns with aggregate cells
+    - metric   : single KPI card(s) — one or a few key numbers
+    - chart    : chart is the primary output (bar, line, pie, …)
+    """
+    TABULAR  = "tabular"
+    SUMMARY  = "summary"
+    CROSSTAB = "crosstab"
+    METRIC   = "metric"
+    CHART    = "chart"
 
 
 class AggregationType(str, Enum):
@@ -144,12 +153,28 @@ class QueryConfig(BaseModel):
 # Visualization Schemas
 
 class ChartConfig(BaseModel):
-    """Chart configuration."""
-    chart_type: str = Field(..., description="Chart type (bar, line, pie, etc.)")
-    x_axis: str = Field(..., description="X-axis field")
-    y_axis: List[str] = Field(..., description="Y-axis fields")
-    title: Optional[str] = Field(None, description="Chart title")
-    options: Optional[Dict[str, Any]] = Field(None, description="Chart-specific options")
+    """
+    Chart / visualization configuration.
+
+    Supported chart_type values
+    ───────────────────────────
+    Comparison  : bar, bar_horizontal, bar_stacked, bar_grouped, combo
+    Trend       : line, area, area_stacked
+    Composition : pie, donut, waterfall, funnel
+    Distribution: scatter, bubble, heatmap
+    KPI         : gauge, metric_card
+    """
+    chart_type: Optional[str] = Field(None, description="Chart type identifier (see docstring)")
+    x_axis: Optional[str] = Field(None, description="Category / time-axis field name")
+    y_axis: Optional[List[str]] = Field(None, description="Measure field name(s)")
+    y_axis_secondary: Optional[str] = Field(None, description="Second measure axis (combo charts)")
+    group_by: Optional[str] = Field(None, description="Series / color grouping field")
+    title: Optional[str] = Field(None, description="Chart title (overrides report name)")
+    show_legend: bool = Field(True, description="Display the chart legend")
+    show_data_labels: bool = Field(False, description="Show value labels on data points")
+    color_scheme: Optional[str] = Field("default", description="Palette: default|blue|green|purple|rainbow|monochrome")
+    sort_order: Optional[str] = Field(None, description="asc|desc — sort bars/slices")
+    options: Optional[Dict[str, Any]] = Field(None, description="Chart-library-specific overrides")
 
 
 # Report Definition Schemas

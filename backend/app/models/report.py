@@ -36,11 +36,12 @@ class ExportFormat(str, enum.Enum):
 
 
 class ReportType(str, enum.Enum):
-    """Report types."""
-    TABULAR = "tabular"
-    SUMMARY = "summary"
-    CHART = "chart"
-    DASHBOARD = "dashboard"
+    """Report output types."""
+    TABULAR  = "tabular"
+    SUMMARY  = "summary"
+    CROSSTAB = "crosstab"
+    METRIC   = "metric"
+    CHART    = "chart"
 
 
 class AggregationType(str, enum.Enum):

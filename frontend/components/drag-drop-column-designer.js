@@ -555,13 +555,19 @@ export class DragDropColumnDesigner {
 
     clearAllColumns() {
         if (!confirm('Remove all columns?')) return;
+        this._clearColumns();
+    }
 
+    _clearColumns() {
         this.selectedColumns = [];
         this.currentColumn = null;
         this.refreshSelectedColumns();
         this.refreshProperties();
         this.notifyChange();
     }
+
+    /** Alias used by the report designer's clearReport() — skips the confirm dialog */
+    clear() { this._clearColumns(); }
 
     refreshSelectedColumns() {
         document.getElementById('selected-columns-list').innerHTML = this.renderSelectedColumns();

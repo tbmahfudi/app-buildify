@@ -180,6 +180,8 @@ export class EnhancedParameterUI {
         this.render();
     }
 
+    clear() { this.setParameters([]); }
+
     notifyChange() {
         this.onParametersChange(this.parameters);
     }
