@@ -103,8 +103,9 @@
               <select id="prop-type" class="form-select w-full">
                 <option value="tabular">Tabular — rows &amp; columns</option>
                 <option value="summary">Summary — grouped totals</option>
+                <option value="crosstab">Crosstab — pivot / matrix</option>
+                <option value="metric">Metric — single KPI value(s)</option>
                 <option value="chart">Chart — visualisation</option>
-                <option value="dashboard">Dashboard — mixed widgets</option>
               </select>
             </div>
           </div>
@@ -270,9 +271,14 @@
           this.components.groupBy.setAvailableFields(this.reportData.columns);
           this.components.groupBy.setGroupBy(this.reportData.query_config?.group_by || []);
         }
-        // Chart config (synchronous)
-        if (this.reportData.chart_config && this.components.chart) {
-          this.components.chart.setChartConfig(this.reportData.chart_config);
+        // Chart config (synchronous) — pass current columns first so axis dropdowns are populated
+        if (this.components.chart) {
+          if (this.reportData.columns?.length) {
+            this.components.chart.setColumns(this.reportData.columns);
+          }
+          if (this.reportData.chart_config) {
+            this.components.chart.setChartConfig(this.reportData.chart_config);
+          }
         }
         // Parameters (synchronous)
         if (this.reportData.parameters?.length && this.components.parameters) {
@@ -281,6 +287,7 @@
         // data_source is restored via options.initialDataSource inside VisualDataSourceBuilder
       }
 
+      this._updateVizStepVisibility(this.reportData.report_type || 'tabular');
       this.showStep(0);
 
       // Show template picker only for new reports
@@ -409,6 +416,9 @@
             if (this.components.groupBy) {
               this.components.groupBy.setAvailableFields(columns);
             }
+            if (this.components.chart) {
+              this.components.chart.setColumns(columns);
+            }
           }
         }
       );
@@ -494,6 +504,7 @@
       });
       document.getElementById('prop-type')?.addEventListener('change', (e) => {
         this.reportData.report_type = e.target.value;
+        this._updateVizStepVisibility(e.target.value);
       });
       document.getElementById('prop-description')?.addEventListener('input', (e) => {
         this.reportData.description = e.target.value;
@@ -616,6 +627,24 @@
       const pub = document.getElementById('prop-public');
       if (pub) pub.checked = !!this.reportData.is_public;
       if (this.modules.length) this.populateModuleDropdown();
+      this._updateVizStepVisibility(this.reportData.report_type || 'tabular');
+    }
+
+    // Show the Visualization tab only for report types that produce a chart
+    _updateVizStepVisibility(reportType) {
+      const vizTypes = ['chart'];
+      const show = vizTypes.includes(reportType);
+      // Toggle the tab button visibility
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        if (btn.dataset.step === 'visualization') {
+          btn.classList.toggle('hidden', !show);
+        }
+      });
+      // If currently on the visualization step but it's now hidden, go back to columns
+      if (!show && this.steps[this.currentStep] === 'visualization') {
+        const colIdx = this.steps.indexOf('columns');
+        if (colIdx >= 0) this.showStep(colIdx);
+      }
     }
 
     async loadReport(reportId) {
