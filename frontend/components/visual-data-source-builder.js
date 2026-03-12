@@ -12,6 +12,7 @@
 
 import { apiFetch } from '../assets/js/api.js';
 import { showNotification } from '../assets/js/notifications.js';
+import { upgradeAllSelects, setFlexOptions, setFlexValue } from '../assets/js/utils/upgrade-select.js';
 
 export class VisualDataSourceBuilder {
     constructor(container, options = {}) {
@@ -23,6 +24,7 @@ export class VisualDataSourceBuilder {
         this.filters = [];
         this.cy = null; // Cytoscape instance
         this.onDataSourceChange = options.onDataSourceChange || (() => {});
+        this._entityFieldsCache = {}; // cache: entityName → [{value, label}]
 
         this.init();
     }
@@ -741,6 +743,9 @@ export class VisualDataSourceBuilder {
             `<option value="${this.escapeHtml(e.entity_name)}">${this.escapeHtml(e.display_name)}</option>`
         ).join('');
 
+        const defaultFrom = this.selectedEntities[0]?.entity_name || '';
+        const defaultTo   = this.selectedEntities[1]?.entity_name || this.selectedEntities[0]?.entity_name || '';
+
         // Reuse existing modal element or create one
         let modal = document.getElementById('join-manual-modal');
         if (!modal) {
@@ -759,35 +764,39 @@ export class VisualDataSourceBuilder {
 
                 <div id="modal-join-suggestions-panel" class="mb-4 space-y-1"></div>
 
-                <details class="group">
+                <details class="group" open>
                     <summary class="text-xs font-medium text-gray-500 cursor-pointer hover:text-gray-700 mb-3 select-none">
                         <i class="ph ph-pencil mr-1"></i>Manual join
                     </summary>
                     <div class="space-y-3 mt-2">
-                        <div class="grid grid-cols-2 gap-2">
+                        <div class="grid grid-cols-2 gap-3">
                             <div>
                                 <label class="block text-xs font-medium text-gray-600 mb-1">From Entity</label>
-                                <select id="join-from-entity" class="form-select w-full text-sm">${entityOptions}</select>
+                                <select id="join-from-entity" class="form-select w-full">${entityOptions}</select>
                             </div>
                             <div>
                                 <label class="block text-xs font-medium text-gray-600 mb-1">From Field</label>
-                                <input id="join-from-field" type="text" class="form-input w-full text-sm" placeholder="e.g. customer_id" />
+                                <select id="join-from-field" class="form-select w-full">
+                                    <option value="">— loading —</option>
+                                </select>
                             </div>
                             <div>
                                 <label class="block text-xs font-medium text-gray-600 mb-1">To Entity</label>
-                                <select id="join-to-entity" class="form-select w-full text-sm">${entityOptions}</select>
+                                <select id="join-to-entity" class="form-select w-full">${entityOptions}</select>
                             </div>
                             <div>
                                 <label class="block text-xs font-medium text-gray-600 mb-1">To Field</label>
-                                <input id="join-to-field" type="text" class="form-input w-full text-sm" placeholder="e.g. id" />
+                                <select id="join-to-field" class="form-select w-full">
+                                    <option value="">— loading —</option>
+                                </select>
                             </div>
                         </div>
                         <div>
                             <label class="block text-xs font-medium text-gray-600 mb-1">Join Type</label>
-                            <select id="join-type" class="form-select w-full text-sm">
-                                <option value="LEFT">LEFT (keep all rows from left table)</option>
-                                <option value="INNER">INNER (only matching rows)</option>
-                                <option value="RIGHT">RIGHT (keep all rows from right table)</option>
+                            <select id="join-type" class="form-select w-full">
+                                <option value="LEFT">LEFT — keep all rows from left table</option>
+                                <option value="INNER">INNER — only matching rows</option>
+                                <option value="RIGHT">RIGHT — keep all rows from right table</option>
                             </select>
                         </div>
                         <button id="confirm-manual-join" class="w-full py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition">
@@ -799,6 +808,29 @@ export class VisualDataSourceBuilder {
         `;
 
         modal.classList.remove('hidden');
+
+        // Upgrade all selects in the modal to flex-select
+        upgradeAllSelects(modal);
+
+        // Set initial entity values
+        setFlexValue('join-from-entity', defaultFrom);
+        setFlexValue('join-to-entity',   defaultTo);
+
+        // Load fields for initial entity selections
+        const loadFromFields = async (entityName) => {
+            const fields = await this._loadEntityFields(entityName);
+            setFlexOptions('join-from-field', fields, '— select field —');
+        };
+        const loadToFields = async (entityName) => {
+            const fields = await this._loadEntityFields(entityName);
+            setFlexOptions('join-to-field', fields, '— select field —');
+        };
+        loadFromFields(defaultFrom);
+        loadToFields(defaultTo);
+
+        // Re-load field options when entity selection changes
+        document.getElementById('join-from-entity')?.addEventListener('change', e => loadFromFields(e.target.value));
+        document.getElementById('join-to-entity')?.addEventListener('change',   e => loadToFields(e.target.value));
 
         // Populate suggestion panel inside modal
         const innerPanel = modal.querySelector('#modal-join-suggestions-panel');
@@ -840,16 +872,16 @@ export class VisualDataSourceBuilder {
         modal.querySelector('#close-join-modal').addEventListener('click', close);
         modal.addEventListener('click', e => { if (e.target === modal) close(); });
 
-        // Manual add handler
+        // Manual add handler — read from hidden inputs (flex-select keeps id on hidden input)
         modal.querySelector('#confirm-manual-join').addEventListener('click', () => {
-            const fromEntity = modal.querySelector('#join-from-entity').value;
-            const fromField  = modal.querySelector('#join-from-field').value.trim();
-            const toEntity   = modal.querySelector('#join-to-entity').value;
-            const toField    = modal.querySelector('#join-to-field').value.trim();
-            const joinType   = modal.querySelector('#join-type').value;
+            const fromEntity = document.getElementById('join-from-entity')?.value || '';
+            const fromField  = document.getElementById('join-from-field')?.value  || '';
+            const toEntity   = document.getElementById('join-to-entity')?.value   || '';
+            const toField    = document.getElementById('join-to-field')?.value    || '';
+            const joinType   = document.getElementById('join-type')?.value        || 'LEFT';
 
             if (!fromField || !toField) {
-                showNotification('Please fill in both field names', 'warning');
+                showNotification('Please select both field names', 'warning');
                 return;
             }
             if (fromEntity === toEntity) {
@@ -865,6 +897,27 @@ export class VisualDataSourceBuilder {
         });
     }
 
+    /**
+     * Fetch the field list for an entity from /metadata/entities/{name}.
+     * Results are cached per entity name for the lifetime of the component.
+     * Returns [{value: fieldName, label: displayLabel}]
+     */
+    async _loadEntityFields(entityName) {
+        if (!entityName) return [];
+        if (this._entityFieldsCache[entityName]) return this._entityFieldsCache[entityName];
+        try {
+            const res = await apiFetch(`/metadata/entities/${encodeURIComponent(entityName)}`);
+            if (!res.ok) return [];
+            const data = await res.json();
+            const columns = data?.table?.columns || [];
+            const fields = columns.map(c => ({ value: c.field, label: c.label || c.field }));
+            this._entityFieldsCache[entityName] = fields;
+            return fields;
+        } catch {
+            return [];
+        }
+    }
+
     _addJoinEdge(fromEntity, toEntity, joinType) {
         if (!this.cy) return;
         if (!this.cy.getElementById(fromEntity).length || !this.cy.getElementById(toEntity).length) return;
@@ -876,30 +929,106 @@ export class VisualDataSourceBuilder {
         });
     }
 
-    showAddFilterDialog() {
+    async showAddFilterDialog() {
         if (this.selectedEntities.length === 0) {
             showNotification('Add at least 1 entity first', 'warning');
             return;
         }
 
-        // Simple prompt-based filter for now
-        const field = prompt('Field name:');
-        if (!field) return;
+        // Build combined field list from all selected entities
+        const allFieldsMap = new Map(); // "entity.field" → {value, label}
+        await Promise.all(this.selectedEntities.map(async e => {
+            const fields = await this._loadEntityFields(e.entity_name);
+            fields.forEach(f => {
+                const key = `${e.entity_name}.${f.value}`;
+                allFieldsMap.set(key, { value: key, label: `${e.display_name} › ${f.label}` });
+            });
+        }));
+        const fieldOptions = [...allFieldsMap.values()];
 
-        const operator = prompt('Operator (=, !=, >, <, LIKE):', '=');
-        if (!operator) return;
+        let modal = document.getElementById('filter-manual-modal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'filter-manual-modal';
+            modal.className = 'fixed inset-0 z-50 flex items-center justify-center bg-black/40';
+            document.body.appendChild(modal);
+        }
 
-        const value = prompt('Value:');
-        if (!value) return;
+        modal.innerHTML = `
+            <div class="bg-white rounded-xl shadow-2xl w-full max-w-sm mx-4 p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-base font-semibold text-gray-900">Add Filter</h3>
+                    <button id="close-filter-modal" class="text-gray-400 hover:text-gray-600"><i class="ph ph-x text-lg"></i></button>
+                </div>
+                <div class="space-y-3">
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1">Field</label>
+                        <select id="filter-field" class="form-select w-full">
+                            <option value="">— select field —</option>
+                            ${fieldOptions.map(f => `<option value="${this.escapeHtml(f.value)}">${this.escapeHtml(f.label)}</option>`).join('')}
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1">Operator</label>
+                        <select id="filter-operator" class="form-select w-full">
+                            <option value="=">=&nbsp; equals</option>
+                            <option value="!=">≠&nbsp; not equals</option>
+                            <option value=">">&gt;&nbsp; greater than</option>
+                            <option value=">=">&gt;=&nbsp; greater or equal</option>
+                            <option value="<">&lt;&nbsp; less than</option>
+                            <option value="<=">&lt;=&nbsp; less or equal</option>
+                            <option value="LIKE">LIKE&nbsp; contains</option>
+                            <option value="NOT LIKE">NOT LIKE&nbsp; not contains</option>
+                            <option value="IN">IN&nbsp; in list</option>
+                            <option value="IS NULL">IS NULL</option>
+                            <option value="IS NOT NULL">IS NOT NULL</option>
+                        </select>
+                    </div>
+                    <div id="filter-value-row">
+                        <label class="block text-xs font-medium text-gray-600 mb-1">Value</label>
+                        <input id="filter-value" type="text" class="form-input w-full text-sm" placeholder="Filter value" />
+                    </div>
+                    <button id="confirm-filter" class="w-full py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition">
+                        Add Filter
+                    </button>
+                </div>
+            </div>
+        `;
 
-        this.filters.push({
-            field: field,
-            operator: operator || '=',
-            value: value
+        modal.classList.remove('hidden');
+        upgradeAllSelects(modal);
+
+        // Hide value input for null operators
+        document.getElementById('filter-operator')?.addEventListener('change', e => {
+            const noValue = ['IS NULL', 'IS NOT NULL'].includes(e.target.value);
+            const row = document.getElementById('filter-value-row');
+            if (row) row.classList.toggle('hidden', noValue);
         });
 
-        this.refreshUI();
-        this.notifyChange();
+        const close = () => modal.classList.add('hidden');
+        modal.querySelector('#close-filter-modal').addEventListener('click', close);
+        modal.addEventListener('click', e => { if (e.target === modal) close(); });
+
+        modal.querySelector('#confirm-filter').addEventListener('click', () => {
+            const field    = document.getElementById('filter-field')?.value    || '';
+            const operator = document.getElementById('filter-operator')?.value || '=';
+            const value    = document.getElementById('filter-value')?.value    || '';
+
+            if (!field) {
+                showNotification('Please select a field', 'warning');
+                return;
+            }
+            const noValue = ['IS NULL', 'IS NOT NULL'].includes(operator);
+            if (!noValue && !value) {
+                showNotification('Please enter a value', 'warning');
+                return;
+            }
+
+            this.filters.push({ field, operator, value: noValue ? null : value });
+            this.refreshUI();
+            this.notifyChange();
+            close();
+        });
     }
 
     async loadPreviewData() {

@@ -7,7 +7,7 @@
  */
 
 import { showNotification } from '../assets/js/notifications.js';
-import { upgradeAllSelects } from '../assets/js/utils/upgrade-select.js';
+import { upgradeAllSelects, setFlexValue } from '../assets/js/utils/upgrade-select.js';
 
 const CHART_CATEGORIES = [
     {
@@ -246,8 +246,10 @@ export class VisualChartBuilder {
     }
 
     _setSelectValue(id, value) {
-        const el = this.container.querySelector(`#${id}`);
-        if (el && value != null) el.value = value;
+        if (value == null) return;
+        // After upgradeAllSelects the <select> is replaced by a hidden input;
+        // use setFlexValue so the FlexSelect display updates correctly too.
+        setFlexValue(id, value);
     }
 
     // ── Event wiring ──────────────────────────────────────────────────────────
