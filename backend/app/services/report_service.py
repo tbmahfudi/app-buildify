@@ -58,8 +58,8 @@ class ReportService:
     @staticmethod
     def create_report_definition(
         db: Session,
-        tenant_id: int,
-        user_id: int,
+        tenant_id,
+        user_id,
         report_data: ReportDefinitionCreate
     ) -> ReportDefinition:
         """Create a new report definition."""
@@ -81,8 +81,8 @@ class ReportService:
     @staticmethod
     def get_report_definition(
         db: Session,
-        tenant_id: int,
-        report_id: int,
+        tenant_id,
+        report_id,
         user_id: Optional[int] = None
     ) -> Optional[ReportDefinition]:
         """Get a report definition by ID."""
@@ -105,7 +105,7 @@ class ReportService:
     @staticmethod
     def list_report_definitions(
         db: Session,
-        tenant_id: int,
+        tenant_id,
         user_id: Optional[int] = None,
         category: Optional[str] = None,
         skip: int = 0,
@@ -136,8 +136,8 @@ class ReportService:
     @staticmethod
     def update_report_definition(
         db: Session,
-        tenant_id: int,
-        report_id: int,
+        tenant_id,
+        report_id,
         report_data: ReportDefinitionUpdate
     ) -> Optional[ReportDefinition]:
         """Update a report definition."""
@@ -164,8 +164,8 @@ class ReportService:
     @staticmethod
     def delete_report_definition(
         db: Session,
-        tenant_id: int,
-        report_id: int
+        tenant_id,
+        report_id
     ) -> bool:
         """Soft delete a report definition."""
         db_report = db.query(ReportDefinition).filter(
@@ -183,8 +183,8 @@ class ReportService:
     @staticmethod
     def execute_report(
         db: Session,
-        tenant_id: int,
-        user_id: int,
+        tenant_id,
+        user_id,
         request: ReportExecutionRequest
     ) -> ReportExecution:
         """Execute a report and return results."""
@@ -257,7 +257,7 @@ class ReportService:
     @staticmethod
     def _build_and_execute_query(
         db: Session,
-        tenant_id: int,
+        tenant_id,
         report_def: ReportDefinition,
         parameters: Optional[Dict[str, Any]]
     ) -> Dict[str, Any]:
@@ -411,8 +411,8 @@ class ReportService:
     @staticmethod
     def _get_cached_data(
         db: Session,
-        tenant_id: int,
-        report_id: int,
+        tenant_id,
+        report_id,
         parameters: Optional[Dict[str, Any]]
     ) -> Optional[Dict[str, Any]]:
         """Get cached report data if available and not expired."""
@@ -435,8 +435,8 @@ class ReportService:
     @staticmethod
     def _cache_results(
         db: Session,
-        tenant_id: int,
-        report_id: int,
+        tenant_id,
+        report_id,
         parameters: Optional[Dict[str, Any]],
         data: Dict[str, Any],
         ttl_minutes: int = 60
@@ -485,7 +485,7 @@ class ReportService:
     @staticmethod
     def get_lookup_data(
         db: Session,
-        tenant_id: int,
+        tenant_id,
         request: LookupDataRequest
     ) -> Dict[str, Any]:
         """Get lookup data for a parameter."""

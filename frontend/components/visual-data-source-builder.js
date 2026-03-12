@@ -596,6 +596,9 @@ export class VisualDataSourceBuilder {
         this.notifyChange();
     }
 
+    /** Alias used by the report designer's clearReport() */
+    clear() { this.clearCanvas(); }
+
     autoLayout() {
         if (!this.cy) return;
 

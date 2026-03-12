@@ -148,6 +148,8 @@ export class VisualChartBuilder {
         this.render();
     }
 
+    clear() { this.setChartConfig({}); }
+
     notifyChange() {
         this.onChartChange(this.getChartConfig());
     }
