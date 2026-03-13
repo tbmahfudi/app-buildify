@@ -12,7 +12,7 @@
 
 import { apiFetch } from '../assets/js/api.js';
 import { showNotification } from '../assets/js/notifications.js';
-import { upgradeAllSelects, setFlexOptions, setFlexValue } from '../assets/js/utils/upgrade-select.js';
+import { upgradeAllSelects, upgradeSelect, setFlexOptions, setFlexValue } from '../assets/js/utils/upgrade-select.js';
 
 export class VisualDataSourceBuilder {
     constructor(container, options = {}) {
@@ -436,11 +436,58 @@ export class VisualDataSourceBuilder {
         this.cy.userPanningEnabled(true);
         this.cy.userZoomingEnabled(true);
 
-        // Handle node clicks
+        // Handle node clicks — show a floating remove button
         this.cy.on('tap', 'node', (evt) => {
             const node = evt.target;
-            console.log('Node clicked:', node.data('id'));
+            this._showNodePopup(node);
         });
+
+        // Dismiss popup when tapping the background
+        this.cy.on('tap', (evt) => {
+            if (evt.target === this.cy) this._hideNodePopup();
+        });
+    }
+
+    _showNodePopup(node) {
+        this._hideNodePopup(); // remove any existing popup
+
+        const entityName = node.data('id');
+        const entity = this.selectedEntities.find(e => e.entity_name === entityName);
+        if (!entity) return;
+
+        const popup = document.createElement('div');
+        popup.id = 'cy-node-popup';
+        popup.style.cssText = 'position:absolute;z-index:200;background:#fff;border:1px solid #e2e8f0;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,.15);padding:10px 12px;min-width:160px;pointer-events:auto;';
+
+        popup.innerHTML = `
+            <div class="flex items-center justify-between gap-3">
+                <span style="font-size:13px;font-weight:600;color:#1e293b;white-space:nowrap;">${this.escapeHtml(entity.display_name)}</span>
+                <button id="cy-popup-remove" style="display:flex;align-items:center;gap:4px;padding:3px 8px;background:#fee2e2;color:#dc2626;border:1px solid #fecaca;border-radius:5px;font-size:12px;cursor:pointer;white-space:nowrap;">
+                    <i class="ph ph-trash"></i> Remove
+                </button>
+            </div>
+        `;
+
+        // Position near the node using its rendered bounding box
+        const canvas = document.getElementById('cytoscape-canvas');
+        if (!canvas) return;
+        const canvasRect = canvas.getBoundingClientRect();
+        const nodePos = node.renderedPosition();
+
+        popup.style.left = `${nodePos.x + 10}px`;
+        popup.style.top  = `${nodePos.y - 44}px`;
+
+        canvas.style.position = 'relative';
+        canvas.appendChild(popup);
+
+        document.getElementById('cy-popup-remove')?.addEventListener('click', () => {
+            this._hideNodePopup();
+            this.removeEntity(entityName);
+        });
+    }
+
+    _hideNodePopup() {
+        document.getElementById('cy-node-popup')?.remove();
     }
 
     attachEventListeners() {
@@ -820,28 +867,36 @@ export class VisualDataSourceBuilder {
 
         modal.classList.remove('hidden');
 
-        // Upgrade all selects in the modal to flex-select
-        upgradeAllSelects(modal);
-
-        // Set initial entity values
-        setFlexValue('join-from-entity', defaultFrom);
-        setFlexValue('join-to-entity',   defaultTo);
-
-        // Load fields for initial entity selections
+        // Load fields for a given entity name, then update the field dropdown
         const loadFromFields = async (entityName) => {
-            const fields = await this._loadEntityFields(entityName);
+            const name = typeof entityName === 'string' ? entityName : String(entityName?.value ?? entityName ?? '');
+            if (!name) return;
+            const fields = await this._loadEntityFields(name);
             setFlexOptions('join-from-field', fields, '— select field —');
         };
         const loadToFields = async (entityName) => {
-            const fields = await this._loadEntityFields(entityName);
+            const name = typeof entityName === 'string' ? entityName : String(entityName?.value ?? entityName ?? '');
+            if (!name) return;
+            const fields = await this._loadEntityFields(name);
             setFlexOptions('join-to-field', fields, '— select field —');
         };
+
+        // Upgrade entity selects first, wiring onChange so we receive the value
+        // string directly from FlexSelect (avoids any hidden-input / e.target ambiguity)
+        const fromEntitySel = modal.querySelector('#join-from-entity');
+        const toEntitySel   = modal.querySelector('#join-to-entity');
+
+        upgradeSelect(fromEntitySel, { onChange: (val) => loadFromFields(val) });
+        upgradeSelect(toEntitySel,   { onChange: (val) => loadToFields(val) });
+
+        // Upgrade remaining selects (join-from-field, join-to-field, join-type)
+        upgradeAllSelects(modal);
+
+        // Set initial entity values and load their fields
+        setFlexValue('join-from-entity', defaultFrom);
+        setFlexValue('join-to-entity',   defaultTo);
         loadFromFields(defaultFrom);
         loadToFields(defaultTo);
-
-        // Re-load field options when entity selection changes
-        document.getElementById('join-from-entity')?.addEventListener('change', e => loadFromFields(e.target.value));
-        document.getElementById('join-to-entity')?.addEventListener('change',   e => loadToFields(e.target.value));
 
         // Populate suggestion panel inside modal
         const innerPanel = modal.querySelector('#modal-join-suggestions-panel');
