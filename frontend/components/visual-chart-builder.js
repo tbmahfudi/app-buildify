@@ -58,8 +58,9 @@ export class VisualChartBuilder {
     constructor(container, options = {}) {
         this.container = container;
         this.options = options;
-        this.selectedChart = null;
-        this.chartConfig = {};
+        const savedConfig = options.chartConfig || {};
+        this.selectedChart = savedConfig.chart_type || null;
+        this.chartConfig = savedConfig;
         this.columns = options.columns || [];           // [{name, label}] from DragDropColumnDesigner
         this.onChartChange = options.onChartChange || (() => {});
 

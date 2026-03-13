@@ -116,13 +116,21 @@ export class VisualDataSourceBuilder {
             <div class="visual-data-source-builder h-full flex">
                 <!-- Left Panel: Entity Palette -->
                 <div class="w-64 border-r border-gray-200 bg-gray-50 p-4 overflow-y-auto">
-                    <div class="mb-4">
+                    <div class="mb-3">
                         <input
                             type="text"
                             id="entity-search"
                             class="form-input w-full text-sm"
                             placeholder="Search entities..."
                         />
+                    </div>
+                    <div class="mb-3">
+                        <select id="module-filter" class="form-select w-full text-sm">
+                            <option value="">All Modules</option>
+                            ${[...new Set(this.entities.filter(e => e.module).map(e => e.module))].sort().map(m =>
+                                `<option value="${this.escapeHtml(m)}">${this.escapeHtml(m)}</option>`
+                            ).join('')}
+                        </select>
                     </div>
 
                     <div class="space-y-2" id="entity-palette">
@@ -220,6 +228,8 @@ export class VisualDataSourceBuilder {
             </div>
         `;
 
+        const leftPanel = this.container.querySelector('.w-64');
+        if (leftPanel) upgradeAllSelects(leftPanel);
         this.attachEventListeners();
     }
 
@@ -498,9 +508,12 @@ export class VisualDataSourceBuilder {
             this.showAddFilterDialog();
         });
 
-        // Entity search
-        document.getElementById('entity-search')?.addEventListener('input', (e) => {
-            this.filterEntityPalette(e.target.value);
+        // Entity search and module filter
+        document.getElementById('entity-search')?.addEventListener('input', () => {
+            this.filterEntityPalette();
+        });
+        document.getElementById('module-filter')?.addEventListener('change', () => {
+            this.filterEntityPalette();
         });
 
         // Remove entity buttons (delegated)
@@ -625,25 +638,23 @@ export class VisualDataSourceBuilder {
         this._renderJoinSuggestionsPanel();
     }
 
-    filterEntityPalette(searchTerm) {
-        const term = searchTerm.toLowerCase().trim();
-        const items = document.querySelectorAll('.entity-palette-item');
+    filterEntityPalette() {
+        const term   = (document.getElementById('entity-search')?.value || '').toLowerCase().trim();
+        const module = document.getElementById('module-filter')?.value || '';
 
-        items.forEach(item => {
-            const entityName = item.dataset.entity;
-            const entity = this.entities.find(e => e.entity_name === entityName);
+        document.querySelectorAll('.entity-palette-item').forEach(item => {
+            const entity = this.entities.find(e => e.entity_name === item.dataset.entity);
+            if (!entity) { item.style.display = 'none'; return; }
 
-            if (!entity) {
-                item.style.display = 'none';
-                return;
-            }
-
-            const matches =
+            const matchesSearch = !term ||
                 entity.display_name.toLowerCase().includes(term) ||
-                entity.entity_name.toLowerCase().includes(term) ||
-                entity.type.toLowerCase().includes(term);
+                entity.entity_name.toLowerCase().includes(term);
 
-            item.style.display = matches ? 'block' : 'none';
+            const matchesModule = !module ||
+                (entity.module || '') === module ||
+                (module === 'System' && entity.type === 'system');
+
+            item.style.display = matchesSearch && matchesModule ? '' : 'none';
         });
     }
 
@@ -898,19 +909,40 @@ export class VisualDataSourceBuilder {
     }
 
     /**
-     * Fetch the field list for an entity from /metadata/entities/{name}.
+     * Fetch the field list for an entity.
+     * Priority:
+     *  1. Already-loaded entity.fields (nocode entities from /data-model/entities)
+     *     → fields have {name, label} properties
+     *  2. Metadata API /metadata/entities/{name}
+     *     → table.columns have {field, title} properties (ColumnMetadata schema)
      * Results are cached per entity name for the lifetime of the component.
      * Returns [{value: fieldName, label: displayLabel}]
      */
     async _loadEntityFields(entityName) {
         if (!entityName) return [];
         if (this._entityFieldsCache[entityName]) return this._entityFieldsCache[entityName];
+
+        // 1. Try pre-loaded entity fields (populated for nocode entities)
+        const entity = this.entities.find(e => e.entity_name === entityName);
+        if (entity?.fields?.length) {
+            const fields = entity.fields.map(f => ({ value: f.name, label: f.label || f.name }));
+            this._entityFieldsCache[entityName] = fields;
+            return fields;
+        }
+
+        // 2. Fall back to metadata API (system entities / entities without inline fields)
         try {
             const res = await apiFetch(`/metadata/entities/${encodeURIComponent(entityName)}`);
             if (!res.ok) return [];
             const data = await res.json();
-            const columns = data?.table?.columns || [];
-            const fields = columns.map(c => ({ value: c.field, label: c.label || c.field }));
+            // ColumnMetadata schema: {field, title}  (NOT {field, label})
+            const tableFields = (data?.table?.columns || []).map(c => ({ value: c.field, label: c.title || c.field }));
+            // FormConfig schema: fields with {field, title}
+            const formFields  = (data?.form?.fields  || []).map(f => ({ value: f.field, label: f.title || f.field }));
+            // Prefer form fields (more complete); merge unique by value
+            const merged = new Map();
+            [...tableFields, ...formFields].forEach(f => { if (!merged.has(f.value)) merged.set(f.value, f); });
+            const fields = [...merged.values()];
             this._entityFieldsCache[entityName] = fields;
             return fields;
         } catch {
