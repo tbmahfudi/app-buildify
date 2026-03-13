@@ -16,6 +16,7 @@ import { metadataService } from '../assets/js/metadata-service.js';
 import { showNotification } from '../assets/js/notifications.js';
 import { apiFetch } from '../assets/js/api.js';
 import { upgradeAllSelects } from '../assets/js/utils/upgrade-select.js';
+import { VisualChartBuilder } from './visual-chart-builder.js';
 
 export class ReportDesigner {
     constructor(container, reportId = null) {
@@ -23,7 +24,8 @@ export class ReportDesigner {
         this.reportId = reportId;
         this.reportData = this._getDefaultReportData();
         this.currentStep = 1;
-        this.totalSteps = 5;
+        this.totalSteps = 6;
+        this._chartBuilder = null;
         this.availableFields = []; // Store fields from selected entity
         this.availableEntities = []; // Store all available entities (standard + nocode)
         this.entitiesLoaded = false; // Flag to track if entities are loaded
@@ -186,11 +188,12 @@ export class ReportDesigner {
 
     _renderProgressSteps() {
         const steps = [
-            { num: 1, label: 'Basic Info', icon: 'ℹ️' },
-            { num: 2, label: 'Data Source', icon: '📊' },
-            { num: 3, label: 'Columns', icon: '📋' },
-            { num: 4, label: 'Parameters', icon: '⚙️' },
-            { num: 5, label: 'Formatting', icon: '🎨' }
+            { num: 1, label: 'Basic Info',     icon: 'ℹ️' },
+            { num: 2, label: 'Data Source',    icon: '📊' },
+            { num: 3, label: 'Columns',        icon: '📋' },
+            { num: 4, label: 'Parameters',     icon: '⚙️' },
+            { num: 5, label: 'Formatting',     icon: '🎨' },
+            { num: 6, label: 'Visualization',  icon: '📈' }
         ];
 
         return `
@@ -238,6 +241,10 @@ export class ReportDesigner {
                 break;
             case 5:
                 stepContainer.innerHTML = this._renderFormattingStep();
+                break;
+            case 6:
+                stepContainer.innerHTML = this._renderVisualizationStep();
+                this._initVisualizationBuilder();
                 break;
         }
 
@@ -567,6 +574,30 @@ export class ReportDesigner {
                 </div>
             </div>
         `;
+    }
+
+    _renderVisualizationStep() {
+        return `
+            <h3 class="text-xl font-bold mb-2">Visualization</h3>
+            <p class="text-gray-600 mb-4">Configure how your data is displayed as a chart or graph</p>
+            <div id="chart-builder-host" class="border border-gray-200 rounded-lg overflow-hidden bg-white"></div>
+        `;
+    }
+
+    _initVisualizationBuilder() {
+        const host = document.getElementById('chart-builder-host');
+        if (!host) return;
+
+        // Columns from the columns_config step, mapped to {name, label}
+        const cols = this.reportData.columns_config.map(c => ({ name: c.name, label: c.label || c.name }));
+
+        this._chartBuilder = new VisualChartBuilder(host, {
+            columns: cols,
+            chartConfig: this.reportData.visualization_config || {},
+            onChartChange: (config) => {
+                this.reportData.visualization_config = config;
+            }
+        });
     }
 
     _renderFormattingRule(rule, index) {
