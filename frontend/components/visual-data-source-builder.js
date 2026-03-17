@@ -940,11 +940,13 @@ export class VisualDataSourceBuilder {
 
         // Manual add handler — read from hidden inputs (flex-select keeps id on hidden input)
         modal.querySelector('#confirm-manual-join').addEventListener('click', () => {
-            const fromEntity = document.getElementById('join-from-entity')?.value || '';
-            const fromField  = document.getElementById('join-from-field')?.value  || '';
-            const toEntity   = document.getElementById('join-to-entity')?.value   || '';
-            const toField    = document.getElementById('join-to-field')?.value    || '';
-            const joinType   = document.getElementById('join-type')?.value        || 'LEFT';
+            // Read via FlexSelect getValue() first (always up-to-date), fall back to hidden input
+            const getVal = (id) => { const el = document.getElementById(id); return el?._flexSelect?.getValue() || el?.value || ''; };
+            const fromEntity = getVal('join-from-entity');
+            const fromField  = getVal('join-from-field');
+            const toEntity   = getVal('join-to-entity');
+            const toField    = getVal('join-to-field');
+            const joinType   = getVal('join-type') || 'LEFT';
 
             if (!fromField || !toField) {
                 showNotification('Please select both field names', 'warning');
