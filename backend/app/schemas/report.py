@@ -401,3 +401,8 @@ class LookupDataResponse(BaseModel):
     """Lookup data response."""
     items: List[LookupDataItem]
     total_count: int
+
+
+class JoinSuggestionsRequest(BaseModel):
+    """Request body for join suggestions."""
+    entities: List[str] = Field(..., description="List of entity names to derive join suggestions for")
