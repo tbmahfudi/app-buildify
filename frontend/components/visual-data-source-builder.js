@@ -718,9 +718,12 @@ export class VisualDataSourceBuilder {
     // ── Join Suggestion Logic ─────────────────────────────────────────────────
 
     async _refreshJoinSuggestions() {
-        const names = this.selectedEntities.map(e => e.entity_name).join(',');
+        const names = this.selectedEntities.map(e => e.entity_name);
         try {
-            const res = await apiFetch(`/reports/entities/join-suggestions?entities=${encodeURIComponent(names)}`);
+            const res = await apiFetch('/reports/entities/join-suggestions', {
+                method: 'POST',
+                body: JSON.stringify({ entities: names }),
+            });
             if (res.ok) {
                 const data = await res.json();
                 this._joinSuggestions = Array.isArray(data) ? data : [];

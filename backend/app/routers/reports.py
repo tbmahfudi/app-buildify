@@ -21,6 +21,7 @@ from app.models.data_model import EntityDefinition, FieldDefinition, Relationshi
 from app.models.user import User
 from app.schemas.report import (
     ExportFormat,
+    JoinSuggestionsRequest,
     LookupDataRequest,
     LookupDataResponse,
     ReportDefinitionCreate,
@@ -44,9 +45,9 @@ logger = logging.getLogger(__name__)
 
 # Join Suggestion Endpoint
 
-@router.get("/entities/join-suggestions")
+@router.post("/entities/join-suggestions")
 def get_join_suggestions(
-    entities: str = QueryParam(..., description="Comma-separated entity names"),
+    body: JoinSuggestionsRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(has_permission("reports:read:tenant")),
 ):
@@ -69,7 +70,7 @@ def get_join_suggestions(
           source                   # "field_reference" | "relationship_definition"
         }
     """
-    entity_names = [e.strip() for e in entities.split(",") if e.strip()]
+    entity_names = [e.strip() for e in body.entities if e.strip()]
     if len(entity_names) < 2:
         return []
 
