@@ -58,6 +58,9 @@ export function setFlexValue(idOrEl, value) {
     if (!el) return;
     if (el._flexSelect) {
         el._flexSelect.setValue(value);
+        // FlexSelect.setValue does not call onChange, so the hidden input's value
+        // would stay stale. Keep it in sync so that el.value reads back correctly.
+        el.value = value ?? '';
     } else if (el.tagName === 'SELECT') {
         el.value = value;
     }
