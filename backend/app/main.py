@@ -36,6 +36,19 @@ async def lifespan(app: FastAPI):
     # Startup
     logger.info("Starting application", app_name=settings_instance.APP_NAME, environment=settings_instance.ENVIRONMENT)
 
+    # Run database migrations on startup so pending schema changes are applied automatically
+    try:
+        from alembic.config import Config as AlembicConfig
+        from alembic import command as alembic_command
+        import os
+        alembic_cfg = AlembicConfig(os.path.join(os.path.dirname(__file__), '..', 'alembic.ini'))
+        alembic_cfg.set_main_option('script_location', os.path.join(os.path.dirname(__file__), 'alembic'))
+        alembic_command.upgrade(alembic_cfg, 'head')
+        logger.info("Database migrations applied successfully")
+    except Exception as e:
+        logger.warning(f"Failed to run migrations on startup: {e}", exc_info=True)
+        # Continue — app may still work if DB is already up to date
+
     # Initialize database session for startup tasks
     db = SessionLocal()
 
