@@ -48,28 +48,33 @@ Welcome to the App-Buildify documentation. Use this index to navigate all availa
 
 | Document | Description |
 |----------|-------------|
+| [Financial Module](./modules/FINANCIAL_MODULE.md) | Financial module — full API, setup, and feature reference |
 | [Module Development Guide](./MODULE_DEVELOPMENT_GUIDE.md) | How to build a custom module |
 | [Module Registration](./MODULE_REGISTRATION.md) | Module manifest format and registration API |
 | [Modular Architecture Design](./MODULAR_ARCHITECTURE_DESIGN.md) | Design decisions and patterns |
-| [Financial Module](./FINANCIAL_MODULE_DESIGN.md) | Financial module feature design |
+| [Financial Module Design (Spec)](./FINANCIAL_MODULE_DESIGN.md) | Original financial module design specification |
 
 ---
 
-## Additional References
+## Reference
 
 | Document | Description |
 |----------|-------------|
-| [Architecture (Legacy)](./ARCHITECTURE.md) | Original architecture overview |
+| [Known Gaps](./GAPS.md) | Features in documentation not yet implemented in code |
+| [Roadmap](./platform/ROADMAP.md) | Component and platform roadmap, release history |
 | [Technical Specification](./TECHNICAL_SPECIFICATION.md) | Detailed technical requirements |
-| [Functional Specification](./FUNCTIONAL_SPECIFICATION.md) | Feature requirements |
+| [Functional Specification](./FUNCTIONAL_SPECIFICATION.md) | Feature requirements and business rules |
 | [Database Migrations](./DATABASE_MIGRATIONS.md) | Migration guide and patterns |
 | [Changelog](./CHANGELOG.md) | Version history |
+| [Architecture (Original)](./ARCHITECTURE.md) | Original architecture overview |
 
 ---
 
 ## Quick Links
 
-- **Backend API Docs** (Swagger): `http://localhost:8000/docs`
-- **Backend API Docs** (Redoc): `http://localhost:8000/redoc`
-- **Frontend**: `http://localhost`
+- **Frontend**: `http://localhost:8080`
+- **Backend API**: `http://localhost:8000/api/v1`
+- **Swagger UI**: `http://localhost:8000/docs`
+- **Redoc**: `http://localhost:8000/redoc`
+- **Financial Module**: `http://localhost:9001`
 - **Default Admin**: `admin@example.com` / `Admin@123`

@@ -1,144 +1,156 @@
 # Environment Configuration
 
-Complete reference for all environment variables used across the platform.
+Complete reference for all environment variables used across the platform. Variable names are taken directly from the running Docker Compose configuration.
 
 ---
 
-## Backend Core (`backend/.env`)
+## Backend Core (`backend/.env` / `docker-compose.dev.yml`)
 
 ### Database
 
 | Variable | Required | Example | Description |
 |----------|----------|---------|-------------|
-| `DATABASE_URL` | Yes | `postgresql://user:pass@host:5432/db` | Primary database connection |
-| `DATABASE_POOL_SIZE` | No | `10` | SQLAlchemy connection pool size |
+| `SQLALCHEMY_DATABASE_URL` | Yes | `postgresql+psycopg2://appuser:apppass@postgres:5432/appdb` | Primary database connection (SQLAlchemy DSN format) |
+| `DATABASE_POOL_SIZE` | No | `10` | Connection pool size |
 | `DATABASE_MAX_OVERFLOW` | No | `20` | Max connections above pool size |
-| `DATABASE_POOL_TIMEOUT` | No | `30` | Seconds to wait for a connection |
 
-### Redis
+**Supported database drivers**:
+```
+# PostgreSQL (default)
+postgresql+psycopg2://user:pass@host:5432/db
 
-| Variable | Required | Example | Description |
-|----------|----------|---------|-------------|
-| `REDIS_URL` | Yes | `redis://:password@host:6379` | Redis connection URL |
-| `REDIS_DB` | No | `0` | Redis database index |
-| `REDIS_TOKEN_BLACKLIST_TTL` | No | `3600` | Token blacklist entry TTL (seconds) |
+# MySQL
+mysql+pymysql://user:pass@host:3306/db
 
-### JWT & Authentication
+# SQLite (development only)
+sqlite:///./dev.db
+```
+
+### Authentication
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `JWT_SECRET_KEY` | Yes | — | Signing key (32+ chars recommended) |
-| `JWT_ALGORITHM` | No | `HS256` | JWT algorithm |
-| `ACCESS_TOKEN_EXPIRE_MINUTES` | No | `30` | Access token lifetime |
-| `REFRESH_TOKEN_EXPIRE_DAYS` | No | `7` | Refresh token lifetime |
+| `SECRET_KEY` | Yes | — | JWT signing secret (use a strong 64-char random value in production) |
+| `ACCESS_TOKEN_EXPIRE_MIN` | No | `30` | Access token lifetime in minutes |
+| `REFRESH_TOKEN_EXPIRE_DAYS` | No | `7` | Refresh token lifetime in days |
 
 ### Application
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `DEBUG` | No | `false` | Enable debug mode (hot reload, verbose errors) |
+| `ALLOWED_ORIGINS` | No | `*` | CORS allowed origins, comma-separated |
+| `DEBUG` | No | `false` | Enable debug mode and hot reload |
 | `ENVIRONMENT` | No | `production` | `development` / `staging` / `production` |
 | `LOG_LEVEL` | No | `INFO` | `DEBUG` / `INFO` / `WARNING` / `ERROR` |
-| `ALLOWED_ORIGINS` | No | `*` | CORS origins (comma-separated) |
-| `RATE_LIMIT` | No | `100/minute` | Default rate limit per IP |
-| `PORT` | No | `8000` | Uvicorn listen port |
+
+### Redis (Optional)
+
+Redis is not included in the default dev compose but is used for token revocation if configured.
+
+| Variable | Required | Example | Description |
+|----------|----------|---------|-------------|
+| `REDIS_URL` | No | `redis://:password@redis:6379` | Redis connection URL |
 
 ### Monitoring (Optional)
 
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `SENTRY_DSN` | No | Sentry project DSN for error tracking |
-| `PROMETHEUS_ENABLED` | No | Enable `/metrics` endpoint |
+| `PROMETHEUS_ENABLED` | No | Enable `/metrics` Prometheus endpoint (not yet implemented) |
 
 ---
 
-## Financial Module (`modules/financial/.env`)
+## Financial Module
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
 | `DATABASE_STRATEGY` | No | `shared` | `shared` (use core DB) or `separate` |
-| `MODULE_DATABASE_URL` | If separate | — | DB URL when using separate database |
-| `CORE_PLATFORM_URL` | Yes | `http://core-platform:8000` | Internal URL of core API |
-| `MODULE_API_KEY` | Yes | — | Shared secret for authentication with core |
-| `PORT` | No | `9001` | Module service listen port |
+| `DATABASE_URL` | If shared | — | PostgreSQL URL for shared DB access |
+| `MODULE_DATABASE_URL` | If separate | — | Separate DB URL |
+| `EVENT_BUS_CONNECTION_STRING` | No | — | PostgreSQL connection for LISTEN/NOTIFY event bus |
+| `CORE_PLATFORM_URL` | No | `http://backend:8000` | Core API URL for inter-service calls |
+| `MODULE_NAME` | No | `financial` | Module identifier |
+| `MODULE_VERSION` | No | `1.0.0` | Module version string |
+| `MODULE_PORT` | No | `9001` | Module listen port |
 | `DEBUG` | No | `false` | Debug mode |
-| `LOG_LEVEL` | No | `INFO` | Log level |
+| `CORS_ORIGINS` | No | `["http://localhost:8080"]` | JSON array of allowed origins |
+| `API_PREFIX` | No | `/api/v1` | API route prefix |
 
 ---
 
-## Docker Compose Overrides
+## Nginx (no env vars — configured via `app.conf`)
 
-For local development, you can create `docker-compose.override.yml` to override settings without modifying the main compose file:
-
-```yaml
-# docker-compose.override.yml
-services:
-  core-platform:
-    environment:
-      - DEBUG=true
-      - LOG_LEVEL=DEBUG
-    volumes:
-      - ./backend:/app   # Hot reload in dev
-```
+The frontend Nginx container is configured via `infra/nginx/app.conf` mounted as a volume. No environment variables are used.
 
 ---
 
 ## Environment File Examples
 
-### Development (`.env`)
+### Development
 
 ```env
-DATABASE_URL=postgresql://postgres:postgres@postgres:5432/buildify
-REDIS_URL=redis://redis:6379
-JWT_SECRET_KEY=dev-secret-key-not-for-production
+# backend/.env for docker-compose.dev.yml
+SQLALCHEMY_DATABASE_URL=postgresql+psycopg2://appuser:apppass@postgres:5432/appdb
+SECRET_KEY=dev-secret-key-change-in-production
+ACCESS_TOKEN_EXPIRE_MIN=30
+REFRESH_TOKEN_EXPIRE_DAYS=7
+ALLOWED_ORIGINS=http://localhost:8080,http://localhost:3000
 DEBUG=true
 ENVIRONMENT=development
 LOG_LEVEL=DEBUG
-ALLOWED_ORIGINS=http://localhost,http://localhost:5173
-RATE_LIMIT=1000/minute
 ```
 
-### Staging (`.env.staging`)
+### Staging
 
 ```env
-DATABASE_URL=postgresql://buildify_user:StrongPass123@staging-db:5432/buildify?sslmode=require
-REDIS_URL=redis://:RedisPass123@staging-redis:6379
-JWT_SECRET_KEY=<64-char-random-staging-key>
+SQLALCHEMY_DATABASE_URL=postgresql+psycopg2://buildify:StrongPass@staging-db:5432/appdb?sslmode=require
+SECRET_KEY=<64-char-random-key>
+ACCESS_TOKEN_EXPIRE_MIN=30
+REFRESH_TOKEN_EXPIRE_DAYS=7
+ALLOWED_ORIGINS=https://staging.yourapp.com
 DEBUG=false
 ENVIRONMENT=staging
 LOG_LEVEL=INFO
-ALLOWED_ORIGINS=https://staging.yourapp.com
-RATE_LIMIT=200/minute
 SENTRY_DSN=https://key@sentry.io/project
 ```
 
-### Production (`.env.production`)
+### Production
 
 ```env
-DATABASE_URL=postgresql://buildify_user:VeryStrongPass@prod-rds:5432/buildify?sslmode=require
-REDIS_URL=redis://:VeryStrongRedisPass@prod-elasticache:6379
-JWT_SECRET_KEY=<64-char-random-production-key>
+SQLALCHEMY_DATABASE_URL=postgresql+psycopg2://buildify:VeryStrongPass@prod-db:5432/appdb?sslmode=require
+SECRET_KEY=<64-char-random-key>
+ACCESS_TOKEN_EXPIRE_MIN=15
+REFRESH_TOKEN_EXPIRE_DAYS=7
+ALLOWED_ORIGINS=https://app.yourcompany.com
 DEBUG=false
 ENVIRONMENT=production
 LOG_LEVEL=INFO
-ALLOWED_ORIGINS=https://app.yourcompany.com
-RATE_LIMIT=100/minute
 SENTRY_DSN=https://key@sentry.io/project
-PROMETHEUS_ENABLED=true
+REDIS_URL=redis://:RedisPass@prod-redis:6379
 ```
 
 ---
 
-## Secret Management Recommendations
+## Generating Secure Secrets
 
-For production, avoid storing secrets in `.env` files on disk. Instead, use:
+```bash
+# SECRET_KEY (64-char random string)
+python3 -c "import secrets; print(secrets.token_urlsafe(48))"
+
+# PostgreSQL password
+python3 -c "import secrets; print(secrets.token_hex(16))"
+```
+
+---
+
+## Secret Management in Production
+
+Never store production secrets in `.env` files committed to git. Use:
 
 | Platform | Solution |
 |----------|---------|
 | AWS | AWS Secrets Manager + ECS task secrets |
 | GCP | Google Secret Manager |
 | Azure | Azure Key Vault |
-| Kubernetes | Kubernetes Secrets (base64) or Vault |
+| Kubernetes | Sealed Secrets or Vault |
 | Self-hosted | HashiCorp Vault |
-
-Inject secrets as environment variables at container startup time.
