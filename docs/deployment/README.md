@@ -2,252 +2,271 @@
 
 ## Overview
 
-App-Buildify is containerized with Docker and orchestrated via Docker Compose. The stack consists of:
-
-| Service | Image | Port | Description |
-|---------|-------|------|-------------|
-| `postgres` | postgres:15-alpine | 5432 | Primary database |
-| `redis` | redis:7-alpine | 6379 | Cache and session store |
-| `core-platform` | python:3.11-slim | 8000 | Core FastAPI backend |
-| `financial-module` | python:3.11-slim | 9001 | Financial module backend |
-| `api-gateway` | nginx:alpine | 80 / 443 | Reverse proxy and static files |
-| `frontend` | node:20-alpine | 5173 (dev) | Frontend app |
+App-Buildify is containerized with Docker and orchestrated via Docker Compose. The stack includes a PostgreSQL database, a core FastAPI backend, the financial module backend, and an Nginx frontend server.
 
 ---
 
-## Environment Configuration
+## Services
 
-All environment variables are loaded from `backend/.env`. Copy the example file to get started:
+| Service | Container Name | Image | Port | Description |
+|---------|---------------|-------|------|-------------|
+| `postgres` | `app_buildify_postgresql` | postgres:15-alpine | 5432 | Primary PostgreSQL database |
+| `backend` | `app_buildify_backend` | Built from `backend/Dockerfile` | 8000 | Core FastAPI platform |
+| `financial-module` | `app_buildify_financial` | Built from `modules/financial/backend/Dockerfile` | 9001 | Financial module API |
+| `frontend` | `app_buildify_frontend` | nginx:1.27-alpine | 8080 → 80 | SPA + static files + API proxy |
+
+> **Note**: Redis is optional and not included in the default dev compose. Add it if you need token revocation blacklisting or caching.
+
+---
+
+## Infrastructure Files
+
+```
+infra/
+├── docker-compose.dev.yml     # Development compose (used by Makefile)
+├── docker-compose.prod.yml    # Production compose skeleton
+└── nginx/
+    ├── app.conf               # Frontend Nginx config (SPA + API proxy)
+    └── nginx.conf             # Standalone API gateway config (multi-upstream)
+```
+
+---
+
+## Nginx Routing (`infra/nginx/app.conf`)
+
+The `app.conf` is mounted into the frontend Nginx container and handles all routing:
+
+| Pattern | Destination | Notes |
+|---------|------------|-------|
+| `/api/v1/financial/*` | `http://financial-module:9001` | Financial module API |
+| `/api/v1/hr/*`, `/api/v1/clinic/*` | `http://<module>-module:9001` | Other module APIs (pattern-based) |
+| `/api/` | `http://backend:8000` | Core platform API |
+| `/modules/<name>/<file>` | `/usr/share/nginx/modules/<name>/frontend/<file>` | Module frontend assets |
+| Static files (`*.js`, `*.css`, `*.png`...) | `/usr/share/nginx/html` | Cached 1 day |
+| `/*` (fallback) | `/index.html` | SPA catch-all |
+
+---
+
+## Development Setup
+
+### 1. Configure environment
 
 ```bash
 cp backend/.env.example backend/.env
 ```
 
-### Core Variables
+Key settings in `backend/.env` — see actual variable names:
 
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `DATABASE_URL` | Yes | — | PostgreSQL connection string |
-| `REDIS_URL` | Yes | — | Redis connection string |
-| `JWT_SECRET_KEY` | Yes | — | JWT signing secret (32+ chars) |
-| `JWT_ALGORITHM` | No | `HS256` | JWT algorithm |
-| `ACCESS_TOKEN_EXPIRE_MINUTES` | No | `30` | Access token TTL |
-| `REFRESH_TOKEN_EXPIRE_DAYS` | No | `7` | Refresh token TTL |
-| `DEBUG` | No | `false` | Enable debug mode |
-| `ENVIRONMENT` | No | `production` | `development` / `staging` / `production` |
-| `RATE_LIMIT` | No | `100/minute` | Default rate limit |
-| `ALLOWED_ORIGINS` | No | `*` | CORS allowed origins (comma-separated) |
-| `SENTRY_DSN` | No | — | Sentry error tracking DSN |
-
-### Database URL Formats
-
-```bash
-# PostgreSQL
-DATABASE_URL=postgresql://user:password@host:5432/dbname
-
-# MySQL
-DATABASE_URL=mysql+pymysql://user:password@host:3306/dbname
-
-# SQLite (development only)
-DATABASE_URL=sqlite:///./dev.db
+```env
+SQLALCHEMY_DATABASE_URL=postgresql+psycopg2://appuser:apppass@postgres:5432/appdb
+SECRET_KEY=dev-secret-key-change-in-production
+ACCESS_TOKEN_EXPIRE_MIN=30
+REFRESH_TOKEN_EXPIRE_DAYS=7
+ALLOWED_ORIGINS=http://localhost:8080,http://localhost:3000
 ```
 
-### Module Variables
+### 2. Start all services
 
-| Variable | Description |
-|----------|-------------|
-| `DATABASE_STRATEGY` | `shared` (default) or `separate` |
-| `MODULE_DATABASE_URL` | Used when `DATABASE_STRATEGY=separate` |
-| `CORE_PLATFORM_URL` | Internal URL of core platform for inter-service calls |
-| `MODULE_API_KEY` | Shared secret for module-to-platform authentication |
+```bash
+docker-compose -f infra/docker-compose.dev.yml up -d
+# or via Makefile:
+make docker-up
+```
+
+### 3. Run migrations
+
+```bash
+# Core platform migrations
+docker-compose -f infra/docker-compose.dev.yml exec backend alembic upgrade head
+
+# or with make:
+make migrate-pg
+```
+
+### 4. Seed initial data
+
+```bash
+make seed
+```
+
+### 5. Access the application
+
+| Service | URL |
+|---------|-----|
+| Frontend | http://localhost:8080 |
+| Backend API | http://localhost:8000 |
+| Swagger UI | http://localhost:8000/docs |
+| Financial Module | http://localhost:9001 |
 
 ---
 
-## Docker Compose Reference
+## Docker Compose — Dev Reference
+
+**File**: `infra/docker-compose.dev.yml`
 
 ```yaml
-# docker-compose.yml (simplified)
 services:
   postgres:
     image: postgres:15-alpine
     environment:
-      POSTGRES_DB: buildify
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: appuser
+      POSTGRES_PASSWORD: apppass
+      POSTGRES_DB: appdb
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U appuser -d appdb"]
+      interval: 5s
+
+  backend:
+    build: ../backend
+    ports: ["8000:8000"]
+    environment:
+      SQLALCHEMY_DATABASE_URL: postgresql+psycopg2://appuser:apppass@postgres:5432/appdb
+      SECRET_KEY: dev-secret-key
+      ACCESS_TOKEN_EXPIRE_MIN: 30
+      REFRESH_TOKEN_EXPIRE_DAYS: 7
+      ALLOWED_ORIGINS: http://localhost:8080,http://localhost:3000
     volumes:
-      - postgres_data:/var/lib/postgresql/data
-
-  redis:
-    image: redis:7-alpine
-    command: redis-server --requirepass ${REDIS_PASSWORD}
-
-  core-platform:
-    build: ./backend
-    ports:
-      - "8000:8000"
-    depends_on:
-      - postgres
-      - redis
-    env_file:
-      - backend/.env
+      - ../backend:/app       # hot reload
+      - ../frontend:/frontend:ro
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
   financial-module:
-    build: ./modules/financial
-    ports:
-      - "9001:9001"
-    depends_on:
-      - postgres
-
-  api-gateway:
-    image: nginx:alpine
-    ports:
-      - "80:80"
-      - "443:443"
+    build: ../modules/financial/backend
+    ports: ["9001:9001"]
+    environment:
+      DATABASE_STRATEGY: shared
+      DATABASE_URL: postgresql://appuser:apppass@postgres:5432/appdb
+      EVENT_BUS_CONNECTION_STRING: postgresql://appuser:apppass@postgres:5432/appdb
+      MODULE_NAME: financial
+      MODULE_VERSION: 1.0.0
+      MODULE_PORT: 9001
     volumes:
-      - ./infra/nginx/nginx.conf:/etc/nginx/nginx.conf
-      - ./frontend:/usr/share/nginx/html
-    depends_on:
-      - core-platform
+      - ../modules/financial/backend:/app
+    command: uvicorn app.main:app --host 0.0.0.0 --port 9001 --reload
+
+  frontend:
+    image: nginx:1.27-alpine
+    ports: ["8080:80"]
+    volumes:
+      - ../frontend:/usr/share/nginx/html:ro
+      - ../modules:/usr/share/nginx/modules:ro
+      - ../infra/nginx/app.conf:/etc/nginx/conf.d/default.conf:ro
 ```
 
 ---
 
-## Nginx API Gateway
+## Production Setup
 
-**Config**: `infra/nginx/nginx.conf`
+**File**: `infra/docker-compose.prod.yml`
 
-```nginx
-server {
-    listen 80;
+The production compose is intentionally minimal — it references pre-built images:
 
-    # Frontend static files
-    location / {
-        root /usr/share/nginx/html;
-        try_files $uri $uri/ /index.html;
-    }
+```yaml
+services:
+  backend:
+    image: ghcr.io/YOUR_GH_OWNER/app-backend:${TAG}
+    env_file: .env
+    restart: unless-stopped
 
-    # Core platform API
-    location /api/ {
-        proxy_pass http://core-platform:8000;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-    }
+  frontend:
+    image: ghcr.io/YOUR_GH_OWNER/app-frontend:${TAG}
+    restart: unless-stopped
 
-    # Financial module API (routed by path prefix)
-    location /api/v1/financial/ {
-        proxy_pass http://financial-module:9001;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-    }
-}
+  nginx:
+    image: nginx:1.27-alpine
+    volumes:
+      - ./nginx/app.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on: [backend, frontend]
+    ports: ["80:80"]
+    restart: unless-stopped
 ```
 
----
+> Update `YOUR_GH_OWNER` to your actual GitHub organization/user before use.
 
-## Deployment Environments
-
-### Development
+Build and push images to your container registry, then deploy with:
 
 ```bash
-cp backend/.env.example backend/.env
-# Edit .env: set DEBUG=true, use default passwords
-docker-compose up -d
-make migrate-pg
-make seed
+TAG=v1.2.3 docker-compose -f infra/docker-compose.prod.yml up -d
 ```
-
-### Staging
-
-1. Set `ENVIRONMENT=staging` and `DEBUG=false`
-2. Use strong random values for `JWT_SECRET_KEY` and `REDIS_PASSWORD`
-3. Set `ALLOWED_ORIGINS` to the staging domain
-4. Optionally set `SENTRY_DSN` for error tracking
-
-### Production
-
-Follow the [Production Checklist](./PRODUCTION.md) before deploying.
-
-Key differences:
-- TLS termination at Nginx (or external load balancer)
-- PostgreSQL and Redis on managed services (not in Docker)
-- `DEBUG=false`, `ENVIRONMENT=production`
-- Strong, unique secrets for all keys
-- Prometheus + Grafana or external APM for monitoring
 
 ---
 
 ## Database Migrations
 
-Migrations are managed by **Alembic** and must be run after each deployment.
+Managed by **Alembic**.
 
 ```bash
-# Apply all pending migrations (Docker)
-docker-compose exec core-platform alembic upgrade head
+# Apply all pending migrations
+docker-compose exec backend alembic upgrade head
 
-# Apply locally
-cd backend
-alembic upgrade head
+# Roll back one migration
+docker-compose exec backend alembic downgrade -1
 
-# Check current migration state
-alembic current
+# Check current state
+docker-compose exec backend alembic current
 
-# Roll back last migration
-alembic downgrade -1
+# Generate migration from model changes
+docker-compose exec backend alembic revision --autogenerate -m "add new table"
 ```
 
-**Seeding** (initial setup only):
-```bash
-docker-compose exec core-platform python -m app.seeds.seed_org
-docker-compose exec core-platform python -m app.seeds.seed_users
-```
+---
+
+## Environment Variables
+
+See [Environment Variables Reference](./ENVIRONMENT.md) for the complete list.
+
+**Critical variables that differ from defaults:**
+
+| Variable | Dev Value | Production |
+|----------|-----------|-----------|
+| `SQLALCHEMY_DATABASE_URL` | `postgresql+psycopg2://appuser:apppass@postgres:5432/appdb` | Managed DB URL + `?sslmode=require` |
+| `SECRET_KEY` | `dev-secret-key-change-in-production` | Strong 64-char random key |
+| `ALLOWED_ORIGINS` | `http://localhost:8080` | Your production domain(s) |
+| `DEBUG` | `true` | `false` |
 
 ---
 
 ## Health Checks
 
-| Endpoint | Service | Description |
-|----------|---------|-------------|
-| `GET /health` | Core Platform | API health status |
-| `GET /health` | Financial Module | Module health status |
-| `GET /` | Nginx | Static file serving |
+| URL | Service | Notes |
+|-----|---------|-------|
+| `GET http://localhost/health` | Nginx | Returns `healthy` (200) |
+| `GET http://localhost:8000/health` | Backend | API health |
+| `GET http://localhost:9001/health` | Financial module | Module health |
 
 ---
 
 ## Logging
 
-**Backend**: Structured JSON logs via `structlog` written to stdout.
+All containers write structured logs to stdout.
 
 ```bash
-# View all logs
+# All services
 docker-compose logs -f
 
-# View core platform logs only
-docker-compose logs -f core-platform
-
-# View nginx access logs
-docker-compose logs -f api-gateway
+# Specific service
+docker-compose logs -f backend
+docker-compose logs -f financial-module
+docker-compose logs -f frontend
 ```
-
-**Log levels** (set via `LOG_LEVEL` env var):
-- `DEBUG` — verbose, development only
-- `INFO` — normal operations (default)
-- `WARNING` — unexpected but non-fatal
-- `ERROR` — failures requiring attention
 
 ---
 
-## Scaling
+## Adding a New Module
 
-**Horizontal scaling** (multiple backend instances):
+1. Create your module under `modules/<name>/`
+2. Add the module service to `infra/docker-compose.dev.yml`
+3. Add the module's API route pattern to `infra/nginx/app.conf`:
+   ```nginx
+   location ~ ^/api/(v[0-9]+)/(financial|hr|clinic|<your-module>)/(.+)$ {
+       proxy_pass http://$2-module:9001/api/$1/$2/$3$is_args$args;
+       ...
+   }
+   ```
+4. Serve module frontend assets via the `/modules/<name>/` path
+5. Register the module via `POST /api/v1/modules/register`
 
-```bash
-docker-compose up -d --scale core-platform=3
-```
-
-Requires:
-- Nginx load balancer config with upstream pool
-- Redis for shared session state (already implemented)
-- Sticky sessions or stateless JWT (already implemented)
+See [Module Development Guide](../MODULE_DEVELOPMENT_GUIDE.md) for full details.
 
 ---
 
@@ -257,21 +276,16 @@ Requires:
 
 ```bash
 # Backup
-docker-compose exec postgres pg_dump -U postgres buildify > backup_$(date +%Y%m%d).sql
+docker-compose exec postgres pg_dump -U appuser appdb > backup_$(date +%Y%m%d).sql
 
 # Restore
-docker-compose exec -T postgres psql -U postgres buildify < backup.sql
+docker-compose exec -T postgres psql -U appuser appdb < backup.sql
 ```
-
-### Redis
-
-Redis is used for ephemeral data (token blacklist, sessions). No backup required unless you need to preserve active sessions across restarts.
 
 ---
 
 ## Related Documents
 
 - [Production Checklist](./PRODUCTION.md)
-- [Environment Configuration](./ENVIRONMENT.md)
-- [Platform Overview](../platform/OVERVIEW.md)
-- [Getting Started](../platform/GETTING_STARTED.md)
+- [Environment Variables](./ENVIRONMENT.md)
+- [Module Development Guide](../MODULE_DEVELOPMENT_GUIDE.md)
