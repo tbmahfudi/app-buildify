@@ -8,15 +8,15 @@
 
 ```bash
 cp backend/.env.example backend/.env   # configure environment
-docker-compose up -d                   # start all services
+docker-compose -f infra/docker-compose.dev.yml up -d
 make migrate-pg                        # run database migrations
 make seed                              # seed default admin + roles
 ```
 
 | URL | Service |
 |-----|---------|
-| http://localhost | Frontend application |
-| http://localhost/api/v1 | REST API |
+| http://localhost:8080 | Frontend application |
+| http://localhost:8000/api/v1 | REST API |
 | http://localhost:8000/docs | Swagger UI |
 
 Default admin: `admin@example.com` / `Admin@123`
@@ -58,33 +58,24 @@ Default admin: `admin@example.com` / `Admin@123`
 | [Production Checklist](docs/deployment/PRODUCTION.md) | Security, DB, infra, and deployment checklists |
 | [Environment Variables](docs/deployment/ENVIRONMENT.md) | Full env var reference for all services |
 
-### Modules & Extensions
-
-| Document | Description |
-|----------|-------------|
-| [Module Development Guide](docs/MODULE_DEVELOPMENT_GUIDE.md) | Build a custom module |
-| [Module Registration](docs/MODULE_REGISTRATION.md) | Manifest format and registration API |
-| [Modular Architecture Design](docs/MODULAR_ARCHITECTURE_DESIGN.md) | Design decisions and patterns |
-| [Financial Module](docs/FINANCIAL_MODULE_DESIGN.md) | Financial module feature design |
-
 ### Modules
 
 | Document | Description |
 |----------|-------------|
 | [Financial Module](docs/modules/FINANCIAL_MODULE.md) | Financial management module — full API and feature reference |
-| [Module Development Guide](docs/MODULE_DEVELOPMENT_GUIDE.md) | Build a custom module |
-| [Module Registration](docs/MODULE_REGISTRATION.md) | Manifest format and registration API |
-| [Modular Architecture Design](docs/MODULAR_ARCHITECTURE_DESIGN.md) | Design decisions and patterns |
+| [Module Development Guide](docs/archive/MODULE_DEVELOPMENT_GUIDE.md) | Build a custom module |
+| [Module Registration](docs/archive/MODULE_REGISTRATION.md) | Manifest format and registration API |
+| [Modular Architecture Design](docs/archive/MODULAR_ARCHITECTURE_DESIGN.md) | Design decisions and patterns |
 
 ### Reference
 
 | Document | Description |
 |----------|-------------|
-| [Functional Specification](docs/FUNCTIONAL_SPECIFICATION.md) | Feature requirements and business rules |
-| [Technical Specification](docs/TECHNICAL_SPECIFICATION.md) | Technical design and architecture details |
-| [Database Migrations](docs/DATABASE_MIGRATIONS.md) | Alembic usage and patterns |
 | [Known Gaps](docs/GAPS.md) | Features documented but not yet implemented |
-| [Changelog](docs/CHANGELOG.md) | Version history |
+| [Functional Specification](docs/archive/FUNCTIONAL_SPECIFICATION.md) | Feature requirements and business rules |
+| [Technical Specification](docs/archive/TECHNICAL_SPECIFICATION.md) | Technical design and architecture details |
+| [Database Migrations](docs/archive/DATABASE_MIGRATIONS.md) | Alembic usage and patterns |
+| [Changelog](docs/archive/CHANGELOG.md) | Version history |
 
 ---
 
@@ -98,9 +89,14 @@ app-buildify/
 │   └── financial/     Financial management module
 ├── infra/
 │   └── nginx/         API gateway configuration
-├── docs/              All documentation
+├── docs/              Active documentation
+│   ├── archive/       Original/legacy documentation
+│   ├── backend/
+│   ├── deployment/
+│   ├── frontend/
+│   ├── modules/
+│   └── platform/
 ├── tests/             Frontend unit tests
 ├── scripts/           Utility scripts
-├── docker-compose.yml Main compose file
 └── Makefile           Build commands
 ```

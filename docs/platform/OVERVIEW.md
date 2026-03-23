@@ -120,4 +120,4 @@ The platform supports pluggable modules that integrate seamlessly:
 - [Backend Architecture](../backend/README.md)
 - [Frontend Architecture](../frontend/README.md)
 - [Deployment Guide](../deployment/README.md)
-- [Module Development Guide](../MODULE_DEVELOPMENT_GUIDE.md)
+- [Module Development Guide](../archive/MODULE_DEVELOPMENT_GUIDE.md)

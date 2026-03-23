@@ -266,7 +266,7 @@ docker-compose logs -f frontend
 4. Serve module frontend assets via the `/modules/<name>/` path
 5. Register the module via `POST /api/v1/modules/register`
 
-See [Module Development Guide](../MODULE_DEVELOPMENT_GUIDE.md) for full details.
+See [Module Development Guide](../archive/MODULE_DEVELOPMENT_GUIDE.md) for full details.
 
 ---
 
@@ -288,4 +288,4 @@ docker-compose exec -T postgres psql -U appuser appdb < backup.sql
 
 - [Production Checklist](./PRODUCTION.md)
 - [Environment Variables](./ENVIRONMENT.md)
-- [Module Development Guide](../MODULE_DEVELOPMENT_GUIDE.md)
+- [Module Development Guide](../archive/MODULE_DEVELOPMENT_GUIDE.md)
