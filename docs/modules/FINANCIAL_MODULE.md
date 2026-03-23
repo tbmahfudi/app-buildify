@@ -298,6 +298,6 @@ POST /api/v1/financial/accounts/setup/default
 
 ## Related Documents
 
-- [Module Development Guide](../MODULE_DEVELOPMENT_GUIDE.md)
-- [Module Registration](../MODULE_REGISTRATION.md)
+- [Module Development Guide](../archive/MODULE_DEVELOPMENT_GUIDE.md)
+- [Module Registration](../archive/MODULE_REGISTRATION.md)
 - [RBAC System](../backend/RBAC.md)
