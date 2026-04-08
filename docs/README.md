@@ -22,6 +22,7 @@ Welcome to the App-Buildify documentation. Use this index to navigate all availa
 | [API Reference](./backend/API_REFERENCE.md) | All REST endpoints, request/response formats, status codes, pagination |
 | [Authentication & Security](./backend/AUTH_SECURITY.md) | JWT flow, password policy, account lockout, session management, audit logging |
 | [RBAC System](./backend/RBAC.md) | Permission format, data model, default roles, enforcement, API endpoints |
+| [Dynamic Entity System](./backend/DYNAMIC_ENTITIES.md) | NoCode entity designer, field types, data scope, runtime CRUD API, bulk ops, filters |
 
 ---
 

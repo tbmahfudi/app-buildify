@@ -41,6 +41,7 @@ Default admin: `admin@example.com` / `Admin@123`
 | [API Reference](docs/backend/API_REFERENCE.md) | All REST endpoints, formats, pagination |
 | [Authentication & Security](docs/backend/AUTH_SECURITY.md) | JWT, password policy, lockout, sessions, audit |
 | [RBAC System](docs/backend/RBAC.md) | Permission format, roles, enforcement |
+| [Dynamic Entity System](docs/backend/DYNAMIC_ENTITIES.md) | NoCode entity designer, field types, runtime CRUD API |
 
 ### Frontend
 
