@@ -461,3 +461,4 @@ Automation errors are logged but do **not** fail the original operation.
 - [Backend Architecture](./README.md)
 - [API Reference](./API_REFERENCE.md)
 - [RBAC System](./RBAC.md)
+- [Dynamic Entity Gaps & Enhancement Checklist](./DYNAMIC_ENTITIES_GAPS.md)
