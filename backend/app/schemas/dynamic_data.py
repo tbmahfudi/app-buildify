@@ -234,18 +234,48 @@ class EntityMetadataResponse(BaseModel):
         }
 
 
+class FieldError(BaseModel):
+    """Single field-level validation error"""
+    field: str = Field(..., description="Field name that failed validation")
+    message: str = Field(..., description="Human-readable error message for this field")
+
+    class Config:
+        json_schema_extra = {
+            "example": {"field": "email", "message": "Email is required"}
+        }
+
+
 class ValidationErrorResponse(BaseModel):
-    """Response schema for validation errors"""
-    detail: str = Field(..., description="Error message")
-    errors: Optional[List[str]] = Field(None, description="List of specific validation errors")
+    """Response schema for validation errors (HTTP 400).
+
+    ``detail`` is always present as a human-readable summary.
+    ``errors`` is present only on field-level validation failures so existing
+    callers that read only ``error.detail`` are completely unaffected.
+
+    Frontend TODO:
+        - ``data-service.js`` / ``base-service.js``: preserve ``error.errors``
+          on the thrown error object (currently discarded by throwing
+          ``new Error(error.detail)``).
+        - ``entity-manager.js``: call ``form.showFieldErrors(error.errors)`` when
+          ``error.errors`` is present in the catch block of ``saveRecord()``.
+        - ``dynamic-form.js``: implement ``showFieldErrors(errors)`` to render
+          inline per-field messages below each failing input.
+        - ``dynamic-route-registry.js``: replace ``alert('Error: ...')`` with
+          inline form error rendering using ``error.errors`` when present.
+    """
+    detail: str = Field(..., description="Human-readable error summary")
+    errors: Optional[List[FieldError]] = Field(
+        None,
+        description="Per-field errors (present only on 400 validation failures)"
+    )
 
     class Config:
         json_schema_extra = {
             "example": {
-                "detail": "Validation failed",
+                "detail": "Validation failed: 2 errors",
                 "errors": [
-                    "Email is required",
-                    "Phone must be <= 20 characters"
+                    {"field": "email", "message": "Email is required"},
+                    {"field": "phone", "message": "Must be 20 characters or less"}
                 ]
             }
         }

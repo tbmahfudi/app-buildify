@@ -27,17 +27,16 @@ Last audited: 2026-04-11
   1. Path: calls `/dynamic-data/${entity}/bulk` → should be `/dynamic-data/${entity}/records/bulk`
   2. HTTP method: always uses `POST` → backend uses `POST` / `PUT` / `DELETE` per operation type
   3. Body: sends `{ operation, records }` → backend expects `{ records }` or `{ ids }` depending on endpoint
-- **Problem C — Filter format bug (silent data loss)**: `data-service.js` `list()` (line ~36) sends `{ conditions: filters }` to the backend. `DynamicQueryBuilder._build_filter_clause()` requires a top-level `operator` key (`AND`/`OR`); when it is absent the method silently returns `None` and **all filters are dropped** — the query returns unfiltered data with no error. Every filter applied in `dynamic-table.js` is currently silently ignored.
-  - **Root cause**: `data-service.js` should send `{ operator: "AND", conditions: filters }` instead of `{ conditions: filters }`
-  - **Affected file**: `frontend/assets/js/data-service.js` → `list()` method
-  - **Query builder behaviour**: `backend/app/core/dynamic_query_builder.py` → `_build_filter_clause()` returns `None` on missing `operator` key instead of raising an error
+- **Problem C — Filter format bug (silent data loss)**: `data-service.js` `list()` (line ~36) sends `{ conditions: filters }` to the backend. `DynamicQueryBuilder._build_filter_clause()` requires a top-level `operator` key (`AND`/`OR`); when it is absent the method now raises a `ValueError` (previously returned `None` silently). Every filter applied in `dynamic-table.js` was previously silently ignored; now it returns a 400 error.
+  - **Root cause (frontend)**: `data-service.js` sends `{ conditions: filters }` — fix is to send `{ operator: "AND", conditions: filters }` instead
+  - **Backend fix applied**: `dynamic_query_builder.py` `_build_filter_clause()` now raises `ValueError` with a clear message when `operator` key is missing
 
 **Frontend audit results (already verified):**
 - `entity-manager.js` ✅ uses correct `/records` paths
 - `dynamic-table.js` ✅ uses correct `/records` paths
 - `dynamic-form.js` ✅ uses correct `/records` paths
 - `dynamic-route-registry.js` ✅ uses correct `/records` paths
-- `data-service.js` ❌ `list()` sends filters without `operator` key — all filtering silently broken
+- `data-service.js` ❌ `list()` sends filters without `operator` key — returns 400 after backend fix (was silent)
 - `data-service.js` ❌ `bulk()` method has wrong path, wrong method, wrong body — and is never called
 
 **Bulk use cases — recommended functionality to build:**
@@ -55,60 +54,59 @@ The bulk API endpoints exist on the backend but have no frontend integration. Re
 
 > Note: `flex-table.js` already has a `bulkActions` option and selection UI wired up — it emits a `bulkAction` event with selected rows. The missing piece is connecting this to the bulk API endpoints.
 
-**Tasks:**
+**Backend tasks:**
+- [x] **Harden query builder**: `DynamicQueryBuilder._build_filter_clause()` now raises `ValueError` instead of silently returning `None` when filter object is malformed — `backend/app/core/dynamic_query_builder.py`
+
+**Docs tasks:**
 - [ ] Correct `docs/backend/API_REFERENCE.md` — update all 5 dynamic-data paths to include `/records`
-- [ ] Add a note in `API_REFERENCE.md` that Swagger UI at `/docs` is always the authoritative source
+- [ ] Add a note in `API_REFERENCE.md` that Swagger UI at `/api/docs` is always the authoritative source
+
+**Frontend tasks (separate ticket):**
 - [ ] **Fix filter bug**: In `data-service.js` `list()`, change `JSON.stringify({ conditions: filters })` to `JSON.stringify({ operator: 'AND', conditions: filters })` — one-line fix that unblocks all filtering in `dynamic-table.js`
-- [ ] **Harden query builder**: In `DynamicQueryBuilder._build_filter_clause()`, raise a `ValueError` (or log a warning) instead of silently returning `None` when `operator` key is missing — prevents future silent failures
 - [ ] In `data-service.js`: remove the broken `bulk()` method and replace with three explicit methods — `bulkCreate(entity, records)`, `bulkUpdate(entity, records)`, `bulkDelete(entity, ids)` — each calling the correct path and HTTP verb
 - [ ] Wire `flex-table.js` `bulkAction` event in `entity-manager.js` to call the appropriate bulk method based on action type (delete, status-change, etc.)
 - [ ] Add an "Import" button to the entity list page template that accepts CSV, maps columns to entity fields via `metadata`, and calls `bulkCreate()`
 
 ---
 
-### 1.2 Structured validation error response — (OPEN)
+### 1.2 Structured validation error response — (ON-PROGRESS)
 - **Priority**: 🟡 Medium
-- **Problem**: `DynamicEntityService._validate_and_prepare_data()` raises `ValueError("Validation errors: field A is required; field B max length exceeded")` — a single concatenated string. FastAPI wraps this as `{"detail": "..."}`. Dashboard inline forms cannot highlight the specific failing field from a flat string.
-- **Files**: `backend/app/services/dynamic_entity_service.py` → `_validate_and_prepare_data()`, `backend/app/routers/dynamic_data.py`, `backend/app/schemas/dynamic_data.py`
+- **Problem**: `DynamicEntityService._validate_and_prepare_data()` previously raised `ValueError("Validation errors: field A is required; field B max length exceeded")` — a single concatenated string. Dashboard inline forms could not highlight the specific failing field.
 
-**Agreed design — dual-field response:**
-
-Keep `error.detail` as the human-readable summary (no breaking changes to existing callers).
-Add `error.errors` as an optional structured array, present only on `400` validation failures.
+**Implemented response shape (400 on create/update):**
 
 ```json
 {
-  "detail": "Validation failed: 3 errors",
+  "detail": "Validation failed: 2 errors",
   "errors": [
     { "field": "email", "message": "Email is required" },
-    { "field": "phone", "message": "Must be 20 characters or less" },
-    { "field": "status", "message": "Invalid value. Allowed: active, inactive, pending" }
+    { "field": "phone", "message": "Must be 20 characters or less" }
   ]
 }
 ```
 
-`error.errors` is **absent** on all non-validation errors (404, 403, 500) so existing code that reads only `error.detail` is completely unaffected.
+`error.errors` is **absent** on all other error types (404, 403, 500) so existing code that reads only `error.detail` is completely unaffected.
 
-**Backend tasks:**
-- [ ] In `_validate_and_prepare_data()`, collect errors as `[{"field": field_name, "message": "..."}]` instead of joining into a string
-- [ ] Raise a custom `ValidationException(errors: list, detail: str)` instead of `ValueError`
-- [ ] Register a FastAPI exception handler for `ValidationException` that returns `400` with `{"detail": "Validation failed: N errors", "errors": [...]}`
-- [ ] Update `ValidationErrorResponse` Pydantic schema — `detail: str` stays, `errors: Optional[List[FieldError]]` where `FieldError = {"field": str, "message": str}`
-- [ ] For `allowed_values` violations, include the allowed list in the message: `"Invalid value. Allowed: active, inactive, pending"`
+**Backend tasks — DONE:**
+- [x] In `_validate_and_prepare_data()`, collect errors as `[{"field": field_name, "message": "..."}]` — `backend/app/services/dynamic_entity_service.py`
+- [x] Add `EntityValidationError(errors, detail)` exception class — `backend/app/core/exceptions.py`
+- [x] Handle in router with `JSONResponse(400, {"detail": ..., "errors": ...})` for `create_record` and `update_record` — `backend/app/routers/dynamic_data.py`
+- [x] Update `ValidationErrorResponse` schema — added `FieldError` model, `errors: Optional[List[FieldError]]` — `backend/app/schemas/dynamic_data.py`
 
-**Frontend notes (changes needed in a follow-up task):**
+**Backend tasks — remaining:**
+- [ ] For `allowed_values` violations in `FieldTypeMapper.validate_value()`, include the allowed list in the message: `"Invalid value. Allowed: active, inactive, pending"` (links to item 3.1)
 
-> ⚠️ Currently no frontend code reads `error.errors`. All error handling reads only `error.detail` as a flat string. The backend change above is non-breaking — `error.detail` still works as before.
+**Frontend tasks (separate ticket):**
 
-The following frontend changes are needed to make use of `error.errors`:
+> ⚠️ No frontend code currently reads `error.errors`. All error handling reads only `error.detail` as a flat string. The backend change is non-breaking — `error.detail` still works as before. The following changes are needed to surface per-field highlighting:
 
 | File | Change needed |
 |------|---------------|
-| `dynamic-form.js` | Add a `showFieldErrors(errors)` method that maps `{field, message}` entries to the corresponding input element and renders an inline error below it |
-| `entity-manager.js` | In `saveRecord()` catch block: if `error.errors` is present, call `form.showFieldErrors(error.errors)` instead of (or in addition to) `showError(error.message)` |
-| `dynamic-route-registry.js` | In create/edit form submit catch: replace `alert('Error: ...')` with inline form error rendering using `error.errors` if available |
-| `data-service.js` | `create()` and `update()` currently discard `error.errors` by doing `throw new Error(error.detail)`. Change to a custom error class that carries the structured errors: `throw new ApiError(error.detail, error.errors)` |
-| `services/base-service.js` | `_fetchWithAuth()` similarly discards structured errors. Update to preserve `error.errors` on the thrown error object |
+| `services/base-service.js` | `_fetchWithAuth()` discards structured errors — update to attach `error.errors` to the thrown error object instead of `throw new Error(error.detail)` |
+| `data-service.js` | `create()` and `update()` do `throw new Error(error.detail)` — replace with a custom `ApiError(detail, errors)` class so `error.errors` survives to the caller |
+| `dynamic-form.js` | Add `showFieldErrors(errors)` that maps each `{field, message}` to its input element and renders an inline error below it |
+| `entity-manager.js` | In `saveRecord()` catch: if `error.errors` is present, call `form.showFieldErrors(error.errors)` in addition to `showError(error.message)` |
+| `dynamic-route-registry.js` | In create/edit form submit catch: replace `alert('Error: ...')` with inline form error rendering using `error.errors` when present |
 
 ---
 
@@ -338,8 +336,8 @@ The following frontend changes are needed to make use of `error.errors`:
 
 | # | Gap | Priority | Effort | Status | Blocks Reports/Dashboard |
 |---|-----|----------|--------|--------|--------------------------|
-| 1.1 | API path discrepancy + dead/broken bulk method + filter format bug + bulk UI missing | 🔴 High | Medium | ON-PROGRESS | Yes — silent filter drops; 404 on bulk calls; no import/mass-edit |
-| 1.2 | Structured validation errors (backend + frontend wiring) | 🟡 Medium | Low–Medium | OPEN | Partial |
+| 1.1 | API path discrepancy + dead/broken bulk method + filter format bug + bulk UI missing | 🔴 High | Medium | ON-PROGRESS (backend hardened; frontend fix pending) | Yes — filter drops fixed on backend; frontend still sends wrong format |
+| 1.2 | Structured validation errors (backend done; frontend wiring pending) | 🟡 Medium | Low–Medium | ON-PROGRESS (backend done; frontend pending) | Partial |
 | 2.1 | `migrating` status mechanics | 🔴 High | Medium | OPEN | Yes — silent failures |
 | 2.2 | `is_versioned` implementation | 🟡 Medium | High | OPEN | Partial |
 | 2.3 | `virtual` entity type | 🟡 Medium | Medium | OPEN | Yes — view-backed reports |
