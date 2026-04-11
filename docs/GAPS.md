@@ -4,6 +4,8 @@ This document lists features, components, and infrastructure items that appear i
 
 Last audited: 2026-03-23
 
+> **See also**: [Dynamic Entity System — Gaps & Enhancement Checklist](./backend/DYNAMIC_ENTITIES_GAPS.md) for a detailed, code-level checklist of dynamic entity gaps including reports/dashboard integration items.
+
 ---
 
 ## Frontend Components
