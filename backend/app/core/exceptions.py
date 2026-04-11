@@ -20,6 +20,47 @@ class AppException(Exception):
         super().__init__(self.message)
 
 
+class EntityValidationError(Exception):
+    """Raised when dynamic entity field validation fails.
+
+    Carries a human-readable summary in ``detail`` and a structured list of
+    per-field errors in ``errors`` so API consumers can highlight the specific
+    failing fields without parsing a concatenated string.
+
+    Response shape (400):
+        {
+            "detail": "Validation failed: 2 errors",
+            "errors": [
+                {"field": "email", "message": "Email is required"},
+                {"field": "phone", "message": "Must be 20 characters or less"}
+            ]
+        }
+
+    ``errors`` is absent on all non-validation errors (404, 403, 500) so
+    existing code that reads only ``error.detail`` is completely unaffected.
+
+    Frontend TODO:
+        - ``data-service.js``: replace ``throw new Error(error.detail)`` with a
+          custom ``ApiError`` class that preserves ``error.errors`` on the thrown
+          object so callers can access it.
+        - ``services/base-service.js``: ``_fetchWithAuth()`` currently discards
+          ``error.errors``; update to attach it to the thrown error object.
+        - ``entity-manager.js``: in the ``saveRecord()`` catch block, if
+          ``error.errors`` is present call ``form.showFieldErrors(error.errors)``
+          in addition to (or instead of) ``showError(error.message)``.
+        - ``dynamic-form.js``: add ``showFieldErrors(errors)`` that maps each
+          ``{field, message}`` entry to its input element and renders inline.
+        - ``dynamic-route-registry.js``: replace ``alert('Error: ...')`` in the
+          create/edit form submit catch with inline form error rendering.
+    """
+    def __init__(self, errors: list, detail: str = None):
+        # errors: list of {"field": str, "message": str}
+        self.errors = errors
+        n = len(errors)
+        self.detail = detail or f"Validation failed: {n} error{'s' if n != 1 else ''}"
+        super().__init__(self.detail)
+
+
 class TenantAccessDenied(AppException):
     """Raised when user tries to access data from another tenant"""
     def __init__(self, message: str = "Access denied to tenant data"):

@@ -13,6 +13,7 @@ from datetime import datetime
 from app.services.runtime_model_generator import RuntimeModelGenerator
 from app.core.dynamic_query_builder import DynamicQueryBuilder
 from app.utils.field_type_mapper import FieldTypeMapper
+from app.core.exceptions import EntityValidationError
 import logging
 import json
 
@@ -575,6 +576,7 @@ class DynamicEntityService:
             ValueError: If validation fails
         """
         validated_data = {}
+        # Each entry: {"field": str, "message": str}
         errors = []
 
         # Create field lookup
@@ -597,7 +599,7 @@ class DynamicEntityService:
             # Validate value
             is_valid, error_msg = self.field_mapper.validate_value(field_def, value)
             if not is_valid:
-                errors.append(error_msg)
+                errors.append({"field": field_name, "message": error_msg})
                 continue
 
             # Deserialize value
@@ -615,10 +617,13 @@ class DynamicEntityService:
                     column_name = field_def.get('db_column_name') or field_name
 
                     if column_name not in validated_data:
-                        errors.append(f"{field_def['label']} is required")
+                        errors.append({
+                            "field": field_name,
+                            "message": f"{field_def['label']} is required"
+                        })
 
         if errors:
-            raise ValueError(f"Validation errors: {'; '.join(errors)}")
+            raise EntityValidationError(errors=errors)
 
         return validated_data
 

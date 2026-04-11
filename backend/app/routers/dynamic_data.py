@@ -6,10 +6,12 @@ All endpoints are prefixed with /api/v1/dynamic-data
 """
 
 from fastapi import APIRouter, Depends, Query, HTTPException, status, Path
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from typing import Optional
 import json
 from app.core.dependencies import get_db, get_current_user
+from app.core.exceptions import EntityValidationError
 from app.schemas.dynamic_data import (
     DynamicDataCreateRequest,
     DynamicDataUpdateRequest,
@@ -88,6 +90,12 @@ async def create_record(
         return DynamicDataResponse(
             id=result.get('id', ''),
             data=result
+        )
+    except EntityValidationError as e:
+        logger.warning(f"Validation error creating {entity_name}: {e.detail}")
+        return JSONResponse(
+            status_code=400,
+            content={"detail": e.detail, "errors": e.errors}
         )
     except ValueError as e:
         logger.error(f"Validation error creating {entity_name}: {e}")
@@ -307,6 +315,12 @@ async def update_record(
         return DynamicDataResponse(
             id=result.get('id', ''),
             data=result
+        )
+    except EntityValidationError as e:
+        logger.warning(f"Validation error updating {entity_name}/{record_id}: {e.detail}")
+        return JSONResponse(
+            status_code=400,
+            content={"detail": e.detail, "errors": e.errors}
         )
     except ValueError as e:
         if "not found" in str(e).lower():

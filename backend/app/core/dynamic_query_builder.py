@@ -147,6 +147,22 @@ class DynamicQueryBuilder:
             else:
                 return operator_func(field, value)
 
+        # Neither a condition group (operator + conditions) nor a single condition
+        # (field + operator).  A non-empty dict that reaches here is malformed —
+        # raise instead of silently dropping all filters.
+        #
+        # Common mistake: callers send {"conditions": [...]} without the required
+        # top-level "operator" key ("AND" or "OR").  That causes this branch and
+        # every filter to be silently ignored.
+        if filters:
+            keys = list(filters.keys())
+            raise ValueError(
+                f"Malformed filter object: expected either "
+                f"{{'operator': 'AND'|'OR', 'conditions': [...]}} "
+                f"or {{'field': '...', 'operator': '...', 'value': ...}}, "
+                f"but received keys {keys}. "
+                f"If you intended an AND group, add \"operator\": \"AND\" to the top-level dict."
+            )
         return None
 
     def apply_sort(
