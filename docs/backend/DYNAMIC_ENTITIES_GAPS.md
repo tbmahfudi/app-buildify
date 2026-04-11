@@ -20,19 +20,24 @@ Last audited: 2026-04-11
 
 ## 1. API Correctness
 
-### 1.1 Path discrepancy and dead bulk method
+### 1.1 Path discrepancy, dead bulk method, and filter format bug — (ON-PROGRESS)
 - **Priority**: 🔴 High
 - **Problem A — Docs**: `docs/backend/API_REFERENCE.md` documents paths as `/api/v1/dynamic-data/{entity}` but the actual router uses `/api/v1/dynamic-data/{entity}/records`. Any consumer built from the docs will receive 404s.
-- **Problem B — Dead bulk method**: `data-service.js` defines a `bulk()` method that is **never called anywhere** in the frontend. The method also has two additional issues beyond the wrong path:
+- **Problem B — Dead bulk method**: `data-service.js` defines a `bulk()` method that is **never called anywhere** in the frontend. The method also has three issues:
   1. Path: calls `/dynamic-data/${entity}/bulk` → should be `/dynamic-data/${entity}/records/bulk`
   2. HTTP method: always uses `POST` → backend uses `POST` / `PUT` / `DELETE` per operation type
   3. Body: sends `{ operation, records }` → backend expects `{ records }` or `{ ids }` depending on endpoint
+- **Problem C — Filter format bug (silent data loss)**: `data-service.js` `list()` (line ~36) sends `{ conditions: filters }` to the backend. `DynamicQueryBuilder._build_filter_clause()` requires a top-level `operator` key (`AND`/`OR`); when it is absent the method silently returns `None` and **all filters are dropped** — the query returns unfiltered data with no error. Every filter applied in `dynamic-table.js` is currently silently ignored.
+  - **Root cause**: `data-service.js` should send `{ operator: "AND", conditions: filters }` instead of `{ conditions: filters }`
+  - **Affected file**: `frontend/assets/js/data-service.js` → `list()` method
+  - **Query builder behaviour**: `backend/app/core/dynamic_query_builder.py` → `_build_filter_clause()` returns `None` on missing `operator` key instead of raising an error
 
 **Frontend audit results (already verified):**
 - `entity-manager.js` ✅ uses correct `/records` paths
 - `dynamic-table.js` ✅ uses correct `/records` paths
 - `dynamic-form.js` ✅ uses correct `/records` paths
 - `dynamic-route-registry.js` ✅ uses correct `/records` paths
+- `data-service.js` ❌ `list()` sends filters without `operator` key — all filtering silently broken
 - `data-service.js` ❌ `bulk()` method has wrong path, wrong method, wrong body — and is never called
 
 **Bulk use cases — recommended functionality to build:**
@@ -53,13 +58,15 @@ The bulk API endpoints exist on the backend but have no frontend integration. Re
 **Tasks:**
 - [ ] Correct `docs/backend/API_REFERENCE.md` — update all 5 dynamic-data paths to include `/records`
 - [ ] Add a note in `API_REFERENCE.md` that Swagger UI at `/docs` is always the authoritative source
+- [ ] **Fix filter bug**: In `data-service.js` `list()`, change `JSON.stringify({ conditions: filters })` to `JSON.stringify({ operator: 'AND', conditions: filters })` — one-line fix that unblocks all filtering in `dynamic-table.js`
+- [ ] **Harden query builder**: In `DynamicQueryBuilder._build_filter_clause()`, raise a `ValueError` (or log a warning) instead of silently returning `None` when `operator` key is missing — prevents future silent failures
 - [ ] In `data-service.js`: remove the broken `bulk()` method and replace with three explicit methods — `bulkCreate(entity, records)`, `bulkUpdate(entity, records)`, `bulkDelete(entity, ids)` — each calling the correct path and HTTP verb
 - [ ] Wire `flex-table.js` `bulkAction` event in `entity-manager.js` to call the appropriate bulk method based on action type (delete, status-change, etc.)
 - [ ] Add an "Import" button to the entity list page template that accepts CSV, maps columns to entity fields via `metadata`, and calls `bulkCreate()`
 
 ---
 
-### 1.2 Structured validation error response
+### 1.2 Structured validation error response — (OPEN)
 - **Priority**: 🟡 Medium
 - **Problem**: `DynamicEntityService._validate_and_prepare_data()` raises `ValueError("Validation errors: field A is required; field B max length exceeded")` — a single concatenated string. FastAPI wraps this as `{"detail": "..."}`. Dashboard inline forms cannot highlight the specific failing field from a flat string.
 - **Files**: `backend/app/services/dynamic_entity_service.py` → `_validate_and_prepare_data()`, `backend/app/routers/dynamic_data.py`, `backend/app/schemas/dynamic_data.py`
@@ -107,7 +114,7 @@ The following frontend changes are needed to make use of `error.errors`:
 
 ## 2. Entity Lifecycle
 
-### 2.1 `migrating` status — mechanics undocumented and potentially incomplete
+### 2.1 `migrating` status — mechanics undocumented and potentially incomplete — (OPEN)
 - **Priority**: 🔴 High
 - **Problem**: The `migrating` status exists on `EntityDefinition` but it is unclear whether: (a) the transition to `migrating` is set before the migration runs, (b) whether runtime `GET` requests are blocked or pass through during migration, and (c) whether the status auto-transitions to `published` on completion or requires a manual step. A dashboard widget backed by a migrating entity may fail silently.
 - **Files**: `backend/app/services/data_model_service.py`, `backend/app/services/migration_generator.py` (or equivalent), `backend/app/routers/dynamic_data.py`
@@ -118,7 +125,7 @@ The following frontend changes are needed to make use of `error.errors`:
 
 ---
 
-### 2.2 `is_versioned` — implementation unclear
+### 2.2 `is_versioned` — implementation unclear — (OPEN)
 - **Priority**: 🟡 Medium
 - **Problem**: The `is_versioned` flag exists on `EntityDefinition` but there is no visible versioning table, no version column in generated tables, and no API to retrieve historical record states. It is unknown whether this is a planned feature or partially implemented.
 - **File**: `backend/app/services/dynamic_entity_service.py` → `update_record()`
@@ -129,7 +136,7 @@ The following frontend changes are needed to make use of `error.errors`:
 
 ---
 
-### 2.3 `virtual` entity type — undefined behaviour
+### 2.3 `virtual` entity type — undefined behaviour — (OPEN)
 - **Priority**: 🟡 Medium
 - **Problem**: `entity_type` accepts `system`, `custom`, and `virtual` but `virtual` is never explained in code comments or docs. It is unclear whether virtual entities have a DB table, whether they are read-only, and whether `RuntimeModelGenerator` handles them differently.
 - **File**: `backend/app/models/data_model.py`, `backend/app/services/runtime_model_generator.py`
@@ -142,7 +149,7 @@ The following frontend changes are needed to make use of `error.errors`:
 
 ## 3. Field System
 
-### 3.1 `allowed_values` — JSONB schema undefined
+### 3.1 `allowed_values` — JSONB schema undefined — (OPEN)
 - **Priority**: 🔴 High
 - **Problem**: `allowed_values` is JSONB but its structure is not defined anywhere. Report filter dropdowns and dashboard chart category axes need to read this field to populate option lists. The shape must be defined and consistent.
 - **File**: `backend/app/models/data_model.py`, `backend/app/utils/field_type_mapper.py`
@@ -153,7 +160,7 @@ The following frontend changes are needed to make use of `error.errors`:
 
 ---
 
-### 3.2 `validation_rules` — JSONB schema undefined
+### 3.2 `validation_rules` — JSONB schema undefined — (OPEN)
 - **Priority**: 🟡 Medium
 - **Problem**: `validation_rules` is a JSONB array on `FieldDefinition` but its rule schema is not documented. It is unclear which rule types are supported and whether they are enforced in `_validate_and_prepare_data()`.
 - **File**: `backend/app/utils/field_type_mapper.py` → `validate_value()`, `backend/app/services/dynamic_entity_service.py`
@@ -164,7 +171,7 @@ The following frontend changes are needed to make use of `error.errors`:
 
 ---
 
-### 3.3 `visibility_rules` — server-side enforcement absent
+### 3.3 `visibility_rules` — server-side enforcement absent — (OPEN)
 - **Priority**: 🟡 Medium
 - **Problem**: `visibility_rules` on `FieldDefinition` and `FieldGroup` controls conditional field visibility. If only evaluated client-side (form rendering), a record can be saved with a value in a field that should be hidden/irrelevant — corrupting data that reports then read.
 - **File**: `backend/app/services/dynamic_entity_service.py` → `_validate_and_prepare_data()`
@@ -174,7 +181,7 @@ The following frontend changes are needed to make use of `error.errors`:
 
 ---
 
-### 3.4 `calculation_formula` — syntax and evaluation not implemented or undocumented
+### 3.4 `calculation_formula` — syntax and evaluation not implemented or undocumented — (OPEN)
 - **Priority**: 🟡 Medium
 - **Problem**: `is_calculated` and `calculation_formula` columns exist but there is no visible implementation in `DynamicEntityService` or `RuntimeModelGenerator` that evaluates formulas. Calculated fields are highly valuable for reports — a `total_with_tax` field removes the need for post-query computation.
 - **File**: `backend/app/services/dynamic_entity_service.py`, `backend/app/services/runtime_model_generator.py`
@@ -189,7 +196,7 @@ The following frontend changes are needed to make use of `error.errors`:
 
 ---
 
-### 3.5 `depends_on_field` / `filter_expression` — cascading fields undefined
+### 3.5 `depends_on_field` / `filter_expression` — cascading fields undefined — (OPEN)
 - **Priority**: 🟢 Low
 - **Problem**: Columns for cascading field dependencies exist but their evaluation mechanism is not documented.
 - **File**: `backend/app/models/data_model.py`, `backend/app/utils/field_type_mapper.py`
@@ -201,7 +208,7 @@ The following frontend changes are needed to make use of `error.errors`:
 
 ## 4. Soft Delete
 
-### 4.1 List query does not document soft-delete filter behaviour
+### 4.1 List query does not document soft-delete filter behaviour — (OPEN)
 - **Priority**: 🔴 High
 - **Problem**: `list_records()` in `DynamicEntityService` does not visibly apply a `WHERE deleted_at IS NULL` filter. If soft-deleted records are returned by default, report "total count" widgets will be wrong.
 - **File**: `backend/app/services/dynamic_entity_service.py` → `list_records()`
@@ -215,7 +222,7 @@ The following frontend changes are needed to make use of `error.errors`:
 
 ## 5. Permissions
 
-### 5.1 `permissions` JSONB on `EntityDefinition` — not enforced
+### 5.1 `permissions` JSONB on `EntityDefinition` — not enforced — (OPEN)
 - **Priority**: 🔴 High
 - **Problem**: `EntityDefinition.permissions` stores a per-entity RBAC map `{role: [actions]}` but there is no visible enforcement of this in `DynamicEntityService` or the dynamic-data router. The global RBAC (`require_permission`) is also not wired to dynamic entities — permission codes like `{entity_name}:create:tenant` are referenced in router docstrings but not enforced via `Depends(require_permission(...))`.
 - **File**: `backend/app/routers/dynamic_data.py`, `backend/app/services/dynamic_entity_service.py`
@@ -229,7 +236,7 @@ The following frontend changes are needed to make use of `error.errors`:
 
 ## 6. Reports & Dashboard Integration
 
-### 6.1 No aggregation API
+### 6.1 No aggregation API — (OPEN)
 - **Priority**: 🔴 High
 - **Problem**: `list_records()` returns raw rows only. Reports and dashboards need aggregate queries — `COUNT(*)`, `SUM(amount)`, `AVG(value)`, `GROUP BY status` — which cannot be assembled from paginated row results without fetching all data.
 - **File**: `backend/app/routers/dynamic_data.py`, `backend/app/services/dynamic_entity_service.py`
@@ -242,7 +249,7 @@ The following frontend changes are needed to make use of `error.errors`:
 
 ---
 
-### 6.2 No cross-entity join for reports
+### 6.2 No cross-entity join for reports — (OPEN)
 - **Priority**: 🟡 Medium
 - **Problem**: Reports often need data spanning multiple entities — e.g. "invoices joined to customers joined to regions." The current API requires separate queries and client-side joining, which is impractical at scale.
 - **File**: `backend/app/routers/dynamic_data.py`
@@ -255,7 +262,7 @@ The following frontend changes are needed to make use of `error.errors`:
 
 ---
 
-### 6.3 `table_config` aggregation hints undefined
+### 6.3 `table_config` aggregation hints undefined — (OPEN)
 - **Priority**: 🟡 Medium
 - **Problem**: `table_config` JSONB on `EntityDefinition` is auto-generated but its schema is not defined. For dashboards, this config should carry hints about which fields can be used as chart axes, which are numeric (for Y-axis), and what display format to apply (currency, percentage, date).
 - **File**: `backend/app/services/data_model_service.py` (where `table_config` is generated), `backend/app/models/data_model.py`
@@ -286,7 +293,7 @@ The following frontend changes are needed to make use of `error.errors`:
 
 ---
 
-### 6.4 Relationship traversal returns 501
+### 6.4 Relationship traversal returns 501 — (OPEN)
 - **Priority**: 🟡 Medium
 - **Problem**: `GET /api/v1/dynamic-data/{entity}/records/{id}/{relationship}` is defined in the router but raises `501 Not Implemented`. Dashboard record-detail widgets that show related records (e.g. a customer's orders) cannot use this endpoint.
 - **File**: `backend/app/routers/dynamic_data.py` → `get_related_records()`
@@ -304,7 +311,7 @@ The following frontend changes are needed to make use of `error.errors`:
 
 ## 7. Platform-Level Entities
 
-### 7.1 Tenant access to platform-level entities undefined
+### 7.1 Tenant access to platform-level entities undefined — (OPEN)
 - **Priority**: 🟡 Medium
 - **Problem**: Platform-level entities (`tenant_id = NULL`) are intended as shared reference data (e.g. currencies, countries) but the current `RuntimeModelGenerator._load_entity_definition()` and `_get_org_context()` behaviour for these entities is undocumented. It is unclear whether tenant users can query them.
 - **File**: `backend/app/services/runtime_model_generator.py`, `backend/app/services/dynamic_entity_service.py`
@@ -317,7 +324,7 @@ The following frontend changes are needed to make use of `error.errors`:
 
 ## 8. Attachments & Comments
 
-### 8.1 `supports_attachments` and `supports_comments` — APIs missing
+### 8.1 `supports_attachments` and `supports_comments` — APIs missing — (OPEN)
 - **Priority**: 🟢 Low
 - **Problem**: Feature toggles exist on `EntityDefinition` but no sub-resource API endpoints exist. Dashboard record-detail widgets cannot display attachment counts or comment threads.
 - [ ] Confirm whether any attachment/comment tables exist in the DB schema — search models for `attachments`, `record_comments`, or similar
@@ -329,26 +336,26 @@ The following frontend changes are needed to make use of `error.errors`:
 
 ## Summary Table
 
-| # | Gap | Priority | Effort | Blocks Reports/Dashboard |
-|---|-----|----------|--------|--------------------------|
-| 1.1 | API path discrepancy + dead/broken bulk method + bulk UI missing | 🔴 High | Medium | Yes — 404 on bulk calls; no import/mass-edit |
-| 1.2 | Structured validation errors (backend + frontend wiring) | 🟡 Medium | Low–Medium | Partial |
-| 2.1 | `migrating` status mechanics | 🔴 High | Medium | Yes — silent failures |
-| 2.2 | `is_versioned` implementation | 🟡 Medium | High | Partial |
-| 2.3 | `virtual` entity type | 🟡 Medium | Medium | Yes — view-backed reports |
-| 3.1 | `allowed_values` schema | 🔴 High | Low | Yes — filter dropdowns |
-| 3.2 | `validation_rules` schema | 🟡 Medium | Low | No |
-| 3.3 | `visibility_rules` server enforcement | 🟡 Medium | Medium | Yes — data integrity |
-| 3.4 | `calculation_formula` | 🟡 Medium | High | Yes — computed metrics |
-| 3.5 | Cascading field dependencies | 🟢 Low | Medium | No |
-| 4.1 | Soft-delete list filtering | 🔴 High | Low | Yes — wrong counts |
-| 5.1 | `permissions` JSONB enforcement | 🔴 High | Medium | Yes — security |
-| 6.1 | Aggregation API | 🔴 High | High | Yes — KPIs, charts |
-| 6.2 | Cross-entity join | 🟡 Medium | High | Yes — multi-entity reports |
-| 6.3 | `table_config` aggregation hints | 🟡 Medium | Low | Yes — chart axis config |
-| 6.4 | Relationship traversal (501) | 🟡 Medium | Medium | Yes — related record widgets |
-| 7.1 | Platform entity tenant access | 🟡 Medium | Low | Yes — shared lookup data |
-| 8.1 | Attachments & comments APIs | 🟢 Low | High | No |
+| # | Gap | Priority | Effort | Status | Blocks Reports/Dashboard |
+|---|-----|----------|--------|--------|--------------------------|
+| 1.1 | API path discrepancy + dead/broken bulk method + filter format bug + bulk UI missing | 🔴 High | Medium | ON-PROGRESS | Yes — silent filter drops; 404 on bulk calls; no import/mass-edit |
+| 1.2 | Structured validation errors (backend + frontend wiring) | 🟡 Medium | Low–Medium | OPEN | Partial |
+| 2.1 | `migrating` status mechanics | 🔴 High | Medium | OPEN | Yes — silent failures |
+| 2.2 | `is_versioned` implementation | 🟡 Medium | High | OPEN | Partial |
+| 2.3 | `virtual` entity type | 🟡 Medium | Medium | OPEN | Yes — view-backed reports |
+| 3.1 | `allowed_values` schema | 🔴 High | Low | OPEN | Yes — filter dropdowns |
+| 3.2 | `validation_rules` schema | 🟡 Medium | Low | OPEN | No |
+| 3.3 | `visibility_rules` server enforcement | 🟡 Medium | Medium | OPEN | Yes — data integrity |
+| 3.4 | `calculation_formula` | 🟡 Medium | High | OPEN | Yes — computed metrics |
+| 3.5 | Cascading field dependencies | 🟢 Low | Medium | OPEN | No |
+| 4.1 | Soft-delete list filtering | 🔴 High | Low | OPEN | Yes — wrong counts |
+| 5.1 | `permissions` JSONB enforcement | 🔴 High | Medium | OPEN | Yes — security |
+| 6.1 | Aggregation API | 🔴 High | High | OPEN | Yes — KPIs, charts |
+| 6.2 | Cross-entity join | 🟡 Medium | High | OPEN | Yes — multi-entity reports |
+| 6.3 | `table_config` aggregation hints | 🟡 Medium | Low | OPEN | Yes — chart axis config |
+| 6.4 | Relationship traversal (501) | 🟡 Medium | Medium | OPEN | Yes — related record widgets |
+| 7.1 | Platform entity tenant access | 🟡 Medium | Low | OPEN | Yes — shared lookup data |
+| 8.1 | Attachments & comments APIs | 🟢 Low | High | OPEN | No |
 
 ---
 
