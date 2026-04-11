@@ -20,23 +20,88 @@ Last audited: 2026-04-11
 
 ## 1. API Correctness
 
-### 1.1 Path discrepancy between docs and router
+### 1.1 Path discrepancy and dead bulk method
 - **Priority**: 🔴 High
-- **Problem**: `docs/backend/API_REFERENCE.md` documents paths as `/api/v1/dynamic-data/{entity}` but the actual router (`backend/app/routers/dynamic_data.py`) uses `/api/v1/dynamic-data/{entity}/records`. Any consumer (report engine, dashboard widget) built from the docs will receive 404s.
-- [ ] Correct `docs/backend/API_REFERENCE.md` to use the `/records` suffix on all dynamic-data paths
-- [ ] Audit all frontend JS files (`entity-manager.js`, `dynamic-table.js`, `dynamic-form.js`) that call the dynamic-data API and confirm they use the correct `/records` path
-- [ ] Add a note in `API_REFERENCE.md` stating Swagger UI at `/docs` is always authoritative
+- **Problem A — Docs**: `docs/backend/API_REFERENCE.md` documents paths as `/api/v1/dynamic-data/{entity}` but the actual router uses `/api/v1/dynamic-data/{entity}/records`. Any consumer built from the docs will receive 404s.
+- **Problem B — Dead bulk method**: `data-service.js` defines a `bulk()` method that is **never called anywhere** in the frontend. The method also has two additional issues beyond the wrong path:
+  1. Path: calls `/dynamic-data/${entity}/bulk` → should be `/dynamic-data/${entity}/records/bulk`
+  2. HTTP method: always uses `POST` → backend uses `POST` / `PUT` / `DELETE` per operation type
+  3. Body: sends `{ operation, records }` → backend expects `{ records }` or `{ ids }` depending on endpoint
+
+**Frontend audit results (already verified):**
+- `entity-manager.js` ✅ uses correct `/records` paths
+- `dynamic-table.js` ✅ uses correct `/records` paths
+- `dynamic-form.js` ✅ uses correct `/records` paths
+- `dynamic-route-registry.js` ✅ uses correct `/records` paths
+- `data-service.js` ❌ `bulk()` method has wrong path, wrong method, wrong body — and is never called
+
+**Bulk use cases — recommended functionality to build:**
+
+The bulk API endpoints exist on the backend but have no frontend integration. Recommended use cases to implement:
+
+| Use Case | Operation | Entry point |
+|----------|-----------|-------------|
+| CSV / spreadsheet import | Bulk create | "Import" button on entity list page |
+| Mass status change (select N rows → set field) | Bulk update | Table row checkbox selection → bulk action toolbar |
+| Batch field reassignment (reassign owner/region across records) | Bulk update | Table bulk action toolbar |
+| Multi-select delete | Bulk delete | Table row checkbox selection → bulk action toolbar |
+| Report-driven correction (fix N records surfaced by a report) | Bulk update | Report result action |
+| Demo / seed data population | Bulk create | Admin tooling |
+
+> Note: `flex-table.js` already has a `bulkActions` option and selection UI wired up — it emits a `bulkAction` event with selected rows. The missing piece is connecting this to the bulk API endpoints.
+
+**Tasks:**
+- [ ] Correct `docs/backend/API_REFERENCE.md` — update all 5 dynamic-data paths to include `/records`
+- [ ] Add a note in `API_REFERENCE.md` that Swagger UI at `/docs` is always the authoritative source
+- [ ] In `data-service.js`: remove the broken `bulk()` method and replace with three explicit methods — `bulkCreate(entity, records)`, `bulkUpdate(entity, records)`, `bulkDelete(entity, ids)` — each calling the correct path and HTTP verb
+- [ ] Wire `flex-table.js` `bulkAction` event in `entity-manager.js` to call the appropriate bulk method based on action type (delete, status-change, etc.)
+- [ ] Add an "Import" button to the entity list page template that accepts CSV, maps columns to entity fields via `metadata`, and calls `bulkCreate()`
 
 ---
 
 ### 1.2 Structured validation error response
 - **Priority**: 🟡 Medium
 - **Problem**: `DynamicEntityService._validate_and_prepare_data()` raises `ValueError("Validation errors: field A is required; field B max length exceeded")` — a single concatenated string. FastAPI wraps this as `{"detail": "..."}`. Dashboard inline forms cannot highlight the specific failing field from a flat string.
-- **File**: `backend/app/services/dynamic_entity_service.py` → `_validate_and_prepare_data()`
-- [ ] Change the error collection from a string list to a structured list: `[{"field": "email", "message": "Email is required"}]`
-- [ ] Raise a custom exception (e.g. `ValidationException`) with the structured list instead of `ValueError`
-- [ ] Map the custom exception to a `422` response with body `{"errors": [{"field": ..., "message": ...}]}` in the router or via a FastAPI exception handler
-- [ ] Update `ValidationErrorResponse` Pydantic schema in `backend/app/schemas/dynamic_data.py` to reflect the new shape
+- **Files**: `backend/app/services/dynamic_entity_service.py` → `_validate_and_prepare_data()`, `backend/app/routers/dynamic_data.py`, `backend/app/schemas/dynamic_data.py`
+
+**Agreed design — dual-field response:**
+
+Keep `error.detail` as the human-readable summary (no breaking changes to existing callers).
+Add `error.errors` as an optional structured array, present only on `400` validation failures.
+
+```json
+{
+  "detail": "Validation failed: 3 errors",
+  "errors": [
+    { "field": "email", "message": "Email is required" },
+    { "field": "phone", "message": "Must be 20 characters or less" },
+    { "field": "status", "message": "Invalid value. Allowed: active, inactive, pending" }
+  ]
+}
+```
+
+`error.errors` is **absent** on all non-validation errors (404, 403, 500) so existing code that reads only `error.detail` is completely unaffected.
+
+**Backend tasks:**
+- [ ] In `_validate_and_prepare_data()`, collect errors as `[{"field": field_name, "message": "..."}]` instead of joining into a string
+- [ ] Raise a custom `ValidationException(errors: list, detail: str)` instead of `ValueError`
+- [ ] Register a FastAPI exception handler for `ValidationException` that returns `400` with `{"detail": "Validation failed: N errors", "errors": [...]}`
+- [ ] Update `ValidationErrorResponse` Pydantic schema — `detail: str` stays, `errors: Optional[List[FieldError]]` where `FieldError = {"field": str, "message": str}`
+- [ ] For `allowed_values` violations, include the allowed list in the message: `"Invalid value. Allowed: active, inactive, pending"`
+
+**Frontend notes (changes needed in a follow-up task):**
+
+> ⚠️ Currently no frontend code reads `error.errors`. All error handling reads only `error.detail` as a flat string. The backend change above is non-breaking — `error.detail` still works as before.
+
+The following frontend changes are needed to make use of `error.errors`:
+
+| File | Change needed |
+|------|---------------|
+| `dynamic-form.js` | Add a `showFieldErrors(errors)` method that maps `{field, message}` entries to the corresponding input element and renders an inline error below it |
+| `entity-manager.js` | In `saveRecord()` catch block: if `error.errors` is present, call `form.showFieldErrors(error.errors)` instead of (or in addition to) `showError(error.message)` |
+| `dynamic-route-registry.js` | In create/edit form submit catch: replace `alert('Error: ...')` with inline form error rendering using `error.errors` if available |
+| `data-service.js` | `create()` and `update()` currently discard `error.errors` by doing `throw new Error(error.detail)`. Change to a custom error class that carries the structured errors: `throw new ApiError(error.detail, error.errors)` |
+| `services/base-service.js` | `_fetchWithAuth()` similarly discards structured errors. Update to preserve `error.errors` on the thrown error object |
 
 ---
 
@@ -266,8 +331,8 @@ Last audited: 2026-04-11
 
 | # | Gap | Priority | Effort | Blocks Reports/Dashboard |
 |---|-----|----------|--------|--------------------------|
-| 1.1 | API path discrepancy | 🔴 High | Low | Yes — 404 on all calls |
-| 1.2 | Structured validation errors | 🟡 Medium | Low | Partial |
+| 1.1 | API path discrepancy + dead/broken bulk method + bulk UI missing | 🔴 High | Medium | Yes — 404 on bulk calls; no import/mass-edit |
+| 1.2 | Structured validation errors (backend + frontend wiring) | 🟡 Medium | Low–Medium | Partial |
 | 2.1 | `migrating` status mechanics | 🔴 High | Medium | Yes — silent failures |
 | 2.2 | `is_versioned` implementation | 🟡 Medium | High | Partial |
 | 2.3 | `virtual` entity type | 🟡 Medium | Medium | Yes — view-backed reports |
