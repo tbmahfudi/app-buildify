@@ -8,7 +8,7 @@ All endpoints are prefixed with /api/v1/dynamic-data
 from fastapi import APIRouter, Depends, Query, HTTPException, status, Path
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
-from typing import Optional
+from typing import Optional, List
 import json
 from app.core.dependencies import get_db, get_current_user
 from app.core.exceptions import EntityValidationError
@@ -23,7 +23,9 @@ from app.schemas.dynamic_data import (
     DynamicDataBulkResponse,
     ValidationErrorResponse,
     NotFoundResponse,
-    ForbiddenResponse
+    ForbiddenResponse,
+    MetricSpec,
+    AggregateResponse,
 )
 from app.services.dynamic_entity_service import DynamicEntityService
 import logging
@@ -34,6 +36,23 @@ router = APIRouter(
     prefix="/api/v1/dynamic-data",
     tags=["Dynamic Data"]
 )
+
+
+def _require_writable_entity(entity_name: str, db: Session, current_user):
+    """
+    Raise HTTP 405 if the entity is a virtual (view-backed) entity.
+    Virtual entities are read-only — write operations are not allowed.
+    """
+    from app.services.runtime_model_generator import RuntimeModelGenerator
+    gen = RuntimeModelGenerator(db)
+    tenant_id = str(current_user.tenant_id) if current_user.tenant_id else None
+    entity_def = gen._load_entity_definition(entity_name, tenant_id)
+    if entity_def and getattr(entity_def, 'entity_type', 'custom') == 'virtual':
+        raise HTTPException(
+            status_code=status.HTTP_405_METHOD_NOT_ALLOWED,
+            detail=f"Entity '{entity_name}' is a virtual (view-backed) entity and is read-only. "
+                   "POST, PUT, and DELETE are not supported."
+        )
 
 
 # ==============================================================================
@@ -83,6 +102,7 @@ async def create_record(
     }
     ```
     """
+    _require_writable_entity(entity_name, db, current_user)
     service = DynamicEntityService(db, current_user)
 
     try:
@@ -132,6 +152,14 @@ async def list_records(
     search: Optional[str] = Query(
         None,
         description="Global search term (searches across all text fields)"
+    ),
+    expand: Optional[str] = Query(
+        None,
+        description=(
+            "Comma-separated lookup field names to inline. "
+            "E.g. 'customer_id,region_id' inlines the related record's fields "
+            "as '{field}_data' in each row. Depth is limited to 1 level."
+        )
     ),
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
@@ -201,13 +229,16 @@ async def list_records(
                 else:
                     sort_list.append((item, 'asc'))
 
+        expand_list = [f.strip() for f in expand.split(',')] if expand else None
+
         result = await service.list_records(
             entity_name=entity_name,
             filters=filter_dict,
             sort=sort_list if sort_list else None,
             page=page,
             page_size=page_size,
-            search=search
+            search=search,
+            expand=expand_list
         )
 
         return DynamicDataListResponse(**result)
@@ -308,6 +339,7 @@ async def update_record(
     }
     ```
     """
+    _require_writable_entity(entity_name, db, current_user)
     service = DynamicEntityService(db, current_user)
 
     try:
@@ -357,6 +389,7 @@ async def delete_record(
 
     **Required Permission:** `{entity_name}:delete:own` or `{entity_name}:delete:tenant`
     """
+    _require_writable_entity(entity_name, db, current_user)
     service = DynamicEntityService(db, current_user)
 
     try:
@@ -513,6 +546,140 @@ async def bulk_delete_records(
     except Exception as e:
         logger.error(f"Error in bulk delete for {entity_name}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to bulk delete {entity_name} records: {str(e)}")
+
+
+# ==============================================================================
+# Aggregation Endpoint
+# ==============================================================================
+
+@router.get(
+    "/{entity_name}/aggregate",
+    response_model=AggregateResponse,
+    summary="Aggregate Records",
+    description=(
+        "Run GROUP BY aggregations (COUNT, SUM, AVG, MIN, MAX, COUNT_DISTINCT) "
+        "on any published entity. Supports optional filters and date truncation "
+        "for time-series grouping. Virtual (view-backed) entities are also supported."
+    ),
+    responses={
+        200: {"description": "Aggregation results"},
+        400: {"model": ValidationErrorResponse, "description": "Invalid parameters"},
+        404: {"model": NotFoundResponse, "description": "Entity not found"},
+    }
+)
+async def aggregate_records(
+    entity_name: str = Path(..., description="Entity name"),
+    group_by: Optional[str] = Query(
+        None,
+        description="Comma-separated field names to group by (e.g. 'status,region')"
+    ),
+    metrics: str = Query(
+        ...,
+        description=(
+            "JSON array of metric specs: "
+            '[{"field":"amount","function":"sum"},{"field":"id","function":"count"}]'
+        )
+    ),
+    filters: Optional[str] = Query(
+        None,
+        description="Filter specification as JSON string (same format as list endpoint)"
+    ),
+    date_trunc: Optional[str] = Query(
+        None,
+        description="Date truncation unit: hour, day, week, month, quarter, year"
+    ),
+    date_field: Optional[str] = Query(
+        None,
+        description="Which group_by field to apply date_trunc to"
+    ),
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """
+    Aggregate records with GROUP BY and metric functions.
+
+    **Required Permission:** `{entity_name}:read:tenant`
+
+    **Example — count orders by status:**
+    ```
+    GET /api/v1/dynamic-data/orders/aggregate
+        ?group_by=status
+        &metrics=[{"field":"id","function":"count","alias":"total"}]
+    ```
+
+    **Example — monthly revenue:**
+    ```
+    GET /api/v1/dynamic-data/orders/aggregate
+        ?group_by=created_at
+        &metrics=[{"field":"amount","function":"sum","alias":"revenue"}]
+        &date_trunc=month&date_field=created_at
+    ```
+
+    **Supported functions:** `count`, `sum`, `avg`, `min`, `max`, `count_distinct`
+
+    **Response:**
+    ```json
+    {
+      "groups": [{"status": "active", "total": 42}],
+      "total_groups": 1,
+      "entity_name": "orders"
+    }
+    ```
+    """
+    service = DynamicEntityService(db, current_user)
+
+    # Parse group_by
+    group_by_list = [f.strip() for f in group_by.split(',')] if group_by else None
+
+    # Parse metrics JSON
+    try:
+        metrics_raw = json.loads(metrics)
+        if not isinstance(metrics_raw, list):
+            raise ValueError("metrics must be a JSON array")
+        # Validate each metric spec
+        metrics_list = []
+        for m in metrics_raw:
+            if 'field' not in m or 'function' not in m:
+                raise ValueError("Each metric must have 'field' and 'function' keys")
+            metrics_list.append({
+                'field': m['field'],
+                'function': m['function'],
+                'alias': m.get('alias')
+            })
+    except (json.JSONDecodeError, ValueError) as e:
+        raise HTTPException(status_code=400, detail=f"Invalid metrics parameter: {e}")
+
+    # Parse filters
+    filter_dict = None
+    if filters:
+        try:
+            filter_dict = json.loads(filters)
+        except json.JSONDecodeError:
+            raise HTTPException(status_code=400, detail="Invalid filters JSON")
+
+    # Validate date_trunc unit
+    valid_trunc_units = {'hour', 'day', 'week', 'month', 'quarter', 'year'}
+    if date_trunc and date_trunc not in valid_trunc_units:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid date_trunc value '{date_trunc}'. Must be one of: {', '.join(sorted(valid_trunc_units))}"
+        )
+
+    try:
+        result = await service.aggregate_records(
+            entity_name=entity_name,
+            group_by=group_by_list,
+            metrics=metrics_list,
+            filters=filter_dict,
+            date_trunc=date_trunc,
+            date_field=date_field
+        )
+        return AggregateResponse(**result)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error aggregating {entity_name}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to aggregate {entity_name}: {str(e)}")
 
 
 # ==============================================================================

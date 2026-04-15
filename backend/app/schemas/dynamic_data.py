@@ -303,3 +303,44 @@ class ForbiddenResponse(BaseModel):
                 "detail": "Permission denied: customers:create:tenant"
             }
         }
+
+
+# ==============================================================================
+# Aggregation Schemas
+# ==============================================================================
+
+class MetricSpec(BaseModel):
+    """A single aggregation metric specification"""
+    field: str = Field(..., description="Field name to aggregate (use '*' for COUNT(*))")
+    function: str = Field(
+        ...,
+        description="Aggregation function: count, sum, avg, min, max, count_distinct"
+    )
+    alias: Optional[str] = Field(
+        None,
+        description="Output key name in the response (defaults to '{function}_{field}')"
+    )
+
+    class Config:
+        json_schema_extra = {
+            "example": {"field": "amount", "function": "sum", "alias": "total_amount"}
+        }
+
+
+class AggregateResponse(BaseModel):
+    """Response schema for aggregation endpoint"""
+    groups: List[Dict[str, Any]] = Field(..., description="Aggregated result groups")
+    total_groups: int = Field(..., description="Total number of groups returned")
+    entity_name: str = Field(..., description="Entity that was aggregated")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "groups": [
+                    {"status": "active", "count_id": 42, "sum_amount": 10500.00},
+                    {"status": "inactive", "count_id": 8, "sum_amount": 1200.00}
+                ],
+                "total_groups": 2,
+                "entity_name": "orders"
+            }
+        }

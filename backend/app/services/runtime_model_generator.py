@@ -174,6 +174,7 @@ class RuntimeModelGenerator:
         return {
             'id': str(entity_def.id),
             'name': entity_def.name,
+            'entity_type': getattr(entity_def, 'entity_type', 'custom') or 'custom',
             'table_name': table_name,
             'schema_name': entity_def.schema_name or 'public',
             'data_scope': getattr(entity_def, 'data_scope', 'tenant') or 'tenant',
@@ -232,11 +233,16 @@ class RuntimeModelGenerator:
         table_name = entity_dict['table_name']
         schema_name = entity_dict['schema_name']
 
+        # Virtual entities point to an existing DB view — the table already
+        # exists and must not have SQLAlchemy try to validate/create it.
+        is_virtual = entity_dict.get('entity_type') == 'virtual'
+
         # Build attributes dict for model class
         attrs = {
             '__tablename__': table_name,
             '__table_args__': {'schema': schema_name, 'extend_existing': True},
             '__entity_definition__': entity_dict,  # Store metadata for reference
+            '__is_virtual__': is_virtual,          # Convenience flag for the router layer
         }
 
         # Collect user-defined field names to avoid duplicates with system fields
