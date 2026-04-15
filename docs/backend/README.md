@@ -28,6 +28,8 @@ backend/
 │   │   ├── exceptions.py            # Custom exception classes
 │   │   ├── logging_config.py        # Structlog configuration
 │   │   ├── model_cache.py           # Runtime model caching
+│   │   ├── dynamic_query_builder.py # Filter / sort / search / aggregate helpers
+│   │   ├── response_builders.py     # Standardised response envelope builders
 │   │   ├── event_bus/               # Event publishing system
 │   │   └── module_system/           # Module loader & registry
 │   │       ├── base_module.py       # BaseModule interface
@@ -159,7 +161,8 @@ All routes are prefixed with `/api/v1/`.
 | Service | File | Responsibility |
 |---------|------|---------------|
 | `DataModelService` | `data_model_service.py` | CRUD for entity/field definitions |
-| `DynamicEntityService` | `dynamic_entity_service.py` | Runtime CRUD on custom entities |
+| `DynamicEntityService` | `dynamic_entity_service.py` | Runtime CRUD, aggregation, and expand on custom entities |
+| `ProcedureService` | `procedure_service.py` | Tenant-aware caller for named PostgreSQL functions and materialized view refresh |
 | `WorkflowService` | `workflow_service.py` | Workflow execution and state transitions |
 | `AutomationService` | `automation_service.py` | Rule evaluation and action dispatch |
 | `SchedulerService` | `scheduler_service.py` | APScheduler job management |
@@ -170,8 +173,8 @@ All routes are prefixed with `/api/v1/`.
 | `ModuleRegistryService` | `module_service_registry.py` | Dynamic module loading |
 | `NocodeModuleService` | `nocode_module_service.py` | Module lifecycle management |
 | `MetadataSyncService` | `metadata_sync_service.py` | Entity metadata synchronization |
-| `MigrationGenerator` | `migration_generator.py` | Auto-generate DB schemas from entity definitions |
-| `RuntimeModelGenerator` | `runtime_model_generator.py` | Create SQLAlchemy models at runtime |
+| `MigrationGenerator` | `migration_generator.py` | DDL for tables, views, and generated columns from entity definitions |
+| `RuntimeModelGenerator` | `runtime_model_generator.py` | Create SQLAlchemy models at runtime (tables and views) |
 
 ---
 
@@ -268,9 +271,64 @@ Used for cross-module communication without tight coupling.
 
 ---
 
+## Dynamic Data — Advanced Capabilities
+
+The `/api/v1/dynamic-data/` layer supports more than plain CRUD:
+
+### Virtual Entities (DB View Backing)
+
+Set `entity_type = "virtual"` on an `EntityDefinition` to map it to an existing PostgreSQL view. The platform queries the view identically to a regular table. Write operations return `405`. Useful for cross-entity reports and pre-joined read models.
+
+```json
+{
+  "entity_type": "virtual",
+  "table_name": "v_invoice_summary",
+  "meta_data": {
+    "view_sql": "CREATE OR REPLACE VIEW v_invoice_summary AS SELECT ...",
+    "view_dependencies": ["financial_invoices", "financial_customers"]
+  }
+}
+```
+
+### Aggregation API
+
+`GET /api/v1/dynamic-data/{entity}/aggregate` runs server-side GROUP BY aggregations — no need to fetch all rows.
+
+```
+?group_by=status&metrics=[{"field":"amount","function":"sum"}]&date_trunc=month&date_field=created_at
+```
+
+Org-scope isolation (tenant/company/branch) is applied automatically. Virtual entities are fully supported here.
+
+### Expand — Inline Related Records
+
+`?expand=customer_id,region_id` on any list endpoint fetches related entities in a single IN query and inlines them as `customer_id_data: {...}`. Depth is limited to 1 level.
+
+### Calculated Fields
+
+Fields with `is_calculated = true` and a `calculation_formula` are emitted as PostgreSQL `GENERATED ALWAYS AS (...) STORED` columns — they are persisted on disk and are filterable/sortable in aggregation queries.
+
+Formula syntax: `{field_name}` tokens reference sibling column names, e.g. `{unit_price} * {quantity}`.
+
+### DB Procedures and Materialized Views
+
+`ProcedureService` (`app/services/procedure_service.py`) provides a tenant-aware wrapper for calling named PostgreSQL functions and refreshing materialized views. Use it for logic too complex for the aggregation API — recursive CTEs, financial aging reports, amortisation schedules.
+
+```python
+service = ProcedureService(db, current_user)
+rows = await service.call("fn_ar_aging", {"as_of_date": "2026-04-15"})
+await service.refresh_materialized_view("mv_dashboard_kpis", concurrently=True)
+```
+
+Register new functions in the `PROCEDURE_REGISTRY` dict at the top of `procedure_service.py`.
+
+---
+
 ## Related Documents
 
 - [API Reference](./API_REFERENCE.md)
+- [Dynamic Entity System](./DYNAMIC_ENTITIES.md)
+- [Dynamic Entity Gaps & Enhancements](./DYNAMIC_ENTITIES_GAPS.md)
 - [Authentication & Security](./AUTH_SECURITY.md)
 - [RBAC System](./RBAC.md)
 - [Platform Overview](../platform/OVERVIEW.md)
