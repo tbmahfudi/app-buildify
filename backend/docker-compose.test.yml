@@ -1,0 +1,42 @@
+# Test database for running backend integration tests locally.
+#
+# Usage:
+#   1. Start the test database:
+#        docker compose -f docker-compose.test.yml up -d
+#
+#   2. Wait for the healthcheck to pass (about 10 seconds), then run tests:
+#        TEST_DATABASE_URL="postgresql://testuser:testpass@localhost:5433/appbuildify_test" \
+#          pytest tests/ -v
+#
+#   3. Run only unit tests (no database needed):
+#        pytest tests/unit/ -v -m unit
+#
+#   4. Run only integration tests that require PostgreSQL:
+#        TEST_DATABASE_URL="..." pytest tests/ -v -m pg
+#
+#   5. Stop and remove the container when done:
+#        docker compose -f docker-compose.test.yml down -v
+
+services:
+  test-db:
+    image: postgres:16-alpine
+    container_name: appbuildify_test_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: appbuildify_test
+      POSTGRES_USER: testuser
+      POSTGRES_PASSWORD: testpass
+    ports:
+      - "5433:5432"      # Use 5433 to avoid conflict with a local dev PostgreSQL on 5432
+    volumes:
+      - test_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U testuser -d appbuildify_test"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+volumes:
+  test_db_data:
+    driver: local
