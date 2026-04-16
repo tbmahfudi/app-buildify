@@ -201,6 +201,10 @@ class DynamicEntityService:
         for col_name, col_value in org_context.items():
             query = query.filter(getattr(model, col_name) == col_value)
 
+        # Exclude soft-deleted records (Gap 4.1)
+        if hasattr(model, 'deleted_at'):
+            query = query.filter(model.deleted_at.is_(None))
+
         # Apply filters
         if filters:
             query = self.query_builder.apply_filters(query, model, filters)
@@ -268,6 +272,10 @@ class DynamicEntityService:
         org_context = self._get_org_context(model)
         for col_name, col_value in org_context.items():
             query = query.filter(getattr(model, col_name) == col_value)
+
+        # Exclude soft-deleted records (Gap 4.1)
+        if hasattr(model, 'deleted_at'):
+            query = query.filter(model.deleted_at.is_(None))
 
         record = query.first()
 
@@ -572,16 +580,17 @@ class DynamicEntityService:
         Inline related records for lookup fields listed in `expand`.
 
         For each field name in `expand`:
-          1. Find its FieldDefinition and confirm it is a lookup type with a
-             reference_entity_id or reference_table_name.
+          1. Find its FieldDefinition and confirm it references another entity
+             via `reference_entity_name` (resolved from `reference_entity_id`)
+             or falls back to `reference_table_name` for system tables.
           2. Collect the unique FK values across all items (one IN query).
           3. Attach the fetched record as `{field_name}_data` on each item.
 
         Depth is strictly limited to 1 — the fetched related records are plain
         dicts and are not themselves expanded further.
 
-        Unknown field names or non-lookup fields in `expand` are silently skipped
-        so that the caller does not need to pre-validate the list.
+        Unknown field names or fields without a resolvable reference are silently
+        skipped so the caller does not need to pre-validate the expand list.
         """
         field_map = {f['name']: f for f in field_defs}
         tenant_id = str(self.current_user.tenant_id) if self.current_user.tenant_id else None
@@ -592,21 +601,32 @@ class DynamicEntityService:
                 logger.warning("expand: field '%s' not found — skipping", field_name)
                 continue
 
-            field_type = field_def.get('field_type', '')
-            if field_type not in ('lookup', 'uuid'):
-                logger.warning(
-                    "expand: field '%s' has type '%s', not a lookup — skipping",
-                    field_name, field_type
-                )
-                continue
+            # Resolve target entity name.
+            # Priority: reference_entity_name (already resolved at dict-build time
+            #           from reference_entity_id) → fall back to reference_table_name.
+            ref_entity = field_def.get('reference_entity_name')
 
-            # Determine the target entity / table
-            lookup_cfg = field_def.get('lookup_config') or {}
-            ref_entity = lookup_cfg.get('reference_entity_name')
+            if not ref_entity:
+                # Fallback: try treating reference_table_name as a published entity
+                # table name.  This covers system tables exposed as platform entities.
+                ref_table = field_def.get('reference_table_name')
+                if ref_table:
+                    # Try to resolve entity name from table name
+                    try:
+                        from app.models.data_model import EntityDefinition as _ED
+                        row = self.db.query(_ED.name).filter(
+                            _ED.table_name == ref_table,
+                            _ED.status == 'published'
+                        ).first()
+                        if row:
+                            ref_entity = row[0]
+                    except Exception:
+                        pass
 
             if not ref_entity:
                 logger.warning(
-                    "expand: field '%s' has no reference_entity_name in lookup_config — skipping",
+                    "expand: field '%s' has no resolvable reference entity "
+                    "(reference_entity_id and reference_table_name both missing or unresolvable) — skipping",
                     field_name
                 )
                 continue
@@ -619,23 +639,23 @@ class DynamicEntityService:
             })
 
             if not fk_values:
-                # No FK values in this page — attach empty dict to all items
                 for item in items:
                     item[f"{field_name}_data"] = None
                 continue
 
-            # Fetch related records in a single IN query
+            # Fetch related records in a single IN query — never N+1
             try:
                 ref_model = self.model_generator.get_model(ref_entity, tenant_id)
                 ref_field_defs = self.model_generator.get_field_definitions(ref_entity, tenant_id)
 
-                related_query = self.db.query(ref_model).filter(
+                ref_records_raw = self.db.query(ref_model).filter(
                     ref_model.id.in_(fk_values)
-                )
+                ).all()
 
                 related_records = {
-                    self._model_to_dict(r, ref_field_defs).get('id'): self._model_to_dict(r, ref_field_defs)
-                    for r in related_query.all()
+                    rec_dict.get('id'): rec_dict
+                    for r in ref_records_raw
+                    for rec_dict in [self._model_to_dict(r, ref_field_defs)]
                 }
             except Exception as exc:
                 logger.error(
@@ -698,6 +718,10 @@ class DynamicEntityService:
         org_context = self._get_org_context(model)
         for col_name, col_value in org_context.items():
             query = query.where(getattr(model, col_name) == col_value)
+
+        # Exclude soft-deleted records (Gap 4.1)
+        if hasattr(model, 'deleted_at'):
+            query = query.where(model.deleted_at.is_(None))
 
         # User filters (reuse DynamicQueryBuilder's filter-clause builder)
         if filters:

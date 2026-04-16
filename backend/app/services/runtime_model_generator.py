@@ -171,6 +171,23 @@ class RuntimeModelGenerator:
             if not table_name.startswith(f"{prefix}_"):
                 table_name = f"{prefix}_{table_name}"
 
+        # Build a lookup-map of entity_id → entity_name so that fields with
+        # reference_entity_id can expose the human-readable entity name for the
+        # expand feature without extra per-request queries (the entire dict is
+        # cached along with the model).
+        ref_entity_ids = [
+            str(f.reference_entity_id)
+            for f in entity_def.fields
+            if getattr(f, 'reference_entity_id', None)
+        ]
+        ref_entity_name_map: dict = {}
+        if ref_entity_ids:
+            from app.models.data_model import EntityDefinition as _ED
+            rows = self.db.query(_ED.id, _ED.name).filter(
+                _ED.id.in_(ref_entity_ids)
+            ).all()
+            ref_entity_name_map = {str(r.id): r.name for r in rows}
+
         return {
             'id': str(entity_def.id),
             'name': entity_def.name,
@@ -178,6 +195,7 @@ class RuntimeModelGenerator:
             'table_name': table_name,
             'schema_name': entity_def.schema_name or 'public',
             'data_scope': getattr(entity_def, 'data_scope', 'tenant') or 'tenant',
+            'supports_soft_delete': getattr(entity_def, 'supports_soft_delete', False) or False,
             'label': entity_def.label,
             'plural_label': entity_def.plural_label,
             'fields': [
@@ -185,22 +203,36 @@ class RuntimeModelGenerator:
                     'id': str(f.id),
                     'name': f.name,
                     'field_type': f.field_type,
-                    'db_column_name': f.name,  # Use name as db column name
+                    'db_column_name': f.name,
                     'label': f.label,
                     'is_required': f.is_required,
-                    'is_primary_key': f.name == 'id',  # Assume 'id' field is primary key
+                    'is_primary_key': f.name == 'id',
                     'is_unique': f.is_unique,
                     'is_indexed': f.is_indexed,
+                    'is_calculated': getattr(f, 'is_calculated', False) or False,
+                    'calculation_formula': getattr(f, 'calculation_formula', None),
+                    'allowed_values': f.allowed_values,
                     'max_length': f.max_length,
                     'min_length': f.min_length,
                     'min_value': f.min_value,
                     'max_value': f.max_value,
                     'precision': f.precision,
-                    'scale': f.decimal_places,  # Use decimal_places as scale
+                    'scale': f.decimal_places,
                     'default_value': f.default_value,
-                    'lookup_config': getattr(f, 'lookup_config', None),
                     'validation_rules': f.validation_rules,
-                    'order': f.display_order
+                    # Lookup / reference attributes
+                    'reference_entity_id': str(f.reference_entity_id) if getattr(f, 'reference_entity_id', None) else None,
+                    'reference_entity_name': ref_entity_name_map.get(str(f.reference_entity_id)) if getattr(f, 'reference_entity_id', None) else None,
+                    'reference_table_name': getattr(f, 'reference_table_name', None),
+                    'reference_field': getattr(f, 'reference_field', None),
+                    'display_field': getattr(f, 'display_field', None),
+                    'relationship_type': getattr(f, 'relationship_type', None),
+                    'lookup_display_template': getattr(f, 'lookup_display_template', None),
+                    'lookup_search_fields': getattr(f, 'lookup_search_fields', None),
+                    'lookup_allow_create': getattr(f, 'lookup_allow_create', False),
+                    'lookup_recent_count': getattr(f, 'lookup_recent_count', 5),
+                    'lookup_filter_field': getattr(f, 'lookup_filter_field', None),
+                    'order': f.display_order,
                 }
                 for f in sorted(entity_def.fields, key=lambda x: x.display_order or 0)
             ],
