@@ -33,7 +33,7 @@ class DataService {
     }
 
     if (filters && filters.length > 0) {
-      params.append('filters', JSON.stringify({ conditions: filters }));
+      params.append('filters', JSON.stringify({ operator: 'AND', conditions: filters }));
     }
 
     const response = await apiFetch(`/dynamic-data/${entity}/records?${params.toString()}`);

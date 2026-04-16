@@ -171,7 +171,8 @@ class DynamicEntityService:
         sort: Optional[List] = None,
         page: int = 1,
         page_size: int = 25,
-        search: Optional[str] = None
+        search: Optional[str] = None,
+        expand: Optional[List[str]] = None
     ) -> Dict[str, Any]:
         """
         List records with filtering, sorting, and pagination
@@ -200,6 +201,10 @@ class DynamicEntityService:
         for col_name, col_value in org_context.items():
             query = query.filter(getattr(model, col_name) == col_value)
 
+        # Exclude soft-deleted records (Gap 4.1)
+        if hasattr(model, 'deleted_at'):
+            query = query.filter(model.deleted_at.is_(None))
+
         # Apply filters
         if filters:
             query = self.query_builder.apply_filters(query, model, filters)
@@ -225,8 +230,14 @@ class DynamicEntityService:
         # Execute query
         records = query.all()
 
+        items = [self._model_to_dict(r, field_defs) for r in records]
+
+        # Inline related records for requested lookup fields (depth=1)
+        if expand:
+            items = self._apply_expand(items, field_defs, expand)
+
         return {
-            'items': [self._model_to_dict(r, field_defs) for r in records],
+            'items': items,
             'total': total,
             'page': page,
             'page_size': page_size,
@@ -261,6 +272,10 @@ class DynamicEntityService:
         org_context = self._get_org_context(model)
         for col_name, col_value in org_context.items():
             query = query.filter(getattr(model, col_name) == col_value)
+
+        # Exclude soft-deleted records (Gap 4.1)
+        if hasattr(model, 'deleted_at'):
+            query = query.filter(model.deleted_at.is_(None))
 
         record = query.first()
 
@@ -553,6 +568,192 @@ class DynamicEntityService:
             'deleted': deleted,
             'failed': failed,
             'errors': errors
+        }
+
+    def _apply_expand(
+        self,
+        items: List[Dict[str, Any]],
+        field_defs: List[Dict],
+        expand: List[str]
+    ) -> List[Dict[str, Any]]:
+        """
+        Inline related records for lookup fields listed in `expand`.
+
+        For each field name in `expand`:
+          1. Find its FieldDefinition and confirm it references another entity
+             via `reference_entity_name` (resolved from `reference_entity_id`)
+             or falls back to `reference_table_name` for system tables.
+          2. Collect the unique FK values across all items (one IN query).
+          3. Attach the fetched record as `{field_name}_data` on each item.
+
+        Depth is strictly limited to 1 — the fetched related records are plain
+        dicts and are not themselves expanded further.
+
+        Unknown field names or fields without a resolvable reference are silently
+        skipped so the caller does not need to pre-validate the expand list.
+        """
+        field_map = {f['name']: f for f in field_defs}
+        tenant_id = str(self.current_user.tenant_id) if self.current_user.tenant_id else None
+
+        for field_name in expand:
+            field_def = field_map.get(field_name)
+            if not field_def:
+                logger.warning("expand: field '%s' not found — skipping", field_name)
+                continue
+
+            # Resolve target entity name.
+            # Priority: reference_entity_name (already resolved at dict-build time
+            #           from reference_entity_id) → fall back to reference_table_name.
+            ref_entity = field_def.get('reference_entity_name')
+
+            if not ref_entity:
+                # Fallback: try treating reference_table_name as a published entity
+                # table name.  This covers system tables exposed as platform entities.
+                ref_table = field_def.get('reference_table_name')
+                if ref_table:
+                    # Try to resolve entity name from table name
+                    try:
+                        from app.models.data_model import EntityDefinition as _ED
+                        row = self.db.query(_ED.name).filter(
+                            _ED.table_name == ref_table,
+                            _ED.status == 'published'
+                        ).first()
+                        if row:
+                            ref_entity = row[0]
+                    except Exception:
+                        pass
+
+            if not ref_entity:
+                logger.warning(
+                    "expand: field '%s' has no resolvable reference entity "
+                    "(reference_entity_id and reference_table_name both missing or unresolvable) — skipping",
+                    field_name
+                )
+                continue
+
+            # Collect unique FK values from items (filter out None)
+            fk_values = list({
+                item.get(field_name)
+                for item in items
+                if item.get(field_name) is not None
+            })
+
+            if not fk_values:
+                for item in items:
+                    item[f"{field_name}_data"] = None
+                continue
+
+            # Fetch related records in a single IN query — never N+1
+            try:
+                ref_model = self.model_generator.get_model(ref_entity, tenant_id)
+                ref_field_defs = self.model_generator.get_field_definitions(ref_entity, tenant_id)
+
+                ref_records_raw = self.db.query(ref_model).filter(
+                    ref_model.id.in_(fk_values)
+                ).all()
+
+                related_records = {
+                    rec_dict.get('id'): rec_dict
+                    for r in ref_records_raw
+                    for rec_dict in [self._model_to_dict(r, ref_field_defs)]
+                }
+            except Exception as exc:
+                logger.error(
+                    "expand: failed to fetch related entity '%s' for field '%s': %s",
+                    ref_entity, field_name, exc
+                )
+                related_records = {}
+
+            # Attach to each item
+            for item in items:
+                fk_val = item.get(field_name)
+                item[f"{field_name}_data"] = related_records.get(fk_val)
+
+        return items
+
+    async def aggregate_records(
+        self,
+        entity_name: str,
+        group_by: Optional[List[str]],
+        metrics: List[Dict[str, Any]],
+        filters: Optional[Dict] = None,
+        date_trunc: Optional[str] = None,
+        date_field: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Run an aggregation query on a dynamic entity.
+
+        Supports GROUP BY, COUNT/SUM/AVG/MIN/MAX/COUNT_DISTINCT metrics,
+        optional filter conditions, and date-based time-series truncation.
+
+        Org-scope isolation (tenant_id / company_id / etc.) is applied
+        automatically using the same rules as list_records().
+
+        Args:
+            entity_name: Name of the published entity.
+            group_by:    List of field names to group by (may be None).
+            metrics:     List of dicts: [{field, function, alias?}, ...].
+            filters:     Filter specification dict (same format as list_records).
+            date_trunc:  Truncation unit ('hour','day','week','month','quarter','year').
+            date_field:  Which group_by field to apply date_trunc to.
+
+        Returns:
+            Dict with 'groups', 'total_groups', 'entity_name'.
+        """
+        from sqlalchemy import select as sa_select
+        from decimal import Decimal
+
+        tenant_id = str(self.current_user.tenant_id) if self.current_user.tenant_id else None
+        model = self.model_generator.get_model(entity_name, tenant_id)
+
+        # Build SELECT columns and GROUP BY expressions
+        select_cols, group_exprs, output_keys = self.query_builder.build_aggregate_select(
+            model, group_by, metrics, date_trunc, date_field
+        )
+
+        # Base query
+        query = sa_select(*select_cols).select_from(model)
+
+        # Org scope isolation
+        org_context = self._get_org_context(model)
+        for col_name, col_value in org_context.items():
+            query = query.where(getattr(model, col_name) == col_value)
+
+        # Exclude soft-deleted records (Gap 4.1)
+        if hasattr(model, 'deleted_at'):
+            query = query.where(model.deleted_at.is_(None))
+
+        # User filters (reuse DynamicQueryBuilder's filter-clause builder)
+        if filters:
+            filter_clause = self.query_builder._build_filter_clause(model, filters)
+            if filter_clause is not None:
+                query = query.where(filter_clause)
+
+        # GROUP BY
+        if group_exprs:
+            query = query.group_by(*group_exprs)
+
+        # Execute
+        result = self.db.execute(query)
+        rows = result.fetchall()
+
+        groups = []
+        for row in rows:
+            group = {}
+            for i, key in enumerate(output_keys):
+                val = row[i]
+                # Normalize types for JSON serialization
+                if isinstance(val, Decimal):
+                    val = float(val)
+                elif hasattr(val, 'isoformat'):
+                    val = val.isoformat()
+                group[key] = val
+            groups.append(group)
+
+        return {
+            'groups': groups,
+            'total_groups': len(groups),
+            'entity_name': entity_name
         }
 
     def _validate_and_prepare_data(

@@ -165,6 +165,10 @@ All user endpoints require `Authorization: Bearer <token>`.
 
 ## NoCode Data Model
 
+Design-time API for defining custom entities, fields, relationships, and indexes.
+
+### Entity Definitions
+
 | Method | Path | Description |
 |--------|------|-------------|
 | `GET` | `/data-model/entities` | List all entity definitions |
@@ -172,23 +176,211 @@ All user endpoints require `Authorization: Bearer <token>`.
 | `GET` | `/data-model/entities/{id}` | Get entity definition |
 | `PUT` | `/data-model/entities/{id}` | Update entity definition |
 | `DELETE` | `/data-model/entities/{id}` | Delete entity definition |
+
+**Entity types** (`entity_type` field):
+- `custom` — standard user-defined table (default)
+- `system` — platform-managed, read-only for tenants
+- `virtual` — maps to an existing database view; read-only at runtime (no `POST`/`PUT`/`DELETE`)
+
+For virtual entities, set `table_name` to the view name. To have the platform create the view automatically, include `view_sql` in `meta_data`:
+```json
+{
+  "meta_data": {
+    "view_sql": "CREATE OR REPLACE VIEW v_invoice_summary AS SELECT ...",
+    "view_dependencies": ["financial_invoices", "financial_customers"]
+  }
+}
+```
+
+### Fields
+
+| Method | Path | Description |
+|--------|------|-------------|
 | `POST` | `/data-model/entities/{id}/fields` | Add field to entity |
 | `PUT` | `/data-model/entities/{id}/fields/{fid}` | Update field |
 | `DELETE` | `/data-model/entities/{id}/fields/{fid}` | Remove field |
+
+**Calculated fields** — set `is_calculated: true` and `calculation_formula` using `{field_name}` tokens:
+```json
+{
+  "name": "line_total",
+  "field_type": "decimal",
+  "data_type": "NUMERIC(18,2)",
+  "is_calculated": true,
+  "calculation_formula": "{unit_price} * {quantity} * (1 + {tax_rate})"
+}
+```
+On PostgreSQL, this emits `GENERATED ALWAYS AS (unit_price * quantity * (1 + tax_rate)) STORED` — the value is stored on disk and is filterable/sortable in aggregation queries.
+
+### Relationships
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/data-model/entities/{id}/relationships` | Add relationship |
+| `PUT` | `/data-model/entities/{id}/relationships/{rid}` | Update relationship |
+| `DELETE` | `/data-model/entities/{id}/relationships/{rid}` | Remove relationship |
+
+### Indexes
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/data-model/entities/{id}/indexes` | Add index |
+| `PUT` | `/data-model/entities/{id}/indexes/{iid}` | Update index |
+| `DELETE` | `/data-model/entities/{id}/indexes/{iid}` | Remove index |
 
 ---
 
 ## Dynamic Data
 
-Perform CRUD on runtime entity instances.
+Runtime CRUD, aggregation, and relationship traversal for published NoCode entities.
 
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/dynamic-data/{entity_name}` | List records |
-| `POST` | `/dynamic-data/{entity_name}` | Create record |
-| `GET` | `/dynamic-data/{entity_name}/{id}` | Get record |
-| `PUT` | `/dynamic-data/{entity_name}/{id}` | Update record |
-| `DELETE` | `/dynamic-data/{entity_name}/{id}` | Delete record |
+> **Authoritative source**: The interactive Swagger UI at `/api/docs` always reflects the live router.
+> All paths include the `/records` segment — earlier versions of this doc omitted it.
+
+### CRUD
+
+| Method | Path | Permission | Description |
+|--------|------|-----------|-------------|
+| `POST` | `/dynamic-data/{entity}/records` | `{entity}:create:tenant` | Create record |
+| `GET` | `/dynamic-data/{entity}/records` | `{entity}:read:tenant` | List records (filter / sort / search / expand) |
+| `GET` | `/dynamic-data/{entity}/records/{id}` | `{entity}:read:tenant` | Get single record |
+| `PUT` | `/dynamic-data/{entity}/records/{id}` | `{entity}:update:own` or `:tenant` | Update record (partial) |
+| `DELETE` | `/dynamic-data/{entity}/records/{id}` | `{entity}:delete:own` or `:tenant` | Delete record (soft if supported) |
+
+> **Virtual entities** (`entity_type = "virtual"`) are read-only — `POST`, `PUT`, `DELETE` return `405 Method Not Allowed`.
+
+### Bulk Operations
+
+| Method | Path | Permission | Description |
+|--------|------|-----------|-------------|
+| `POST` | `/dynamic-data/{entity}/records/bulk` | `{entity}:create:tenant` | Bulk create |
+| `PUT` | `/dynamic-data/{entity}/records/bulk` | `{entity}:update:tenant` | Bulk update (each record needs `id`) |
+| `DELETE` | `/dynamic-data/{entity}/records/bulk` | `{entity}:delete:tenant` | Bulk delete (list of `ids`) |
+
+Bulk operations continue on per-record errors and return a summary:
+```json
+{ "created": 10, "failed": 2, "errors": [{ "index": 3, "error": "..." }], "ids": [...] }
+```
+
+### Aggregation
+
+```
+GET /dynamic-data/{entity}/aggregate
+```
+
+**Required Permission:** `{entity}:read:tenant`
+
+Run GROUP BY aggregations without fetching all rows. Supports virtual (view-backed) entities.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `group_by` | string | Comma-separated field names to group by, e.g. `status,region` |
+| `metrics` | JSON array | **Required.** Array of `{field, function, alias?}` objects |
+| `filters` | JSON string | Filter specification (same format as list endpoint) |
+| `date_trunc` | string | Date truncation unit: `hour`, `day`, `week`, `month`, `quarter`, `year` |
+| `date_field` | string | Which `group_by` field to apply `date_trunc` to |
+
+**Supported `function` values:** `count`, `sum`, `avg`, `min`, `max`, `count_distinct`
+Use `"field": "*"` with `"function": "count"` for `COUNT(*)`.
+
+**Example — orders by status:**
+```
+GET /api/v1/dynamic-data/orders/aggregate
+    ?group_by=status
+    &metrics=[{"field":"id","function":"count","alias":"total"}]
+```
+
+**Example — monthly revenue:**
+```
+GET /api/v1/dynamic-data/orders/aggregate
+    ?group_by=created_at
+    &metrics=[{"field":"amount","function":"sum","alias":"revenue"}]
+    &date_trunc=month&date_field=created_at
+```
+
+**Response:**
+```json
+{
+  "groups": [
+    { "status": "active", "total": 42 },
+    { "status": "pending", "total": 7 }
+  ],
+  "total_groups": 2,
+  "entity_name": "orders"
+}
+```
+
+### List Query Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `page` | int | Page number, default `1` |
+| `page_size` | int | Items per page, default `25`, max `100` |
+| `sort` | string | e.g. `name:asc,created_at:desc` |
+| `search` | string | Global search across all text fields |
+| `filters` | JSON string | Filter specification (see below) |
+| `expand` | string | Comma-separated lookup field names to inline, e.g. `customer_id,region_id` |
+
+**Filter format:**
+```json
+{
+  "operator": "AND",
+  "conditions": [
+    { "field": "status", "operator": "eq", "value": "active" },
+    { "field": "created_at", "operator": "gte", "value": "2026-01-01" }
+  ]
+}
+```
+
+**Supported filter operators:** `eq`, `ne`, `gt`, `gte`, `lt`, `lte`, `contains`, `starts_with`, `ends_with`, `like`, `ilike`, `in`, `not_in`, `is_null`, `is_not_null`
+
+**`expand` — inline related records (depth = 1):**
+
+`?expand=customer_id` fetches the related entity in a single `IN` query and inlines it as `customer_id_data: {...}` on every row. Unknown or non-lookup fields in `expand` are silently skipped.
+
+**Response envelope:**
+```json
+{
+  "items": [...],
+  "total": 150,
+  "page": 1,
+  "page_size": 25,
+  "pages": 6
+}
+```
+
+### Metadata
+
+```
+GET /dynamic-data/{entity}/metadata
+```
+
+Returns field definitions, relationships, and display configuration for an entity.
+
+```json
+{
+  "entity_name": "customers",
+  "display_name": "Customers",
+  "fields": [...],
+  "relationships": [...]
+}
+```
+
+### Validation Errors
+
+When field validation fails on `POST` or `PUT`, the response is `400` with per-field detail:
+
+```json
+{
+  "detail": "Validation failed: 2 errors",
+  "errors": [
+    { "field": "email", "message": "Email is required" },
+    { "field": "phone", "message": "Must be 20 characters or less" }
+  ]
+}
+```
+
+`errors` is absent on all other error types so existing callers that read only `detail` are unaffected.
 
 ---
 
@@ -322,6 +514,7 @@ Perform CRUD on runtime entity instances.
 | `401` | Unauthenticated |
 | `403` | Forbidden (insufficient permissions) |
 | `404` | Resource not found |
+| `405` | Method not allowed (e.g. write on a virtual entity) |
 | `409` | Conflict (duplicate resource) |
 | `422` | Unprocessable entity (schema error) |
 | `423` | Locked (account locked out) |

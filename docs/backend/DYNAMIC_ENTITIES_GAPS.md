@@ -134,14 +134,16 @@ The bulk API endpoints exist on the backend but have no frontend integration. Re
 
 ---
 
-### 2.3 `virtual` entity type — undefined behaviour — (OPEN)
+### 2.3 `virtual` entity type — (DONE)
 - **Priority**: 🟡 Medium
-- **Problem**: `entity_type` accepts `system`, `custom`, and `virtual` but `virtual` is never explained in code comments or docs. It is unclear whether virtual entities have a DB table, whether they are read-only, and whether `RuntimeModelGenerator` handles them differently.
-- **File**: `backend/app/models/data_model.py`, `backend/app/services/runtime_model_generator.py`
-- [ ] Search codebase for all `entity_type == "virtual"` branches and document what actually happens
-- [ ] If virtual entities map to DB views: document that `table_name` must be an existing view name, set `CREATE TABLE` migration skip for virtual entities in `MigrationGenerator`, and enforce read-only (block `POST`/`PUT`/`DELETE`) in the dynamic-data router
-- [ ] If virtual entities are not yet implemented: treat them as `custom` (or raise an error) and add to `docs/GAPS.md`
-- [ ] Virtual entities backed by DB views are ideal for cross-entity report data — document this pattern explicitly if implemented
+- **Implemented**: `entity_type = "virtual"` entities map to existing PostgreSQL views (or any SQL-queryable object with the same name).
+  - `RuntimeModelGenerator._entity_to_dict()` now includes `entity_type` in the entity dict and sets `__is_virtual__` on the generated model class.
+  - `MigrationGenerator.generate_migration()` detects `entity_type == "virtual"` and:
+    - If `meta_data.view_sql` is present: emits `CREATE OR REPLACE VIEW ...` (up) and `DROP VIEW IF EXISTS ... CASCADE` (down).
+    - Otherwise: emits a no-op comment reminding the operator to create the view manually.
+  - Dynamic-data router: `POST`, `PUT`, `DELETE` on virtual entities raise `405 Method Not Allowed`. `GET` list, single-record, metadata, and aggregate are all allowed.
+- **Usage**: Set `entity_type = "virtual"`, `table_name = "<view_name>"`, and optionally `meta_data.view_sql = "CREATE OR REPLACE VIEW ..."`.
+- **Files changed**: `backend/app/services/runtime_model_generator.py`, `backend/app/services/migration_generator.py`, `backend/app/routers/dynamic_data.py`
 
 ---
 
@@ -179,18 +181,16 @@ The bulk API endpoints exist on the backend but have no frontend integration. Re
 
 ---
 
-### 3.4 `calculation_formula` — syntax and evaluation not implemented or undocumented — (OPEN)
+### 3.4 `calculation_formula` — (DONE — DB-level generated columns)
 - **Priority**: 🟡 Medium
-- **Problem**: `is_calculated` and `calculation_formula` columns exist but there is no visible implementation in `DynamicEntityService` or `RuntimeModelGenerator` that evaluates formulas. Calculated fields are highly valuable for reports — a `total_with_tax` field removes the need for post-query computation.
-- **File**: `backend/app/services/dynamic_entity_service.py`, `backend/app/services/runtime_model_generator.py`
-- [ ] Audit whether any formula evaluation exists currently — search for `calculation_formula` usage across the codebase
-- [ ] Decide evaluation strategy:
-  - **DB-level** (PostgreSQL generated column): best for filtering/sorting in reports; requires migration support
-  - **Service-level on read** (Python evaluation after fetch): simpler but result is not filterable/sortable
-  - **Service-level on write** (compute and store): filterable/sortable but stale if dependencies change
-- [ ] Define and document the formula syntax — recommended: a restricted expression language referencing `{field_name}` tokens, e.g. `{unit_price} * {quantity} * (1 + {tax_rate})`
-- [ ] In `GET /dynamic-data/{entity}/metadata`, flag calculated fields (`"is_calculated": true`) and their formula so report builders know not to treat them as user-editable inputs
-- [ ] Report engine must know: can calculated fields be used in `filters` and `sort`? Document this explicitly
+- **Implemented**: `MigrationGenerator._generate_field_definition()` detects `is_calculated = True` and `calculation_formula` on a `FieldDefinition` and emits a PostgreSQL `GENERATED ALWAYS AS (...) STORED` column.
+  - Formula syntax: `{field_name}` tokens replaced with bare column names, e.g. `{unit_price} * {quantity} * (1 + {tax_rate})` → `unit_price * quantity * (1 + tax_rate)`.
+  - Generated columns are stored on disk — they are **filterable and sortable** (can be used in aggregate `metrics` and `filters`).
+  - `_compile_formula()` helper performs the token substitution.
+  - Calculated fields are protected on write by the existing `protected_fields` list in `update_record()` — clients cannot overwrite them.
+- **Limitation**: PostgreSQL-only (MySQL and SQLite do not support STORED generated columns). For non-PG databases, the field is defined as a regular column and must be populated manually or via a trigger.
+- **Remaining**: Flag `is_calculated` fields in the `metadata` endpoint response so UI and report builders know not to render them as editable inputs.
+- **File changed**: `backend/app/services/migration_generator.py`
 
 ---
 
@@ -234,29 +234,25 @@ The bulk API endpoints exist on the backend but have no frontend integration. Re
 
 ## 6. Reports & Dashboard Integration
 
-### 6.1 No aggregation API — (OPEN)
+### 6.1 No aggregation API — (DONE)
 - **Priority**: 🔴 High
-- **Problem**: `list_records()` returns raw rows only. Reports and dashboards need aggregate queries — `COUNT(*)`, `SUM(amount)`, `AVG(value)`, `GROUP BY status` — which cannot be assembled from paginated row results without fetching all data.
-- **File**: `backend/app/routers/dynamic_data.py`, `backend/app/services/dynamic_entity_service.py`
-- [ ] Add a `GET /api/v1/dynamic-data/{entity}/aggregate` endpoint
-- [ ] Request parameters: `group_by` (array of field names), `metrics` (array of `{field, function}` where function is `count`, `sum`, `avg`, `min`, `max`, `count_distinct`), `filters` (same format as list), `date_trunc` (for time-series grouping: `day`, `week`, `month`, `year`)
-- [ ] Response shape: `{"groups": [{"status": "active", "count": 42, "total_amount": 10500.00}]}`
-- [ ] Enforce org-scope filters (same `SCOPE_HIERARCHY` logic as `list_records`) so users cannot aggregate across tenant/company boundaries
-- [ ] Apply soft-delete exclusion by default
-- [ ] Expose in `metadata` which fields are numeric (aggregatable) and which are categorical (groupable) — the `field_type` values already encode this
+- **Implemented**: `GET /api/v1/dynamic-data/{entity}/aggregate`
+  - Query params: `group_by`, `metrics` (JSON array of `{field, function, alias?}`), `filters`, `date_trunc`, `date_field`
+  - Supported functions: `count`, `sum`, `avg`, `min`, `max`, `count_distinct`; `COUNT(*)` via `field="*"`
+  - Org-scope isolation applied via same `SCOPE_HIERARCHY` as `list_records`
+  - Date-series truncation: `hour`, `day`, `week`, `month`, `quarter`, `year`
+  - Response shape: `{"groups": [...], "total_groups": N, "entity_name": "..."}`
+- **Files changed**: `backend/app/routers/dynamic_data.py`, `backend/app/services/dynamic_entity_service.py`, `backend/app/core/dynamic_query_builder.py`, `backend/app/schemas/dynamic_data.py`
+- **Remaining**: Expose aggregatable/groupable field hints in `metadata` endpoint (`table_config` — see 6.3)
 
 ---
 
-### 6.2 No cross-entity join for reports — (OPEN)
+### 6.2 No cross-entity join for reports — (DONE — both approaches implemented)
 - **Priority**: 🟡 Medium
-- **Problem**: Reports often need data spanning multiple entities — e.g. "invoices joined to customers joined to regions." The current API requires separate queries and client-side joining, which is impractical at scale.
-- **File**: `backend/app/routers/dynamic_data.py`
-- [ ] Evaluate two approaches:
-  - **Virtual entities** (see item 2.3): point `table_name` at a DB view that pre-joins tables — simplest, best performance, but requires DBA to create views
-  - **`expand` parameter on list/aggregate**: `?expand=customer_id,region_id` causes the service to join and inline the referenced record's fields — more flexible, more complex to implement
-- [ ] If implementing `expand`: in `list_records()`, detect lookup fields with `reference_entity_id` set, fetch related records in a single `IN` query (not N+1), and inline as `{field_name}_data: {...}` in the response
-- [ ] Limit `expand` depth to 1 level to avoid unbounded join chains
-- [ ] For the aggregate endpoint (item 6.1), allow `group_by` to reference expanded fields: `group_by=customer_id.region`
+- **Approach A — Virtual entities**: `entity_type = "virtual"` now points `table_name` at any existing DB view. The `RuntimeModelGenerator` maps to the view transparently. `MigrationGenerator` emits `CREATE OR REPLACE VIEW` from `meta_data.view_sql` (or a no-op if absent). The router enforces read-only (`POST`/`PUT`/`DELETE` → 405). See Gap 2.3.
+- **Approach B — `expand` parameter**: `GET /{entity}/records?expand=customer_id,region_id` inlines related records as `{field}_data` in each row. Uses a single `IN` query (no N+1). Depth is limited to 1 level.
+- **Files changed**: `backend/app/routers/dynamic_data.py`, `backend/app/services/dynamic_entity_service.py`
+- **Remaining**: Cross-field `group_by` on expanded fields (e.g. `group_by=customer_id.region`) not yet supported — requires join in aggregate query.
 
 ---
 
@@ -340,20 +336,45 @@ The bulk API endpoints exist on the backend but have no frontend integration. Re
 | 1.2 | Structured validation errors (backend done; frontend wiring pending) | 🟡 Medium | Low–Medium | ON-PROGRESS (backend done; frontend pending) | Partial |
 | 2.1 | `migrating` status mechanics | 🔴 High | Medium | OPEN | Yes — silent failures |
 | 2.2 | `is_versioned` implementation | 🟡 Medium | High | OPEN | Partial |
-| 2.3 | `virtual` entity type | 🟡 Medium | Medium | OPEN | Yes — view-backed reports |
+| 2.3 | `virtual` entity type | 🟡 Medium | Medium | **DONE** | ✅ view-backed reports enabled |
 | 3.1 | `allowed_values` schema | 🔴 High | Low | OPEN | Yes — filter dropdowns |
 | 3.2 | `validation_rules` schema | 🟡 Medium | Low | OPEN | No |
 | 3.3 | `visibility_rules` server enforcement | 🟡 Medium | Medium | OPEN | Yes — data integrity |
-| 3.4 | `calculation_formula` | 🟡 Medium | High | OPEN | Yes — computed metrics |
+| 3.4 | `calculation_formula` | 🟡 Medium | High | **DONE** | ✅ filterable/sortable generated columns |
 | 3.5 | Cascading field dependencies | 🟢 Low | Medium | OPEN | No |
 | 4.1 | Soft-delete list filtering | 🔴 High | Low | OPEN | Yes — wrong counts |
 | 5.1 | `permissions` JSONB enforcement | 🔴 High | Medium | OPEN | Yes — security |
-| 6.1 | Aggregation API | 🔴 High | High | OPEN | Yes — KPIs, charts |
-| 6.2 | Cross-entity join | 🟡 Medium | High | OPEN | Yes — multi-entity reports |
+| 6.1 | Aggregation API | 🔴 High | High | **DONE** | ✅ KPIs, charts, time-series |
+| 6.2 | Cross-entity join | 🟡 Medium | High | **DONE** | ✅ virtual entities + expand param |
 | 6.3 | `table_config` aggregation hints | 🟡 Medium | Low | OPEN | Yes — chart axis config |
 | 6.4 | Relationship traversal (501) | 🟡 Medium | Medium | OPEN | Yes — related record widgets |
 | 7.1 | Platform entity tenant access | 🟡 Medium | Low | OPEN | Yes — shared lookup data |
 | 8.1 | Attachments & comments APIs | 🟢 Low | High | OPEN | No |
+
+---
+
+---
+
+## 9. DB Functions / Stored Procedures
+
+### 9.1 Procedure service layer — (DONE)
+- **Priority**: 🟡 Medium
+- **Implemented**: `backend/app/services/procedure_service.py` — a tenant-aware wrapper for calling named PostgreSQL functions.
+  - `PROCEDURE_REGISTRY` maps logical names to DB function names (financial defaults pre-registered).
+  - `ProcedureService.call(name, params)` → `List[Dict]` — set-returning functions.
+  - `ProcedureService.call_scalar(name, params)` → scalar value.
+  - `ProcedureService.refresh_materialized_view(view_name, concurrently=False)` — refresh materialized views.
+  - `tenant_id` is automatically injected into every call — DB functions can enforce isolation without trusting callers.
+  - All `Decimal` / `datetime` / `date` values are coerced to JSON-serialisable types.
+- **When to use vs Python service**:
+  | Scenario | Use |
+  |----------|-----|
+  | Simple aggregation on one entity | Aggregate API (Gap 6.1) |
+  | Cross-entity join for report | Virtual entity + DB view (Gap 2.3) |
+  | Recursive CTE (hierarchy, BOM) | `ProcedureService.call()` |
+  | Complex financial calc (AR aging, amortisation) | `ProcedureService.call()` |
+  | Real-time dashboard < 50 ms | Materialized view + `refresh_materialized_view()` |
+- **To add a new function**: register it in `PROCEDURE_REGISTRY` in `procedure_service.py`.
 
 ---
 

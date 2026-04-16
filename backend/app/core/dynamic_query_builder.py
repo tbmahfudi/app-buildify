@@ -354,6 +354,92 @@ class DynamicQueryBuilder:
         except json.JSONDecodeError as e:
             raise ValueError(f"Invalid filter JSON: {str(e)}")
 
+    # ------------------------------------------------------------------
+    # Aggregation helpers
+    # ------------------------------------------------------------------
+
+    # Supported aggregation functions mapped to their SQLAlchemy equivalents.
+    AGGREGATE_FUNCTIONS = {
+        'count':          lambda col: func.count(col),
+        'sum':            lambda col: func.sum(col),
+        'avg':            lambda col: func.avg(col),
+        'min':            lambda col: func.min(col),
+        'max':            lambda col: func.max(col),
+        'count_distinct': lambda col: func.count(col.distinct()),
+    }
+
+    def build_aggregate_select(
+        self,
+        model: Type,
+        group_by: Optional[List[str]],
+        metrics: List[dict],
+        date_trunc: Optional[str] = None,
+        date_field: Optional[str] = None
+    ):
+        """
+        Build the SELECT column list and GROUP BY clause for an aggregate query.
+
+        Args:
+            model:      SQLAlchemy model class.
+            group_by:   Field names to group by (may be None / empty).
+            metrics:    List of dicts with keys 'field', 'function', and optional 'alias'.
+            date_trunc: Truncation unit ('hour', 'day', 'week', 'month', 'quarter', 'year').
+            date_field: Which group_by field to apply date_trunc to.
+
+        Returns:
+            Tuple of (select_columns, group_by_expressions, output_keys)
+            - select_columns: list of SQLAlchemy column/label objects to pass to select()
+            - group_by_expressions: list of expressions to pass to .group_by()
+            - output_keys: list of string keys matching the select_columns order
+        """
+        select_columns = []
+        group_by_expressions = []
+        output_keys = []
+
+        # ---- group-by columns ----
+        for field_name in (group_by or []):
+            if not hasattr(model, field_name):
+                raise ValueError(f"Group-by field '{field_name}' not found in entity")
+
+            col = getattr(model, field_name)
+
+            if date_trunc and field_name == date_field:
+                expr = func.date_trunc(date_trunc, col)
+                select_columns.append(expr.label(field_name))
+                group_by_expressions.append(expr)
+            else:
+                select_columns.append(col.label(field_name))
+                group_by_expressions.append(col)
+
+            output_keys.append(field_name)
+
+        # ---- metric columns ----
+        for m in metrics:
+            field_name = m['field']
+            fn_name = m['function']
+            alias = m.get('alias') or f"{fn_name}_{field_name}"
+
+            if fn_name not in self.AGGREGATE_FUNCTIONS:
+                raise ValueError(
+                    f"Unknown aggregation function '{fn_name}'. "
+                    f"Supported: {', '.join(self.AGGREGATE_FUNCTIONS)}"
+                )
+
+            if field_name == '*':
+                # COUNT(*) — field name is irrelevant
+                agg_col = func.count().label(alias)
+            else:
+                if not hasattr(model, field_name):
+                    raise ValueError(f"Metric field '{field_name}' not found in entity")
+                agg_col = self.AGGREGATE_FUNCTIONS[fn_name](
+                    getattr(model, field_name)
+                ).label(alias)
+
+            select_columns.append(agg_col)
+            output_keys.append(alias)
+
+        return select_columns, group_by_expressions, output_keys
+
     def parse_sort_string(self, sort_str: str) -> List[Tuple[str, str]]:
         """
         Parse sort string to list of tuples

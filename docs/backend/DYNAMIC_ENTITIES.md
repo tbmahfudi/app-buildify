@@ -272,6 +272,10 @@ Reads `EntityDefinition` + `FieldDefinition` rows from the DB and constructs a l
 
 **Separate base**: Uses its own `DynamicBase = declarative_base()` to avoid conflicts with static platform models.
 
+**Virtual entities**: When `entity_type = "virtual"`, the generator maps `table_name` directly to an existing database view. No table-creation validation is performed. The generated model class has `__is_virtual__ = True` set as a class attribute so the router layer can enforce read-only access.
+
+**`entity_type` in metadata**: All generated model classes carry `__entity_definition__['entity_type']` so downstream code can inspect the entity type without re-querying the database.
+
 ---
 
 ### `DataModelService`
@@ -282,6 +286,16 @@ Key behaviours:
 - **Name uniqueness**: checked against both tenant-level and platform-level entities to prevent conflicts
 - **Module prefix**: if `module_id` is set, the module's `table_prefix` is automatically prepended to `table_name`
 - **Platform-level entities**: `tenant_id = NULL`; requires `is_superuser = True`
+
+---
+
+### `MigrationGenerator`
+
+Generates SQL DDL for entity tables, views, and field changes.
+
+- **Regular entities** (`custom`, `system`): emits `CREATE TABLE` on first publish and `ALTER TABLE` on schema changes.
+- **Virtual entities** (`virtual`): emits `CREATE OR REPLACE VIEW` from `meta_data.view_sql` (if present) or a no-op comment reminding the operator to create the view manually.
+- **Calculated fields**: when `is_calculated = True` and `calculation_formula` is set, emits `GENERATED ALWAYS AS (...) STORED` on PostgreSQL. Formula tokens `{field_name}` are compiled to bare SQL column references.
 
 ---
 
@@ -297,7 +311,42 @@ Runtime CRUD on records of published entities. Every operation:
 6. Fires **automation rules** matching `trigger_type = "database"` + `entity_name` + event
 
 **Protected fields on update** — these are never overwritten by client data:
-`id`, `created_at`, `created_by`, `tenant_id`, `company_id`, `branch_id`, `department_id`
+`id`, `created_at`, `created_by`, `tenant_id`, `company_id`, `branch_id`, `department_id`, calculated fields.
+
+**`aggregate_records()`** — runs a GROUP BY query with metric functions (count, sum, avg, min, max, count_distinct) and optional date truncation. Org-scope isolation is applied with the same `SCOPE_HIERARCHY` logic as list operations. Works on both regular and virtual entities.
+
+**`_apply_expand()`** — resolves `?expand=field_name` by detecting lookup fields with `reference_entity_name` in their `lookup_config`, then batch-fetching all related records in a single `IN` query and inlining them as `{field_name}_data` on each row. Depth is capped at 1 level.
+
+---
+
+### `ProcedureService`
+
+**File:** `backend/app/services/procedure_service.py`
+
+A tenant-aware wrapper for calling named PostgreSQL functions and refreshing materialized views. Use this for queries that are too complex or expensive to express through `aggregate_records()`:
+
+| Scenario | Recommended approach |
+|----------|---------------------|
+| Simple aggregation on one entity | `aggregate_records()` via the Aggregate API |
+| Cross-entity join read model | Virtual entity + DB view |
+| Recursive CTE (hierarchy, BOM) | `ProcedureService.call()` |
+| Complex financial calc (AR aging) | `ProcedureService.call()` |
+| Real-time dashboard < 50 ms | Materialized view + `refresh_materialized_view()` |
+
+```python
+service = ProcedureService(db, current_user)
+
+# Set-returning function → list of dicts
+rows = await service.call("fn_ar_aging", {"as_of_date": "2026-04-15"})
+
+# Scalar function → single value
+balance = await service.call_scalar("fn_account_balance", {"account_id": "..."})
+
+# Refresh a materialized view
+await service.refresh_materialized_view("mv_dashboard_kpis", concurrently=True)
+```
+
+`tenant_id` is automatically injected into every call from the current user. Register new functions in the `PROCEDURE_REGISTRY` dict at the top of `procedure_service.py`.
 
 ---
 
@@ -355,6 +404,43 @@ All endpoints require `Authorization: Bearer <token>`.
 | `PUT` | `/api/v1/dynamic-data/{entity}/records/{id}` | `{entity}:update:own` or `:tenant` | Update record (partial) |
 | `DELETE` | `/api/v1/dynamic-data/{entity}/records/{id}` | `{entity}:delete:own` or `:tenant` | Delete record |
 
+> **Virtual entities** (`entity_type = "virtual"`) are read-only. `POST`, `PUT`, and `DELETE` return `405 Method Not Allowed`.
+
+#### Aggregation
+
+| Method | Path | Permission | Description |
+|--------|------|-----------|-------------|
+| `GET` | `/api/v1/dynamic-data/{entity}/aggregate` | `{entity}:read:tenant` | Run GROUP BY aggregation |
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `group_by` | string | Comma-separated field names to group by |
+| `metrics` | JSON array | **Required.** `[{"field":"amount","function":"sum","alias":"total"}]` |
+| `filters` | JSON string | Same format as list filters |
+| `date_trunc` | string | `hour` \| `day` \| `week` \| `month` \| `quarter` \| `year` |
+| `date_field` | string | Which `group_by` field to apply `date_trunc` to |
+
+**Supported `function` values**: `count`, `sum`, `avg`, `min`, `max`, `count_distinct`
+
+Use `"field": "*"` with `"function": "count"` for `COUNT(*)`.
+
+**Example — monthly revenue:**
+```
+GET /api/v1/dynamic-data/orders/aggregate
+    ?group_by=created_at
+    &metrics=[{"field":"amount","function":"sum","alias":"revenue"}]
+    &date_trunc=month&date_field=created_at
+```
+
+**Response:**
+```json
+{
+  "groups": [{"created_at": "2026-01-01T00:00:00", "revenue": 84200.00}],
+  "total_groups": 3,
+  "entity_name": "orders"
+}
+```
+
 #### Bulk Operations
 
 | Method | Path | Permission | Description |
@@ -385,6 +471,7 @@ Bulk operations continue on per-record errors and return a summary:
 | `sort` | string | e.g. `name:asc,created_at:desc` |
 | `search` | string | Global search across all text fields |
 | `filters` | JSON string | Filter specification (see below) |
+| `expand` | string | Comma-separated lookup field names to inline (see below) |
 
 #### Filter Format
 
@@ -418,6 +505,103 @@ Bulk operations continue on per-record errors and return a summary:
   "pages": 6
 }
 ```
+
+#### `expand` — Inline Related Records
+
+`?expand=customer_id,region_id` fetches related entities for the listed lookup fields and inlines them into every row of the response. Each field must be of type `lookup` and have a `reference_entity_name` in its `lookup_config`.
+
+- Related records are fetched in a **single `IN` query** per expanded field — no N+1 queries.
+- Depth is limited to **1 level**. The inlined `_data` dict is a plain record and is not itself expanded.
+- If a referenced record is not found (e.g. deleted), the corresponding `_data` key is `null`.
+
+```json
+{
+  "items": [
+    {
+      "id": "uuid-1",
+      "customer_id": "uuid-cust",
+      "customer_id_data": {
+        "id": "uuid-cust",
+        "name": "Acme Corp",
+        "email": "billing@acme.com"
+      }
+    }
+  ],
+  "total": 1,
+  "page": 1,
+  "page_size": 25,
+  "pages": 1
+}
+```
+
+---
+
+## Virtual Entities — DB View Backing
+
+Set `entity_type = "virtual"` to map an `EntityDefinition` to an existing database view instead of a managed table.
+
+### How it works
+
+1. Create the `EntityDefinition` with `entity_type = "virtual"` and `table_name = "<view_name>"`.
+2. Optionally include `view_sql` in `meta_data` so `MigrationGenerator` creates the view automatically on publish.
+3. Define `FieldDefinition` rows that mirror the view's columns — the generator uses these for filtering, sorting, type-coercion, and API documentation.
+4. Publish the entity. The dynamic-data API now exposes it as a read-only endpoint.
+
+### When to use virtual entities
+
+| Use case | Better fit |
+|----------|-----------|
+| Cross-entity join for reporting | Virtual entity + view |
+| Pre-computed aggregation (e.g. sales by region) | Virtual entity + materialized view |
+| Shared read model across modules | Virtual entity + view |
+| Simple aggregation on one entity | `aggregate_records()` API |
+| UI lookup dropdown | `expand` parameter |
+
+### Example
+
+```json
+POST /api/v1/data-model/entities
+{
+  "name": "v_invoice_summary",
+  "label": "Invoice Summary",
+  "entity_type": "virtual",
+  "table_name": "v_invoice_summary",
+  "data_scope": "company",
+  "meta_data": {
+    "view_sql": "CREATE OR REPLACE VIEW v_invoice_summary AS SELECT i.id, i.invoice_number, i.total_amount, i.status, c.name AS customer_name FROM financial_invoices i JOIN financial_customers c ON c.id = i.customer_id",
+    "view_dependencies": ["financial_invoices", "financial_customers"]
+  }
+}
+```
+
+The `MigrationGenerator` will emit the `CREATE OR REPLACE VIEW` SQL when the entity is published. Once published, the entity is queryable via `GET /api/v1/dynamic-data/v_invoice_summary/records` and aggregatable via `.../aggregate`.
+
+---
+
+## Calculated Fields — PostgreSQL Generated Columns
+
+Fields with `is_calculated = true` and a `calculation_formula` are emitted as `GENERATED ALWAYS AS (...) STORED` columns on PostgreSQL.
+
+- **Formula syntax**: `{field_name}` tokens are compiled to bare SQL column references.
+  - `{unit_price} * {quantity} * (1 + {tax_rate})` → `unit_price * quantity * (1 + tax_rate)`
+- **Stored on disk**: the computed value is persisted and updated automatically by the DB engine whenever its source columns change.
+- **Filterable and sortable**: because the value is stored, it can be used in `filters`, `sort`, and aggregation `metrics` queries.
+- **Read-only**: the field is included in the `protected_fields` list and cannot be overwritten by client data on `PUT`.
+
+### Example field definition
+
+```json
+{
+  "name": "line_total",
+  "label": "Line Total",
+  "field_type": "decimal",
+  "data_type": "NUMERIC(18,2)",
+  "is_calculated": true,
+  "calculation_formula": "{unit_price} * {quantity} * (1 + {tax_rate})"
+}
+```
+
+> **Note**: PostgreSQL-specific. On MySQL and SQLite the field is created as a regular column; you must populate it via a trigger or application logic.
 
 ---
 
@@ -462,3 +646,7 @@ Automation errors are logged but do **not** fail the original operation.
 - [API Reference](./API_REFERENCE.md)
 - [RBAC System](./RBAC.md)
 - [Dynamic Entity Gaps & Enhancement Checklist](./DYNAMIC_ENTITIES_GAPS.md)
+
+---
+
+*Last updated: 2026-04-15 — added virtual entities, aggregation API, expand parameter, calculated fields, and procedure service.*

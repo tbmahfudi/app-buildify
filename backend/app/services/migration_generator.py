@@ -24,10 +24,42 @@ class MigrationGenerator:
 
     async def generate_migration(self, entity: EntityDefinition) -> Tuple[str, str]:
         """
-        Generate up and down migration scripts for an entity
+        Generate up and down migration scripts for an entity.
+
+        Virtual entities (entity_type == 'virtual') point to an existing DB
+        view and require no table DDL.  If the entity's meta_data carries a
+        'view_sql' key, that SQL is used to CREATE OR REPLACE the view;
+        otherwise a no-op script is returned.
 
         Returns: (up_script, down_script)
         """
+        entity_type = getattr(entity, 'entity_type', 'custom') or 'custom'
+
+        if entity_type == 'virtual':
+            # Try to find a view_sql in meta_data
+            meta = entity.meta_data or {}
+            if isinstance(meta, str):
+                import json as _json
+                try:
+                    meta = _json.loads(meta)
+                except Exception:
+                    meta = {}
+
+            view_sql = meta.get('view_sql', '')
+            if view_sql:
+                up_sql = view_sql.strip()
+                if not up_sql.endswith(';'):
+                    up_sql += ';'
+                down_sql = f"DROP VIEW IF EXISTS {entity.table_name} CASCADE;"
+            else:
+                up_sql = (
+                    f"-- Virtual entity '{entity.name}' maps to view '{entity.table_name}'.\n"
+                    f"-- No DDL generated. Ensure the view exists before publishing this entity."
+                )
+                down_sql = "-- No DDL to revert for virtual entity."
+
+            return (up_sql, down_sql)
+
         # Check if table already exists
         table_exists = await self._table_exists(entity.table_name)
 
@@ -281,6 +313,19 @@ class MigrationGenerator:
 
         return indexes
 
+    def _compile_formula(self, formula: str) -> str:
+        """
+        Compile a calculation_formula string into a SQL expression.
+
+        Tokens in the formula use {field_name} syntax, which are replaced with
+        the bare column name so PostgreSQL can evaluate them as a GENERATED column.
+
+        Example: "{unit_price} * {quantity} * (1 + {tax_rate})"
+                  →  "unit_price * quantity * (1 + tax_rate)"
+        """
+        import re
+        return re.sub(r'\{(\w+)\}', r'\1', formula)
+
     def _generate_field_definition(self, field: FieldDefinition) -> str:
         """Generate SQL field definition"""
         # Handle data type with precision/scale for DECIMAL/NUMERIC types
@@ -290,6 +335,14 @@ class MigrationGenerator:
                 data_type = f"{data_type.upper()}({field.precision},{field.decimal_places})"
             elif field.precision:
                 data_type = f"{data_type.upper()}({field.precision})"
+
+        # Calculated fields → PostgreSQL GENERATED ALWAYS AS ... STORED
+        # This makes the value filterable/sortable without post-query computation.
+        is_calculated = getattr(field, 'is_calculated', False)
+        calculation_formula = getattr(field, 'calculation_formula', None)
+        if is_calculated and calculation_formula:
+            sql_expr = self._compile_formula(calculation_formula)
+            return f"{field.name} {data_type} GENERATED ALWAYS AS ({sql_expr}) STORED"
 
         parts = [field.name, data_type]
 
