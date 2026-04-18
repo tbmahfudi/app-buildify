@@ -41,5 +41,6 @@ prometheus-client
 # Testing
 pytest
 pytest-asyncio
+pytest-bdd>=7.0
 httpx
 faker
