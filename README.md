@@ -68,6 +68,13 @@ Default admin: `admin@example.com` / `Admin@123`
 | [Module Registration](docs/archive/MODULE_REGISTRATION.md) | Manifest format and registration API |
 | [Modular Architecture Design](docs/archive/MODULAR_ARCHITECTURE_DESIGN.md) | Design decisions and patterns |
 
+### Planning
+
+| Document | Description |
+|----------|-------------|
+| [Product Backlog](plan/BACKLOG.md) | Full system backlog — 20 Epics, 62 Features, 160+ Stories (DONE/OPEN/PLANNED) |
+| [Epic Index](plan/README.md) | Per-epic breakdown with backend & frontend story detail |
+
 ### Reference
 
 | Document | Description |
