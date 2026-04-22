@@ -17,16 +17,29 @@
 
 #### Frontend
 *As a tenant administrator on the users page, I want to open a "New User" drawer, fill in the user's details, assign a role, and save — all without leaving the page, so that onboarding is fast.*
-- Route: `#/users` renders `frontend/assets/templates/users.html` + `users.js`
-- "Add User" button opens a `FlexDrawer` (right panel) with fields:
-  - Full Name (`FlexInput`, required)
-  - Email (`FlexInput` type=email, required; inline duplicate-check on blur)
-  - Password (`FlexInput` type=password with strength meter)
-  - Role (multi-select `FlexSelect` loading `GET /rbac/roles`)
-  - Group (multi-select `FlexSelect` loading `GET /rbac/groups`)
-  - Status toggle (Active by default)
-- On submit: spinner in drawer footer; on success drawer closes and new user appears at top of table with a green "New" badge that fades after 3 seconds
-- Email duplicate: inline error "This email is already in use within this tenant" shown on blur without waiting for submit
+- Route: `#/users` → `users.html` + `users.js`
+- Layout: FlexStack(direction=vertical) > page-header, content-area
+  - page-header: FlexToolbar — "Users" title | "Add User" FlexButton(primary)
+  - content-area: FlexSection — FlexDataGrid
+
+- FlexDataGrid(server-side) — user list via GET /users
+  - columns: Name, Email, Role (FlexBadge), Status (FlexBadge), Actions
+
+- FlexDrawer(position=right, size=md) — "Add User" form, triggered by toolbar button
+  - fields: Full Name (FlexInput, required) | Email (FlexInput, type=email, required, blur duplicate-check) | Password (FlexInput, type=password, strength meter) | Role (FlexSelect, multiple, loads GET /rbac/roles) | Group (FlexSelect, multiple, loads GET /rbac/groups) | Status (FlexCheckbox, default=active)
+  - footer: Cancel | Save User (primary, spinner on submit)
+  - on success: drawer closes; new user row at top of grid with FlexBadge(color=success) "New" fading after 3s
+  - on blur email: if duplicate → inline error "This email is already in use within this tenant"
+
+- Interactions:
+  - click "Add User" button: opens FlexDrawer(position=right) "Add User" form
+  - blur Email field: duplicate-check → inline error shown if email already in use (no submit required)
+  - click Save User (drawer footer): POST /users → spinner → on success drawer closes; new row at top of grid
+
+- States:
+  - loading: FlexDataGrid shows skeleton rows while GET /users resolves
+  - empty: "No users yet" + "Add User" FlexButton(primary)
+  - error: FlexAlert(type=error) "Could not load users. Retry?" above the grid
 
 ---
 
@@ -39,12 +52,24 @@
 
 #### Frontend
 *As a user on my profile page, I want to edit my name, phone, language, and timezone using a simple form with a live avatar preview, so that my profile reflects accurate information.*
-- Route: `#/profile` renders `frontend/assets/templates/profile.html` + `profile-page.js`
-- Profile page layout: left column — avatar circle (shows initials if no URL) with an "Edit" icon overlay; right column — form fields
-- Avatar edit: clicking the circle opens a modal with a URL input and a preview of the image
-- Language select: `FlexSelect` with flag icons; changing language immediately calls `i18next.changeLanguage()` so the page re-renders in the chosen language as a demo
-- Timezone select: searchable `FlexSelect` with UTC offset shown next to each timezone name
-- "Save Changes" button at bottom; unsaved changes show a yellow "You have unsaved changes" banner if user tries to navigate away
+- Route: `#/profile` → `profile.html` + `profile-page.js`
+- Layout: FlexGrid(columns=2) > avatar-col, fields-col
+  - avatar-col: FlexSection — avatar circle (initials fallback if no URL) with "Edit" icon overlay
+  - fields-col: FlexStack(direction=vertical) — Full Name (FlexInput) | Phone (FlexInput) | Language (FlexSelect, flag icons) | Timezone (FlexSelect, searchable, UTC offset shown) | "Save Changes" FlexButton(primary)
+
+- FlexModal(size=sm) — avatar edit, triggered by clicking avatar circle
+  - fields: Avatar URL (FlexInput, type=url) | live image preview
+  - footer: Cancel | Save Avatar (primary)
+
+- Interactions:
+  - click avatar circle: opens FlexModal(size=sm) with URL input and live image preview
+  - change Language (FlexSelect): immediately calls i18next.changeLanguage() → page re-renders in chosen language
+  - click "Save Changes": PUT /users/me → success toast "Profile updated" | error FlexAlert(type=error)
+  - navigate away with unsaved changes: FlexAlert(type=warning) "You have unsaved changes" banner shown
+
+- States:
+  - saving: "Save Changes" button shows spinner; inputs disabled
+  - dirty: yellow "You have unsaved changes" banner visible above the save button
 
 ---
 
@@ -58,11 +83,24 @@
 
 #### Frontend
 *As a tenant administrator on the user detail page, I want a toggle to activate or deactivate a user, with a confirmation dialog that warns me their active sessions will be terminated, so that I act deliberately.*
-- User table row has a status toggle (`FlexBadge` "Active"/"Inactive" clickable)
-- Clicking "Active" badge opens `FlexModal`: "Deactivate [User Name]? They will be immediately signed out of all active sessions."
-- Confirm button in modal calls `PATCH /users/{id}`; badge updates in-place to "Inactive" (grey)
-- Reactivation: clicking "Inactive" badge opens simpler modal "Reactivate [User Name]?" — no session warning needed
-- Deactivated users shown with muted/grey row styling in the users table
+- Route: `#/users` → `users.html` + `users.js` (operates on user list rows)
+
+- FlexModal(size=sm) — deactivate confirm, triggered by clicking an "Active" status badge
+  - body: "Deactivate [User Name]? They will be immediately signed out of all active sessions."
+  - footer: Cancel | Deactivate (FlexButton, variant=danger)
+  - on confirm: PATCH /users/{id} {is_active: false} → badge updates to FlexBadge(color=grey) "Inactive"; row text muted
+
+- FlexModal(size=sm) — reactivate confirm, triggered by clicking an "Inactive" status badge
+  - body: "Reactivate [User Name]?"
+  - footer: Cancel | Reactivate (FlexButton, variant=primary)
+  - on confirm: PATCH /users/{id} {is_active: true} → badge updates to FlexBadge(color=success) "Active"; row styling restored
+
+- Interactions:
+  - click "Active" FlexBadge on a row: opens deactivate FlexModal(size=sm)
+  - click "Inactive" FlexBadge on a row: opens reactivate FlexModal(size=sm)
+  - confirm deactivate: PATCH /users/{id} → badge → "Inactive" (grey); row styling → muted
+  - confirm reactivate: PATCH /users/{id} → badge → "Active" (green); row styling → normal
+  - keyboard Escape: closes open modal without any action
 
 ---
 
@@ -75,10 +113,25 @@
 
 #### Frontend
 *As a tenant administrator on the user detail page, I want a "Send Password Reset" button so that I can help users who cannot access the self-service reset flow.*
-- User detail page `#/users/{id}` has a "Security" tab
-- "Send Password Reset Email" button with a confirmation: "Send a password reset link to [email]?"
-- On success: button shows a green checkmark and becomes disabled for 60 seconds to prevent duplicate sends; toast "Reset email sent to [email]"
-- "Force Password Change on Next Login" toggle sets `force_password_change = true` on the user record; user is redirected to change-password screen after their next successful login
+- Route: `#/users/{id}` → `user-detail.html` + `user-detail-page.js`
+- Layout: FlexStack(direction=vertical) > page-header, tabs-area
+  - page-header: FlexToolbar — FlexBreadcrumb | user name | status FlexBadge
+  - tabs-area: FlexTabs — Overview | Activity | Security | …
+    - Security tab: FlexSection — "Send Password Reset Email" FlexButton(primary) | "Force Password Change on Next Login" FlexCheckbox
+
+- FlexModal(size=sm) — reset confirm, triggered by "Send Password Reset Email" button
+  - body: "Send a password reset link to [email]?"
+  - footer: Cancel | Send Reset Link (FlexButton, primary)
+  - on confirm: POST /users/{id}/reset-password → button shows green checkmark + disabled for 60s; FlexAlert(type=success) "Reset email sent to [email]"
+
+- Interactions:
+  - click "Send Password Reset Email": opens confirm FlexModal(size=sm)
+  - confirm send: POST /users/{id}/reset-password → button → green checkmark + disabled 60s → toast "Reset email sent to [email]"
+  - toggle "Force Password Change on Next Login": PATCH /users/{id} {force_password_change: true/false}
+  - keyboard Escape: closes modal without sending
+
+- States:
+  - reset-sent: button shows green checkmark; disabled for 60s; re-enables automatically after cooldown
 
 ---
 
@@ -95,13 +148,38 @@
 
 #### Frontend
 *As a tenant administrator on the groups page, I want to create groups, set their roles, and add members using a searchable user picker, so that I can manage access for a whole department at once.*
-- Route: `#/rbac` → "Groups" tab renders the groups list as `FlexCard` items
-- "New Group" button opens a `FlexModal` with: Group Name, Description, Role assignment (multi-select)
-- Group card shows: group name, role count, member count, "Manage" button
-- "Manage" opens a `FlexDrawer` with two tabs: "Roles" and "Members"
-  - Roles tab: checklist of all available roles with toggles
-  - Members tab: list of current members with "Remove" icon per row; "Add Members" button opens a user search modal
-- User search modal: `FlexInput` search bar; results show avatar + name + email; click to add; selected users shown as chips above the search bar
+- Route: `#/rbac` → `rbac.html` + `rbac-page.js` (Groups tab active)
+- Layout: FlexStack(direction=vertical) > page-header, groups-grid
+  - page-header: FlexToolbar — "Groups" title | FlexBreadcrumb | "New Group" FlexButton(primary)
+  - groups-grid: FlexGrid(columns=3, gap=md) — FlexCard per group (group name, role count, member count, "Manage" button)
+
+- FlexModal(size=sm) — "New Group" form, triggered by toolbar button
+  - fields: Group Name (FlexInput, required) | Description (FlexTextarea) | Roles (FlexSelect, multiple)
+  - footer: Cancel | Create Group (primary)
+
+- FlexDrawer(position=right, size=md) — group detail, triggered by "Manage" on a card
+  - tabs: Roles | Members
+    - Roles tab: checklist of all tenant roles with toggles | "Save Roles" FlexButton(primary)
+    - Members tab: current members list (avatar + name, "Remove" icon per row) | "Add Members" FlexButton
+
+- FlexModal(size=md) — user search, triggered by "Add Members" inside the Members tab
+  - fields: search bar (FlexInput, live search GET /users?search=[term])
+  - results: avatar + name + email per row; click to select; selected users shown as chips above search bar
+  - footer: Cancel | Add Selected (primary)
+
+- Interactions:
+  - click "New Group": opens FlexModal(size=sm) new-group form
+  - click "Manage" on a group card: opens FlexDrawer(position=right) group detail
+  - click "Add Members" (Members tab): opens FlexModal(size=md) user search
+  - type in user search bar: GET /users?search=[term] → results list updates
+  - click user in search results: adds to selected chips; click chip × to deselect
+  - click "Remove" icon on member row: DELETE /rbac/groups/{id}/members/{user_id} → row removed
+  - confirm "Add Selected": POST /rbac/groups/{id}/members → modal closes; members list refreshes
+
+- States:
+  - loading (groups grid): 6 skeleton cards while GET /rbac/groups resolves
+  - empty (groups): illustration + "No groups yet" + "New Group" FlexButton(primary)
+  - empty (Members tab): "No members in this group yet" + "Add Members" FlexButton
 
 ---
 
@@ -115,9 +193,21 @@
 
 #### Frontend
 *As a tenant administrator editing a group's roles, I want to see a list of all available roles with checkboxes and save my selection with a single click, so that role assignment is efficient.*
-- Group detail drawer "Roles" tab shows: checklist of all tenant roles
-- Each role row shows: role name, description, permission count badge
-- Clicking a role name expands it to show its permission list
-- "Select All" / "Deselect All" convenience buttons at the top
-- "Save Roles" button at the bottom calls `POST /rbac/groups/{id}/roles` with the selected IDs; success toast: "Group roles updated"
-- Dirty-state indicator: "Unsaved changes" yellow pill shown in the drawer header when selections differ from saved state
+- Route: `#/rbac` → `rbac-page.js` — operates within the "Roles" tab of the group FlexDrawer (see Story 3.2.1)
+
+- FlexDrawer(position=right, size=md) — Roles tab content (within group detail drawer)
+  - toolbar: "Select All" | "Deselect All" FlexButton(ghost) | "Unsaved changes" FlexBadge(color=warning) [shown when dirty]
+  - roles list: checklist — each row: FlexCheckbox | role name | description | permission count FlexBadge (clickable, expands to show permission list)
+  - footer: Save Roles (FlexButton, primary)
+
+- Interactions:
+  - click role row checkbox: toggles selection; dirty indicator appears if selections differ from saved state
+  - click role name: expands row to show permission list (accordion-style); click again to collapse
+  - click "Select All": checks all role checkboxes
+  - click "Deselect All": unchecks all role checkboxes
+  - click "Save Roles": POST /rbac/groups/{id}/roles with selected IDs → success toast "Group roles updated" | error FlexAlert(type=error)
+
+- States:
+  - loading: checklist shows skeleton rows while GET /rbac/roles resolves
+  - dirty: "Unsaved changes" FlexBadge(color=warning) visible in drawer header
+  - saving: "Save Roles" button shows spinner; checkboxes disabled
