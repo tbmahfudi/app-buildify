@@ -36,6 +36,8 @@ Each story in the epic files is split into two perspectives:
 - **Backend** — technical API/service/model acceptance criteria
 - **Frontend** — detailed user interaction: page, route, components, validation, states
 
+Frontend sections follow the **UI Layout Description Convention (UILDC v1.0)** — see [LAYOUT_CONVENTION.md](LAYOUT_CONVENTION.md) for the full reference and examples.
+
 ## Status Legend
 
 | Tag | Meaning |
