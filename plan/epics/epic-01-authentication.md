@@ -17,14 +17,25 @@
 
 #### Frontend
 *As a user on the login page, I want to enter my email and password and be taken to the dashboard on success, so that I can start working immediately after authentication.*
-- Route: `/login` renders `frontend/assets/templates/login.html`
-- Form fields: `email` (`FlexInput` type=email, required), `password` (`FlexInput` type=password with show/hide toggle)
-- Optional tenant selector shown when multiple tenants detected; pre-filled demo credentials per tenant shown in dev mode
-- On submit: button enters loading state (`FlexSpinner`); form inputs disabled
-- On success: tokens stored in `localStorage` (`tokens`, `tenantId`, `user`); redirect to `#/dashboard`
-- On 401: form shakes animation + inline error "Invalid email or password"
-- On 423: error "Account locked. Try again in X minutes" with countdown
-- On 429: error "Too many attempts. Please wait before trying again"
+- Route: `/login` → `login.html`
+- Layout: FlexSection(centered) > login-card
+  - login-card: FlexStack(direction=vertical, gap=md) — logo | form fields | "Sign In" FlexButton(primary, full-width) | "Forgot password?" link
+
+- FlexForm — login form
+  - fields: Email (FlexInput, type=email, required) | Password (FlexInput, type=password, show/hide toggle)
+  - optional: Tenant (FlexSelect, shown only when multiple tenants detected; pre-filled demo credentials in dev mode)
+
+- Interactions:
+  - submit form: POST /auth/login → button enters loading state; inputs disabled → on success store tokens in localStorage + redirect to `#/dashboard`
+  - on 401: form shakes animation + inline error "Invalid email or password"
+  - on 423: form replaced with lockout card — lock icon + "Account locked. Try again in X minutes" + countdown
+  - on 429: inline error "Too many attempts. Please wait before trying again"
+  - click "Forgot password?": navigates to `#/forgot-password`
+
+- States:
+  - submitting: "Sign In" button shows spinner; all inputs disabled
+  - locked (423): form replaced with lockout card showing countdown timer
+  - rate-limited (429): inline error above submit button
 
 ---
 
@@ -38,10 +49,12 @@
 
 #### Frontend
 *As a user mid-session, I want my access token to renew automatically when it expires, so that I am never interrupted by an unexpected logout.*
-- `api.js` `apiFetch()` intercepts any 401 response and calls `POST /auth/refresh` using the stored refresh token
-- On successful refresh: new access token stored in `localStorage`; original request retried transparently
-- On refresh failure (401): user redirected to `/login` with a toast "Session expired, please log in again"
-- Refresh is queued — if multiple requests fail simultaneously, only one refresh call is made; others wait and retry
+- No dedicated route — handled globally in `api.js` `apiFetch()`
+
+- Interactions:
+  - any API response 401: apiFetch intercepts → POST /auth/refresh using stored refresh token → on success stores new access token; retries original request transparently
+  - multiple simultaneous 401s: only one refresh call made; other requests queue and retry after
+  - refresh returns 401: all queued requests cancelled → redirect to `/login` + FlexAlert(type=warning) toast "Session expired, please log in again"
 
 ---
 
@@ -55,10 +68,12 @@
 
 #### Frontend
 *As a user, I want to click "Logout" in the user menu and be immediately returned to the login page, so that I know my session is ended.*
-- User dropdown in top nav (triggered by avatar/name click) includes a "Logout" menu item
-- Clicking Logout calls `POST /auth/logout`, clears `localStorage` (`tokens`, `tenantId`, `user`), clears in-memory `appState`
-- Redirect to `/login`; browser history replaced so back button does not return to the app
-- If the API call fails, localStorage is still cleared and user is redirected (fail-safe logout)
+- No dedicated route — "Logout" is a menu item in the global top-nav user dropdown
+
+- Interactions:
+  - click avatar/name in top nav: opens user FlexDropdown (profile link | settings | Logout)
+  - click "Logout": POST /auth/logout → clears localStorage (tokens, tenantId, user) + clears in-memory appState → redirect to `/login`; history replaced so back button cannot return to app
+  - if POST /auth/logout fails: localStorage still cleared; user still redirected to `/login` (fail-safe)
 
 ---
 
@@ -72,15 +87,26 @@
 
 #### Frontend
 *As a user who has forgotten their password, I want to enter my email, receive a reset link, and set a new password through a guided flow, so that I can regain access without contacting support.*
-- "Forgot password?" link on login page navigates to `#/forgot-password`
-- Forgot-password page: single `FlexInput` for email + "Send Reset Link" button
-- On submit: spinner shown; on success displays "Check your email for a reset link" confirmation card
-- Reset link opens `#/reset-password?token=<token>` page with two `FlexInput` fields: "New password" + "Confirm password"
-- Real-time password strength meter below the new password field using `POST /auth/strength-check`
-- On mismatch: inline error "Passwords do not match" before submit
-- On weak password: lists unmet policy rules below the input
-- On success: toast "Password updated" + redirect to `/login`
-- On expired token: error card "This reset link has expired" with a "Request a new link" button
+- Route (step 1): `#/forgot-password` → `forgot-password.html`
+- Route (step 2): `#/reset-password?token=<token>` → `reset-password.html`
+
+- Layout (step 1): FlexSection(centered) > forgot-card
+  - forgot-card: FlexStack(direction=vertical) — heading | Email (FlexInput, type=email) | "Send Reset Link" FlexButton(primary)
+
+- Layout (step 2): FlexSection(centered) > reset-card
+  - reset-card: FlexStack(direction=vertical) — heading | New Password (FlexInput, type=password) | PasswordStrengthMeter | Confirm Password (FlexInput, type=password) | "Set New Password" FlexButton(primary, disabled until passed)
+
+- Interactions:
+  - submit "Send Reset Link": POST /auth/forgot-password → spinner → success card "Check your email for a reset link"
+  - type in New Password: debounced 300ms → POST /auth/strength-check → PasswordStrengthMeter updates; unmet rules listed below field
+  - blur Confirm Password: if mismatch → inline error "Passwords do not match"
+  - submit "Set New Password": POST /auth/reset-password → success toast "Password updated" + redirect to `/login`
+
+- States:
+  - sending: "Send Reset Link" button shows spinner; input disabled
+  - sent: form replaced with confirmation card "Check your email for a reset link"
+  - token-expired: page shows error card "This reset link has expired" + "Request a new link" FlexButton
+  - submitting: "Set New Password" button shows spinner; fields disabled
 
 ---
 
@@ -93,11 +119,16 @@
 
 #### Frontend
 *As a user setting a new password, I want to see a strength meter and checklist that updates as I type, so that I understand exactly what I need to do to meet the requirements.*
-- Password fields on reset, change-password, and user-creation forms all use a shared `PasswordStrengthMeter` component
-- Debounced call (300 ms) to `POST /auth/strength-check` on every keystroke
-- Strength bar: red (0–40), amber (41–70), green (71–100) — driven by `score`
-- Checklist below the bar: each policy rule shown with a ✓ (green) or ✗ (red) based on `unmet_rules`
-- Submit button disabled until `passed === true`
+- No dedicated route — `PasswordStrengthMeter` is a shared component used inside password fields across reset, change-password, and user-creation forms
+
+- PasswordStrengthMeter — inline component rendered below any password FlexInput
+  - strength bar: red (score 0–40) | amber (41–70) | green (71–100)
+  - rules checklist: each policy rule shown with ✓ (green) or ✗ (red) based on `unmet_rules`
+
+- Interactions:
+  - type in password field: debounced 300ms → POST /auth/strength-check → bar color and rules checklist update in real time
+  - all rules pass (`passed === true`): submit button on the containing form becomes enabled
+  - any rule fails: submit button remains disabled
 
 ---
 
@@ -113,11 +144,20 @@
 
 #### Frontend
 *As a user, I want to be warned before my session expires and redirected to login if I ignore the warning, so that I am never confused by a sudden "unauthorized" error mid-work.*
-- Client-side timer reads `ACCESS_TOKEN_EXPIRE_MIN` from the token payload
-- 2 minutes before expiry: a `FlexModal` appears — "Your session is about to expire. Stay logged in?"
-- "Stay logged in" button triggers a token refresh; modal dismissed
-- "Log out now" button triggers logout flow
-- If user ignores modal for 2 minutes: auto-logout with toast "Session expired"
+- No dedicated route — session timer runs globally in `app.js`
+
+- FlexModal(size=sm) — session expiry warning, shown automatically 2 minutes before access token expires
+  - body: "Your session is about to expire. Stay logged in?"
+  - footer: Log out now | Stay logged in (primary)
+  - on "Stay logged in": POST /auth/refresh → modal dismissed; timer resets
+  - on "Log out now": triggers standard logout flow
+  - on timeout (modal ignored 2 min): auto-logout + toast "Session expired"
+
+- Interactions:
+  - 2 min before token expiry: FlexModal(size=sm) appears automatically
+  - click "Stay logged in": POST /auth/refresh → modal closes; session extends
+  - click "Log out now": logout flow → redirect to `/login`
+  - no action for 2 min: auto-logout → redirect to `/login` + toast "Session expired"
 
 ---
 
@@ -130,8 +170,11 @@
 
 #### Frontend
 *As a user who just logged in from a new device, I want to be informed if an older session was terminated, so that I understand why I might have been logged out on another device.*
-- If login response includes `sessions_terminated: true`, show an info toast: "An older session was signed out to allow this login"
-- If `single_session_mode` is active, toast reads: "You have been signed in. All other sessions have been ended"
+- No dedicated route — handled as a toast notification immediately after successful login
+
+- Interactions:
+  - login success with `sessions_terminated: true`: FlexAlert(type=info) toast "An older session was signed out to allow this login"
+  - login success with `single_session_mode` active: FlexAlert(type=info) toast "You have been signed in. All other sessions have been ended"
 
 ---
 
@@ -145,12 +188,35 @@
 
 #### Frontend
 *As a user on my security settings page, I want to see a list of all my active sessions with device and location hints, and be able to terminate any session I don't recognize, so that I can respond immediately to unauthorized access.*
-- Sessions list on `#/settings/security` page, rendered as `FlexCard` items
-- Each card shows: device icon (desktop/mobile/tablet derived from user-agent), browser name, approximate location (from IP), last active time (relative: "2 hours ago")
-- Current session highlighted with a "Current session" badge
-- Each non-current session has a "Sign out" button; clicking opens a confirmation `FlexModal`
-- "Sign out all other sessions" button at the top triggers bulk termination
-- After termination: card removed from list with a fade animation; success toast shown
+- Route: `#/settings/security` → `settings.html` + `settings-page.js` (Sessions section)
+- Layout: FlexStack(direction=vertical) > section-header, sessions-list
+  - section-header: FlexToolbar — "Active Sessions" heading | "Sign out all other sessions" FlexButton(ghost, danger)
+  - sessions-list: FlexStack(direction=vertical, gap=sm) — FlexCard per session
+
+- FlexCard — per session (populated from GET /users/me/sessions)
+  - left: device icon (desktop/mobile/tablet, derived from user-agent) | browser name | approx location (from IP)
+  - right: "last active X ago" | FlexBadge(color=success) "Current session" [current only] | "Sign out" FlexButton(ghost, danger) [non-current only]
+
+- FlexModal(size=sm) — single-session sign-out confirm
+  - body: "Sign out this session?"
+  - footer: Cancel | Sign out (FlexButton, variant=danger)
+  - on confirm: DELETE /users/me/sessions/{id} → card fades out + success toast
+
+- FlexModal(size=sm) — bulk sign-out confirm
+  - body: "Sign out all other sessions? All devices except this one will be logged out."
+  - footer: Cancel | Sign out all (FlexButton, variant=danger)
+  - on confirm: DELETE /users/me/sessions → all non-current cards fade out + success toast
+
+- Interactions:
+  - click "Sign out" on a session card: opens single-session confirm FlexModal(size=sm)
+  - confirm sign out: DELETE /users/me/sessions/{id} → card fades out + success toast
+  - click "Sign out all other sessions": opens bulk confirm FlexModal(size=sm)
+  - confirm bulk sign out: DELETE /users/me/sessions → all non-current cards fade out + success toast
+
+- States:
+  - loading: session cards show skeleton rows while GET /users/me/sessions resolves
+  - single-session: "Sign out all other sessions" button hidden (only current session exists)
+  - error: FlexAlert(type=error) "Could not load sessions. Retry?"
 
 ---
 
@@ -165,11 +231,18 @@
 
 #### Frontend
 *As a tenant administrator on the security settings page, I want to configure password complexity rules using toggles and numeric inputs, so that I can meet our organization's security standards without editing config files.*
-- Security policy form at `#/settings/security` → "Password Policy" section
-- Toggle switches for: require uppercase, require lowercase, require digit, require special character, block common passwords
-- Number inputs for: min length (default 8), max length (default 128), min unique characters
-- Live preview: a sample password shown with pass/fail indicators reflecting the current policy settings
-- "Save Policy" button calls `PUT /admin/security/policies/{tenant_id}`; success toast shown
+- Route: `#/settings/security` → `settings.html` + `settings-page.js` (Password Policy section)
+- Layout: FlexSection > policy-form
+  - policy-form: FlexGrid(columns=2, gap=md) — toggle column | number inputs column | live-preview panel (full-width below) | "Save Policy" FlexButton(primary)
+
+- FlexForm — password policy
+  - toggles: Require uppercase (FlexCheckbox) | Require lowercase (FlexCheckbox) | Require digit (FlexCheckbox) | Require special character (FlexCheckbox) | Block common passwords (FlexCheckbox)
+  - numbers: Min length (FlexInput, type=number, default=8) | Max length (FlexInput, type=number, default=128) | Min unique characters (FlexInput, type=number)
+  - live preview panel: sample password shown with pass/fail rule indicators
+
+- Interactions:
+  - change any toggle or number input: live preview updates immediately (client-side, no API call)
+  - click "Save Policy": PUT /admin/security/policies/{tenant_id} → success toast | error FlexAlert(type=error)
 
 ---
 
@@ -182,11 +255,19 @@
 
 #### Frontend
 *As a user whose password has expired, I want to be redirected to a password change screen immediately after login, so that I understand I must update my password before continuing.*
-- Login response with `requires_password_change: true` redirects to `#/change-password?required=true`
-- Page header: "Your password has expired and must be changed before continuing"
-- Form: current password + new password + confirm password fields
-- If new password matches a previously used one: inline error "You cannot reuse a recent password"
-- After successful change: redirect to `#/dashboard`; no back navigation to the forced-change page
+- Route: `#/change-password?required=true` → `change-password.html` + `change-password-page.js`
+- Layout: FlexSection(centered) > change-card
+  - change-card: FlexStack(direction=vertical) — FlexAlert(type=warning) "Your password has expired and must be changed before continuing" | Current Password (FlexInput, type=password) | New Password (FlexInput, type=password) | PasswordStrengthMeter | Confirm Password (FlexInput, type=password) | "Update Password" FlexButton(primary)
+
+- Interactions:
+  - page load without `required=true`: redirect to `#/dashboard` (cannot be accessed directly)
+  - type in New Password: PasswordStrengthMeter updates in real time
+  - blur Confirm Password: if mismatch → inline error "Passwords do not match"
+  - submit "Update Password": POST /auth/change-password → on success redirect to `#/dashboard` (history entry replaced so back skips this page)
+  - if new password matches recent history: inline error "You cannot reuse a recent password"
+
+- States:
+  - submitting: "Update Password" button shows spinner; all inputs disabled
 
 ---
 
@@ -200,11 +281,16 @@
 
 #### Frontend
 *As a user who has triggered an account lockout, I want to see a clear message explaining when I can try again, so that I am not confused about why login is failing.*
-- On 423 response: login form replaced with a lockout card (no inputs shown to prevent further attempts)
-- Card shows: lock icon, "Account temporarily locked", "You can try again in X minutes Y seconds"
-- Countdown timer updates every second using `setInterval`
-- When countdown reaches zero: lockout card fades out, login form fades in
-- Admin lockout notice (if configured): "Contact your administrator to unlock your account"
+- Route: `/login` → `login.html` (lockout state replaces the login form in-place)
+
+- Interactions:
+  - login returns 423: login form fades out; lockout card fades in — lock icon + "Account temporarily locked" + "You can try again in X minutes Y seconds" countdown (setInterval, 1s tick)
+  - countdown reaches zero: lockout card fades out; login form fades in and is re-enabled
+  - admin lockout configured: countdown replaced with "Contact your administrator to unlock your account"
+
+- States:
+  - locked: login form hidden; lockout card shown with live countdown
+  - unlocked (countdown zero): lockout card fades out; login form fades in
 
 ---
 
@@ -220,13 +306,23 @@
 
 #### Frontend
 *As a user on my security settings page, I want a guided enrollment wizard that shows me a QR code to scan with my authenticator app, so that I can set up two-factor authentication without technical knowledge.*
-- "Enable 2FA" button on `#/settings/security` opens a 3-step `FlexStepper` modal
-- Step 1: "Install an authenticator app" — links to Google Authenticator, Authy, 1Password
-- Step 2: QR code rendered using `qrcode.js`; "Can't scan?" toggle reveals the plain text secret
-- Step 3: Verification — `FlexInput` for 6-digit TOTP code; auto-submits when 6 digits entered
-- On success: modal transitions to "2FA Enabled" confirmation; backup codes displayed in a copyable list
-- "Download backup codes" button generates a `.txt` file download
-- Warning: "Store these codes safely. They won't be shown again."
+- Route: `#/settings/security` → `settings-page.js` (2FA section)
+
+- FlexModal(size=md) — 2FA enrollment wizard, triggered by "Enable 2FA" button
+  - FlexStepper(steps=3) inside modal:
+    - Step 1 "Install App": links to Google Authenticator | Authy | 1Password
+    - Step 2 "Scan QR Code": QR code (qrcode.js) | "Can't scan?" toggle reveals plain text secret
+    - Step 3 "Verify": 6-digit FlexInput (inputmode=numeric); auto-submits on 6th digit
+  - on success: stepper replaced with confirmation — "2FA Enabled" heading + backup codes in copyable list + "Download backup codes" FlexButton
+  - warning banner: "Store these codes safely. They won't be shown again."
+
+- Interactions:
+  - click "Enable 2FA": opens FlexModal(size=md) enrollment wizard at Step 1
+  - advance Step 1 → Step 2: POST /auth/2fa/setup/totp → QR URI rendered with qrcode.js
+  - click "Can't scan?": toggles visibility of plain text secret beneath QR code
+  - type TOTP code (Step 3): auto-submits when 6th digit entered → POST /auth/2fa/setup/confirm
+  - on confirm success: stepper slides to confirmation view; backup codes displayed
+  - click "Download backup codes": generates .txt file download of backup codes
 
 ---
 
@@ -240,13 +336,20 @@
 
 #### Frontend
 *As a user with 2FA enabled, I want to be automatically shown a code entry screen after entering my password, so that the two-factor flow feels seamless and clear.*
-- Login page detects `mfa_required: true` response and transitions to a TOTP input screen (no page navigation)
-- Clean UI: "Enter the 6-digit code from your authenticator app" header
-- Auto-focused 6-digit `FlexInput` with numeric keyboard hint (`inputmode="numeric"`)
-- Auto-submits when 6 digits entered (no button click needed)
-- "Use a backup code instead" link toggles to an 8-character text input
-- On wrong code: input clears and shakes; counter shown "2 attempts remaining"
-- Challenge expired toast: "Verification timed out. Please log in again" → redirect to login
+- Route: `/login` → `login.html` (TOTP step transitions in-place; no page navigation)
+
+- Interactions:
+  - login returns `mfa_required: true`: login form slides out; TOTP screen slides in — "Enter the 6-digit code from your authenticator app" + auto-focused FlexInput(inputmode=numeric, maxlength=6)
+  - type 6th digit: auto-submits → POST /auth/2fa/verify → on success store tokens + redirect to `#/dashboard`
+  - wrong code: input clears + shakes animation; "X attempts remaining" counter shown
+  - click "Use a backup code instead": FlexInput switches to 8-character text input
+  - challenge expires (5 min): toast "Verification timed out. Please log in again" → redirect to `/login`
+
+- States:
+  - totp-input: 6-digit input shown; "Use a backup code instead" link visible
+  - backup-input: 8-character text input shown; "Use authenticator code instead" link visible
+  - wrong-code: input shakes; attempts-remaining counter decrements
+  - challenge-expired: redirect to `/login` + expired toast
 
 ---
 
@@ -259,9 +362,18 @@
 
 #### Frontend
 *As a user in a tenant with mandatory 2FA, I want to see a clear notice about the requirement and a countdown to my enrollment deadline, so that I know when I must act.*
-- After login (during grace period): persistent yellow banner at top of every page: "Your organization requires 2FA. Enroll by [date] — X days remaining. [Enroll Now]"
-- "Enroll Now" navigates to `#/settings/security` with the 2FA enrollment modal pre-opened
-- After grace expires: login succeeds to a forced-enrollment page (cannot navigate elsewhere until enrolled)
+- No dedicated route — grace-period banner renders in the global app shell; forced-enrollment replaces normal post-login navigation
+
+- Interactions:
+  - within grace period (2FA not enrolled): persistent FlexAlert(type=warning) banner at top of every page "Your organization requires 2FA. Enroll by [date] — X days remaining." + "Enroll Now" FlexButton
+  - click "Enroll Now": navigates to `#/settings/security`; 2FA enrollment FlexModal pre-opened
+  - grace period expired (2FA not enrolled): login succeeds but user lands on forced-enrollment page; all other navigation blocked until enrolled
+  - 2FA enrolled: banner dismissed; forced-enrollment bypass lifted
+
+- States:
+  - grace-active: yellow warning banner visible on all pages
+  - grace-expired: forced-enrollment page shown after login; navigation blocked
+  - enrolled: banner hidden; normal navigation restored
 
 ---
 
@@ -278,10 +390,20 @@
 
 #### Frontend
 *As an enterprise user on the login page, I want to click "Login with SSO" and be redirected to my company's identity provider, so that I can authenticate with my corporate credentials without a separate password.*
-- Login page detects SSO config for the tenant (from `GET /auth/sso-config?tenant=<slug>`)
-- If SSO is configured: "Login with [Company SSO]" button shown prominently; email/password form moved to a "Use local account" collapsible
-- Clicking SSO button redirects to IdP login; after assertion, user lands on `#/dashboard`
-- If JIT provisioning fails: error page "Your account could not be set up. Contact your administrator" with error code for support
+- Route: `/login` → `login.html` (SSO layout variant, driven by GET /auth/sso-config?tenant=<slug>)
+- Layout (SSO detected): FlexSection(centered) > login-card
+  - login-card: FlexStack(direction=vertical) — logo | "Login with [Company SSO]" FlexButton(primary, full-width) | "Use local account" FlexAccordion (collapses standard email/password form)
+
+- Interactions:
+  - page load: GET /auth/sso-config?tenant=<slug> → if SSO configured, SSO button shown + local form collapsed by default
+  - click "Login with [Company SSO]": redirect to IdP login URL → after assertion POST /auth/saml/acs → store tokens + redirect to `#/dashboard`
+  - click "Use local account": expands FlexAccordion revealing email/password form
+  - JIT provisioning fails: error page "Your account could not be set up. Contact your administrator." with error code
+
+- States:
+  - loading: login card shows skeleton while SSO config resolves
+  - sso-configured: SSO button prominent; local form collapsed in FlexAccordion
+  - provisioning-error: error card shown; no login form available
 
 ---
 
@@ -295,7 +417,18 @@
 
 #### Frontend
 *As a user on the login page, I want to see "Login with Google" and "Login with Microsoft" buttons, so that I can sign in with my existing work account.*
-- Login page renders an OAuth button for each configured provider with the provider's official logo
-- Clicking a provider button redirects to the OAuth authorize URL (opened in the same tab)
-- OAuth callback page at `#/auth/callback` reads the `code` and `state` from the URL, calls the backend callback endpoint, then stores tokens and redirects to `#/dashboard`
-- Error states: "Authorization was denied", "Provider is not configured", "Account already exists with a different login method" — each shown as an error card with suggested actions
+- Route (login): `/login` → `login.html`
+- Route (callback): `#/auth/callback` → `oauth-callback.html`
+- Layout: FlexSection(centered) > login-card
+  - login-card: FlexStack(direction=vertical) — logo | email/password form | "or" divider | OAuth FlexButton per configured provider (provider logo + name)
+
+- Interactions:
+  - click OAuth provider button: GET /auth/oauth/{provider}/authorize → redirect to provider login URL (same tab)
+  - callback page load: reads `code` + `state` from URL → GET /auth/oauth/{provider}/callback → store tokens → redirect to `#/dashboard`
+  - authorization denied: error card "Authorization was denied" + "Try again" link
+  - provider not configured: error card "Provider is not configured. Contact your administrator"
+  - account exists with different login method: error card with suggested action (e.g. "Log in with email/password instead")
+
+- States:
+  - callback-loading: spinner shown while GET /auth/oauth/{provider}/callback resolves
+  - callback-error: error card with specific message + suggested action
