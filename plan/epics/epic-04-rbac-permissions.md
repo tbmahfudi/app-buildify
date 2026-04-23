@@ -17,11 +17,28 @@
 
 #### Frontend
 *As a tenant administrator on the RBAC page, I want to see all roles in a list, create new ones, and configure their permissions in a matrix view, so that access control is self-service.*
-- Route: `#/rbac` renders `frontend/assets/templates/rbac.html` + `rbac-page.js`
-- Left panel: role list with `FlexCard` items — system roles in a "System Roles" section (read-only badge), tenant roles below with Edit/Delete icons
-- "New Role" button opens a `FlexModal` with Name and Description fields; optional "Copy permissions from" select to clone an existing role
-- Deleting a role with assignments shows a warning: "This role is assigned to X users and Y groups. Remove it from all assignments first."
-- System roles: edit icon disabled; hovering shows tooltip "System roles cannot be modified"
+- Route: `#/rbac` → `rbac.html` + `rbac-page.js`
+- Layout: FlexSplitPane(initial-split=30%) > roles-panel, detail-panel
+  - roles-panel: FlexStack(direction=vertical) > roles-header, system-roles-section, tenant-roles-section
+    - roles-header: FlexToolbar — "Roles" title | "New Role" FlexButton(primary)
+    - system-roles-section: FlexStack — section label "System Roles" | FlexCard per system role (read-only FlexBadge, edit icon disabled)
+    - tenant-roles-section: FlexStack — FlexCard per custom role (Edit | Delete icons)
+  - detail-panel: permission matrix (see Story 4.1.2)
+
+- FlexModal(size=sm) — "New Role" form, triggered by toolbar button
+  - fields: Name (FlexInput, required) | Description (FlexTextarea) | Copy permissions from (FlexSelect, optional)
+  - footer: Cancel | Create Role (primary)
+
+- Interactions:
+  - click "New Role": opens FlexModal(size=sm)
+  - click role card: loads permission matrix in detail-panel for that role
+  - hover disabled edit icon (system role): FlexTooltip "System roles cannot be modified"
+  - click Delete on a role with assignments: FlexAlert(type=warning) inline "This role is assigned to X users and Y groups. Remove it from all assignments first." — delete blocked
+
+- States:
+  - loading: role cards show skeleton while GET /rbac/roles resolves
+  - empty (tenant roles): "No custom roles yet" + "New Role" FlexButton(primary)
+  - error: FlexAlert(type=error) "Could not load roles. Retry?"
 
 ---
 
@@ -35,13 +52,25 @@
 
 #### Frontend
 *As a tenant administrator editing a role, I want a permission matrix where rows are resources and columns are actions, and I can toggle individual cells, so that configuring permissions is intuitive and visual.*
-- Role detail panel (right side of `#/rbac` when a role is selected) shows a permission matrix
-- Rows: resource names (users, entities, reports, dashboards, etc.)
-- Columns: actions (create, read, update, delete, export, approve)
-- Cells: checkbox toggles; checked = permission granted
-- Scope selector at the top of the panel: `platform / tenant / company / branch` — all displayed permissions filtered to the selected scope
-- "Select All" row button grants all actions for a resource; "Select All" column header grants one action across all resources
-- Auto-save on each toggle (no explicit Save button); a small "Saved" checkmark flashes after each successful API call
+- Route: `#/rbac` → detail-panel of the split-pane (see Story 4.1.1)
+
+- Permission matrix panel — shown when a role is selected
+  - scope selector (FlexSelect): platform | tenant | company | branch — filters matrix to selected scope
+  - matrix table: rows = resource names (users, entities, reports, dashboards…) | columns = actions (create, read, update, delete, export, approve)
+  - each cell: FlexCheckbox toggle; checked = permission granted
+  - row header: "Select All" button grants all actions for that resource
+  - column header: "Select All" button grants that action across all resources
+
+- Interactions:
+  - change scope selector: matrix re-filters to show only permissions for selected scope
+  - toggle a matrix cell: POST /rbac/roles/{id}/permissions or DELETE /rbac/roles/{id}/permissions/{perm_id} (auto-save, no submit button) → small "Saved ✓" indicator flashes beside the cell
+  - click row "Select All": grants all actions for that resource in one call
+  - click column "Select All": grants that action for all resources in one call
+
+- States:
+  - loading: matrix shows skeleton while GET /rbac/permissions resolves
+  - saving (per-cell): spinner micro-icon beside toggled cell; other cells remain interactive
+  - no-role-selected: detail-panel shows empty state "Select a role to configure its permissions"
 
 ---
 
@@ -55,11 +84,22 @@
 
 #### Frontend
 *As a tenant administrator on a user's detail page, I want to assign and remove roles for that specific user, with a clear display of which roles come from groups vs. direct assignment, so that I understand their full access.*
-- User detail page `#/users/{id}` has a "Roles & Permissions" tab
-- "Direct Roles" section: shows roles assigned directly to the user with a remove (×) icon each; "Add Role" opens a role search select
-- "Group Roles" section: read-only list of roles inherited through group membership; each item shows which group it comes from (e.g. "Manager role via Sales Team group")
-- "Effective Permissions" expandable section: full flattened list of all permissions the user has, showing source (direct/group name)
-- Permissions searchable with a filter input to find a specific permission code quickly
+- Route: `#/users/{id}` → user detail page "Roles & Permissions" tab
+
+- FlexDrawer content (within user detail FlexTabs — Roles & Permissions tab):
+  - Direct Roles section: FlexBadge per directly-assigned role + × remove icon | "Add Role" FlexButton (opens role FlexSelect)
+  - Group Roles section: read-only list — role name | "via [Group Name]" FlexBadge per inherited role
+  - Effective Permissions section: FlexAccordion (collapsed by default) — full flattened permission list; source shown per entry (direct / group name) | filter FlexInput at top
+
+- Interactions:
+  - click × on a direct role: DELETE /rbac/users/{id}/roles/{role_id} → badge removed
+  - click "Add Role": opens role FlexSelect dropdown; select to POST /rbac/users/{id}/roles → new badge appears
+  - type in Effective Permissions filter: client-side filters permission list by code string
+  - click "Effective Permissions" accordion header: expands/collapses the full permission list
+
+- States:
+  - loading: sections show skeleton while GET /rbac/users/{id}/roles resolves
+  - no-direct-roles: "No direct roles assigned" + "Add Role" FlexButton
 
 ---
 
@@ -76,10 +116,13 @@
 
 #### Frontend
 *As a frontend developer building a new page, I want a simple `hasPermission()` call that I can wrap any button or menu item with, so that the UI automatically adapts to each user's access level without custom logic per component.*
-- `auth-service.js` exposes `hasPermission(code)` — checks the in-memory permission set loaded at login
-- Usage pattern: `if (!hasPermission('reports:export:company')) button.disabled = true`
-- Permission set refreshed automatically when tokens are renewed (in case role changes take effect mid-session)
-- Dev-mode: `?debug_perms=1` URL flag renders a floating panel showing the current user's full permission list — useful for QA
+- No dedicated route — `hasPermission()` is a shared utility in `auth-service.js`, used everywhere
+
+- Interactions:
+  - login / token refresh: full permission list loaded into in-memory set from login response `user.permissions[]`
+  - any `hasPermission(code)` call: checks in-memory set; superadmin flag (`is_superuser: true`) always returns true
+  - token renewal: permission set refreshed in case role changes took effect mid-session
+  - append `?debug_perms=1` to any URL: floating dev overlay appears showing the current user's full permission list (QA tool)
 
 ---
 
@@ -93,9 +136,12 @@
 
 #### Frontend
 *As a company-level user, I want the platform to automatically show only my company's data across all pages, so that I never accidentally see another subsidiary's records.*
-- No specific UI needed — scope enforcement is transparent to the user
-- Admin pages show a "Scope: Company — [Company Name]" chip in the page header, so admins know which scope they're operating in
-- Superadmin and tenant admin pages show a scope dropdown allowing them to view data from other companies for admin tasks
+- No dedicated route — scope context is transparent; enforcement is entirely server-side
+
+- Interactions:
+  - all page loads: data returned is already scope-filtered; no user action required
+  - admin pages only: "Scope: Company — [Company Name]" FlexBadge shown in the page header so admins know which scope they're viewing
+  - superadmin / tenant admin: scope FlexSelect in the page header allows switching to view another company's data for admin tasks → page re-fetches with selected scope context
 
 ---
 
@@ -108,10 +154,15 @@
 
 #### Frontend
 *As a user with limited permissions, I want the navigation menu to show only the sections I have access to, and action buttons I'm not allowed to use to be hidden — not just disabled, so that the UI feels clean and appropriate for my role.*
-- `app.js` `renderMenu()` calls `hasPermission()` for each menu item's `required_permission` and skips rendering items that fail the check
-- Page-level: route guards in `router.js` redirect to a 403 page if the user navigates directly to a route they lack permission for
-- Component-level: action buttons (Create, Edit, Delete, Export) wrapped in a `showIf(hasPermission(...))` utility — elements not rendered in DOM, not just CSS-hidden
-- 403 page: friendly message "You don't have permission to access this section. Contact your administrator if you think this is a mistake."
+- No dedicated route — permission filtering is applied globally across all routes and components
+
+- Interactions:
+  - app load / menu render: `renderMenu()` calls `hasPermission()` per menu item; items that fail are not rendered in the DOM (not CSS-hidden)
+  - navigate directly to a restricted route: `router.js` guard intercepts → redirects to 403 page
+  - any Create / Edit / Delete / Export button: wrapped in `showIf(hasPermission(...))` — element absent from DOM when permission missing; no disabled state shown
+
+- States:
+  - 403 page: FlexSection(centered) — "You don't have permission to access this section. Contact your administrator if you think this is a mistake." + "Go to Dashboard" FlexButton
 
 ---
 
@@ -125,9 +176,21 @@
 
 #### Frontend
 *As a tenant administrator designing an entity, I want to configure which roles can perform which actions on that entity's data, so that sensitive custom tables are protected beyond the global RBAC settings.*
-- Entity designer page `#/nocode/data-model` → entity edit form → "Access Control" tab
-- Permission matrix: rows = roles (fetched from `GET /rbac/roles`), columns = CRUD actions
-- Pre-populated from the entity's current `permissions` JSONB
-- "Inherit from global RBAC" toggle: when ON, the `permissions` field is `null` and the matrix is shown as read-only grey state
-- When OFF: matrix becomes editable; administrator configures per-role access
-- Save updates the `EntityDefinition.permissions` JSONB via `PUT /data-model/entities/{id}`
+- Route: `#/nocode/data-model` → entity edit form → "Access Control" tab
+
+- Permission matrix panel (within entity edit form):
+  - "Inherit from global RBAC" FlexCheckbox (toggle) at the top
+  - matrix table: rows = roles (from GET /rbac/roles) | columns = CRUD actions (create, read, update, delete)
+  - pre-populated from entity's current `permissions` JSONB
+  - footer: "Save Access Control" FlexButton(primary)
+
+- Interactions:
+  - toggle "Inherit from global RBAC" ON: `permissions` set to null; matrix shown in read-only grey state
+  - toggle "Inherit from global RBAC" OFF: matrix becomes editable; all cells unlocked
+  - toggle a matrix cell: updates local state only (no auto-save)
+  - click "Save Access Control": PUT /data-model/entities/{id} with updated `permissions` JSONB → success toast | error FlexAlert(type=error)
+
+- States:
+  - inherit-mode: matrix cells greyed out and non-interactive; toggle clearly ON
+  - custom-mode: matrix cells interactive; toggle OFF
+  - loading: matrix shows skeleton while GET /rbac/roles resolves
