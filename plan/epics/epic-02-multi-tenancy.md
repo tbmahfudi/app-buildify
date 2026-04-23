@@ -17,12 +17,31 @@
 
 #### Frontend
 *As a superadmin on the tenants management page, I want to fill out a form to create a new tenant with its name, slug, and initial admin credentials, so that I can onboard a new client in under a minute.*
-- Route: `#/tenants` renders `frontend/assets/templates/tenants.html` + `tenants.js`
-- "New Tenant" button opens a `FlexModal` with fields: Tenant Name, Slug (auto-generated from name, editable), Domain, Admin Email, Admin Password
-- Slug field: auto-derives from name (lowercase, hyphens), shows a live preview of the tenant URL
-- On submit: spinner shown; on success modal closes and the new tenant appears at the top of the tenant list
-- Tenant list shows: name, slug, plan tier badge, active/suspended status chip, user count, created date
-- Row actions: Edit, Suspend/Activate, View Users
+- Route: `#/tenants` → `tenants.html` + `tenants.js`
+- Layout: FlexStack(direction=vertical) > page-header, content-area
+  - page-header: FlexToolbar — "Tenants" title | "New Tenant" FlexButton(primary)
+  - content-area: FlexDataGrid
+
+- FlexDataGrid(server-side) — tenant list via GET /org/tenants
+  - columns: Name, Slug, Plan Tier (FlexBadge), Status (FlexBadge, Active/Suspended), User Count, Created Date, Actions
+  - row action: Edit | Suspend/Activate | View Users
+
+- FlexModal(size=md) — "New Tenant" form, triggered by toolbar button
+  - fields: Tenant Name (FlexInput, required) | Slug (FlexInput, auto-derived from name, editable, live URL preview) | Domain (FlexInput) | Admin Email (FlexInput, type=email) | Admin Password (FlexInput, type=password)
+  - footer: Cancel | Create Tenant (primary, spinner on submit)
+  - on success: modal closes; new tenant row at top of grid
+
+- Interactions:
+  - click "New Tenant": opens FlexModal(size=md) new-tenant form
+  - type in Tenant Name: Slug auto-derives (lowercase, hyphens); live tenant URL preview updates below slug field
+  - submit form: POST /org/tenants → spinner → on success modal closes; new row at top of grid
+  - click Edit on row: opens pre-populated FlexModal
+  - click Suspend/Activate on row: opens confirm FlexModal (see Story 2.1.3)
+
+- States:
+  - loading: FlexDataGrid shows skeleton rows while GET /org/tenants resolves
+  - empty: "No tenants yet" + "New Tenant" FlexButton(primary)
+  - error: FlexAlert(type=error) "Could not load tenants. Retry?"
 
 ---
 
@@ -35,11 +54,18 @@
 
 #### Frontend
 *As a tenant administrator on the branding settings page, I want to upload my logo and pick my brand colors, so that the platform shows my company's identity to all users.*
-- Route: `#/settings/branding` with fields: Company Name, Logo URL (text input with live preview), Primary Color (color picker hex input + swatch), Secondary Color
-- Logo preview renders inline at 120×40 px (the sidebar logo dimensions)
-- Primary color swatch updates a preview sidebar snippet in real time
-- "Save Branding" button calls `PUT /settings/tenant`; on success applies changes immediately by updating CSS variables via `theme-manager.js`
-- Changes take effect for all users of the tenant without page reload (CSS custom properties overridden at `:root`)
+- Route: `#/settings/branding` → `settings.html` + `settings-page.js` (Branding section)
+- Layout: FlexGrid(columns=2) > form-col, preview-col
+  - form-col: FlexStack(direction=vertical) — Company Name (FlexInput) | Logo URL (FlexInput, type=url) | Primary Color (hex FlexInput + color swatch) | Secondary Color (hex FlexInput + color swatch) | "Save Branding" FlexButton(primary)
+  - preview-col: FlexSection(sticky) — live sidebar snippet showing logo at 120×40px and primary color applied
+
+- Interactions:
+  - type in Logo URL: logo preview updates in real time at 120×40px
+  - change Primary Color: preview sidebar snippet updates immediately (client-side CSS variable swap)
+  - click "Save Branding": PUT /settings/tenant → on success applies CSS variables via theme-manager.js for all tenant users without page reload | error FlexAlert(type=error)
+
+- States:
+  - saving: "Save Branding" button shows spinner; all inputs disabled
 
 ---
 
@@ -52,11 +78,25 @@
 
 #### Frontend
 *As a superadmin on the tenant detail page, I want to suspend or reactivate a tenant with a confirmation dialog, so that I don't accidentally lock out a client.*
-- Tenant list row and tenant detail page both have a "Suspend" / "Activate" toggle button
-- Clicking "Suspend" opens a `FlexModal`: "Are you sure you want to suspend [Tenant Name]? All users will lose access immediately." with a required Reason text field
-- Confirming calls `PATCH /org/tenants/{id}`; the tenant row status chip updates to "Suspended" (red)
-- "Activate" has a simpler modal: "Restore access for [Tenant Name]?" — no reason field required
-- Suspended tenants highlighted with a red background row tint in the list
+- Route: `#/tenants` → operates on tenant list rows (and tenant detail page)
+
+- FlexModal(size=sm) — suspend confirm, triggered by "Suspend" action on a row
+  - body: "Are you sure you want to suspend [Tenant Name]? All users will lose access immediately."
+  - fields: Reason (FlexTextarea, required)
+  - footer: Cancel | Suspend Tenant (FlexButton, variant=danger)
+  - on confirm: PATCH /org/tenants/{id} {is_active: false} → status chip updates to FlexBadge(color=danger) "Suspended"; row tinted red
+
+- FlexModal(size=sm) — reactivate confirm, triggered by "Activate" action on a suspended row
+  - body: "Restore access for [Tenant Name]?"
+  - footer: Cancel | Activate Tenant (FlexButton, variant=primary)
+  - on confirm: PATCH /org/tenants/{id} {is_active: true} → status chip updates to FlexBadge(color=success) "Active"; row tint removed
+
+- Interactions:
+  - click "Suspend" on tenant row: opens suspend FlexModal(size=sm) with required reason field
+  - confirm suspend: PATCH /org/tenants/{id} → badge → "Suspended" (red); row background → red tint
+  - click "Activate" on suspended row: opens reactivate FlexModal(size=sm) (no reason field)
+  - confirm activate: PATCH /org/tenants/{id} → badge → "Active" (green); row tint removed
+  - keyboard Escape: closes modal without action
 
 ---
 
@@ -72,12 +112,31 @@
 
 #### Frontend
 *As a tenant administrator on the companies page, I want to create and manage companies using a drawer form, so that I can set up multiple legal entities without leaving the page.*
-- Route: `#/companies` renders a card grid of all companies
-- Each card shows: company name, code, currency, timezone, active user count
-- "Add Company" button opens a `FlexDrawer` (right side) with fields: Name, Code, Country, Currency (searchable select), Timezone (searchable select), Fiscal Year Start month (select)
-- Edit: clicking a card's edit icon opens the same drawer pre-populated
-- Delete: confirmation modal; blocked if company has active users (shows count with a warning)
-- Company card click navigates to `#/companies/{id}` detail page showing branches, departments, and modules
+- Route: `#/companies` → `companies.html` + `companies-page.js`
+- Layout: FlexStack(direction=vertical) > page-header, companies-grid
+  - page-header: FlexToolbar — "Companies" title | "Add Company" FlexButton(primary)
+  - companies-grid: FlexGrid(columns=3, gap=md) — FlexCard per company (name, code, currency, timezone, active user count, edit/delete icons)
+
+- FlexDrawer(position=right, size=md) — company form, triggered by "Add Company" or card edit icon
+  - fields: Name (FlexInput, required) | Code (FlexInput) | Country (FlexSelect) | Currency (FlexSelect, searchable) | Timezone (FlexSelect, searchable) | Fiscal Year Start (FlexSelect, month)
+  - footer: Cancel | Save Company (primary, spinner on submit)
+  - on edit: drawer pre-populated with existing values
+
+- FlexModal(size=sm) — delete confirm, triggered by card delete icon
+  - body: "Delete [Company Name]?"
+  - on blocked (active users exist): body replaced with FlexAlert(type=warning) "Cannot delete — [N] active users. Remove users first."
+  - footer: Cancel | Delete (FlexButton, variant=danger) [hidden when blocked]
+
+- Interactions:
+  - click "Add Company": opens empty FlexDrawer(position=right)
+  - click edit icon on card: opens FlexDrawer pre-populated
+  - click delete icon on card: opens delete confirm FlexModal (or blocked warning)
+  - click company card (not icons): navigates to `#/companies/{id}` detail page
+
+- States:
+  - loading: FlexGrid shows 6 skeleton cards while GET /org/companies resolves
+  - empty: "No companies yet" + "Add Company" FlexButton(primary)
+  - error: FlexAlert(type=error) "Could not load companies. Retry?"
 
 ---
 
@@ -90,11 +149,25 @@
 
 #### Frontend
 *As a company administrator on the branches page, I want to see branches in a tree structure and add child branches under parent ones, so that I can model our office hierarchy accurately.*
-- Route: `#/branches` shows a collapsible tree list; root branches expand to reveal child branches
-- "Add Branch" button opens `FlexModal` with fields: Name, Code, Address, Parent Branch (select, optional)
-- Selecting a parent branch in the modal visually indents the preview in the list
-- Inline edit: clicking the branch name opens an inline edit field (no drawer needed for simple name changes)
-- "Add child branch" icon on each row opens the same modal with the parent pre-selected
+- Route: `#/branches` → `branches.html` + `branches-page.js`
+- Layout: FlexStack(direction=vertical) > page-header, branch-tree
+  - page-header: FlexToolbar — "Branches" title | "Add Branch" FlexButton(primary)
+  - branch-tree: FlexSection — collapsible tree; root branches expand to reveal child branches
+
+- FlexModal(size=sm) — branch form, triggered by "Add Branch" or "Add child branch" icon on a row
+  - fields: Name (FlexInput, required) | Code (FlexInput) | Address (FlexTextarea) | Parent Branch (FlexSelect, optional)
+  - footer: Cancel | Save Branch (primary)
+
+- Interactions:
+  - click branch row expand chevron: expands/collapses child branches
+  - click "Add Branch": opens FlexModal(size=sm) with Parent Branch empty
+  - click "Add child branch" icon on a row: opens FlexModal with Parent Branch pre-selected
+  - click branch name inline: name becomes an inline FlexInput; Enter confirms; Escape cancels
+  - select Parent Branch in modal: list preview shows visual indent where the new branch will appear
+
+- States:
+  - loading: tree shows skeleton rows while GET /org/branches resolves
+  - empty: "No branches yet" + "Add Branch" FlexButton(primary)
 
 ---
 
@@ -107,10 +180,34 @@
 
 #### Frontend
 *As a company administrator, I want to create departments and assign a manager for each, so that approval workflows route correctly to the right person.*
-- Route: `#/departments` shows a table with columns: Department Name, Branch, Manager, Member Count, Actions
-- "Add Department" button opens `FlexModal` with fields: Name, Code, Branch (select), Manager (user search select)
-- Manager field uses a type-ahead search `FlexSelect` that queries `GET /users?search=`
-- Department row: "Manage Members" button opens a side drawer listing users in the department with add/remove controls
+- Route: `#/departments` → `departments.html` + `departments-page.js`
+- Layout: FlexStack(direction=vertical) > page-header, content-area
+  - page-header: FlexToolbar — "Departments" title | "Add Department" FlexButton(primary)
+  - content-area: FlexDataGrid
+
+- FlexDataGrid(server-side) — department list via GET /org/departments
+  - columns: Department Name, Branch, Manager, Member Count, Actions
+  - row action: Edit | Manage Members
+
+- FlexModal(size=sm) — department form, triggered by "Add Department" or row Edit
+  - fields: Name (FlexInput, required) | Code (FlexInput) | Branch (FlexSelect) | Manager (FlexSelect, searchable type-ahead, queries GET /users?search=)
+  - footer: Cancel | Save Department (primary)
+
+- FlexDrawer(position=right, size=md) — "Manage Members", triggered by row action
+  - members list: avatar + name per row | "Remove" icon
+  - footer: "Add Members" FlexButton → opens user search FlexModal
+
+- Interactions:
+  - click "Add Department": opens FlexModal(size=sm) empty form
+  - click Edit on row: opens FlexModal pre-populated
+  - type in Manager field: debounced → GET /users?search=[term] → dropdown results update
+  - click "Manage Members" on row: opens FlexDrawer(position=right)
+  - click "Remove" on member row: DELETE /org/departments/{id}/members/{user_id} → row removed
+
+- States:
+  - loading: FlexDataGrid shows skeleton rows while GET /org/departments resolves
+  - empty: "No departments yet" + "Add Department" FlexButton(primary)
+  - error: FlexAlert(type=error) "Could not load departments. Retry?"
 
 ---
 
@@ -124,11 +221,17 @@
 
 #### Frontend
 *As a user with access to multiple companies, I want to switch my active company from a dropdown in the navigation bar, so that I can work across subsidiaries without logging out.*
-- Company switcher dropdown in the top navigation (only visible if the user has access to > 1 company)
-- Dropdown shows: list of accessible companies with the active company highlighted with a checkmark
-- Selecting a company calls `PATCH /users/me/active-company`; page reloads to apply the new company context
-- Active company name shown in the top nav beside the switcher icon
-- Tenant admin `#/users/{id}` detail page has a "Company Access" tab: checklist of all companies; toggle each to grant/revoke access
+- No dedicated route — company switcher is a FlexDropdown in the global top nav (hidden when user has access to only 1 company)
+- Route (admin): `#/users/{id}` → user detail page "Company Access" tab
+
+- Interactions:
+  - click company switcher in top nav: opens FlexDropdown listing accessible companies; active company highlighted with checkmark
+  - select a company from dropdown: PATCH /users/me/active-company → page reloads with new company context applied
+  - toggle company checkbox on "Company Access" tab (admin): POST /users/{id}/companies or DELETE /users/{id}/companies/{company_id} → checkbox state updates in place
+
+- States:
+  - single-company: company switcher hidden from top nav
+  - switching: spinner shown in top nav while PATCH /users/me/active-company resolves; inputs disabled
 
 ---
 
@@ -144,10 +247,15 @@
 
 #### Frontend
 *As a tenant administrator on the subscription settings page, I want to see my current tier, usage statistics, and a comparison table of what each tier offers, so that I know when I need to upgrade.*
-- Route: `#/settings/subscription` shows: current tier badge, usage bars (users X/Y, modules X/Y, entities X/Y, API calls this month)
-- Usage bars turn amber at 80% and red at 100%
-- "Compare Plans" section below shows a feature matrix table for all tiers
-- "Upgrade" button on each higher tier (links to billing contact or payment page — out of scope for v1)
+- Route: `#/settings/subscription` → `settings.html` + `settings-page.js` (Subscription section)
+- Layout: FlexStack(direction=vertical) > tier-section, usage-section, compare-section
+  - tier-section: FlexCluster — current tier FlexBadge | plan name | "Upgrade" FlexButton(primary)
+  - usage-section: FlexGrid(columns=2) — usage bars (users X/Y, modules X/Y, entities X/Y, API calls this month); bars amber at 80%, red at 100%
+  - compare-section: feature matrix FlexTable — columns per tier (Free | Basic | Premium | Enterprise) | "Upgrade" FlexButton on each higher-tier column
+
+- States:
+  - loading: usage bars show skeleton while GET /settings/subscription resolves
+  - at-limit: usage bar at 100% shown in red; FlexAlert(type=warning) "You've reached your [resource] limit" above the bar
 
 ---
 
@@ -160,9 +268,12 @@
 
 #### Frontend
 *As a tenant administrator who has hit the user limit, I want to see a clear upgrade prompt when I try to add a new user, so that I understand why the action failed and what to do next.*
-- When `POST /users` returns 402: instead of a generic error, show an inline banner inside the "New User" modal: "You've reached the [X]-user limit on your [Tier] plan. Upgrade to add more users."
-- "Upgrade Plan" link in the banner navigates to `#/settings/subscription`
-- Same UX pattern for module activation limit: banner inside the module activation modal
+- No dedicated route — limit errors surface inline inside existing modals
+
+- Interactions:
+  - POST /users returns 402: inline FlexAlert(type=warning) appears inside "New User" modal — "You've reached the [X]-user limit on your [Tier] plan. Upgrade to add more users." + "Upgrade Plan" link → navigates to `#/settings/subscription`
+  - module activation returns 402: same FlexAlert pattern inside the module activation modal
+  - form submit button remains disabled while limit banner is visible
 
 ---
 
@@ -176,6 +287,16 @@
 
 #### Frontend
 *As a developer using the API, I want rate limit information visible in the developer settings page, so that I can monitor my API usage and plan around limits.*
-- `#/settings/api` page shows current month's API call count, daily trend chart, and rate limit tier
-- Rate limit headers from API responses stored in `api.js` and surfaced in a dev-mode overlay (toggled by `?debug=1`)
-- When 429 is received: global toast "API rate limit reached. Requests will resume in X seconds"
+- Route: `#/settings/api` → `settings.html` + `settings-page.js` (API section)
+- Layout: FlexStack(direction=vertical) > usage-section, debug-section
+  - usage-section: FlexGrid(columns=2) — current month API call count | daily trend chart | rate limit tier FlexBadge
+  - debug-section: dev-mode rate-limit overlay (visible only when `?debug=1` in URL) — last response headers: X-RateLimit-Limit | X-RateLimit-Remaining | X-RateLimit-Reset
+
+- Interactions:
+  - any API response returns 429: global FlexAlert(type=warning) toast "API rate limit reached. Requests will resume in X seconds"
+  - append `?debug=1` to any page URL: dev-mode overlay visible showing live rate limit headers from latest API response
+
+- States:
+  - loading: usage stats show skeleton while data resolves
+  - near-limit (≥80%): usage count turns amber
+  - at-limit: usage count turns red; FlexAlert(type=error) shown above usage section
