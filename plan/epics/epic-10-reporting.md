@@ -17,15 +17,47 @@
 
 #### Frontend
 *As a tenant administrator opening the report designer, I want a 6-step wizard that walks me through naming the report, choosing a data source, configuring filters, selecting columns, defining parameters, and setting the visualization type, so that building reports is guided and I don't miss any configuration.*
-- Route: `#/reports/new` renders `report-designer.html` + `report-designer-page.js`
-- 6-step `FlexStepper` wizard with a live preview panel on the right (split-pane)
-- **Step 1 — Metadata**: Report Name, Description, Category, Report Type (Tabular / Summary / Chart / Cross-Tab)
-- **Step 2 — Data Source**: Entity selector (all published entities + module entities); optional join configuration panel for joining a second entity
-- **Step 3 — Query**: Filter builder (same as list page filters) + Sort By + Group By (for summary reports)
-- **Step 4 — Columns**: Drag-and-drop column selector — available fields on left, selected columns on right; each selected column has: Label, Format, Aggregation function, Width, Visible toggle
-- **Step 5 — Parameters**: "Add Parameter" button opens a parameter type picker; each parameter shows: Name, Label, Type, Default Value, Required toggle
-- **Step 6 — Visualization**: For chart reports — Chart Type picker + axis mapping; for tabular — column width/alignment tweaks; for summary — subtotal configuration
-- "Preview" button in each step fetches sample data and renders the report in the right panel
+- Route: `#/reports/new` → `report-designer.html` + `report-designer-page.js`
+- Layout: FlexSplitPane(initial-split=60%) > wizard-panel, preview-panel
+  - wizard-panel: FlexStack(direction=vertical) > stepper-header, step-content, step-footer
+    - stepper-header: FlexStepper(steps=6) — Metadata | Data Source | Query | Columns | Parameters | Visualization
+    - step-content: renders per active step (see specs below)
+    - step-footer: FlexToolbar — "Preview" FlexButton(ghost) | Back FlexButton | Next / Save FlexButton(primary)
+  - preview-panel: FlexContainer(fill) — live report preview; updates when "Preview" is clicked
+
+- `StepMetadata` (Step 1):
+  - fields: Report Name (FlexInput, required) | Description (FlexTextarea) | Category (FlexSelect) | Report Type (FlexRadio: Tabular / Summary / Chart / Cross-Tab)
+
+- `StepDataSource` (Step 2):
+  - Entity (FlexSelect, all published + module entities)
+  - optional join panel: "+ Add Join" FlexButton(ghost) → join config row (entity + join field)
+
+- `StepQuery` (Step 3):
+  - Filter builder (filter-row UI, same as list page) | Sort By (FlexSelect + asc/desc) | Group By (FlexSelect, shown only for Summary report type)
+
+- `StepColumns` (Step 4):
+  - dual-pane drag-drop: available fields list (left) | selected columns list (right)
+  - per selected column: Label (FlexInput) | Format (FlexSelect) | Aggregation (FlexSelect) | Width (FlexInput) | Visible (FlexCheckbox)
+
+- `StepParameters` (Step 5):
+  - parameters list: FlexStack(gap=sm) — one row per parameter
+  - "+ Add Parameter" FlexButton(ghost) → parameter type picker → appends row with: Name | Label | Type (FlexSelect) | Default Value | Required (FlexCheckbox)
+
+- `StepVisualization` (Step 6):
+  - chart reports: Chart Type icon-card picker + X/Y axis FlexSelect mapping
+  - tabular reports: column width + alignment tweaks per column
+  - summary reports: subtotal configuration (FlexCheckbox per group level)
+
+- Interactions:
+  - click Next: FlexStepper advances; step-content swaps
+  - click "Preview": POST /reports/preview with current config → preview-panel renders sample data
+  - drag field from available list to selected list: column appended; drag within selected list reorders
+  - click Save (Step 6): POST /reports → redirect to `#/reports/{id}/view`
+
+- States:
+  - step-1-invalid: Next disabled until Report Name is filled
+  - previewing: preview-panel shows skeleton while preview call resolves
+  - saving: step-footer buttons disabled + spinner
 
 ---
 
@@ -39,17 +71,28 @@
 
 #### Frontend
 *As a user running a parameterized report, I want to see a clean parameter input form with appropriate controls for each parameter type, and be able to select relative date ranges like "This Month" without knowing specific dates, so that running reports is fast and intuitive.*
-- Report viewer page `#/reports/{id}/view` renders `report-viewer.js`
-- Before showing results, if the report has parameters: a "Run Report" panel appears at the top with a form field per parameter
-- Parameter field types → UI controls:
-  - `date` / `datetime` → `FlexDatepicker`
-  - `lookup` → searchable `FlexSelect` (loads lookup options)
-  - `multi_select` → multi-select `FlexSelect`
-  - `boolean` → toggle switch
-  - `string` / `integer` / `decimal` → `FlexInput`
-- Date parameters show a "Quick Select" chip bar: Today / Yesterday / This Week / This Month / Last 30 Days / This Quarter / This Year
-- "Run Report" button at the bottom of the parameter form; results replace the panel with the report output
-- "Change Parameters" link at the top of results opens the parameter form again
+- Route: `#/reports/{id}/view` → `report-viewer.html` + `report-viewer-page.js`
+- Layout: FlexStack(direction=vertical) > parameter-panel (conditional), results-area
+  - parameter-panel: FlexForm — one field per report parameter + "Run Report" FlexButton(primary); shown only when report has parameters
+  - results-area: report output table / chart; hidden until first run
+
+- `ParameterForm` field type mapping:
+  - `date` / `datetime` → FlexDatepicker + Quick Select chip bar (Today / Yesterday / This Week / This Month / Last 30 Days / This Quarter / This Year)
+  - `lookup` → FlexSelect (searchable, loads lookup options)
+  - `multi_select` → FlexSelect (multi-select mode)
+  - `boolean` → FlexCheckbox toggle
+  - `string` / `integer` / `decimal` → FlexInput
+
+- Interactions:
+  - click Quick Select chip (date params): FlexDatepicker populates with resolved date range
+  - click "Run Report": POST /reports/{id}/run {parameters} → parameter-panel hides; results-area renders output
+  - click "Change Parameters" (shown above results): parameter-panel re-appears pre-filled with previous values; results-area hides
+
+- States:
+  - loading: results-area shows skeleton while report executes
+  - no-parameters: parameter-panel not rendered; report runs automatically on page load
+  - empty-results: "No records match the selected parameters" in results-area
+  - error: FlexAlert(type=error) "Report failed to run. Check parameters and try again."
 
 ---
 
@@ -64,11 +107,22 @@
 
 #### Frontend
 *As a user viewing a report, I want an "Export" dropdown button where I can choose my format and have the file download start immediately for small reports or be notified when a large export is ready, so that sharing report results is straightforward.*
-- Report viewer toolbar shows an "Export" split button: default action "Export as Excel"; dropdown options: PDF / Excel (formatted) / Excel (raw) / CSV / JSON
-- Clicking an option calls the export endpoint; for small reports: file download starts in the browser immediately (`Content-Disposition: attachment`)
-- For large reports (async): a `FlexAlert` banner appears: "Your export is being prepared. We'll notify you when it's ready."
-- Export ready: in-app notification appears in the notification bell; clicking downloads the file
-- Export history panel accessible via "Past Exports" link — shows format, timestamp, download button (expires after 24 hours)
+- Route: `#/reports/{id}/view` → report viewer page; export controls in the results-area toolbar
+- Layout addition: FlexToolbar in results-area — "Export" FlexButton(split, default=Excel) with dropdown | "Past Exports" link
+
+- `ExportDropdown` options: PDF | Excel (formatted) | Excel (raw) | CSV | JSON
+
+- Interactions:
+  - click "Export" (default or dropdown option): POST /reports/{id}/export?format=X
+    - small report (sync): file download starts immediately via `Content-Disposition: attachment`
+    - large report (async): FlexAlert(type=info) banner "Your export is being prepared. We'll notify you when it's ready."
+  - export ready (async): in-app notification appears in notification bell → click notification → file downloads
+  - click "Past Exports": FlexDrawer(position=right, size=sm) opens with list of past exports — columns: Format, Timestamp, "Download" FlexButton(ghost); expired entries (>24 h) show "Expired" FlexBadge(color=neutral)
+
+- States:
+  - exporting (sync): Export button shows spinner during download preparation
+  - async-pending: FlexAlert(type=info) banner shown; Export button re-enabled immediately
+  - past-exports-empty: "No exports yet" in drawer
 
 ---
 
@@ -84,14 +138,27 @@
 
 #### Frontend
 *As a manager who wants a weekly sales summary emailed every Monday morning, I want a "Schedule" button on the report page that opens a scheduling wizard, so that I can set it up once and receive it automatically.*
-- Report viewer toolbar has a "Schedule" button
-- Clicking opens a `FlexModal` scheduling wizard:
-  - **Frequency**: same cron UI as automation rules (Daily / Weekly / Monthly / Custom cron)
-  - **Parameters**: pre-filled from the last run; adjustable (e.g. "Always use 'This Week' date range")
-  - **Delivery**: Email recipients input (comma-separated or user-search chips), Subject line, Format select (PDF/Excel/CSV)
-  - **Summary**: human-readable "This report will run every Monday at 8:00 AM and be emailed to 3 recipients as a PDF"
-- "Save Schedule" button creates the scheduler job
-- Active schedules listed on the report page in a "Schedules" tab: schedule name, next run, recipients, last status, toggle to enable/disable
+- Route: `#/reports/{id}/view` → report viewer page; "Schedule" FlexButton(ghost) in results-area toolbar triggers schedule modal; active schedules shown in "Schedules" FlexTabs tab
+- Layout addition (Schedules tab): FlexDataGrid — columns: Schedule Name, Next Run, Recipients, Last Status FlexBadge, Enabled toggle
+
+- `ScheduleModal` FlexModal(size=md):
+  - body sections (FlexStack):
+    - Frequency: FlexTabs — Daily | Weekly | Monthly | Custom cron (same cron UI as automation rules)
+    - Parameters: FlexForm pre-filled from last run; each date param shows Quick Select chips
+    - Delivery: Recipients (FlexInput, user-search chips) | Subject (FlexInput) | Format (FlexSelect: PDF / Excel / CSV)
+    - Summary: read-only FlexAlert(type=info) — human-readable schedule string (e.g. "Every Monday at 08:00 AM → emailed to 3 recipients as PDF")
+  - footer: Cancel FlexButton | "Save Schedule" FlexButton(primary)
+
+- Interactions:
+  - click "Schedule": opens ScheduleModal; Summary section updates live as frequency/delivery fields change
+  - change frequency tab or any field: Summary text recalculates immediately
+  - click "Save Schedule": POST /scheduler/jobs → modal closes; new row appears in Schedules tab; toast "Schedule created"
+  - toggle Enabled on schedule row: PATCH /scheduler/jobs/{id} {is_active} → toggle updates
+
+- States:
+  - schedules-loading: Schedules tab shows skeleton rows while GET /scheduler/jobs resolves
+  - schedules-empty: "No active schedules" + "Create Schedule" FlexButton(primary)
+  - saving: "Save Schedule" button shows spinner; form disabled
 
 ---
 
@@ -103,9 +170,25 @@
 
 #### Frontend
 *As a tenant administrator, I want a scheduler monitoring page that lists all scheduled jobs with their last run status and next run time, so that I can quickly spot failures without checking each job individually.*
-- Route: `#/scheduler` renders `scheduler.html`
-- Table columns: Job Name (linked to the report), Type, Next Run (relative: "in 3 hours"), Last Run Status (Success / Failed / Running), Last Run At
-- "Failed" status rows highlighted in red; clicking the row expands a detail section showing the error message
-- "Run Now" button on each row triggers an immediate execution (for testing)
-- Per-job "History" tab: table of all runs with status and duration; expandable rows show output/error
-- Global "Failed Jobs" filter chip at the top to quickly surface all failing schedules
+- Route: `#/scheduler` → `scheduler.html` + `scheduler-page.js`
+- Layout: FlexStack(direction=vertical) > page-header, filter-row, jobs-grid
+  - page-header: FlexToolbar — "Scheduled Jobs" title
+  - filter-row: FlexCluster — "Failed Jobs" FlexButton(chip, toggle) filter
+  - jobs-grid: FlexDataGrid(server-side, expandable-rows) — jobs via GET /scheduler/jobs
+
+- `JobsGrid` FlexDataGrid:
+  - columns: Job Name (link to report) | Type | Next Run (relative, e.g. "in 3 hours") | Last Run Status (FlexBadge: Success / Failed / Running) | Last Run At
+  - failed rows: red border highlight
+  - expanded row: error message text block + "History" FlexTabs tab (runs table: Status FlexBadge | Started At | Duration | output/error expandable sub-row)
+  - row action: "Run Now" FlexButton(ghost)
+
+- Interactions:
+  - click "Failed Jobs" chip: GET /scheduler/jobs?status=failed → grid filters to failed rows only; chip toggles active state
+  - click row expand chevron: expanded row reveals error message (failed jobs) or last output
+  - click "History" tab in expanded row: GET /scheduler/jobs/{id}/runs → runs table renders
+  - click "Run Now": POST /scheduler/jobs/{id}/run → row Last Run Status updates to "Running" FlexBadge
+
+- States:
+  - loading: FlexDataGrid shows skeleton rows while jobs fetch
+  - empty: "No scheduled jobs configured"
+  - empty (failed filter): "No failed jobs" illustration
