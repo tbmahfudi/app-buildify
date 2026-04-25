@@ -16,12 +16,25 @@
 
 #### Frontend
 *As a compliance officer on the audit trail page, I want to search and filter the audit log by user, action type, date range, and resource, and see exactly what changed in each event, so that I can produce evidence of system activity for an audit.*
-- Route: `#/audit` renders `audit.html` + `audit-enhanced.js`
-- Filter bar: Actor (user search select), Action Type (multi-select checkboxes), Resource Type (select), Date Range (date range picker), Status (Success/Failure/All)
-- Audit table: Timestamp | Actor | Action | Resource | Status | IP Address
-- Expanding a row shows: full `changes` JSON diff rendered as a colored key-value diff table (old value struck through in red, new value in green)
-- "Export Audit Log" button exports the current filtered view as CSV
-- Entries are read-only; no edit or delete actions available in the UI
+- Route: `#/audit` → `audit.html` + `audit-enhanced.js`
+- Layout: FlexStack(direction=vertical) > page-header, filter-bar, audit-grid
+  - page-header: FlexToolbar — "Audit Trail" title | "Export Audit Log" FlexButton(ghost)
+  - filter-bar: FlexCluster — Actor (FlexSelect, user search) | Action Type (FlexSelect, multi-select) | Resource Type (FlexSelect) | Date Range (FlexDatepicker pair) | Status (FlexRadio: All / Success / Failure)
+  - audit-grid: FlexDataGrid(server-side, expandable-rows) — Timestamp | Actor | Action | Resource | Status FlexBadge | IP Address
+
+- `AuditGrid` expanded row:
+  - `changes` JSON diff rendered as a colored key-value table: old value (strikethrough, red) → new value (green) per field
+  - read-only; no edit or delete actions
+
+- Interactions:
+  - change any filter field: GET /audit?params → audit-grid refreshes
+  - click row expand chevron: expanded row shows changes diff table
+  - click "Export Audit Log": GET /audit?format=csv (with current filters) → CSV download
+
+- States:
+  - loading: audit-grid shows skeleton rows while fetch resolves
+  - empty: "No audit entries match the selected filters"
+  - error: FlexAlert(type=error) "Could not load audit log. Retry?"
 
 ---
 
@@ -34,10 +47,19 @@
 
 #### Frontend
 *As a user on a record detail page for an audited entity, I want a "Change History" tab showing who changed what and when, so that I can track how the record evolved.*
-- Record detail page "Change History" tab (only visible on entities with `is_audited = true`)
-- Timeline of changes: each entry shows timestamp, actor name, and the specific fields that changed
-- Changed fields rendered as: "Status: Draft → Posted" or "Amount: $100 → $150"
-- "View full audit entry" link opens the audit log page filtered to this specific record
+- Route: `#/dynamic/{entity}/{id}` → record detail page; "Change History" FlexTabs tab (visible only when entity has `is_audited = true`)
+- Layout addition: FlexTabs tab body — FlexStack(direction=vertical) > change-timeline, view-full-link
+  - change-timeline: vertical timeline — one node per change entry: timestamp | actor name | changed-fields list
+  - changed-fields: each field rendered as "Field Name: old value → new value"
+  - view-full-link: "View full audit entry" link at bottom
+
+- Interactions:
+  - click "Change History" tab: GET /audit?resource_type={entity}&resource_id={id} → timeline renders
+  - click "View full audit entry": navigates to `#/audit` filtered to this specific record
+
+- States:
+  - loading: timeline shows skeleton nodes while fetch resolves
+  - empty: "No changes recorded yet"
 
 ---
 
@@ -53,13 +75,31 @@
 
 #### Frontend
 *As a tenant administrator on the security settings page, I want a single page with tabbed sections for Password Policy, Account Lockout, and Session Policy, with clear labels and sensible defaults, so that I can configure our security posture without reading documentation.*
-- Route: `#/settings/security` renders security policy settings with 3 tabs:
-  - **Password Policy** tab: all password rules as toggles + number inputs (min length, max length, expiry days, warning days, grace logins, history count)
-  - **Account Lockout** tab: max attempts (number), lockout type radio (Progressive/Fixed), lockout duration (number + unit select), reset window (number + unit)
-  - **Session Policy** tab: idle timeout (number + unit), absolute timeout (number + unit), max concurrent sessions (number), single session mode toggle
-- Each setting has a help tooltip (?) explaining the impact
-- "Reset to Defaults" button restores the platform default values for that tab (with confirmation)
-- Unsaved changes indicator per tab; "Save [Tab Name] Policy" button per tab (not global save, to reduce risk of accidental bulk changes)
+- Route: `#/settings/security` → `settings.html` + `settings-page.js` (Security tab)
+- Layout: FlexStack(direction=vertical) > page-header, policy-tabs
+  - page-header: FlexToolbar — "Security Settings" title
+  - policy-tabs: FlexTabs — Password Policy | Account Lockout | Session Policy
+
+- `PasswordPolicyTab`:
+  - fields (each with FlexTooltip(?) help icon): Min Length (FlexInput, type=number) | Max Length (FlexInput, type=number) | Expiry Days (FlexInput, type=number) | Warning Days (FlexInput, type=number) | Grace Logins (FlexInput, type=number) | History Count (FlexInput, type=number) | complexity toggles (FlexCheckbox per rule)
+  - footer: unsaved-indicator FlexBadge(color=warning) "Unsaved changes" | "Reset to Defaults" FlexButton(ghost) | "Save Password Policy" FlexButton(primary)
+
+- `AccountLockoutTab`:
+  - fields: Max Attempts (FlexInput, type=number) | Lockout Type (FlexRadio: Progressive / Fixed) | Lockout Duration (FlexInput, type=number) + unit FlexSelect | Reset Window (FlexInput, type=number) + unit FlexSelect
+  - footer: same pattern as Password Policy tab
+
+- `SessionPolicyTab`:
+  - fields: Idle Timeout (FlexInput, type=number) + unit FlexSelect | Absolute Timeout (FlexInput, type=number) + unit FlexSelect | Max Concurrent Sessions (FlexInput, type=number) | Single Session Mode (FlexCheckbox toggle)
+  - footer: same pattern
+
+- Interactions:
+  - change any field on a tab: unsaved-indicator appears on that tab
+  - click "Reset to Defaults": FlexModal(size=sm) confirm → GET /settings/security/defaults → tab fields repopulate
+  - click "Save [Tab] Policy": PUT /settings/security with tab-scoped payload → success toast; unsaved-indicator clears
+
+- States:
+  - loading: tab fields show skeleton while GET /settings/security resolves
+  - unsaved: unsaved-indicator FlexBadge visible on active tab
 
 ---
 
@@ -73,11 +113,21 @@
 
 #### Frontend
 *As a user trying to delete multiple records, I want the system to ask me to confirm my password if I haven't entered it recently, so that I'm prompted to consciously authorize destructive actions.*
-- When any API call returns 403 with `REAUTH_REQUIRED`: a `FlexModal` intercepts the response
-- Modal: "Please confirm your password to continue" + password `FlexInput` + "Confirm" button
-- On correct password: the original request is retried with the `reauth_token` header; modal closes transparently
-- On wrong password: modal shakes, input clears, "Incorrect password. Try again." message shown
-- Re-auth event logged in the audit trail with the action that triggered it
+- No dedicated route — re-auth FlexModal is a global interceptor in `api.js`; triggered by any 403 `REAUTH_REQUIRED` response
+
+- `ReauthModal` FlexModal(size=sm, dismissable=false):
+  - body: "Please confirm your password to continue" | Password (FlexInput, type=password, autofocus)
+  - footer: Cancel | "Confirm" FlexButton(primary)
+
+- Interactions:
+  - any API response with 403 `REAUTH_REQUIRED`: ReauthModal opens; original request queued
+  - click "Confirm": POST /auth/reauth {password} → on success: original request retried with `reauth_token` header; modal closes transparently
+  - incorrect password: modal animates shake; password input clears; inline error "Incorrect password. Try again."
+  - click Cancel: queued request cancelled; modal closes; user stays on current page
+
+- States:
+  - confirming: "Confirm" button shows spinner; input disabled
+  - error: inline error message below password input; input re-enabled for retry
 
 ---
 
@@ -90,9 +140,19 @@
 
 #### Frontend
 *As a security engineer, I want to verify that all required headers are present on every response, so that the platform passes a security header scan without manual configuration.*
-- No specific UI needed for header enforcement — it's transparent to users
-- Admin security overview page `#/settings/security` → "Security Headers" section shows a checklist of required headers with green checkmarks when detected from a test probe
-- "Run Security Check" button performs a self-probe via `GET /api/v1/admin/security/headers-check` and renders the results
+- No dedicated route — header enforcement is transparent to users; verification UI is a section within `#/settings/security`
+- Layout addition (Security Headers section, below policy tabs): FlexSection — "Security Headers" heading | checklist of required headers | "Run Security Check" FlexButton(ghost)
+
+- Checklist: one row per header — header name | FlexBadge(color=success) "✓ Present" or FlexBadge(color=danger) "✗ Missing"
+
+- Interactions:
+  - click "Run Security Check": GET /admin/security/headers-check → checklist rows update with current pass/fail status
+
+- States:
+  - not-run: checklist rows show "—" status; prompt "Click 'Run Security Check' to verify"
+  - checking: checklist rows show skeleton while probe resolves
+  - all-pass: all rows show FlexBadge(color=success)
+  - has-failures: failed rows show FlexBadge(color=danger); FlexAlert(type=warning) "X headers missing or misconfigured"
 
 ---
 
@@ -106,9 +166,18 @@
 
 #### Frontend
 *As a developer integrating with the API, I want rate limit information shown in the browser's network tab and also surfaced in a dev overlay, so that I can monitor API consumption during development.*
-- `api.js` captures `X-RateLimit-Remaining` response headers and stores them in memory
-- Dev-mode overlay (activated by `?debug=1` URL param): floating panel showing current requests-per-minute usage and remaining quota
-- On 429: global toast "Request limit reached. Retrying in X seconds" with a countdown; queued requests auto-retry after `Retry-After` seconds
+- No dedicated route — rate limit handling is global in `api.js`; dev overlay activated by `?debug=1` URL param
+
+- Dev overlay (floating panel, bottom-right, `?debug=1` only):
+  - Requests/min (current) | Remaining quota FlexBadge | resets at timestamp
+
+- Interactions:
+  - any API response: `api.js` reads `X-RateLimit-Remaining` header; dev overlay updates
+  - any 429 response: global FlexAlert(type=warning) toast "Request limit reached. Retrying in X seconds" with live countdown; queued requests auto-retry after `Retry-After` seconds
+
+- States:
+  - normal: dev overlay shows current usage (dev mode only)
+  - rate-limited: toast countdown visible; retrying requests queued
 
 ---
 
@@ -124,10 +193,23 @@
 
 #### Frontend
 *As a DevOps engineer, I want a system health page in the admin panel that shows live metrics pulled from the Prometheus endpoint, so that I can check platform health without opening Grafana.*
-- Route: `#/admin/health` (superadmin only) shows: uptime, requests/sec (last 5 min), error rate %, active sessions, DB pool utilization bar
-- Metrics polled every 30 seconds via `GET /api/v1/admin/metrics`
-- Each metric rendered as a mini chart (sparkline, last 10 data points)
-- Red threshold indicators: error rate > 5% shows in red; DB pool > 90% shows in amber
+- Route: `#/admin/health` → `admin-health.html` + `admin-health-page.js` (superadmin only)
+- Layout: FlexStack(direction=vertical) > page-header, metrics-grid
+  - page-header: FlexToolbar — "System Health" title | "Last updated X seconds ago" label
+  - metrics-grid: FlexGrid(columns=3, gap=md) — one FlexCard per metric
+
+- Per metric FlexCard:
+  - metric name | current value (large text) | sparkline (last 10 data points) | threshold FlexBadge
+
+- Threshold indicators: error rate > 5% → FlexBadge(color=danger); DB pool > 90% → FlexBadge(color=warning)
+
+- Interactions:
+  - auto-poll: GET /admin/metrics every 30 s → all metric cards update; "Last updated" counter resets
+
+- States:
+  - loading: metric cards show skeleton sparklines on first load
+  - threshold-breach: affected card border highlights red (danger) or amber (warning)
+  - error: FlexAlert(type=error) "Could not load metrics. Retry?"
 
 ---
 
@@ -166,7 +248,9 @@
 
 #### Frontend
 *As a frontend developer, I want Vitest tests for all 30 Flex components, so that component regressions are caught before they affect users.*
+- No dedicated route — test execution is a CI concern; no UI page involved
+
 - Currently tested: `FlexAccordion`, `FlexCheckbox`, `FlexInput`, `FlexRadio`, `BaseComponent`
-- Remaining components needing tests: `FlexModal`, `FlexDrawer`, `FlexTable`, `FlexDataGrid`, `FlexSelect`, `FlexTextarea`, `FlexStack`, `FlexGrid`, `FlexSidebar`, `FlexStepper`, `FlexPagination`, `FlexAlert`, `FlexButton`, `FlexBadge`, `FlexDropdown`, `FlexTabs`, `FlexTooltip`, `FlexSpinner`, `FlexBreadcrumb`, `FlexCard`
+- Remaining: `FlexModal`, `FlexDrawer`, `FlexTable`, `FlexDataGrid`, `FlexSelect`, `FlexTextarea`, `FlexStack`, `FlexGrid`, `FlexSidebar`, `FlexStepper`, `FlexPagination`, `FlexAlert`, `FlexButton`, `FlexBadge`, `FlexDropdown`, `FlexTabs`, `FlexTooltip`, `FlexSpinner`, `FlexBreadcrumb`, `FlexCard`
 - Each test file covers: renders with default props, renders with all variants, emits expected events on interaction, shows error state correctly
 - Coverage threshold enforced in `vitest.config.js`: 80% statements/functions/lines, 75% branches
