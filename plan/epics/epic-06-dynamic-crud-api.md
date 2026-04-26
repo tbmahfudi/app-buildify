@@ -18,11 +18,36 @@
 
 #### Frontend
 *As a user working with a custom entity, I want auto-generated list, create, edit, and detail pages that feel consistent across all entities, so that I can manage custom data without any custom development.*
-- `dynamic-route-registry.js` auto-registers 4 routes per published entity: `#/dynamic/{entity}/list`, `#/dynamic/{entity}/create`, `#/dynamic/{entity}/{id}`, `#/dynamic/{entity}/{id}/edit`
-- **List page**: `FlexDataGrid` table with columns auto-generated from `table_config` metadata; action column with Edit / View / Delete icons per row; "New [Entity Label]" button in the page header
-- **Create/Edit page**: `FlexForm` with fields auto-generated from `FieldDefinition` list; field type determines widget (`FlexInput`, `FlexSelect`, `FlexDatepicker`, etc.); Required fields marked with *; Submit and Cancel buttons in a sticky footer
-- **Detail page**: read-only card layout with field labels and values; "Edit" and "Delete" buttons in header; "Related Records" section if the entity has relationship fields
-- Empty state on list page: illustration + "No [Entity Label] found" + "Create the first one" button
+- Routes (auto-registered by `dynamic-route-registry.js` per published entity):
+  - `#/dynamic/{entity}/list` — list page
+  - `#/dynamic/{entity}/create` — create page
+  - `#/dynamic/{entity}/{id}` — detail page
+  - `#/dynamic/{entity}/{id}/edit` — edit page
+
+- Layout (list page): FlexStack(direction=vertical) > page-header, content-area
+  - page-header: FlexToolbar — "[Entity Label]" title | "New [Entity Label]" FlexButton(primary)
+  - content-area: FlexDataGrid(server-side, columns auto-generated from table_config metadata) — action column: Edit | View | Delete icons per row
+
+- Layout (create/edit page): FlexStack(direction=vertical) > form-body, sticky-footer
+  - form-body: FlexForm — fields auto-generated from FieldDefinition list; field type → widget (FlexInput, FlexSelect, FlexDatepicker…); required fields marked *
+  - sticky-footer: FlexToolbar — Cancel | Save [Entity Label] (primary, spinner on submit)
+
+- Layout (detail page): FlexStack(direction=vertical) > detail-header, field-values, related-section
+  - detail-header: FlexToolbar — FlexBreadcrumb | "Edit" FlexButton | "Delete" FlexButton(danger)
+  - field-values: FlexGrid(columns=2) — label + value per field (read-only)
+  - related-section: FlexSection — "Related Records" (shown only if entity has relationship fields)
+
+- Interactions:
+  - click "New [Entity Label]": navigates to create page
+  - click Edit on row / "Edit" in detail header: navigates to edit page
+  - click View on row: navigates to detail page
+  - click Delete on row: opens confirm FlexModal(size=sm) → DELETE /dynamic-data/{entity}/records/{id}
+  - submit create/edit form: POST or PUT /dynamic-data/{entity}/records → on success redirect to detail page
+
+- States:
+  - loading (list): FlexDataGrid shows skeleton rows
+  - empty (list): illustration + "No [Entity Label] found" + "Create the first one" FlexButton(primary)
+  - error (list): FlexAlert(type=error) "Could not load records. Retry?"
 
 ---
 
@@ -37,12 +62,21 @@
 
 #### Frontend
 *As a user on a dynamic entity list page, I want a filter bar above the table where I can add multiple filters, search by keyword, and sort by any column header click, so that finding records in large datasets is fast.*
-- List page toolbar: search input (magnifying glass icon, queries `?search=`), "Filters" button showing a filter count badge, Sort controls
-- "Filters" button opens a filter drawer with: field selector (select), operator selector (equals / contains / greater than / etc.), value input; multiple filters can be added as rows; "AND/OR" toggle between filters
-- Applying filters updates the URL query string so filtered views are bookmarkable
-- Column headers in the table are clickable to sort; active sort column shows an arrow icon (↑ ↓)
-- Pagination: `FlexPagination` component at the bottom; "Showing X–Y of Z results" text beside it
-- "Reset Filters" button clears all active filters and returns to default view
+- Route: `#/dynamic/{entity}/list` — extends the list page layout from Story 6.1.1
+
+- FlexDrawer(position=right, size=sm) — filter panel, triggered by "Filters" button
+  - AND/OR FlexRadio toggle at top
+  - filter rows: Field (FlexSelect) | Operator (FlexSelect: equals/contains/greater than/…) | Value (FlexInput or FlexSelect)
+  - "Add Filter" FlexButton(ghost) appends a new row
+  - footer: Reset Filters | Apply Filters (primary)
+
+- Interactions:
+  - type in search input: debounced 300ms → GET /dynamic-data/{entity}/records?search=[term] → grid refreshes
+  - click "Filters" button: opens filter FlexDrawer; badge shows active filter count
+  - click "Apply Filters": updates URL query string (bookmarkable) + GET with structured filters JSON → grid refreshes
+  - click "Reset Filters": clears all filters; URL cleared; grid returns to default view
+  - click column header: toggles sort asc/desc (↑ ↓ icon); GET with sort_by + sort_order → grid refreshes
+  - FlexPagination page change: GET /dynamic-data/{entity}/records?page=N → grid refreshes; "Showing X–Y of Z results" updates
 
 ---
 
@@ -55,11 +89,16 @@
 
 #### Frontend
 *As a user filling out a create/edit form, I want validation errors to appear directly below the relevant field with a red border and descriptive message immediately after I click Save, so that I know exactly what to fix.*
-- `entity-manager.js` `saveRecord()` catches the 400 response and calls `form.showFieldErrors(error.errors)`
-- `showFieldErrors()` iterates `errors[]`, finds the matching `FlexInput`/`FlexSelect` by `name`, and sets its `error` attribute to the message
-- Fields with errors: red border, red error text below the input, field scrolled into view if off-screen
-- General non-field errors (e.g. "Unique constraint violated") shown in a `FlexAlert` banner at the top of the form
-- On re-submit: previous error states cleared before new validation runs
+- Route: `#/dynamic/{entity}/create` and `#/dynamic/{entity}/{id}/edit` — extends create/edit pages from Story 6.1.1
+
+- Interactions:
+  - submit form → 400 response: `saveRecord()` calls `form.showFieldErrors(errors[])` — each errored FlexInput/FlexSelect gets red border + error message below; first errored field scrolled into view
+  - non-field error (e.g. unique constraint): FlexAlert(type=error) banner at top of form with the error message
+  - re-submit: all previous error states cleared before new validation runs
+
+- States:
+  - field-error: red border + red message text below the input
+  - form-error: FlexAlert(type=error) banner above form fields
 
 ---
 
@@ -77,9 +116,16 @@
 
 #### Frontend
 *As a developer building a custom widget, I want a `DataService.aggregate()` method that I can call with group-by and metric config, and get back structured data ready to feed into a chart component, so that I can build analytics without writing raw API calls.*
-- `data-service.js` exposes `aggregate(entityName, groupBy, metrics, filters, dateTrunc)` which calls `GET /dynamic-data/{entity}/aggregate` and returns parsed results
-- Widget configuration UI (in the dashboard designer) uses this service as the data source
-- Empty aggregate response (no groups returned) causes the widget to show an "No data available" state with a chart placeholder illustration
+- No dedicated route — `DataService.aggregate()` is a shared service used by dashboard widgets and chart builders
+
+- Interactions:
+  - widget config save: calls `DataService.aggregate(entityName, groupBy, metrics, filters, dateTrunc)` → GET /dynamic-data/{entity}/aggregate → parsed results fed to chart component
+  - aggregate returns empty groups: widget renders "No data available" state with chart placeholder illustration
+
+- States:
+  - loading: chart area shows skeleton / spinner while aggregate call resolves
+  - empty: illustration + "No data available for the selected filters"
+  - error: FlexAlert(type=error) "Could not load chart data" within the widget frame
 
 ---
 
@@ -93,10 +139,13 @@
 
 #### Frontend
 *As a dashboard designer selecting a metric for a KPI widget, I want the field picker to show only aggregatable fields and auto-suggest the most relevant aggregate function for each, so that I can set up a widget in under 30 seconds.*
-- Dashboard widget config panel: "Metric" field picker filters to only fields where `aggregatable: true`
-- Each metric field in the picker shows recommended functions (e.g. "Amount → sum, avg, min, max" vs. "Count → count")
-- Selecting a field auto-selects the most common function (`sum` for currency, `count` for IDs)
-- Format preview: widget preview panel shows the value with the correct format (e.g. "$12,450" vs. "12,450")
+- Route: dashboard designer widget config panel (see Epic 9)
+
+- Interactions:
+  - open "Metric" field picker in widget config: list filtered to fields where `aggregatable: true` only
+  - hover a metric field in picker: shows recommended functions (e.g. "Amount → sum, avg, min, max")
+  - select a field: aggregate function auto-selected (sum for currency fields, count for ID fields)
+  - any config change: widget preview panel updates immediately showing value with correct format (e.g. "$12,450" vs "12,450")
 
 ---
 
@@ -112,12 +161,21 @@
 
 #### Frontend
 *As a tenant administrator on an entity list page, I want to click "Import CSV", map my CSV columns to entity fields in a preview table, and see a progress bar and import summary after uploading, so that data migration from spreadsheets is self-service.*
-- "Import" button in the entity list page toolbar (only shown if user has `create` permission)
-- Clicking opens a 3-step `FlexStepper` modal:
-  - Step 1: File upload (`FlexFileUpload` drag-drop); CSV preview table shows first 5 rows
-  - Step 2: Column mapping — left column shows CSV headers, right column shows entity fields (select per row); auto-maps when column name matches field name
-  - Step 3: Import summary after submission — `FlexProgress` bar during upload; results: "X records created, Y failed"; failed rows downloadable as a CSV with an "Error" column appended
-- "Cancel" at any step closes the modal without importing
+- Route: `#/dynamic/{entity}/list` — "Import" FlexButton in toolbar (shown only if user has `create` permission)
+
+- FlexModal(size=lg) — CSV import wizard, triggered by "Import" button
+  - FlexStepper(steps=3):
+    - Step 1 "Upload": FlexFileUpload drag-drop (CSV only) | CSV preview table showing first 5 rows
+    - Step 2 "Map Columns": two-column table — CSV header (left) | entity field FlexSelect (right); auto-maps when header name matches field name
+    - Step 3 "Import": FlexProgress bar during POST /dynamic-data/{entity}/records/bulk | results summary "X records created, Y failed" | "Download failed rows" FlexButton (CSV with Error column appended)
+  - footer: Cancel (any step, closes without importing) | Next / Import (primary)
+
+- Interactions:
+  - drop or select CSV file (Step 1): parse headers + preview first 5 rows in table
+  - click "Next" (Step 1 → Step 2): render column mapping table; auto-map matching names
+  - change field FlexSelect in mapping (Step 2): live updates which entity field that column maps to
+  - click "Import" (Step 3): POST bulk → FlexProgress fills; results shown on completion
+  - click "Download failed rows": generates CSV download of only failed rows with appended Error column
 
 ---
 
@@ -131,8 +189,24 @@
 
 #### Frontend
 *As a user on an entity list page, I want to select multiple rows using checkboxes and then choose a bulk action (delete or field update) from a toolbar that appears when rows are selected, so that I can make batch corrections without opening each record.*
-- `FlexTable` checkbox column enables row selection; selecting any row shows the bulk action toolbar above the table
-- Bulk action toolbar: "X selected" count, "Deselect All" link, action buttons: "Delete Selected" and "Update Field"
-- "Delete Selected" opens a confirmation modal: "Delete X records? This cannot be undone." — calls `DELETE /dynamic-data/{entity}/records/bulk`
-- "Update Field" opens a mini-form modal: field selector + new value input — calls `PUT /dynamic-data/{entity}/records/bulk` with the chosen field set to the new value for all selected IDs
-- After bulk action: selected rows removed/updated in the table; toast "X records deleted/updated"
+- Route: `#/dynamic/{entity}/list` — bulk action toolbar appears above FlexDataGrid when ≥1 row selected
+
+- FlexDataGrid — checkbox column enabled for row selection
+  - bulk action toolbar (visible when rows selected): "X selected" | "Deselect All" link | "Delete Selected" FlexButton(danger) | "Update Field" FlexButton
+
+- FlexModal(size=sm) — bulk delete confirm
+  - body: "Delete X records? This cannot be undone."
+  - footer: Cancel | Delete (FlexButton, variant=danger)
+  - on confirm: DELETE /dynamic-data/{entity}/records/bulk → selected rows fade out; toast "X records deleted"
+
+- FlexModal(size=sm) — bulk update field
+  - fields: Field (FlexSelect, entity fields) | New Value (FlexInput or FlexSelect, type depends on field)
+  - footer: Cancel | Update X Records (primary)
+  - on confirm: PUT /dynamic-data/{entity}/records/bulk → affected rows update in place; toast "X records updated"
+
+- Interactions:
+  - check row checkbox: adds to selection; bulk toolbar appears
+  - click "Deselect All": clears selection; bulk toolbar hides
+  - click "Delete Selected": opens bulk delete confirm FlexModal
+  - click "Update Field": opens bulk update FlexModal
+  - select Field in update modal: New Value input adapts to the field's type

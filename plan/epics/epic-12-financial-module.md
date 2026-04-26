@@ -17,12 +17,33 @@
 
 #### Frontend
 *As a finance manager on the Chart of Accounts page, I want to see a collapsible tree of all accounts organized by type, add new accounts by clicking a parent to add a child, and deactivate obsolete accounts, so that I can maintain the chart without SQL knowledge.*
-- Route: `#/financial/accounts` renders a tree view grouped by account type (Assets, Liabilities, Equity, Revenue, Expenses)
-- Each group is a collapsible section header with a total balance chip
-- Account rows: account code | account name | type badge | balance | action icons (Add Child, Edit, Deactivate)
-- "Add Account" button in the page header opens a `FlexModal`: Code, Name, Account Type, Parent Account (tree select), Currency
-- "Setup Default Chart" button (only shown if chart is empty) seeds the 50-account template with a single click + confirmation
-- Deactivated accounts shown with strikethrough text; hidden by default with a "Show Inactive" toggle
+- Route: `#/financial/accounts` → `financial-accounts.html` + `financial-accounts-page.js`
+- Layout: FlexStack(direction=vertical) > page-header, account-tree
+  - page-header: FlexToolbar — "Chart of Accounts" title | "Show Inactive" FlexCheckbox toggle | "Add Account" FlexButton(primary)
+  - account-tree: FlexStack(gap=xs) — one FlexAccordion per account type (Assets / Liabilities / Equity / Revenue / Expenses)
+
+- Per account-type FlexAccordion:
+  - header: type label + total balance FlexBadge(chip)
+  - body: indented tree rows per account — account code | account name | type FlexBadge | balance | action icons (Add Child / Edit / Deactivate)
+  - deactivated account rows: strikethrough text; hidden unless "Show Inactive" toggle is on
+
+- `AddAccountModal` FlexModal(size=sm) triggered by "Add Account" or "Add Child":
+  - fields: Code (FlexInput) | Name (FlexInput, required) | Account Type (FlexSelect) | Parent Account (tree-select FlexSelect) | Currency (FlexSelect)
+  - footer: Cancel | "Add Account" FlexButton(primary)
+
+- `SetupDefaultModal` FlexModal(size=sm) shown only when chart is empty:
+  - body: "Seed 50-account standard chart?"
+  - footer: Cancel | "Setup Default Chart" FlexButton(primary)
+
+- Interactions:
+  - click accordion header: expands/collapses that account type group
+  - click "Add Child" on an account row: opens AddAccountModal with Parent Account pre-filled
+  - click "Deactivate" on a row: FlexModal(size=sm) confirm → PATCH /financial/accounts/{id} {is_active: false} → row shows strikethrough
+  - toggle "Show Inactive": re-renders tree including/excluding deactivated rows
+
+- States:
+  - loading: account-tree shows skeleton rows
+  - empty (chart): "Setup Default Chart" FlexButton(primary) centered instead of account-tree
 
 ---
 
@@ -35,12 +56,21 @@
 
 #### Frontend
 *As an accountant on the Chart of Accounts page, I want to click any account and see a balance panel with the current balance and a mini ledger showing the last 10 transactions, so that I can quickly verify an account position.*
-- Clicking an account row opens a right-side `FlexDrawer`
-- Drawer header: account code + name + type badge
-- Balance section: current balance prominently displayed in the account's normal direction (DR $12,450 or CR $8,200)
-- "As of date" date picker (defaults to today); changing the date recalculates the balance
-- Mini-ledger table below: Date | Description | Debit | Credit | Running Balance — last 10 entries
-- "View Full Ledger" button navigates to the account ledger report page pre-filtered to this account
+- Route: `#/financial/accounts` → FlexDrawer triggered by clicking an account row (no separate route)
+- Layout: FlexDrawer(position=right, size=sm, overlay=false) > balance-header, balance-section, mini-ledger
+  - balance-header: FlexToolbar — account code + name + type FlexBadge | × close
+  - balance-section: FlexStack — "As of" FlexDatepicker (defaults to today) | current balance label (DR $X or CR $X, large text)
+  - mini-ledger: FlexDataGrid(static, max 10 rows) — Date | Description | Debit | Credit | Running Balance
+  - footer: "View Full Ledger" FlexButton(ghost)
+
+- Interactions:
+  - click account row: FlexDrawer opens; GET /financial/accounts/{id}/balance?as_of=today → balance displays
+  - change "As of" date: GET /financial/accounts/{id}/balance?as_of=DATE → balance updates; mini-ledger re-fetches
+  - click "View Full Ledger": navigates to `#/financial/reports/account-ledger?account_id={id}`
+
+- States:
+  - loading: balance-section and mini-ledger show skeleton while fetch resolves
+  - no-transactions: mini-ledger shows "No transactions in this period"
 
 ---
 
@@ -57,14 +87,30 @@
 
 #### Frontend
 *As a billing administrator on the invoice creation page, I want a form with a customer selector, invoice details, and an interactive line items table where I can add rows, set quantities and prices, and see the subtotal, tax, and total update in real time, so that creating an invoice is fast and error-free.*
-- Route: `#/financial/invoices/new` renders an invoice form page (not a modal — full page due to complexity)
-- Header section: Customer (searchable select from `GET /financial/customers`), Invoice Date (datepicker), Due Date (datepicker), Invoice # (auto-filled, editable), Notes textarea
-- Line items table: each row has Description | Account (select) | Quantity | Unit Price | Tax Rate (select) | Amount (calculated, read-only)
-- "Add Line" button appends a new blank row; delete icon on each row
-- Summary panel (right side, sticky): Subtotal, Tax (breakdown by rate), **Total** in large bold text
-- "Save as Draft" and "Post Invoice" buttons in the sticky footer
-- "Post Invoice" confirmation modal: "Posting will create journal entries and cannot be easily reversed. Continue?"
-- After posting: page transitions to the invoice detail view with a green "Posted" status badge
+- Route: `#/financial/invoices/new` → `financial-invoice-form.html` + `financial-invoice-form-page.js`
+- Layout: FlexSplitPane(initial-split=70%) > form-panel, summary-panel
+  - form-panel: FlexStack(direction=vertical) > header-fields, line-items-table, sticky-footer
+    - header-fields: FlexGrid(columns=2) — Customer (FlexSelect, searchable) | Invoice # (FlexInput, auto-filled, editable) | Invoice Date (FlexDatepicker) | Due Date (FlexDatepicker) | Notes (FlexTextarea, full-width)
+    - line-items-table: table rows — Description (FlexInput) | Account (FlexSelect) | Quantity (FlexInput, type=number) | Unit Price (FlexInput, type=number) | Tax Rate (FlexSelect) | Amount (read-only, calculated) | × delete icon
+    - "Add Line" FlexButton(ghost) below table
+    - sticky-footer: FlexToolbar — Cancel | "Save as Draft" FlexButton(ghost) | "Post Invoice" FlexButton(primary)
+  - summary-panel: FlexCard(sticky) — Subtotal | Tax breakdown per rate | **Total** (large bold text)
+
+- `PostConfirmModal` FlexModal(size=sm) triggered by "Post Invoice":
+  - body: "Posting will create journal entries and cannot be easily reversed. Continue?"
+  - footer: Cancel | "Post Invoice" FlexButton(primary)
+
+- Interactions:
+  - change Quantity or Unit Price in a line row: Amount recalculates; summary-panel totals update immediately
+  - change Tax Rate in a line row: Tax breakdown in summary-panel updates
+  - click "Add Line": new blank row appended to line-items-table
+  - click × on line row: row removed; totals recalculate
+  - click "Save as Draft": POST /financial/invoices {status: DRAFT} → redirect to `#/financial/invoices/{id}`
+  - click "Post Invoice": opens PostConfirmModal → confirm: POST /financial/invoices/{id}/post → redirect to invoice detail with FlexBadge(color=success) "Posted"
+
+- States:
+  - saving: sticky-footer buttons show spinner; form disabled
+  - posted: redirect to invoice detail view
 
 ---
 
@@ -78,12 +124,34 @@
 
 #### Frontend
 *As a finance manager on the invoice list page, I want to see the status of each invoice at a glance with color-coded badges, and be able to filter by status, so that I can quickly identify outstanding and overdue invoices.*
-- Route: `#/financial/invoices` renders a table with columns: Invoice # | Customer | Issue Date | Due Date | Amount | Status | Actions
-- Status badge colors: Draft=grey, Posted=blue, Partially Paid=amber, Paid=green, Void=red strikethrough
-- "Overdue" secondary badge (red) shown when `due_date < today` and status is Posted or Partially Paid
-- Filter bar: Status chips (All / Draft / Posted / Unpaid / Paid / Void), Customer search, Date range
-- Invoice detail page shows the workflow state chip prominently and displays available actions (Post / Void / Record Payment) based on current state
-- "Void Invoice" opens a modal with a required "Reason" textarea
+- Route (list): `#/financial/invoices` → `financial-invoices.html` + `financial-invoices-page.js`
+- Route (detail): `#/financial/invoices/{id}` → invoice detail page
+- Layout (list): FlexStack(direction=vertical) > page-header, filter-bar, invoices-grid
+  - page-header: FlexToolbar — "Invoices" title | "New Invoice" FlexButton(primary)
+  - filter-bar: FlexCluster — status chips (All / Draft / Posted / Unpaid / Paid / Void) | Customer FlexSelect(searchable) | Date range FlexDatepicker pair
+  - invoices-grid: FlexDataGrid — Invoice # | Customer | Issue Date | Due Date | Amount | Status FlexBadge | Actions
+
+- Status FlexBadge colors: Draft=neutral | Posted=info | Partially Paid=warning | Paid=success | Void=danger (strikethrough text)
+- Overdue: secondary FlexBadge(color=danger) "Overdue" shown alongside Posted/Partially Paid when `due_date < today`
+
+- Layout (detail): FlexStack(direction=vertical) > detail-header, invoice-body, detail-tabs
+  - detail-header: FlexToolbar — FlexBreadcrumb | Invoice # | status FlexBadge | available action FlexButtons (Post / Void / Record Payment — shown per current state)
+  - invoice-body: header fields (read-only) + line items table (read-only)
+  - detail-tabs: FlexTabs — Details | Payments
+
+- `VoidModal` FlexModal(size=sm) triggered by "Void Invoice":
+  - fields: Reason (FlexTextarea, required)
+  - footer: Cancel | "Void Invoice" FlexButton(variant=danger)
+
+- Interactions:
+  - click status chip in filter-bar: GET /financial/invoices?status=X → grid refreshes
+  - click "Void Invoice" action: opens VoidModal → confirm: POST /financial/invoices/{id}/void {reason} → status FlexBadge updates to Void
+  - click "Record Payment": navigates to `#/financial/payments/new?customer_id={X}&invoice_id={id}`
+
+- States:
+  - loading: invoices-grid shows skeleton rows
+  - empty: "No invoices found" + "New Invoice" FlexButton(primary)
+  - empty (filtered): "No invoices match the selected filters"
 
 ---
 
@@ -97,13 +165,25 @@
 
 #### Frontend
 *As an accountant recording a customer payment, I want to enter the payment amount and then see a list of the customer's outstanding invoices where I can allocate amounts against each one, so that payment application is clear and accurate.*
-- Route: `#/financial/payments/new` opens a payment form page
-- Step 1 — Payment details: Customer (select), Amount, Payment Date, Method (Cash/Bank Transfer/Card/Cheque), Reference
-- Step 2 — Allocation: table of the customer's POSTED/PARTIALLY_PAID invoices: Invoice # | Due Date | Original Amount | Outstanding | Allocate (input)
-- "Auto-allocate" button fills allocations oldest-first up to the payment amount
-- Running total below the table: "Allocated: $X | Unallocated: $Y" — unallocated amount shown in amber as a warning
-- "Save Payment" button; if unallocated amount > 0, shows a warning: "You have $Y unallocated. This will be held as unapplied credit."
-- Invoice detail page shows payment history in a "Payments" tab: date, reference, allocated amount
+- Route: `#/financial/payments/new` → `financial-payment-form.html` + `financial-payment-form-page.js`
+- Layout: FlexStack(direction=vertical) > payment-details-section, allocation-section, sticky-footer
+  - payment-details-section: FlexGrid(columns=2) — Customer (FlexSelect) | Amount (FlexInput, type=number) | Payment Date (FlexDatepicker) | Method (FlexSelect: Cash / Bank Transfer / Card / Cheque) | Reference (FlexInput)
+  - allocation-section: FlexStack > "Auto-allocate" FlexButton(ghost) | allocation-table | running-total-bar
+    - allocation-table: FlexDataGrid(static) — Invoice # | Due Date | Original Amount | Outstanding | Allocate (FlexInput, type=number) per row
+    - running-total-bar: FlexCluster — "Allocated: $X" | "Unallocated: $Y" FlexBadge(color=warning, shown when > 0)
+  - sticky-footer: FlexToolbar — Cancel | "Save Payment" FlexButton(primary)
+
+- Interactions:
+  - select Customer: allocation-table populates with customer's POSTED/PARTIALLY_PAID invoices
+  - type in Allocate input: running-total-bar recalculates Allocated and Unallocated amounts immediately
+  - click "Auto-allocate": fills Allocate inputs oldest-first up to payment Amount; running-total-bar updates
+  - click "Save Payment" with unallocated > 0: FlexAlert(type=warning, inline) "You have $Y unallocated. This will be held as unapplied credit." — requires explicit second confirm
+  - click "Save Payment" (balanced): POST /financial/payments → POST /financial/payments/{id}/allocate → redirect to customer or invoice detail
+
+- States:
+  - no-customer-selected: allocation-section hidden; "Select a customer to see outstanding invoices"
+  - fully-allocated: Unallocated badge hidden; running-total-bar shows green confirmation
+  - saving: sticky-footer buttons show spinner; form disabled
 
 ---
 
@@ -119,14 +199,24 @@
 
 #### Frontend
 *As an accountant creating a journal entry, I want a form with a dynamic debit/credit line table where the running totals update as I type, and the Post button is disabled until the entry is balanced, so that I can't post an unbalanced entry.*
-- Route: `#/financial/journal-entries/new`
-- Header: Date (datepicker), Description, Reference, Period selector
-- Line items table: Account (select, searchable) | Description | Debit | Credit
-- "Add Line" button appends a row; minimum 2 rows enforced
-- Balance status bar at the bottom: "Debits: $X | Credits: $Y | Difference: $Z" — green when balanced ($Z = 0), red when unbalanced
-- "Post Entry" button disabled (greyed) when the entry is unbalanced; tooltip "Entry must balance before posting"
-- After posting: a `FlexAlert` info banner: "This entry has been posted and cannot be modified. To correct it, use Reverse Entry."
-- "Reverse Entry" button creates the reversal and navigates to the new draft entry with the lines pre-filled
+- Route: `#/financial/journal-entries/new` → `financial-journal-entry-form.html` + `financial-journal-entry-form-page.js`
+- Layout: FlexStack(direction=vertical) > header-fields, lines-table, balance-bar, sticky-footer
+  - header-fields: FlexGrid(columns=2) — Date (FlexDatepicker) | Reference (FlexInput) | Description (FlexInput) | Period (FlexSelect)
+  - lines-table: table rows — Account (FlexSelect, searchable) | Description (FlexInput) | Debit (FlexInput, type=number) | Credit (FlexInput, type=number) | × delete; minimum 2 rows
+  - "Add Line" FlexButton(ghost) below table
+  - balance-bar: FlexCluster — "Debits: $X" | "Credits: $Y" | "Difference: $Z" FlexBadge (color=success when $Z=0, color=danger when $Z≠0)
+  - sticky-footer: FlexToolbar — Cancel | "Save Draft" FlexButton(ghost) | "Post Entry" FlexButton(primary)
+
+- Interactions:
+  - type in Debit or Credit: balance-bar totals recalculate immediately
+  - "Post Entry" button: disabled + FlexTooltip "Entry must balance before posting" when $Z ≠ 0; enabled when balanced
+  - click "Post Entry" (balanced): POST /financial/journal-entries/{id}/post → FlexAlert(type=info) banner "This entry has been posted and cannot be modified. To correct it, use Reverse Entry." + "Reverse Entry" FlexButton(ghost) shown
+  - click "Reverse Entry": POST /financial/journal-entries/{id}/reverse → navigate to new draft entry with lines pre-filled
+
+- States:
+  - unbalanced: balance-bar shows red $Z badge; "Post Entry" disabled
+  - balanced: balance-bar shows green $Z=0 badge; "Post Entry" enabled
+  - posted: form fields read-only; FlexAlert(type=info) banner shown; "Reverse Entry" button visible
 
 ---
 
@@ -145,14 +235,34 @@
 
 #### Frontend
 *As a CFO on the financial reports page, I want a sidebar with links to each standard report, and each report renders in a printable table format with a date picker at the top and an export button, so that financial reporting is one click away.*
-- Route: `#/financial/reports` with left sidebar listing all 6 reports
-- Each report page has a date/period picker at the top (As Of date for balance sheet/trial balance; From/To range for income statement/cash flow)
-- "Run Report" button fetches and renders the report in a structured table
-- Balance Sheet: two-column layout (Assets on left, Liabilities+Equity on right) with section subtotals and a grand total row
-- Income Statement: revenue section, expense section, net income/loss row highlighted in green/red
-- Aged Receivables: customer rows × aging bucket columns; "Total Outstanding" column; customers with 90+ days shown in red
-- Export button (top right): dropdown with PDF / Excel / CSV options
-- "Print" button triggers `window.print()` with print-optimized CSS (hides navigation, maximizes table width)
+- Route: `#/financial/reports` → `financial-reports.html` + `financial-reports-page.js`
+- Layout: FlexSplitPane(initial-split=18%) > reports-sidebar, report-area
+  - reports-sidebar: FlexStack(direction=vertical) — nav links: Trial Balance | Balance Sheet | Income Statement | Aged Receivables | Cash Flow | Account Ledger
+  - report-area: FlexStack(direction=vertical) > report-controls, report-output
+
+- report-controls (per report type):
+  - balance-sheet / trial-balance: "As Of" FlexDatepicker + "Run Report" FlexButton(primary)
+  - income-statement / cash-flow: From FlexDatepicker + To FlexDatepicker + "Run Report" FlexButton(primary)
+  - aged-receivables: "As Of" FlexDatepicker + "Run Report" FlexButton(primary)
+  - account-ledger: Account FlexSelect + From/To FlexDatepicker pair + "Run Report" FlexButton(primary)
+  - shared toolbar: "Export" FlexButton(split, dropdown: PDF / Excel / CSV) | "Print" FlexButton(ghost)
+
+- report-output layouts:
+  - Balance Sheet: FlexGrid(columns=2) — Assets column (left) | Liabilities + Equity column (right); section subtotals; grand total row
+  - Income Statement: Revenue section → Expenses section → Net Income/Loss row (green text if profit, red if loss)
+  - Aged Receivables: table — customer rows × aging bucket columns (0-30 / 31-60 / 61-90 / 90+); "Total Outstanding" column; 90+ cells highlighted red
+  - Other reports: single-column structured table with section headers and subtotals
+
+- Interactions:
+  - click sidebar nav link: report-area switches to selected report; controls update for that report type
+  - click "Run Report": GET /financial/reports/{type}?params → report-output renders
+  - click "Print": `window.print()` with print-optimized CSS
+  - click "Export" option: POST /reports/{type}/export?format=X → file download
+
+- States:
+  - loading: report-output shows skeleton table while fetch resolves
+  - empty: "No data for the selected period"
+  - not-run: report-output shows "Select a period and click Run Report"
 
 ---
 
@@ -165,11 +275,28 @@
 
 #### Frontend
 *As a finance administrator on the tax rates page, I want to add, edit, and deactivate tax rates in a simple table, and see a live calculation preview when entering a rate, so that tax setup is straightforward.*
-- Route: `#/financial/tax-rates` renders a table: Name | Rate % | GL Account | Type | Status | Actions
-- "Add Tax Rate" button opens a `FlexModal`: Name, Rate % (number input), GL Account (select from Chart of Accounts), Compound toggle, Active toggle
-- Rate preview: entering a rate shows a live example: "On a $100 subtotal: Tax = $X, Total = $Y"
-- Deactivating a tax rate: confirmation modal warns if the rate is referenced by draft invoices
-- Archived rates shown with a "(Archived)" suffix in invoice line item selects — visible on historical invoices but not selectable for new ones
+- Route: `#/financial/tax-rates` → `financial-tax-rates.html` + `financial-tax-rates-page.js`
+- Layout: FlexStack(direction=vertical) > page-header, tax-rates-grid
+  - page-header: FlexToolbar — "Tax Rates" title | "Add Tax Rate" FlexButton(primary)
+  - tax-rates-grid: FlexDataGrid — Name | Rate % | GL Account | Type | Status FlexBadge | Actions (Edit / Deactivate)
+
+- `TaxRateModal` FlexModal(size=sm) triggered by "Add Tax Rate" or Edit:
+  - fields: Name (FlexInput, required) | Rate % (FlexInput, type=number) | GL Account (FlexSelect, from Chart of Accounts) | Compound (FlexCheckbox toggle) | Active (FlexCheckbox toggle)
+  - live preview (below Rate % input): "On a $100 subtotal: Tax = $X, Total = $Y" — updates as Rate % changes
+  - footer: Cancel | Save FlexButton(primary)
+
+- `DeactivateModal` FlexModal(size=sm) triggered by "Deactivate":
+  - body: warning if rate referenced by draft invoices: "This rate is used in X draft invoices."
+  - footer: Cancel | "Deactivate" FlexButton(variant=danger)
+
+- Interactions:
+  - type in Rate % field: live preview recalculates immediately
+  - click "Deactivate": opens DeactivateModal → confirm: PATCH /financial/tax-rates/{id} {is_active: false} → row Status FlexBadge updates
+  - archived rates: appear with "(Archived)" suffix in invoice line item FlexSelect — selectable on existing invoices only
+
+- States:
+  - loading: tax-rates-grid shows skeleton rows
+  - empty: "No tax rates configured" + "Add Tax Rate" FlexButton(primary)
 
 ---
 
@@ -184,9 +311,14 @@
 
 #### Frontend
 *As an accountant on the bills page, I want the same workflow as invoices — create, post, and pay — but for vendor bills, so that payables are managed consistently with receivables.*
-- Route: `#/financial/bills` mirrors the invoices page with "Vendor" instead of "Customer"
-- Aged Payables report accessible from the financial reports sidebar alongside Aged Receivables
-- Vendor master page at `#/financial/vendors` with the same CRUD UX as customers
+- Route (bills): `#/financial/bills` → mirrors `#/financial/invoices` layout with "Vendor" label in place of "Customer"
+- Route (vendors): `#/financial/vendors` → mirrors customer master page layout with "Vendor" terminology
+- Route (new bill): `#/financial/bills/new` → mirrors invoice creation form with Vendor FlexSelect replacing Customer
+
+- Layout: identical to invoices page (Story 12.2.2) and invoice form (Story 12.2.1) with label substitution only
+- reports-sidebar addition: "Aged Payables" link added to financial reports sidebar below "Aged Receivables"
+
+- Interactions: identical to invoice and payment flows; all API paths use `/bills` and `/vendors` prefixes
 
 ---
 
@@ -199,9 +331,21 @@
 
 #### Frontend
 *As an accountant doing a bank reconciliation, I want to see unmatched bank transactions on the left and unmatched GL entries on the right, and drag a bank transaction to a GL entry to match them, so that reconciliation is visual and efficient.*
-- Route: `#/financial/bank-reconciliation/{account_id}`
-- Split-pane layout: left = imported bank statement lines; right = unmatched GL entries for the same cash account
-- Drag a bank line to a GL entry to match; matched pairs move to a "Matched" section below
-- "Auto-Match" button matches lines by amount and date automatically
-- Running totals: Unmatched Bank Items total | Unmatched GL Items total | Difference (must reach zero to complete reconciliation)
-- "Complete Reconciliation" button enabled only when difference = $0
+- Route: `#/financial/bank-reconciliation/{account_id}` → `financial-reconciliation.html` + `financial-reconciliation-page.js`
+- Layout: FlexStack(direction=vertical) > recon-header, recon-panes, matched-section
+  - recon-header: FlexToolbar — account name | "Auto-Match" FlexButton(ghost) | totals bar (Unmatched Bank: $X | Unmatched GL: $Y | Difference: $Z FlexBadge) | "Complete Reconciliation" FlexButton(primary)
+  - recon-panes: FlexSplitPane(initial-split=50%) > bank-panel, gl-panel
+    - bank-panel: FlexStack > "Bank Statement" label | FlexDataGrid — Date | Description | Amount; rows draggable
+    - gl-panel: FlexStack > "GL Entries" label | FlexDataGrid — Date | Description | Debit | Credit; rows are drop targets
+  - matched-section: FlexAccordion (collapsed) — matched pairs list
+
+- Interactions:
+  - drag bank statement row onto GL entry row: pair matched; both rows move to matched-section; totals bar recalculates
+  - click "Auto-Match": POST /financial/bank-reconciliation/{id}/auto-match → matched pairs appear in matched-section; unmatched rows remain
+  - Difference reaches $0: "Complete Reconciliation" button enables
+  - click "Complete Reconciliation": POST /financial/bank-reconciliation/{id}/complete → redirect to account detail
+
+- States:
+  - loading: both panels show skeleton rows
+  - balanced (difference=$0): Difference FlexBadge turns green; "Complete Reconciliation" button enabled
+  - unbalanced: Difference FlexBadge shows red; "Complete Reconciliation" button disabled

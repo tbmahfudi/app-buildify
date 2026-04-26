@@ -17,11 +17,28 @@
 
 #### Frontend
 *As a tenant administrator on the data model page, I want to click "New Entity", fill in the entity's display name and icon, and be taken to the field designer, so that I can start building my data model immediately.*
-- Route: `#/nocode/data-model` renders entity list with cards per entity showing status badge, field count, and module name
-- "New Entity" button opens a `FlexModal` with: Display Name (required), Internal Name (auto-derived from display name in snake_case, editable), Plural Label, Icon (icon picker grid), Category (select), Module assignment (select)
-- Internal Name field: live preview showing the API path it will generate, e.g. `GET /dynamic-data/sales_order/records`
-- On save: modal closes, entity card appears in the list with a "Draft" badge; user auto-navigated to the entity's field designer page
-- Entity list filter bar: tabs for All / My Module / Platform, with status filter chips (Draft / Published / Archived)
+- Route: `#/nocode/data-model` → `data-model.html` + `data-model-page.js`
+- Layout: FlexStack(direction=vertical) > page-header, filter-bar, entity-grid
+  - page-header: FlexToolbar — "Data Model" title | "New Entity" FlexButton(primary)
+  - filter-bar: FlexCluster — tabs (All | My Module | Platform) | status chips (Draft | Published | Archived)
+  - entity-grid: FlexGrid(columns=3, gap=md) — FlexCard per entity (status FlexBadge, field count, module name)
+
+- FlexModal(size=md) — "New Entity" form, triggered by toolbar button
+  - fields: Display Name (FlexInput, required) | Internal Name (FlexInput, auto-derived snake_case, editable; live API path preview e.g. `GET /dynamic-data/sales_order/records`) | Plural Label (FlexInput) | Icon (icon picker grid) | Category (FlexSelect) | Module (FlexSelect)
+  - footer: Cancel | Create Entity (primary)
+  - on save: modal closes; entity card appears with FlexBadge "Draft"; user auto-navigated to field designer page
+
+- Interactions:
+  - click "New Entity": opens FlexModal(size=md)
+  - type Display Name: Internal Name auto-derives (snake_case); API path preview updates
+  - click status chip (filter): entity grid filters client-side
+  - click tab (All/My Module/Platform): entity grid re-fetches with scope filter
+  - click entity card: navigates to entity field designer `#/nocode/data-model/{id}`
+
+- States:
+  - loading: entity grid shows skeleton cards while GET /data-model/entities resolves
+  - empty: illustration + "No entities yet. Create your first entity." + "New Entity" FlexButton(primary)
+  - error: FlexAlert(type=error) "Could not load entities. Retry?"
 
 ---
 
@@ -35,11 +52,24 @@
 
 #### Frontend
 *As a tenant administrator who has finished designing an entity, I want to click "Publish" and see a real-time status indicator while the database table is being created, so that I know when the entity is ready to use.*
-- Entity field designer page has a "Publish Entity" button in the page header (disabled if no fields have been defined)
-- Clicking opens a confirmation modal: "Publishing will create a database table for [Entity Name]. This action cannot be easily undone. Continue?"
-- After confirming: button replaced with a progress indicator ("Creating database table…")
-- Status polling: `GET /data-model/entities/{id}` polled every 2 seconds; when `status = "published"`, progress indicator replaced with a green "Published" badge and a toast "Entity is ready to use"
-- On failure: red "Migration Failed" badge + expandable error details section; a "View Error" button shows the migration error message
+- Route: `#/nocode/data-model/{id}` → entity field designer page
+
+- FlexModal(size=sm) — publish confirm, triggered by "Publish Entity" button in page header
+  - body: "Publishing will create a database table for [Entity Name]. This action cannot be easily undone. Continue?"
+  - footer: Cancel | Publish (FlexButton, primary)
+  - on confirm: POST /data-model/entities/{id}/publish → button replaced with "Creating database table…" progress indicator
+
+- Interactions:
+  - click "Publish Entity" (disabled if no fields defined): opens confirm FlexModal(size=sm)
+  - confirm publish: POST /data-model/entities/{id}/publish → polling every 2s via GET /data-model/entities/{id}
+  - poll returns `status = "published"`: progress indicator → FlexBadge(color=success) "Published" + toast "Entity is ready to use"
+  - poll returns failure: FlexBadge(color=danger) "Migration Failed" + "View Error" FlexButton → FlexAccordion expands with migration error message
+
+- States:
+  - draft: "Publish Entity" button enabled (if ≥1 field defined); disabled with tooltip "Add at least one field first" if empty
+  - migrating: progress indicator shown; Publish button hidden; field editing disabled
+  - published: FlexBadge(color=success) "Published" in header; Publish button replaced
+  - migration-failed: FlexBadge(color=danger) "Migration Failed" + expandable error section
 
 ---
 
@@ -52,10 +82,20 @@
 
 #### Frontend
 *As a tenant administrator, I want to archive an obsolete entity from its detail page, with a warning if other entities depend on it, so that I don't accidentally break data relationships.*
-- Entity detail page has an "Archive Entity" option in the "⋮" (more actions) menu
-- If the entity has dependents: modal shows a warning list of dependent entities and blocks archival — "Remove the following relationships first: [list]"
-- If no dependents: confirmation modal "Archive [Entity Name]? It will no longer appear in reports or forms. Historical data is preserved."
-- After archiving: entity card on the list page shows an "Archived" grey badge; entity hidden from all dropdown/select lists in the rest of the UI
+- Route: `#/nocode/data-model/{id}` → "⋮" more-actions menu in page header
+
+- FlexModal(size=sm) — archive confirm (no dependents), triggered by "Archive Entity" in ⋮ menu
+  - body: "Archive [Entity Name]? It will no longer appear in reports or forms. Historical data is preserved."
+  - footer: Cancel | Archive (FlexButton, variant=danger)
+  - on confirm: POST /data-model/entities/{id}/archive → redirect to entity list; card shows FlexBadge(color=grey) "Archived"
+
+- FlexModal(size=sm) — archive blocked (has dependents)
+  - body: FlexAlert(type=warning) "Remove the following relationships first:" + list of dependent entity names
+  - footer: Close only (archive blocked)
+
+- Interactions:
+  - click "Archive Entity" in ⋮ menu: GET /data-model/entities/{id} to check dependents → opens blocked or confirm modal accordingly
+  - confirm archive: POST /data-model/entities/{id}/archive → redirect to list; entity hidden from all dropdowns/selects site-wide
 
 ---
 
@@ -69,11 +109,19 @@
 
 #### Frontend
 *As a tenant administrator creating an entity, I want a "Virtual Entity" option that lets me enter a view name or SQL definition, so that I can expose complex reporting data without duplicating API logic.*
-- "New Entity" modal has an "Entity Type" radio group: "Standard" (default) / "Virtual (read-only)"
-- When "Virtual" is selected: the form adapts to show a "PostgreSQL View Name" text input and an optional "View SQL Definition" code textarea
-- View SQL textarea has syntax highlighting (CodeMirror or similar) and a "Validate SQL" button (dry-runs against the DB)
-- Virtual entities shown with a "Virtual" purple badge on the entity list; no "Publish" button needed — they appear immediately once the view exists
-- Field designer for virtual entities is read-only — fields are auto-introspected from the view's columns
+- Route: `#/nocode/data-model` — "New Entity" FlexModal (see Story 5.1.1), with Entity Type toggle
+
+- FlexModal(size=md) — "New Entity" form (Virtual variant)
+  - Entity Type: FlexRadio group — Standard (default) | Virtual (read-only)
+  - when Virtual selected: form swaps to show PostgreSQL View Name (FlexInput) + View SQL Definition (code textarea, syntax highlighting, optional)
+  - "Validate SQL" FlexButton(ghost): dry-runs SQL against the DB → inline pass/fail result
+  - footer: Cancel | Create Virtual Entity (primary)
+
+- Interactions:
+  - select "Virtual" radio: form fields swap; standard fields hidden; view-specific fields shown
+  - click "Validate SQL": POST /data-model/entities/validate-sql → inline "Valid ✓" or error message below textarea
+  - save: virtual entity created; appears immediately on list with FlexBadge(color=purple) "Virtual" — no Publish step needed
+  - open field designer for virtual entity: all fields read-only (auto-introspected from view columns; no Add Field button)
 
 ---
 
@@ -87,10 +135,25 @@
 
 #### Frontend
 *As a user viewing a record detail page for a versioned entity, I want a "History" tab that shows me a timeline of every change made to this record with the before/after values, so that I can understand how the data evolved.*
-- Record detail page for versioned entities shows a "History" tab alongside "Details" and "Related"
-- History tab renders a vertical timeline component: each entry shows timestamp, who changed it, and a diff table (old value → new value per changed field)
-- Changed fields highlighted in amber; unchanged fields not shown (diff view, not full record)
-- "Restore this version" button on each history entry (admin only) opens a confirmation modal before reverting
+- Route: `#/dynamic-data/{entity}/records/{id}` → record detail page (History tab, shown only when `entity.is_versioned = true`)
+
+- FlexTabs — record detail tabs: Details | Related | History (versioned entities only)
+  - History tab: vertical timeline (GET /dynamic-data/{entity}/records/{id}/versions, reverse chronological)
+    - each entry: timestamp + actor avatar + name | diff table (old value → new value per changed field, amber highlight) | "Restore this version" FlexButton(ghost) [admin only]
+
+- FlexModal(size=sm) — restore confirm, triggered by "Restore this version"
+  - body: "Restore record to version from [date]? Current values will be overwritten."
+  - footer: Cancel | Restore (FlexButton, variant=danger)
+  - on confirm: POST /dynamic-data/{entity}/records/{id}/restore → record refreshes; new history entry appears at top
+
+- Interactions:
+  - click History tab: GET /dynamic-data/{entity}/records/{id}/versions → timeline renders
+  - click "Restore this version" (admin only): opens restore confirm FlexModal
+  - confirm restore: record reverts; page refreshes; FlexAlert(type=success) toast "Record restored to version [date]"
+
+- States:
+  - loading (History tab): timeline shows skeleton entries while version list resolves
+  - no-history: "No changes recorded yet"
 
 ---
 
@@ -106,11 +169,27 @@
 
 #### Frontend
 *As a tenant administrator in the field designer, I want to add fields by selecting a field type from a type palette and then configure its constraints in a properties panel, so that defining a data model feels like filling out a form.*
-- Entity field designer page: left panel = list of defined fields (draggable to reorder); right panel = field property form
-- "Add Field" button opens a type picker modal with icon-cards for each field type grouped by category (Text, Number, Date, Selection, Relationship, Advanced)
-- Selecting a type creates a new field and opens its property panel: Name, Label, Required toggle, Unique toggle, and type-specific options (e.g. Max Length for text, Min/Max for number)
-- Constraint violations shown inline: if `is_unique` is toggled on a `multi_select` field, a warning tooltip appears "Unique constraint not supported for multi-select fields"
-- Field list shows a summary chip per field: type icon + name + constraint badges (Required, Unique, Indexed)
+- Route: `#/nocode/data-model/{id}` → `entity-designer.html` + `entity-designer-page.js`
+- Layout: FlexSplitPane(initial-split=35%) > fields-panel, properties-panel
+  - fields-panel: FlexStack(direction=vertical) > fields-header, fields-list
+    - fields-header: FlexToolbar — entity name | "Add Field" FlexButton(primary) | "Publish Entity" FlexButton
+    - fields-list: FlexStack(gap=sm) — draggable field rows (type icon + name + constraint FlexBadge chips: Required, Unique, Indexed)
+  - properties-panel: FlexSection — field property form for selected field (Name, Label, Required FlexCheckbox, Unique FlexCheckbox, type-specific options)
+
+- FlexModal(size=md) — field type picker, triggered by "Add Field"
+  - icon-card grid grouped by category: Text | Number | Date | Selection | Relationship | Advanced
+  - click a type card: modal closes; new field created and selected; properties-panel loads its form
+
+- Interactions:
+  - click "Add Field": opens field type picker FlexModal(size=md)
+  - click field type card: creates field; properties-panel opens with that field's form
+  - drag field row in list: reorders fields; auto-saves order
+  - click field row: loads its form in properties-panel
+  - toggle `is_unique` on a multi_select field: FlexTooltip "Unique constraint not supported for multi-select fields"; toggle reverts
+
+- States:
+  - no-field-selected: properties-panel shows "Select a field to edit its properties"
+  - empty (fields list): "No fields yet. Add a field to start." + "Add Field" FlexButton
 
 ---
 
@@ -124,12 +203,21 @@
 
 #### Frontend
 *As a tenant administrator configuring a select field, I want to add allowed values using a tag-like input where I can type a value, add a display label, and optionally add translated labels, so that dropdown options are defined visually.*
-- When `field_type = "select"` or `"multi_select"` is chosen: the property panel shows an "Allowed Values" section
-- Value entry: tag-input component — type a value key (e.g. `active`), press Enter to add; display label auto-fills from the key
-- Each value tag shows the `value` key and `label` inline; clicking a tag opens a mini-editor for the label and i18n translations
-- Drag handles on tags for reordering the dropdown option order
-- "Import from CSV" button to bulk-add values from a two-column CSV (value, label)
-- Preview at the bottom of the panel: renders the actual `FlexSelect` dropdown with all defined values
+- Route: `#/nocode/data-model/{id}` — properties-panel when field_type = "select" or "multi_select"
+
+- Allowed Values section (inside field properties-panel):
+  - tag-input: type a value key (e.g. `active`) + Enter to add; display label auto-fills from key
+  - each tag: shows value key + label inline; drag handle for reorder; × to remove
+  - click tag: opens mini FlexModal editor — Label (FlexInput) | i18n labels (FlexInput per locale)
+  - "Import from CSV" FlexButton: opens file picker; accepts 2-column CSV (value, label); bulk-adds tags
+  - preview panel at bottom: renders live FlexSelect dropdown with all defined values
+
+- Interactions:
+  - type value key + Enter: tag created; label auto-fills
+  - drag tag: reorders allowed values list
+  - click tag: opens mini label editor FlexModal
+  - click "Import from CSV": file input → parses CSV → tags bulk-added
+  - any change to tags: preview FlexSelect updates immediately
 
 ---
 
@@ -143,11 +231,17 @@
 
 #### Frontend
 *As a tenant administrator adding a calculated field, I want to write a formula using field name tokens and see a preview of what the calculation will produce, so that I can verify the formula before publishing.*
-- Calculated field type shows a "Formula" textarea in the property panel
-- Token auto-complete: typing `{` shows a dropdown of existing field names in the entity
-- Formula preview: a sample row (using dummy values) shows the computed result below the formula input
-- Field preview labeled "Computed value (read-only)" — rendered as a greyed, disabled input in form mockups
-- Validation: if a referenced `{field_name}` doesn't exist in the entity, an inline error is shown before save
+- Route: `#/nocode/data-model/{id}` — properties-panel when field_type = "calculated"
+
+- Calculated field properties-panel:
+  - Formula (FlexTextarea, monospace) — token auto-complete: typing `{` triggers a dropdown listing existing entity field names
+  - formula preview: sample row with dummy values → computed result shown below formula textarea
+  - field form preview: greyed disabled FlexInput labeled "Computed value (read-only)"
+
+- Interactions:
+  - type `{` in formula textarea: dropdown appears with existing field names; click to insert token
+  - any formula change: preview recalculates with dummy values in real time
+  - save with unknown `{field_name}` token: inline error "Field '[name]' does not exist in this entity" — save blocked
 
 ---
 
@@ -161,13 +255,21 @@
 
 #### Frontend
 *As a tenant administrator, I want to add custom validation rules to a field using a rule builder interface, so that I can enforce business-specific patterns like invoice number formats without writing code.*
-- Field property panel has an "Advanced Validation" section (collapsed by default)
-- "Add Rule" button shows a rule-type select and type-specific inputs:
-  - `regex`: pattern input + test string input with live pass/fail indicator
-  - `min_length` / `max_length`: number input
-  - `min_value` / `max_value`: number input
-- Each rule shows a human-readable summary: "Must match pattern: `^[A-Z]{2}`" with an error message field
-- Rules listed as chips; click to edit, × to delete
+- Route: `#/nocode/data-model/{id}` — "Advanced Validation" FlexAccordion section in field properties-panel (collapsed by default)
+
+- Advanced Validation section:
+  - "Add Rule" FlexButton: shows rule-type FlexSelect → type-specific inputs appear:
+    - regex: pattern (FlexInput) + test string (FlexInput) with live pass/fail indicator
+    - min_length / max_length: number (FlexInput)
+    - min_value / max_value: number (FlexInput)
+  - each rule rendered as a chip: human-readable summary (e.g. "Must match `^[A-Z]{2}`") + error message FlexInput | × remove
+  - click chip: expands inline editor for that rule
+
+- Interactions:
+  - click "Add Rule": rule-type FlexSelect appears; select type → type-specific inputs shown
+  - type in regex test string: live pass ✓ / fail ✗ indicator updates in real time
+  - click × on rule chip: removes rule from list
+  - click rule chip body: expands inline editor
 
 ---
 
@@ -182,9 +284,19 @@
 
 #### Frontend
 *As a tenant administrator adding a relationship field, I want to select the target entity and field from dropdowns and preview the generated FK, so that I can define relationships without knowing SQL.*
-- Relationship field type opens a property panel with: Related Entity (searchable select of all published entities), Display Field (select of fields in the target entity, auto-defaults to the first `text` field), Relationship Type (radio: Many-to-One / One-to-Many), On Delete Behavior (select)
-- Live preview: "This field creates a foreign key → `{target_entity}.{target_field}`"
-- In record forms: relationship fields render as a searchable `FlexSelect` that queries `GET /dynamic-data/{ref_entity}/records?search=`
+- Route: `#/nocode/data-model/{id}` — properties-panel when field_type = "relationship"
+
+- Relationship field properties-panel:
+  - Related Entity (FlexSelect, searchable, all published entities)
+  - Display Field (FlexSelect, fields of selected entity, auto-defaults to first text field)
+  - Relationship Type (FlexRadio): Many-to-One | One-to-Many
+  - On Delete Behavior (FlexSelect): CASCADE | SET NULL | RESTRICT
+  - live preview text: "This field creates a foreign key → `{target_entity}.{target_field}`"
+
+- Interactions:
+  - select Related Entity: Display Field FlexSelect repopulates with that entity's fields
+  - any change to relationship config: live preview text updates immediately
+  - in record forms (runtime): relationship field renders as FlexSelect (searchable) querying GET /dynamic-data/{ref_entity}/records?search=[term]
 
 ---
 
@@ -197,10 +309,26 @@
 
 #### Frontend
 *As a tenant administrator managing lookups, I want a dedicated Lookups page where I can create lookup tables and add values, so that dropdown options are managed in one place.*
-- Route: `#/nocode/lookups` shows a list of lookup configurations
-- "New Lookup" opens a modal: Lookup Name, Source (entity-based or static list), if entity-based: select entity + value field + label field
-- Static list lookup: tag-input for values (similar to select field allowed values)
-- In record forms: lookup fields render as `FlexSelect` with lazy-load search; selecting an option shows both the value key and label
+- Route: `#/nocode/lookups` → `lookups.html` + `lookups-page.js`
+- Layout: FlexStack(direction=vertical) > page-header, lookups-list
+  - page-header: FlexToolbar — "Lookups" title | "New Lookup" FlexButton(primary)
+  - lookups-list: FlexDataGrid — Name, Source Type, Value Count, Actions
+
+- FlexModal(size=md) — "New Lookup" form
+  - fields: Lookup Name (FlexInput, required) | Source (FlexRadio): Entity-based | Static list
+  - entity-based fields: Entity (FlexSelect) | Value Field (FlexSelect) | Label Field (FlexSelect)
+  - static list: tag-input (same pattern as select field allowed values)
+  - footer: Cancel | Save Lookup (primary)
+
+- Interactions:
+  - click "New Lookup": opens FlexModal(size=md)
+  - toggle Source → Entity-based: entity/value/label FlexSelects shown; tag-input hidden
+  - toggle Source → Static list: tag-input shown; entity fields hidden
+  - in record forms (runtime): lookup field renders as FlexSelect with lazy-load search (GET /lookups/{name}?search=); selected option shows value key + label
+
+- States:
+  - loading: FlexDataGrid skeleton while GET /nocode/lookups resolves
+  - empty: "No lookups yet" + "New Lookup" FlexButton(primary)
 
 ---
 
@@ -217,7 +345,14 @@
 
 #### Frontend
 *As a tenant administrator, I want a "Show Deleted" toggle on entity list pages for entities with soft-delete enabled, so that I can recover accidentally deleted records.*
-- Entity list page toolbar has a "Show Deleted" toggle (only rendered if `entity.supports_soft_delete = true`)
-- When "Show Deleted" is ON: deleted rows shown with a red strikethrough background and a "Restore" action button instead of "Edit/Delete"
-- "Restore" button sends `POST /dynamic-data/{entity}/records/{id}/restore` and moves the row back to normal display
-- Permanent "Delete forever" button available in the deleted row's action menu (admin only) with a strong confirmation modal: "This cannot be undone. Type DELETE to confirm."
+- Route: `#/dynamic-data/{entity}` → entity list page (toolbar augmented when `entity.supports_soft_delete = true`)
+
+- Interactions:
+  - "Show Deleted" FlexCheckbox toggle (only rendered when soft-delete enabled): appends `include_deleted=true` to GET /dynamic-data/{entity}/records → grid refreshes; deleted rows shown with red strikethrough row styling + "Restore" action instead of Edit/Delete
+  - click "Restore" on deleted row: POST /dynamic-data/{entity}/records/{id}/restore → row transitions back to normal; "Restore" button removed
+  - click "Delete forever" in deleted row ⋮ menu (admin only): opens strong confirm FlexModal(size=sm) — body "This cannot be undone. Type DELETE to confirm." + FlexInput for confirmation text; Delete button enabled only when input matches "DELETE"
+  - confirm "Delete forever": DELETE /dynamic-data/{entity}/records/{id}?permanent=true → row removed from grid
+
+- States:
+  - show-deleted ON: deleted rows visible with red strikethrough; grid shows deleted count chip in toolbar
+  - show-deleted OFF (default): only active records shown
