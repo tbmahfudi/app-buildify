@@ -16,10 +16,11 @@
 
 #### Frontend
 *As a developer who just cloned the repo, I want one command to get a working local environment, so that I can start contributing within 5 minutes.*
-- `README.md` "Quick Start" section: `cp backend/.env.example backend/.env` + `make docker-up`
-- Services available after startup: Frontend at `http://localhost:8080`; API at `http://localhost:8000/api/v1`; Swagger at `http://localhost:8000/api/docs`
-- `make docker-logs` tails all service logs; `make docker-down` stops all services
-- A `make health` command checks that all services respond correctly (calls each health endpoint)
+- No dedicated route — dev setup is a CLI/Makefile concern; documented in `README.md` "Quick Start"
+
+- Quick start steps: `cp backend/.env.example backend/.env` → `make docker-up`
+- Services after startup: Frontend at `http://localhost:8080` | API at `http://localhost:8000/api/v1` | Swagger at `http://localhost:8000/api/docs`
+- Helper commands: `make docker-logs` (tails all service logs) | `make docker-down` (stops all) | `make health` (calls each service health endpoint)
 
 ---
 
@@ -34,12 +35,8 @@
 
 #### Frontend
 *No specific frontend story — production deployment is a DevOps concern.*
-- `docs/deployment/PRODUCTION.md` documents the full deployment checklist:
-  - Environment variables required
-  - SSL certificate setup
-  - Database migration command
-  - Health check verification
-  - Rollback procedure
+- No dedicated route — documented in `docs/deployment/PRODUCTION.md`
+- Deployment checklist covers: environment variables | SSL certificate setup | database migration command | health check verification | rollback procedure
 
 ---
 
@@ -55,9 +52,11 @@
 
 #### Frontend
 *As a developer debugging a routing issue, I want the Nginx config to be clearly commented so I can quickly find and update proxy rules, so that routing changes don't require reading nginx.org documentation.*
-- `infra/nginx/nginx.conf` is heavily commented: each `location` block has a comment explaining what it routes and why
-- Separate `location` blocks for: API, financial module API, module static files, main app
-- Development and production configs separated: `nginx.dev.conf` vs `nginx.prod.conf`
+- No dedicated route — Nginx config is an infrastructure file; no UI involved
+
+- `infra/nginx/nginx.conf`: each `location` block has an inline comment explaining what it routes and why
+- Separate `location` blocks for: API | financial module API | module static files | main SPA
+- Dev and production configs split: `nginx.dev.conf` | `nginx.prod.conf`
 
 ---
 
@@ -73,10 +72,10 @@
 
 #### Frontend
 *As a developer running migrations manually, I want clear `make` commands and error messages, so that migration issues are diagnosable without Alembic expertise.*
-- `make migrate` runs `alembic upgrade head` inside the backend container
-- `make migrate-status` runs `alembic current` to show current revision
-- `make migrate-history` runs `alembic history` to show migration chain
-- Migration failures: FastAPI startup `lifespan` catches Alembic errors and logs them clearly; the app does NOT start if migrations fail (preventing runtime schema mismatches)
+- No dedicated route — migration tooling is a CLI/Makefile concern; no UI involved
+
+- Commands: `make migrate` (upgrade head) | `make migrate-status` (current revision) | `make migrate-history` (migration chain)
+- On migration failure: FastAPI `lifespan` catches Alembic errors and logs them clearly; app does NOT start (prevents runtime schema mismatches)
 
 ---
 
@@ -89,9 +88,8 @@
 - `docker-compose exec financial-module alembic upgrade head` runs module migrations
 
 #### Frontend
-*No specific frontend story — Alembic is a developer/DevOps concern. The Makefile exposes module migration commands:*
-- `make migrate-financial` runs financial module migrations
-- `make migrate-all` runs core and all module migrations in the correct dependency order
+*No specific frontend story — Alembic is a developer/DevOps concern.*
+- No dedicated route — Makefile exposes module migration commands: `make migrate-financial` | `make migrate-all` (core + all modules in dependency order)
 
 ---
 
@@ -109,11 +107,13 @@
 
 #### Frontend
 *As a developer integrating file upload into a form, I want `StorageService.getUploadUrl(filename)` to return a presigned URL I can PUT the file to directly from the browser, so that large files don't pass through the backend.*
-- `storage-service.js` exposes:
-  - `getUploadUrl(filename, contentType)` → calls `PUT /files/upload-url` → returns `{upload_url, file_key}`
-  - `getDownloadUrl(fileKey)` → calls `GET /files/{key}` → returns a presigned download URL
-- `FlexFileUpload` component uses `StorageService.getUploadUrl()` for direct browser-to-S3 upload
-- After successful upload: the `file_key` is stored in the entity record via the attachments API (Story 19.3.2)
+- No dedicated route — `storage-service.js` is a shared service used by `FlexFileUpload` and any attachment-enabled page
+
+- `storage-service.js` API:
+  - `getUploadUrl(filename, contentType)` → GET /files/upload-url → `{upload_url, file_key}`
+  - `getDownloadUrl(fileKey)` → GET /files/{key} → presigned download URL
+- `FlexFileUpload` calls `StorageService.getUploadUrl()` then PUTs directly to the presigned URL (browser → S3)
+- On upload complete: `file_key` stored in the entity record via the attachments API
 
 ---
 
@@ -127,12 +127,21 @@
 
 #### Frontend
 *As a user viewing a record detail page for an entity that supports attachments, I want an "Attachments" tab where I can drag-and-drop files to attach them and download or delete existing attachments, so that supporting documents are organized with each record.*
-- Record detail page "Attachments" tab (only rendered if `entity.supports_attachments = true`)
-- Tab header shows attachment count badge
-- Attachment list: file icon (type-derived) | file name | size | uploaded by | upload date | Download link | Delete icon
-- Drop zone at the top of the tab: "Drag files here or click to upload" → uses `FlexFileUpload`
-- Delete confirmation: "Remove [filename] from this record?" (file deleted from storage if confirmed)
-- File size limits and allowed types enforced client-side before the presigned URL is requested
+- Route: `#/dynamic/{entity}/{id}` → record detail page; "Attachments" FlexTabs tab (rendered only when `entity.supports_attachments = true`)
+- Layout: FlexStack(direction=vertical) > drop-zone, attachments-list
+  - drop-zone: FlexFileUpload — "Drag files here or click to upload"
+  - attachments-list: FlexDataGrid(static) — file icon | File Name | Size | Uploaded By | Upload Date | "Download" link | × delete icon
+
+- Interactions:
+  - drop or select file: `StorageService.getUploadUrl()` called → file PUT to presigned URL → POST /dynamic-data/{entity}/records/{id}/attachments {file_key, file_name, content_type, file_size} → new row appears in attachments-list
+  - click "Download" link: GET /files/{key} → presigned download URL → browser download
+  - click × delete: FlexModal(size=sm) confirm "Remove [filename] from this record?" → DELETE /dynamic-data/{entity}/records/{id}/attachments/{id} → row removed
+  - file exceeds size limit or disallowed type: rejected client-side before presigned URL request; FlexAlert(type=error) inline
+
+- States:
+  - loading: attachments-list shows skeleton rows while GET /attachments resolves
+  - empty: "No attachments yet" + drop-zone prominently shown
+  - uploading: FlexFileUpload chip shows progress bar
 
 ---
 
@@ -153,9 +162,10 @@
 
 #### Frontend
 *As a developer opening a pull request, I want to see the CI status check results directly on the PR page with links to the failure details, so that I know exactly what to fix before requesting a review.*
-- CI results shown as status checks on the PR: `lint-backend ✓`, `test-backend ✓`, `lint-frontend ✓`, `test-frontend ✓`
-- Failed checks link to the workflow run where the error is highlighted
-- Coverage diff comment on the PR: "Coverage changed from 78% → 81% (+3%)" — posted by the coverage action
+- No dedicated route — CI results surface in GitHub PR UI via status checks; no platform UI involved
+
+- PR status checks: `lint-backend` | `test-backend` | `lint-frontend` | `test-frontend` — each shows ✓ or ✗ with link to workflow run
+- Coverage comment posted automatically on PR: "Coverage changed from X% → Y% (±Z%)"
 
 ---
 
@@ -170,6 +180,8 @@
 
 #### Frontend
 *As a DevOps engineer after a successful deployment, I want to see the commit SHA in the platform's admin health page so that I can verify which version is running, so that deployment confirmation is self-service.*
-- `GET /api/v1/admin/version` returns `{version, commit_sha, deployed_at}` (set via build-time env vars `APP_VERSION`, `GIT_SHA`)
-- Admin health page `#/admin/health` shows this version info in a "Platform Version" card
-- Version badge also shown in the `#/admin` page header: "v1.2.0 (abc1234)"
+- Route: `#/admin/health` → admin health page (Story 13.3.1); version info added to "Platform Version" metric card
+- Layout addition (`#/admin` page-header): version FlexBadge(color=neutral) "v1.2.0 (abc1234)"
+
+- Interactions:
+  - page load: GET /admin/version → "Platform Version" card populates with `version`, `commit_sha`, `deployed_at`
