@@ -16,13 +16,25 @@
 
 #### Frontend
 *As a user on the settings page, I want to see all my preferences grouped into clear sections (Appearance, Language, Region) with instant feedback when I change a setting, so that customizing my experience is satisfying.*
-- Route: `#/settings` renders `settings.html` + `settings.js`
-- **Appearance section**: Theme toggle (Light / Dark / System) — changing theme immediately updates the page without a save button; animated transition
-- **Display section**: Density radio (Comfortable / Normal / Compact) — updates all padding/spacing instantly via CSS class on `<body>`
-- **Language section**: Language select — triggers immediate language switch as described in Epic 16
-- **Region section**: Timezone select (searchable), Date Format select (DD/MM/YYYY, MM/DD/YYYY, YYYY-MM-DD), Time Format (12h/24h)
-- All settings auto-save (debounced 500ms after change); a subtle "Saved" indicator flashes in the section header after each save
-- Sidebar Collapsed/Expanded preference persists: remembered after page reload
+- Route: `#/settings` → `settings.html` + `settings.js`
+- Layout: FlexStack(direction=vertical) > page-header, settings-sections
+  - page-header: FlexToolbar — "Settings" title
+  - settings-sections: FlexStack(gap=lg) — one FlexSection per group
+
+- `AppearanceSection`: Theme (FlexRadio: Light / Dark / System)
+- `DisplaySection`: Density (FlexRadio: Comfortable / Normal / Compact)
+- `LanguageSection`: Language (FlexSelect, see Epic 16)
+- `RegionSection`: Timezone (FlexSelect, searchable) | Date Format (FlexSelect: DD/MM/YYYY / MM/DD/YYYY / YYYY-MM-DD) | Time Format (FlexRadio: 12h / 24h)
+
+- Interactions:
+  - change Theme: `theme-manager.js` applies immediately with animated transition; no save button needed
+  - change Density: CSS class swapped on `<body>` immediately
+  - change any setting: PUT /settings/user (debounced 500 ms) → "Saved ✓" indicator flashes in the section header
+  - sidebar collapse/expand: preference persisted to `localStorage` and `UserSettings`; restored on next load
+
+- States:
+  - loading: sections show skeleton fields while GET /settings/user resolves
+  - saving (per section): "Saved ✓" indicator briefly visible after debounced save
 
 ---
 
@@ -33,11 +45,17 @@
 
 #### Frontend
 *As a user, I want the entire application to switch between light and dark mode based on my preference, with all components adapting correctly, so that I can use the platform comfortably in any lighting condition.*
-- `theme-manager.js` applies the theme by adding `class="dark"` to `<html>` element (Tailwind dark mode)
-- `"System"` option uses `window.matchMedia('(prefers-color-scheme: dark)')` and listens for changes
-- All Flex components use Tailwind `dark:` variants for dark mode colors — no separate component stylesheet needed
-- Theme switching is instant (no page reload, no flash of wrong theme on load)
-- Theme stored in both `localStorage` (for immediate load before API call completes) and `UserSettings` (for persistence across devices)
+- No dedicated route — theme is applied globally via `theme-manager.js`; no isolated UI
+
+- `theme-manager.js` behavior:
+  - Light / Dark: adds/removes `class="dark"` on `<html>` (Tailwind dark mode); instant, no page reload
+  - System: reads `window.matchMedia('(prefers-color-scheme: dark)')` and listens for OS changes
+  - On load: reads from `localStorage` before API call completes (prevents flash of wrong theme)
+  - All Flex components use Tailwind `dark:` variants — no separate stylesheet
+
+- Interactions:
+  - OS color scheme changes (System mode): `matchMedia` listener fires → theme toggles automatically
+  - theme stored to `localStorage` immediately + `UserSettings` (debounced) for cross-device persistence
 
 ---
 
@@ -52,11 +70,24 @@
 
 #### Frontend
 *As a tenant administrator on the branding page, I want to change the app name, logo, and primary color and immediately see my changes reflected in the navigation bar and login page preview, so that I can iterate on branding without repeatedly publishing changes.*
-- Route: `#/settings/branding`
-- Settings form: App Name (text), Tagline (text), Logo URL (with inline preview), Favicon URL, Primary Color (hex color picker + swatch), Secondary Color
-- Live preview panel (split-pane): mini version of the sidebar and top nav updating in real time as settings change
-- "Preview Login Page" button renders the login page in a modal with the current branding applied
-- "Save Branding" calls `PUT /settings/tenant`; after save, reloads app branding by re-fetching `GET /settings/tenant` and re-applying CSS tokens
+- Route: `#/settings/branding` → `settings.html` + `settings-page.js` (Branding tab)
+- Layout: FlexSplitPane(initial-split=55%) > branding-form, preview-panel
+  - branding-form: FlexForm — App Name (FlexInput) | Tagline (FlexInput) | Logo URL (FlexInput + inline logo preview) | Favicon URL (FlexInput) | Primary Color (hex FlexInput + color swatch picker) | Secondary Color (hex FlexInput + swatch)
+  - branding-form footer: FlexToolbar — "Preview Login Page" FlexButton(ghost) | "Save Branding" FlexButton(primary)
+  - preview-panel: FlexCard — mini sidebar + top nav rendering; updates in real time as form values change
+
+- `LoginPreviewModal` FlexModal(size=lg) triggered by "Preview Login Page":
+  - body: iframe rendering the login page with current branding applied
+  - footer: Close FlexButton
+
+- Interactions:
+  - change any branding field: preview-panel re-renders immediately with new values
+  - click "Preview Login Page": opens LoginPreviewModal
+  - click "Save Branding": PUT /settings/tenant → success toast → GET /settings/tenant → CSS tokens re-applied across app
+
+- States:
+  - loading: branding-form shows skeleton fields while GET /settings/tenant resolves
+  - saving: "Save Branding" button shows spinner; form disabled
 
 ---
 
@@ -69,11 +100,25 @@
 
 #### Frontend
 *As a superadmin on the platform administration page, I want a dedicated admin section with platform health, tenant statistics, and default configuration panels, so that I can manage the platform without looking at the database.*
-- Route: `#/admin` (superadmin-only; tenant admin sees 403 page)
-- Admin dashboard cards: Total Tenants | Active Users (24h) | Registered Modules | Platform Version
-- "Platform Defaults" section: same security policy form as tenant settings but labeled "Platform Default"
-- "Tenant Statistics" table: sortable by users, modules, last activity, subscription tier
-- "Feature Flags" section: toggles for experimental platform features (e.g. "Enable Marketplace UI")
+- Route: `#/admin` → `admin.html` + `admin-page.js` (superadmin only; tenant admin redirected to 403 page)
+- Layout: FlexStack(direction=vertical) > page-header, stats-cards, admin-sections
+  - page-header: FlexToolbar — "Platform Administration" title
+  - stats-cards: FlexCluster — Total Tenants | Active Users (24h) | Registered Modules | Platform Version (FlexCard metric per item)
+  - admin-sections: FlexStack(gap=lg) — Platform Defaults | Tenant Statistics | Feature Flags
+
+- `PlatformDefaultsSection`: same security policy form as `#/settings/security` labeled "Platform Default"; saved via PUT /admin/security/policies/default
+
+- `TenantStatisticsSection`: FlexDataGrid — Tenant Name | Users | Modules | Last Activity | Subscription Tier; sortable columns
+
+- `FeatureFlagsSection`: FlexStack(gap=sm) — one FlexCheckbox toggle row per experimental feature (e.g. "Enable Marketplace UI")
+
+- Interactions:
+  - toggle a feature flag: PUT /admin/feature-flags/{key} {enabled} → toggle updates immediately
+  - click column header in tenant statistics: GET /admin/tenants/stats?sort_by=X → grid re-renders sorted
+
+- States:
+  - loading: stats-cards show skeleton; tenant grid shows skeleton rows
+  - error: FlexAlert(type=error) "Could not load admin data. Retry?"
 
 ---
 
@@ -87,12 +132,31 @@
 
 #### Frontend
 *As a tenant administrator on the menu management page, I want to drag menu items to reorder them and nest them under parent items, and add custom links for external tools, so that the navigation sidebar is organized for our team's workflow.*
-- Route: `#/settings/menu-management` renders `menu-management.html`
-- Drag-and-drop tree: each menu item is a draggable card; dragging onto another item makes it a child (indent indicator shown during drag)
-- Adding a menu item: "Add Menu Item" button opens a modal with: Label, Icon (icon picker), Route (internal `#/` or external URL), Parent (select from existing items), Required Permission (select)
-- Editing: click the pencil icon on any item to open the same modal pre-populated
-- Module-provided menu items shown with a module badge and cannot be deleted (only moved/renamed)
-- "Preview Menu" button shows the sidebar navigation as users will see it
+- Route: `#/settings/menu-management` → `menu-management.html` + `menu-management-page.js`
+- Layout: FlexStack(direction=vertical) > page-header, menu-tree
+  - page-header: FlexToolbar — "Menu Management" title | "Add Menu Item" FlexButton(primary) | "Preview Menu" FlexButton(ghost)
+  - menu-tree: FlexStack(gap=xs) — draggable card per menu item, indented per nesting level
+
+- Per menu item card: drag handle | icon | label | module FlexBadge (if module-provided) | pencil edit icon | × delete icon (hidden for module-provided items)
+
+- `MenuItemModal` FlexModal(size=sm) triggered by "Add Menu Item" or pencil icon:
+  - fields: Label (FlexInput) | Icon (icon picker) | Route (FlexInput: internal `#/` or external URL) | Parent (FlexSelect from existing items) | Required Permission (FlexSelect)
+  - footer: Cancel | Save FlexButton(primary)
+
+- `PreviewMenuModal` FlexModal(size=md) triggered by "Preview Menu":
+  - body: rendered sidebar navigation as users will see it (read-only)
+  - footer: Close FlexButton
+
+- Interactions:
+  - drag card to new position: reorder updates `sort_order`; PUT /menu/items/{id} on drop
+  - drag card onto another card: child indent indicator shown during drag → on drop becomes child of target
+  - click pencil: opens MenuItemModal pre-populated with item data
+  - click ×: DELETE /menu/items/{id} → item removed from tree
+  - click "Preview Menu": opens PreviewMenuModal
+
+- States:
+  - loading: menu-tree shows skeleton cards
+  - empty: "No menu items yet" + "Add Menu Item" FlexButton(primary)
 
 ---
 
@@ -105,10 +169,13 @@
 
 #### Frontend
 *As a developer building a new component, I want to use CSS custom property tokens (`--flex-color-primary`, `--flex-spacing-md`) rather than hardcoded values, so that components adapt automatically to any tenant's brand configuration.*
-- CSS token dictionary defined in `frontend/assets/css/tokens.css`: color tokens, spacing tokens (xs/sm/md/lg/xl), typography tokens (font-family, font-sizes, line-heights), border-radius tokens, shadow tokens
-- All Flex components updated to use token variables exclusively (zero hardcoded hex colors or px values)
-- Tenant `theme_config` JSON mapped to CSS tokens in `theme-manager.js`: `primary_color → --flex-color-primary`
-- Token reference documentation in `docs/frontend/TOKENS.md` with a visual swatch for all color tokens
+- No dedicated route — CSS token system is a developer convention; no UI page involved
+
+- Token dictionary: `frontend/assets/css/tokens.css`
+  - color tokens | spacing tokens (xs/sm/md/lg/xl) | typography tokens (font-family, sizes, line-heights) | border-radius tokens | shadow tokens
+- All Flex components use token variables exclusively — zero hardcoded hex colors or px values
+- `theme-manager.js` maps tenant `theme_config` JSON to CSS tokens: `primary_color → --flex-color-primary`
+- Token reference: `docs/frontend/TOKENS.md` with visual color swatches for all tokens
 
 ---
 
@@ -121,8 +188,15 @@
 
 #### Frontend
 *As an enterprise tenant that has purchased white-label rights, I want to replace every occurrence of "App-Buildify" with my own product name and replace the login page imagery with my own, so that our clients see only our brand.*
-- Login page reads `login_background_url` (sets CSS `background-image`) and `login_logo_url` (renders instead of the default logo)
-- Browser tab title set from `custom_app_name` via `document.title`
-- "Powered by App-Buildify" footer link hidden when `hide_powered_by: true`
-- All `App-Buildify` string references in the UI read from `appState.branding.app_name` (configurable) rather than being hardcoded
-- Branding settings form on `#/settings/branding` has a "White-Label" section (only visible to tenants with white-label entitlement)
+- Route: `#/settings/branding` → White-Label section added at the bottom of the branding form (visible only to tenants with white-label entitlement)
+- Layout addition (branding form — White-Label section): FlexSection — Custom App Name (FlexInput) | Login Background URL (FlexInput) | Login Logo URL (FlexInput) | "Hide Powered by App-Buildify" FlexCheckbox toggle
+
+- Global behavior (applied from `appState.branding` on load):
+  - Login page: `login_background_url` → CSS `background-image`; `login_logo_url` → logo image
+  - Browser tab: `document.title` set from `custom_app_name`
+  - "Powered by App-Buildify" footer: hidden when `hide_powered_by: true`
+  - All platform name references read from `appState.branding.app_name` — no hardcoded strings
+
+- Interactions:
+  - change any White-Label field + "Save Branding": PUT /settings/tenant → app reloads branding; tab title and login page update
+  - toggle "Hide Powered By": footer link hidden/shown immediately on next page load after save
