@@ -1,11 +1,16 @@
 # App-Buildify — Product Backlog Index
 
+> Scope: this folder covers the **platform** only. Module-specific plans live in their own `plan-mod-<name>/` folders (e.g. `/plan-mod-finance/`).
+
 ## Structure
 
 ```
 plan/
 ├── README.md          ← this file (index)
-├── BACKLOG.md         ← full summary table (all 20 epics at a glance)
+├── BACKLOG.md         ← platform summary + all platform epics
+├── MULTI_AGENT_SDLC.md ← multi-agent SDLC roles & document contracts
+├── architecture/
+│   └── arch-platform.md ← platform-wide software architecture (arch-00-platform)
 └── epics/
     ├── epic-01-authentication.md
     ├── epic-02-multi-tenancy.md
@@ -18,7 +23,6 @@ plan/
     ├── epic-09-dashboard-analytics.md
     ├── epic-10-reporting.md
     ├── epic-11-module-system.md
-    ├── epic-12-financial-module.md
     ├── epic-13-security-compliance.md
     ├── epic-14-notification-system.md
     ├── epic-15-flex-component-library.md
@@ -28,6 +32,12 @@ plan/
     ├── epic-19-infrastructure-deployment.md
     └── epic-20-mobile-pwa.md
 ```
+
+## Modules (separate plans)
+
+| Module | Plan folder |
+|--------|-------------|
+| Financial Module | [`/plan-mod-finance/`](../plan-mod-finance/README.md) |
 
 ## Story Format
 
@@ -62,7 +72,6 @@ Frontend sections follow the **UI Layout Description Convention (UILDC v1.0)** �
 | 9 | [Dashboard & Analytics](epics/epic-09-dashboard-analytics.md) | 7 | DONE |
 | 10 | [Reporting](epics/epic-10-reporting.md) | 5 | DONE |
 | 11 | [Module System](epics/epic-11-module-system.md) | 7 | Mostly DONE |
-| 12 | [Financial Module](epics/epic-12-financial-module.md) | 11 | Mixed |
 | 13 | [Security & Compliance](epics/epic-13-security-compliance.md) | 8 | Mostly DONE |
 | 14 | [Notification System](epics/epic-14-notification-system.md) | 6 | Mixed |
 | 15 | [Flex Component Library](epics/epic-15-flex-component-library.md) | 10 | Mixed |
