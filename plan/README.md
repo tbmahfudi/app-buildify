@@ -9,6 +9,8 @@ plan/
 ├── README.md          ← this file (index)
 ├── BACKLOG.md         ← platform summary + all platform epics
 ├── MULTI_AGENT_SDLC.md ← multi-agent SDLC roles & document contracts
+├── architecture/
+│   └── arch-platform.md ← platform-wide software architecture (arch-00-platform)
 └── epics/
     ├── epic-01-authentication.md
     ├── epic-02-multi-tenancy.md
