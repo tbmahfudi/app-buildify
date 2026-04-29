@@ -10,7 +10,11 @@ plan/
 ├── BACKLOG.md         ← platform summary + all platform epics
 ├── MULTI_AGENT_SDLC.md ← multi-agent SDLC roles & document contracts
 ├── architecture/
-│   └── arch-platform.md ← platform-wide software architecture (arch-00-platform)
+│   ├── arch-platform.md       ← platform-wide software architecture (arch-00-platform)
+│   ├── AUDIT_STANDARD.md      ← defines the reusable `audit` artifact type
+│   ├── adr-001-deployment-modes.md  ← monolith ↔ microservices deployment ADR
+│   └── audits/
+│       └── audit-XX-<slug>.md ← per-epic code-vs-AC gap analysis
 └── epics/
     ├── epic-01-authentication.md
     ├── epic-02-multi-tenancy.md
