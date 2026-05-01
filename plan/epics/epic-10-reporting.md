@@ -162,7 +162,7 @@
 
 ---
 
-### Story 10.2.2 — Report Job History and Monitoring `[DONE]`
+### Story 10.2.2 — Report Job History and Monitoring `[IN-PROGRESS]`
 
 #### Backend
 *As an API, I want to return the execution history of scheduled report jobs, so that admins can diagnose delivery failures.*

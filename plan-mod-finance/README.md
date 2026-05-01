@@ -36,9 +36,11 @@ The story format and frontend UILDC v1.0 conventions follow `/plan/LAYOUT_CONVEN
 
 ## Epic Summary
 
+> Status reflects audit findings as of 2026-04-29 (commit cc47a54). See [`/plan/architecture/audits/audit-12-financial-module.md`](../plan/architecture/audits/audit-12-financial-module.md) and [`architecture/audits/audit-12-financial-module.md`](architecture/audits/audit-12-financial-module.md) for per-story evidence.
+
 | # | Epic | Stories | Status |
 |---|------|---------|--------|
-| 12 | [Financial Module](epics/epic-12-financial-module.md) | 11 | DONE; AP/Budget PLANNED |
+| 12 | [Financial Module](epics/epic-12-financial-module.md) | 11 | Mostly DONE; seed/post endpoints + tax-rates UI IN-PROGRESS; AP/Bank/Budget PLANNED |
 
 ## Implementation Reference
 

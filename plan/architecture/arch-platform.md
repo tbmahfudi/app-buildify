@@ -7,17 +7,19 @@ upstream: [BACKLOG.md, all platform epics]
 downstream: []
 status: approved
 created: 2026-04-28
-updated: 2026-04-28
+updated: 2026-04-29
 decisions:
   - Modular monolith for the core API; each business module is a separate FastAPI service mounted behind one Nginx gateway
   - Multi-tenancy via shared schema with explicit tenant_id filtering in services (no session-scoped mixin, no schema-per-tenant)
   - Per-module Alembic version tables in a shared PostgreSQL database (e.g. financial_alembic_version) so module migrations evolve independently
   - Vanilla JS ES modules with no bundler; Flex Component Library extends a single BaseComponent class
   - APScheduler for background jobs (not Celery)
+  - Deployment topology decision deferred to ADR-001 (monolith vs distributed via DEPLOYMENT_MODE env var)
 open_questions:
   - Should multi-tenancy enforcement migrate from explicit per-service filters to a session-scoped tenant filter (defense-in-depth)?
   - When a second module is added, do we keep one shared PostgreSQL or move to per-module databases (DATABASE_STRATEGY=separate is wired but unused)?
   - CI/CD is absent from the repo; what is the target pipeline (GitHub Actions assumed)?
+  - When to ship the 9 missing Flex layout components (15.1.1) — they block every UILDC frontend story?
 ---
 
 # App-Buildify — Platform Architecture (arch-00-platform)
@@ -260,13 +262,22 @@ Key fields: `name`, `display_name`, `version`, `backend_service_url`, `entry_poi
 
 ## 9. Risks & Open Questions
 
+> Updated 2026-04-29 with findings from the first-round epic audits in [`audits/`](audits/). Risks 8–13 are net new from those audits.
+
 1. **Tenant-isolation defense-in-depth**: Filtering relies on every service writing `query.filter(Model.tenant_id == self.tenant_id)`. A missed filter is a cross-tenant data leak. Options: PostgreSQL RLS, or a SQLAlchemy event listener that injects the filter automatically.
-2. **Database strategy**: `DATABASE_STRATEGY=shared|separate` is plumbed for the financial module but only `shared` is used. A second module will force a decision; per-module DBs simplify isolation but complicate cross-module joins (already mitigated by event bus).
-3. **Module mount duplication**: The core-platform lifespan calls `app.include_router(...)` for module routers, but the gateway also routes `/api/v1/financial/` to the standalone module service. Two code paths for the same endpoints — choose one in the next architecture iteration.
+2. **Database strategy**: `DATABASE_STRATEGY=shared|separate` is plumbed for the financial module but only `shared` is used. ADR-001 ties this to `DEPLOYMENT_MODE`: `distributed` mode defaults to `separate`. Second module will force the operational choice.
+3. **Module mount duplication**: Both in-process mounting (`backend/app/main.py:70-76`) and standalone-service mounting (`modules/financial/backend/app/main.py:110-118`) are alive. ADR-001 resolves this by making `DEPLOYMENT_MODE` the canonical switch — pending implementation of the one-line guard in `main.py`.
 4. **CORS `*` everywhere**: Acceptable in dev, must be tightened before prod (gateway and FastAPI).
 5. **JWT secret**: `JWT_SECRET_KEY=your-secret-key-change-in-production` is the literal compose default. Rotation/management procedure needs documenting.
 6. **Frontend has no bundler / no SRI**: Tailwind, Phosphor, and i18next load from CDNs; CSP must be reviewed before prod.
-7. **No CI/CD**: Production deployments are manual via `manage.sh`. EPIC 19 covers this.
+7. **No CI/CD**: Production deployments are manual via `manage.sh`. EPIC 19 covers this; `audit-19-infrastructure-deployment.md` flags it 🔴.
+8. **🔴 Wildcard permissions are not implemented**: `has_permission()` at `app/core/dependencies.py:108` does a literal `in` check; AC for story 4.2.1 promises segment-wise wildcards. `*:*:platform` matches nothing. See `audit-04-rbac-permissions.md`.
+9. **🔴 Role CRUD missing**: No `POST/PUT/DELETE /api/v1/rbac/roles` endpoints (only assignment endpoints exist). Tenant admins cannot create custom roles via API. See `audit-04-rbac-permissions.md` story 4.1.1.
+10. **🔴 Per-entity permissions are dead schema**: `EntityDefinition.permissions` JSONB exists at `app/models/data_model.py:91` but `DynamicEntityService` does not consume it. See `audit-04-rbac-permissions.md` story 4.2.4.
+11. **🔴 Flex layout suite missing**: Stories tagged `[DONE]` claim 9 layout components (`flex-stack`, `flex-grid`, `flex-split-pane`, …) that don't exist. Every UILDC v1.0 story across all 19 epics depends on them. See `audit-15-flex-component-library.md`.
+12. **🔴 Email/SMS/in-app notification delivery missing**: Queue architecture is real (Feature 14.1 DONE), but no message has ever been delivered. Password-reset flow currently dead-letters. See `audit-14-notification-system.md`.
+13. **🔴 No backend or frontend tests**: `pytest` and `vitest` configured; `.test.py`/`.test.js` files not located. Audit fidelity gates further work. See `audit-13-security-compliance.md` stories 13.4.1/13.4.2.
+14. **🟡 LISTEN/NOTIFY subscriber stub**: `modules/financial/backend/app/core/event_handler.py:43-47` is a placeholder. Distributed deployment mode (ADR-001) cannot be declared production-ready without it. See `audit-11-module-system.md`.
 
 ## 10. Reference Map (where to look in the codebase)
 

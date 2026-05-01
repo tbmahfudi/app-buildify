@@ -65,8 +65,8 @@ All artifacts are **markdown with YAML frontmatter** (so agents can parse metada
 
 ```yaml
 ---
-artifact_id: <type>-<n>           # e.g. vision-014, adr-007
-type: vision | research | prd | epic | story | adr | arch | schema | uildc | tasks | impl-notes | test-plan | test-report | sec-review | release-notes | feedback
+artifact_id: <type>-<n>           # e.g. vision-014, adr-007, audit-04
+type: vision | research | prd | epic | story | adr | arch | schema | uildc | tasks | impl-notes | test-plan | test-report | sec-review | release-notes | feedback | audit
 producer: <agent role>
 consumers: [<role>, <role>]
 upstream: [<artifact_id>, ...]    # what this was derived from
@@ -100,6 +100,7 @@ This envelope is the **only new mandatory standard** — it makes every artifact
 | E1 | DevOps | Approved PRs in release window | Updated CI/CD config + deployment log | **EXISTING** GitHub Actions / Docker / Makefile |
 | E2 | Tech Writer | Merged stories | Updated `/docs/**/*.md` + `CHANGELOG.md` + `release-notes-vX.Y.Z.md` | **EXISTING** docs structure; **[NEW]** release-notes file per version |
 | E3 | SRE / Analyst | Production telemetry + user feedback | `feedback-XX.md` (loops back to A1) | **[NEW]** Feedback report: SLO status, top errors, usage metrics, user requests |
+| ✦ | Code Auditor (cross-cutting) | `epic-XX-*.md` + `/backend/` + `/frontend/` | `audits/audit-XX-*.md` | **[NEW]** Reproducible epic-vs-code gap analysis per `architecture/AUDIT_STANDARD.md` |
 
 ### 2.3 Where artifacts live (proposed directory layout)
 
@@ -116,9 +117,12 @@ This envelope is the **only new mandatory standard** — it makes every artifact
 ├── research/                         ← NEW
 │   └── research-XX.md
 ├── architecture/                     ← NEW
-│   ├── arch-XX.md                    (per epic)
+│   ├── AUDIT_STANDARD.md             (defines the `audit` artifact type)
+│   ├── arch-XX.md                    (per epic; arch-platform = whole system)
 │   ├── adr-XXX.md                    (per decision, global numbering)
-│   └── schema-XX.md
+│   ├── schema-XX.md
+│   └── audits/
+│       └── audit-XX-<slug>.md        (per epic — gap analysis vs code)
 ├── tasks/                            ← NEW
 │   └── tasks-XX.md
 └── feedback/                         ← NEW

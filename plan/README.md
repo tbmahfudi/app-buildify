@@ -10,7 +10,11 @@ plan/
 ├── BACKLOG.md         ← platform summary + all platform epics
 ├── MULTI_AGENT_SDLC.md ← multi-agent SDLC roles & document contracts
 ├── architecture/
-│   └── arch-platform.md ← platform-wide software architecture (arch-00-platform)
+│   ├── arch-platform.md       ← platform-wide software architecture (arch-00-platform)
+│   ├── AUDIT_STANDARD.md      ← defines the reusable `audit` artifact type
+│   ├── adr-001-deployment-modes.md  ← monolith ↔ microservices deployment ADR
+│   └── audits/
+│       └── audit-XX-<slug>.md ← per-epic code-vs-AC gap analysis
 └── epics/
     ├── epic-01-authentication.md
     ├── epic-02-multi-tenancy.md
@@ -59,24 +63,26 @@ Frontend sections follow the **UI Layout Description Convention (UILDC v1.0)** �
 
 ## Epic Summary
 
+> Status reflects audit findings as of 2026-04-29 (commit cc47a54). See [`architecture/audits/`](architecture/audits/) for per-story evidence.
+
 | # | Epic | Stories | Status |
 |---|------|---------|--------|
-| 1 | [Authentication & Identity](epics/epic-01-authentication.md) | 17 | Mostly DONE |
-| 2 | [Multi-Tenancy & Org Management](epics/epic-02-multi-tenancy.md) | 11 | Mostly DONE |
-| 3 | [User Management](epics/epic-03-user-management.md) | 6 | DONE |
-| 4 | [RBAC & Permissions](epics/epic-04-rbac-permissions.md) | 7 | Mostly DONE |
+| 1 | [Authentication & Identity](epics/epic-01-authentication.md) | 17 | Mixed (core auth DONE; sessions + policy admin OPEN) |
+| 2 | [Multi-Tenancy & Org Management](epics/epic-02-multi-tenancy.md) | 11 | DONE |
+| 3 | [User Management](epics/epic-03-user-management.md) | 6 | IN-PROGRESS (user CRUD MISSING) |
+| 4 | [RBAC & Permissions](epics/epic-04-rbac-permissions.md) | 7 | Mixed (assignments DONE; role CRUD + wildcards + entity perms OPEN) |
 | 5 | [NoCode Entity Designer](epics/epic-05-nocode-entity-designer.md) | 13 | Mixed |
 | 6 | [Dynamic CRUD & API Layer](epics/epic-06-dynamic-crud-api.md) | 8 | Mostly DONE |
 | 7 | [Workflow Engine](epics/epic-07-workflow-engine.md) | 5 | DONE |
-| 8 | [Automation Rules](epics/epic-08-automation-rules.md) | 6 | Mixed |
+| 8 | [Automation Rules](epics/epic-08-automation-rules.md) | 6 | Mixed (8.1 DONE; 8.2 webhooks MISSING) |
 | 9 | [Dashboard & Analytics](epics/epic-09-dashboard-analytics.md) | 7 | DONE |
-| 10 | [Reporting](epics/epic-10-reporting.md) | 5 | DONE |
-| 11 | [Module System](epics/epic-11-module-system.md) | 7 | Mostly DONE |
-| 13 | [Security & Compliance](epics/epic-13-security-compliance.md) | 8 | Mostly DONE |
-| 14 | [Notification System](epics/epic-14-notification-system.md) | 6 | Mixed |
-| 15 | [Flex Component Library](epics/epic-15-flex-component-library.md) | 10 | Mixed |
+| 10 | [Reporting](epics/epic-10-reporting.md) | 5 | Mostly DONE |
+| 11 | [Module System](epics/epic-11-module-system.md) | 7 | Mostly DONE (activation API drift) |
+| 13 | [Security & Compliance](epics/epic-13-security-compliance.md) | 8 | Mostly DONE; Prometheus + Tests MISSING |
+| 14 | [Notification System](epics/epic-14-notification-system.md) | 6 | Mixed (arch DONE; delivery MISSING) |
+| 15 | [Flex Component Library](epics/epic-15-flex-component-library.md) | 10 | Mixed (Layout suite OPEN) |
 | 16 | [Internationalization](epics/epic-16-internationalization.md) | 5 | Mixed |
 | 17 | [Settings & Configuration](epics/epic-17-settings-configuration.md) | 6 | Mixed |
 | 18 | [Developer Experience & SDK](epics/epic-18-developer-experience.md) | 6 | Mixed |
-| 19 | [Infrastructure & Deployment](epics/epic-19-infrastructure-deployment.md) | 8 | Mixed |
+| 19 | [Infrastructure & Deployment](epics/epic-19-infrastructure-deployment.md) | 8 | Mixed (CI/CD MISSING) |
 | 20 | [Mobile & PWA](epics/epic-20-mobile-pwa.md) | 3 | PLANNED |

@@ -6,7 +6,7 @@
 
 ## Feature 11.1 — Module Registry and Activation `[DONE]`
 
-### Story 11.1.1 — Module Registration `[DONE]`
+### Story 11.1.1 — Module Registration `[IN-PROGRESS]`
 
 #### Backend
 *As an API, I want modules to self-register by posting a manifest, so that the platform discovers and catalogs available extensions.*
@@ -43,7 +43,7 @@
 
 ---
 
-### Story 11.1.2 — Per-Tenant Module Activation `[DONE]`
+### Story 11.1.2 — Per-Tenant Module Activation `[IN-PROGRESS]`
 
 #### Backend
 *As an API, I want to activate a registered module for a specific tenant, so that tenant users gain access to the module's features.*
@@ -209,7 +209,7 @@
 
 ---
 
-### Story 11.3.2 — Module Template Export and Import `[DONE]`
+### Story 11.3.2 — Module Template Export and Import `[IN-PROGRESS]`
 
 #### Backend
 *As an API, I want to export a nocode module as a ZIP package and import it into another tenant, so that configurations can be distributed without manual re-creation.*

@@ -6,7 +6,7 @@
 
 ## Feature 12.1 — Chart of Accounts `[DONE]`
 
-### Story 12.1.1 — Hierarchical Account Structure `[DONE]`
+### Story 12.1.1 — Hierarchical Account Structure `[IN-PROGRESS]`
 
 #### Backend
 *As an API, I want to manage a hierarchical Chart of Accounts with standard account types, so that accounting data is organized correctly.*
@@ -76,7 +76,7 @@
 
 ## Feature 12.2 — Invoicing with Workflow `[DONE]`
 
-### Story 12.2.1 — Invoice Creation and Posting `[DONE]`
+### Story 12.2.1 — Invoice Creation and Posting `[IN-PROGRESS]`
 
 #### Backend
 *As an API, I want to create invoices with line items and post them to the general ledger via double-entry journal entries, so that revenue is correctly recognized.*
@@ -266,7 +266,7 @@
 
 ---
 
-### Story 12.4.2 — Tax Rate Management `[DONE]`
+### Story 12.4.2 — Tax Rate Management `[IN-PROGRESS]`
 
 #### Backend
 *As an API, I want to manage tax rates that can be applied to invoice line items, so that tax calculations are consistent.*

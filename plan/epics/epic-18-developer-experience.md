@@ -6,7 +6,7 @@
 
 ## Feature 18.1 — Module Development SDK `[DONE / PARTIAL]`
 
-### Story 18.1.1 — Module Manifest Specification `[DONE]`
+### Story 18.1.1 — Module Manifest Specification `[IN-PROGRESS]`
 
 #### Backend
 *As an API, I want a well-defined manifest schema validated at registration time, so that malformed modules are rejected early with clear error messages.*
@@ -92,7 +92,7 @@
 
 ---
 
-### Story 18.2.2 — API Reference Documentation `[DONE]`
+### Story 18.2.2 — API Reference Documentation `[IN-PROGRESS]`
 
 #### Backend
 *No backend story — this is a documentation artifact.*

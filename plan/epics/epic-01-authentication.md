@@ -110,7 +110,7 @@
 
 ---
 
-### Story 1.1.5 — Password Strength Check API `[DONE]`
+### Story 1.1.5 — Password Strength Check API `[IN-PROGRESS]`
 
 #### Backend
 *As an API, I want to evaluate a candidate password against the current tenant's policy and return a strength score, so that UIs can provide real-time feedback.*
@@ -132,9 +132,9 @@
 
 ---
 
-## Feature 1.2 — Session Management `[DONE]`
+## Feature 1.2 — Session Management `[IN-PROGRESS]`
 
-### Story 1.2.1 — Idle and Absolute Session Timeouts `[DONE]`
+### Story 1.2.1 — Idle and Absolute Session Timeouts `[IN-PROGRESS]`
 
 #### Backend
 *As an API, I want to invalidate sessions after configurable idle and absolute timeouts, so that unattended sessions are automatically closed.*
@@ -161,7 +161,7 @@
 
 ---
 
-### Story 1.2.2 — Concurrent Session Limits `[DONE]`
+### Story 1.2.2 — Concurrent Session Limits `[IN-PROGRESS]`
 
 #### Backend
 *As an API, I want to enforce a maximum number of concurrent sessions per user, so that credential sharing is detected and limited.*
@@ -178,7 +178,7 @@
 
 ---
 
-### Story 1.2.3 — Session Listing and Forced Termination `[DONE]`
+### Story 1.2.3 — Session Listing and Forced Termination `[OPEN]`
 
 #### Backend
 *As an API, I want to expose a user's active sessions and allow individual revocation, so that users can respond to suspicious access.*
@@ -220,9 +220,9 @@
 
 ---
 
-## Feature 1.3 — Password Policy Engine `[DONE]`
+## Feature 1.3 — Password Policy Engine `[IN-PROGRESS]`
 
-### Story 1.3.1 — Configurable Password Strength Rules `[DONE]`
+### Story 1.3.1 — Configurable Password Strength Rules `[IN-PROGRESS]`
 
 #### Backend
 *As an API, I want to validate passwords against a per-tenant configurable policy, so that weak passwords are rejected at every entry point.*
@@ -246,7 +246,7 @@
 
 ---
 
-### Story 1.3.2 — Password History and Rotation `[DONE]`
+### Story 1.3.2 — Password History and Rotation `[IN-PROGRESS]`
 
 #### Backend
 *As an API, I want to prevent password reuse by checking new passwords against stored history, so that rotation policies are effective.*
