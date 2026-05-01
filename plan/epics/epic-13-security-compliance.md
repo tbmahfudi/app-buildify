@@ -103,7 +103,7 @@
 
 ---
 
-### Story 13.2.2 — Sensitive Operation Re-Authentication `[DONE]`
+### Story 13.2.2 — Sensitive Operation Re-Authentication `[IN-PROGRESS]`
 
 #### Backend
 *As an API, I want certain operations to require the user to re-enter their password if their token is older than a threshold, so that session hijacking cannot cause irreversible damage.*

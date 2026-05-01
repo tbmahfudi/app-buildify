@@ -4,9 +4,9 @@
 
 ---
 
-## Feature 3.1 — User CRUD `[DONE]`
+## Feature 3.1 — User CRUD `[IN-PROGRESS]`
 
-### Story 3.1.1 — User Creation by Admin `[DONE]`
+### Story 3.1.1 — User Creation by Admin `[OPEN]`
 
 #### Backend
 *As an API, I want to create user accounts within a tenant, so that administrators can onboard members programmatically.*
@@ -73,7 +73,7 @@
 
 ---
 
-### Story 3.1.3 — User Activation and Deactivation `[DONE]`
+### Story 3.1.3 — User Activation and Deactivation `[IN-PROGRESS]`
 
 #### Backend
 *As an API, I want to toggle a user's active status and revoke their sessions on deactivation, so that access is immediately blocked without deleting the account.*
@@ -104,7 +104,7 @@
 
 ---
 
-### Story 3.1.4 — Admin-Initiated Password Reset `[DONE]`
+### Story 3.1.4 — Admin-Initiated Password Reset `[OPEN]`
 
 #### Backend
 *As an API, I want admins to trigger password resets for any user, so that locked-out users can be helped without superadmin involvement.*

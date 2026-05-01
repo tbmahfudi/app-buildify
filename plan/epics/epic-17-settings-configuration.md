@@ -38,7 +38,7 @@
 
 ---
 
-### Story 17.1.2 — Dark/Light Theme Switching `[DONE]`
+### Story 17.1.2 — Dark/Light Theme Switching `[IN-PROGRESS]`
 
 #### Backend
 *No backend story — theme is stored in `user_settings.theme` and applied client-side.*
@@ -91,7 +91,7 @@
 
 ---
 
-### Story 17.2.2 — System Configuration (Superadmin) `[DONE]`
+### Story 17.2.2 — System Configuration (Superadmin) `[IN-PROGRESS]`
 
 #### Backend
 *As an API, I want superadmin-only endpoints to manage platform-level defaults and feature flags, so that global platform behavior can be configured without code changes.*

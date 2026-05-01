@@ -63,7 +63,7 @@
 
 ---
 
-### Story 8.1.3 — Automation Actions `[DONE]`
+### Story 8.1.3 — Automation Actions `[IN-PROGRESS]`
 
 #### Backend
 *As an API, I want automation rules to support multiple action types executed in sequence when triggered, so that complex business responses can be automated.*

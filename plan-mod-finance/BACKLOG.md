@@ -29,7 +29,7 @@
 
 ### Feature 12.1 — Chart of Accounts `[DONE]`
 
-#### Story 12.1.1 — Hierarchical Account Structure `[DONE]`
+#### Story 12.1.1 — Hierarchical Account Structure `[IN-PROGRESS]`
 *As a finance manager, I want to set up a hierarchical Chart of Accounts, so that my organization's finances are organized according to accounting principles.*
 - `POST /financial/accounts` creates an account with `code`, `name`, `account_type` (`asset`/`liability`/`equity`/`revenue`/`expense`), `parent_account_id`
 - Account tree is unlimited in depth; each node inherits the type from its root
@@ -46,7 +46,7 @@
 
 ### Feature 12.2 — Invoicing with Workflow `[DONE]`
 
-#### Story 12.2.1 — Invoice Creation and Posting `[DONE]`
+#### Story 12.2.1 — Invoice Creation and Posting `[IN-PROGRESS]`
 *As a billing administrator, I want to create invoices, add line items, and post them to the general ledger, so that revenue is recognized in accounting.*
 - `POST /financial/invoices` creates an invoice in `DRAFT` status with `customer_id`, `invoice_date`, `due_date`, `line_items`, `tax_rate_id`
 - `POST /financial/invoices/{id}/post` transitions to `POSTED` and auto-generates double-entry journal entries
@@ -91,7 +91,7 @@
 - `GET /financial/reports/cash-flow?from=...&to=...` — operating/investing/financing activities
 - `GET /financial/reports/account-ledger/{id}?from=...&to=...` — all transactions for a specific account
 
-#### Story 12.4.2 — Tax Rate Management `[DONE]`
+#### Story 12.4.2 — Tax Rate Management `[IN-PROGRESS]`
 *As a finance administrator, I want to configure multiple tax rates for different jurisdictions, so that invoices apply correct tax calculations automatically.*
 - `POST /financial/tax-rates` creates a tax rate with `name`, `rate` (percentage), `account_id`, `is_compound`
 - `POST /financial/tax-rates/calculate` returns the tax amount for a given `subtotal` and `tax_rate_id`

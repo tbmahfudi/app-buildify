@@ -6,7 +6,7 @@
 
 ## Feature 15.1 — Layout Components `[DONE]`
 
-### Story 15.1.1 — Layout Component Suite `[DONE]`
+### Story 15.1.1 — Layout Component Suite `[OPEN]`
 
 #### Backend
 *No backend story — this is a frontend-only library.*

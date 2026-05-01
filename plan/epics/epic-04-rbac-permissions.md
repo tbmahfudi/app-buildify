@@ -4,9 +4,9 @@
 
 ---
 
-## Feature 4.1 — Role Management `[DONE]`
+## Feature 4.1 — Role Management `[IN-PROGRESS]`
 
-### Story 4.1.1 — System and Custom Role Definitions `[DONE]`
+### Story 4.1.1 — System and Custom Role Definitions `[IN-PROGRESS]`
 
 #### Backend
 *As an API, I want to create, read, update, and delete tenant-scoped roles, so that administrators can model their organization's actual access structure.*
@@ -103,9 +103,9 @@
 
 ---
 
-## Feature 4.2 — Permission Engine `[DONE]`
+## Feature 4.2 — Permission Engine `[IN-PROGRESS]`
 
-### Story 4.2.1 — Permission Format and Wildcard Matching `[DONE]`
+### Story 4.2.1 — Permission Format and Wildcard Matching `[IN-PROGRESS]`
 
 #### Backend
 *As an API, I want a permission evaluation engine that supports wildcards and scope hierarchy, so that broad and narrow access can be expressed cleanly.*

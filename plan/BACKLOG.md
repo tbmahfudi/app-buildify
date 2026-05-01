@@ -17,26 +17,28 @@
 
 ## Summary Table
 
+> Status reflects audit findings as of 2026-04-29 (commit cc47a54). See [`/plan/architecture/audits/`](architecture/audits/) for per-story evidence.
+
 | # | Epic | Status |
 |---|------|--------|
-| 1 | Authentication & Identity Management | Mostly DONE; 2FA/SSO PLANNED |
-| 2 | Multi-Tenancy & Organization Management | Mostly DONE; Tiers PLANNED |
-| 3 | User Management | DONE |
-| 4 | RBAC & Permissions | Mostly DONE; Entity Perms OPEN |
-| 5 | NoCode Entity Designer | Mixed DONE/OPEN |
+| 1 | Authentication & Identity Management | Mixed: core auth DONE; sessions + policy admin OPEN; 2FA/SSO PLANNED |
+| 2 | Multi-Tenancy & Organization Management | DONE; Tiers PLANNED |
+| 3 | User Management | IN-PROGRESS: profile + groups DONE; user CRUD MISSING |
+| 4 | RBAC & Permissions | Mixed: assignments DONE; role CRUD + wildcards + entity perms OPEN |
+| 5 | NoCode Entity Designer | DONE; record-history OPEN |
 | 6 | Dynamic CRUD & API Layer | Mostly DONE; Bulk OPEN |
 | 7 | Workflow Engine | DONE |
-| 8 | Automation Rules | DONE; Webhooks PLANNED |
+| 8 | Automation Rules | Feature 8.1 DONE; 8.2 (Webhooks) MISSING |
 | 9 | Dashboard & Analytics | DONE |
-| 10 | Reporting | DONE |
-| 11 | Module System | Mostly DONE; Marketplace PLANNED |
-| 13 | Security & Compliance | Mostly DONE; Prometheus/Tests OPEN |
-| 14 | Notification System | Arch DONE; Delivery OPEN/PLANNED |
-| 15 | Flex Component Library | Core DONE; 5 Components PLANNED |
-| 16 | Internationalization | DONE; Module i18n PLANNED |
-| 17 | Settings & Configuration | DONE; White-Label PLANNED |
-| 18 | Developer Experience & Module SDK | Partial DONE; Guide PLANNED |
-| 19 | Infrastructure & Deployment | Mostly DONE; CI/CD PLANNED |
+| 10 | Reporting | Mostly DONE; scheduler page unverified |
+| 11 | Module System | Mostly DONE; activation API drift; Marketplace + nocode export/import OPEN |
+| 13 | Security & Compliance | Mostly DONE; Prometheus + Test Suites MISSING |
+| 14 | Notification System | Arch DONE; Email + SMS + In-App MISSING |
+| 15 | Flex Component Library | UI + Form DONE; **Layout suite OPEN**; Tooling PLANNED |
+| 16 | Internationalization | Feature 16.1 DONE; 16.2 (Module + Entity i18n) PLANNED |
+| 17 | Settings & Configuration | 17.1 + 17.2 DONE; 17.3 (White-Label) PLANNED |
+| 18 | Developer Experience & Module SDK | SDK + bus DONE; docs and dev-UX gaps remain |
+| 19 | Infrastructure & Deployment | Dev infra DONE; Prod compose PARTIAL; Storage + CI/CD PLANNED |
 | 20 | Mobile & Progressive Web App | PLANNED |
 
 ---
@@ -77,7 +79,7 @@
 - Reset tokens expire after a configurable TTL (default 1 hour) and are single-use
 - New password is validated against the tenant's active password policy before acceptance
 
-#### Story 1.1.5 — Password Strength Check API `[DONE]`
+#### Story 1.1.5 — Password Strength Check API `[IN-PROGRESS]`
 *As a frontend developer, I want a real-time password strength endpoint, so that users see strength feedback while typing.*
 - `POST /auth/strength-check` accepts `{password}` and returns a strength score and list of unmet rules
 - `GET /auth/password-requirements` returns the current tenant's policy rules for display in the UI
@@ -85,23 +87,23 @@
 
 ---
 
-### Feature 1.2 — Session Management `[DONE]`
+### Feature 1.2 — Session Management `[IN-PROGRESS]`
 
-#### Story 1.2.1 — Idle and Absolute Session Timeouts `[DONE]`
+#### Story 1.2.1 — Idle and Absolute Session Timeouts `[IN-PROGRESS]`
 *As a security administrator, I want sessions to expire after inactivity and after a hard maximum, so that unattended terminals cannot be exploited.*
 - Idle timeout (default 30 min) and absolute timeout (default 8 h) configurable in `SecurityPolicy`
 - Each authenticated request refreshes the idle timeout timestamp on the session record
 - Requests after timeout → 401 with `SESSION_EXPIRED` error code
 - Frontend shows "Session expired" message and redirects to login
 
-#### Story 1.2.2 — Concurrent Session Limits `[DONE]`
+#### Story 1.2.2 — Concurrent Session Limits `[IN-PROGRESS]`
 *As a tenant administrator, I want to cap how many simultaneous sessions each user can have, so that shared credentials are detected and controlled.*
 - `max_concurrent_sessions` configurable in `SecurityPolicy` (default: 3)
 - New login exceeding the limit terminates the oldest session or rejects login (configurable)
 - `single_session_mode = true` terminates all prior sessions on new login
 - Active sessions are visible in the user's session management UI
 
-#### Story 1.2.3 — Session Listing and Forced Termination `[DONE]`
+#### Story 1.2.3 — Session Listing and Forced Termination `[OPEN]`
 *As a user, I want to see all my active sessions and revoke any I don't recognize, so that I can respond to unauthorized access immediately.*
 - `GET /users/me/sessions` returns active sessions with device hint, IP, and last-seen timestamp
 - `DELETE /users/me/sessions/{id}` terminates a specific session (adds `jti` to Redis blacklist)
@@ -110,16 +112,16 @@
 
 ---
 
-### Feature 1.3 — Password Policy Engine `[DONE]`
+### Feature 1.3 — Password Policy Engine `[IN-PROGRESS]`
 
-#### Story 1.3.1 — Configurable Password Strength Rules `[DONE]`
+#### Story 1.3.1 — Configurable Password Strength Rules `[IN-PROGRESS]`
 *As a tenant administrator, I want to enforce minimum password complexity requirements, so that users are forced to choose secure passwords.*
 - Policy supports: `min_length`, `max_length`, `require_uppercase`, `require_lowercase`, `require_digit`, `require_special_char`
 - Optionally blocks common passwords and username-as-password
 - Validation runs on create, reset, and change; returns specific failure message per violated rule
 - Per-tenant policy overrides platform defaults; superadmin manages platform defaults
 
-#### Story 1.3.2 — Password History and Rotation `[DONE]`
+#### Story 1.3.2 — Password History and Rotation `[IN-PROGRESS]`
 *As a security administrator, I want users to be unable to reuse recent passwords, so that password rotation policies are effective.*
 - Last N password hashes stored in `password_history` table (N configurable, default 5)
 - On password change, each stored hash is bcrypt-checked; match → validation error
@@ -281,9 +283,9 @@
 
 ---
 
-### Feature 3.1 — User CRUD `[DONE]`
+### Feature 3.1 — User CRUD `[IN-PROGRESS]`
 
-#### Story 3.1.1 — User Creation by Admin `[DONE]`
+#### Story 3.1.1 — User Creation by Admin `[OPEN]`
 *As a tenant administrator, I want to create user accounts, so that organization members can access the platform with appropriate roles.*
 - `POST /users` creates a user with `email`, `full_name`, `password`, `tenant_id`, optional role assignments
 - Email must be unique within a tenant; password hashed with bcrypt
@@ -296,13 +298,13 @@
 - `PUT /users/{id}` restricted to tenant admin or superadmin
 - Language change reflected in UI immediately without re-login
 
-#### Story 3.1.3 — User Activation and Deactivation `[DONE]`
+#### Story 3.1.3 — User Activation and Deactivation `[IN-PROGRESS]`
 *As a tenant administrator, I want to deactivate a user without deleting their account, so that access is revoked while audit history is preserved.*
 - `PATCH /users/{id}/status` toggles `is_active`; deactivated users cannot log in (401)
 - All active sessions of a deactivated user are terminated immediately via Redis blacklist
 - Audit log records deactivation with the acting admin's identity
 
-#### Story 3.1.4 — Admin-Initiated Password Reset `[DONE]`
+#### Story 3.1.4 — Admin-Initiated Password Reset `[OPEN]`
 *As a tenant administrator, I want to force-reset a user's password, so that I can handle account recovery requests.*
 - `POST /users/{id}/reset-password` generates a reset token and queues a reset email
 - Superadmin can force password reset on any user across all tenants
@@ -333,9 +335,9 @@
 
 ---
 
-### Feature 4.1 — Role Management `[DONE]`
+### Feature 4.1 — Role Management `[IN-PROGRESS]`
 
-#### Story 4.1.1 — System and Custom Role Definitions `[DONE]`
+#### Story 4.1.1 — System and Custom Role Definitions `[IN-PROGRESS]`
 *As a tenant administrator, I want to create custom roles with specific permission sets, so that I can model my organization's actual job functions.*
 - `POST /rbac/roles` creates a tenant-scoped role with a `name` and `description`
 - System roles (`SuperAdmin`, `TenantAdmin`, `CompanyAdmin`, `Manager`, `User`) are seeded and immutable
@@ -356,9 +358,9 @@
 
 ---
 
-### Feature 4.2 — Permission Engine `[DONE]`
+### Feature 4.2 — Permission Engine `[IN-PROGRESS]`
 
-#### Story 4.2.1 — Permission Format and Wildcard Matching `[DONE]`
+#### Story 4.2.1 — Permission Format and Wildcard Matching `[IN-PROGRESS]`
 *As a developer, I want permissions to support wildcard matching, so that broad access can be granted without enumerating every action.*
 - Permission format: `resource:action:scope` (e.g. `financial:invoices:create:company`)
 - Wildcards supported at any segment: `*:*:platform`, `users:*:tenant`, `data:read:*`
@@ -645,7 +647,7 @@
 - Job execution history stored in `scheduler_job_runs` with `status`, `started_at`, `completed_at`, `output`
 - Scheduler config is hierarchical: system → tenant → company → branch
 
-#### Story 8.1.3 — Automation Actions `[DONE]`
+#### Story 8.1.3 — Automation Actions `[IN-PROGRESS]`
 *As a tenant administrator, I want to define what happens when an automation rule fires, so that triggered actions match business needs without custom code.*
 - Supported action types: `send_notification`, `update_field`, `create_record`, `call_webhook`, `run_workflow_transition`, `call_api`
 - Actions configured as a JSONB array; multiple actions per rule executed in order
@@ -785,7 +787,7 @@
 - Generated report queued for delivery via notification system (email subject to SMTP config)
 - Failed report generation retried up to `max_retries` times; admin notified on persistent failure
 
-#### Story 10.2.2 — Report Job History and Monitoring `[DONE]`
+#### Story 10.2.2 — Report Job History and Monitoring `[IN-PROGRESS]`
 *As a tenant administrator, I want to see a history of scheduled report runs, so that I can diagnose delivery failures.*
 - `GET /scheduler/jobs/{id}/runs` returns all execution attempts with `status`, `started_at`, `completed_at`, `output`, `error`
 - Failed runs include the error message (truncated for security)
@@ -801,13 +803,13 @@
 
 ### Feature 11.1 — Module Registry and Activation `[DONE]`
 
-#### Story 11.1.1 — Module Registration `[DONE]`
+#### Story 11.1.1 — Module Registration `[IN-PROGRESS]`
 *As a module developer, I want to register my module by posting a manifest, so that it becomes available for tenants to activate.*
 - `POST /modules/register` accepts a `manifest.json` with `name`, `display_name`, `version`, `module_type`, `api_prefix`, `permissions`, `menu_items`, `routes`
 - Registered module appears in the catalog with `status = "available"`
 - Module registration is idempotent: re-registering the same `name` + `version` updates the existing record
 
-#### Story 11.1.2 — Per-Tenant Module Activation `[DONE]`
+#### Story 11.1.2 — Per-Tenant Module Activation `[IN-PROGRESS]`
 *As a tenant administrator, I want to enable a registered module for my organization, so that my users gain access to its features.*
 - `POST /modules/{id}/activate` with `tenant_id` creates a `ModuleActivation` record
 - On activation, module menus injected into the core menu tree; routes added to the hash-based router
@@ -849,7 +851,7 @@
 - Entities, workflows, automations, and dashboards can be associated with a module via `module_id`
 - Publishing a nocode module makes it available for activation in other companies
 
-#### Story 11.3.2 — Module Template Export and Import `[DONE]`
+#### Story 11.3.2 — Module Template Export and Import `[IN-PROGRESS]`
 *As a platform superadmin, I want to export a module as a template package and import it to other tenants, so that best-practice configurations are distributed without manual setup.*
 - `POST /nocode-modules/{id}/export` generates a ZIP of entity definitions, field definitions, workflows, and dashboard configs
 - `POST /nocode-modules/import` accepts a ZIP and creates the module under the target tenant
@@ -891,7 +893,7 @@
 - `PUT /admin/security/policies/{tenant_id}` allows superadmin to update any tenant's policy
 - Policy changes take effect on the next login attempt; existing sessions are not immediately affected
 
-#### Story 13.2.2 — Sensitive Operation Re-Authentication `[DONE]`
+#### Story 13.2.2 — Sensitive Operation Re-Authentication `[IN-PROGRESS]`
 *As a security administrator, I want users to re-enter their password before performing sensitive operations, so that session hijacking cannot cause irreversible damage.*
 - Sensitive operations tagged in the backend with a `require_reauth` flag
 - If the current token was issued more than `reauth_window_minutes` ago, API returns 403 with `REAUTH_REQUIRED`
@@ -1013,7 +1015,7 @@
 
 ### Feature 15.1 — Layout Components `[DONE]`
 
-#### Story 15.1.1 — Layout Component Suite `[DONE]`
+#### Story 15.1.1 — Layout Component Suite `[OPEN]`
 *As a frontend developer, I want layout primitives that compose into complex page structures, so that page layouts are built declaratively without custom CSS.*
 - All 9 layout components implemented: `FlexStack`, `FlexGrid`, `FlexContainer`, `FlexSection`, `FlexSidebar`, `FlexCluster`, `FlexToolbar`, `FlexMasonry`, `FlexSplitPane`
 - Components use CSS custom properties for spacing, sizing, and breakpoint behavior
@@ -1155,7 +1157,7 @@
 - Changes saved to `user_settings` table and applied immediately without re-login
 - Custom `preferences` JSON field allows extensible storage for feature-specific user settings
 
-#### Story 17.1.2 — Dark/Light Theme Switching `[DONE]`
+#### Story 17.1.2 — Dark/Light Theme Switching `[IN-PROGRESS]`
 *As a user, I want to switch between light and dark mode, so that I can use the platform comfortably in different lighting conditions.*
 - `theme-manager.js` applies the theme by toggling a class on `<html>` or updating CSS custom properties
 - Theme persists across page reloads via `UserSettings.theme`
@@ -1173,7 +1175,7 @@
 - Logo appears in the navigation sidebar replacing the default platform logo
 - Branding changes visible to all tenant users without them needing to refresh
 
-#### Story 17.2.2 — System Configuration (Superadmin) `[DONE]`
+#### Story 17.2.2 — System Configuration (Superadmin) `[IN-PROGRESS]`
 *As a superadmin, I want to manage platform-level settings, so that defaults apply to all tenants unless overridden.*
 - Platform default security policy managed via `PUT /admin/security/policies/default`
 - Default notification config (`tenant_id = NULL`) applies to tenants without their own config
@@ -1214,7 +1216,7 @@
 
 ### Feature 18.1 — Module Development SDK `[DONE / PARTIAL]`
 
-#### Story 18.1.1 — Module Manifest Specification `[DONE]`
+#### Story 18.1.1 — Module Manifest Specification `[IN-PROGRESS]`
 *As a module developer, I want a clear manifest format to declare my module's identity, permissions, and integration points, so that my module integrates cleanly.*
 - `manifest.json` schema documented: `name`, `display_name`, `version`, `module_type`, `category`, `api_prefix`, `permissions[]`, `menu_items[]`, `routes[]`, `event_subscriptions[]`, `dependencies[]`
 - Manifest validation on `POST /modules/register` returns structured errors for schema violations
@@ -1244,7 +1246,7 @@
 - All routes have `summary`, `tags`, and response model annotations
 - Authentication can be tested via the "Authorize" button in Swagger UI
 
-#### Story 18.2.2 — API Reference Documentation `[DONE]`
+#### Story 18.2.2 — API Reference Documentation `[IN-PROGRESS]`
 *As a developer integrating with the platform, I want a human-readable API reference, so that I understand all endpoints, parameters, and response shapes.*
 - `docs/backend/API_REFERENCE.md` documents all router groups with example requests and responses
 - Response envelope shape documented: `{items, total, page, page_size, pages}`
