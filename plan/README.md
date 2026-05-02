@@ -9,6 +9,10 @@ plan/
 ├── README.md          ← this file (index)
 ├── BACKLOG.md         ← platform summary + all platform epics
 ├── MULTI_AGENT_SDLC.md ← multi-agent SDLC roles & document contracts
+├── agents/            ← per-role AI agent definitions (13 roles)
+│   ├── AGENT_STANDARD.md  ← agent file format spec
+│   ├── README.md          ← roster + communication flow + artifact map
+│   └── agent-XX-<role>.md ← one file per role (operational, with system prompt)
 ├── architecture/
 │   ├── arch-platform.md       ← platform-wide software architecture (arch-00-platform)
 │   ├── AUDIT_STANDARD.md      ← defines the reusable `audit` artifact type
