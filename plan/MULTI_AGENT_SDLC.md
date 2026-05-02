@@ -4,6 +4,8 @@
 
 This document recommends a full-cycle software development process for **App-Buildify** (multi-tenant NoCode/LowCode platform, FastAPI + Vanilla JS) using a team of cooperating AI agents. It is intended to be simulated manually first, then automated.
 
+> **Operationalized in `plan/agents/`**: every role described below has a per-role definition file (e.g. `agent-A3-product-owner.md`) with read scope, write scope, DoR/DoD, and a system prompt skeleton ready for an orchestrator. See [`plan/agents/README.md`](agents/README.md) for the roster and the artifact-driven communication graph.
+
 It builds on what already exists:
 - **20 epics** in `/plan/epics/epic-XX-*.md` with backend + frontend acceptance criteria
 - **UILDC v1.0** frontend layout convention in `/plan/LAYOUT_CONVENTION.md`
