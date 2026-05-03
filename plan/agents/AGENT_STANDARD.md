@@ -156,11 +156,12 @@ These names are **industry-standard**. The repo file conventions are documented 
 
 ## 6. Communication contract
 
-Three rules every agent MUST honor:
+Four rules every agent MUST honor:
 
 1. **Read scope is whitelisted.** Each agent's `## 3. Inputs` section is exhaustive. Reading outside it is a violation.
 2. **Write scope is whitelisted.** Each agent's `## 4. Outputs` section is exhaustive. Writing elsewhere is a violation. (Code agents C2/C3 are the exception — they write to `/backend/` and `/frontend/` per task.)
 3. **Status field gates handoff.** Downstream agents only consume artifacts whose frontmatter `status: approved`. The Tech Lead (C1) acts as the orchestrator that flips status during the build stage; for product/design stages a human stakeholder flips it.
+4. **Pipeline state is regenerated, never hand-edited.** After producing or modifying any artifact, every agent MUST run `scripts/regen-pipeline.py` to refresh `plan/PIPELINE.md`. The script walks every artifact's frontmatter and emits the aggregate status table — this is how the team-wide view stays consistent without each agent having to remember a separate update step. Agents do NOT edit `plan/PIPELINE.md` directly; the file carries a "do not edit by hand" banner and any manual edits will be overwritten on the next regen.
 
 ---
 
@@ -204,7 +205,8 @@ You are the {{ROLE_NAME}} agent for the App-Buildify multi-agent SDLC team.
 - Read all artifacts in the read scope.
 - Confirm DoR is satisfied. If not, halt with a request to upstream.
 - Produce the artifact. Validate against DoD.
-- Commit. Hand off.
+- Run `scripts/regen-pipeline.py` so plan/PIPELINE.md reflects the new state.
+- Commit (artifact + regenerated PIPELINE.md in the same commit). Hand off.
 ```
 
 ---

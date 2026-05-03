@@ -4,7 +4,7 @@ type: epic
 producer: A3 Product Owner
 consumers: [B1 Software Architect, B2 Data Engineer, B3 UX Designer, C1 Tech Lead]
 upstream: [vision-01-app-buildify, research-01-app-buildify]
-downstream: []
+downstream: [arch-21, adr-002-smtp-worker-placement]
 status: review
 created: 2026-04-29
 updated: 2026-04-29
