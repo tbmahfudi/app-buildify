@@ -40,6 +40,7 @@
 | 18 | Developer Experience & Module SDK | SDK + bus DONE; docs and dev-UX gaps remain |
 | 19 | Infrastructure & Deployment | Dev infra DONE; Prod compose PARTIAL; Storage + CI/CD PLANNED |
 | 20 | Mobile & Progressive Web App | PLANNED |
+| 21 | 🔴 Risk Retirement (Sprint 1) | Slice epic — sequences 5 existing 🔴 stories (per research-01 caveat) |
 
 ---
 
@@ -1380,6 +1381,25 @@
 - Data tables switch to card layout on screens narrower than 768px
 - Form inputs are touch-friendly (minimum 44px tap targets per WCAG 2.5.5)
 - Critical user journeys (view dashboard, approve workflow, read audit log) tested on mobile viewport
+
+---
+
+## EPIC 21 — 🔴 Risk Retirement (Sprint 1)
+
+> **Slice epic, not a feature epic.** Sequences 5 existing 🔴 risk stories from epics 4, 14, 15 into a single pre-feature retirement sprint per the [research-01](research/research-01-app-buildify.md) PROCEED-with-caveats finding. Constituent story bodies remain in their canonical home epics; only the sequencing + sprint-DoD is new here. See [`epic-21-risk-retirement.md`](epics/epic-21-risk-retirement.md) for full details.
+
+### Sprint Backlog (sequenced)
+
+| # | Item | Canonical story | Status | Why this position |
+|---|------|-----------------|--------|--------------------|
+| 21.1 | Layout Component Suite | [Story 15.1.1](epics/epic-15-flex-component-library.md) | `[OPEN]` | Unblocks all UI work — every other Frontend section depends on these components |
+| 21.2 | SMTP Email Delivery Adapter | [Story 14.2.1](epics/epic-14-notification-system.md) | `[OPEN]` | Pure backend, parallelizable with 21.1; closes user-journey step 8 (password-reset deadletter) |
+| 21.3 | Role CRUD + Wildcard Permissions | [Story 4.1.1](epics/epic-04-rbac-permissions.md) + [Story 4.2.1](epics/epic-04-rbac-permissions.md) | `[IN-PROGRESS]` | Needs 21.1 (layout components for Roles page); shipped together to avoid half-feature |
+| 21.4 | Per-Entity Permission Enforcement | [Story 4.2.4](epics/epic-04-rbac-permissions.md) | `[OPEN]` | Needs 21.3 (role list) and 21.1 (matrix layout) — sprint-closer |
+
+### Sprint-level DoD
+
+All 5 constituent stories `[DONE]` per their canonical AC; smoke test passes; one end-to-end Maya-journey walkthrough succeeds (sign-up → entity → per-entity perms → custom role → password reset → email arrives).
 
 ---
 

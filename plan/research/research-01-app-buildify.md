@@ -4,8 +4,8 @@ type: research
 producer: A2 Business Analyst
 consumers: [A3 Product Owner]
 upstream: [vision-01-app-buildify]
-downstream: []
-status: review
+downstream: [epic-21-risk-retirement]
+status: approved
 created: 2026-04-29
 updated: 2026-04-29
 recommendation: proceed
