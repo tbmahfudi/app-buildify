@@ -4,8 +4,8 @@ type: vision
 producer: A1 Product Manager
 consumers: [A2 Business Analyst]
 upstream: []
-downstream: []
-status: review
+downstream: [research-01-app-buildify]
+status: approved
 created: 2026-04-29
 updated: 2026-04-29
 decisions:
