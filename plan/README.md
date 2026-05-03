@@ -9,6 +9,10 @@ plan/
 ├── README.md          ← this file (index)
 ├── BACKLOG.md         ← platform summary + all platform epics
 ├── MULTI_AGENT_SDLC.md ← multi-agent SDLC roles & document contracts
+├── vision/            ← Product Vision Statements (A1 output)
+│   └── vision-XX-<slug>.md
+├── research/          ← Research Briefs — personas, journeys, competitor matrix (A2 output)
+│   └── research-XX-<slug>.md
 ├── agents/            ← per-role AI agent definitions (13 roles)
 │   ├── AGENT_STANDARD.md  ← agent file format spec
 │   ├── README.md          ← roster + communication flow + artifact map
