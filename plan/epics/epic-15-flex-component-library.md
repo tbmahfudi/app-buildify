@@ -11,24 +11,88 @@
 #### Backend
 *No backend story — this is a frontend-only library.*
 
-#### Frontend
-*As a frontend developer building a new page, I want to compose complex layouts using declarative HTML elements (FlexStack, FlexGrid, FlexSidebar, etc.) rather than writing custom CSS, so that page structure is consistent and maintainable.*
-- No dedicated route — layout components are used on every platform page; no isolated UI
+#### Frontend (UILDC v1.0 — meta-design)
+*As a frontend developer building any platform page, I want 9 declarative layout primitives (FlexStack, FlexGrid, FlexSidebar, FlexSplitPane, FlexContainer, FlexSection, FlexCluster, FlexToolbar, FlexMasonry) that compose into any layout via HTML attributes alone, so that page structure is consistent, responsive, and free of bespoke CSS.*
 
-- Component specs:
+- **No dedicated route** — these primitives are imported on every platform page. The "design" is the components themselves.
+- **Identity**: Web Components extending the existing `BaseComponent` pattern (per `audit-15-flex-component-library.md` story 15.1.1). Zero external dependencies. One file per component at `frontend/assets/js/components/flex-<name>.js` (flat — same directory as the existing UI suite from 15.1.2 DONE).
+- **Canonical component list** (matches `audit-15` story 15.1.1 evidence): `flex-stack`, `flex-grid`, `flex-sidebar`, `flex-split-pane`, `flex-container`, `flex-section`, `flex-cluster`, `flex-toolbar`, `flex-masonry`. NOT in scope: `flex-modal`, `flex-drawer`, `flex-tabs`, `flex-card` — these are part of 15.1.2 (UI Component Suite, DONE) and 15.1.3 (Form Suite, DONE). See `> Open question` below.
 
-  - `FlexStack`: attrs — `direction` (vertical/horizontal) | `gap` (xs/sm/md/lg/xl) | `align` (start/center/end/stretch)
-  - `FlexGrid`: attrs — `columns` (number or responsive e.g. `"1 2 3"` for sm/md/lg) | `gap`
-  - `FlexSidebar`: attrs — `side` (left/right) | `sidebar-width` | `content-min-width`
-  - `FlexSplitPane`: attrs — `initial-split` (default "50%") | `min-left` | `min-right`; drag handle resizes panes
-  - `FlexContainer`, `FlexSection`, `FlexCluster`, `FlexToolbar`, `FlexMasonry` — general-purpose layout wrappers
+##### Cross-cutting contracts (all 9 components)
 
-- All components expose a `--flex-*` CSS custom property API for spacing and color overrides
-- `FlexResponsive` singleton dispatches `breakpointChange` events; layout components re-render at breakpoints sm(640)/md(768)/lg(1024)/xl(1280)
+- **CSS custom-property API**: every component exposes `--flex-<name>-*` properties for spacing, padding, and color overrides. Tokens map to global CSS vars (`--flex-space-xs..xl`, `--flex-color-bg|fg|border|shadow`).
+- **Responsive contract**: `FlexResponsive` singleton (already shipped per 15.1.2 DONE) dispatches `breakpointChange` events at `sm(640)/md(768)/lg(1024)/xl(1280)`. Layout components subscribe in `connectedCallback` and re-render to match the active breakpoint. The active breakpoint is exposed read-only as `--flex-breakpoint-active`.
+- **Slot model**: every primitive has a default `<slot>` for children; components requiring named slots are noted per-component.
+- **Accessibility default**: layout primitives carry no implicit ARIA role (they are presentation containers). Exceptions noted per-component (FlexToolbar, FlexSplitPane drag handle, FlexSection heading).
+- **States**: presentation-only by default; interactive primitives (FlexSplitPane, FlexSidebar collapse, sticky FlexToolbar) declare states explicitly. **No `loading` / `empty` / `error` states** — these primitives wrap data UIs, they are not data UIs.
 
-- Interactions:
-  - drag `FlexSplitPane` handle: left and right pane widths update live; constrained by `min-left` / `min-right`
-  - `FlexResponsive` breakpoint change: layout components receive `breakpointChange` event → re-render to match active breakpoint column config
+##### Per-component spec
+
+- **`FlexStack`** — vertical or horizontal flex arrangement
+  - attrs: `direction` (vertical/horizontal, default vertical) · `gap` (xs/sm/md/lg/xl, default md) · `align` (start/center/end/stretch, default stretch)
+  - slot: default
+  - states: none
+  - edge cases: 0 children → empty container, no gap; 1 child → no gap applied
+
+- **`FlexGrid`** — responsive CSS grid wrapper
+  - attrs: `columns` (single number `"3"` OR responsive `"1 2 3"` mapping to sm/md/lg) · `gap` (token)
+  - slot: default
+  - states: none
+  - edge cases: `columns="0"` → falls back to 1 column; fewer responsive entries than breakpoints → repeats last entry
+
+- **`FlexSidebar`** — fixed-width sidebar + flex content
+  - attrs: `side` (left/right, default left) · `sidebar-width` (CSS length) · `content-min-width` (CSS length — collapse threshold)
+  - slots: named `sidebar`; default slot for content
+  - states: `collapsed` when viewport < `sidebar-width` + `content-min-width` (sidebar hidden, content spans full width)
+  - edge cases: missing `sidebar` slot → behaves as full-width content container
+
+- **`FlexSplitPane`** — draggable two-pane split
+  - attrs: `initial-split` (default `"50%"`) · `min-left` · `min-right` (CSS lengths)
+  - slots: named `left`, `right`
+  - methods: `setSplit(percent)` — programmatic resize
+  - events: `split-change` (detail: `{ leftPct, rightPct }`)
+  - states: `dragging` (cursor `col-resize`, transitions disabled) · `constrained` (drag clamped at min-left/min-right)
+  - accessibility: drag handle has `role="separator"`, `aria-orientation="vertical"`, `aria-valuenow={percent}`
+  - edge cases: viewport narrower than `min-left + min-right` → split forced to 50/50, drag disabled
+
+- **`FlexContainer`** — bounded-width wrapper with horizontal centering
+  - attrs: `max-width` (CSS length, default 1200px) · `padding` (token, default md)
+  - slot: default
+  - states: none
+  - edge cases: viewport < `max-width` → spans full viewport with padding
+
+- **`FlexSection`** — semantic section wrapper with optional title
+  - attrs: `title` (string, optional) · `level` (h1–h6, default h2)
+  - slots: default; named `actions` (rendered inline with title, right-aligned)
+  - states: none
+  - accessibility: renders a real heading element at the specified level when `title` is set
+
+- **`FlexCluster`** — wrap-when-overflow inline cluster
+  - attrs: `gap` (token) · `align` (start/center/end, default start) · `justify` (start/center/end/space-between, default start)
+  - slot: default
+  - states: none
+  - edge cases: child with intrinsic min-width > container → wraps to its own line
+
+- **`FlexToolbar`** — horizontal action bar
+  - attrs: `position` (top/bottom, default top) · `sticky` (boolean — sticks to viewport edge on scroll)
+  - slots: named `start` (left-aligned), `end` (right-aligned); default for inline children
+  - states: `stuck` when `sticky=true` and scrolled past origin (adds shadow class)
+  - accessibility: `role="toolbar"`; children should be buttons or links
+
+- **`FlexMasonry`** — column-balanced masonry grid
+  - attrs: `column-width` (CSS length, default 240px) · `gap` (token)
+  - slot: default
+  - states: none
+  - edge cases: column count = `floor(viewport / column-width)`, minimum 1
+
+##### Interactions (cross-cutting)
+
+- drag `FlexSplitPane` handle: panes resize live; clamp at min-left/min-right; emits `split-change` on release
+- viewport resize crossing `FlexSidebar` collapse threshold: sidebar collapses without explicit user action
+- `FlexResponsive.breakpointChange`: subscribed primitives re-render their breakpoint-dependent attrs (`FlexGrid columns`, sticky `FlexToolbar` shadow)
+- `FlexToolbar` `sticky=true` + scroll past origin: adds `stuck` class (CSS triggers shadow)
+
+> **Escalation to B1 (Software Architect)**: `arch-21.md` §2.1 and §7 Reference Map list `flex-card`, `flex-modal`, `flex-drawer`, `flex-tabs` as NEW components for this story. They are NOT — they are part of stories 15.1.2 (UI Suite DONE) and 15.1.3 (Form Suite DONE). The canonical 9 layout-suite components are the ones above (matching `audit-15-flex-component-library.md` story 15.1.1). Also: `arch-21.md` §2.1 mentions a new directory `frontend/components/flex-layout/` — the actual convention is `frontend/assets/js/components/` (flat, alongside existing components). Recommend B1 correction to arch-21 §2.1 + §7. *Logged here per AGENT_STANDARD §6 anti-pattern "Escalation avoidance".*
 
 ---
 
