@@ -4,7 +4,7 @@ type: arch
 producer: B1 Software Architect
 consumers: [B2 Data Engineer, C1 Tech Lead, C2 Backend Developer, C3 Frontend Developer, D3 Security Engineer]
 upstream: [vision-01-app-buildify, research-01-app-buildify, epic-21-risk-retirement]
-downstream: [adr-002-smtp-worker-placement]
+downstream: [adr-002-smtp-worker-placement, schema-21]
 status: review
 created: 2026-04-29
 updated: 2026-04-29
