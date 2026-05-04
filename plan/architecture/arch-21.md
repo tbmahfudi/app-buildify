@@ -4,10 +4,12 @@ type: arch
 producer: B1 Software Architect
 consumers: [B2 Data Engineer, C1 Tech Lead, C2 Backend Developer, C3 Frontend Developer, D3 Security Engineer]
 upstream: [vision-01-app-buildify, research-01-app-buildify, epic-21-risk-retirement]
-downstream: [adr-002-smtp-worker-placement]
+downstream: [adr-002-smtp-worker-placement, schema-21]
 status: review
 created: 2026-04-29
 updated: 2026-04-29
+corrections:
+  - 2026-04-29 — B3 escalation caught component-list drift in §2.1 + §7. Canonical 9 layout-suite components per epic-15 story 15.1.1 and audit-15 are now reflected. Directory convention corrected to flat frontend/assets/js/components/ (no flex-layout subdir). RBAC page path corrected to frontend/assets/js/rbac.js per audit-04 evidence.
 decisions:
   - No new microservice — only one new worker process (notification-worker)
   - SMTP placement decision deferred to adr-002 (binary: in-process vs. standalone container, gated by DEPLOYMENT_MODE)
@@ -42,7 +44,7 @@ The only new architectural decision is the **placement of the SMTP worker** unde
 
 ### 2.1 New
 - **`notification-worker`** (NEW process). Subscribes to the existing `notifications` Postgres LISTEN/NOTIFY channel from audit-14 Feature 14.1 (DONE). For each message, renders the email template (jinja2) and dispatches via `smtplib.SMTP_SSL` (stdlib). Outcome (success / retry / dead-letter) is written to the audit log and to the existing `notifications` table state column. **Placement**: see `adr-002` — in-process asyncio task in monolith mode (config-flagged) or a separate container in distributed mode.
-- **`frontend/assets/js/components/flex-layout/`** (NEW directory) — 9 components: `flex-stack`, `flex-grid`, `flex-split-pane`, `flex-card`, `flex-toolbar`, `flex-modal`, `flex-drawer`, `flex-tabs`, `flex-section`. Vanilla JS custom-element-style classes (matches existing `frontend/assets/js/components/` convention per audit-15 stories 15.1.2 / 15.1.3 DONE).
+- **9 layout-suite components** (NEW files, flat in the existing `frontend/assets/js/components/` directory — same convention as the UI suite from 15.1.2 DONE): `flex-stack`, `flex-grid`, `flex-sidebar`, `flex-split-pane`, `flex-container`, `flex-section`, `flex-cluster`, `flex-toolbar`, `flex-masonry`. Canonical list matches `epic-15-flex-component-library.md` story 15.1.1 and `audit-15-flex-component-library.md` 15.1.1 evidence. Web Components extending `BaseComponent`. **Correction applied 2026-04-29 per B3 escalation**: earlier draft of this section listed `flex-card`/`flex-modal`/`flex-drawer`/`flex-tabs` as NEW — those are part of 15.1.2 / 15.1.3 (DONE) and out of scope for epic-21.
 
 ### 2.2 Modified
 - **`backend/app/services/auth_service.py`** — `has_permission(user_permissions, required_code)` updated to evaluate `*` wildcards per segment. Algorithm: split required code on `:`, split each cached permission on `:`, walk pairwise, accept literal match OR `*` in cached permission. O(segments × |user_permissions|) where segments = 3 and |user_permissions| ≤ 200 per story 4.2.1 NFR.
@@ -132,18 +134,17 @@ Files this design touches, grouped by component, with one-line rationale.
 - `backend/app/core/audit_logger.py` — no schema change; new event types `notification.delivered` / `notification.failed`
 
 ### Frontend
-- `frontend/assets/js/components/flex-layout/flex-stack.js` — **NEW**
-- `frontend/assets/js/components/flex-layout/flex-grid.js` — **NEW**
-- `frontend/assets/js/components/flex-layout/flex-split-pane.js` — **NEW**
-- `frontend/assets/js/components/flex-layout/flex-card.js` — **NEW**
-- `frontend/assets/js/components/flex-layout/flex-toolbar.js` — **NEW**
-- `frontend/assets/js/components/flex-layout/flex-modal.js` — **NEW**
-- `frontend/assets/js/components/flex-layout/flex-drawer.js` — **NEW**
-- `frontend/assets/js/components/flex-layout/flex-tabs.js` — **NEW**
-- `frontend/assets/js/components/flex-layout/flex-section.js` — **NEW**
-- `frontend/assets/js/components/flex-layout/index.js` — **NEW**; barrel export
-- `frontend/index.html` (or equivalent shell) — register layout components alongside existing UI/Form suites
-- `frontend/assets/js/pages/rbac-page.js` — refactor to use new layout components (proves integration per item 21.3 coordination AC)
+- `frontend/assets/js/components/flex-stack.js` — **NEW**
+- `frontend/assets/js/components/flex-grid.js` — **NEW**
+- `frontend/assets/js/components/flex-sidebar.js` — **NEW**
+- `frontend/assets/js/components/flex-split-pane.js` — **NEW**
+- `frontend/assets/js/components/flex-container.js` — **NEW**
+- `frontend/assets/js/components/flex-section.js` — **NEW**
+- `frontend/assets/js/components/flex-cluster.js` — **NEW**
+- `frontend/assets/js/components/flex-toolbar.js` — **NEW**
+- `frontend/assets/js/components/flex-masonry.js` — **NEW**
+- `frontend/index.html` (or equivalent shell) — register the 9 new components alongside the existing UI/Form suites (no separate barrel needed — convention is per-component `<script>` imports per 15.1.2 / 15.1.3 DONE; verify with C3)
+- `frontend/assets/js/rbac.js` — refactor existing RBAC page (per `audit-04` 4.1.2 evidence) to use new layout components (proves integration per item 21.3 coordination AC)
 
 ### Configuration / Deployment
 - `.env.example` — add `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM`, `NOTIFICATION_WORKER_INPROCESS`
