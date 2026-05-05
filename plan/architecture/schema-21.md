@@ -4,8 +4,8 @@ type: schema
 producer: B2 Data Engineer
 consumers: [C1 Tech Lead, C2 Backend Developer, D1 QA Engineer, D3 Security Engineer]
 upstream: [vision-01-app-buildify, research-01-app-buildify, epic-21-risk-retirement, arch-21]
-downstream: []
-status: review
+downstream: [tasks-21]
+status: approved
 created: 2026-04-29
 updated: 2026-04-29
 verdict: no-changes

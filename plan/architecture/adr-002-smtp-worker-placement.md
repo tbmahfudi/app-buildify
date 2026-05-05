@@ -5,7 +5,7 @@ producer: B1 Software Architect
 consumers: [C1 Tech Lead, C2 Backend Developer, E1 DevOps Engineer]
 upstream: [adr-001-deployment-modes, arch-platform, arch-21, epic-21-risk-retirement]
 downstream: []
-status: proposed
+status: accepted
 created: 2026-04-29
 updated: 2026-04-29
 ---
@@ -14,7 +14,7 @@ updated: 2026-04-29
 
 ## Status
 
-Proposed. (Will flip to **accepted** once team review on epic-21 completes.)
+Accepted (flipped 2026-04-29 by C1 Tech Lead during epic-21 task-breakdown gate).
 
 ## Context
 

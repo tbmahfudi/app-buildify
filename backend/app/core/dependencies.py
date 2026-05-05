@@ -105,10 +105,40 @@ def require_superuser(current_user: User = Depends(get_current_user)) -> User:
         raise HTTPException(status_code=403, detail="Superuser required")
     return current_user
 
+def matches_permission(granted_codes, required_code: str) -> bool:
+    """Return True if any granted permission code satisfies the required code.
+
+    Permission format: ``<resource>:<action>:<scope>`` (e.g. ``invoices:create:company``).
+    A ``*`` segment in a *granted* code matches any value in that position of the
+    required code. Wildcards are only honored on the granted side; a required code
+    containing ``*`` is treated as a literal segment value (so callers cannot accidentally
+    over-grant by passing a wildcard to ``require_permission``).
+
+    Hot path: literal ``in`` check first (O(1) on a set). Wildcard scan only runs when
+    the literal lookup misses. Per epic-21 story 4.2.1, target is p95 < 5 ms for users
+    with up to 200 permissions — trivially met by this implementation.
+    """
+    if required_code in granted_codes:
+        return True
+    required_segments = required_code.split(':')
+    for granted in granted_codes:
+        if '*' not in granted:
+            continue
+        granted_segments = granted.split(':')
+        if len(granted_segments) != len(required_segments):
+            continue
+        if all(g == '*' or g == r for g, r in zip(granted_segments, required_segments)):
+            return True
+    return False
+
+
 def has_permission(permission: str):
     """
     Dependency to check if user has a specific permission.
     Uses the RBAC system to check permissions.
+
+    Wildcards on the granted side are honored — e.g. a user with ``*:*:platform``
+    granted satisfies any required code at platform scope. See ``matches_permission``.
 
     Args:
         permission: Permission code to check (e.g., "users:create:tenant")
@@ -117,14 +147,12 @@ def has_permission(permission: str):
         Function that validates the permission
     """
     def permission_checker(current_user: User = Depends(get_current_user)) -> User:
-        # Superusers have all permissions
         if current_user.is_superuser:
             return current_user
 
-        # Get user permissions from RBAC system
         user_permissions = current_user.get_permissions() if hasattr(current_user, 'get_permissions') else set()
 
-        if permission not in user_permissions:
+        if not matches_permission(user_permissions, permission):
             raise HTTPException(
                 status_code=403,
                 detail=f"Permission '{permission}' required"
@@ -136,6 +164,8 @@ def has_any_permission(permissions: List[str]):
     """
     Dependency to check if user has any of the specified permissions.
 
+    Wildcards on the granted side are honored per ``matches_permission``.
+
     Args:
         permissions: List of permission codes
 
@@ -143,14 +173,12 @@ def has_any_permission(permissions: List[str]):
         Function that validates user has at least one permission
     """
     def permission_checker(current_user: User = Depends(get_current_user)) -> User:
-        # Superusers have all permissions
         if current_user.is_superuser:
             return current_user
 
-        # Get user permissions from RBAC system
         user_permissions = current_user.get_permissions() if hasattr(current_user, 'get_permissions') else set()
 
-        if not any(perm in user_permissions for perm in permissions):
+        if not any(matches_permission(user_permissions, perm) for perm in permissions):
             raise HTTPException(
                 status_code=403,
                 detail=f"One of these permissions required: {', '.join(permissions)}"

@@ -14,6 +14,8 @@ plan/
 │   └── vision-XX-<slug>.md
 ├── research/          ← Research Briefs — personas, journeys, competitor matrix (A2 output)
 │   └── research-XX-<slug>.md
+├── tasks/             ← Sprint Backlogs — task breakdown per epic (C1 output)
+│   └── tasks-XX.md
 ├── agents/            ← per-role AI agent definitions (13 roles)
 │   ├── AGENT_STANDARD.md  ← agent file format spec
 │   ├── README.md          ← roster + communication flow + artifact map

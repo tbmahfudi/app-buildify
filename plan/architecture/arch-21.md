@@ -4,12 +4,13 @@ type: arch
 producer: B1 Software Architect
 consumers: [B2 Data Engineer, C1 Tech Lead, C2 Backend Developer, C3 Frontend Developer, D3 Security Engineer]
 upstream: [vision-01-app-buildify, research-01-app-buildify, epic-21-risk-retirement]
-downstream: [adr-002-smtp-worker-placement, schema-21]
-status: review
+downstream: [adr-002-smtp-worker-placement, schema-21, tasks-21]
+status: approved
 created: 2026-04-29
 updated: 2026-04-29
 corrections:
   - 2026-04-29 — B3 escalation caught component-list drift in §2.1 + §7. Canonical 9 layout-suite components per epic-15 story 15.1.1 and audit-15 are now reflected. Directory convention corrected to flat frontend/assets/js/components/ (no flex-layout subdir). RBAC page path corrected to frontend/assets/js/rbac.js per audit-04 evidence.
+  - 2026-04-29 — C3 build verification caught technology-pattern drift in §2.1. Components are NOT Web Components — they are plain ES6 classes (optionally extending BaseComponent) with Tailwind utility class styling. Verified against flex-alert.js (extends BaseComponent), flex-card.js (standalone), flex-modal.js (standalone). Implications: §2.1 reworded; FlexResponsive subscription via .onBreakpointChange() not connectedCallback; no CSS custom-property API. Implementation of T-21.1.1 (flex-stack/cluster/container) matches corrected spec.
 decisions:
   - No new microservice — only one new worker process (notification-worker)
   - SMTP placement decision deferred to adr-002 (binary: in-process vs. standalone container, gated by DEPLOYMENT_MODE)
@@ -44,7 +45,7 @@ The only new architectural decision is the **placement of the SMTP worker** unde
 
 ### 2.1 New
 - **`notification-worker`** (NEW process). Subscribes to the existing `notifications` Postgres LISTEN/NOTIFY channel from audit-14 Feature 14.1 (DONE). For each message, renders the email template (jinja2) and dispatches via `smtplib.SMTP_SSL` (stdlib). Outcome (success / retry / dead-letter) is written to the audit log and to the existing `notifications` table state column. **Placement**: see `adr-002` — in-process asyncio task in monolith mode (config-flagged) or a separate container in distributed mode.
-- **9 layout-suite components** (NEW files, flat in the existing `frontend/assets/js/components/` directory — same convention as the UI suite from 15.1.2 DONE): `flex-stack`, `flex-grid`, `flex-sidebar`, `flex-split-pane`, `flex-container`, `flex-section`, `flex-cluster`, `flex-toolbar`, `flex-masonry`. Canonical list matches `epic-15-flex-component-library.md` story 15.1.1 and `audit-15-flex-component-library.md` 15.1.1 evidence. Web Components extending `BaseComponent`. **Correction applied 2026-04-29 per B3 escalation**: earlier draft of this section listed `flex-card`/`flex-modal`/`flex-drawer`/`flex-tabs` as NEW — those are part of 15.1.2 / 15.1.3 (DONE) and out of scope for epic-21.
+- **9 layout-suite components** (NEW files, flat in the existing `frontend/assets/js/components/` directory — same convention as the UI suite from 15.1.2 DONE): `flex-stack`, `flex-grid`, `flex-sidebar`, `flex-split-pane`, `flex-container`, `flex-section`, `flex-cluster`, `flex-toolbar`, `flex-masonry`. Canonical list matches `epic-15-flex-component-library.md` story 15.1.1 and `audit-15-flex-component-library.md` 15.1.1 evidence. **Plain ES6 classes** that optionally extend `BaseComponent` (`frontend/assets/js/core/base-component.js`); ctor signature `(container, options)`; styling via Tailwind utility classes. NOT Web Components. **Corrections applied 2026-04-29**: (1) per B3 escalation, earlier draft listed `flex-card`/`flex-modal`/`flex-drawer`/`flex-tabs` as NEW — those are part of 15.1.2 / 15.1.3 (DONE) and out of scope; (2) per C3 build verification, earlier draft labeled the components as "Web Components extending BaseComponent" with a CSS-custom-property API — actual existing convention is plain ES6 classes with Tailwind, verified against `flex-alert.js`/`flex-card.js`/`flex-modal.js`.
 
 ### 2.2 Modified
 - **`backend/app/services/auth_service.py`** — `has_permission(user_permissions, required_code)` updated to evaluate `*` wildcards per segment. Algorithm: split required code on `:`, split each cached permission on `:`, walk pairwise, accept literal match OR `*` in cached permission. O(segments × |user_permissions|) where segments = 3 and |user_permissions| ≤ 200 per story 4.2.1 NFR.
@@ -124,7 +125,8 @@ Inherited from `arch-platform.md` §7 and refined for this epic:
 Files this design touches, grouped by component, with one-line rationale.
 
 ### Backend
-- `backend/app/services/auth_service.py` — update `has_permission()` for `*` segment matching (story 4.2.1)
+- `backend/app/core/dependencies.py` — add `matches_permission()` helper; update `has_permission()` and `has_any_permission()` dependencies for `*` segment matching (story 4.2.1) — actual location, not `services/auth_service.py` as earlier draft incorrectly stated
+- `backend/app/services/menu_service.py` — adopt `matches_permission()` at the 3 literal-permission-check sites so menu visibility honors wildcards consistently with API auth
 - `backend/app/api/v1/rbac.py` — add POST/PUT/DELETE role endpoints (story 4.1.1)
 - `backend/app/services/dynamic_entity_service.py` — read `EntityDefinition.permissions` before each CRUD op (story 4.2.4)
 - `backend/app/workers/notification_worker.py` — **NEW**; LISTEN/NOTIFY consumer + SMTP dispatch (story 14.2.1)
