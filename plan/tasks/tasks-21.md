@@ -74,7 +74,7 @@ Status legend: `OPEN` = not started · `IN-PROGRESS` = picked up · `BLOCKED` = 
 
 | id | title | owner | depends-on | hrs | AC link | status |
 |----|-------|-------|-----------:|---:|---------|--------|
-| T-21.2.1 | Create `backend/app/workers/notification_worker.py` skeleton — Postgres LISTEN/NOTIFY subscriber that selects pending `notification_queue` rows | C2 | — | 8 | [arch-21 §3.1 + §7 backend](../architecture/arch-21.md), [audit-14 14.1.1 cite](../architecture/audits/audit-14-notification-system.md) | OPEN |
+| T-21.2.1 | Create `backend/app/workers/notification_worker.py` skeleton — polling consumer of pending `notification_queue` rows | C2 | — | 8 | [arch-21 §3.1 + §7 backend](../architecture/arch-21.md), [audit-14 14.1.1 cite](../architecture/audits/audit-14-notification-system.md) | DONE — polling-based instead of LISTEN/NOTIFY (simpler, more robust, same semantics; see commit notes); state machine 5/5 tests pass; `python -m app.workers.notification_worker` is the standalone entry point |
 | T-21.2.2 | Implement SMTP send via `smtplib.SMTP_SSL` (or `aiosmtplib` per audit-14 4.2.1 hint); render template via jinja2 | C2 | T-21.2.1 | 10 | [epic-14 14.2.1 backend AC](../epics/epic-14-notification-system.md) | OPEN |
 | T-21.2.3 | Retry/backoff (5/30/300 s) + dead-letter on max retries; state column updates on `notification_queue` | C2 | T-21.2.2 | 6 | [arch-21 §3.1](../architecture/arch-21.md) | OPEN |
 | T-21.2.4 | Audit log entries `notification.delivered` / `notification.failed` | C2 | T-21.2.2 | 4 | [arch-21 §2.3](../architecture/arch-21.md) | OPEN |
