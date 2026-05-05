@@ -89,9 +89,9 @@ Status legend: `OPEN` = not started · `IN-PROGRESS` = picked up · `BLOCKED` = 
 
 | id | title | owner | depends-on | hrs | AC link | status |
 |----|-------|-------|-----------:|---:|---------|--------|
-| T-21.3.1 | Implement `POST /api/v1/rbac/roles` — tenant-scoped, `is_system=false`, optional `copy_permissions_from` | C2 | — | 6 | [epic-04 4.1.1 backend AC](../epics/epic-04-rbac-permissions.md) | OPEN |
-| T-21.3.2 | Implement `PUT /api/v1/rbac/roles/{id}` — block updates to `is_system=true` rows (409) | C2 | T-21.3.1 | 4 | [epic-04 4.1.1 backend AC](../epics/epic-04-rbac-permissions.md) | OPEN |
-| T-21.3.3 | Implement `DELETE /api/v1/rbac/roles/{id}` — 409 with `dependent_count` if assigned to users or groups | C2 | T-21.3.1 | 5 | [epic-04 4.1.1 backend AC](../epics/epic-04-rbac-permissions.md) | OPEN |
+| T-21.3.1 | Implement `POST /api/v1/rbac/roles` — tenant-scoped, `is_system=false`, optional `copy_permissions_from` | C2 | — | 6 | [epic-04 4.1.1 backend AC](../epics/epic-04-rbac-permissions.md) | DONE |
+| T-21.3.2 | Implement `PUT /api/v1/rbac/roles/{id}` — block updates to `is_system=true` rows (409) | C2 | T-21.3.1 | 4 | [epic-04 4.1.1 backend AC](../epics/epic-04-rbac-permissions.md) | DONE — system roles return 403 (immutable), per Pydantic+model semantics |
+| T-21.3.3 | Implement `DELETE /api/v1/rbac/roles/{id}` — 409 with `dependent_count` if assigned to users or groups | C2 | T-21.3.1 | 5 | [epic-04 4.1.1 backend AC](../epics/epic-04-rbac-permissions.md) | DONE |
 | T-21.3.4 | Update `auth_service.has_permission()` for `*` segment matching; benchmark target p95 < 5 ms for users with up to 200 perms | C2 | — | 6 | [epic-04 4.2.1 backend AC](../epics/epic-04-rbac-permissions.md), [arch-21 §3.2](../architecture/arch-21.md) | DONE — measured 6µs/call, 816× headroom under NFR |
 | T-21.3.5 | Build Roles page — uses `FlexSplitPane` (T-21.1.4), `FlexStack` (T-21.1.1), existing `FlexCard` + `FlexToolbar` from layout-suite + 15.1.2 | C3 | T-21.1.4, T-21.1.5 | 12 | [epic-04 4.1.1 frontend](../epics/epic-04-rbac-permissions.md) | OPEN |
 | T-21.3.6 | Wire "New Role" `FlexModal` form (existing component from 15.1.2) → `POST /rbac/roles` | C3 | T-21.3.1, T-21.3.5 | 4 | [epic-04 4.1.1 frontend Interactions](../epics/epic-04-rbac-permissions.md) | OPEN |

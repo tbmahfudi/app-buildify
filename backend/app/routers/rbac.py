@@ -7,7 +7,8 @@ import logging
 from typing import List, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from pydantic import BaseModel, Field
 from sqlalchemy import and_, func, or_
 from sqlalchemy.orm import Session, joinedload
 
@@ -25,6 +26,28 @@ from app.models.user import User
 
 router = APIRouter(prefix="/api/v1/rbac", tags=["RBAC Management"])
 logger = logging.getLogger(__name__)
+
+
+# ============================================================================
+# REQUEST MODELS (Pydantic)
+# ============================================================================
+
+class RoleCreate(BaseModel):
+    code: str = Field(..., min_length=1, max_length=50, pattern=r"^[a-z0-9_]+$",
+                      description="Lowercase identifier; unique per tenant")
+    name: str = Field(..., min_length=1, max_length=255)
+    description: Optional[str] = None
+    role_type: str = Field(default="custom", max_length=50)
+    copy_permissions_from: Optional[UUID] = Field(
+        default=None,
+        description="If provided, seed the new role with this role's permissions",
+    )
+
+
+class RoleUpdate(BaseModel):
+    name: Optional[str] = Field(default=None, min_length=1, max_length=255)
+    description: Optional[str] = None
+    is_active: Optional[bool] = None
 
 
 # ============================================================================
@@ -388,6 +411,198 @@ async def get_role(
         "created_at": role.created_at.isoformat() if role.created_at else None,
         "updated_at": role.updated_at.isoformat() if role.updated_at else None
     }
+
+
+@router.post("/roles", status_code=201)
+async def create_role(
+    payload: RoleCreate,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(has_permission("roles:create:tenant"))
+):
+    """Create a custom role within the current user's tenant.
+
+    Implements story 4.1.1 (epic-21 item 21.3). is_system is always False
+    for tenant-created roles; system roles are seeded via migrations only.
+    """
+    if current_user.tenant_id is None:
+        raise HTTPException(status_code=400, detail="User has no tenant; cannot create tenant-scoped role")
+
+    existing = (
+        db.query(Role)
+        .filter(Role.code == payload.code)
+        .filter(or_(Role.tenant_id == current_user.tenant_id, Role.tenant_id.is_(None)))
+        .first()
+    )
+    if existing:
+        raise HTTPException(
+            status_code=409,
+            detail=f"A role with code '{payload.code}' already exists in this tenant or as a system role",
+        )
+
+    role = Role(
+        tenant_id=current_user.tenant_id,
+        code=payload.code,
+        name=payload.name,
+        description=payload.description,
+        role_type=payload.role_type,
+        is_system=False,
+        is_active=True,
+        created_by_user_id=current_user.id,
+    )
+    db.add(role)
+    db.flush()
+
+    if payload.copy_permissions_from:
+        source = (
+            db.query(Role)
+            .filter(Role.id == payload.copy_permissions_from)
+            .filter(or_(Role.tenant_id == current_user.tenant_id, Role.tenant_id.is_(None)))
+            .first()
+        )
+        if not source:
+            db.rollback()
+            raise HTTPException(
+                status_code=404,
+                detail="Source role for copy_permissions_from not found in this tenant",
+            )
+        source_perms = (
+            db.query(RolePermission).filter(RolePermission.role_id == source.id).all()
+        )
+        for sp in source_perms:
+            db.add(RolePermission(role_id=role.id, permission_id=sp.permission_id))
+
+    db.commit()
+    db.refresh(role)
+
+    create_audit_log(
+        db=db,
+        action="role.create",
+        user=current_user,
+        entity_type="role",
+        entity_id=role.id,
+        changes={
+            "code": role.code,
+            "name": role.name,
+            "role_type": role.role_type,
+            "copy_permissions_from": str(payload.copy_permissions_from) if payload.copy_permissions_from else None,
+        },
+        request=request,
+    )
+
+    return {
+        "id": str(role.id),
+        "code": role.code,
+        "name": role.name,
+        "description": role.description,
+        "role_type": role.role_type,
+        "is_system": role.is_system,
+        "is_active": role.is_active,
+        "tenant_id": str(role.tenant_id) if role.tenant_id else None,
+        "created_at": role.created_at.isoformat() if role.created_at else None,
+    }
+
+
+@router.put("/roles/{role_id}")
+async def update_role(
+    role_id: UUID,
+    payload: RoleUpdate,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(has_permission("roles:update:tenant"))
+):
+    """Update a tenant role. System roles are immutable (returns 403)."""
+    role = db.query(Role).filter(Role.id == role_id).first()
+    if not role:
+        raise HTTPException(status_code=404, detail="Role not found")
+    if role.is_system:
+        raise HTTPException(status_code=403, detail="System roles are immutable")
+    if role.tenant_id != current_user.tenant_id and not current_user.is_superuser:
+        raise HTTPException(status_code=403, detail="Cannot modify a role outside your tenant")
+
+    changes = {}
+    if payload.name is not None and payload.name != role.name:
+        changes["name"] = {"from": role.name, "to": payload.name}
+        role.name = payload.name
+    if payload.description is not None and payload.description != role.description:
+        changes["description"] = {"from": role.description, "to": payload.description}
+        role.description = payload.description
+    if payload.is_active is not None and payload.is_active != role.is_active:
+        changes["is_active"] = {"from": role.is_active, "to": payload.is_active}
+        role.is_active = payload.is_active
+
+    if not changes:
+        return {"id": str(role.id), "code": role.code, "updated": False}
+
+    db.commit()
+    db.refresh(role)
+
+    create_audit_log(
+        db=db,
+        action="role.update",
+        user=current_user,
+        entity_type="role",
+        entity_id=role.id,
+        changes=changes,
+        request=request,
+    )
+
+    return {
+        "id": str(role.id),
+        "code": role.code,
+        "name": role.name,
+        "description": role.description,
+        "is_active": role.is_active,
+        "updated": True,
+    }
+
+
+@router.delete("/roles/{role_id}")
+async def delete_role(
+    role_id: UUID,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(has_permission("roles:delete:tenant"))
+):
+    """Delete a tenant role. Blocked if assigned to any user or group (409)."""
+    role = db.query(Role).filter(Role.id == role_id).first()
+    if not role:
+        raise HTTPException(status_code=404, detail="Role not found")
+    if role.is_system:
+        raise HTTPException(status_code=403, detail="System roles cannot be deleted")
+    if role.tenant_id != current_user.tenant_id and not current_user.is_superuser:
+        raise HTTPException(status_code=403, detail="Cannot delete a role outside your tenant")
+
+    user_count = db.query(func.count(UserRole.role_id)).filter(UserRole.role_id == role_id).scalar() or 0
+    group_count = db.query(func.count(GroupRole.role_id)).filter(GroupRole.role_id == role_id).scalar() or 0
+    if user_count or group_count:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "message": "Role is assigned and cannot be deleted",
+                "dependent_count": {"users": int(user_count), "groups": int(group_count)},
+            },
+        )
+
+    role_snapshot = {
+        "code": role.code,
+        "name": role.name,
+        "tenant_id": str(role.tenant_id) if role.tenant_id else None,
+    }
+    db.delete(role)
+    db.commit()
+
+    create_audit_log(
+        db=db,
+        action="role.delete",
+        user=current_user,
+        entity_type="role",
+        entity_id=role_id,
+        changes=role_snapshot,
+        request=request,
+    )
+
+    return {"id": str(role_id), "deleted": True}
 
 
 @router.post("/roles/{role_id}/permissions")
