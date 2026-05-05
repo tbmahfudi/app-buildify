@@ -12,6 +12,7 @@ from sqlalchemy.exc import IntegrityError
 from datetime import datetime
 from app.services.runtime_model_generator import RuntimeModelGenerator
 from app.core.dynamic_query_builder import DynamicQueryBuilder
+from app.core.exceptions import AppException
 from app.utils.field_type_mapper import FieldTypeMapper
 from app.core.exceptions import EntityValidationError
 import logging
@@ -56,6 +57,53 @@ class DynamicEntityService:
         self.model_generator = RuntimeModelGenerator(db)
         self.query_builder = DynamicQueryBuilder()
         self.field_mapper = FieldTypeMapper()
+
+    def _check_entity_permission(self, entity_name: str, action: str) -> None:
+        """Enforce per-entity permission rules from EntityDefinition.permissions JSONB.
+
+        Story 4.2.4 / arch-21 §3.3. The JSONB shape is ``{role_code: [actions]}``
+        where actions are one of ``create | read | update | delete``. When the
+        column is null/empty, this method falls through silently and global RBAC
+        retains full authority. When populated, the user's role set must intersect
+        the set of roles allowed for the requested action; otherwise raises
+        a ``PermissionError`` (translated to 403 by the router layer that already
+        handles ValueError -> 400 for this service).
+
+        Zero extra DB round-trips per CRUD op: the EntityDefinition row is loaded
+        via the per-instance cache added in story 4.2.4 (see
+        ``RuntimeModelGenerator.get_entity_definition``), shared with the model
+        generation path that runs immediately after this check.
+        """
+        # Superusers bypass per-entity perms (consistent with global RBAC bypass)
+        if getattr(self.current_user, 'is_superuser', False):
+            return
+
+        tenant_id = str(self.current_user.tenant_id) if self.current_user.tenant_id else None
+        entity_def = self.model_generator.get_entity_definition(entity_name, tenant_id)
+        if not entity_def:
+            return  # Missing entity will surface in the next get_model call
+
+        permissions_map = entity_def.permissions
+        if not permissions_map or not isinstance(permissions_map, dict):
+            return  # Null or malformed -> global RBAC owns
+
+        allowed_roles = {
+            role for role, actions in permissions_map.items()
+            if isinstance(actions, list) and action in actions
+        }
+        if not allowed_roles:
+            raise AppException(
+                f"Per-entity permission denied: action '{action}' not granted to any role for entity '{entity_name}'",
+                status_code=403,
+            )
+
+        user_roles = self.current_user.get_roles() if hasattr(self.current_user, 'get_roles') else set()
+        if not user_roles & allowed_roles:
+            raise AppException(
+                f"Per-entity permission denied: action '{action}' on entity '{entity_name}'",
+                status_code=403,
+                details={"required_roles": sorted(allowed_roles)},
+            )
 
     def _get_org_context(self, model) -> Dict[str, Any]:
         """
@@ -107,6 +155,7 @@ class DynamicEntityService:
         """
         # Get model and field definitions
         tenant_id = str(self.current_user.tenant_id) if self.current_user.tenant_id else None
+        self._check_entity_permission(entity_name, 'create')
         model = self.model_generator.get_model(entity_name, tenant_id)
         field_defs = self.model_generator.get_field_definitions(entity_name, tenant_id)
 
@@ -190,6 +239,7 @@ class DynamicEntityService:
         """
         # Get model and field definitions
         tenant_id = str(self.current_user.tenant_id) if self.current_user.tenant_id else None
+        self._check_entity_permission(entity_name, 'read')
         model = self.model_generator.get_model(entity_name, tenant_id)
         field_defs = self.model_generator.get_field_definitions(entity_name, tenant_id)
 
@@ -305,6 +355,7 @@ class DynamicEntityService:
             ValueError: If record not found or validation fails
         """
         tenant_id = str(self.current_user.tenant_id) if self.current_user.tenant_id else None
+        self._check_entity_permission(entity_name, 'update')
         model = self.model_generator.get_model(entity_name, tenant_id)
         field_defs = self.model_generator.get_field_definitions(entity_name, tenant_id)
 
@@ -390,6 +441,7 @@ class DynamicEntityService:
             ValueError: If record not found
         """
         tenant_id = str(self.current_user.tenant_id) if self.current_user.tenant_id else None
+        self._check_entity_permission(entity_name, 'delete')
         model = self.model_generator.get_model(entity_name, tenant_id)
         field_defs = self.model_generator.get_field_definitions(entity_name, tenant_id)
 
@@ -704,6 +756,7 @@ class DynamicEntityService:
         from decimal import Decimal
 
         tenant_id = str(self.current_user.tenant_id) if self.current_user.tenant_id else None
+        self._check_entity_permission(entity_name, 'read')
         model = self.model_generator.get_model(entity_name, tenant_id)
 
         # Build SELECT columns and GROUP BY expressions
