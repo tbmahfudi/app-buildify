@@ -59,7 +59,7 @@ Status legend: `OPEN` = not started · `IN-PROGRESS` = picked up · `BLOCKED` = 
 
 | id | title | owner | depends-on | hrs | AC link | status |
 |----|-------|-------|-----------:|---:|---------|--------|
-| T-21.1.1 | Implement `flex-stack.js` + `flex-cluster.js` + `flex-container.js` (simplest primitives, no responsive logic) | C3 | — | 8 | [epic-15 §15.1.1 — FlexStack/FlexCluster/FlexContainer](../epics/epic-15-flex-component-library.md) | OPEN |
+| T-21.1.1 | Implement `flex-stack.js` + `flex-cluster.js` + `flex-container.js` (simplest primitives, no responsive logic) | C3 | — | 8 | [epic-15 §15.1.1 — FlexStack/FlexCluster/FlexContainer](../epics/epic-15-flex-component-library.md) | DONE |
 | T-21.1.2 | Implement `flex-grid.js` + `flex-section.js` (responsive columns; heading semantics) | C3 | T-21.1.1 (BaseComponent pattern) | 10 | [epic-15 §15.1.1 — FlexGrid/FlexSection](../epics/epic-15-flex-component-library.md) | OPEN |
 | T-21.1.3 | Implement `flex-sidebar.js` (collapse threshold; subscribes to FlexResponsive.breakpointChange) | C3 | T-21.1.1 | 8 | [epic-15 §15.1.1 — FlexSidebar](../epics/epic-15-flex-component-library.md) | OPEN |
 | T-21.1.4 | Implement `flex-split-pane.js` (drag handler, ARIA `role=separator`, clamp at min-left/min-right, `split-change` event) | C3 | T-21.1.1 | 12 | [epic-15 §15.1.1 — FlexSplitPane](../epics/epic-15-flex-component-library.md) | OPEN |
