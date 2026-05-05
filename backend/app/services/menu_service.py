@@ -137,9 +137,10 @@ class MenuService:
             if not any(role in roles for role in item.required_roles):
                 return False
 
-        # Check permission requirements
+        # Check permission requirements (wildcard-aware per epic-21 story 4.2.1)
         if item.permission:
-            if item.permission not in permissions:
+            from app.core.dependencies import matches_permission
+            if not matches_permission(permissions, item.permission):
                 return False
 
         return True
@@ -222,10 +223,12 @@ class MenuService:
                 if 'menu' not in route:
                     continue
 
-                # Check permission
+                # Check permission (wildcard-aware per epic-21 story 4.2.1)
                 route_permission = route.get('permission')
-                if route_permission and route_permission not in permissions:
-                    continue
+                if route_permission:
+                    from app.core.dependencies import matches_permission
+                    if not matches_permission(permissions, route_permission):
+                        continue
 
                 # Determine parent
                 menu_parent = route['menu'].get('parent')
@@ -291,10 +294,12 @@ class MenuService:
         builder_menu_items = []
 
         for page in builder_pages:
-            # Check permission if specified
-            if page.permission_code and page.permission_code not in permissions:
-                logger.debug(f"Skipping builder page {page.name} - missing permission {page.permission_code}")
-                continue
+            # Check permission if specified (wildcard-aware per epic-21 story 4.2.1)
+            if page.permission_code:
+                from app.core.dependencies import matches_permission
+                if not matches_permission(permissions, page.permission_code):
+                    logger.debug(f"Skipping builder page {page.name} - missing permission {page.permission_code}")
+                    continue
 
             # Create virtual MenuItem for builder page
             menu_item = MenuItem(

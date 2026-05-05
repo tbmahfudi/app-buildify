@@ -125,7 +125,8 @@ Inherited from `arch-platform.md` §7 and refined for this epic:
 Files this design touches, grouped by component, with one-line rationale.
 
 ### Backend
-- `backend/app/services/auth_service.py` — update `has_permission()` for `*` segment matching (story 4.2.1)
+- `backend/app/core/dependencies.py` — add `matches_permission()` helper; update `has_permission()` and `has_any_permission()` dependencies for `*` segment matching (story 4.2.1) — actual location, not `services/auth_service.py` as earlier draft incorrectly stated
+- `backend/app/services/menu_service.py` — adopt `matches_permission()` at the 3 literal-permission-check sites so menu visibility honors wildcards consistently with API auth
 - `backend/app/api/v1/rbac.py` — add POST/PUT/DELETE role endpoints (story 4.1.1)
 - `backend/app/services/dynamic_entity_service.py` — read `EntityDefinition.permissions` before each CRUD op (story 4.2.4)
 - `backend/app/workers/notification_worker.py` — **NEW**; LISTEN/NOTIFY consumer + SMTP dispatch (story 14.2.1)
