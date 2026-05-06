@@ -44,6 +44,11 @@ class RuntimeModelGenerator:
         self.db = db
         self.cache: ModelCache = get_model_cache()
         self.field_mapper = FieldTypeMapper()
+        # Per-instance cache for entity_def rows so per-entity permission
+        # checks (story 4.2.4) don't add a DB round-trip on every CRUD op.
+        # Lifecycle is per-request (RuntimeModelGenerator is constructed
+        # in DynamicEntityService.__init__).
+        self._entity_def_cache: dict = {}
 
     def get_model(
         self,
@@ -63,8 +68,8 @@ class RuntimeModelGenerator:
         Raises:
             ValueError: If entity not found or not published
         """
-        # Load entity definition
-        entity_def = self._load_entity_definition(entity_name, tenant_id)
+        # Load entity definition (uses per-instance cache)
+        entity_def = self.get_entity_definition(entity_name, tenant_id)
 
         if not entity_def:
             raise ValueError(
@@ -108,6 +113,24 @@ class RuntimeModelGenerator:
         """
         self.cache.invalidate(tenant_id, entity_name)
         logger.info(f"Cache invalidated for entity={entity_name}, tenant={tenant_id}")
+
+    def get_entity_definition(
+        self,
+        entity_name: str,
+        tenant_id: Optional[str] = None
+    ) -> Optional[EntityDefinition]:
+        """Public accessor for the EntityDefinition row.
+
+        Cached per-instance so callers (e.g. `DynamicEntityService` for
+        per-entity permission checks) do not trigger a fresh SELECT on
+        every CRUD op. See story 4.2.4 / arch-21 §5 NFR.
+        """
+        key = (entity_name, tenant_id)
+        if key in self._entity_def_cache:
+            return self._entity_def_cache[key]
+        entity_def = self._load_entity_definition(entity_name, tenant_id)
+        self._entity_def_cache[key] = entity_def
+        return entity_def
 
     def _load_entity_definition(
         self,
@@ -504,7 +527,7 @@ class RuntimeModelGenerator:
         Returns:
             List of field definition dicts
         """
-        entity_def = self._load_entity_definition(entity_name, tenant_id)
+        entity_def = self.get_entity_definition(entity_name, tenant_id)
 
         if not entity_def:
             raise ValueError(f"Entity '{entity_name}' not found")
@@ -527,7 +550,7 @@ class RuntimeModelGenerator:
         Returns:
             List of relationship definition dicts
         """
-        entity_def = self._load_entity_definition(entity_name, tenant_id)
+        entity_def = self.get_entity_definition(entity_name, tenant_id)
 
         if not entity_def:
             raise ValueError(f"Entity '{entity_name}' not found")
