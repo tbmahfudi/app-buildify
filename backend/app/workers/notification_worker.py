@@ -29,16 +29,41 @@ of the same polling fallback.
 import logging
 import os
 import signal
+import smtplib
 import time
+from dataclasses import dataclass
 from datetime import datetime, timezone
+from email.message import EmailMessage
 from typing import List, Optional
 
+from jinja2 import Environment, StrictUndefined, TemplateError
 from sqlalchemy.orm import Session
 
 from app.core.db import SessionLocal
+from app.models.notification_config import NotificationConfig
 from app.models.notification_queue import NotificationQueue
 
 logger = logging.getLogger(__name__)
+
+# Jinja2 environment with autoescape OFF (subject/body are plain text;
+# enable per-template autoescape later when HTML templates land).
+# StrictUndefined surfaces missing template_data keys at render time
+# instead of silently producing empty strings — caller sees the bug.
+_jinja = Environment(undefined=StrictUndefined)
+
+
+@dataclass(frozen=True)
+class SMTPConfig:
+    host: str
+    port: int
+    user: Optional[str]
+    password: Optional[str]
+    from_addr: str
+    use_tls: bool
+
+    @property
+    def is_complete(self) -> bool:
+        return bool(self.host and self.port and self.from_addr)
 
 
 class NotificationWorker:
@@ -186,22 +211,126 @@ class NotificationWorker:
     def _dispatch(self, row: NotificationQueue) -> None:
         """Channel-specific delivery.
 
-        SKELETON (T-21.2.1): logs the message and returns success. Real SMTP
-        send + template rendering land in T-21.2.2 (story 14.2.1).
+        Email is implemented (T-21.2.2). SMS/webhook/push raise
+        ``NotImplementedError`` and dead-letter via the retry path.
         """
         logger.info(
-            "notification-worker DISPATCH (skeleton) id=%s type=%s method=%s recipient=%s",
-            row.id,
-            row.notification_type,
-            row.delivery_method,
-            row.recipient,
+            "notification-worker dispatching id=%s type=%s method=%s recipient=%s",
+            row.id, row.notification_type, row.delivery_method, row.recipient,
         )
-        if row.delivery_method != "email":
-            # SMS / webhook / push are out of scope for epic-21
-            raise NotImplementedError(
-                f"delivery_method '{row.delivery_method}' not yet implemented (see story 14.3)"
+        if row.delivery_method == "email":
+            self._send_email(row)
+            return
+        # SMS / webhook / push are out of scope for epic-21 (see story 14.3)
+        raise NotImplementedError(
+            f"delivery_method '{row.delivery_method}' not yet implemented"
+        )
+
+    # ----- email (T-21.2.2) ----------------------------------------------
+
+    def _send_email(self, row: NotificationQueue) -> None:
+        """Render templates and dispatch via SMTP.
+
+        Looks up SMTP config from ``NotificationConfig`` (tenant-specific
+        first, then system default at ``tenant_id IS NULL``), then falls
+        back to env vars (``SMTP_HOST``, ``SMTP_PORT``, ``SMTP_USER``,
+        ``SMTP_PASSWORD``, ``SMTP_FROM``, ``SMTP_USE_TLS``) per arch-21 §4.
+        """
+        config = self._get_smtp_config(row.tenant_id)
+        if not config or not config.is_complete:
+            raise ValueError(
+                "No SMTP config available (checked tenant config, system config, and env vars)"
             )
-        # T-21.2.2 will: render template, smtplib.SMTP_SSL.send_message, audit-log
+
+        subject = self._render(row.subject or "", row.template_data or {})
+        body = self._render(row.message or "", row.template_data or {})
+
+        msg = EmailMessage()
+        msg["From"] = config.from_addr
+        msg["To"] = row.recipient
+        msg["Subject"] = subject or f"[{row.notification_type}]"
+        msg.set_content(body)
+
+        if config.use_tls:
+            with smtplib.SMTP(config.host, config.port, timeout=30) as smtp:
+                smtp.starttls()
+                if config.user:
+                    smtp.login(config.user, config.password or "")
+                smtp.send_message(msg)
+        else:
+            # Plain SMTP (e.g. local dev MailHog) — auth optional
+            with smtplib.SMTP(config.host, config.port, timeout=30) as smtp:
+                if config.user:
+                    smtp.login(config.user, config.password or "")
+                smtp.send_message(msg)
+
+    @staticmethod
+    def _render(template_str: str, context: dict) -> str:
+        """Render ``template_str`` with ``context``. Empty template returns ''.
+
+        Jinja2 errors (undefined vars, syntax) propagate as ``ValueError``
+        so the worker's retry logic dead-letters them after max_attempts.
+        """
+        if not template_str:
+            return ""
+        if not context:
+            # Fast path: no substitution needed
+            return template_str
+        try:
+            return _jinja.from_string(template_str).render(**context)
+        except TemplateError as exc:
+            raise ValueError(f"Template render error: {exc}") from exc
+
+    def _get_smtp_config(self, tenant_id) -> Optional[SMTPConfig]:
+        """Return the SMTP config for this tenant.
+
+        Resolution order:
+            1. NotificationConfig where tenant_id matches
+            2. NotificationConfig where tenant_id IS NULL (system default)
+            3. Env vars (SMTP_HOST/PORT/USER/PASSWORD/FROM/USE_TLS)
+        Returns ``None`` if none of the above produces a complete config.
+        """
+        db: Session = SessionLocal()
+        try:
+            nc: Optional[NotificationConfig] = None
+            if tenant_id is not None:
+                nc = (
+                    db.query(NotificationConfig)
+                    .filter(NotificationConfig.tenant_id == tenant_id)
+                    .filter(NotificationConfig.is_active.is_(True))
+                    .first()
+                )
+            if nc is None:
+                nc = (
+                    db.query(NotificationConfig)
+                    .filter(NotificationConfig.tenant_id.is_(None))
+                    .filter(NotificationConfig.is_active.is_(True))
+                    .first()
+                )
+            if nc and nc.email_enabled and nc.email_smtp_host:
+                return SMTPConfig(
+                    host=nc.email_smtp_host,
+                    port=int(nc.email_smtp_port or 587),
+                    user=nc.email_smtp_user,
+                    password=nc.email_smtp_password,
+                    from_addr=nc.email_from or (nc.email_smtp_user or ""),
+                    use_tls=bool(nc.email_use_tls if nc.email_use_tls is not None else True),
+                )
+        finally:
+            db.close()
+
+        # Env-var fallback
+        host = os.environ.get("SMTP_HOST")
+        if not host:
+            return None
+        return SMTPConfig(
+            host=host,
+            port=int(os.environ.get("SMTP_PORT", "587")),
+            user=os.environ.get("SMTP_USER"),
+            password=os.environ.get("SMTP_PASSWORD"),
+            from_addr=os.environ.get("SMTP_FROM", os.environ.get("SMTP_USER", "")),
+            use_tls=_bool_env("SMTP_USE_TLS", default=True),
+        )
 
     def _mark_sent(self, db: Session, row: NotificationQueue) -> None:
         row.status = "sent"
