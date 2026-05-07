@@ -19,15 +19,17 @@ coverage_pct: 100
 ## 1. Summary
 
 - Stories audited: **10** (Features 15.1–15.3)
-- DONE: **2** • PARTIAL: **0** • DRIFT: **1** • MISSING: **7**
-- Tag-drift count: **1** (15.1.1 layout suite tagged DONE but components missing)
-- Recommended `BACKLOG.md` tag: **Mixed: UI + Form DONE; Layout suite OPEN; Tooling PLANNED** (currently "Core DONE; 5 Components PLANNED" — understates layout-suite gap)
+- DONE: **3** • PARTIAL: **0** • DRIFT: **0** • MISSING: **7**
+- Tag-drift count: **0** (post epic-21 sprint 1)
+- Recommended `BACKLOG.md` tag: **Layout + UI + Form DONE; Tooling PLANNED** (was "UI + Form DONE; Layout suite OPEN; Tooling PLANNED")
+
+> **Re-audit 2026-05-XX (epic-21 sprint 1)**: story 15.1.1 (Layout Component Suite) retired its 🔴 DRIFT status. All 9 components shipped per T-21.1.1/.2/.3/.4/.5. The rbac.js retrofit (T-21.1.6) was deferred but the components themselves are present and unit-tested. Evidence row updated; gap moved to "Retired by epic-21" section.
 
 ## 2. Story-by-story
 
 | Story | Title | Claimed | Verified | Backend evidence | Frontend evidence | Gaps | 🚦 |
 |-------|-------|---------|----------|------------------|-------------------|------|----|
-| 15.1.1 | Layout Component Suite | DONE | **DRIFT** | — | None of `flex-stack.js`, `flex-grid.js`, `flex-sidebar.js`, `flex-split-pane.js`, `flex-container.js`, `flex-section.js`, `flex-cluster.js`, `flex-toolbar.js`, `flex-masonry.js` located in `frontend/assets/js/components/` | 9/9 layout components MISSING despite DONE tag | 🔴 |
+| 15.1.1 | Layout Component Suite | DONE | DONE *(retired epic-21)* | — | All 9 layout components present in `frontend/assets/js/components/`: `flex-stack.js` + `flex-cluster.js` + `flex-container.js` (T-21.1.1), `flex-grid.js` + `flex-section.js` (T-21.1.2), `flex-sidebar.js` (T-21.1.3), `flex-split-pane.js` (T-21.1.4), `flex-toolbar.js` + `flex-masonry.js` (T-21.1.5). All extend `BaseComponent`; all use Tailwind utility classes (NOT Web Components / CSS custom properties — initial UILDC drift caught by C3 build verification per arch-21 corrections log). Each component ships with inline pure-logic tests (8/8 to 22/22 per component). | — (was DRIFT — components MISSING) | ✅ |
 | 15.1.2 | UI Component Suite | DONE | DONE | — | `flex-modal.js`, `flex-drawer.js`, `flex-table.js`, `flex-datagrid.js`, `flex-tabs.js`, `flex-stepper.js`, `flex-pagination.js`, `flex-alert.js`, `flex-badge.js`, `flex-tooltip.js` all present | Focus-trap in FlexModal not verified | 🟢 |
 | 15.1.3 | Form Component Suite | DONE | DONE | — | `flex-input.js`, `flex-select.js`, `flex-checkbox.js`, `flex-radio.js`, `flex-textarea.js` all present | — | — |
 | 15.2.1 | FlexDatepicker Component | PLANNED | MISSING | — | `flex-datepicker.js` MISSING | — | — |
@@ -40,8 +42,11 @@ coverage_pct: 100
 
 ## 3. Gaps
 
+### ✅ Retired by epic-21 sprint 1
+- [x] **15.1.1** All 9 layout components shipped (T-21.1.1/.2/.3/.4/.5). Implementation chose plain ES6 classes + Tailwind classes over Web Components + CSS custom properties (UILDC drift corrected mid-sprint per arch-21 corrections log). Each component has its own pure-logic test harness; total ~80 inline assertions across the suite. The rbac.js retrofit (T-21.1.6) was deferred — full retrofit of the existing 1,296-line `rbac-manager.js` is out of scope for risk retirement; integration is proven by the new role CRUD modal which composes cleanly with the existing Tailwind patterns.
+
 ### 🔴 High
-- [ ] **15.1.1** Implement the 9 layout components (`flex-stack`, `flex-grid`, `flex-sidebar`, `flex-split-pane`, `flex-container`, `flex-section`, `flex-cluster`, `flex-toolbar`, `flex-masonry`) extending `BaseComponent`. These are referenced by every UILDC v1.0 story in the backlog — their absence blocks countless downstream UIs. **Files**: `frontend/assets/js/components/flex-*.js` (new). **Effort**: L.
+*(none remaining for Epic 15 layout suite — all retired by epic-21 sprint 1)*
 
 ### 🟡 Medium
 - [ ] **15.2.x** Ship the 5 PLANNED components (Datepicker, FileUpload, Form, Notification, Progress) as they're referenced by UILDC stories in epics 1, 11, 14, 17, 19. **Effort**: M each.
@@ -55,7 +60,9 @@ coverage_pct: 100
 
 ## 5. Verdict
 
-UI and Form components are real; Layout suite is a phantom. Single most impactful next action: **ship 15.1.1 layout suite** — it's the precondition for almost every other frontend story.
+**Updated 2026-05-XX (post epic-21 sprint 1):** the layout suite is now real. The 9 components are present, instantiable, and unit-tested. Every UILDC v1.0 story in the backlog can now reference layout primitives that actually exist. `BACKLOG.md` tag should now read **"Layout + UI + Form DONE; Tooling PLANNED"**.
+
+*Original verdict (pre-sprint), preserved for historical context:* UI and Form components are real; Layout suite is a phantom. Single most impactful next action: **ship 15.1.1 layout suite** — it's the precondition for almost every other frontend story.
 
 ## Decisions
 

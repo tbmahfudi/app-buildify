@@ -1,3 +1,5 @@
+import os
+
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -106,10 +108,39 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             logger.warning(f"Failed to initialize Sentry: {e}")
 
+    # Optional in-process notification worker (per ADR-002)
+    # Default OFF; small/dev deployments enable via NOTIFICATION_WORKER_INPROCESS=true
+    notification_worker = None
+    notification_worker_thread = None
+    if os.environ.get("NOTIFICATION_WORKER_INPROCESS", "false").strip().lower() in ("1", "true", "yes", "on"):
+        try:
+            import threading
+            from app.workers.notification_worker import NotificationWorker
+            notification_worker = NotificationWorker()
+            notification_worker_thread = threading.Thread(
+                target=notification_worker.run,
+                kwargs={"setup_signals": False},
+                daemon=True,
+                name="notification-worker",
+            )
+            notification_worker_thread.start()
+            logger.info("notification-worker started in-process (NOTIFICATION_WORKER_INPROCESS=true)")
+        except Exception as e:
+            logger.error(f"Failed to start in-process notification worker: {e}", exc_info=True)
+            notification_worker = None
+            notification_worker_thread = None
+
     yield
 
     # Shutdown
     logger.info("Shutting down application")
+    if notification_worker is not None:
+        logger.info("Stopping in-process notification-worker")
+        notification_worker.stop()
+        if notification_worker_thread is not None:
+            notification_worker_thread.join(timeout=10)
+            if notification_worker_thread.is_alive():
+                logger.warning("notification-worker did not stop within 10s; leaving as daemon")
 
 
 # Create FastAPI app with API versioning

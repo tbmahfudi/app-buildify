@@ -61,6 +61,37 @@ services:
       - buildify-network
     restart: unless-stopped
 
+  # Notification Worker (per ADR-002 — separate container by default)
+  # Consumes notification_queue rows produced by core-platform and dispatches
+  # via SMTP. Reads SMTP config from per-tenant NotificationConfig rows or
+  # the SMTP_* env vars below as fallback. See backend/.env.example.
+  notification-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: buildify-notification-worker
+    command: ["python", "-m", "app.workers.notification_worker"]
+    environment:
+      - SQLALCHEMY_DATABASE_URL=postgresql+psycopg2://postgres:postgres@postgres:5432/buildify
+      - LOG_LEVEL=INFO
+      - NOTIFICATION_WORKER_POLL_SECONDS=5
+      - NOTIFICATION_WORKER_BATCH_SIZE=20
+      # SMTP config — populate via .env / secrets manager in real deployments
+      - SMTP_HOST=${SMTP_HOST:-}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASSWORD=${SMTP_PASSWORD:-}
+      - SMTP_FROM=${SMTP_FROM:-}
+      - SMTP_USE_TLS=${SMTP_USE_TLS:-true}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+    networks:
+      - buildify-network
+    restart: unless-stopped
+
   # Financial Module Service
   financial-module:
     build:

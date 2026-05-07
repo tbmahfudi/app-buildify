@@ -98,13 +98,22 @@ class NotificationWorker:
         """Request a graceful shutdown after the current batch completes."""
         self._stop = True
 
-    def run(self) -> None:
+    def run(self, setup_signals: bool = True) -> None:
         """Block-and-poll until ``stop()`` is called or SIGTERM/SIGINT received.
 
         Suitable for both standalone-process and asyncio-thread embedding.
+
+        Args:
+            setup_signals: when True (default, standalone mode), install
+                SIGTERM/SIGINT handlers. Pass False when run from a
+                non-main thread (in-process mode per ADR-002) — signal
+                handlers can only be installed from the main thread, and
+                the embedding lifespan is responsible for shutdown
+                signaling instead.
         """
-        signal.signal(signal.SIGTERM, self._handle_signal)
-        signal.signal(signal.SIGINT, self._handle_signal)
+        if setup_signals:
+            signal.signal(signal.SIGTERM, self._handle_signal)
+            signal.signal(signal.SIGINT, self._handle_signal)
 
         logger.info(
             "notification-worker starting (poll=%ss, batch=%s)",
@@ -337,7 +346,7 @@ class NotificationWorker:
         row.sent_at = datetime.now(timezone.utc)
         row.error_message = None
         db.commit()
-        # T-21.2.4 will add audit_logger.log("notification.delivered", ...)
+        self._audit(db, row, action="notification.delivered", error=None)
 
     def _mark_failed(self, db: Session, row: NotificationQueue, error: str) -> None:
         row.error_message = error
@@ -354,7 +363,40 @@ class NotificationWorker:
                 row.id, row.attempts, row.max_attempts, error,
             )
         db.commit()
-        # T-21.2.4 will add audit_logger.log("notification.failed", ...)
+        # Only audit terminal outcomes (delivered / dead-letter), not
+        # transient retries — otherwise the audit log gets spammed with
+        # one entry per attempt for flaky SMTP servers.
+        if row.status == "failed":
+            self._audit(db, row, action="notification.failed", error=error)
+
+    @staticmethod
+    def _audit(db: Session, row: NotificationQueue, *, action: str, error: Optional[str]) -> None:
+        """Best-effort audit-log entry for a notification outcome.
+
+        Failures here MUST NOT propagate — the notification has already
+        been dispatched (or dead-lettered) and committed. Losing the
+        audit row is recoverable; rolling back the worker is not.
+        """
+        try:
+            from app.core.audit import create_audit_log
+            create_audit_log(
+                db=db,
+                action=action,
+                entity_type="notification_queue",
+                entity_id=str(row.id),
+                context_info={
+                    "tenant_id": str(row.tenant_id) if row.tenant_id else None,
+                    "notification_type": row.notification_type,
+                    "delivery_method": row.delivery_method,
+                    "recipient": row.recipient,
+                    "attempts": row.attempts,
+                    "max_attempts": row.max_attempts,
+                },
+                status="failed" if error else "success",
+                error_message=error,
+            )
+        except Exception:  # pragma: no cover - log-only path
+            logger.exception("Failed to write audit log for notification id=%s", row.id)
 
 
 def _bool_env(name: str, default: bool = False) -> bool:

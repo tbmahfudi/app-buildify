@@ -21,6 +21,52 @@ export const rbacAPI = {
     return response.json();
   },
 
+  async createRole(roleData) {
+    const response = await apiFetch(`/rbac/roles`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(roleData)
+    });
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw Object.assign(new Error(err.detail || `HTTP ${response.status}`), {
+        status: response.status,
+        body: err
+      });
+    }
+    return response.json();
+  },
+
+  async updateRole(roleId, roleData) {
+    const response = await apiFetch(`/rbac/roles/${roleId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(roleData)
+    });
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw Object.assign(new Error(err.detail || `HTTP ${response.status}`), {
+        status: response.status,
+        body: err
+      });
+    }
+    return response.json();
+  },
+
+  async deleteRole(roleId) {
+    const response = await apiFetch(`/rbac/roles/${roleId}`, {
+      method: 'DELETE'
+    });
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw Object.assign(new Error(err.detail?.message || err.detail || `HTTP ${response.status}`), {
+        status: response.status,
+        body: err
+      });
+    }
+    return response.json();
+  },
+
   // ============================================================================
   // PERMISSIONS
   // ============================================================================

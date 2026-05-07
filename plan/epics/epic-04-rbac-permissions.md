@@ -4,9 +4,9 @@
 
 ---
 
-## Feature 4.1 — Role Management `[IN-PROGRESS]`
+## Feature 4.1 — Role Management `[DONE]`
 
-### Story 4.1.1 — System and Custom Role Definitions `[IN-PROGRESS]`
+### Story 4.1.1 — System and Custom Role Definitions `[DONE]`
 
 #### Backend
 *As an API, I want to create, read, update, and delete tenant-scoped roles, so that administrators can model their organization's actual access structure.*
@@ -103,9 +103,9 @@
 
 ---
 
-## Feature 4.2 — Permission Engine `[IN-PROGRESS]`
+## Feature 4.2 — Permission Engine `[DONE]`
 
-### Story 4.2.1 — Permission Format and Wildcard Matching `[IN-PROGRESS]`
+### Story 4.2.1 — Permission Format and Wildcard Matching `[DONE]`
 
 #### Backend
 *As an API, I want a permission evaluation engine that supports wildcards and scope hierarchy, so that broad and narrow access can be expressed cleanly.*
@@ -166,7 +166,7 @@
 
 ---
 
-### Story 4.2.4 — Per-Entity Permission Enforcement `[OPEN]`
+### Story 4.2.4 — Per-Entity Permission Enforcement `[DONE]`
 
 #### Backend
 *As an API, I want entity-level permission rules stored on the entity definition to override global RBAC for that entity's data, so that custom data has fine-grained access control.*

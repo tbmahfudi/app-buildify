@@ -897,6 +897,35 @@ export class DataModelPage {
                 <span class="text-sm text-gray-700">Enable Versioning</span>
               </label>
             </div>
+
+            <!-- Access Control (T-21.4.4/.5 — wires to EntityDefinition.permissions JSONB) -->
+            <div class="border-t border-gray-200 pt-4">
+              <div class="flex items-center justify-between mb-2">
+                <h4 class="text-sm font-semibold text-gray-900">Access Control</h4>
+              </div>
+              <p class="text-xs text-gray-500 mb-3">Restrict CRUD actions to specific roles. When "Inherit from global RBAC" is on, the platform's role-based permissions apply with no entity-level override.</p>
+              <label class="flex items-center gap-2 mb-3 cursor-pointer">
+                <input type="checkbox" id="acInherit" class="rounded text-blue-600">
+                <span class="text-sm text-gray-700">Inherit from global RBAC</span>
+              </label>
+              <div id="acMatrixWrapper" class="border border-gray-200 rounded-lg overflow-hidden">
+                <div id="acMatrixLoading" class="p-4 text-sm text-gray-500 flex items-center gap-2">
+                  <i class="ph ph-spinner animate-spin"></i> Loading roles…
+                </div>
+                <table id="acMatrix" class="hidden w-full text-sm">
+                  <thead class="bg-gray-50 border-b border-gray-200">
+                    <tr>
+                      <th class="px-3 py-2 text-left text-xs font-medium text-gray-700 uppercase">Role</th>
+                      <th class="px-3 py-2 text-center text-xs font-medium text-gray-700 uppercase">Create</th>
+                      <th class="px-3 py-2 text-center text-xs font-medium text-gray-700 uppercase">Read</th>
+                      <th class="px-3 py-2 text-center text-xs font-medium text-gray-700 uppercase">Update</th>
+                      <th class="px-3 py-2 text-center text-xs font-medium text-gray-700 uppercase">Delete</th>
+                    </tr>
+                  </thead>
+                  <tbody id="acMatrixBody"></tbody>
+                </table>
+              </div>
+            </div>
           </div>
 
           <div class="px-6 py-4 border-t border-gray-200 flex gap-3">
@@ -916,6 +945,102 @@ export class DataModelPage {
     document.getElementById('editEntityForm').addEventListener('submit', (e) => {
       e.preventDefault();
       this.updateEntity(entity.id, e.target);
+    });
+
+    // Initialize Access Control matrix (T-21.4.4)
+    this._initAccessControlMatrix(entity);
+  }
+
+  /**
+   * Render the per-entity permission matrix from GET /rbac/roles +
+   * entity.permissions JSONB. Stores live state on this._acState so
+   * updateEntity() can serialize back to {role_code: [actions]}.
+   */
+  async _initAccessControlMatrix(entity) {
+    const inheritEl = document.getElementById('acInherit');
+    const loadingEl = document.getElementById('acMatrixLoading');
+    const tableEl = document.getElementById('acMatrix');
+    const bodyEl = document.getElementById('acMatrixBody');
+    if (!inheritEl || !tableEl || !bodyEl) return;
+
+    const initialPermissions = (entity && entity.permissions && typeof entity.permissions === 'object')
+      ? entity.permissions : null;
+    const inherit = initialPermissions === null;
+    inheritEl.checked = inherit;
+
+    // Live state — keys are role codes, values are arrays of allowed actions
+    this._acState = {};
+    if (initialPermissions) {
+      Object.entries(initialPermissions).forEach(([code, actions]) => {
+        this._acState[code] = Array.isArray(actions) ? [...actions] : [];
+      });
+    }
+
+    let roles = [];
+    try {
+      const res = await apiFetch('/rbac/roles?limit=200', {
+        headers: { 'Authorization': `Bearer ${authService.getToken()}` }
+      });
+      if (res.ok) {
+        const payload = await res.json();
+        roles = payload.items || payload.results || payload || [];
+      }
+    } catch (e) {
+      console.warn('Access Control: failed to load roles', e);
+    }
+
+    if (!roles.length) {
+      if (loadingEl) loadingEl.textContent = 'No roles available — wildcard / global RBAC applies.';
+      return;
+    }
+
+    if (loadingEl) loadingEl.classList.add('hidden');
+    tableEl.classList.remove('hidden');
+
+    const ACTIONS = ['create', 'read', 'update', 'delete'];
+    bodyEl.innerHTML = roles.map(role => `
+      <tr class="border-t border-gray-100" data-role-code="${this.escapeHtml(role.code)}">
+        <td class="px-3 py-2">
+          <div class="font-medium text-gray-900">${this.escapeHtml(role.name)}</div>
+          <div class="text-xs text-gray-500 font-mono">${this.escapeHtml(role.code)}</div>
+        </td>
+        ${ACTIONS.map(action => `
+          <td class="px-3 py-2 text-center">
+            <input type="checkbox" class="ac-cell rounded text-blue-600"
+              data-role-code="${this.escapeHtml(role.code)}"
+              data-action="${action}"
+              ${(this._acState[role.code] || []).includes(action) ? 'checked' : ''}>
+          </td>
+        `).join('')}
+      </tr>
+    `).join('');
+
+    const setMatrixEnabled = (enabled) => {
+      bodyEl.querySelectorAll('input.ac-cell').forEach(cb => {
+        cb.disabled = !enabled;
+      });
+      tableEl.classList.toggle('opacity-50', !enabled);
+    };
+
+    setMatrixEnabled(!inherit);
+
+    inheritEl.addEventListener('change', () => {
+      setMatrixEnabled(!inheritEl.checked);
+    });
+
+    bodyEl.addEventListener('change', (e) => {
+      const cb = e.target;
+      if (!cb.classList || !cb.classList.contains('ac-cell')) return;
+      const code = cb.dataset.roleCode;
+      const action = cb.dataset.action;
+      if (!code || !action) return;
+      const current = new Set(this._acState[code] || []);
+      if (cb.checked) current.add(action); else current.delete(action);
+      if (current.size === 0) {
+        delete this._acState[code];
+      } else {
+        this._acState[code] = Array.from(current);
+      }
     });
   }
 
@@ -939,6 +1064,14 @@ export class DataModelPage {
       supports_attachments: formData.get('supports_attachments') === 'on',
       is_versioned: formData.get('is_versioned') === 'on'
     };
+
+    // T-21.4.5 — serialize per-entity permission matrix:
+    // - inherit ON  -> permissions = null (global RBAC owns)
+    // - inherit OFF -> permissions = {role_code: [actions]} from this._acState
+    const inheritEl = document.getElementById('acInherit');
+    if (inheritEl) {
+      data.permissions = inheritEl.checked ? null : { ...(this._acState || {}) };
+    }
 
     try {
       const response = await apiFetch(`/data-model/entities/${entityId}`, {

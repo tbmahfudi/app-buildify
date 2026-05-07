@@ -81,7 +81,7 @@ Frontend sections follow the **UI Layout Description Convention (UILDC v1.0)** â
 | 1 | [Authentication & Identity](epics/epic-01-authentication.md) | 17 | Mixed (core auth DONE; sessions + policy admin OPEN) |
 | 2 | [Multi-Tenancy & Org Management](epics/epic-02-multi-tenancy.md) | 11 | DONE |
 | 3 | [User Management](epics/epic-03-user-management.md) | 6 | IN-PROGRESS (user CRUD MISSING) |
-| 4 | [RBAC & Permissions](epics/epic-04-rbac-permissions.md) | 7 | Mixed (assignments DONE; role CRUD + wildcards + entity perms OPEN) |
+| 4 | [RBAC & Permissions](epics/epic-04-rbac-permissions.md) | 7 | DONE â€” core complete (epic-21 sprint 1 retired role CRUD + wildcards + entity perms) |
 | 5 | [NoCode Entity Designer](epics/epic-05-nocode-entity-designer.md) | 13 | Mixed |
 | 6 | [Dynamic CRUD & API Layer](epics/epic-06-dynamic-crud-api.md) | 8 | Mostly DONE |
 | 7 | [Workflow Engine](epics/epic-07-workflow-engine.md) | 5 | DONE |
@@ -90,8 +90,8 @@ Frontend sections follow the **UI Layout Description Convention (UILDC v1.0)** â
 | 10 | [Reporting](epics/epic-10-reporting.md) | 5 | Mostly DONE |
 | 11 | [Module System](epics/epic-11-module-system.md) | 7 | Mostly DONE (activation API drift) |
 | 13 | [Security & Compliance](epics/epic-13-security-compliance.md) | 8 | Mostly DONE; Prometheus + Tests MISSING |
-| 14 | [Notification System](epics/epic-14-notification-system.md) | 6 | Mixed (arch DONE; delivery MISSING) |
-| 15 | [Flex Component Library](epics/epic-15-flex-component-library.md) | 10 | Mixed (Layout suite OPEN) |
+| 14 | [Notification System](epics/epic-14-notification-system.md) | 6 | Arch + Email DONE; Templates / SMS / In-App MISSING (epic-21 sprint 1 shipped Email) |
+| 15 | [Flex Component Library](epics/epic-15-flex-component-library.md) | 10 | Layout + UI + Form DONE; Tooling PLANNED (epic-21 sprint 1 shipped Layout) |
 | 16 | [Internationalization](epics/epic-16-internationalization.md) | 5 | Mixed |
 | 17 | [Settings & Configuration](epics/epic-17-settings-configuration.md) | 6 | Mixed |
 | 18 | [Developer Experience & SDK](epics/epic-18-developer-experience.md) | 6 | Mixed |
