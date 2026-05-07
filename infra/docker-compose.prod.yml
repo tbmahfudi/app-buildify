@@ -4,6 +4,16 @@ services:
     env_file: .env
     restart: unless-stopped
 
+  # Notification worker (per ADR-002): same image as backend, different
+  # entrypoint. Reads SMTP_* / DB / NOTIFICATION_WORKER_* from .env (same
+  # file as backend so config stays in one place). Scales independently
+  # of the API process.
+  notification-worker:
+    image: ghcr.io/YOUR_GH_OWNER/app-backend:${TAG}
+    command: ["python", "-m", "app.workers.notification_worker"]
+    env_file: .env
+    restart: unless-stopped
+
   frontend:
     image: ghcr.io/YOUR_GH_OWNER/app-frontend:${TAG}
     restart: unless-stopped
