@@ -124,10 +124,16 @@
           <div class="p-6 border-b border-gray-200">
             <div class="flex items-center justify-between mb-4">
               <h3 class="text-lg font-semibold text-gray-900">Roles Management</h3>
-              <button id="btn-view-permission-matrix" onclick="rbacManager.openPermissionMatrix()"
-                class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2">
-                <i class="ph ph-table"></i> View Permission Matrix
-              </button>
+              <div class="flex items-center gap-2">
+                <button id="btn-new-role" onclick="rbacManager.openNewRoleModal()"
+                  class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2">
+                  <i class="ph ph-plus"></i> New Role
+                </button>
+                <button id="btn-view-permission-matrix" onclick="rbacManager.openPermissionMatrix()"
+                  class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2">
+                  <i class="ph ph-table"></i> View Permission Matrix
+                </button>
+              </div>
             </div>
 
             <div class="flex gap-3">
@@ -307,6 +313,51 @@
     <div class="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
       <div id="role-modal-content"></div>
     </div>
+  </div>
+</div>
+
+<!-- New Role Modal (T-21.3.5/.6 — wires to POST /rbac/roles) -->
+<div id="new-role-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center">
+  <div class="bg-white rounded-xl shadow-2xl max-w-md w-full">
+    <div class="p-6 border-b flex items-center justify-between">
+      <h3 class="text-xl font-semibold text-gray-900">New Role</h3>
+      <button id="new-role-modal-close" class="text-gray-400 hover:text-gray-600">
+        <i class="ph ph-x text-2xl"></i>
+      </button>
+    </div>
+    <form id="new-role-form" class="p-6 space-y-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Code <span class="text-red-500">*</span></label>
+        <input type="text" name="code" required pattern="^[a-z0-9_]+$" maxlength="50"
+          placeholder="e.g. project_manager"
+          class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 font-mono text-sm">
+        <p class="text-xs text-gray-500 mt-1">lowercase letters, digits, underscore only — unique within tenant</p>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Name <span class="text-red-500">*</span></label>
+        <input type="text" name="name" required maxlength="255"
+          placeholder="e.g. Project Manager"
+          class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+        <textarea name="description" rows="2"
+          class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"></textarea>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Copy permissions from</label>
+        <select name="copy_permissions_from" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+          <option value="">— None (start empty) —</option>
+        </select>
+      </div>
+      <div id="new-role-error" class="hidden rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-800"></div>
+      <div class="flex justify-end gap-2 pt-2">
+        <button type="button" id="new-role-cancel"
+          class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Cancel</button>
+        <button type="submit" id="new-role-submit"
+          class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Create Role</button>
+      </div>
+    </form>
   </div>
 </div>
 

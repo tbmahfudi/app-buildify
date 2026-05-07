@@ -181,6 +181,9 @@ class RBACManager {
         { id: 'status', label: 'Status' }
       ],
       bulkActions: true,
+      actions: [
+        { handler: 'deleteRole', icon: 'trash', label: 'Delete role', color: 'red' }
+      ],
       onRowClick: (role) => this.manageRolePermissions(role.id)
     });
 
@@ -856,6 +859,121 @@ class RBACManager {
         `}
       </div>
     `;
+  }
+
+  // ==========================================================================
+  // Role CRUD (T-21.3.5/.6/.7 — wires the new POST/PUT/DELETE /rbac/roles
+  // endpoints from T-21.3.1/.2/.3)
+  // ==========================================================================
+
+  async openNewRoleModal() {
+    const modal = document.getElementById('new-role-modal');
+    if (!modal) {
+      showToast('New Role modal not found in DOM', 'error');
+      return;
+    }
+    const form = document.getElementById('new-role-form');
+    const errorEl = document.getElementById('new-role-error');
+    const submitBtn = document.getElementById('new-role-submit');
+    if (form) form.reset();
+    if (errorEl) { errorEl.classList.add('hidden'); errorEl.textContent = ''; }
+    if (submitBtn) submitBtn.disabled = false;
+
+    // Populate "Copy permissions from" with the current role list
+    const select = form?.querySelector('select[name="copy_permissions_from"]');
+    if (select) {
+      try {
+        const res = await rbacAPI.getRoles({ limit: 200 });
+        const roles = res.items || res.results || res || [];
+        // Reset options keeping the placeholder
+        select.innerHTML = '<option value="">— None (start empty) —</option>';
+        roles.forEach(r => {
+          const opt = document.createElement('option');
+          opt.value = r.id;
+          opt.textContent = `${r.name} (${r.code})`;
+          select.appendChild(opt);
+        });
+      } catch (e) {
+        console.warn('Failed to populate copy-from select:', e);
+      }
+    }
+
+    // Bind one-shot listeners (idempotent — close + cancel call the same path)
+    const close = () => {
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    };
+    document.getElementById('new-role-modal-close')?.addEventListener('click', close, { once: true });
+    document.getElementById('new-role-cancel')?.addEventListener('click', close, { once: true });
+
+    if (form && !form.dataset.bound) {
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        if (errorEl) { errorEl.classList.add('hidden'); errorEl.textContent = ''; }
+        if (submitBtn) submitBtn.disabled = true;
+        const fd = new FormData(form);
+        const payload = {
+          code: (fd.get('code') || '').trim(),
+          name: (fd.get('name') || '').trim(),
+          description: (fd.get('description') || '').trim() || null
+        };
+        const copyFrom = (fd.get('copy_permissions_from') || '').trim();
+        if (copyFrom) payload.copy_permissions_from = copyFrom;
+        try {
+          await rbacAPI.createRole(payload);
+          close();
+          showToast(`Role "${payload.name}" created`, 'success');
+          await this.tables.roles.load({});
+        } catch (err) {
+          if (errorEl) {
+            const msg = err.body?.detail || err.message || 'Failed to create role';
+            errorEl.textContent = typeof msg === 'string' ? msg : JSON.stringify(msg);
+            errorEl.classList.remove('hidden');
+          } else {
+            showToast(err.message || 'Failed to create role', 'error');
+          }
+        } finally {
+          if (submitBtn) submitBtn.disabled = false;
+        }
+      });
+      form.dataset.bound = '1';
+    }
+
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+  }
+
+  async deleteRole(roleId) {
+    if (!roleId) return;
+    const role = (this.tables.roles.state.items || []).find(r => r.id === roleId);
+    if (role && role.is_system) {
+      showToast('System roles cannot be deleted', 'warning');
+      return;
+    }
+    const label = role ? `${role.name} (${role.code})` : 'this role';
+    if (!confirm(`Delete role "${label}"? This cannot be undone.`)) return;
+
+    try {
+      await rbacAPI.deleteRole(roleId);
+      showToast(`Role "${label}" deleted`, 'success');
+      await this.tables.roles.load({});
+    } catch (err) {
+      if (err.status === 409) {
+        const counts = err.body?.detail?.dependent_count || {};
+        const users = counts.users || 0;
+        const groups = counts.groups || 0;
+        showToast(
+          `Cannot delete: role is assigned to ${users} user${users === 1 ? '' : 's'} and ${groups} group${groups === 1 ? '' : 's'}. Remove all assignments first.`,
+          'warning'
+        );
+        return;
+      }
+      if (err.status === 403) {
+        showToast(err.message || 'Cannot delete this role', 'warning');
+        return;
+      }
+      showToast(err.message || 'Failed to delete role', 'error');
+    }
   }
 
   async viewRoleDetails(roleId) {
