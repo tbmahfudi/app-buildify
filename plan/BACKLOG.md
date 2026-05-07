@@ -24,7 +24,7 @@
 | 1 | Authentication & Identity Management | Mixed: core auth DONE; sessions + policy admin OPEN; 2FA/SSO PLANNED |
 | 2 | Multi-Tenancy & Organization Management | DONE; Tiers PLANNED |
 | 3 | User Management | IN-PROGRESS: profile + groups DONE; user CRUD MISSING |
-| 4 | RBAC & Permissions | Mixed: assignments DONE; role CRUD + wildcards + entity perms OPEN |
+| 4 | RBAC & Permissions | DONE — RBAC core complete (role CRUD + wildcards + entity perms shipped via epic-21 sprint 1) |
 | 5 | NoCode Entity Designer | DONE; record-history OPEN |
 | 6 | Dynamic CRUD & API Layer | Mostly DONE; Bulk OPEN |
 | 7 | Workflow Engine | DONE |
@@ -33,8 +33,8 @@
 | 10 | Reporting | Mostly DONE; scheduler page unverified |
 | 11 | Module System | Mostly DONE; activation API drift; Marketplace + nocode export/import OPEN |
 | 13 | Security & Compliance | Mostly DONE; Prometheus + Test Suites MISSING |
-| 14 | Notification System | Arch DONE; Email + SMS + In-App MISSING |
-| 15 | Flex Component Library | UI + Form DONE; **Layout suite OPEN**; Tooling PLANNED |
+| 14 | Notification System | Arch + Email DONE; Templates + SMS + In-App MISSING (Email shipped via epic-21 sprint 1) |
+| 15 | Flex Component Library | Layout + UI + Form DONE; Tooling PLANNED (Layout suite shipped via epic-21 sprint 1) |
 | 16 | Internationalization | Feature 16.1 DONE; 16.2 (Module + Entity i18n) PLANNED |
 | 17 | Settings & Configuration | 17.1 + 17.2 DONE; 17.3 (White-Label) PLANNED |
 | 18 | Developer Experience & Module SDK | SDK + bus DONE; docs and dev-UX gaps remain |

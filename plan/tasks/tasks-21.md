@@ -119,8 +119,8 @@ Status legend: `OPEN` = not started · `IN-PROGRESS` = picked up · `BLOCKED` = 
 |----|-------|-------|-----------:|---:|---------|--------|
 | T-21.X.1 | End-to-end Maya-journey smoke test (sign-up → entity → per-entity perms → custom role → password reset → email arrives) | D1 | T-21.1.*, T-21.2.*, T-21.3.*, T-21.4.* | 12 | [epic-21 sprint-level DoD](../epics/epic-21-risk-retirement.md) | OPEN |
 | T-21.X.2 | Security review: wildcard permission algorithm (no regex injection), SMTP credential handling (env-only, never logged), per-entity perm bypass check | D3 | T-21.3.4, T-21.2.2, T-21.4.2 | 8 | [arch-21 §6 risks](../architecture/arch-21.md) | OPEN |
-| T-21.X.3 | Re-audit run after sprint to retag stories 4.1.1, 4.2.1, 4.2.4, 14.2.1, 15.1.1 to `[DONE]` in their canonical epic files (✦ Code Auditor invocation; per A3 retag mode) | ✦ | T-21.X.1 | 4 | [audit-04, audit-14, audit-15](../architecture/audits/) | OPEN |
-| T-21.X.4 | Update `BACKLOG.md` summary table once stories retag | A3 | T-21.X.3 | 1 | [plan/BACKLOG.md](../BACKLOG.md) | OPEN |
+| T-21.X.3 | Re-audit run after sprint to retag stories 4.1.1, 4.2.1, 4.2.4, 14.2.1, 15.1.1 to `[DONE]` in their canonical epic files (✦ Code Auditor invocation; per A3 retag mode) | ✦ | T-21.X.1 | 4 | [audit-04, audit-14, audit-15](../architecture/audits/) | DONE — audit-04/14/15 retagged with evidence rows pointing to new code; "Retired by epic-21 sprint 1" sections added; Verdict sections updated |
+| T-21.X.4 | Update `BACKLOG.md` summary table once stories retag | A3 | T-21.X.3 | 1 | [plan/BACKLOG.md](../BACKLOG.md) | DONE — Epic 4/14/15 rows in BACKLOG.md + plan/README.md Epic Summary updated to reflect post-sprint state |
 | T-21.X.5 | Generate release notes summarizing risk retirement (E2 Technical Writer invocation) | E2 | T-21.X.3 | 4 | n/a | OPEN |
 
 **Subtotal: 29 hrs**

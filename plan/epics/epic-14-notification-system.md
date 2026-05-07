@@ -54,9 +54,9 @@
 
 ---
 
-## Feature 14.2 — Email Delivery `[OPEN]`
+## Feature 14.2 — Email Delivery `[IN-PROGRESS]`
 
-### Story 14.2.1 — SMTP Email Delivery Adapter `[OPEN]`
+### Story 14.2.1 — SMTP Email Delivery Adapter `[DONE]`
 
 #### Backend
 *As an API, I want the notification worker to send emails via SMTP using tenant-configured credentials, so that email notifications are actually delivered.*
