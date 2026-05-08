@@ -24,6 +24,32 @@ open_questions:
 
 # tasks-21 — Sprint Backlog for 🔴 Risk Retirement (Sprint 1)
 
+## Sprint outcome (added 2026-05-08)
+
+> **Sprint complete: 33 of 34 tasks DONE, 1 DEFERRED.** All 5 🔴 risks named in `vision-01` §7 are retired end-to-end with code-walk verification per [`test-report-21`](../../tests/test-reports/test-report-21.md). Maya-journey steps 3, 7, and 8 (per `research-01` §2) work end-to-end. **Optional**: 30-minute live operator run for the 4 SMTP/browser-DOM-dependent steps before prod ship.
+
+| Item | Done / total | Hrs done / planned |
+|------|---:|---:|
+| 21.1 Layout suite | 7 / 8 (1 deferred — `rbac.js` retrofit) | 54 / 60 |
+| 21.2 SMTP worker | 8 / 8 | 34 / 44 |
+| 21.3 Role CRUD + wildcards | 8 / 8 | 46 / 46 |
+| 21.4 Per-entity perms | 6 / 6 | 32 / 32 |
+| Cross-cutting | 5 / 5 | 29 / 29 |
+| **TOTAL** | **33 / 34** | **195 / 211** |
+
+**Drift caught during the sprint** (worth a retrospective): 7 instances where downstream agents corrected upstream agents' assumptions — see `arch-21` corrections log + commit messages. The pattern is real: build-stage agents catch what design-stage agents missed because they're the first to actually exercise the code.
+
+**Follow-up backlog** (out of sprint scope, tracked elsewhere):
+- T-21.1.6 — `rbac.js` full retrofit with new layout primitives
+- Frontend wildcard mirror in `frontend/assets/js/rbac.js`
+- Email template system (story 14.2.2 still MISSING)
+- LISTEN/NOTIFY low-latency wakeup for the worker
+- SMTP password at-rest encryption (M-1 in `sec-review-21`)
+- CI/CD pipeline + real test framework (vision-01 §7 last open 🔴)
+
+---
+
+
 > **Upstream**: [`epic-21-risk-retirement`](../epics/epic-21-risk-retirement.md) (approved), [`arch-21`](../architecture/arch-21.md) (approved), [`adr-002-smtp-worker-placement`](../architecture/adr-002-smtp-worker-placement.md) (accepted), [`schema-21`](../architecture/schema-21.md) (approved).
 
 ---

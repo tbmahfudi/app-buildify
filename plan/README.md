@@ -97,4 +97,4 @@ Frontend sections follow the **UI Layout Description Convention (UILDC v1.0)** �
 | 18 | [Developer Experience & SDK](epics/epic-18-developer-experience.md) | 6 | Mixed |
 | 19 | [Infrastructure & Deployment](epics/epic-19-infrastructure-deployment.md) | 8 | Mixed (CI/CD MISSING) |
 | 20 | [Mobile & PWA](epics/epic-20-mobile-pwa.md) | 3 | PLANNED |
-| 21 | [🔴 Risk Retirement (Sprint 1)](epics/epic-21-risk-retirement.md) | 4 (slice; refs 15.1.1, 14.2.1, 4.1.1+4.2.1, 4.2.4) | Sequencing epic per [research-01](research/research-01-app-buildify.md) — must complete before next net-new feature epic |
+| 21 | [🔴 Risk Retirement (Sprint 1)](epics/epic-21-risk-retirement.md) | 4 (slice; refs 15.1.1, 14.2.1, 4.1.1+4.2.1, 4.2.4) | DONE — 33/34 tasks (1 deferred); 5/5 🔴 risks retired; sprint plan + report at [`tests/test-plans/test-plan-21.md`](../tests/test-plans/test-plan-21.md), [`tests/test-reports/test-report-21.md`](../tests/test-reports/test-report-21.md) |

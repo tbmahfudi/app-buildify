@@ -13,7 +13,7 @@ Total artifacts: **52**, grouped by type. Source of truth lives in each artifact
 
 | id | status | upstream | downstream | updated |
 |---|---|---|---|---|
-| [`vision-01-app-buildify`](vision/vision-01-app-buildify.md) | `approved` | — | research-01-app-buildify | 2026-04-29 |
+| [`vision-01-app-buildify`](vision/vision-01-app-buildify.md) | `approved` | — | research-01-app-buildify, epic-21-risk-retirement | 2026-04-29 |
 
 ## Research `1`
 
