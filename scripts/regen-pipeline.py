@@ -33,6 +33,7 @@ TYPE_ORDER = [
     "schema",
     "audit",
     "tasks",
+    "release-notes",
     "agent",
     "standard",
 ]
@@ -77,7 +78,10 @@ def parse_frontmatter(text: str) -> dict | None:
 
 
 def collect_artifacts() -> list[tuple[Path, dict]]:
-    roots = [REPO / "plan"]
+    roots = [
+        REPO / "plan",
+        REPO / "docs" / "release-notes",
+    ]
     for entry in REPO.iterdir():
         if entry.is_dir() and entry.name.startswith("plan-mod-"):
             roots.append(entry)
