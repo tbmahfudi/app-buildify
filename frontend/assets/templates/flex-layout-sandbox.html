@@ -1,0 +1,137 @@
+<!--
+  Flex Layout Sandbox — visual smoke test for all 9 layout primitives
+  shipped in epic-21 sprint 1 (story 15.1.1). Not registered in the
+  main menu; reachable via direct hash navigation #/flex-layout-sandbox
+  for developer reference. T-21.1.7.
+-->
+<div class="space-y-6 p-6">
+  <header class="border-b border-gray-200 pb-4">
+    <h1 class="text-2xl font-bold text-gray-900 flex items-center gap-3">
+      <i class="ph-duotone ph-stack text-blue-600"></i>
+      Flex Layout Sandbox
+    </h1>
+    <p class="text-sm text-gray-600 mt-1">Visual smoke test for the 9 layout primitives. Each card below instantiates one component with sensible defaults so you can see what it does at a glance.</p>
+  </header>
+
+  <!-- 1. FlexStack -->
+  <section class="bg-white border border-gray-200 rounded-lg p-4">
+    <h2 class="text-lg font-semibold mb-2">1. FlexStack <span class="text-xs text-gray-500 font-mono">direction=vertical, gap=md</span></h2>
+    <div id="sb-stack" class="bg-gray-50 p-3 rounded">
+      <div class="bg-blue-100 p-2 rounded">Item A</div>
+      <div class="bg-blue-100 p-2 rounded">Item B</div>
+      <div class="bg-blue-100 p-2 rounded">Item C</div>
+    </div>
+  </section>
+
+  <!-- 2. FlexCluster -->
+  <section class="bg-white border border-gray-200 rounded-lg p-4">
+    <h2 class="text-lg font-semibold mb-2">2. FlexCluster <span class="text-xs text-gray-500 font-mono">gap=sm, justify=start</span></h2>
+    <p class="text-xs text-gray-500 mb-2">Resize the viewport — children wrap when overflow.</p>
+    <div id="sb-cluster" class="bg-gray-50 p-3 rounded">
+      <span class="bg-purple-100 px-3 py-1 rounded">tag-one</span>
+      <span class="bg-purple-100 px-3 py-1 rounded">tag-two-longer</span>
+      <span class="bg-purple-100 px-3 py-1 rounded">tag-three</span>
+      <span class="bg-purple-100 px-3 py-1 rounded">tag-four-still-longer</span>
+      <span class="bg-purple-100 px-3 py-1 rounded">five</span>
+      <span class="bg-purple-100 px-3 py-1 rounded">six</span>
+    </div>
+  </section>
+
+  <!-- 3. FlexContainer -->
+  <section class="bg-white border border-gray-200 rounded-lg p-4">
+    <h2 class="text-lg font-semibold mb-2">3. FlexContainer <span class="text-xs text-gray-500 font-mono">maxWidth=md, padding=lg</span></h2>
+    <p class="text-xs text-gray-500 mb-2">Centered, max-width clamped — wider viewports leave gutters.</p>
+    <div id="sb-container" class="bg-gray-50 rounded">
+      <div class="bg-amber-100 p-3 rounded text-sm">Centered bounded content. The dashed gutter on either side appears once the viewport is wider than the configured max-width.</div>
+    </div>
+  </section>
+
+  <!-- 4. FlexGrid -->
+  <section class="bg-white border border-gray-200 rounded-lg p-4">
+    <h2 class="text-lg font-semibold mb-2">4. FlexGrid <span class="text-xs text-gray-500 font-mono">columns="1 2 3", gap=md</span></h2>
+    <p class="text-xs text-gray-500 mb-2">1 col on mobile, 2 on md, 3 on lg. Resize the viewport to verify.</p>
+    <div id="sb-grid" class="bg-gray-50 p-3 rounded">
+      <div class="bg-emerald-100 p-3 rounded">Cell 1</div>
+      <div class="bg-emerald-100 p-3 rounded">Cell 2</div>
+      <div class="bg-emerald-100 p-3 rounded">Cell 3</div>
+      <div class="bg-emerald-100 p-3 rounded">Cell 4</div>
+      <div class="bg-emerald-100 p-3 rounded">Cell 5</div>
+      <div class="bg-emerald-100 p-3 rounded">Cell 6</div>
+    </div>
+  </section>
+
+  <!-- 5. FlexSection -->
+  <section class="bg-white border border-gray-200 rounded-lg p-4">
+    <h2 class="text-lg font-semibold mb-2">5. FlexSection <span class="text-xs text-gray-500 font-mono">title="Quarterly Report", level=h3, with actions slot</span></h2>
+    <div id="sb-section" class="bg-gray-50 p-3 rounded">
+      <button data-slot="actions" class="px-3 py-1 bg-blue-600 text-white text-sm rounded">Export</button>
+      <button data-slot="actions" class="px-3 py-1 border border-gray-300 text-sm rounded">Refresh</button>
+      <p class="text-sm text-gray-700">Section body content lives here. The heading + action buttons are rendered above this paragraph by FlexSection.</p>
+    </div>
+  </section>
+
+  <!-- 6. FlexSidebar -->
+  <section class="bg-white border border-gray-200 rounded-lg p-4">
+    <h2 class="text-lg font-semibold mb-2">6. FlexSidebar <span class="text-xs text-gray-500 font-mono">side=left, sidebarWidth=200px, contentMinWidth=300px</span></h2>
+    <p class="text-xs text-gray-500 mb-2">Sidebar collapses below 500px viewport width.</p>
+    <div id="sb-sidebar" class="bg-gray-50 rounded" style="height: 160px;">
+      <nav data-slot="sidebar" class="bg-slate-200 p-3 h-full">
+        <div class="text-xs uppercase text-gray-500 mb-2">Sidebar</div>
+        <ul class="space-y-1 text-sm">
+          <li>· Dashboard</li>
+          <li>· Reports</li>
+          <li>· Settings</li>
+        </ul>
+      </nav>
+      <div class="bg-rose-100 p-3 h-full">
+        <div class="text-xs uppercase text-gray-500 mb-2">Content</div>
+        <p class="text-sm">Main content area. Watch the sidebar collapse when the viewport gets narrow.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 7. FlexSplitPane -->
+  <section class="bg-white border border-gray-200 rounded-lg p-4">
+    <h2 class="text-lg font-semibold mb-2">7. FlexSplitPane <span class="text-xs text-gray-500 font-mono">initialSplit=40%, minLeft=120px, minRight=120px</span></h2>
+    <p class="text-xs text-gray-500 mb-2">Drag the divider with the mouse, or focus it with Tab and use ArrowLeft / ArrowRight.</p>
+    <div id="sb-split" class="bg-gray-50 rounded border" style="height: 180px;">
+      <div data-slot="left" class="bg-cyan-100 p-3 h-full">
+        <div class="text-xs uppercase text-gray-500 mb-2">Left pane</div>
+        <p class="text-sm">Drag the splitter to resize.</p>
+      </div>
+      <div data-slot="right" class="bg-fuchsia-100 p-3 h-full">
+        <div class="text-xs uppercase text-gray-500 mb-2">Right pane</div>
+        <p class="text-sm">Min-width 120px on each side; below that, drag clamps.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 8. FlexToolbar -->
+  <section class="bg-white border border-gray-200 rounded-lg p-4">
+    <h2 class="text-lg font-semibold mb-2">8. FlexToolbar <span class="text-xs text-gray-500 font-mono">3 slots: start | default | end</span></h2>
+    <div id="sb-toolbar" class="rounded border">
+      <button data-slot="start" class="px-3 py-1 border border-gray-300 text-sm rounded">← Back</button>
+      <span class="text-sm text-gray-600">Center: status / breadcrumbs</span>
+      <button data-slot="end" class="px-3 py-1 bg-blue-600 text-white text-sm rounded">Save</button>
+    </div>
+  </section>
+
+  <!-- 9. FlexMasonry -->
+  <section class="bg-white border border-gray-200 rounded-lg p-4">
+    <h2 class="text-lg font-semibold mb-2">9. FlexMasonry <span class="text-xs text-gray-500 font-mono">columnWidth=200px, gap=md</span></h2>
+    <p class="text-xs text-gray-500 mb-2">Browser auto-fits floor(viewport / 200px) columns.</p>
+    <div id="sb-masonry" class="bg-gray-50 p-3 rounded">
+      <div class="bg-indigo-100 p-3 rounded mb-3" style="height: 90px;">A — short</div>
+      <div class="bg-indigo-100 p-3 rounded mb-3" style="height: 140px;">B — medium</div>
+      <div class="bg-indigo-100 p-3 rounded mb-3" style="height: 70px;">C</div>
+      <div class="bg-indigo-100 p-3 rounded mb-3" style="height: 200px;">D — tall</div>
+      <div class="bg-indigo-100 p-3 rounded mb-3" style="height: 110px;">E</div>
+      <div class="bg-indigo-100 p-3 rounded mb-3" style="height: 150px;">F</div>
+      <div class="bg-indigo-100 p-3 rounded mb-3" style="height: 80px;">G — short</div>
+    </div>
+  </section>
+
+  <footer class="text-center text-xs text-gray-500 pt-4 border-t border-gray-200">
+    Sandbox owner: <code>frontend/assets/js/flex-layout-sandbox.js</code> · components in <code>frontend/assets/js/components/flex-*.js</code> · <a href="../../plan/epics/epic-15-flex-component-library.md" class="underline">epic-15 §15.1.1</a>
+  </footer>
+</div>
