@@ -12,10 +12,12 @@ recommendation: proceed
 decisions:
   - Cooper goal-directed personas (per A2 spec §9)
   - "Competitor matrix" is a pattern matrix (architectural alternatives) since this is an internal-architecture decision, not a market-facing product
-  - Recommendation: PROCEED with one caveat — early performance benchmark gate before broad RLS rollout
+  - **Revised 2026-05-08**: pattern matrix updated post-stakeholder review. RLS rejected for the shared core DB (portability cost + operational debugging cost outweigh the third-layer benefit; direct-DB-access caveat accepted). Per-tenant module DBs promoted to chosen for module data. See §3 + §5.
+  - Recommendation: PROCEED with one caveat — first sprint task should be a per-tenant-module-DB provisioning prototype to validate the fan-out tooling before broad rollout (replaces the previous "RLS benchmark gate")
 open_questions:
-  - Number of tenant-scoped tables in scope: count not yet inventoried (B1 will produce in arch-22 §2 / §7)
-  - Whether to expose the escape-hatch role via a separate connection pool or a single SET ROLE call — operational decision for B1
+  - Module DB provisioning timing (eager at tenant-create vs lazy at module-enable) — operational decision for B1
+  - Connection-pool topology for hundreds of (tenant × module) DBs — needs benchmarking before sprint
+  - Number of existing modules to migrate from `shared` to `per_tenant` — currently only Financial; survey for others
 ---
 
 # Research Brief — Tenant Isolation Hardening (research-02)
@@ -24,7 +26,9 @@ open_questions:
 
 ## Recommendation: **PROCEED** (with one caveat)
 
-The vision targets a real, sec-review-flagged gap that is invisible to end users but existential to the platform's stated guarantees. The proposed defense-in-depth design (helper + SQLAlchemy listener + Postgres RLS) has well-understood trade-offs, no realistic alternative offers the same coverage, and the work has bounded scope (one architectural change, one sprint). **Proceed**, but the first task in the sprint must be a **performance benchmark on a representative load** so the +5% p95 budget is verified before RLS rolls broadly. If the benchmark exceeds budget, scope must narrow to top-N most sensitive tables before sprint close.
+> **Revised 2026-05-08** — original v1 of this brief recommended PROCEED with an RLS-benchmark gate. After stakeholder pivot to "ORM-level for shared core + DB-per-tenant for modules", the recommendation stands as PROCEED but the caveat changes: the first sprint task should be a **per-tenant-module-DB provisioning prototype** (financial module against a clean tenant) to validate the fan-out + connection-pool tooling before broad rollout. If provisioning takes > 60 s per (tenant, module) under representative load, the operational story needs rework before sprint close.
+
+The vision targets a real, sec-review-flagged gap that is invisible to end users but existential to the platform's stated guarantees. The chosen design (centralized helper + SQLAlchemy session-event listener for the shared core DB + database-per-tenant for module data) accepts a documented trade-off — direct DBA / `psql` / raw-SQL access against the shared core remains unprotected — in exchange for portability, operational simplicity, and stronger physical isolation where module data is most domain-sensitive. Bounded scope (one sprint) and explicit acceptance of the residual core-DB caveat keep the work tractable.
 
 ---
 
@@ -134,15 +138,16 @@ This vision is an internal-architecture decision (not a market-facing product), 
 
 | # | Pattern | Strength | Weakness | Fit for App-Buildify |
 |---|---------|----------|----------|----------------------|
-| 1 | **Postgres Row-Level Security (RLS)** | DB-level enforcement; transparent to ORM; works with existing connection pool via session variable; auditable at policy level; recognized control by SOC2 auditors | Performance overhead (varies — must benchmark); harder to debug ("why are no rows returned?"); Postgres-specific (not portable to MySQL/SQLite) | **Chosen.** Single-Postgres deployment fits cleanly; session-variable model fits existing FastAPI dependency-injection pattern. |
-| 2 | **Schema-per-tenant** (one `tenant_<id>` schema per tenant) | Strong logical isolation; per-tenant backups easy | Per-request schema switching breaks the existing single `SessionLocal` pool; thousands of schemas at scale; migration complexity per schema | **Rejected.** Would require auth-time connection routing — invasive change. |
-| 3 | **Database-per-tenant** | Strongest possible isolation; per-tenant tuning + scaling | Operational nightmare at scale; backup/restore N times; doesn't fit shared platform model; massive infra cost | **Rejected.** Only `DATABASE_STRATEGY=separate` (per ADR-001) approaches this and only at the module boundary, not the tenant boundary. |
+| 1 | **Postgres Row-Level Security (RLS)** | DB-level enforcement; transparent to ORM; works with existing connection pool via session variable; auditable at policy level; recognized control by SOC2 auditors | Performance overhead (varies — must benchmark); harder to debug ("why are no rows returned?"); Postgres-specific (not portable to MySQL/SQLite); operational complexity for `BYPASSRLS` escape-hatch role | **Rejected for shared core DB (revised 2026-05-08).** Stakeholder pivot accepted the direct-DB-access caveat in exchange for portability + operational simplicity. May be revisited if a regulated tenant ever demands DB-level isolation for core data. |
+| 2 | **Schema-per-tenant** (one `tenant_<id>` schema per tenant) | Strong logical isolation; per-tenant backups easy | Per-request schema switching breaks the existing single `SessionLocal` pool; thousands of schemas at scale; migration complexity per schema | **Rejected.** Same auth-time connection-routing problem as DB-per-tenant but with weaker guarantees. |
+| 3 | **Database-per-tenant** | Strongest possible isolation (different physical DBs); per-tenant tuning + per-tenant backups; no risk of cross-tenant queries at all | Operational cost grows with N tenants × M modules; backup/restore N times; cross-DB FKs impossible; no shared-platform queries possible | **Chosen for module DBs (revised 2026-05-08).** Each tenant gets its own DB per module via `DATABASE_STRATEGY=per_tenant` (extends ADR-001). Module data is typically domain-sensitive (financial records, etc.) — physical isolation matches the threat model. Login + identity stay in the shared core DB. |
 | 4 | **Application-only filters** (status quo) | Zero infrastructure cost; full developer control | Single line of defense; no safety net for forgotten filter; no DB-level enforcement; no audit trail for direct DB access | **Failing.** This is what `sec-review-21` and `arch-platform.md` §9 risk #1 flag as inadequate. |
-| 5 | **ORM session-event listener only** (no RLS) | Simpler than RLS; covers most ORM-level bypasses; no Postgres-specific code | Doesn't cover raw SQL via `SQLAlchemy.text(...)`, `db.execute(...)`, or direct psql; module DBs harder to coordinate | **Partial.** Used as middle layer in vision-02's defense-in-depth, but insufficient alone. |
-| 6 | **View-based isolation** (per-tenant views with `WHERE tenant_id = ...`) | Familiar SQL pattern; auditable | Blows up at hundreds of tenants; view materialization overhead; doesn't help with INSERT/UPDATE | **Rejected.** Worse than RLS in every dimension. |
-| 7 | **Citus / extension-based horizontal sharding** | Horizontal scale + strong isolation across nodes | Heavyweight; extension-specific; tenant-scoped to *shards* not rows; over-engineered for ~hundreds-of-tenants scale | **Rejected.** Premature optimization for current scale. |
+| 5 | **ORM session-event listener** | Simpler than RLS; covers ORM-level bypasses (auto-injects tenant filter on tenant-scoped queries); fail-loud on unset scope context; no Postgres-specific code | Doesn't cover raw SQL via `SQLAlchemy.text(...)`, `db.execute(...)`, or direct psql access | **Chosen for shared core DB** as the second layer (paired with #6 the centralized helper). Together they cover application-layer failure modes; the direct-DB-access path is a documented operational-control concern. |
+| 6 | **Centralized scope helper** at `backend/app/core/scope.py` *(new entry — was implied in v1)* | Single API surface for tenant-scoped queries; supersedes ad-hoc `_get_org_context()` per service; enforces fail-loud convention; testable in isolation | Requires every `*Service` migration; backwards-compat concerns during rollout | **Chosen for shared core DB** as the first layer (paired with #5). Closes `audit-04` 4.2.2 medium gap. |
+| 7 | **View-based isolation** (per-tenant views with `WHERE tenant_id = ...`) | Familiar SQL pattern; auditable | Blows up at hundreds of tenants; view materialization overhead; doesn't help with INSERT/UPDATE | **Rejected.** Worse than every other option. |
+| 8 | **Citus / extension-based horizontal sharding** | Horizontal scale + strong isolation across nodes | Heavyweight; extension-specific; tenant-scoped to *shards* not rows; over-engineered for ~hundreds-of-tenants scale | **Rejected.** Premature optimization for current scale. |
 
-**Pattern**: vision-02 chose RLS because it's the **only pattern** that defends against direct DB access *and* fits the existing single-pool architecture *and* is recognized by external compliance auditors. The defense-in-depth stack (#1 + #5 + a centralized application helper) covers the failure modes that any single layer leaves open.
+**Pattern (revised 2026-05-08)**: the chosen design is a **hybrid by data sensitivity** — shared core DB with a two-layer logical isolation stack (helper + ORM listener) for high-frequency, low-isolation-need data (identity, system catalog, RBAC); database-per-tenant for module data where the threat model justifies physical separation. The trade-off is honest: the shared core DB has a documented direct-access caveat that operational controls (audit-logged tooling, DBA discipline, backup-job review) must cover. RLS was considered and rejected for the core because the portability cost + operational debugging cost outweigh the marginal protection over what helper + listener already provide for application-level access.
 
 ---
 
@@ -175,14 +180,14 @@ This vision is an internal-architecture decision (not a market-facing product), 
 
 The vision is validated:
 
-- **Real demand**: every persona faces concrete pain that vision-02 materially reduces. Pradeep gets safety nets; Diego gets a clean module contract; Yelena gets a structural answer for auditors.
-- **No realistic alternative**: pattern matrix shows that any single layer leaves the others' failure modes open. RLS alone misses ORM-level bypasses; ORM listener alone misses direct DB access; application filters alone are exactly what's failing today.
-- **Bounded scope**: one architectural change, one sprint, one canonical migration. Scope OUT explicitly names six things this is NOT.
-- **Risks acknowledged**: vision-02 §7 names performance regression, implicit cross-tenant reads, module DB coordination, SQLAlchemy edge cases, migration locking, developer ergonomics — each with a mitigation.
+- **Real demand**: every persona faces concrete pain that vision-02 materially reduces. Pradeep gets safety nets at the application layer; Diego gets a clean per-tenant module-DB contract; Yelena gets a structural answer for auditors on module data and a documented operational-controls answer for core data.
+- **Bounded scope**: one architectural change, one sprint, well-defined boundaries (helper + listener for core; DB-per-tenant for modules). Scope OUT explicitly names six things this is NOT.
+- **Honest trade-off**: the chosen design accepts a known gap (direct-DB-access against the core) in exchange for portability + operational simplicity + zero RLS performance overhead. The gap is documented, not hidden, and operational controls cover it.
+- **Risks acknowledged**: vision-02 §7 names per-(tenant × module) DB count growth, implicit cross-tenant reads, SQLAlchemy edge cases, migration fan-out failure modes, cross-DB FK impossibility, developer ergonomics — each with a mitigation.
 
-**Caveat — performance benchmark first**: vision-02's success metric #5 is "p95 regression ≤ +5%". The first task in the sprint must be a representative-load benchmark; if RLS exceeds the budget, scope must narrow to top-N most sensitive tables (with N to be set after the benchmark) before sprint close. Without this gate, there's a real risk of merging an RLS deployment that degrades dashboard performance for tenant administrators.
+**Caveat — provisioning prototype first** *(revised 2026-05-08)*: vision-02's success metric #5 is "per-tenant module DB provisioning time ≤ 60 s". The first sprint task should be a provisioning prototype against the existing financial module on a clean tenant. If provisioning exceeds 60 s under representative load, the operational story (Alembic fan-out, connection-pool initialization, secrets distribution for module-DB credentials) needs rework before sprint close. Without this gate, there's a real risk of shipping a provisioning flow that becomes the new bottleneck for tenant onboarding.
 
-If the stakeholder cannot commit to that benchmark gate, the recommendation downgrades to **PIVOT** — narrow vision-02 to "centralized scope helper + ORM listener only" (drop RLS) and accept the weaker DB-direct-access protection.
+If the stakeholder cannot commit to that provisioning gate, the recommendation downgrades to **PIVOT** — narrow vision-02 to "centralized scope helper + ORM listener only on the shared core DB" and defer the per-tenant-module-DB work to a separate epic. The core-DB hardening alone retires the headline `sec-review-21` finding even without the module-DB split.
 
 ---
 
