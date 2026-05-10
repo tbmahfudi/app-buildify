@@ -98,3 +98,4 @@ Frontend sections follow the **UI Layout Description Convention (UILDC v1.0)** �
 | 19 | [Infrastructure & Deployment](epics/epic-19-infrastructure-deployment.md) | 8 | Mixed (CI/CD MISSING) |
 | 20 | [Mobile & PWA](epics/epic-20-mobile-pwa.md) | 3 | PLANNED |
 | 21 | [🔴 Risk Retirement (Sprint 1)](epics/epic-21-risk-retirement.md) | 4 (slice; refs 15.1.1, 14.2.1, 4.1.1+4.2.1, 4.2.4) | DONE — 33/34 tasks (1 deferred); 5/5 🔴 risks retired; sprint plan + report at [`tests/test-plans/test-plan-21.md`](../tests/test-plans/test-plan-21.md), [`tests/test-reports/test-report-21.md`](../tests/test-reports/test-report-21.md) |
+| 22 | [Tenant Isolation Hardening](epics/epic-22-tenant-isolation-hardening.md) | 14 (across 5 features) | OPEN — closes the highest residual risk per [`sec-review-21`](architecture/sec-review-21.md); hybrid design (helper + ORM listener for shared core; DB-per-tenant for modules); first story is the provisioning-prototype gate |

@@ -4,7 +4,7 @@ type: vision
 producer: A1 Product Manager
 consumers: [A2 Business Analyst]
 upstream: [vision-01-app-buildify, sec-review-21]
-downstream: [research-02-tenant-isolation-hardening]
+downstream: [research-02-tenant-isolation-hardening, epic-22-tenant-isolation-hardening]
 status: approved
 created: 2026-05-08
 updated: 2026-05-08

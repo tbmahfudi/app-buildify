@@ -4,8 +4,8 @@ type: research
 producer: A2 Business Analyst
 consumers: [A3 Product Owner]
 upstream: [vision-02-tenant-isolation-hardening]
-downstream: []
-status: review
+downstream: [epic-22-tenant-isolation-hardening]
+status: approved
 created: 2026-05-08
 updated: 2026-05-08
 recommendation: proceed
