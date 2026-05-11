@@ -1647,6 +1647,25 @@ async function loadRoute(route) {
       return;
     }
 
+    if (route === 'flex-layout-sandbox') {
+      // Dev-only sandbox for the 9 layout primitives (story 15.1.1 / T-21.1.7).
+      // Not in the menu — reachable via direct hash navigation
+      // (#/flex-layout-sandbox) so the page is dev-discoverable but doesn't
+      // surface in production navigation.
+      console.log('Loading flex layout sandbox');
+      const bodyContent = await window.resourceLoader.loadTemplate('flex-layout-sandbox');
+      content.innerHTML = bodyContent;
+      try {
+        await window.resourceLoader.loadScript('flex-layout-sandbox.js');
+      } catch (error) {
+        console.warn('Flex layout sandbox script loading failed:', error);
+      }
+      document.dispatchEvent(new CustomEvent('route:loaded', {
+        detail: { route: 'flex-layout-sandbox', isModule: false }
+      }));
+      return;
+    }
+
     if (route === 'builder-showcase') {
       console.log('Loading builder showcase page');
       const bodyContent = await window.resourceLoader.loadTemplate('builder-showcase');

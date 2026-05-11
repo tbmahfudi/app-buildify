@@ -40,7 +40,8 @@
 | 18 | Developer Experience & Module SDK | SDK + bus DONE; docs and dev-UX gaps remain |
 | 19 | Infrastructure & Deployment | Dev infra DONE; Prod compose PARTIAL; Storage + CI/CD PLANNED |
 | 20 | Mobile & Progressive Web App | PLANNED |
-| 21 | 🔴 Risk Retirement (Sprint 1) | Slice epic — sequences 5 existing 🔴 stories (per research-01 caveat) |
+| 21 | 🔴 Risk Retirement (Sprint 1) | DONE — 33/34 tasks (1 deferred); 5 of 5 🔴 risks retired end-to-end; sprint complete pending optional 30-min operator run per `test-report-21` |
+| 22 | Tenant Isolation Hardening | OPEN — 14 stories across 5 features; closes the highest residual risk per `sec-review-21`; gated by per-tenant DB provisioning prototype (story 22.1.1) |
 
 ---
 

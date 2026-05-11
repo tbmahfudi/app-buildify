@@ -4,7 +4,7 @@ type: vision
 producer: A1 Product Manager
 consumers: [A2 Business Analyst]
 upstream: []
-downstream: [research-01-app-buildify]
+downstream: [research-01-app-buildify, epic-21-risk-retirement]
 status: approved
 created: 2026-04-29
 updated: 2026-04-29
@@ -108,16 +108,18 @@ Non-negotiables that bind every future epic and ADR:
 
 Top risks distilled from the audits and architecture review. Each cites the source so the next agent can drill in.
 
-| 🚦 | Risk | Source |
-|----|------|--------|
-| 🔴 | Wildcard permissions are not implemented; `has_permission()` does literal `in` check, undermining the stated RBAC model | `audit-04-rbac-permissions.md` story 4.2.1 |
-| 🔴 | Per-entity permissions exist as a JSONB column but are not enforced (dead schema) | `audit-04-rbac-permissions.md` story 4.2.4 |
-| 🔴 | Role CRUD endpoints (`POST/PUT/DELETE /rbac/roles`) are missing — tenant admins cannot create custom roles via API | `audit-04-rbac-permissions.md` story 4.1.1 |
-| 🔴 | All 9 Flex layout components (`flex-stack`, `flex-grid`, `flex-split-pane`, …) are missing — every UILDC frontend story depends on them | `audit-15-flex-component-library.md` story 15.1.1 |
-| 🔴 | No notification delivery (email/SMS/in-app); password-reset emails currently dead-letter despite Feature 14.1 being DONE | `audit-14-notification-system.md` Feature 14.2 |
-| 🔴 | No CI/CD pipeline; no backend or frontend test suites located | `audit-19-infrastructure-deployment.md` 19.4.x; `audit-13-security-compliance.md` 13.4.x |
-| 🟡 | Tenant isolation relies on per-service `tenant_id` filters with no SQLAlchemy-level safeguard; one missed filter = cross-tenant leak | `arch-platform.md` §9 risk #1 |
-| 🟡 | LISTEN/NOTIFY event-bus subscriber is a stub; distributed deployment mode (ADR-001) is not production-ready until finished | `audit-11-module-system.md`; `arch-platform.md` §9 risk #14 |
+> **Update 2026-05-08 (post epic-21 sprint 1)**: 5 of 6 🔴 risks retired. CI/CD risk + 2 🟡 risks remain. Status column added.
+
+| 🚦 | Risk | Source | Status |
+|----|------|--------|--------|
+| 🔴→✅ | Wildcard permissions are not implemented; `has_permission()` does literal `in` check, undermining the stated RBAC model | `audit-04-rbac-permissions.md` story 4.2.1 | RETIRED — epic-21 T-21.3.4 |
+| 🔴→✅ | Per-entity permissions exist as a JSONB column but are not enforced (dead schema) | `audit-04-rbac-permissions.md` story 4.2.4 | RETIRED — epic-21 T-21.4.1..5 |
+| 🔴→✅ | Role CRUD endpoints (`POST/PUT/DELETE /rbac/roles`) are missing — tenant admins cannot create custom roles via API | `audit-04-rbac-permissions.md` story 4.1.1 | RETIRED — epic-21 T-21.3.1..3 + T-21.3.5..7 |
+| 🔴→✅ | All 9 Flex layout components (`flex-stack`, `flex-grid`, `flex-split-pane`, …) are missing — every UILDC frontend story depends on them | `audit-15-flex-component-library.md` story 15.1.1 | RETIRED — epic-21 T-21.1.1..5 (9/9 shipped) |
+| 🔴→✅ | No notification delivery (email/SMS/in-app); password-reset emails currently dead-letter despite Feature 14.1 being DONE | `audit-14-notification-system.md` Feature 14.2 | RETIRED (Email) — epic-21 T-21.2.1..7. SMS / in-app / templates remain for a future epic. |
+| 🔴 | No CI/CD pipeline; no backend or frontend test suites located | `audit-19-infrastructure-deployment.md` 19.4.x; `audit-13-security-compliance.md` 13.4.x | OPEN — out of scope for epic-21. Sprint introduced ~80 inline assertions; a real test framework remains a separate epic. |
+| 🟡 | Tenant isolation relies on per-service `tenant_id` filters with no SQLAlchemy-level safeguard; one missed filter = cross-tenant leak | `arch-platform.md` §9 risk #1 | OPEN — flagged in `sec-review-21` as the highest residual platform risk. Recommended for the next epic. |
+| 🟡 | LISTEN/NOTIFY event-bus subscriber is a stub; distributed deployment mode (ADR-001) is not production-ready until finished | `audit-11-module-system.md`; `arch-platform.md` §9 risk #14 | OPEN — epic-21 sidestepped via polling SMTP worker. LISTEN/NOTIFY can be added later as a low-latency wakeup. |
 
 ## 8. Decisions
 
