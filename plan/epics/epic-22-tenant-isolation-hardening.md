@@ -4,7 +4,7 @@ type: epic
 producer: A3 Product Owner
 consumers: [B1 Software Architect, B2 Data Engineer, B3 UX Designer, C1 Tech Lead]
 upstream: [vision-02-tenant-isolation-hardening, research-02-tenant-isolation-hardening]
-downstream: []
+downstream: [arch-22, adr-003-per-tenant-module-databases]
 status: review
 created: 2026-05-08
 updated: 2026-05-08
