@@ -19,8 +19,8 @@ updated: 2026-06-16
 | Date | 2026-06-16 |
 | Target | `http://localhost:8000` (container `app_buildify_backend`) |
 | Command | `docker exec app_buildify_backend python -m pytest tests/e2e --confcutdir=tests/e2e` |
-| Result | **245 passed, 0 failed, 0 xfailed** (53s) — after DEF-001…006 fixes |
-| Scope this run | deep: auth, rbac, org, data-model, dynamic-data (+provisioning), workflows, automations; health/openapi; all-router GET smoke sweep |
+| Result | **277 passed, 0 failed, 0 xfailed** (77s) — after DEF-001…007 fixes |
+| Scope this run | deep: auth, rbac, org, data-model, dynamic-data (+provisioning), workflows, automations, admin/security; health/openapi; all-router GET smoke sweep |
 
 ## What is covered now
 
@@ -39,6 +39,10 @@ updated: 2026-06-16
   soft-delete/restore/permanent, migration preview, introspection (no DDL/publish).
 - **dynamic-data** (14) — self-contained publish→record CRUD, list/search/
   paginate, aggregate, bulk create, metadata, tenant scoping, auth negatives.
+- **admin/security** (32) — security policies CRUD (system default vs.
+  tenant-specific, duplicate-tenant guard, soft-delete semantics), locked
+  accounts, active sessions (list/limit/revoke/revoke-all), login attempts
+  (email/success filters), notification config + queue (status filter).
 - **Smoke sweep** — OpenAPI-driven, every parameterless GET across all 23
   routers: not-5xx as superadmin + 401/403 as anonymous (~117 endpoints).
 
@@ -129,6 +133,21 @@ updated: 2026-06-16
   and skip any user/system field that collides with an auto-generated column.
   Verified: publish + full record CRUD cycle now green (dynamic-data suite).
 
+### DEF-007 — 3 admin/security list endpoints 500 when combined with a filter — ✅ FIXED 2026-06-16
+- **Severity**: Medium (filters are the primary way an admin narrows these
+  audit/monitoring lists; every filtered call failed).
+- **Root cause**: `app/routers/admin/security.py` built the base query with
+  `.order_by(...).limit(limit)` applied *before* the conditional `.filter(...)`
+  calls — SQLAlchemy raises `InvalidRequestError: Query.filter() being called
+  on a Query which already has LIMIT or OFFSET applied` the moment a filter is
+  appended afterward. Hit in three places: `list_active_sessions` (`user_id`/
+  `tenant_id` filters), `list_login_attempts` (`email`/`success` filters),
+  `list_notification_queue` (`status`/`notification_type` filters).
+- **Fix**: reordered each to apply all conditional `.filter()` calls first and
+  append `.order_by().limit()` last, right before `.all()`. Verified via
+  `tests/e2e/test_admin_security.py` (email/success/status filter cases) and
+  the full suite.
+
 ## Environment notes / gotchas (for whoever runs this next)
 
 1. **`max_concurrent_sessions = 3`** evicts the *oldest* session — naive test
@@ -143,8 +162,8 @@ updated: 2026-06-16
 ## Not yet covered (backlog)
 
 Deep per-router coverage still pending for: reports, dashboards,
-modules / module-registry / module-extensions, scheduler, admin/security,
+modules / module-registry / module-extensions, scheduler,
 menu, lookups, settings, metadata, data, builder, templates, audit.
-(auth, rbac, org, data-model, dynamic-data, workflows, automations are now
-deep.) The smoke sweep already exercises all of them at the GET level. See the
+(auth, rbac, org, data-model, dynamic-data, workflows, automations, and
+admin/security are now deep.) The smoke sweep already exercises all of them at the GET level. See the
 coverage matrix in [`test-plan-e2e-api.md`](../test-plans/test-plan-e2e-api.md).

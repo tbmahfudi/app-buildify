@@ -70,7 +70,7 @@ Legend: ✅ deep (positive+negative+edge+authz) · 🟡 smoke only (auto GET swe
 | dashboards | 16 | ⬜ | dashboards, KPI/chart widgets, sharing, filters, drill-down |
 | modules / module-registry / module-extensions | 44 | ⬜ | enable/disable, manifest, extensions |
 | scheduler | 14 | ⬜ | jobs, configs (hierarchical), runs |
-| admin / security | 28 | ⬜ | policies, sessions, login-attempts, notification config/queue |
+| admin / security | 14 | ✅ | policies CRUD (incl. soft-delete semantics), locked-accounts, sessions, login-attempts (filters), notification config/queue (filters) |
 | menu | 11 | ⬜ | menu tree, admin, sync preview/status/history |
 | lookups | 8 | ⬜ | configurations, cascading-rules, options |
 | settings | 4 | ⬜ | tenant + user settings |

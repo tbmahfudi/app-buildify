@@ -270,7 +270,7 @@ def list_active_sessions(
     query = db.query(UserSession).filter(
         UserSession.revoked_at == None,
         UserSession.expires_at > now
-    ).order_by(UserSession.last_activity.desc()).limit(limit)
+    )
 
     if user_id:
         query = query.filter(UserSession.user_id == user_id)
@@ -279,7 +279,7 @@ def list_active_sessions(
         # Join with User to filter by tenant
         query = query.join(User).filter(User.tenant_id == tenant_id)
 
-    sessions = query.all()
+    sessions = query.order_by(UserSession.last_activity.desc()).limit(limit).all()
 
     return sessions
 
@@ -358,7 +358,7 @@ def list_login_attempts(
 
     Requires: security:view_login_attempts:all
     """
-    query = db.query(LoginAttempt).order_by(LoginAttempt.created_at.desc()).limit(limit)
+    query = db.query(LoginAttempt)
 
     if email:
         query = query.filter(LoginAttempt.email == email)
@@ -366,7 +366,7 @@ def list_login_attempts(
     if success is not None:
         query = query.filter(LoginAttempt.success == success)
 
-    attempts = query.all()
+    attempts = query.order_by(LoginAttempt.created_at.desc()).limit(limit).all()
 
     return attempts
 
@@ -437,10 +437,7 @@ def list_notification_queue(
 
     Requires: notification_queue:read:all
     """
-    query = db.query(NotificationQueue).order_by(
-        NotificationQueue.priority.asc(),
-        NotificationQueue.created_at.asc()
-    ).limit(limit)
+    query = db.query(NotificationQueue)
 
     if status:
         query = query.filter(NotificationQueue.status == status)
@@ -448,6 +445,9 @@ def list_notification_queue(
     if notification_type:
         query = query.filter(NotificationQueue.notification_type == notification_type)
 
-    notifications = query.all()
+    notifications = query.order_by(
+        NotificationQueue.priority.asc(),
+        NotificationQueue.created_at.asc()
+    ).limit(limit).all()
 
     return notifications
