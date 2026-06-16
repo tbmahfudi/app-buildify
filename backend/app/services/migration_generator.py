@@ -127,10 +127,19 @@ class MigrationGenerator:
         for col_name, col_def in scope_columns:
             field_definitions.append(f"    {col_name} {col_def}")
 
+        # Reserved column names that are emitted automatically below (id, scope,
+        # audit, soft-delete). User/system fields with these names must be
+        # skipped here or the CREATE TABLE would declare a column twice.
+        reserved_col_names = {'id'} | scope_col_names
+        if entity.is_audited:
+            reserved_col_names |= {'created_at', 'created_by', 'updated_at', 'updated_by'}
+        if entity.supports_soft_delete:
+            reserved_col_names |= {'is_deleted', 'deleted_at', 'deleted_by'}
+
         # Add user-defined fields
         for field in fields:
-            # Skip if user manually added system org columns
-            if field.name in ('id',) or field.name in scope_col_names:
+            # Skip fields that collide with an auto-generated system column
+            if field.name in reserved_col_names:
                 continue
             field_def = self._generate_field_definition(field)
             field_definitions.append(f"    {field_def}")
@@ -360,7 +369,17 @@ class MigrationGenerator:
 
         # DEFAULT value
         if field.default_value:
-            if field.field_type in ['string', 'text', 'email', 'url', 'phone']:
+            # Quote string literals. Besides the obvious text field_types, any
+            # field backed by a character SQL column (e.g. select/enum stored as
+            # VARCHAR) must be quoted too, otherwise `DEFAULT active` is parsed
+            # by PostgreSQL as a column reference and the DDL fails.
+            string_field_types = {
+                'string', 'text', 'email', 'url', 'phone',
+                'select', 'enum', 'multi_select', 'multiselect',
+            }
+            dt_upper = (field.data_type or '').upper()
+            is_char_type = any(t in dt_upper for t in ('VARCHAR', 'CHAR', 'TEXT', 'CITEXT'))
+            if field.field_type in string_field_types or is_char_type:
                 parts.append(f"DEFAULT '{self._escape_sql_string(field.default_value)}'")
             elif field.field_type == 'boolean':
                 parts.append(f"DEFAULT {field.default_value.upper()}")
