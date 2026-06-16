@@ -19,8 +19,8 @@ updated: 2026-06-16
 | Date | 2026-06-16 |
 | Target | `http://localhost:8000` (container `app_buildify_backend`) |
 | Command | `docker exec app_buildify_backend python -m pytest tests/e2e --confcutdir=tests/e2e` |
-| Result | **396 passed, 0 failed, 0 xfailed** (~113s) — after DEF-001…014 |
-| Scope this run | deep: auth, rbac, org, data-model, dynamic-data (+provisioning), workflows, automations, admin/security, modules / module-registry / module-extensions, reports; health/openapi; all-router GET smoke sweep |
+| Result | **435 passed, 0 failed, 0 xfailed** (~175s) — after DEF-001…018 |
+| Scope this run | deep: auth, rbac, org, data-model, dynamic-data (+provisioning), workflows, automations, admin/security, modules / module-registry / module-extensions, reports, scheduler; health/openapi; all-router GET smoke sweep |
 
 ## What is covered now
 
@@ -66,6 +66,16 @@ updated: 2026-06-16
   malicious-identifier payloads (base_entity, column, group_by, order_by
   field/direction, aggregation, lookup entity/display_field/value_field/
   filter_conditions key) all asserted rejected.
+- **scheduler** (39) — configs CRUD lifecycle (create/get/update/delete,
+  effective-config resolution, system-level superuser-only, tenant-level
+  requires tenant_id, cross-tenant tenant_id rejected on create); jobs CRUD
+  + manual execute, schedule-required validation, unknown-config 400,
+  cross-tenant tenant_id rejected on create, list ignores a foreign
+  `tenant_id` query param; executions list/get + status filter; execution
+  logs; 404 negatives on every by-id endpoint; auth-required on every
+  group; **cross-tenant IDOR regression coverage** — every by-id
+  get/update/delete/execute/list/logs endpoint asserted 403 for a second
+  tenant (DEF-016).
 
 ## Defects found
 
@@ -303,6 +313,113 @@ updated: 2026-06-16
   Found via the new negative test
   `test_execute_export_unknown_report_404`.
 
+### DEF-015 — every scheduler create call 500'd; every by-id read/update/delete 422'd — ✅ FIXED 2026-06-17
+- **Severity**: Critical (the entire scheduler write surface was broken out of the box).
+- **Root cause (two independent bugs compounding each other)**:
+  1. `SchedulerConfig`, `SchedulerJob`, `SchedulerJobExecution`, and
+     `SchedulerJobLog` all declared `id = Column(GUID, primary_key=True, index=True)`
+     with **no `default=generate_uuid`**. Every other GUID-PK model in the codebase
+     (`User`, `Tenant`, `Role`, `WorkflowDefinition`, `Automation`, `DataModel`, etc.)
+     includes this default. The service layer never explicitly set `id=` either →
+     Postgres `NotNullViolation` on every INSERT.
+  2. All four Pydantic response schemas and all router path-param annotations typed
+     the scheduler IDs as **`int`**, while the actual DB columns (and every FK
+     referencing them) are genuinely `uuid` — confirmed via
+     `information_schema.columns`. A manually-inserted UUID-keyed row 422'd
+     ("unable to parse string as an integer") on any GET/PUT/DELETE by id.
+- **Fix**: added `default=generate_uuid` to all four model PK columns
+  (`app/models/scheduler.py`); changed every `int` annotation to `UUID` across
+  all four response schemas and all router path params
+  (`app/schemas/scheduler.py`, `app/routers/scheduler.py`). Also updated the
+  single FK reference in `SchedulerJobCreate.config_id` from `int` → `UUID`.
+- **Exploit confirmed live** before fix: `POST /api/v1/scheduler/configs` →
+  `500 psycopg2.errors.NotNullViolation: null value in column "id"`;
+  manually-inserted row → `GET .../configs/<uuid>` →
+  `422 Input should be a valid integer, unable to parse string as an integer`.
+- **Regression tests**: `TestConfigs::test_create_get_update_delete` (verifies
+  `uuid.UUID(cid)` on the returned id); `TestJobs::test_create_get_update_delete`.
+
+### DEF-016 — scheduler IDOR: 8+ endpoints had zero tenant-ownership checks — ✅ FIXED 2026-06-17
+- **Severity**: Critical/High (IDOR — any authenticated user with a scheduler
+  permission could read, modify, or delete another tenant's scheduler configs,
+  jobs, executions, and logs; two create endpoints accepted an arbitrary
+  caller-supplied `tenant_id` enabling cross-tenant writes; `list_scheduler_jobs`
+  honored an explicit foreign `tenant_id` query param enabling cross-tenant reads).
+- **Root cause**: `has_permission(...)` in `app/core/dependencies.py` only checks
+  whether the caller's granted permission codes match the required code — it does
+  **not** verify that the resource being acted upon belongs to the caller's tenant.
+  Tenant-scoping must be enforced explicitly in router or service code. Affected
+  endpoints: `get_scheduler_config`, `update_scheduler_config`,
+  `delete_scheduler_config`, `update_scheduler_job`, `delete_scheduler_job`,
+  `list_job_executions`, `get_job_execution`, `get_execution_logs`. Additionally,
+  `create_scheduler_config` and `create_scheduler_job` accepted any `tenant_id`
+  in the request body, and `list_scheduler_jobs` honored a foreign `?tenant_id=`
+  query param.
+- **Note**: DEF-015's type-mismatch (int vs UUID) happened to prevent exploitation
+  of DEF-016 for by-id endpoints, since the path param parsed as a 422 before
+  reaching the IDOR-vulnerable handler. Fixing DEF-015 without DEF-016 would have
+  made the IDOR immediately exploitable.
+- **Fix**: added a shared `_enforce_tenant_access(resource_tenant_id, current_user)`
+  helper (superuser bypass; `tenant_id=None` resources are superuser-only — closing
+  a related loophole where system-level resources were previously visible to any
+  tenant caller); applied it to every affected by-id endpoint. Added explicit
+  cross-tenant guards on both create endpoints. Changed `list_scheduler_jobs` to
+  always force non-superusers to their own `tenant_id` regardless of the query param.
+- **Exploit confirmed live** before fix: logged in as `ceo@medcare.com` and
+  successfully read/modified a config created by `ceo@techstart.com`.
+- **Regression tests**: `TestConfigs::test_cross_tenant_{get,update,delete}_forbidden`;
+  `TestJobs::test_cross_tenant_{get,update,delete,execute}_forbidden`;
+  `TestExecutions::test_cross_tenant_{list_executions,get_execution}_forbidden`;
+  `TestExecutionLogs::test_cross_tenant_get_logs_forbidden`;
+  `TestJobs::test_list_jobs_ignores_foreign_tenant_id_query_param`.
+
+### DEF-017 — `list_job_executions` returned 500 instead of 404 when job not found — ✅ FIXED 2026-06-17
+- **Severity**: Medium (every request to list executions for a non-existent job
+  id surfaced as a server error instead of a clean not-found).
+- **Root cause**: `list_job_executions` declared `status: Optional[JobStatus] = Query(...)`
+  as a query parameter, which shadowed the `fastapi.status` module imported at
+  module level under the same name `status`. When `?status=` was absent the
+  parameter defaulted to `None`, so the reference `status.HTTP_404_NOT_FOUND`
+  in the not-found HTTPException raised `AttributeError: 'NoneType' object has
+  no attribute 'HTTP_404_NOT_FOUND'`, causing a 500 instead of a 404.
+  Confirmed via `docker logs` showing the full traceback rooted at
+  `app/routers/scheduler.py:460, in list_job_executions`.
+- **Fix**: renamed the query parameter to `execution_status` with
+  `Query(None, alias="status", ...)` to preserve the external `?status=`
+  contract while eliminating the name collision. Updated all internal references.
+  Also added a missing `_enforce_tenant_access` call to this endpoint (part of
+  DEF-016).
+- **Regression test**: `TestExecutions::test_list_executions_with_status_filter_unknown_job_404_not_500`.
+
+### DEF-018 — `SchedulerJob` creation with no schedule info silently succeeded then 500'd on read — ✅ FIXED 2026-06-17
+- **Severity**: Medium (a clearly invalid job could be inserted into the DB but
+  was then permanently unreadable, causing a confusing 500 on the create
+  response itself).
+- **Root cause**: `SchedulerJobBase.validate_scheduling` was a pydantic v1
+  `@validator('cron_expression')` without `always=True`. In pydantic v1,
+  validators without `always=True` are skipped when the field value uses its
+  default (i.e., the field was omitted from the request). So submitting a job
+  body with no `cron_expression`, `interval_seconds`, or `start_time` bypassed
+  request-time validation entirely — the row was inserted into the DB. The
+  validator then fired during **response serialization** (pydantic validates
+  required fields on the ORM object when serializing the response), raising a
+  `ResponseValidationError` → 500. The net result: the insert committed (an
+  unscheduled zombie job in the DB), but the response was 500.
+  Additionally, the validator was on `cron_expression` (the first of the three
+  scheduling fields in declaration order), so even with `always=True` it would
+  never have seen `interval_seconds` or `start_time` in the `values` dict (only
+  earlier fields are present when a validator runs). Same root issue as two prior
+  schema validators in this codebase that were dead code due to identical ordering.
+- **Fix**: moved the validator to `start_time` (the last of the three fields,
+  so both `cron_expression` and `interval_seconds` are already in `values`),
+  added `always=True` so it fires even when `start_time` is omitted. Now a job
+  body missing all three fields is cleanly rejected with a 422 at request time,
+  and jobs with only `interval_seconds` or only `start_time` are accepted
+  correctly.
+- **Regression tests**: `TestJobs::test_create_requires_schedule` (422);
+  `TestJobs::test_create_get_update_delete` (verifies interval_seconds-only
+  job works via the `job` fixture's `cron_expression` path).
+
 ## Environment notes / gotchas (for whoever runs this next)
 
 1. **`max_concurrent_sessions = 3`** evicts the *oldest* session — naive test
@@ -316,7 +433,7 @@ updated: 2026-06-16
 
 ## Not yet covered (backlog)
 
-Deep per-router coverage still pending for: dashboards, scheduler,
+Deep per-router coverage still pending for: dashboards,
 menu, lookups, settings, metadata, data, builder, templates, audit.
 (auth, rbac, org, data-model, dynamic-data, workflows, automations,
 admin/security, modules / module-registry / module-extensions, and reports

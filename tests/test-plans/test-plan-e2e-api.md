@@ -69,7 +69,7 @@ Legend: ✅ deep (positive+negative+edge+authz) · 🟡 smoke only (auto GET swe
 | reports | 17 | ✅ | definitions CRUD + base_entity derivation, execute/export/history, preview (flat+designer), lookup, schedules CRUD, templates, join-suggestions; SQL injection regression (DEF-011) |
 | dashboards | 16 | ⬜ | dashboards, KPI/chart widgets, sharing, filters, drill-down |
 | modules / module-registry / module-extensions | 44 | ✅ | module-registry reads/install/uninstall/enable/disable/configure/register/heartbeat/sync; nocode-modules CRUD/dependencies/versions/validation/components; entity/screen/menu extension CRUD |
-| scheduler | 14 | ⬜ | jobs, configs (hierarchical), runs |
+| scheduler | 14 | ✅ | configs CRUD + effective-config resolution + system-level superuser-only, jobs CRUD + execute + schedule-required validation, executions list/get + status filter, execution logs; IDOR regression (DEF-016), creation-breaking type/default (DEF-015), status-param shadow 500→404 (DEF-017), no-schedule 500→422 (DEF-018) |
 | admin / security | 14 | ✅ | policies CRUD (incl. soft-delete semantics), locked-accounts, sessions, login-attempts (filters), notification config/queue (filters) |
 | menu | 11 | ⬜ | menu tree, admin, sync preview/status/history |
 | lookups | 8 | ⬜ | configurations, cascading-rules, options |

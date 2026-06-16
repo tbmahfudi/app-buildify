@@ -110,7 +110,7 @@ class SchedulerConfigUpdate(BaseModel):
 
 class SchedulerConfigResponse(SchedulerConfigBase):
     """Schema for scheduler configuration response."""
-    id: int
+    id: UUID
     config_level: ConfigLevel
     tenant_id: Optional[UUID] = None
     company_id: Optional[UUID] = None
@@ -144,17 +144,17 @@ class SchedulerJobBase(BaseModel):
     max_retries: Optional[int] = Field(None, description="Maximum retry attempts", ge=0, le=10)
     retry_delay_seconds: Optional[int] = Field(None, description="Retry delay in seconds", ge=0)
 
-    @validator('cron_expression')
+    @validator('start_time', always=True)
     def validate_scheduling(cls, v, values):
-        """Validate that either cron_expression or interval_seconds is provided."""
-        if not v and not values.get('interval_seconds') and not values.get('start_time'):
+        """Validate that either cron_expression, interval_seconds, or start_time is provided."""
+        if not v and not values.get('cron_expression') and not values.get('interval_seconds'):
             raise ValueError("Must provide either cron_expression, interval_seconds, or start_time")
         return v
 
 
 class SchedulerJobCreate(SchedulerJobBase):
     """Schema for creating scheduler job."""
-    config_id: int = Field(..., description="Configuration ID to associate with")
+    config_id: UUID = Field(..., description="Configuration ID to associate with")
     tenant_id: Optional[UUID] = Field(None, description="Tenant ID for scoping")
     company_id: Optional[UUID] = Field(None, description="Company ID for scoping")
     branch_id: Optional[UUID] = Field(None, description="Branch ID for scoping")
@@ -180,8 +180,8 @@ class SchedulerJobUpdate(BaseModel):
 
 class SchedulerJobResponse(SchedulerJobBase):
     """Schema for scheduler job response."""
-    id: int
-    config_id: int
+    id: UUID
+    config_id: UUID
     tenant_id: Optional[UUID] = None
     company_id: Optional[UUID] = None
     branch_id: Optional[UUID] = None
@@ -203,8 +203,8 @@ class SchedulerJobResponse(SchedulerJobBase):
 
 class SchedulerJobExecutionResponse(BaseModel):
     """Schema for job execution response."""
-    id: int
-    job_id: int
+    id: UUID
+    job_id: UUID
     tenant_id: Optional[UUID] = None
     company_id: Optional[UUID] = None
     branch_id: Optional[UUID] = None
@@ -227,8 +227,8 @@ class SchedulerJobExecutionResponse(BaseModel):
 
 class SchedulerJobLogResponse(BaseModel):
     """Schema for job log response."""
-    id: int
-    execution_id: int
+    id: UUID
+    execution_id: UUID
     log_level: str
     message: str
     log_data: Optional[Dict[str, Any]] = None
@@ -281,5 +281,5 @@ class JobExecuteRequest(BaseModel):
 
 class JobExecuteResponse(BaseModel):
     """Schema for manual job execution response."""
-    execution_id: int
+    execution_id: UUID
     message: str
