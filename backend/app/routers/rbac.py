@@ -638,7 +638,7 @@ async def assign_permissions_to_role(
             role_perm = RolePermission(
                 role_id=role_id,
                 permission_id=perm_id,
-                granted_by_id=current_user.id
+                granted_by_user_id=current_user.id
             )
             db.add(role_perm)
             added.append(str(perm_id))
@@ -743,7 +743,7 @@ async def bulk_update_role_permissions(
             role_perm = RolePermission(
                 role_id=role_id,
                 permission_id=perm_id,
-                granted_by_id=current_user.id
+                granted_by_user_id=current_user.id
             )
             db.add(role_perm)
             granted.append(str(perm_id))
@@ -959,7 +959,7 @@ async def add_members_to_group(
             user_group = UserGroup(
                 user_id=user_id,
                 group_id=group_id,
-                granted_by_id=current_user.id
+                added_by_user_id=current_user.id
             )
             db.add(user_group)
             added.append(str(user_id))
@@ -1044,7 +1044,7 @@ async def assign_roles_to_group(
             group_role = GroupRole(
                 group_id=group_id,
                 role_id=role_id,
-                granted_by_id=current_user.id
+                granted_by_user_id=current_user.id
             )
             db.add(group_role)
             added.append(str(role_id))

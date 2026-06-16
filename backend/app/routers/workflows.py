@@ -58,6 +58,22 @@ async def list_workflows(
     return await service.list_workflows(entity_id, category)
 
 
+# NOTE: the literal "/instances" list route MUST be declared before the
+# parameterized "/{workflow_id}" route below, otherwise FastAPI matches
+# GET /workflows/instances against /{workflow_id} and 422s on the UUID parse.
+@router.get("/instances", response_model=List[WorkflowInstanceResponse])
+async def list_instances(
+    workflow_id: Optional[UUID] = Query(None),
+    status: Optional[str] = Query(None),
+    entity_id: Optional[UUID] = Query(None),
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """List all workflow instances"""
+    service = WorkflowService(db, current_user)
+    return await service.list_instances(workflow_id, status, entity_id)
+
+
 @router.get("/{workflow_id}", response_model=WorkflowDefinitionResponse)
 async def get_workflow(
     workflow_id: UUID,
@@ -213,19 +229,6 @@ async def create_instance(
     """Start a new workflow instance"""
     service = WorkflowService(db, current_user)
     return await service.create_instance(instance)
-
-
-@router.get("/instances", response_model=List[WorkflowInstanceResponse])
-async def list_instances(
-    workflow_id: Optional[UUID] = Query(None),
-    status: Optional[str] = Query(None),
-    entity_id: Optional[UUID] = Query(None),
-    db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
-):
-    """List all workflow instances"""
-    service = WorkflowService(db, current_user)
-    return await service.list_instances(workflow_id, status, entity_id)
 
 
 @router.get("/instances/{instance_id}", response_model=WorkflowInstanceResponse)

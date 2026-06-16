@@ -55,6 +55,36 @@ def _require_writable_entity(entity_name: str, db: Session, current_user):
         )
 
 
+# Postgres SQLSTATE for "undefined_table"
+_UNDEFINED_TABLE = "42P01"
+
+
+def _missing_table_error(entity_name: str, exc: Exception) -> Optional[HTTPException]:
+    """
+    Map a missing backing table to a clean 409 instead of a raw 500.
+
+    An entity can be `published` in entity_definitions while its physical table
+    was never created (e.g. a DDL/migration failure). Querying it raises a
+    psycopg2 UndefinedTable (SQLSTATE 42P01) wrapped in a SQLAlchemy error.
+    Walk the cause chain; if found, return a 409 explaining the table is not
+    provisioned rather than letting it surface as an opaque 500.
+    """
+    cause: Optional[BaseException] = exc
+    seen: set = set()
+    while cause is not None and id(cause) not in seen:
+        seen.add(id(cause))
+        if getattr(cause, "pgcode", None) == _UNDEFINED_TABLE:
+            return HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=(
+                    f"Entity '{entity_name}' is published but its database table is not "
+                    "provisioned. Re-publish the entity to create its table."
+                ),
+            )
+        cause = getattr(cause, "orig", None) or cause.__cause__
+    return None
+
+
 # ==============================================================================
 # CRUD Endpoints
 # ==============================================================================
@@ -122,6 +152,9 @@ async def create_record(
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         logger.error(f"Error creating {entity_name}: {e}", exc_info=True)
+        missing = _missing_table_error(entity_name, e)
+        if missing:
+            raise missing
         raise HTTPException(status_code=500, detail=f"Failed to create {entity_name} record: {str(e)}")
 
 
@@ -248,6 +281,9 @@ async def list_records(
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         logger.error(f"Error listing {entity_name}: {e}", exc_info=True)
+        missing = _missing_table_error(entity_name, e)
+        if missing:
+            raise missing
         raise HTTPException(status_code=500, detail=f"Failed to list {entity_name} records: {str(e)}")
 
 
@@ -294,6 +330,9 @@ async def get_record(
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
         logger.error(f"Error getting {entity_name}/{record_id}: {e}", exc_info=True)
+        missing = _missing_table_error(entity_name, e)
+        if missing:
+            raise missing
         raise HTTPException(status_code=500, detail=f"Failed to get {entity_name} record: {str(e)}")
 
 
@@ -361,6 +400,9 @@ async def update_record(
             raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         logger.error(f"Error updating {entity_name}/{record_id}: {e}", exc_info=True)
+        missing = _missing_table_error(entity_name, e)
+        if missing:
+            raise missing
         raise HTTPException(status_code=500, detail=f"Failed to update {entity_name} record: {str(e)}")
 
 
@@ -400,6 +442,9 @@ async def delete_record(
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
         logger.error(f"Error deleting {entity_name}/{record_id}: {e}", exc_info=True)
+        missing = _missing_table_error(entity_name, e)
+        if missing:
+            raise missing
         raise HTTPException(status_code=500, detail=f"Failed to delete {entity_name} record: {str(e)}")
 
 
@@ -454,6 +499,9 @@ async def bulk_create_records(
         return DynamicDataBulkResponse(**result)
     except Exception as e:
         logger.error(f"Error in bulk create for {entity_name}: {e}", exc_info=True)
+        missing = _missing_table_error(entity_name, e)
+        if missing:
+            raise missing
         raise HTTPException(status_code=500, detail=f"Failed to bulk create {entity_name} records: {str(e)}")
 
 
@@ -502,6 +550,9 @@ async def bulk_update_records(
         return DynamicDataBulkResponse(**result)
     except Exception as e:
         logger.error(f"Error in bulk update for {entity_name}: {e}", exc_info=True)
+        missing = _missing_table_error(entity_name, e)
+        if missing:
+            raise missing
         raise HTTPException(status_code=500, detail=f"Failed to bulk update {entity_name} records: {str(e)}")
 
 
@@ -545,6 +596,9 @@ async def bulk_delete_records(
         return DynamicDataBulkResponse(**result)
     except Exception as e:
         logger.error(f"Error in bulk delete for {entity_name}: {e}", exc_info=True)
+        missing = _missing_table_error(entity_name, e)
+        if missing:
+            raise missing
         raise HTTPException(status_code=500, detail=f"Failed to bulk delete {entity_name} records: {str(e)}")
 
 
@@ -679,6 +733,9 @@ async def aggregate_records(
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         logger.error(f"Error aggregating {entity_name}: {e}", exc_info=True)
+        missing = _missing_table_error(entity_name, e)
+        if missing:
+            raise missing
         raise HTTPException(status_code=500, detail=f"Failed to aggregate {entity_name}: {str(e)}")
 
 
