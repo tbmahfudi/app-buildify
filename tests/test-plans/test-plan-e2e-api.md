@@ -68,7 +68,7 @@ Legend: ✅ deep (positive+negative+edge+authz) · 🟡 smoke only (auto GET swe
 | automations | 16 | ✅ | rules CRUD + toggle/test/execute, executions, action-templates, webhooks CRUD |
 | reports | 17 | ⬜ | definitions, parameters, run, export, schedules, history |
 | dashboards | 16 | ⬜ | dashboards, KPI/chart widgets, sharing, filters, drill-down |
-| modules / module-registry / module-extensions | 44 | ⬜ | enable/disable, manifest, extensions |
+| modules / module-registry / module-extensions | 44 | ✅ | module-registry reads/install/uninstall/enable/disable/configure/register/heartbeat/sync; nocode-modules CRUD/dependencies/versions/validation/components; entity/screen/menu extension CRUD |
 | scheduler | 14 | ⬜ | jobs, configs (hierarchical), runs |
 | admin / security | 14 | ✅ | policies CRUD (incl. soft-delete semantics), locked-accounts, sessions, login-attempts (filters), notification config/queue (filters) |
 | menu | 11 | ⬜ | menu tree, admin, sync preview/status/history |

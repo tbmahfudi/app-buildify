@@ -16,6 +16,9 @@ from fastapi import HTTPException, status
 from packaging import version as pkg_version
 
 from app.models.nocode_module import Module, ModuleDependency, ModuleVersion
+from app.models.module_extension import (
+    ModuleEntityExtension, ModuleScreenExtension, ModuleMenuExtension
+)
 
 # Alias for backward compat within this service
 NocodeModule = Module
@@ -274,6 +277,21 @@ class NocodeModuleService:
 
         if dependents > 0:
             return False, f"Cannot delete module: {dependents} other module(s) depend on it"
+
+        # Check if any extensions reference this module (extending or target side).
+        # These FKs are NOT NULL with no DB-level cascade, so deleting the module
+        # without this check raises an unhandled IntegrityError (500).
+        extension_count = 0
+        for model in (ModuleEntityExtension, ModuleScreenExtension, ModuleMenuExtension):
+            extension_count += self.db.query(model).filter(
+                or_(
+                    model.extending_module_id == module_id,
+                    model.target_module_id == module_id
+                )
+            ).count()
+
+        if extension_count > 0:
+            return False, f"Cannot delete module: {extension_count} extension(s) reference it"
 
         # Delete module (CASCADE will handle dependencies and versions)
         self.db.delete(module)

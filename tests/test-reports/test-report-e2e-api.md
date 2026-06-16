@@ -19,8 +19,8 @@ updated: 2026-06-16
 | Date | 2026-06-16 |
 | Target | `http://localhost:8000` (container `app_buildify_backend`) |
 | Command | `docker exec app_buildify_backend python -m pytest tests/e2e --confcutdir=tests/e2e` |
-| Result | **277 passed, 0 failed, 0 xfailed** (77s) — after DEF-001…007 fixes |
-| Scope this run | deep: auth, rbac, org, data-model, dynamic-data (+provisioning), workflows, automations, admin/security; health/openapi; all-router GET smoke sweep |
+| Result | **349 passed, 0 failed, 0 xfailed** (~75s) — after DEF-001…010 |
+| Scope this run | deep: auth, rbac, org, data-model, dynamic-data (+provisioning), workflows, automations, admin/security, modules / module-registry / module-extensions; health/openapi; all-router GET smoke sweep |
 
 ## What is covered now
 
@@ -43,6 +43,16 @@ updated: 2026-06-16
   tenant-specific, duplicate-tenant guard, soft-delete semantics), locked
   accounts, active sessions (list/limit/revoke/revoke-all), login attempts
   (email/success filters), notification config + queue (status filter).
+- **modules / module-registry / module-extensions** (72) — module-registry:
+  list available/enabled (own + cross-tenant superuser), module info/manifest,
+  install/uninstall (superuser, not-loadable/already-installed negatives),
+  enable/disable (own tenant, superuser-on-behalf-of, tier/tenant negatives),
+  configuration update, register (idempotent upsert), heartbeat, sync.
+  nocode-modules: create/get/update/publish/delete, prefix/name uniqueness +
+  validation, dependency add/list/check/remove + circular-dependency guard,
+  version increment (major/minor/patch) + history, component snapshot.
+  module-extensions: entity/screen/menu extension create/list, duplicate and
+  unknown-module/entity/screen negatives, field/type validation.
 - **Smoke sweep** — OpenAPI-driven, every parameterless GET across all 23
   routers: not-5xx as superadmin + 401/403 as anonymous (~117 endpoints).
 
@@ -148,6 +158,57 @@ updated: 2026-06-16
   `tests/e2e/test_admin_security.py` (email/success/status filter cases) and
   the full suite.
 
+### DEF-008 — `enable_module`/`disable_module` 500 on any audit-logged call — ✅ FIXED 2026-06-16
+- **Severity**: High (every enable/disable call hits the audit log; the
+  success path crashed just as often as the failure path).
+- **Root cause**: `app/core/audit.py:create_audit_log` did a bare
+  `json.dumps(context_info)`/`json.dumps(changes)`. Four call sites in
+  `app/routers/modules.py` (`enable_module` x2, `disable_module` x2) pass
+  `context_info={"tenant_id": target_tenant_id}` where `target_tenant_id` is a
+  raw `uuid.UUID` object, not a string → `TypeError: Object of type UUID is
+  not JSON serializable` → unhandled 500 on every enable/disable call.
+- **Fix**: `json.dumps(..., default=str)` on both calls in `create_audit_log` —
+  a general fix at the audit layer rather than patching each of the 4 call
+  sites individually, since any future caller could pass a UUID the same way.
+
+### DEF-009 — deleting a module referenced by entity/screen/menu extensions crashes with a raw FK violation — ✅ FIXED 2026-06-16
+- **Severity**: Medium (no DELETE confirmation step exists; any module with an
+  extension pointing at it 500s instead of returning a clean error).
+- **Root cause**: `NocodeModuleService.delete_module` only checked
+  `ModuleDependency` rows before deleting a module — it never checked
+  `module_entity_extensions` / `module_screen_extensions` /
+  `module_menu_extensions`, whose `extending_module_id`/`target_module_id`
+  columns are `NOT NULL` with no DB-level cascade. SQLAlchemy nulls the FK on
+  the in-session child before the parent delete commits, then Postgres
+  rejects the NULL write → unhandled `IntegrityError` → 500.
+- **Fix**: added a count check across all three extension tables (matching the
+  existing dependents-check pattern) and return a clean
+  `400 "Cannot delete module: N extension(s) reference it"` instead.
+
+### DEF-010 — in-process module-registry loader permanently discovers 0 modules (not fixed — environment cruft, not a code bug)
+- **Severity**: informational / environment hygiene.
+- **Finding**: `backend/modules/financial/` (the directory the live container's
+  `ModuleLoader` reads via `/app/modules`, distinct from the git-tracked
+  top-level `modules/financial/`) had no `module.py`/`manifest.json` — only
+  stale `__pycache__/*.pyc` — so `ModuleLoader.discover_modules()` always
+  found 0 modules. The DB's "financial" registry row stayed `is_installed` from
+  before these files vanished, masking the break until the worker process
+  restarted (it was holding the module in memory from a prior successful
+  load). Confirmed via git history: commit `904ac23` consolidated financial
+  under `modules/financial/`, then `9fb8e08` (same day) explicitly removed it
+  from `backend/`/`frontend/` entirely ("No modules in frontend/ or backend/
+  directories") — financial now lives as a standalone microservice under
+  `modules/financial/backend` (port 9001), not the in-process loader. The
+  leftover `backend/modules/financial/__pycache__` was never cleaned up.
+- **Action taken**: deleted the orphaned `backend/modules/financial/` (untracked,
+  pyc-only cruft) so the live state matches the documented intent. No code
+  change — this is not something to "fix" by reconstructing deleted source.
+  `install`/`enable` for any module now consistently and correctly return
+  `400 "Module X not found"`, since no module is meant to be loadable through
+  this legacy path anymore. `tests/e2e/test_modules.py` asserts this real
+  behavior rather than a previously-assumed (and never-actually-working)
+  success path.
+
 ## Environment notes / gotchas (for whoever runs this next)
 
 1. **`max_concurrent_sessions = 3`** evicts the *oldest* session — naive test
@@ -161,9 +222,9 @@ updated: 2026-06-16
 
 ## Not yet covered (backlog)
 
-Deep per-router coverage still pending for: reports, dashboards,
-modules / module-registry / module-extensions, scheduler,
+Deep per-router coverage still pending for: reports, dashboards, scheduler,
 menu, lookups, settings, metadata, data, builder, templates, audit.
-(auth, rbac, org, data-model, dynamic-data, workflows, automations, and
-admin/security are now deep.) The smoke sweep already exercises all of them at the GET level. See the
+(auth, rbac, org, data-model, dynamic-data, workflows, automations,
+admin/security, and modules / module-registry / module-extensions are now
+deep.) The smoke sweep already exercises all of them at the GET level. See the
 coverage matrix in [`test-plan-e2e-api.md`](../test-plans/test-plan-e2e-api.md).
