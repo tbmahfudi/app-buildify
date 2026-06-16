@@ -66,7 +66,7 @@ Legend: ✅ deep (positive+negative+edge+authz) · 🟡 smoke only (auto GET swe
 | dynamic-data | 11 | ✅ | publish→record CRUD (create/get/update/delete), list/search/paginate, aggregate, bulk, tenant scoping |
 | workflows | 20 | ✅ | definition CRUD, states, transitions, publish/unpublish/simulate, instance create→execute→history |
 | automations | 16 | ✅ | rules CRUD + toggle/test/execute, executions, action-templates, webhooks CRUD |
-| reports | 17 | ⬜ | definitions, parameters, run, export, schedules, history |
+| reports | 17 | ✅ | definitions CRUD + base_entity derivation, execute/export/history, preview (flat+designer), lookup, schedules CRUD, templates, join-suggestions; SQL injection regression (DEF-011) |
 | dashboards | 16 | ⬜ | dashboards, KPI/chart widgets, sharing, filters, drill-down |
 | modules / module-registry / module-extensions | 44 | ✅ | module-registry reads/install/uninstall/enable/disable/configure/register/heartbeat/sync; nocode-modules CRUD/dependencies/versions/validation/components; entity/screen/menu extension CRUD |
 | scheduler | 14 | ⬜ | jobs, configs (hierarchical), runs |

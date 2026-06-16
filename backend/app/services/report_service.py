@@ -24,8 +24,48 @@ from app.schemas.report import (
 )
 
 
+_ALLOWED_AGGREGATIONS = {'sum', 'avg', 'count', 'min', 'max', 'none'}
+_ALLOWED_ORDER_DIRECTIONS = {'asc', 'desc'}
+
+
+class ReportQueryValidationError(ValueError):
+    """Raised when a report query references an unknown/disallowed table, column, or option.
+
+    Distinct from plain ValueError (used elsewhere for "not found") so routers
+    can map this to 400 instead of 404.
+    """
+
+
 class ReportService:
     """Service for report operations."""
+
+    @staticmethod
+    def _get_table_columns(db: Session, table_name: str) -> set:
+        """
+        Return the real column names for a physical table, queried via
+        information_schema with a bound parameter (safe regardless of what
+        table_name contains). An empty result means the table doesn't exist
+        and must not be queried.
+        """
+        result = db.execute(
+            text(
+                "SELECT column_name FROM information_schema.columns "
+                "WHERE table_schema = 'public' AND table_name = :t"
+            ),
+            {"t": table_name},
+        )
+        return {row[0] for row in result}
+
+    @staticmethod
+    def _quote_identifier(name: str) -> str:
+        """Double-quote a validated SQL identifier, escaping embedded quotes."""
+        return '"' + name.replace('"', '""') + '"'
+
+    @staticmethod
+    def _validate_column(column_name: str, allowed_columns: set, context: str) -> str:
+        if column_name not in allowed_columns:
+            raise ReportQueryValidationError(f"Unknown or disallowed {context}: {column_name}")
+        return ReportService._quote_identifier(column_name)
 
     @staticmethod
     def _normalize_report_dict(report_dict: dict) -> dict:
@@ -261,9 +301,23 @@ class ReportService:
         report_def: ReportDefinition,
         parameters: Optional[Dict[str, Any]]
     ) -> Dict[str, Any]:
-        """Build and execute the report query."""
+        """
+        Build and execute the report query.
+
+        Every identifier (table name, column names, group-by/order-by fields)
+        is validated against the table's real columns (via information_schema)
+        before being interpolated, and every filter *value* is passed as a
+        bind parameter — never string-interpolated. This is a hard security
+        boundary: report definitions/preview requests are attacker-reachable
+        (any user with reports:execute:tenant), so nothing from them may reach
+        raw SQL unvalidated/unbound.
+        """
         base_entity = report_def.base_entity
         query_config = report_def.query_config or {}
+
+        allowed_columns = ReportService._get_table_columns(db, base_entity)
+        if not allowed_columns:
+            raise ReportQueryValidationError(f"Unknown or inaccessible table: {base_entity}")
 
         # Resolve columns: prefer columns_config (legacy), fall back to columns (designer format)
         columns_config = report_def.columns_config or []
@@ -282,44 +336,51 @@ class ReportService:
         select_fields = []
         for col in columns_config:
             col_name = col.get('name')
-            col_label = col.get('label', col_name)
-            aggregation = col.get('aggregation') or col.get('aggregate') or 'none'
+            col_label = col.get('label', col_name) or col_name
+            aggregation = (col.get('aggregation') or col.get('aggregate') or 'none').lower()
 
-            # Quote the alias so multi-word labels don't break SQL syntax
-            quoted_label = f'"{col_label}"'
+            if aggregation not in _ALLOWED_AGGREGATIONS:
+                raise ReportQueryValidationError(f"Unknown or disallowed aggregation: {aggregation}")
 
-            if aggregation and aggregation != 'none':
-                select_fields.append(f"{aggregation.upper()}({col_name}) as {quoted_label}")
+            quoted_col = ReportService._validate_column(col_name, allowed_columns, "column")
+            quoted_label = ReportService._quote_identifier(str(col_label))
+
+            if aggregation != 'none':
+                select_fields.append(f"{aggregation.upper()}({quoted_col}) as {quoted_label}")
             else:
-                select_fields.append(f"{col_name} as {quoted_label}")
+                select_fields.append(f"{quoted_col} as {quoted_label}")
 
         if not select_fields:
             select_fields = ['*']
 
         # Build FROM clause
-        from_clause = f"{base_entity}"
+        from_clause = ReportService._quote_identifier(base_entity)
 
         # Build WHERE clause
         # Only filter by tenant_id when the value is actually set (superusers may have None)
         where_conditions = []
         query_params: dict = {}
-        if tenant_id is not None:
-            where_conditions.append("tenant_id = :tenant_id")
+        if tenant_id is not None and 'tenant_id' in allowed_columns:
+            where_conditions.append('"tenant_id" = :tenant_id')
             query_params["tenant_id"] = str(tenant_id)
 
         # Add filter conditions from query config
         if query_config.get('filters'):
-            filter_sql = ReportService._build_filter_sql(
-                query_config['filters'], parameters
+            filter_sql, filter_params = ReportService._build_filter_sql(
+                query_config['filters'], parameters, allowed_columns
             )
             if filter_sql:
                 where_conditions.append(filter_sql)
+                query_params.update(filter_params)
 
         # Build GROUP BY clause
         group_by_clause = ""
         if query_config.get('group_by'):
-            group_by_fields = query_config['group_by']
-            group_by_clause = f"GROUP BY {', '.join(group_by_fields)}"
+            quoted_group_fields = [
+                ReportService._validate_column(f, allowed_columns, "group_by field")
+                for f in query_config['group_by']
+            ]
+            group_by_clause = f"GROUP BY {', '.join(quoted_group_fields)}"
 
         # Build ORDER BY clause
         order_by_clause = ""
@@ -327,14 +388,18 @@ class ReportService:
             order_by_parts = []
             for order in query_config['order_by']:
                 field = order.get('field')
-                direction = order.get('direction', 'ASC')
-                order_by_parts.append(f"{field} {direction}")
+                direction = (order.get('direction') or 'ASC').lower()
+                if direction not in _ALLOWED_ORDER_DIRECTIONS:
+                    raise ReportQueryValidationError(f"Unknown or disallowed sort direction: {direction}")
+                quoted_field = ReportService._validate_column(field, allowed_columns, "order_by field")
+                order_by_parts.append(f"{quoted_field} {direction.upper()}")
             order_by_clause = f"ORDER BY {', '.join(order_by_parts)}"
 
         # Build LIMIT clause
         limit_clause = ""
         if query_config.get('limit'):
-            limit_clause = f"LIMIT {query_config['limit']}"
+            limit_clause = "LIMIT :__limit"
+            query_params["__limit"] = int(query_config['limit'])
 
         # Construct full query — omit WHERE entirely when there are no conditions
         where_clause = f"WHERE {' AND '.join(where_conditions)}" if where_conditions else ""
@@ -361,13 +426,33 @@ class ReportService:
             'columns': list(columns)
         }
 
+    _OPERATOR_SQL = {
+        'eq': '=',
+        'ne': '!=',
+        'gt': '>',
+        'lt': '<',
+        'gte': '>=',
+        'lte': '<=',
+    }
+
     @staticmethod
     def _build_filter_sql(
         filter_group: Dict[str, Any],
-        parameters: Optional[Dict[str, Any]]
-    ) -> str:
-        """Build SQL WHERE clause from filter group."""
+        parameters: Optional[Dict[str, Any]],
+        allowed_columns: set,
+        _counter: Optional[List[int]] = None,
+    ) -> tuple:
+        """
+        Build a parameterized SQL WHERE fragment from a filter group.
+
+        Returns (sql_fragment, bind_params). Every field is validated against
+        the table's real columns; every value is bound, never interpolated.
+        """
+        if _counter is None:
+            _counter = [0]
+
         conditions = []
+        params: dict = {}
 
         for condition in filter_group.get('conditions', []):
             field = condition.get('field')
@@ -379,34 +464,40 @@ class ReportService:
             if param_name and parameters:
                 value = parameters.get(param_name, value)
 
-            # Build condition based on operator
-            if operator == 'eq':
-                conditions.append(f"{field} = '{value}'")
-            elif operator == 'ne':
-                conditions.append(f"{field} != '{value}'")
-            elif operator == 'gt':
-                conditions.append(f"{field} > '{value}'")
-            elif operator == 'lt':
-                conditions.append(f"{field} < '{value}'")
-            elif operator == 'gte':
-                conditions.append(f"{field} >= '{value}'")
-            elif operator == 'lte':
-                conditions.append(f"{field} <= '{value}'")
+            quoted_field = ReportService._validate_column(field, allowed_columns, "filter field")
+
+            _counter[0] += 1
+            bind_name = f"f{_counter[0]}"
+
+            if operator in ReportService._OPERATOR_SQL:
+                conditions.append(f"{quoted_field} {ReportService._OPERATOR_SQL[operator]} :{bind_name}")
+                params[bind_name] = value
             elif operator == 'like':
-                conditions.append(f"{field} LIKE '%{value}%'")
+                conditions.append(f"{quoted_field} LIKE :{bind_name}")
+                params[bind_name] = f"%{value}%"
             elif operator == 'in':
-                if isinstance(value, list):
-                    values_str = ', '.join([f"'{v}'" for v in value])
-                    conditions.append(f"{field} IN ({values_str})")
+                if isinstance(value, list) and value:
+                    bind_names = []
+                    for v in value:
+                        _counter[0] += 1
+                        bn = f"f{_counter[0]}"
+                        bind_names.append(f":{bn}")
+                        params[bn] = v
+                    conditions.append(f"{quoted_field} IN ({', '.join(bind_names)})")
 
         # Handle nested groups recursively
         for nested_group in filter_group.get('groups', []):
-            nested_sql = ReportService._build_filter_sql(nested_group, parameters)
+            nested_sql, nested_params = ReportService._build_filter_sql(
+                nested_group, parameters, allowed_columns, _counter
+            )
             if nested_sql:
                 conditions.append(f"({nested_sql})")
+                params.update(nested_params)
 
         logic = filter_group.get('logic', 'AND')
-        return f" {logic} ".join(conditions)
+        if logic not in ('AND', 'OR'):
+            logic = 'AND'
+        return f" {logic} ".join(conditions), params
 
     @staticmethod
     def _get_cached_data(
@@ -493,10 +584,18 @@ class ReportService:
         display_field = request.display_field
         value_field = request.value_field
 
+        allowed_columns = ReportService._get_table_columns(db, entity)
+        if not allowed_columns:
+            raise ReportQueryValidationError(f"Unknown or inaccessible table: {entity}")
+
+        quoted_entity = ReportService._quote_identifier(entity)
+        quoted_value_field = ReportService._validate_column(value_field, allowed_columns, "value_field")
+        quoted_display_field = ReportService._validate_column(display_field, allowed_columns, "display_field")
+
         # Build query with parameterized tenant_id
         sql = f"""
-            SELECT DISTINCT {value_field} as value, {display_field} as label
-            FROM {entity}
+            SELECT DISTINCT {quoted_value_field} as value, {quoted_display_field} as label
+            FROM {quoted_entity}
             WHERE tenant_id = :tenant_id
         """
 
@@ -504,14 +603,15 @@ class ReportService:
 
         # Add search filter
         if request.search:
-            sql += f" AND {display_field} LIKE :search"
+            sql += f" AND {quoted_display_field} LIKE :search"
             params["search"] = f"%{request.search}%"
 
         # Add custom filter conditions
         if request.filter_conditions:
             for i, (field, value) in enumerate(request.filter_conditions.items()):
+                quoted_field = ReportService._validate_column(field, allowed_columns, "filter_conditions field")
                 param_name = f"filter_{i}"
-                sql += f" AND {field} = :{param_name}"
+                sql += f" AND {quoted_field} = :{param_name}"
                 params[param_name] = value
 
         # Add parent value filter for cascading
@@ -520,7 +620,7 @@ class ReportService:
             sql += " AND parent_id = :parent_value"
             params["parent_value"] = request.parent_value
 
-        sql += f" ORDER BY {display_field} LIMIT :limit"
+        sql += f" ORDER BY {quoted_display_field} LIMIT :limit"
         params["limit"] = request.limit
 
         # Execute query with parameters

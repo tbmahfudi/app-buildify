@@ -19,8 +19,8 @@ updated: 2026-06-16
 | Date | 2026-06-16 |
 | Target | `http://localhost:8000` (container `app_buildify_backend`) |
 | Command | `docker exec app_buildify_backend python -m pytest tests/e2e --confcutdir=tests/e2e` |
-| Result | **349 passed, 0 failed, 0 xfailed** (~75s) — after DEF-001…010 |
-| Scope this run | deep: auth, rbac, org, data-model, dynamic-data (+provisioning), workflows, automations, admin/security, modules / module-registry / module-extensions; health/openapi; all-router GET smoke sweep |
+| Result | **396 passed, 0 failed, 0 xfailed** (~113s) — after DEF-001…014 |
+| Scope this run | deep: auth, rbac, org, data-model, dynamic-data (+provisioning), workflows, automations, admin/security, modules / module-registry / module-extensions, reports; health/openapi; all-router GET smoke sweep |
 
 ## What is covered now
 
@@ -55,6 +55,17 @@ updated: 2026-06-16
   unknown-module/entity/screen negatives, field/type validation.
 - **Smoke sweep** — OpenAPI-driven, every parameterless GET across all 23
   routers: not-5xx as superadmin + 401/403 as anonymous (~117 endpoints).
+- **reports** (47) — report definition CRUD lifecycle (create/get/update/
+  delete, base_entity derivation from data_source, category filter, 422/404
+  negatives); execute (success, unknown-report 404, export-to-csv,
+  execution history); preview (flat + designer payload formats, empty-when-
+  no-entity, group_by+aggregation, order_by, legit filter); lookup (success,
+  search, malicious-input negatives); schedules CRUD lifecycle; templates
+  list + use-unknown 404; join-suggestions; auth-required on every group;
+  **SQL injection regression coverage** — original exploit payload plus 9
+  malicious-identifier payloads (base_entity, column, group_by, order_by
+  field/direction, aggregation, lookup entity/display_field/value_field/
+  filter_conditions key) all asserted rejected.
 
 ## Defects found
 
@@ -209,6 +220,89 @@ updated: 2026-06-16
   behavior rather than a previously-assumed (and never-actually-working)
   success path.
 
+### DEF-011 — SQL injection in the report query engine (cross-tenant data exposure) — ✅ FIXED 2026-06-17
+- **Severity**: Critical (authenticated SQL injection, exploitable by any user
+  holding `reports:execute:tenant` — leaks every tenant's data, not just the
+  caller's own).
+- **Root cause**: `app/services/report_service.py`'s `_build_and_execute_query`,
+  `_build_filter_sql`, and `get_lookup_data` built raw SQL via direct Python
+  f-string interpolation of filter values, table names, column names,
+  aggregation function names, group_by/order_by fields, and sort direction —
+  none escaped, parameterized, or allow-listed.
+- **Confirmed exploit**: `POST /api/v1/reports/preview` with
+  `base_entity="users"`, a filter on `email` with value `"x' OR '1'='1"` —
+  returned all 25 users across every tenant instead of the caller's own.
+- **Fix (full scope, per explicit request)**:
+  1. All filter *values* are now bound via SQLAlchemy parameters
+     (`:f0`, `:f1`, … allocated through a shared counter that survives
+     recursive nested filter groups).
+  2. Every interpolated *identifier* (base_entity/table, select columns,
+     group_by fields, order_by fields, lookup entity/display_field/
+     value_field/filter-condition keys) is validated against the table's real,
+     live column set fetched via a safely-bound `information_schema.columns`
+     query (`_get_table_columns`) — an empty result also rejects unknown
+     tables. Validated identifiers are then double-quoted
+     (`_quote_identifier`, escaping embedded quotes) as defense-in-depth.
+  3. `aggregation` is allow-listed against `{sum, avg, count, min, max, none}`
+     and order-by direction against `{asc, desc}`.
+  4. A new `ReportQueryValidationError(ValueError)` distinguishes "malformed/
+     malicious request" (→ 400) from the pre-existing "not found" `ValueError`
+     semantic (→ 404) elsewhere in the same file; wired into
+     `execute_report`/`execute_and_export_report` in `routers/reports.py`
+     (preview/lookup already mapped generic exceptions to 400, so needed no
+     change).
+- **Verification**: original exploit payload now returns
+  `{'data': [], 'columns': ['id', 'email'], 'row_count': 0}`; 6+ legitimate
+  usage patterns (filters, group_by+aggregation, order_by, lookup+search)
+  still work; 9+ malicious-identifier payloads across preview and lookup all
+  rejected with 400. Regression: `tests/e2e/test_reports.py::TestPreview` /
+  `TestLookup`.
+
+### DEF-012 — Tenant Administrator role seeded with zero `reports:*` permissions — not fixed in seed data, worked around in harness
+- **Severity**: Medium (the reports feature was unreachable out of the box for
+  any seeded tenant user — `ceo@techstart.com`'s "Tenant Administrator" role
+  held none of the 13 `reports:*` permission codes despite all of them
+  existing in the catalogue).
+- **Fix taken**: a session-scoped autouse test fixture
+  (`_grant_reports_permissions` in `tests/e2e/test_reports.py`) self-grants
+  the 13 `reports:*` permission codes to the caller's own tenant copy of the
+  `tenant_admin` role (there are two rows named "Tenant Administrator" — a
+  platform template with `tenant_id=NULL` and each tenant's own copy; matched
+  by `code == "tenant_admin" and tenant_id == caller's tenant_id`) via the
+  existing `POST /rbac/roles/{id}/permissions` endpoint.
+- **Not done**: the seed-data script itself was not changed, so a fresh
+  database still seeds the Tenant Administrator role without `reports:*`
+  permissions. Flag for whoever owns seed data if this should ship fixed.
+
+### DEF-013 — bad seed-data row (`report_type='dashboard'`) broke `GET /reports/definitions` for the entire TechStart tenant — ✅ FIXED 2026-06-17
+- **Severity**: High (core report-listing endpoint 500'd for every user in
+  the tenant, not just the one bad row's owner).
+- **Root cause**: a seeded `report_definitions` row ("Employee Performance
+  Dashboard", TechStart tenant) had `report_type='dashboard'`, which is not a
+  valid `ReportType` enum value (`tabular|summary|crosstab|metric|chart` —
+  confirmed via `app/schemas/report.py` and a grep showing no code anywhere
+  handles `'dashboard'` specially, i.e. this is bad data, not an
+  unimplemented type). Pydantic response validation rejected the row →
+  `ResponseValidationError` → 500 for the whole list endpoint.
+- **Fix**: direct data correction,
+  `UPDATE report_definitions SET report_type = 'tabular' WHERE report_type = 'dashboard'`
+  (mirrors the DEF-001 precedent of fixing bad data rather than papering over
+  it in code). Verified zero remaining bad rows.
+
+### DEF-014 — `execute_and_export_report` returned 500 instead of 404 for an unknown report — ✅ FIXED 2026-06-17
+- **Severity**: Medium (a clean not-found case surfaced as a server error).
+- **Root cause**: `routers/reports.py`'s `execute_and_export_report` raises a
+  404 `HTTPException` via `not_found_exception(...)` when the report
+  definition doesn't exist, but the function's except chain had no
+  `except HTTPException: raise` guard before the trailing
+  `except Exception as e: raise HTTPException(500, ...)` — since
+  `HTTPException` IS-A `Exception`, the catch-all swallowed the 404 and
+  re-raised it as a 500.
+- **Fix**: added `except HTTPException: raise` as the first except clause,
+  before `ReportQueryValidationError`/`ValueError`/`ImportError`/`Exception`.
+  Found via the new negative test
+  `test_execute_export_unknown_report_404`.
+
 ## Environment notes / gotchas (for whoever runs this next)
 
 1. **`max_concurrent_sessions = 3`** evicts the *oldest* session — naive test
@@ -222,9 +316,10 @@ updated: 2026-06-16
 
 ## Not yet covered (backlog)
 
-Deep per-router coverage still pending for: reports, dashboards, scheduler,
+Deep per-router coverage still pending for: dashboards, scheduler,
 menu, lookups, settings, metadata, data, builder, templates, audit.
 (auth, rbac, org, data-model, dynamic-data, workflows, automations,
-admin/security, and modules / module-registry / module-extensions are now
-deep.) The smoke sweep already exercises all of them at the GET level. See the
-coverage matrix in [`test-plan-e2e-api.md`](../test-plans/test-plan-e2e-api.md).
+admin/security, modules / module-registry / module-extensions, and reports
+are now deep.) The smoke sweep already exercises all of them at the GET level.
+See the coverage matrix in
+[`test-plan-e2e-api.md`](../test-plans/test-plan-e2e-api.md).
