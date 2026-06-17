@@ -19,8 +19,8 @@ updated: 2026-06-16
 | Date | 2026-06-16 |
 | Target | `http://localhost:8000` (container `app_buildify_backend`) |
 | Command | `docker exec app_buildify_backend python -m pytest tests/e2e --confcutdir=tests/e2e` |
-| Result | **435 passed, 0 failed, 0 xfailed** (~175s) — after DEF-001…018 |
-| Scope this run | deep: auth, rbac, org, data-model, dynamic-data (+provisioning), workflows, automations, admin/security, modules / module-registry / module-extensions, reports, scheduler; health/openapi; all-router GET smoke sweep |
+| Result | **464 passed, 0 failed, 0 xfailed** (~260s) — after DEF-001…021 |
+| Scope this run | deep: auth, rbac, org, data-model, dynamic-data (+provisioning), workflows, automations, admin/security, modules / module-registry / module-extensions, reports, scheduler, dashboards; health/openapi; all-router GET smoke sweep |
 
 ## What is covered now
 
@@ -66,6 +66,14 @@ updated: 2026-06-16
   malicious-identifier payloads (base_entity, column, group_by, order_by
   field/direction, aggregation, lookup entity/display_field/value_field/
   filter_conditions key) all asserted rejected.
+- **dashboards** (29) — dashboard CRUD lifecycle (create/get/update/delete,
+  list with category and favorites filters, clone); page create/update/delete
+  (incl. page appears in dashboard detail response); widget create/update/delete
+  + bulk-update (drag-drop reposition); widget data 404 for unknown widget;
+  share creation (user-targeted, unknown-dashboard 400/404); snapshot creation,
+  unknown-dashboard 404; auth-required on every group;
+  **DEF-019 UUID regression** — all create responses asserted `uuid.UUID(id)` to
+  catch any recurrence of the int/default bug.
 - **scheduler** (39) — configs CRUD lifecycle (create/get/update/delete,
   effective-config resolution, system-level superuser-only, tenant-level
   requires tenant_id, cross-tenant tenant_id rejected on create); jobs CRUD
@@ -420,6 +428,51 @@ updated: 2026-06-16
   `TestJobs::test_create_get_update_delete` (verifies interval_seconds-only
   job works via the `job` fixture's `cron_expression` path).
 
+### DEF-019 — every dashboard create call 500'd; every by-id read/update/delete 422'd — ✅ FIXED 2026-06-17
+- **Severity**: Critical (the entire dashboard write surface was broken out of the box — same pattern as DEF-015).
+- **Root cause (two independent bugs compounding)**:
+  1. `Dashboard`, `DashboardPage`, `DashboardWidget`, `DashboardShare`,
+     `DashboardSnapshot`, and `WidgetDataCache` all declared
+     `id = Column(GUID, primary_key=True, index=True)` with **no `default=generate_uuid`**,
+     causing Postgres `NotNullViolation` on every INSERT → 500.
+  2. All Pydantic response schemas typed every `id` field as `int` and all
+     router path params as `int`, while actual DB columns are genuinely `uuid` →
+     422 ("unable to parse string as an integer") on every by-id endpoint.
+- **Fix**: added `default=generate_uuid` to all 6 model PK columns
+  (`app/models/dashboard.py`); changed every `int` annotation to `UUID` across
+  all schemas (`app/schemas/dashboard.py`) and all router path params
+  (`app/routers/dashboards.py`).
+- **Exploit confirmed live** before fix: `POST /api/v1/dashboards` → 500 with
+  `psycopg2.errors.NotNullViolation: null value in column "id"`.
+- **Regression tests**: `TestDashboards::test_create_get_update_delete`
+  (asserts `uuid.UUID(did)` on the returned id); `TestPages`,
+  `TestWidgets`, `TestSharing`, `TestSnapshots` all carry the same assertion.
+
+### DEF-020 — `dashboard_shares.shared_with_role_id` model/schema typed as GUID while DB column is `integer` — ✅ FIXED 2026-06-17
+- **Severity**: High (`POST /dashboards/shares` 500'd for any share that set
+  `shared_with_role_id` — i.e., role-targeted sharing was completely broken).
+- **Root cause**: during the DEF-019 fix pass, `DashboardShare.shared_with_role_id`
+  was changed to `GUID` in the model and `UUID` in the schema. The live DB column
+  is `integer` (a legacy integer FK), so Postgres rejected the insert with
+  `column "shared_with_role_id" is of type integer but expression is of type uuid`.
+- **Fix**: reverted `DashboardShare.shared_with_role_id` to `Column(Integer, nullable=True)`
+  in the model and to `Optional[int]` in both `DashboardShareCreate` and
+  `DashboardShareResponse` in the schema.
+- **Found by**: `TestSharing::test_create_share` — first run after DEF-019 fix.
+
+### DEF-021 — `create_snapshot` raised `TypeError: Object of type UUID is not JSON serializable` → 500 — ✅ FIXED 2026-06-17
+- **Severity**: High (`POST /dashboards/snapshots` always 500'd when the dashboard
+  had any pages or widgets).
+- **Root cause**: `DashboardService.create_snapshot` built the `snapshot_data` dict
+  by directly including ORM attribute values (`dashboard.id`, `page.id`, `widget.id`),
+  which are raw `uuid.UUID` objects. The dict is stored in a Postgres `JSON` column
+  via SQLAlchemy's JSON type, which calls `json.dumps` without a custom `default`
+  encoder → `TypeError` on any UUID field in the snapshot → 500. Same root cause
+  as DEF-008 (audit layer UUID serialization), but in a different service method.
+- **Fix**: wrapped every UUID value in the snapshot dict with `str()` in
+  `app/services/dashboard_service.py`'s `create_snapshot` method.
+- **Found by**: `TestSnapshots::test_create_snapshot` — first run after DEF-019/020 fixes.
+
 ## Environment notes / gotchas (for whoever runs this next)
 
 1. **`max_concurrent_sessions = 3`** evicts the *oldest* session — naive test
@@ -433,8 +486,8 @@ updated: 2026-06-16
 
 ## Not yet covered (backlog)
 
-Deep per-router coverage still pending for: dashboards,
-menu, lookups, settings, metadata, data, builder, templates, audit.
+Deep per-router coverage still pending for: menu, lookups,
+settings, metadata, data, builder, templates, audit.
 (auth, rbac, org, data-model, dynamic-data, workflows, automations,
 admin/security, modules / module-registry / module-extensions, and reports
 are now deep.) The smoke sweep already exercises all of them at the GET level.

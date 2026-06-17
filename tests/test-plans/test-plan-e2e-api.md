@@ -67,7 +67,7 @@ Legend: ✅ deep (positive+negative+edge+authz) · 🟡 smoke only (auto GET swe
 | workflows | 20 | ✅ | definition CRUD, states, transitions, publish/unpublish/simulate, instance create→execute→history |
 | automations | 16 | ✅ | rules CRUD + toggle/test/execute, executions, action-templates, webhooks CRUD |
 | reports | 17 | ✅ | definitions CRUD + base_entity derivation, execute/export/history, preview (flat+designer), lookup, schedules CRUD, templates, join-suggestions; SQL injection regression (DEF-011) |
-| dashboards | 16 | ⬜ | dashboards, KPI/chart widgets, sharing, filters, drill-down |
+| dashboards | 16 | ✅ | dashboard CRUD + clone, page CUD, widget CUD + bulk-update + data 404, share creation, snapshot; auth-required on every group; DEF-019 (UUID/default missing on 6 models + int path params → fixed), DEF-020 (shared_with_role_id model/DB mismatch → fixed), DEF-021 (snapshot UUID serialization → fixed) |
 | modules / module-registry / module-extensions | 44 | ✅ | module-registry reads/install/uninstall/enable/disable/configure/register/heartbeat/sync; nocode-modules CRUD/dependencies/versions/validation/components; entity/screen/menu extension CRUD |
 | scheduler | 14 | ✅ | configs CRUD + effective-config resolution + system-level superuser-only, jobs CRUD + execute + schedule-required validation, executions list/get + status filter, execution logs; IDOR regression (DEF-016), creation-breaking type/default (DEF-015), status-param shadow 500→404 (DEF-017), no-schedule 500→422 (DEF-018) |
 | admin / security | 14 | ✅ | policies CRUD (incl. soft-delete semantics), locked-accounts, sessions, login-attempts (filters), notification config/queue (filters) |

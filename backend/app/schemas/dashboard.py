@@ -100,7 +100,7 @@ class IframeWidgetConfig(BaseModel):
 class WidgetDataSource(BaseModel):
     """Widget data source configuration."""
     type: str = Field(..., description="report, query, or api")
-    report_id: Optional[int] = None
+    report_id: Optional[UUID] = None
     query: Optional[str] = None
     api_endpoint: Optional[str] = None
     parameters: Optional[Dict[str, Any]] = None
@@ -111,7 +111,7 @@ class DashboardWidgetBase(BaseModel):
     title: str = Field(..., min_length=1, max_length=255)
     description: Optional[str] = None
     widget_type: WidgetType
-    report_definition_id: Optional[int] = None
+    report_definition_id: Optional[UUID] = None
     data_source_config: Optional[WidgetDataSource] = None
     widget_config: Optional[Dict[str, Any]] = None
     chart_config: Optional[ChartConfig] = None
@@ -127,7 +127,7 @@ class DashboardWidgetBase(BaseModel):
 
 class DashboardWidgetCreate(DashboardWidgetBase):
     """Create dashboard widget schema."""
-    page_id: int
+    page_id: UUID
 
 
 class DashboardWidgetUpdate(BaseModel):
@@ -135,7 +135,7 @@ class DashboardWidgetUpdate(BaseModel):
     title: Optional[str] = Field(None, min_length=1, max_length=255)
     description: Optional[str] = None
     widget_type: Optional[WidgetType] = None
-    report_definition_id: Optional[int] = None
+    report_definition_id: Optional[UUID] = None
     data_source_config: Optional[WidgetDataSource] = None
     widget_config: Optional[Dict[str, Any]] = None
     chart_config: Optional[ChartConfig] = None
@@ -151,8 +151,8 @@ class DashboardWidgetUpdate(BaseModel):
 
 class DashboardWidgetResponse(DashboardWidgetBase):
     """Dashboard widget response schema."""
-    id: int
-    page_id: int
+    id: UUID
+    page_id: UUID
     tenant_id: UUID
     created_at: datetime
     updated_at: datetime
@@ -184,7 +184,7 @@ class DashboardPageBase(BaseModel):
 
 class DashboardPageCreate(DashboardPageBase):
     """Create dashboard page schema."""
-    dashboard_id: int
+    dashboard_id: UUID
 
 
 class DashboardPageUpdate(BaseModel):
@@ -200,8 +200,8 @@ class DashboardPageUpdate(BaseModel):
 
 class DashboardPageResponse(DashboardPageBase):
     """Dashboard page response schema."""
-    id: int
-    dashboard_id: int
+    id: UUID
+    dashboard_id: UUID
     tenant_id: UUID
     created_at: datetime
     updated_at: datetime
@@ -234,8 +234,8 @@ class DashboardBase(BaseModel):
     global_filters: Optional[Dict[str, Any]] = None
     refresh_interval: RefreshInterval = RefreshInterval.NONE
     is_public: bool = False
-    allowed_roles: Optional[List[int]] = None
-    allowed_users: Optional[List[int]] = None
+    allowed_roles: Optional[List[UUID]] = None
+    allowed_users: Optional[List[UUID]] = None
     show_header: bool = True
     show_filters: bool = True
     full_screen_mode: bool = False
@@ -258,8 +258,8 @@ class DashboardUpdate(BaseModel):
     global_filters: Optional[Dict[str, Any]] = None
     refresh_interval: Optional[RefreshInterval] = None
     is_public: Optional[bool] = None
-    allowed_roles: Optional[List[int]] = None
-    allowed_users: Optional[List[int]] = None
+    allowed_roles: Optional[List[UUID]] = None
+    allowed_users: Optional[List[UUID]] = None
     show_header: Optional[bool] = None
     show_filters: Optional[bool] = None
     full_screen_mode: Optional[bool] = None
@@ -268,7 +268,7 @@ class DashboardUpdate(BaseModel):
 
 class DashboardResponse(DashboardBase):
     """Dashboard response schema."""
-    id: int
+    id: UUID
     tenant_id: UUID
     created_by: UUID
     created_at: datetime
@@ -283,7 +283,7 @@ class DashboardResponse(DashboardBase):
 
 class DashboardSummary(BaseModel):
     """Dashboard summary (without pages/widgets for listing)."""
-    id: int
+    id: UUID
     name: str
     description: Optional[str]
     category: Optional[str]
@@ -303,14 +303,14 @@ class DashboardSummary(BaseModel):
 
 class WidgetDataRequest(BaseModel):
     """Request to get widget data."""
-    widget_id: int
+    widget_id: UUID
     parameters: Optional[Dict[str, Any]] = None
     use_cache: bool = True
 
 
 class WidgetDataResponse(BaseModel):
     """Widget data response."""
-    widget_id: int
+    widget_id: UUID
     data: Any
     metadata: Optional[Dict[str, Any]] = None
     cached: bool = False
@@ -321,9 +321,9 @@ class WidgetDataResponse(BaseModel):
 
 class DashboardShareCreate(BaseModel):
     """Create dashboard share."""
-    dashboard_id: int
-    shared_with_user_id: Optional[int] = None
-    shared_with_role_id: Optional[int] = None
+    dashboard_id: UUID
+    shared_with_user_id: Optional[UUID] = None
+    shared_with_role_id: Optional[int] = None  # integer FK — legacy DB column
     can_view: bool = True
     can_edit: bool = False
     can_share: bool = False
@@ -332,10 +332,10 @@ class DashboardShareCreate(BaseModel):
 
 class DashboardShareResponse(BaseModel):
     """Dashboard share response."""
-    id: int
-    dashboard_id: int
+    id: UUID
+    dashboard_id: UUID
     shared_with_user_id: Optional[UUID]
-    shared_with_role_id: Optional[int]
+    shared_with_role_id: Optional[int]  # integer FK — legacy DB column
     share_token: Optional[str]
     can_view: bool
     can_edit: bool
@@ -352,7 +352,7 @@ class DashboardShareResponse(BaseModel):
 
 class DashboardSnapshotCreate(BaseModel):
     """Create dashboard snapshot."""
-    dashboard_id: int
+    dashboard_id: UUID
     name: str
     description: Optional[str] = None
     parameters_used: Optional[Dict[str, Any]] = None
@@ -360,8 +360,8 @@ class DashboardSnapshotCreate(BaseModel):
 
 class DashboardSnapshotResponse(BaseModel):
     """Dashboard snapshot response."""
-    id: int
-    dashboard_id: int
+    id: UUID
+    dashboard_id: UUID
     name: str
     description: Optional[str]
     snapshot_data: Dict[str, Any]

@@ -47,6 +47,14 @@ def tech_tenant_id(user):
 
 @pytest.fixture
 def config(user, tech_tenant_id, unique):
+    # The DB has a unique constraint on (config_level, tenant_id), so only one
+    # TENANT-level config can exist per tenant.  An interrupted test run may
+    # leave a stale row behind, which would 500 the next create attempt.
+    # Self-heal: if a TENANT-level config already exists, delete it first.
+    eff = user.get("/scheduler/configs/effective")
+    if eff.status_code == 200 and eff.json().get("config_level") == "TENANT":
+        user.delete(f"/scheduler/configs/{eff.json()['id']}")
+
     body = {
         "name": unique("sched-cfg"),
         "config_level": "tenant",
