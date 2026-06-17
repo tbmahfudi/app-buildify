@@ -19,8 +19,8 @@ updated: 2026-06-16
 | Date | 2026-06-16 |
 | Target | `http://localhost:8000` (container `app_buildify_backend`) |
 | Command | `docker exec app_buildify_backend python -m pytest tests/e2e --confcutdir=tests/e2e` |
-| Result | **521 passed, 0 failed, 0 xfailed** (~270s) — after DEF-001…024 |
-| Scope this run | deep: auth, rbac, org, data-model, dynamic-data (+provisioning), workflows, automations, admin/security, modules / module-registry / module-extensions, reports, scheduler, dashboards, menu, lookups; health/openapi; all-router GET smoke sweep |
+| Result | **544 passed, 0 failed, 0 xfailed** (~257s) — after DEF-001…026 |
+| Scope this run | deep: auth, rbac, org, data-model, dynamic-data (+provisioning), workflows, automations, admin/security, modules / module-registry / module-extensions, reports, scheduler, dashboards, menu, lookups, settings; health/openapi; all-router GET smoke sweep |
 
 ## What is covered now
 
@@ -66,6 +66,13 @@ updated: 2026-06-16
   malicious-identifier payloads (base_entity, column, group_by, order_by
   field/direction, aggregation, lookup entity/display_field/value_field/
   filter_conditions key) all asserted rejected.
+- **settings** (23) — user settings: get (auto-create on first access, idempotent),
+  update theme/language/timezone/density/preferences dict, get reflects update;
+  tenant settings: get (auto-create, idempotent), update primary/secondary color
+  and tenant_name, update with explicit own tenant_id; cross-tenant 403; superadmin
+  gets defaults for no-tenant context; auth-required on all 4 endpoints;
+  **DEF-025 regression** (PUT /settings/tenant 500→200 for tenant users);
+  **DEF-026 regression** (PUT /settings/tenant?tenant_id=<own> 403→200).
 - **lookups** (36) — configuration CRUD lifecycle (create/get/update/delete);
   list (plain array, source_type filter, unknown-type returns empty list);
   soft-delete verified (deleted config absent from list and returns 404 on get);
@@ -529,6 +536,18 @@ updated: 2026-06-16
   `app/services/dashboard_service.py`'s `create_snapshot` method.
 - **Found by**: `TestSnapshots::test_create_snapshot` — first run after DEF-019/020 fixes.
 
+### DEF-025 — `PUT /settings/tenant` 500'd for every tenant user — ✅ FIXED 2026-06-17
+- **Severity**: High (`PUT /settings/tenant` was always broken for non-superusers — every attempt to update tenant branding/settings returned 500).
+- **Root cause**: `update_tenant_settings` resolved `target_tenant = tenant_id or current_user.tenant_id`. When the `tenant_id` query param was absent, `target_tenant` became `current_user.tenant_id` — a `uuid.UUID` object. The subsequent SQLAlchemy filter `TenantSettings.tenant_id == target_tenant` compared against `Column(String(36))` (VARCHAR in the live DB), triggering Postgres "operator does not exist: character varying = uuid" → 500. Same root cause as DEF-022 (`BuilderPage.tenant_id` VARCHAR vs UUID).
+- **Fix**: line 209 changed to `target_tenant = tenant_id or (str(current_user.tenant_id) if current_user.tenant_id else None)` in `routers/settings.py`. Always ensures `target_tenant` is a `str` before the DB filter.
+- **Regression test**: `TestTenantSettings::test_update_primary_color`.
+
+### DEF-026 — `PUT /settings/tenant?tenant_id=<own-tenant>` returned 403 instead of 200 — ✅ FIXED 2026-06-17
+- **Severity**: Medium (any caller explicitly passing their own `tenant_id` was incorrectly blocked).
+- **Root cause**: the ownership check on line 215 was `if tenant_id and tenant_id != current_user.tenant_id`. Here `tenant_id` is a `str` from the query param and `current_user.tenant_id` is a `uuid.UUID` object — in Python, `"37ba..." != UUID("37ba...")` is always `True` (different types), so the condition triggered a 403 even for the user's own tenant. The `GET /settings/tenant` handler on line 162 already used `str(tenant_id) != str(current_user.tenant_id)` correctly; the PUT handler was inconsistent.
+- **Fix**: changed line 215 to `if tenant_id and str(tenant_id) != str(current_user.tenant_id) and not current_user.is_superuser:` — matching the GET handler's safe comparison. **Pattern**: whenever comparing a `str` query param to a `UUID` model attribute, always normalize both with `str()`.
+- **Regression test**: `TestTenantSettings::test_update_with_explicit_own_tenant_id`.
+
 ## Environment notes / gotchas (for whoever runs this next)
 
 1. **`max_concurrent_sessions = 3`** evicts the *oldest* session — naive test
@@ -542,8 +561,8 @@ updated: 2026-06-16
 
 ## Not yet covered (backlog)
 
-Deep per-router coverage still pending for: settings,
-metadata, data, builder, templates, audit.
+Deep per-router coverage still pending for: metadata,
+data, builder, templates, audit.
 (auth, rbac, org, data-model, dynamic-data, workflows, automations,
 admin/security, modules / module-registry / module-extensions, and reports
 are now deep.) The smoke sweep already exercises all of them at the GET level.

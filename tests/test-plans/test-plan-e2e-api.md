@@ -73,7 +73,7 @@ Legend: ✅ deep (positive+negative+edge+authz) · 🟡 smoke only (auto GET swe
 | admin / security | 14 | ✅ | policies CRUD (incl. soft-delete semantics), locked-accounts, sessions, login-attempts (filters), notification config/queue (filters) |
 | menu | 11 | ✅ | user menu (DEF-022: 500→200 after builder_pages VARCHAR/UUID fix), admin list, CRUD + 422/400/404 negatives, duplicate-code 400 (DEF-023), update-unknown-404 (DEF-024), system-item delete 404 for tenant user, reorder, sync status/history/preview; auth-required on every group |
 | lookups | 8 | ✅ | configuration CRUD + list/filter, lookup data (static_list + search + pagination), cascading-rule create/list + filter; 422/400/404 negatives; auth-required on all endpoints; no defects found |
-| settings | 4 | ⬜ | tenant + user settings |
+| settings | 4 | ✅ | user get/update (theme/language/timezone/density/preferences), tenant get/update (color/name/explicit-own-tenant_id/cross-tenant 403), superadmin defaults, auth-required; DEF-025 (500→200) + DEF-026 (403→200) fixed |
 | metadata / data / builder / templates / audit | — | ⬜ | remaining surface |
 
 ## 5. Cross-cutting cases (every router)

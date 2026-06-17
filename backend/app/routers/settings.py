@@ -205,14 +205,14 @@ def update_tenant_settings(
 ):
     """Update tenant settings - requires settings:update:tenant"""
     
-    # Determine tenant_id
-    target_tenant = tenant_id or current_user.tenant_id
-    
+    # Determine tenant_id — always resolve to str so VARCHAR filter works (DEF-025)
+    target_tenant = tenant_id or (str(current_user.tenant_id) if current_user.tenant_id else None)
+
     if not target_tenant:
         raise HTTPException(status_code=400, detail="No tenant context")
-    
-    # Check permissions
-    if tenant_id and tenant_id != current_user.tenant_id and not current_user.is_superuser:
+
+    # Check permissions — use str() on both sides to handle UUID vs str (DEF-026)
+    if tenant_id and str(tenant_id) != str(current_user.tenant_id) and not current_user.is_superuser:
         raise HTTPException(status_code=403, detail="Cannot modify other tenant's settings")
     
     settings = db.query(TenantSettings).filter(
