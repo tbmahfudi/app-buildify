@@ -9,6 +9,7 @@ Provides REST API for backend-driven RBAC menu system:
 """
 
 from fastapi import APIRouter, Depends, HTTPException, status, Request
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from typing import List, Optional
 
@@ -191,6 +192,11 @@ async def create_menu_item(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
         )
+    except IntegrityError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="A menu item with this code already exists"
+        )
     except Exception as e:
         logger.error(f"Error creating menu item: {str(e)}")
         raise HTTPException(
@@ -253,6 +259,8 @@ async def update_menu_item(
 
         return MenuItemResponse.from_orm(menu_item)
 
+    except HTTPException:
+        raise
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

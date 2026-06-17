@@ -19,8 +19,8 @@ updated: 2026-06-16
 | Date | 2026-06-16 |
 | Target | `http://localhost:8000` (container `app_buildify_backend`) |
 | Command | `docker exec app_buildify_backend python -m pytest tests/e2e --confcutdir=tests/e2e` |
-| Result | **464 passed, 0 failed, 0 xfailed** (~260s) — after DEF-001…021 |
-| Scope this run | deep: auth, rbac, org, data-model, dynamic-data (+provisioning), workflows, automations, admin/security, modules / module-registry / module-extensions, reports, scheduler, dashboards; health/openapi; all-router GET smoke sweep |
+| Result | **485 passed, 0 failed, 0 xfailed** (~270s) — after DEF-001…024 |
+| Scope this run | deep: auth, rbac, org, data-model, dynamic-data (+provisioning), workflows, automations, admin/security, modules / module-registry / module-extensions, reports, scheduler, dashboards, menu; health/openapi; all-router GET smoke sweep |
 
 ## What is covered now
 
@@ -66,6 +66,12 @@ updated: 2026-06-16
   malicious-identifier payloads (base_entity, column, group_by, order_by
   field/direction, aggregation, lookup entity/display_field/value_field/
   filter_conditions key) all asserted rejected.
+- **menu** (21) — user menu (RBAC-filtered, all authenticated users); admin
+  item list; CRUD lifecycle (create/get/update/delete + 422 on missing required
+  fields); duplicate-code 400 (DEF-023 regression); unknown-id 404 for get/
+  update/delete; system-item delete blocked for non-superuser (404); reorder
+  (single item + empty list); sync status/history/preview + auth-required on
+  all sync endpoints; DEF-022 regression (`GET /menu` must return 200 list).
 - **dashboards** (29) — dashboard CRUD lifecycle (create/get/update/delete,
   list with category and favorites filters, clone); page create/update/delete
   (incl. page appears in dashboard detail response); widget create/update/delete
@@ -428,6 +434,46 @@ updated: 2026-06-16
   `TestJobs::test_create_get_update_delete` (verifies interval_seconds-only
   job works via the `job` fixture's `cron_expression` path).
 
+### DEF-022 — `GET /menu` (user menu) 500'd for every authenticated user — ✅ FIXED 2026-06-17
+- **Severity**: Critical (`GET /menu` is the primary navigation endpoint — every logged-in user is affected; the entire app navigation was broken).
+- **Root cause**: `MenuService._get_builder_page_menu_items` filtered
+  `BuilderPage.tenant_id == user.tenant_id` where `BuilderPage.tenant_id` is
+  `Column(String(36))` (VARCHAR in the live DB) but `user.tenant_id` is a
+  `uuid.UUID` object. Postgres raised
+  `ProgrammingError: operator does not exist: character varying = uuid`
+  → caught by the router's bare `except Exception` → `500 "Failed to load menu"`.
+- **Fix**: cast to `str(user.tenant_id)` before the filter in
+  `app/services/menu_service.py::_get_builder_page_menu_items`. Analogous to
+  every other VARCHAR tenant_id lookup in the codebase.
+- **Regression test**: `TestUserMenu::test_returns_list` and
+  `TestUserMenu::test_superuser_gets_list`.
+
+### DEF-023 — `POST /menu` with a duplicate `code` returned 500 instead of 400 — ✅ FIXED 2026-06-17
+- **Severity**: Medium (every attempt to create a menu item whose `code` already
+  exists — a globally unique constraint — surfaced as a server error rather than
+  a clean client error; callers couldn't distinguish "conflict" from a real crash).
+- **Root cause**: `MenuItem.code` has a DB-level `UNIQUE` constraint. Creating a
+  duplicate raised `psycopg2.errors.UniqueViolation` (wrapped as
+  `sqlalchemy.exc.IntegrityError`). The `create_menu_item` router handler caught
+  `ValueError → 400` and `Exception → 500`; `IntegrityError` is not a
+  `ValueError`, so it fell into the generic 500 catch-all.
+- **Fix**: added `except IntegrityError: raise HTTPException(400, "A menu item
+  with this code already exists")` before the generic catch in `routers/menu.py`.
+- **Regression test**: `TestMenuItemCRUD::test_create_duplicate_code_400`.
+
+### DEF-024 — `PUT /menu/{id}` with an unknown ID returned 500 instead of 404 — ✅ FIXED 2026-06-17
+- **Severity**: Medium (every update call for a non-existent menu item surfaced
+  as a server error — identical root cause to DEF-014).
+- **Root cause**: `update_menu_item` raised `HTTPException(404)` inside its
+  `try` block when `MenuService.update_menu_item` returned `None`. The handler
+  had no `except HTTPException: raise` guard before the trailing
+  `except Exception → 500`, so the 404 was swallowed and re-raised as 500.
+  Same pattern as DEF-014 (`execute_and_export_report`).
+- **Fix**: added `except HTTPException: raise` as the first except clause in
+  `update_menu_item` in `routers/menu.py`. The `delete_menu_item` and
+  `reorder_menu_items` handlers in the same file already had this guard.
+- **Regression test**: `TestMenuItemCRUD::test_update_unknown_404`.
+
 ### DEF-019 — every dashboard create call 500'd; every by-id read/update/delete 422'd — ✅ FIXED 2026-06-17
 - **Severity**: Critical (the entire dashboard write surface was broken out of the box — same pattern as DEF-015).
 - **Root cause (two independent bugs compounding)**:
@@ -486,7 +532,7 @@ updated: 2026-06-16
 
 ## Not yet covered (backlog)
 
-Deep per-router coverage still pending for: menu, lookups,
+Deep per-router coverage still pending for: lookups,
 settings, metadata, data, builder, templates, audit.
 (auth, rbac, org, data-model, dynamic-data, workflows, automations,
 admin/security, modules / module-registry / module-extensions, and reports
