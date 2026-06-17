@@ -19,8 +19,8 @@ updated: 2026-06-16
 | Date | 2026-06-16 |
 | Target | `http://localhost:8000` (container `app_buildify_backend`) |
 | Command | `docker exec app_buildify_backend python -m pytest tests/e2e --confcutdir=tests/e2e` |
-| Result | **485 passed, 0 failed, 0 xfailed** (~270s) — after DEF-001…024 |
-| Scope this run | deep: auth, rbac, org, data-model, dynamic-data (+provisioning), workflows, automations, admin/security, modules / module-registry / module-extensions, reports, scheduler, dashboards, menu; health/openapi; all-router GET smoke sweep |
+| Result | **521 passed, 0 failed, 0 xfailed** (~270s) — after DEF-001…024 |
+| Scope this run | deep: auth, rbac, org, data-model, dynamic-data (+provisioning), workflows, automations, admin/security, modules / module-registry / module-extensions, reports, scheduler, dashboards, menu, lookups; health/openapi; all-router GET smoke sweep |
 
 ## What is covered now
 
@@ -66,6 +66,16 @@ updated: 2026-06-16
   malicious-identifier payloads (base_entity, column, group_by, order_by
   field/direction, aggregation, lookup entity/display_field/value_field/
   filter_conditions key) all asserted rejected.
+- **lookups** (36) — configuration CRUD lifecycle (create/get/update/delete);
+  list (plain array, source_type filter, unknown-type returns empty list);
+  soft-delete verified (deleted config absent from list and returns 404 on get);
+  lookup data for static_list (items/total_count/has_more, search filter,
+  pagination); cascading-rule create + list (plain array, filter by
+  parent_lookup_id, filter by child_lookup_id); 422 on missing required fields
+  (name/label/source_type for configs; name/parent_lookup_id for rules);
+  400 on duplicate config name; 404 on every unknown-id path; auth-required
+  (403) on every endpoint. No RBAC permission gates on this router
+  (any authenticated user may CRUD). No defects found.
 - **menu** (21) — user menu (RBAC-filtered, all authenticated users); admin
   item list; CRUD lifecycle (create/get/update/delete + 422 on missing required
   fields); duplicate-code 400 (DEF-023 regression); unknown-id 404 for get/
@@ -532,8 +542,8 @@ updated: 2026-06-16
 
 ## Not yet covered (backlog)
 
-Deep per-router coverage still pending for: lookups,
-settings, metadata, data, builder, templates, audit.
+Deep per-router coverage still pending for: settings,
+metadata, data, builder, templates, audit.
 (auth, rbac, org, data-model, dynamic-data, workflows, automations,
 admin/security, modules / module-registry / module-extensions, and reports
 are now deep.) The smoke sweep already exercises all of them at the GET level.

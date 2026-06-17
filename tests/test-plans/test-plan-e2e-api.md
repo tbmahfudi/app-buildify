@@ -72,7 +72,7 @@ Legend: ✅ deep (positive+negative+edge+authz) · 🟡 smoke only (auto GET swe
 | scheduler | 14 | ✅ | configs CRUD + effective-config resolution + system-level superuser-only, jobs CRUD + execute + schedule-required validation, executions list/get + status filter, execution logs; IDOR regression (DEF-016), creation-breaking type/default (DEF-015), status-param shadow 500→404 (DEF-017), no-schedule 500→422 (DEF-018) |
 | admin / security | 14 | ✅ | policies CRUD (incl. soft-delete semantics), locked-accounts, sessions, login-attempts (filters), notification config/queue (filters) |
 | menu | 11 | ✅ | user menu (DEF-022: 500→200 after builder_pages VARCHAR/UUID fix), admin list, CRUD + 422/400/404 negatives, duplicate-code 400 (DEF-023), update-unknown-404 (DEF-024), system-item delete 404 for tenant user, reorder, sync status/history/preview; auth-required on every group |
-| lookups | 8 | ⬜ | configurations, cascading-rules, options |
+| lookups | 8 | ✅ | configuration CRUD + list/filter, lookup data (static_list + search + pagination), cascading-rule create/list + filter; 422/400/404 negatives; auth-required on all endpoints; no defects found |
 | settings | 4 | ⬜ | tenant + user settings |
 | metadata / data / builder / templates / audit | — | ⬜ | remaining surface |
 
