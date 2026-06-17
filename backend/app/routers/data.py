@@ -55,9 +55,10 @@ def model_to_dict(obj) -> Dict[str, Any]:
 def apply_filters(query, model, filters):
     """Apply filters to query"""
     for f in filters:
-        field = f.get("field")
-        operator = f.get("operator", "eq")
-        value = f.get("value")
+        # FilterCondition is a Pydantic model, not a dict
+        field = f.field if hasattr(f, "field") else f.get("field")
+        operator = f.operator if hasattr(f, "operator") else f.get("operator", "eq")
+        value = f.value if hasattr(f, "value") else f.get("value")
         
         if not hasattr(model, field):
             continue
@@ -80,7 +81,15 @@ def apply_filters(query, model, filters):
             query = query.filter(column.like(f"%{value}%"))
         elif operator == "in":
             query = query.filter(column.in_(value))
-    
+        elif operator == "nin":
+            query = query.filter(column.notin_(value))
+        elif operator == "contains":
+            query = query.filter(column.like(f"%{value}%"))
+        elif operator == "startswith":
+            query = query.filter(column.like(f"{value}%"))
+        elif operator == "endswith":
+            query = query.filter(column.like(f"%{value}"))
+
     return query
 
 def apply_sort(query, model, sort):
@@ -142,9 +151,11 @@ def search_data(
     return DataSearchResponse(
         rows=rows,
         total=total,
-        filtered=len(rows),
+        filtered=total,
         page=request.page,
-        page_size=request.page_size
+        page_size=request.page_size,
+        has_next=total > request.page * request.page_size,
+        has_prev=request.page > 1,
     )
 
 @router.get("/{entity}/{id}", response_model=DataResponse)
@@ -348,7 +359,7 @@ def bulk_operation(
         try:
             if request.operation == "create":
                 if "id" not in record_data:
-                    record_data["id"] = str(uuid.uuid4())
+                    record_data["id"] = uuid.uuid4()
                 record = model(**record_data)
                 db.add(record)
                 
@@ -405,6 +416,7 @@ def bulk_operation(
         raise HTTPException(status_code=400, detail=f"Bulk operation failed: {str(e)}")
     
     return BulkOperationResponse(
+        total=len(request.records),
         success=success,
         failed=failed,
         errors=errors

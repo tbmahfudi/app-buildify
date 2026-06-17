@@ -75,7 +75,8 @@ Legend: ✅ deep (positive+negative+edge+authz) · 🟡 smoke only (auto GET swe
 | lookups | 8 | ✅ | configuration CRUD + list/filter, lookup data (static_list + search + pagination), cascading-rule create/list + filter; 422/400/404 negatives; auth-required on all endpoints; no defects found |
 | settings | 4 | ✅ | user get/update (theme/language/timezone/density/preferences), tenant get/update (color/name/explicit-own-tenant_id/cross-tenant 403), superadmin defaults, auth-required; DEF-025 (500→200) + DEF-026 (403→200) fixed |
 | metadata | 6 | ✅ | list (dict/total), get (schema fields + 404), create (201/400 dup/404 missing entity/422), update (description/display_name/version++/404), delete (204/absent from list/re-activatable/404), regenerate (200+valid config/404); auth on all; no defects |
-| data / builder / templates / audit | — | ⬜ | remaining surface |
+| data | 6 | ✅ | list/search (4 all-ops filter operators + sort + search + pagination DEF-028/029), get, create, update, delete, bulk (create/update/delete/empty); DEF-027/028/029/030/031 all fixed |
+| builder / templates / audit | — | ⬜ | remaining surface |
 
 ## 5. Cross-cutting cases (every router)
 

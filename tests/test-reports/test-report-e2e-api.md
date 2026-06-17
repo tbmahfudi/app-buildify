@@ -19,8 +19,8 @@ updated: 2026-06-16
 | Date | 2026-06-16 |
 | Target | `http://localhost:8000` (container `app_buildify_backend`) |
 | Command | `docker exec app_buildify_backend python -m pytest tests/e2e --confcutdir=tests/e2e` |
-| Result | **568 passed, 0 failed, 0 xfailed** (~312s) — after DEF-001…026 |
-| Scope this run | deep: auth, rbac, org, data-model, dynamic-data (+provisioning), workflows, automations, admin/security, modules / module-registry / module-extensions, reports, scheduler, dashboards, menu, lookups, settings, metadata; health/openapi; all-router GET smoke sweep |
+| Result | **624 passed, 0 failed, 0 xfailed** (~319s) — after DEF-001…031 |
+| Scope this run | deep: auth, rbac, org, data-model, dynamic-data (+provisioning), workflows, automations, admin/security, modules / module-registry / module-extensions, reports, scheduler, dashboards, menu, lookups, settings, metadata, data; health/openapi; all-router GET smoke sweep |
 
 ## What is covered now
 
@@ -66,6 +66,19 @@ updated: 2026-06-16
   malicious-identifier payloads (base_entity, column, group_by, order_by
   field/direction, aggregation, lookup entity/display_field/value_field/
   filter_conditions key) all asserted rejected.
+- **data** (56) — unknown-entity 404 on all 6 ops; auth-required (403) on all ops;
+  list response shape (rows/total/filtered/page/page_size/has_next/has_prev);
+  pagination has_prev=True on page 2 and has_next=True when more pages remain
+  (DEF-029 regression); eq/contains/startswith/endswith/ne filter operators all
+  verified to return correct subsets (DEF-028 regression); `like` operator
+  correctly rejected 422 by schema; sort asc/desc; path entity wins over
+  body entity; all 4 ENTITY_REGISTRY entities (companies/branches/departments/users)
+  listed successfully; get by id shape and id match; create round-trip (create →
+  readable by get); update persisted; delete → 204 + gone from get; bulk create:
+  response shape with `total=len(records)` field (DEF-027 regression), empty
+  records → 200 (DEF-027 regression), 2-record create success; bulk delete
+  success + records gone; bulk update success + name persisted; bulk invalid
+  operation 422; auth-required on bulk.
 - **metadata** (24) — list (dict with entities/total, known seeded entities present);
   get by entity_name (schema fields, 404 on unknown); create UI config (201 on
   fresh entity, 400 on duplicate, 404 on unknown entity name, 422 on missing
@@ -555,6 +568,36 @@ updated: 2026-06-16
 - **Fix**: changed line 215 to `if tenant_id and str(tenant_id) != str(current_user.tenant_id) and not current_user.is_superuser:` — matching the GET handler's safe comparison. **Pattern**: whenever comparing a `str` query param to a `UUID` model attribute, always normalize both with `str()`.
 - **Regression test**: `TestTenantSettings::test_update_with_explicit_own_tenant_id`.
 
+### DEF-027 — `POST /{entity}/bulk` → 500 for every successful bulk operation — ✅ FIXED 2026-06-17
+- **Severity**: Critical (every successful bulk call — create/update/delete — returned 500 instead of the response; only calls that failed in `db.commit()` returned a 400 first).
+- **Root cause**: `bulk_operation` in `routers/data.py` constructed `BulkOperationResponse(success=success, failed=failed, errors=errors)` without the required `total` field (`total: int = Field(...)`). Pydantic raised `ValidationError` during response construction → FastAPI returned 500. Empty records (no loop iterations) hit this case most visibly.
+- **Fix**: added `total=len(request.records)` to the `BulkOperationResponse` constructor.
+- **Regression tests**: `TestDataBulk::test_bulk_create_total_matches_records_count`; `test_bulk_empty_records_returns_200`.
+
+### DEF-028 — filter operators `contains`, `startswith`, `endswith`, `nin` accepted by schema but silently no-op — ✅ FIXED 2026-06-17
+- **Severity**: Medium (users could send valid filter requests that appeared to succeed but returned unfiltered data, leading to incorrect results silently).
+- **Root cause**: `apply_filters` in `routers/data.py` handled `eq/ne/gt/gte/lt/lte/like/in` but was missing `contains`, `startswith`, `endswith`, and `nin` — operators that `FilterCondition` schema explicitly accepts. The `elif` chain fell through with no match for these operators, leaving the query unfiltered.
+- **Fix**: added the four missing operators using SQL LIKE patterns and `column.notin_()` respectively.
+- **Regression tests**: `TestDataList::test_list_filter_contains`; `test_list_filter_startswith`; `test_list_filter_endswith`; `test_list_filter_ne` (ne uses `ne` operator, nin tested via bulk delete with explicit ids).
+
+### DEF-029 — `DataSearchResponse` `has_prev`/`has_next` always `False` — ✅ FIXED 2026-06-17
+- **Severity**: Medium (pagination metadata was always wrong — callers had no reliable way to detect whether more pages existed without re-querying).
+- **Root cause**: `search_data` in `routers/data.py` constructed `DataSearchResponse` without `has_next`/`has_prev` — both have `default=False`. They were never computed from `total`, `page`, and `page_size`.
+- **Fix**: added `has_next=total > request.page * request.page_size` and `has_prev=request.page > 1` to the constructor. Also changed `filtered=len(rows)` (current-page count) to `filtered=total` (post-filter count before pagination) for accuracy.
+- **Regression tests**: `TestDataList::test_list_pagination_has_prev`; `test_list_pagination_has_next`.
+
+### DEF-030 — `apply_filters` treated `FilterCondition` Pydantic models as dicts → filters always silently no-op — ✅ FIXED 2026-06-17
+- **Severity**: High (ALL filter operations were silently ignored — every filtered list returned unfiltered data because `FilterCondition.get("field")` on a Pydantic model always returns `None`).
+- **Root cause**: `apply_filters` used `f.get("field")`, `f.get("operator", "eq")`, `f.get("value")` on filter items. `DataSearchRequest.filters` is `List[FilterCondition]` — Pydantic model instances, not dicts. `f.get(...)` on a model instance raises `AttributeError: 'FilterCondition' object has no attribute 'get'`, so `field = None`. `if not hasattr(model, None)` exits the loop silently. All filters were no-ops.
+- **Fix**: changed to attribute access — `f.field`, `f.operator`, `f.value` — using `hasattr` guard for backward compatibility with plain dicts.
+- **Regression tests**: `TestDataList::test_list_filter_eq`; `test_list_filter_contains`; `test_list_filter_startswith`; `test_list_filter_endswith`; `test_list_filter_ne`.
+
+### DEF-031 — `bulk_operation` create → 400 "Can't match sentinel values" for 2+ records — ✅ FIXED 2026-06-17
+- **Severity**: High (bulk create with 2+ records always returned 400 instead of creating records).
+- **Root cause**: SQLAlchemy's `insertmanyvalues` optimization batches multiple INSERT statements with RETURNING. For PostgreSQL, `GUID.load_dialect_impl` returns `PG_UUID(as_uuid=True)`, meaning PostgreSQL stores and returns `uuid.UUID` objects. The bulk_operation used `record_data["id"] = str(uuid.uuid4())` (a string). SQLAlchemy's PK sentinel matching tried to correlate the returned `uuid.UUID("...")` with the in-memory string `"..."` — they're different Python types and didn't match → `sqlalchemy.exc.OperationalError: Can't match sentinel values`.
+- **Fix**: changed to `record_data["id"] = uuid.uuid4()` (a UUID object) so that the in-memory PK and the RETURNING result share the same Python type and match correctly.
+- **Regression test**: `TestDataBulk::test_bulk_create_returns_bulk_response_shape` (bulk creates 2 records, asserts success=2).
+
 ## Environment notes / gotchas (for whoever runs this next)
 
 1. **`max_concurrent_sessions = 3`** evicts the *oldest* session — naive test
@@ -568,8 +611,7 @@ updated: 2026-06-16
 
 ## Not yet covered (backlog)
 
-Deep per-router coverage still pending for: data,
-builder, templates, audit.
+Deep per-router coverage still pending for: builder, templates, audit.
 (auth, rbac, org, data-model, dynamic-data, workflows, automations,
 admin/security, modules / module-registry / module-extensions, and reports
 are now deep.) The smoke sweep already exercises all of them at the GET level.
