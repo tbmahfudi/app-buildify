@@ -19,8 +19,8 @@ updated: 2026-06-16
 | Date | 2026-06-16 |
 | Target | `http://localhost:8000` (container `app_buildify_backend`) |
 | Command | `docker exec app_buildify_backend python -m pytest tests/e2e --confcutdir=tests/e2e` |
-| Result | **544 passed, 0 failed, 0 xfailed** (~257s) — after DEF-001…026 |
-| Scope this run | deep: auth, rbac, org, data-model, dynamic-data (+provisioning), workflows, automations, admin/security, modules / module-registry / module-extensions, reports, scheduler, dashboards, menu, lookups, settings; health/openapi; all-router GET smoke sweep |
+| Result | **568 passed, 0 failed, 0 xfailed** (~312s) — after DEF-001…026 |
+| Scope this run | deep: auth, rbac, org, data-model, dynamic-data (+provisioning), workflows, automations, admin/security, modules / module-registry / module-extensions, reports, scheduler, dashboards, menu, lookups, settings, metadata; health/openapi; all-router GET smoke sweep |
 
 ## What is covered now
 
@@ -66,6 +66,13 @@ updated: 2026-06-16
   malicious-identifier payloads (base_entity, column, group_by, order_by
   field/direction, aggregation, lookup entity/display_field/value_field/
   filter_conditions key) all asserted rejected.
+- **metadata** (24) — list (dict with entities/total, known seeded entities present);
+  get by entity_name (schema fields, 404 on unknown); create UI config (201 on
+  fresh entity, 400 on duplicate, 404 on unknown entity name, 422 on missing
+  required fields); update description/display_name + version increment + 404 on
+  unknown; delete (deactivate → 204, no longer in list, re-activatable via PUT,
+  404 on unknown); regenerate (200 with valid table/form, 404 on unknown);
+  auth-required on all 6 endpoints. No defects found — router is clean.
 - **settings** (23) — user settings: get (auto-create on first access, idempotent),
   update theme/language/timezone/density/preferences dict, get reflects update;
   tenant settings: get (auto-create, idempotent), update primary/secondary color
@@ -561,8 +568,8 @@ updated: 2026-06-16
 
 ## Not yet covered (backlog)
 
-Deep per-router coverage still pending for: metadata,
-data, builder, templates, audit.
+Deep per-router coverage still pending for: data,
+builder, templates, audit.
 (auth, rbac, org, data-model, dynamic-data, workflows, automations,
 admin/security, modules / module-registry / module-extensions, and reports
 are now deep.) The smoke sweep already exercises all of them at the GET level.
