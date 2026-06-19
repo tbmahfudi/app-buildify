@@ -12,6 +12,7 @@ from app.core.exceptions import register_exception_handlers
 from app.core.rate_limiter import setup_rate_limiting
 from app.core.db import SessionLocal
 from app.core.security_middleware import SecurityMiddleware
+from app.core.module_scope_middleware import ModuleScopeMiddleware
 from app.core.startup import ensure_default_security_policy
 from app.routers import org, auth, metadata, data, audit, settings, modules, rbac, reports, dashboards, scheduler, menu, builder_pages
 from app.routers import data_model, workflows, automations, lookups, dynamic_data, nocode_modules, module_extensions, modules_lifecycle
@@ -182,6 +183,9 @@ app.add_middleware(
 
 # Add security middleware for session timeout and password expiration enforcement
 app.middleware("http")(SecurityMiddleware(app))
+
+# Module scope middleware — routes /api/v1/modules/{id}/... to per-tenant DB
+app.add_middleware(ModuleScopeMiddleware)
 
 # Module access control middleware
 @app.middleware("http")
