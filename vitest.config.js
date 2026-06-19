@@ -32,6 +32,7 @@ export default defineConfig({
 
         // Test file patterns
         include: ['tests/**/*.test.js', 'tests/**/*.spec.js'],
+        exclude: ['tests/e2e/**', 'node_modules/**'],
 
         // Watch mode configuration
         watch: false,
