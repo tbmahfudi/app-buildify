@@ -194,6 +194,10 @@ async def list_records(
             "as '{field}_data' in each row. Depth is limited to 1 level."
         )
     ),
+    include_deleted: bool = Query(
+        False,
+        description="When true, includes soft-deleted records in results (admin only)"
+    ),
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
 ):
@@ -271,7 +275,8 @@ async def list_records(
             page=page,
             page_size=page_size,
             search=search,
-            expand=expand_list
+            expand=expand_list,
+            include_deleted=include_deleted
         )
 
         return DynamicDataListResponse(**result)
@@ -603,6 +608,53 @@ async def bulk_delete_records(
 
 
 # ==============================================================================
+# Soft Delete Restore + Version History Endpoints (Stories 5.4.1, 5.1.5)
+# ==============================================================================
+
+@router.post(
+    "/{entity_name}/records/{record_id}/restore",
+    summary="Restore Soft-Deleted Record",
+    description="Clears deleted_at on a soft-deleted record (Story 5.4.1)",
+)
+async def restore_record(
+    entity_name: str = Path(...),
+    record_id: str = Path(...),
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    service = DynamicEntityService(db, current_user)
+    try:
+        result = await service.restore_soft_deleted_record(entity_name, record_id)
+        return {"message": "Record restored", "data": result}
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        logger.error(f"Restore {entity_name}/{record_id} failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get(
+    "/{entity_name}/records/{record_id}/versions",
+    summary="Record Version History",
+    description="Returns change history for a versioned entity record (Story 5.1.5)",
+)
+async def get_record_versions(
+    entity_name: str = Path(...),
+    record_id: str = Path(...),
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    service = DynamicEntityService(db, current_user)
+    try:
+        versions = await service.get_record_versions(entity_name, record_id)
+        return {"items": versions, "total": len(versions)}
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        logger.error(f"Versions {entity_name}/{record_id} failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # Aggregation Endpoint
 # ==============================================================================
 

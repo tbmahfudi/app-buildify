@@ -427,7 +427,7 @@
 - `POST`, `PUT`, `DELETE` on virtual entities return 405 Method Not Allowed
 - `GET` list, single-record, metadata, and aggregate endpoints all work on virtual entities
 
-#### Story 5.1.5 — Entity Versioning (Record History) `[OPEN]`
+#### Story 5.1.5 — Entity Versioning (Record History) `[DONE]`
 *As a tenant administrator, I want entities with `is_versioned = true` to keep a history of record changes, so that I can audit data modifications over time.*
 - `update_record()` inserts the previous row into a `{entity_name}_versions` shadow table before applying updates
 - `GET /dynamic-data/{entity}/records/{id}/versions` returns change history in reverse chronological order
@@ -445,7 +445,7 @@
 - Constraints enforced at both DB level (DDL) and service layer (`_validate_and_prepare_data()`)
 - `is_system` fields cannot be deleted by tenant admin
 
-#### Story 5.2.2 — Select/Enum Fields with Allowed Values `[OPEN]`
+#### Story 5.2.2 — Select/Enum Fields with Allowed Values `[DONE]`
 *As a tenant administrator, I want to define a fixed list of acceptable values for a field, so that data entry is constrained to predefined options.*
 - `allowed_values` JSONB schema: `[{"value": "active", "label": "Active", "label_i18n": {...}}]`
 - Pydantic validator on `FieldDefinitionCreate` rejects non-conforming shapes for `select`/`enum` types
@@ -501,7 +501,7 @@
 
 ### Feature 5.4 — Soft Delete `[OPEN]`
 
-#### Story 5.4.1 — Soft Delete Implementation `[OPEN]`
+#### Story 5.4.1 — Soft Delete Implementation `[DONE]`
 *As a tenant administrator, I want deleted records to be soft-deleted by default, so that accidental deletions can be recovered and audit trails remain complete.*
 - When `supports_soft_delete = true`, `DELETE` sets `deleted_at` timestamp instead of hard delete
 - `list_records()` automatically applies `WHERE deleted_at IS NULL` for soft-delete entities

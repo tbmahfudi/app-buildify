@@ -279,11 +279,27 @@ class FieldTypeMapper:
             if not re.match(url_pattern, value):
                 return False, f"{field_label} must be a valid URL starting with http:// or https://"
 
-        # Enum validation
-        if field_type == 'enum':
-            allowed_values = field_definition.get('allowed_values', [])
-            if allowed_values and value not in allowed_values:
-                return False, f"{field_label} must be one of: {', '.join(map(str, allowed_values))}"
+        # Enum / Select allowed-values validation (Story 5.2.2)
+        if field_type in ('enum', 'select', 'multi_select'):
+            raw_av = field_definition.get('allowed_values', [])
+            # Normalise: allowed_values may be a list of strings,
+            # a list of {"value": ..., "label": ...} dicts, or a plain dict
+            if isinstance(raw_av, dict):
+                allowed_values = list(raw_av.keys())
+            else:
+                allowed_values = [
+                    (item['value'] if isinstance(item, dict) else item)
+                    for item in raw_av
+                ]
+            if allowed_values:
+                if field_type == 'multi_select':
+                    submitted = value if isinstance(value, list) else [value]
+                    bad = [v for v in submitted if v not in allowed_values]
+                    if bad:
+                        return False, f"{field_label} contains invalid values: {', '.join(map(str, bad))}. Allowed: {', '.join(map(str, allowed_values))}"
+                else:
+                    if value not in allowed_values:
+                        return False, f"{field_label} must be one of: {', '.join(map(str, allowed_values))}"
 
         # Custom validation rules (from field_definition.validation_rules JSON)
         validation_rules = field_definition.get('validation_rules')

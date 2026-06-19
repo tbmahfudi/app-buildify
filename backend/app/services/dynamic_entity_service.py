@@ -221,7 +221,8 @@ class DynamicEntityService:
         page: int = 1,
         page_size: int = 25,
         search: Optional[str] = None,
-        expand: Optional[List[str]] = None
+        expand: Optional[List[str]] = None,
+        include_deleted: bool = False
     ) -> Dict[str, Any]:
         """
         List records with filtering, sorting, and pagination
@@ -251,8 +252,8 @@ class DynamicEntityService:
         for col_name, col_value in org_context.items():
             query = query.filter(getattr(model, col_name) == col_value)
 
-        # Exclude soft-deleted records (Gap 4.1)
-        if hasattr(model, 'deleted_at'):
+        # Exclude soft-deleted records unless include_deleted requested (Story 5.4.1)
+        if hasattr(model, 'deleted_at') and not include_deleted:
             query = query.filter(model.deleted_at.is_(None))
 
         # Apply filters
@@ -397,6 +398,33 @@ class DynamicEntityService:
 
             after = self._model_to_dict(record, field_defs)
 
+            # Write to shadow versions table if entity is versioned (Story 5.1.5)
+            try:
+                entity_def = self.model_generator._load_entity_definition(entity_name, tenant_id)
+                if entity_def and getattr(entity_def, 'is_versioned', False):
+                    table_prefix = f"t_{str(tenant_id).replace('-', '_')}_" if tenant_id else ""
+                    version_table = f"{table_prefix}{entity_name}_versions"
+                    changed_fields = {k: v for k, v in after.items() if before.get(k) != v and k not in ('updated_at', 'updated_by')}
+                    import json as _json
+                    from sqlalchemy import text as _text
+                    self.db.execute(
+                        _text(f"""
+                            INSERT INTO {version_table}
+                                (record_id, record_data, changed_fields, changed_by, changed_at)
+                            VALUES
+                                (:record_id, :before::jsonb, :changed::jsonb, :changed_by, NOW())
+                        """),
+                        {
+                            'record_id': str(record_id),
+                            'before': _json.dumps(before),
+                            'changed': _json.dumps(changed_fields),
+                            'changed_by': str(self.current_user.id),
+                        }
+                    )
+                    self.db.commit()
+            except Exception as _ve:
+                logger.debug(f"Version insert skipped: {_ve}")
+
             # Audit log
             await self._create_audit_log(
                 'UPDATE',
@@ -489,6 +517,81 @@ class DynamicEntityService:
         )
 
         logger.info(f"Deleted {entity_name} record: {record_id} ({deletion_type})")
+
+    async def restore_soft_deleted_record(
+        self,
+        entity_name: str,
+        record_id: str
+    ) -> dict:
+        """Restore a soft-deleted record (Story 5.4.1)."""
+        tenant_id = str(self.current_user.tenant_id) if self.current_user.tenant_id else None
+        self._check_entity_permission(entity_name, 'delete')
+        model = self.model_generator.get_model(entity_name, tenant_id)
+        field_defs = self.model_generator.get_field_definitions(entity_name, tenant_id)
+
+        if not hasattr(model, 'deleted_at'):
+            raise ValueError(f"Entity '{entity_name}' does not support soft delete")
+
+        record = self.db.query(model).filter(model.id == record_id).first()
+        if not record:
+            raise ValueError(f"Record not found: {record_id}")
+        if record.deleted_at is None:
+            raise ValueError(f"Record is not deleted: {record_id}")
+
+        record.deleted_at = None
+        if hasattr(record, 'deleted_by'):
+            record.deleted_by = None
+        if hasattr(record, 'is_deleted'):
+            record.is_deleted = False
+        self.db.commit()
+
+        await self._create_audit_log('RESTORE', entity_name, str(record_id))
+        return self._model_to_dict(record, field_defs)
+
+    async def get_record_versions(
+        self,
+        entity_name: str,
+        record_id: str
+    ):
+        """Return change history for a versioned entity record (Story 5.1.5)."""
+        tenant_id = str(self.current_user.tenant_id) if self.current_user.tenant_id else None
+        self._check_entity_permission(entity_name, 'read')
+
+        entity_def = self.model_generator._load_entity_definition(entity_name, tenant_id)
+        if not entity_def or not getattr(entity_def, 'is_versioned', False):
+            raise ValueError(f"Entity '{entity_name}' does not support versioning")
+
+        table_prefix = f"t_{str(tenant_id).replace('-', '_')}_" if tenant_id else ""
+        version_table = f"{table_prefix}{entity_name}_versions"
+
+        from sqlalchemy import text as _text
+        import json as _json
+        try:
+            result = self.db.execute(
+                _text(f"""
+                    SELECT id, record_id, record_data, changed_fields, changed_by, changed_at
+                    FROM {version_table}
+                    WHERE record_id = :record_id
+                    ORDER BY changed_at DESC
+                    LIMIT 100
+                """),
+                {'record_id': str(record_id)}
+            )
+            rows = result.mappings().all()
+        except Exception as e:
+            raise ValueError(f"Could not read version history: {e}")
+
+        return [
+            {
+                'id': str(r['id']),
+                'record_id': str(r['record_id']),
+                'record_data': r['record_data'] if isinstance(r['record_data'], dict) else _json.loads(r['record_data'] or '{}'),
+                'changed_fields': r['changed_fields'] if isinstance(r['changed_fields'], dict) else _json.loads(r['changed_fields'] or '{}'),
+                'changed_by': str(r['changed_by']),
+                'changed_at': r['changed_at'].isoformat() if r['changed_at'] else None,
+            }
+            for r in rows
+        ]
 
     async def bulk_create(
         self,
