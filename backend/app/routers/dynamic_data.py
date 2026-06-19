@@ -919,11 +919,44 @@ async def get_entity_metadata(
         # Get entity definition for display name
         entity_def = generator._load_entity_definition(entity_name, tenant_id)
 
+        # Story 6.2.2 — aggregation hints
+        NUMERIC_TYPES = {'number', 'integer', 'decimal', 'float', 'money', 'bigint'}
+        NUMERIC_FUNCS = ['count', 'sum', 'avg', 'min', 'max']
+        FORMAT_MAP = {'number': 'number', 'decimal': 'decimal', 'money': 'currency', 'integer': 'integer'}
+
+        table_config_cols = []
+        for f in fields:
+            ft = f.get('field_type', '') if isinstance(f, dict) else ''
+            aggregatable = ft in NUMERIC_TYPES
+            col = {
+                'field': f.get('name') if isinstance(f, dict) else str(f),
+                'label': f.get('label', f.get('name')) if isinstance(f, dict) else str(f),
+                'visible': True,
+                'sortable': True,
+                'filterable': True,
+                'aggregatable': aggregatable,
+                'aggregate_functions': NUMERIC_FUNCS if aggregatable else [],
+                'format': FORMAT_MAP.get(ft, 'text'),
+            }
+            if isinstance(f, dict):
+                if f.get('prefix'):
+                    col['prefix'] = f['prefix']
+                if f.get('suffix'):
+                    col['suffix'] = f['suffix']
+            table_config_cols.append(col)
+
+        # Prefer existing table_config if set on entity_def
+        if entity_def and getattr(entity_def, 'table_config', None):
+            computed_table_config = entity_def.table_config
+        else:
+            computed_table_config = {"columns": table_config_cols}
+
         return {
             "entity_name": entity_name,
             "display_name": entity_def.label if entity_def else entity_name,
             "fields": fields,
-            "relationships": relationships
+            "relationships": relationships,
+            "table_config": computed_table_config,
         }
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))

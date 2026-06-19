@@ -1,0 +1,174 @@
+{
+  "": "http://json-schema.org/draft-07/schema#",
+  "title": "AppBuildify Module Manifest",
+  "description": "Schema for module manifest.json files",
+  "type": "object",
+  "required": ["name", "version", "display_name"],
+  "additionalProperties": true,
+  "properties": {
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_-]{1,98}[a-z0-9]$",
+      "description": "Unique module identifier (lowercase, underscores/hyphens allowed)"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(-(0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(\.(0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*)?(\+[0-9a-zA-Z-]+(\.[0-9a-zA-Z-]+)*)$",
+      "description": "Semantic version (semver 2.0)"
+    },
+    "display_name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 2000
+    },
+    "module_type": {
+      "type": "string",
+      "enum": ["code", "nocode", "hybrid"],
+      "default": "code"
+    },
+    "category": {
+      "type": "string",
+      "maxLength": 50
+    },
+    "author": {
+      "type": "string",
+      "maxLength": 255
+    },
+    "license": {
+      "type": "string",
+      "maxLength": 100
+    },
+    "homepage": {
+      "type": "string",
+      "format": "uri"
+    },
+    "repository": {
+      "type": "string",
+      "format": "uri"
+    },
+    "support_email": {
+      "type": "string",
+      "format": "email"
+    },
+    "subscription_tier": {
+      "type": "string",
+      "enum": ["free", "basic", "premium", "enterprise"]
+    },
+    "is_core": {
+      "type": "boolean",
+      "default": false
+    },
+    "backend_service_url": {
+      "type": "string",
+      "format": "uri"
+    },
+    "api": {
+      "type": "object",
+      "properties": {
+        "prefix": {
+          "type": "string",
+          "pattern": "^/[a-zA-Z0-9/_-]+$"
+        }
+      }
+    },
+    "dependencies": {
+      "type": "object",
+      "properties": {
+        "required": {
+          "type": "array",
+          "items": {"type": "string"},
+          "uniqueItems": true
+        },
+        "optional": {
+          "type": "array",
+          "items": {"type": "string"},
+          "uniqueItems": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "permissions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name": {"type": "string"},
+          "description": {"type": "string"},
+          "resource": {"type": "string"},
+          "action": {"type": "string"}
+        }
+      }
+    },
+    "frontend": {
+      "type": "object",
+      "properties": {
+        "entry_point": {"type": "string"},
+        "menu_items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["label"],
+            "properties": {
+              "label": {"type": "string"},
+              "route": {"type": "string"},
+              "icon": {"type": "string"},
+              "permission": {"type": "string"},
+              "order": {"type": "integer"},
+              "parent": {"type": "string"}
+            }
+          }
+        }
+      }
+    },
+    "routes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["path", "name"],
+        "properties": {
+          "path": {"type": "string"},
+          "name": {"type": "string"},
+          "component": {"type": "string"},
+          "permission": {"type": "string"},
+          "menu": {
+            "type": "object",
+            "properties": {
+              "label": {"type": "string"},
+              "icon": {"type": "string"},
+              "order": {"type": "integer"},
+              "parent": {"type": "string"}
+            }
+          }
+        }
+      }
+    },
+    "configuration": {
+      "type": "object",
+      "properties": {
+        "settings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["key", "type"],
+            "properties": {
+              "key": {"type": "string"},
+              "type": {"type": "string", "enum": ["string", "integer", "boolean", "json"]},
+              "default": {},
+              "description": {"type": "string"},
+              "required": {"type": "boolean"}
+            }
+          }
+        }
+      }
+    },
+    "tags": {
+      "type": "array",
+      "items": {"type": "string"}
+    }
+  }
+}

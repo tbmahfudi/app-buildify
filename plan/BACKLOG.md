@@ -106,7 +106,7 @@
 - `single_session_mode = true` terminates all prior sessions on new login
 - Active sessions are visible in the user's session management UI
 
-#### Story 1.2.3 — Session Listing and Forced Termination `[OPEN]`
+#### Story 1.2.3 — Session Listing and Forced Termination `[DONE]`
 *As a user, I want to see all my active sessions and revoke any I don't recognize, so that I can respond to unauthorized access immediately.*
 - `GET /users/me/sessions` returns active sessions with device hint, IP, and last-seen timestamp
 - `DELETE /users/me/sessions/{id}` terminates a specific session (adds `jti` to Redis blacklist)
@@ -288,7 +288,7 @@
 
 ### Feature 3.1 — User CRUD `[IN-PROGRESS]`
 
-#### Story 3.1.1 — User Creation by Admin `[OPEN]`
+#### Story 3.1.1 — User Creation by Admin `[DONE]`
 *As a tenant administrator, I want to create user accounts, so that organization members can access the platform with appropriate roles.*
 - `POST /users` creates a user with `email`, `full_name`, `password`, `tenant_id`, optional role assignments
 - Email must be unique within a tenant; password hashed with bcrypt
@@ -307,7 +307,7 @@
 - All active sessions of a deactivated user are terminated immediately via Redis blacklist
 - Audit log records deactivation with the acting admin's identity
 
-#### Story 3.1.4 — Admin-Initiated Password Reset `[OPEN]`
+#### Story 3.1.4 — Admin-Initiated Password Reset `[DONE]`
 *As a tenant administrator, I want to force-reset a user's password, so that I can handle account recovery requests.*
 - `POST /users/{id}/reset-password` generates a reset token and queues a reset email
 - Superadmin can force password reset on any user across all tenants
@@ -382,7 +382,7 @@
 - Full permission list loaded once at login and cached in-memory; refreshed on token renewal
 - Menu items, action buttons, and routes are filtered before rendering; hidden elements are not in the DOM
 
-#### Story 4.2.4 — Per-Entity Permission Enforcement `[OPEN]`
+#### Story 4.2.4 — Per-Entity Permission Enforcement `[DONE]`
 *As a security architect, I want per-entity RBAC enforced on the dynamic data API, so that custom entities can have access rules independent of global RBAC.*
 - `EntityDefinition.permissions` JSONB `{role: [actions]}` evaluated in `DynamicEntityService` before CRUD
 - When `permissions` is null, global RBAC is the sole check
@@ -466,7 +466,7 @@
 - `validate_value()` in `FieldTypeMapper` iterates and applies all rules
 - Validation failures include the rule type in the structured error response
 
-#### Story 5.2.5 — Cascading Field Dependencies `[OPEN]`
+#### Story 5.2.5 — Cascading Field Dependencies `[DONE]`
 *As a tenant administrator, I want lookup fields to filter options based on a parent field value, so that dependent dropdowns work correctly (e.g. City filtered by Country).*
 - `depends_on_field` and `filter_expression` on `FieldDefinition` define the dependency
 - Server-side: lookup options API applies the expression as a WHERE clause when `depends_on_field` is set
@@ -552,7 +552,7 @@
 - `date_trunc` + `date_field` parameters enable time-series grouping by `hour/day/week/month/quarter/year`
 - Org-scope isolation applies identically to `list_records`
 
-#### Story 6.2.2 — Aggregation Hints in Entity Metadata `[OPEN]`
+#### Story 6.2.2 — Aggregation Hints in Entity Metadata `[DONE]`
 *As a dashboard widget builder, I want the entity metadata to include hints about which fields are aggregatable, so that widget UIs can auto-populate axis and metric selectors.*
 - `table_config` JSONB schema defined: `{columns: [{field, label, visible, sortable, filterable, aggregatable, aggregate_functions, format}]}`
 - `aggregatable: true` and `aggregate_functions` auto-populated for numeric field types
@@ -563,14 +563,14 @@
 
 ### Feature 6.3 — Bulk Operations `[OPEN]`
 
-#### Story 6.3.1 — Bulk Create (CSV Import) `[OPEN]`
+#### Story 6.3.1 — Bulk Create (CSV Import) `[DONE]`
 *As a tenant administrator, I want to import records from a CSV file, so that I can migrate existing data without manual entry.*
 - `POST /dynamic-data/{entity}/records/bulk` with `{"records": [...]}` creates multiple records in a single transaction
 - Frontend "Import" button accepts CSV; column mapping UI maps CSV headers to entity fields via metadata
 - Response includes `created`, `failed`, and `errors` arrays (partial success supported)
 - Import limited to 1000 records per request
 
-#### Story 6.3.2 — Bulk Update and Bulk Delete `[OPEN]`
+#### Story 6.3.2 — Bulk Update and Bulk Delete `[DONE]`
 *As a power user, I want to select multiple records and update a field or delete them all at once, so that batch data corrections are efficient.*
 - `PUT /dynamic-data/{entity}/records/bulk` accepts `{"records": [{id, ...fields}]}` and updates each
 - `DELETE /dynamic-data/{entity}/records/bulk` accepts `{"ids": [...]}` and soft-deletes each
@@ -983,7 +983,7 @@
 - `POST /settings/notifications/test-email` sends a test email to verify SMTP config
 - Delivery errors (connection refused, auth failure) caught, logged, and queue entry marked for retry
 
-#### Story 14.2.2 — Email Template System `[OPEN]`
+#### Story 14.2.2 — Email Template System `[DONE]`
 *As a tenant administrator, I want branded email templates for each notification type, so that emails reflect our organization's visual identity.*
 - Default HTML templates exist for: `account_locked`, `password_expiring`, `password_reset`, `welcome_user`, `workflow_approval_request`
 - Templates support variables: `{{user_name}}`, `{{tenant_name}}`, `{{action_url}}`, `{{expiry_date}}`
@@ -1286,7 +1286,7 @@
 - Volume mounts enable hot-reload for backend and frontend
 - `make docker-up` is the documented command; `make docker-logs` tails all service logs
 
-#### Story 19.1.2 — Production Docker Compose `[OPEN]`
+#### Story 19.1.2 — Production Docker Compose `[DONE]`
 *As a DevOps engineer, I want a production-ready Docker Compose file, so that I can deploy to a server with minimal manual configuration.*
 - `infra/docker-compose.prod.yml` uses tagged image references from the container registry
 - No bind-mount volumes; data stored in named volumes
@@ -1397,7 +1397,7 @@
 | 21.1 | Layout Component Suite | [Story 15.1.1](epics/epic-15-flex-component-library.md) | `[DONE]` | Unblocks all UI work — every other Frontend section depends on these components |
 | 21.2 | SMTP Email Delivery Adapter | [Story 14.2.1](epics/epic-14-notification-system.md) | `[DONE]` | Pure backend, parallelizable with 21.1; closes user-journey step 8 (password-reset deadletter) |
 | 21.3 | Role CRUD + Wildcard Permissions | [Story 4.1.1](epics/epic-04-rbac-permissions.md) + [Story 4.2.1](epics/epic-04-rbac-permissions.md) | `[IN-PROGRESS]` | Needs 21.1 (layout components for Roles page); shipped together to avoid half-feature |
-| 21.4 | Per-Entity Permission Enforcement | [Story 4.2.4](epics/epic-04-rbac-permissions.md) | `[OPEN]` | Needs 21.3 (role list) and 21.1 (matrix layout) — sprint-closer |
+| 21.4 | Per-Entity Permission Enforcement | [Story 4.2.4](epics/epic-04-rbac-permissions.md) | `[DONE]` | |
 
 ### Sprint-level DoD
 
@@ -1427,16 +1427,16 @@ All 5 constituent stories `[DONE]` per their canonical AC; smoke test passes; on
 
 | # | Story | Status |
 |---|-------|--------|
-| 23.1.1 | Canonical lifecycle API contract + frontend fix | [OPEN] |
-| 23.2.1 | Manifest JSON schema validation | [OPEN] |
-| 23.2.2 | `manage.sh module pack` command | [OPEN] |
-| 23.3.1 | `manage.sh module install` with atomic rollback | [OPEN] |
-| 23.3.2 | `BaseModule` hook wiring | [OPEN] |
-| 23.4.1 | Modules list page | [OPEN] |
-| 23.4.2 | Module activate flow with pre-activation summary | [OPEN] |
-| 23.4.3 | Module deactivate flow | [OPEN] |
-| 23.5.1 | Operator uninstall (two-phase) | [OPEN] |
-| 23.5.2 | Audit trail for all module lifecycle events | [OPEN] |
+| 23.1.1 | Canonical lifecycle API contract + frontend fix | [DONE] |
+| 23.2.1 | Manifest JSON schema validation | [DONE] |
+| 23.2.2 | `manage.sh module pack` command | [DONE] |
+| 23.3.1 | `manage.sh module install` with atomic rollback | [DONE] |
+| 23.3.2 | `BaseModule` hook wiring | [DONE] |
+| 23.4.1 | Modules list page | [DONE] |
+| 23.4.2 | Module activate flow with pre-activation summary | [DONE] |
+| 23.4.3 | Module deactivate flow | [DONE] |
+| 23.5.1 | Operator uninstall (two-phase) | [DONE] |
+| 23.5.2 | Audit trail for all module lifecycle events | [DONE] |
 
 ## EPIC 24 — Frontend Capability Surfacing
 

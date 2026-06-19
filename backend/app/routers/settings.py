@@ -286,3 +286,80 @@ def update_tenant_settings(
         updated_at=settings.updated_at,
         updated_by=settings.updated_by
     )
+
+
+# ─── Story 14.2.2 — Email Template Endpoints ───────────────────────────────
+
+AVAILABLE_EMAIL_TEMPLATES = [
+    "welcome_user",
+    "password_reset",
+    "account_locked",
+    "password_expiring",
+    "workflow_approval_request",
+]
+
+
+@router.get("/email-templates")
+def list_email_templates(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """List available email templates and any tenant overrides. Story 14.2.2"""
+    from app.models.notification_config import NotificationConfig
+    nc = db.query(NotificationConfig).filter(
+        NotificationConfig.tenant_id == current_user.tenant_id
+    ).first()
+    overrides = {}
+    if nc and getattr(nc, "email_template_overrides", None):
+        overrides = nc.email_template_overrides or {}
+    return {
+        "templates": [
+            {
+                "name": t,
+                "has_override": t in overrides,
+                "override": overrides.get(t),
+            }
+            for t in AVAILABLE_EMAIL_TEMPLATES
+        ]
+    }
+
+
+@router.put("/email-templates/{template_name}")
+def update_email_template(
+    template_name: str,
+    payload: dict,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(has_permission("settings:update:tenant")),
+):
+    """Override subject/body for an email template per tenant. Story 14.2.2"""
+    from app.models.notification_config import NotificationConfig
+    if template_name not in AVAILABLE_EMAIL_TEMPLATES:
+        raise HTTPException(status_code=404, detail=f"Template '{template_name}' not found")
+
+    nc = db.query(NotificationConfig).filter(
+        NotificationConfig.tenant_id == current_user.tenant_id
+    ).first()
+    if not nc:
+        raise HTTPException(status_code=404, detail="Notification config not found for this tenant")
+
+    overrides = {}
+    if getattr(nc, "email_template_overrides", None):
+        overrides = dict(nc.email_template_overrides)
+
+    overrides[template_name] = {
+        "subject": payload.get("subject"),
+        "body": payload.get("body"),
+    }
+
+    # Store overrides — use JSON extra_config if email_template_overrides column absent
+    if hasattr(nc, "email_template_overrides"):
+        nc.email_template_overrides = overrides
+    elif hasattr(nc, "extra_config"):
+        extra = dict(nc.extra_config or {})
+        extra["email_template_overrides"] = overrides
+        nc.extra_config = extra
+    else:
+        raise HTTPException(status_code=500, detail="No suitable column to store template overrides")
+
+    db.commit()
+    return {"message": f"Template '{template_name}' updated", "template": overrides[template_name]}

@@ -109,6 +109,24 @@ async def get_lookup_data(
         except json.JSONDecodeError:
             pass
 
+    # Story 5.2.5 — apply filter_expression from cascading depends_on_field
+    if parent_value is not None:
+        from app.models.lookup import LookupConfiguration
+        cfg = db.query(LookupConfiguration).filter(LookupConfiguration.id == config_id).first()
+        if cfg and getattr(cfg, "filter_expression", None) and getattr(cfg, "depends_on_field", None):
+            try:
+                import json as _json
+                fe = cfg.filter_expression
+                # Replace placeholder with actual parent_value
+                fe_resolved = fe.replace("{parent_value}", str(parent_value))
+                extra_filter = _json.loads(fe_resolved) if isinstance(fe_resolved, str) else fe_resolved
+                if filters_dict:
+                    filters_dict.update(extra_filter)
+                else:
+                    filters_dict = extra_filter
+            except Exception:
+                pass
+
     return await service.get_lookup_data(
         config_id,
         search=search,

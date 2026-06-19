@@ -920,3 +920,119 @@ def list_users(
         "items": items,
         "total": result["total"]
     }
+
+
+@router.post("/users", status_code=201)
+def create_user(
+    payload: dict,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(has_permission("users:create:tenant")),
+    http_request: Request = None,
+):
+    """Create a new user. Story 3.1.1"""
+    from app.core.auth import get_password_hash
+    from app.core.audit import create_audit_log
+    import uuid
+
+    email = (payload.get("email") or "").strip().lower()
+    full_name = payload.get("full_name") or ""
+    password = payload.get("password") or ""
+    tenant_id = payload.get("tenant_id")
+    role_ids = payload.get("role_ids", [])
+
+    if not email or not full_name or not password:
+        raise HTTPException(status_code=400, detail="email, full_name, and password are required")
+
+    if current_user.is_superuser and tenant_id:
+        effective_tenant_id = uuid.UUID(str(tenant_id))
+    elif current_user.tenant_id:
+        effective_tenant_id = current_user.tenant_id
+    else:
+        raise HTTPException(status_code=400, detail="tenant_id required for superadmin")
+
+    existing = db.query(User).filter(
+        User.email == email,
+        User.tenant_id == effective_tenant_id,
+    ).first()
+    if existing:
+        raise HTTPException(status_code=409, detail=f"Email '{email}' already exists in this tenant")
+
+    user = User(
+        id=uuid.uuid4(),
+        email=email,
+        full_name=full_name,
+        hashed_password=get_password_hash(password),
+        tenant_id=effective_tenant_id,
+        is_active=True,
+        is_superuser=False,
+    )
+    db.add(user)
+    db.flush()
+
+    if role_ids:
+        for role_id in role_ids:
+            role = db.query(Role).filter(Role.id == role_id).first()
+            if role:
+                ur = UserRole(user_id=str(user.id), role_id=str(role.id))
+                db.add(ur)
+
+    db.commit()
+    db.refresh(user)
+
+    create_audit_log(db=db, action="user_created", user=current_user,
+                     entity_type="user", entity_id=str(user.id),
+                     context_info={"email": email, "tenant_id": str(effective_tenant_id)},
+                     request=http_request, status="success")
+
+    return {
+        "id": str(user.id),
+        "email": user.email,
+        "full_name": user.full_name,
+        "is_active": user.is_active,
+        "tenant_id": str(user.tenant_id),
+        "created_at": user.created_at.isoformat() if user.created_at else None,
+    }
+
+
+@router.post("/users/{user_id}/reset-password", status_code=200)
+def admin_reset_user_password(
+    user_id: str,
+    payload: dict,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(has_permission("users:manage:tenant")),
+    http_request: Request = None,
+):
+    """Admin-initiated password reset. Story 3.1.4"""
+    from app.core.auth import get_password_hash
+    from app.core.audit import create_audit_log
+    import uuid, secrets
+
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if not current_user.is_superuser:
+        if str(user.tenant_id) != str(current_user.tenant_id):
+            raise HTTPException(status_code=403, detail="Cannot reset password for users in another tenant")
+
+    new_password = payload.get("new_password")
+    if not new_password:
+        new_password = secrets.token_urlsafe(12)
+        temporary = True
+    else:
+        temporary = False
+
+    user.hashed_password = get_password_hash(new_password)
+    if hasattr(user, "must_change_password"):
+        user.must_change_password = True
+    db.commit()
+
+    create_audit_log(db=db, action="admin_password_reset", user=current_user,
+                     entity_type="user", entity_id=str(user.id),
+                     context_info={"temporary": temporary},
+                     request=http_request, status="success")
+
+    result = {"message": "Password reset successfully", "user_id": str(user.id)}
+    if temporary:
+        result["temporary_password"] = new_password
+    return result

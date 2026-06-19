@@ -74,6 +74,11 @@ class Module(Base):
     is_core = Column(Boolean, default=False, nullable=False)  # Core modules can't be disabled
     is_template = Column(Boolean, default=False)  # Available as template
 
+    # T-23.017 schema-23 lifecycle columns (migration: pg_module_lifecycle_columns)
+    install_status = Column(String(30), nullable=False, default="ready", index=True)
+    install_error_message = Column(Text, nullable=True)
+    visibility = Column(String(20), nullable=False, default="all_tenants", index=True)
+
     # Organization (NULL = platform-level)
     tenant_id = Column(GUID, ForeignKey('tenants.id', ondelete='CASCADE'), nullable=True, index=True)
 
@@ -157,6 +162,14 @@ class Module(Base):
         CheckConstraint(
             "module_type IN ('code', 'nocode', 'hybrid')",
             name='valid_module_type'
+        ),
+        CheckConstraint(
+            "install_status IN ('in_progress', 'ready', 'failed', 'deactivation_pending')",
+            name='ck_modules_install_status'
+        ),
+        CheckConstraint(
+            "visibility IN ('all_tenants', 'whitelist', 'hidden')",
+            name='ck_modules_visibility'
         ),
     )
 
