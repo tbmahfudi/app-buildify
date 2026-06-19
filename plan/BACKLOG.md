@@ -41,7 +41,7 @@
 | 19 | Infrastructure & Deployment | Dev infra DONE; Prod compose PARTIAL; Storage + CI/CD PLANNED |
 | 20 | Mobile & Progressive Web App | PLANNED |
 | 21 | 🔴 Risk Retirement (Sprint 1) | DONE — 33/34 tasks (1 deferred); 5 of 5 🔴 risks retired end-to-end; sprint complete pending optional 30-min operator run per `test-report-21` |
-| 22 | Tenant Isolation Hardening | OPEN — 14 stories across 5 features; closes the highest residual risk per `sec-review-21`; gated by per-tenant DB provisioning prototype (story 22.1.1) |
+| 22 | Tenant Isolation Hardening | DONE — all 14 stories implemented (22.2.1, 22.2.2, 22.2.3, 22.3.1, 22.3.2, 22.1.1, 22.4.1, 22.4.2, 22.4.3, 22.4.4, 22.4.5, 22.4.6, 22.5.2, 22.5.3); scope.py + TenantScopeListener + ModuleScopeMiddleware + tenant_module_databases + 40-scenario test plan delivered |
 | 23 | Module Lifecycle & Activation | OPEN — 9 stories across 5 features; developer packaging pipeline + tenant activate/deactivate UI; gated by API contract alignment (story 23.1.1) |
 
 ---
