@@ -128,6 +128,9 @@
                 <i class="ph ph-eye" id="eye-icon" aria-hidden="true"></i>
               </button>
             </div>
+            <div class="flex justify-end mt-1">
+              <a href="#reset-password" id="forgot-link" class="text-sm text-blue-600 hover:underline">Forgot password?</a>
+            </div>
           </div>
 
           <!-- Tenant ID Field (Optional) -->
@@ -327,6 +330,93 @@
         </div>
       </div>
 
+
+      <!-- Reset Password — Request View -->
+      <div id="reset-request-view" class="hidden bg-white/80 backdrop-blur-lg rounded-2xl shadow-2xl p-8 border border-white/20" role="main">
+        <h2 class="text-2xl font-bold text-center mb-2 text-gray-900">Reset your password</h2>
+        <p class="text-center text-sm text-gray-500 mb-6">Enter your email and we'll send a reset link.</p>
+        <form id="reset-request-form" class="space-y-5" aria-label="Password reset request form">
+          <div>
+            <label for="reset-email" class="block text-sm font-medium text-gray-700 mb-2">Email address</label>
+            <div class="relative">
+              <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <i class="ph ph-envelope text-gray-400"></i>
+              </div>
+              <input id="reset-email" type="email" class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition" placeholder="you@example.com" required autocomplete="email">
+            </div>
+          </div>
+          <div id="reset-request-error" class="hidden p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg" role="alert">
+            <div class="flex items-start gap-3">
+              <i class="ph ph-warning-circle flex-shrink-0 mt-0.5"></i>
+              <span id="reset-request-error-msg"></span>
+            </div>
+          </div>
+          <button type="submit" id="reset-request-btn" class="w-full px-4 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold rounded-lg hover:from-blue-700 hover:to-indigo-700 shadow-lg transition-all flex items-center justify-center gap-2">
+            <span id="reset-request-btn-text">Send reset link</span>
+            <i class="ph ph-paper-plane-right" id="reset-request-btn-icon"></i>
+          </button>
+        </form>
+        <div id="reset-request-success" class="hidden">
+          <div class="flex items-start gap-4 p-5 bg-green-50 border border-green-200 rounded-xl">
+            <i class="ph ph-envelope-open text-green-600 text-2xl flex-shrink-0 mt-0.5"></i>
+            <div>
+              <p class="font-semibold text-green-900">Check your inbox</p>
+              <p class="text-sm text-green-700 mt-1">If that address is registered, a reset link is on its way.</p>
+            </div>
+          </div>
+        </div>
+        <div class="text-center mt-6">
+          <a href="#login" class="text-sm text-blue-600 hover:underline">← Back to login</a>
+        </div>
+      </div>
+
+      <!-- Reset Password — Confirm View -->
+      <div id="reset-confirm-view" class="hidden bg-white/80 backdrop-blur-lg rounded-2xl shadow-2xl p-8 border border-white/20" role="main">
+        <h2 class="text-2xl font-bold text-center mb-6 text-gray-900">Set a new password</h2>
+        <div id="reset-no-token" class="hidden">
+          <div class="flex items-start gap-4 p-5 bg-red-50 border border-red-200 rounded-xl">
+            <i class="ph ph-warning text-red-600 text-2xl flex-shrink-0 mt-0.5"></i>
+            <div>
+              <p class="font-semibold text-red-900">Invalid reset link</p>
+              <p class="text-sm text-red-700 mt-1">This link is missing or invalid. <a href="#reset-password" class="underline">Request a new one.</a></p>
+            </div>
+          </div>
+        </div>
+        <form id="reset-confirm-form" class="space-y-5" aria-label="Password reset confirmation form">
+          <div>
+            <label for="new-password" class="block text-sm font-medium text-gray-700 mb-2">New password</label>
+            <div class="relative">
+              <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <i class="ph ph-lock text-gray-400"></i>
+              </div>
+              <input id="new-password" type="password" class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition" placeholder="••••••••" required autocomplete="new-password" autofocus>
+            </div>
+          </div>
+          <div>
+            <label for="confirm-password" class="block text-sm font-medium text-gray-700 mb-2">Confirm new password</label>
+            <div class="relative">
+              <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <i class="ph ph-lock text-gray-400"></i>
+              </div>
+              <input id="confirm-password" type="password" class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition" placeholder="••••••••" required autocomplete="new-password">
+            </div>
+            <p id="password-mismatch" class="hidden mt-1 text-sm text-red-500">Passwords do not match.</p>
+          </div>
+          <div id="reset-confirm-error" class="hidden p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg" role="alert">
+            <div class="flex items-start gap-3">
+              <i class="ph ph-warning-circle flex-shrink-0 mt-0.5"></i>
+              <span id="reset-confirm-error-msg"></span>
+            </div>
+          </div>
+          <button type="submit" id="reset-confirm-btn" class="w-full px-4 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold rounded-lg hover:from-blue-700 hover:to-indigo-700 shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+            <span>Set new password</span>
+            <i class="ph ph-check"></i>
+          </button>
+        </form>
+        <div class="text-center mt-6">
+          <a href="#login" class="text-sm text-blue-600 hover:underline">← Back to login</a>
+        </div>
+      </div>
       <!-- Footer -->
       <div class="mt-8 text-center text-sm text-gray-600">
         <p>© 2024 NoCode Platform. All rights reserved.</p>
@@ -340,7 +430,7 @@
   </div>
 
   <script type="module">
-    import { login } from '../js/api.js';
+    import { login, requestPasswordReset, confirmPasswordReset } from '../js/api.js';
 
     const form = document.getElementById('login-form');
     const errorDiv = document.getElementById('login-error');
@@ -421,6 +511,110 @@
         fillCredentials(email, password);
       }
     });
+
+    // ── View switching (login / reset-request / reset-confirm) ──────────────
+    const loginCard    = document.querySelector('[role="main"]');
+    const requestView  = document.getElementById('reset-request-view');
+    const confirmView  = document.getElementById('reset-confirm-view');
+
+    function showView(hash) {
+      const isRequest = hash === 'reset-password';
+      const isConfirm = hash === 'reset-password-confirm';
+      loginCard.classList.toggle('hidden', isRequest || isConfirm);
+      requestView.classList.toggle('hidden', !isRequest);
+      confirmView.classList.toggle('hidden', !isConfirm);
+      if (isConfirm) {
+        const token = new URLSearchParams(window.location.search).get('token');
+        document.getElementById('reset-no-token').classList.toggle('hidden', !!token);
+        document.getElementById('reset-confirm-form').classList.toggle('hidden', !token);
+      }
+    }
+
+    // Initial view
+    showView(window.location.hash.replace('#', ''));
+
+    // React to hash changes within the login page
+    window.addEventListener('hashchange', () => {
+      showView(window.location.hash.replace('#', ''));
+    });
+
+    // ── Reset request form ───────────────────────────────────────────────────
+    document.getElementById('reset-request-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('reset-request-btn');
+      const btnText = document.getElementById('reset-request-btn-text');
+      const btnIcon = document.getElementById('reset-request-btn-icon');
+      const errDiv = document.getElementById('reset-request-error');
+      const errMsg = document.getElementById('reset-request-error-msg');
+      const email  = document.getElementById('reset-email').value.trim();
+
+      btn.disabled = true;
+      btnText.textContent = 'Sending…';
+      btnIcon.className = 'ph ph-arrows-clockwise animate-spin';
+      errDiv.classList.add('hidden');
+
+      try {
+        await requestPasswordReset(email);
+        document.getElementById('reset-request-form').classList.add('hidden');
+        document.getElementById('reset-request-success').classList.remove('hidden');
+      } catch (err) {
+        errMsg.textContent = err.message || 'Something went wrong. Please try again.';
+        errDiv.classList.remove('hidden');
+        btn.disabled = false;
+        btnText.textContent = 'Send reset link';
+        btnIcon.className = 'ph ph-paper-plane-right';
+      }
+    });
+
+    // ── Reset confirm form ───────────────────────────────────────────────────
+    const newPwInput  = document.getElementById('new-password');
+    const confPwInput = document.getElementById('confirm-password');
+    const confirmBtn  = document.getElementById('reset-confirm-btn');
+    const mismatchMsg = document.getElementById('password-mismatch');
+
+    function validatePasswords() {
+      const match = newPwInput.value === confPwInput.value && confPwInput.value.length > 0;
+      mismatchMsg.classList.toggle('hidden', confPwInput.value.length === 0 || match);
+      confirmBtn.disabled = !match || newPwInput.value.length === 0;
+    }
+    newPwInput.addEventListener('input', validatePasswords);
+    confPwInput.addEventListener('input', validatePasswords);
+
+    document.getElementById('reset-confirm-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const errDiv = document.getElementById('reset-confirm-error');
+      const errMsg = document.getElementById('reset-confirm-error-msg');
+      const token  = new URLSearchParams(window.location.search).get('token');
+
+      confirmBtn.disabled = true;
+      newPwInput.disabled = true;
+      confPwInput.disabled = true;
+      errDiv.classList.add('hidden');
+
+      try {
+        await confirmPasswordReset(token, newPwInput.value);
+        // Redirect to login with a success flag
+        window.location.href = '/assets/templates/login.html?reset=success';
+      } catch (err) {
+        const msg = err.message || '';
+        errMsg.textContent = msg.toLowerCase().includes('expired')
+          ? 'This reset link has expired. Please request a new one.'
+          : (msg || 'Something went wrong. Please try again.');
+        errDiv.classList.remove('hidden');
+        confirmBtn.disabled = false;
+        newPwInput.disabled = false;
+        confPwInput.disabled = false;
+      }
+    });
+
+    // ── Show success toast after confirmed reset ──────────────────────────────
+    if (new URLSearchParams(window.location.search).get('reset') === 'success') {
+      const toast = document.createElement('div');
+      toast.className = 'fixed top-4 right-4 z-50 flex items-center gap-3 bg-green-600 text-white px-5 py-3 rounded-xl shadow-lg';
+      toast.innerHTML = '<i class="ph ph-check-circle text-xl"></i><span>Password updated — please log in.</span>';
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 6000);
+    }
   </script>
 </body>
 </html>

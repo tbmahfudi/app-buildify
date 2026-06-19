@@ -12,34 +12,101 @@
     </div>
   </div>
 
-  <div class="max-w-4xl mx-auto px-6">
-    <div class="bg-white rounded-lg shadow-sm p-6">
-      <div class="bg-blue-50 border-l-4 border-blue-500 p-6 rounded-lg">
-        <div class="flex items-start gap-3">
-          <i class="ph-duotone ph-info text-blue-600 text-2xl"></i>
-          <div>
-            <h3 class="text-lg font-semibold text-blue-900 mb-2">Coming Soon</h3>
-            <p class="text-blue-800 mb-4">
-              Notification settings configuration is currently under development.
-            </p>
-            <p class="text-sm text-blue-700">
-              This section will allow you to configure:
-            </p>
-            <ul class="list-disc list-inside text-sm text-blue-700 mt-2 space-y-1">
-              <li>Email notification templates</li>
-              <li>SMS/Push notification settings</li>
-              <li>Notification delivery channels</li>
-              <li>Alert thresholds and triggers</li>
-              <li>User notification preferences</li>
-              <li>Notification scheduling and batching</li>
-            </ul>
-            <p class="text-sm text-blue-700 mt-3">
-              <strong>Note:</strong> For security-related notification configuration (password policies, account lockouts),
-              visit <a href="#auth-policies" class="underline hover:text-blue-900">Administration > Auth Policies</a>.
-            </p>
-          </div>
-        </div>
+  <div class="max-w-4xl mx-auto px-6 space-y-6">
+
+    <!-- Honesty banner: email delivery not yet wired -->
+    <div class="flex items-start gap-4 p-5 bg-amber-50 border border-amber-300 rounded-xl">
+      <i class="ph-duotone ph-envelope-simple-slash text-amber-600 text-2xl flex-shrink-0 mt-0.5"></i>
+      <div>
+        <p class="font-semibold text-amber-900">Email notifications are not yet active</p>
+        <p class="text-sm text-amber-800 mt-1">
+          Your preferences are saved and will apply once email delivery is configured by your administrator.
+          In-app notifications are active now.
+        </p>
       </div>
     </div>
+
+    <!-- In-app notification preferences -->
+    <div class="bg-white rounded-xl shadow-sm divide-y divide-gray-100">
+      <div class="px-6 py-4">
+        <h2 class="text-base font-semibold text-gray-900">In-App Notifications</h2>
+        <p class="text-sm text-gray-500 mt-0.5">These fire immediately inside the platform.</p>
+      </div>
+
+      <div class="px-6 py-4 flex items-center justify-between">
+        <div>
+          <p class="text-sm font-medium text-gray-900">Record changes</p>
+          <p class="text-xs text-gray-500">Notify when a record you own is modified</p>
+        </div>
+        <label class="relative inline-flex items-center cursor-pointer">
+          <input type="checkbox" class="sr-only peer" id="notif-record-changes" checked>
+          <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-400 rounded-full peer peer-checked:bg-blue-600 transition-colors after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full"></div>
+        </label>
+      </div>
+
+      <div class="px-6 py-4 flex items-center justify-between">
+        <div>
+          <p class="text-sm font-medium text-gray-900">Workflow transitions</p>
+          <p class="text-xs text-gray-500">Notify when a workflow reaches a new state</p>
+        </div>
+        <label class="relative inline-flex items-center cursor-pointer">
+          <input type="checkbox" class="sr-only peer" id="notif-workflow" checked>
+          <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-400 rounded-full peer peer-checked:bg-blue-600 transition-colors after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full"></div>
+        </label>
+      </div>
+
+      <div class="px-6 py-4 flex items-center justify-between">
+        <div>
+          <p class="text-sm font-medium text-gray-900">Automation rule failures</p>
+          <p class="text-xs text-gray-500">Notify when an automation rule errors</p>
+        </div>
+        <label class="relative inline-flex items-center cursor-pointer">
+          <input type="checkbox" class="sr-only peer" id="notif-automation-fail" checked>
+          <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-400 rounded-full peer peer-checked:bg-blue-600 transition-colors after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full"></div>
+        </label>
+      </div>
+
+      <div class="px-6 py-4 flex items-center justify-between">
+        <div>
+          <p class="text-sm font-medium text-gray-900">Scheduled job completions</p>
+          <p class="text-xs text-gray-500">Notify when a scheduler job finishes or fails</p>
+        </div>
+        <label class="relative inline-flex items-center cursor-pointer">
+          <input type="checkbox" class="sr-only peer" id="notif-scheduler">
+          <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-400 rounded-full peer peer-checked:bg-blue-600 transition-colors after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full"></div>
+        </label>
+      </div>
+    </div>
+
+    <!-- Email preferences (disabled until delivery is configured) -->
+    <div class="bg-white rounded-xl shadow-sm divide-y divide-gray-100 opacity-50 pointer-events-none select-none">
+      <div class="px-6 py-4 flex items-center gap-3">
+        <h2 class="text-base font-semibold text-gray-900">Email Notifications</h2>
+        <span class="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">Not yet available</span>
+      </div>
+
+      <div class="px-6 py-4 flex items-center justify-between">
+        <div>
+          <p class="text-sm font-medium text-gray-900">Weekly digest</p>
+          <p class="text-xs text-gray-500">Summary of activity across your tenant</p>
+        </div>
+        <label class="relative inline-flex items-center cursor-not-allowed">
+          <input type="checkbox" class="sr-only peer" disabled>
+          <div class="w-11 h-6 bg-gray-200 rounded-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5"></div>
+        </label>
+      </div>
+
+      <div class="px-6 py-4 flex items-center justify-between">
+        <div>
+          <p class="text-sm font-medium text-gray-900">Security alerts</p>
+          <p class="text-xs text-gray-500">Unusual logins, failed authentication attempts</p>
+        </div>
+        <label class="relative inline-flex items-center cursor-not-allowed">
+          <input type="checkbox" class="sr-only peer" disabled>
+          <div class="w-11 h-6 bg-gray-200 rounded-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5"></div>
+        </label>
+      </div>
+    </div>
+
   </div>
 </div>
