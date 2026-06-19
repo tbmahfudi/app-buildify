@@ -16,7 +16,7 @@ from sqlalchemy import ForeignKey, Index, Integer, String, Text
 from sqlalchemy.orm import relationship
 
 from app.models import Base
-from app.models.base import GUID
+from app.models.base import GUID, generate_uuid
 
 
 class ConfigLevel(str, enum.Enum):
@@ -60,7 +60,7 @@ class SchedulerConfig(Base):
     """
     __tablename__ = "scheduler_configs"
 
-    id = Column(GUID, primary_key=True, index=True)
+    id = Column(GUID, primary_key=True, default=generate_uuid, index=True)
 
     # Hierarchy identifiers
     config_level = Column(SQLEnum(ConfigLevel), nullable=False, default=ConfigLevel.SYSTEM)
@@ -125,7 +125,7 @@ class SchedulerJob(Base):
     """
     __tablename__ = "scheduler_jobs"
 
-    id = Column(GUID, primary_key=True, index=True)
+    id = Column(GUID, primary_key=True, default=generate_uuid, index=True)
 
     # Configuration reference
     config_id = Column(GUID, ForeignKey("scheduler_configs.id"), nullable=False)
@@ -193,7 +193,7 @@ class SchedulerJobExecution(Base):
     """
     __tablename__ = "scheduler_job_executions"
 
-    id = Column(GUID, primary_key=True, index=True)
+    id = Column(GUID, primary_key=True, default=generate_uuid, index=True)
     job_id = Column(GUID, ForeignKey("scheduler_jobs.id"), nullable=False)
 
     # Execution context
@@ -241,7 +241,7 @@ class SchedulerJobLog(Base):
     """
     __tablename__ = "scheduler_job_logs"
 
-    id = Column(GUID, primary_key=True, index=True)
+    id = Column(GUID, primary_key=True, default=generate_uuid, index=True)
     execution_id = Column(GUID, ForeignKey("scheduler_job_executions.id"), nullable=False)
 
     # Log details

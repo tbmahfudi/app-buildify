@@ -37,7 +37,7 @@ from app.schemas.report import (
     ReportTemplateResponse,
 )
 from app.services.report_export import ReportExporter
-from app.services.report_service import ReportService
+from app.services.report_service import ReportService, ReportQueryValidationError
 
 router = APIRouter(prefix="/api/v1/reports", tags=["reports"])
 logger = logging.getLogger(__name__)
@@ -297,6 +297,8 @@ def execute_report(
             request=request
         )
         return execution
+    except ReportQueryValidationError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
     except Exception as e:
@@ -368,6 +370,10 @@ def execute_and_export_report(
             }
         )
 
+    except HTTPException:
+        raise
+    except ReportQueryValidationError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
     except ImportError as e:

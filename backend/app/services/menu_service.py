@@ -282,9 +282,11 @@ class MenuService:
         import logging
         logger = logging.getLogger(__name__)
 
-        # Get builder pages with show_in_menu=True for this tenant
+        # Get builder pages with show_in_menu=True for this tenant.
+        # BuilderPage.tenant_id is String(36) (VARCHAR), not GUID, so cast to str
+        # to avoid "operator does not exist: character varying = uuid" in Postgres.
         builder_pages = db.query(BuilderPage).filter(
-            BuilderPage.tenant_id == user.tenant_id,
+            BuilderPage.tenant_id == str(user.tenant_id),
             BuilderPage.show_in_menu == True,
             BuilderPage.published == True  # Only show published pages
         ).order_by(BuilderPage.menu_order, BuilderPage.name).all()

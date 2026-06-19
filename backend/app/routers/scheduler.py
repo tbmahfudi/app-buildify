@@ -33,6 +33,20 @@ router = APIRouter(prefix="/api/v1/scheduler", tags=["scheduler"])
 logger = logging.getLogger(__name__)
 
 
+def _enforce_tenant_access(resource_tenant_id: Optional[UUID], current_user: User) -> None:
+    """
+    Restrict access to a tenant-scoped scheduler resource (config/job/execution).
+
+    Superusers bypass this check. A resource with tenant_id=None is a system-level
+    resource and is superuser-only (the ``scheduler:*:tenant`` permission codes only
+    authorize acting within the caller's own tenant, not platform-wide).
+    """
+    if current_user.is_superuser:
+        return
+    if resource_tenant_id is None or resource_tenant_id != current_user.tenant_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+
+
 # ========== Configuration Endpoints ==========
 
 @router.post("/configs", response_model=SchedulerConfigResponse, status_code=status.HTTP_201_CREATED)
@@ -46,6 +60,13 @@ def create_scheduler_config(
 
     Requires permission: scheduler:config:create:tenant
     """
+    if not current_user.is_superuser:
+        from app.schemas.scheduler import ConfigLevel
+        if config_data.config_level == ConfigLevel.SYSTEM:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="System-level configuration requires superuser")
+        if config_data.tenant_id and config_data.tenant_id != current_user.tenant_id:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+
     try:
         config = SchedulerService.create_config(
             db=db,
@@ -110,7 +131,7 @@ def get_effective_config(
 
 @router.get("/configs/{config_id}", response_model=SchedulerConfigResponse)
 def get_scheduler_config(
-    config_id: int,
+    config_id: UUID,
     db: Session = Depends(get_db),
     current_user: User = Depends(has_permission("scheduler:config:read:tenant"))
 ):
@@ -129,12 +150,14 @@ def get_scheduler_config(
             detail="Configuration not found"
         )
 
+    _enforce_tenant_access(config.tenant_id, current_user)
+
     return config
 
 
 @router.put("/configs/{config_id}", response_model=SchedulerConfigResponse)
 def update_scheduler_config(
-    config_id: int,
+    config_id: UUID,
     config_data: SchedulerConfigUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(has_permission("scheduler:config:update:tenant"))
@@ -144,6 +167,14 @@ def update_scheduler_config(
 
     Requires permission: scheduler:config:update:tenant
     """
+    existing = db.query(SchedulerConfig).filter(SchedulerConfig.id == config_id).first()
+    if not existing:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Configuration not found"
+        )
+    _enforce_tenant_access(existing.tenant_id, current_user)
+
     # Filter out None values
     update_data = {k: v for k, v in config_data.model_dump().items() if v is not None}
 
@@ -155,18 +186,12 @@ def update_scheduler_config(
 
     config = SchedulerService.update_config(db=db, config_id=config_id, **update_data)
 
-    if not config:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Configuration not found"
-        )
-
     return config
 
 
 @router.delete("/configs/{config_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_scheduler_config(
-    config_id: int,
+    config_id: UUID,
     db: Session = Depends(get_db),
     current_user: User = Depends(has_permission("scheduler:config:delete:tenant"))
 ):
@@ -175,13 +200,15 @@ def delete_scheduler_config(
 
     Requires permission: scheduler:config:delete:tenant
     """
-    deleted = SchedulerService.delete_config(db=db, config_id=config_id)
-
-    if not deleted:
+    existing = db.query(SchedulerConfig).filter(SchedulerConfig.id == config_id).first()
+    if not existing:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Configuration not found"
         )
+    _enforce_tenant_access(existing.tenant_id, current_user)
+
+    SchedulerService.delete_config(db=db, config_id=config_id)
 
 
 # ========== Job Endpoints ==========
@@ -197,6 +224,9 @@ def create_scheduler_job(
 
     Requires permission: scheduler:jobs:create:tenant
     """
+    if not current_user.is_superuser and job_data.tenant_id and job_data.tenant_id != current_user.tenant_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+
     try:
         job = SchedulerService.create_job(
             db=db,
@@ -243,8 +273,11 @@ def list_scheduler_jobs(
 
     Requires permission: scheduler:jobs:read:tenant
     """
-    # Default to current user's tenant if not specified
-    if tenant_id is None:
+    # Non-superusers are always scoped to their own tenant, regardless of the
+    # tenant_id query param supplied.
+    if not current_user.is_superuser:
+        tenant_id = current_user.tenant_id
+    elif tenant_id is None:
         tenant_id = current_user.tenant_id
 
     jobs = SchedulerService.list_jobs(
@@ -283,7 +316,7 @@ def list_scheduler_jobs(
 
 @router.get("/jobs/{job_id}", response_model=SchedulerJobResponse)
 def get_scheduler_job(
-    job_id: int,
+    job_id: UUID,
     db: Session = Depends(get_db),
     current_user: User = Depends(has_permission("scheduler:jobs:read:tenant"))
 ):
@@ -300,19 +333,14 @@ def get_scheduler_job(
             detail="Job not found"
         )
 
-    # Check tenant access
-    if job.tenant_id and job.tenant_id != current_user.tenant_id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Access denied"
-        )
+    _enforce_tenant_access(job.tenant_id, current_user)
 
     return job
 
 
 @router.put("/jobs/{job_id}", response_model=SchedulerJobResponse)
 def update_scheduler_job(
-    job_id: int,
+    job_id: UUID,
     job_data: SchedulerJobUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(has_permission("scheduler:jobs:update:tenant"))
@@ -322,6 +350,14 @@ def update_scheduler_job(
 
     Requires permission: scheduler:jobs:update:tenant
     """
+    existing = SchedulerService.get_job(db=db, job_id=job_id)
+    if not existing:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Job not found"
+        )
+    _enforce_tenant_access(existing.tenant_id, current_user)
+
     # Filter out None values
     update_data = {k: v for k, v in job_data.model_dump().items() if v is not None}
 
@@ -333,12 +369,6 @@ def update_scheduler_job(
 
     job = SchedulerService.update_job(db=db, job_id=job_id, **update_data)
 
-    if not job:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Job not found"
-        )
-
     # TODO: Notify scheduler engine to reload the job
 
     return job
@@ -346,7 +376,7 @@ def update_scheduler_job(
 
 @router.delete("/jobs/{job_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_scheduler_job(
-    job_id: int,
+    job_id: UUID,
     db: Session = Depends(get_db),
     current_user: User = Depends(has_permission("scheduler:jobs:delete:tenant"))
 ):
@@ -355,20 +385,22 @@ def delete_scheduler_job(
 
     Requires permission: scheduler:jobs:delete:tenant
     """
-    deleted = SchedulerService.delete_job(db=db, job_id=job_id)
-
-    if not deleted:
+    existing = SchedulerService.get_job(db=db, job_id=job_id)
+    if not existing:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Job not found"
         )
+    _enforce_tenant_access(existing.tenant_id, current_user)
+
+    SchedulerService.delete_job(db=db, job_id=job_id)
 
     # TODO: Notify scheduler engine to remove the job
 
 
 @router.post("/jobs/{job_id}/execute", response_model=JobExecuteResponse)
 def execute_job_manually(
-    job_id: int,
+    job_id: UUID,
     request: JobExecuteRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(has_permission("scheduler:jobs:execute:tenant"))
@@ -386,12 +418,7 @@ def execute_job_manually(
             detail="Job not found"
         )
 
-    # Check tenant access
-    if job.tenant_id and job.tenant_id != current_user.tenant_id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Access denied"
-        )
+    _enforce_tenant_access(job.tenant_id, current_user)
 
     # Create execution record
     execution = SchedulerService.create_execution(
@@ -414,8 +441,8 @@ def execute_job_manually(
 
 @router.get("/jobs/{job_id}/executions", response_model=SchedulerJobExecutionListResponse)
 def list_job_executions(
-    job_id: int,
-    status: Optional[JobStatus] = Query(None, description="Filter by status"),
+    job_id: UUID,
+    execution_status: Optional[JobStatus] = Query(None, alias="status", description="Filter by status"),
     skip: int = Query(0, ge=0, description="Number of records to skip"),
     limit: int = Query(50, ge=1, le=500, description="Maximum number of records"),
     db: Session = Depends(get_db),
@@ -434,10 +461,12 @@ def list_job_executions(
             detail="Job not found"
         )
 
+    _enforce_tenant_access(job.tenant_id, current_user)
+
     executions = SchedulerService.get_job_executions(
         db=db,
         job_id=job_id,
-        status=status,
+        status=execution_status,
         skip=skip,
         limit=limit
     )
@@ -445,8 +474,8 @@ def list_job_executions(
     # Get total count
     from app.models.scheduler import SchedulerJobExecution
     query = db.query(SchedulerJobExecution).filter(SchedulerJobExecution.job_id == job_id)
-    if status:
-        query = query.filter(SchedulerJobExecution.status == status)
+    if execution_status:
+        query = query.filter(SchedulerJobExecution.status == execution_status)
     total = query.count()
 
     return {
@@ -459,7 +488,7 @@ def list_job_executions(
 
 @router.get("/executions/{execution_id}", response_model=SchedulerJobExecutionResponse)
 def get_job_execution(
-    execution_id: int,
+    execution_id: UUID,
     db: Session = Depends(get_db),
     current_user: User = Depends(has_permission("scheduler:executions:read:tenant"))
 ):
@@ -480,12 +509,14 @@ def get_job_execution(
             detail="Execution not found"
         )
 
+    _enforce_tenant_access(execution.tenant_id, current_user)
+
     return execution
 
 
 @router.get("/executions/{execution_id}/logs", response_model=SchedulerJobLogListResponse)
 def get_execution_logs(
-    execution_id: int,
+    execution_id: UUID,
     log_level: Optional[str] = Query(None, description="Filter by log level"),
     skip: int = Query(0, ge=0, description="Number of records to skip"),
     limit: int = Query(100, ge=1, le=1000, description="Maximum number of records"),
@@ -497,6 +528,15 @@ def get_execution_logs(
 
     Requires permission: scheduler:executions:read:tenant
     """
+    from app.models.scheduler import SchedulerJobExecution
+    execution = db.query(SchedulerJobExecution).filter(SchedulerJobExecution.id == execution_id).first()
+    if not execution:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Execution not found"
+        )
+    _enforce_tenant_access(execution.tenant_id, current_user)
+
     logs = SchedulerService.get_execution_logs(
         db=db,
         execution_id=execution_id,

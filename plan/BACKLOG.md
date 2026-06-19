@@ -31,7 +31,7 @@
 | 8 | Automation Rules | Feature 8.1 DONE; 8.2 (Webhooks) MISSING |
 | 9 | Dashboard & Analytics | DONE |
 | 10 | Reporting | Mostly DONE; scheduler page unverified |
-| 11 | Module System | Mostly DONE; activation API drift; Marketplace + nocode export/import OPEN |
+| 11 | Module System | Mostly DONE; activation API drift + nocode export/import OPEN (superseded by epic-23 for lifecycle) |
 | 13 | Security & Compliance | Mostly DONE; Prometheus + Test Suites MISSING |
 | 14 | Notification System | Arch + Email DONE; Templates + SMS + In-App MISSING (Email shipped via epic-21 sprint 1) |
 | 15 | Flex Component Library | Layout + UI + Form DONE; Tooling PLANNED (Layout suite shipped via epic-21 sprint 1) |
@@ -42,6 +42,7 @@
 | 20 | Mobile & Progressive Web App | PLANNED |
 | 21 | 🔴 Risk Retirement (Sprint 1) | DONE — 33/34 tasks (1 deferred); 5 of 5 🔴 risks retired end-to-end; sprint complete pending optional 30-min operator run per `test-report-21` |
 | 22 | Tenant Isolation Hardening | OPEN — 14 stories across 5 features; closes the highest residual risk per `sec-review-21`; gated by per-tenant DB provisioning prototype (story 22.1.1) |
+| 23 | Module Lifecycle & Activation | OPEN — 9 stories across 5 features; developer packaging pipeline + tenant activate/deactivate UI; gated by API contract alignment (story 23.1.1) |
 
 ---
 
@@ -1017,7 +1018,7 @@
 
 ### Feature 15.1 — Layout Components `[DONE]`
 
-#### Story 15.1.1 — Layout Component Suite `[OPEN]`
+#### Story 15.1.1 — Layout Component Suite `[DONE]`
 *As a frontend developer, I want layout primitives that compose into complex page structures, so that page layouts are built declaratively without custom CSS.*
 - All 9 layout components implemented: `FlexStack`, `FlexGrid`, `FlexContainer`, `FlexSection`, `FlexSidebar`, `FlexCluster`, `FlexToolbar`, `FlexMasonry`, `FlexSplitPane`
 - Components use CSS custom properties for spacing, sizing, and breakpoint behavior
@@ -1393,7 +1394,7 @@
 
 | # | Item | Canonical story | Status | Why this position |
 |---|------|-----------------|--------|--------------------|
-| 21.1 | Layout Component Suite | [Story 15.1.1](epics/epic-15-flex-component-library.md) | `[OPEN]` | Unblocks all UI work — every other Frontend section depends on these components |
+| 21.1 | Layout Component Suite | [Story 15.1.1](epics/epic-15-flex-component-library.md) | `[DONE]` | Unblocks all UI work — every other Frontend section depends on these components |
 | 21.2 | SMTP Email Delivery Adapter | [Story 14.2.1](epics/epic-14-notification-system.md) | `[OPEN]` | Pure backend, parallelizable with 21.1; closes user-journey step 8 (password-reset deadletter) |
 | 21.3 | Role CRUD + Wildcard Permissions | [Story 4.1.1](epics/epic-04-rbac-permissions.md) + [Story 4.2.1](epics/epic-04-rbac-permissions.md) | `[IN-PROGRESS]` | Needs 21.1 (layout components for Roles page); shipped together to avoid half-feature |
 | 21.4 | Per-Entity Permission Enforcement | [Story 4.2.4](epics/epic-04-rbac-permissions.md) | `[OPEN]` | Needs 21.3 (role list) and 21.1 (matrix layout) — sprint-closer |
@@ -1408,14 +1409,48 @@ All 5 constituent stories `[DONE]` per their canonical AC; smoke test passes; on
 
 | Metric | Count |
 |--------|-------|
-| Total Epics | 20 |
-| Total Features | 62 |
-| Total Stories | 160 |
+| Total Epics | 21 |
+| Total Features | 69 |
+| Total Stories | 170 |
 | Stories marked `[DONE]` | ~85 |
 | Stories marked `[IN-PROGRESS]` | ~6 |
-| Stories marked `[OPEN]` | ~28 |
+| Stories marked `[OPEN]` | ~38 |
 | Stories marked `[PLANNED]` | ~41 |
 
 ---
 
 *Generated from codebase analysis of `tbmahfudi/app-buildify` on branch `claude/create-system-backlog-nAwCn`.*
+
+## EPIC 23 — Module Lifecycle & Activation
+
+> Developer: `manage.sh module pack` + `manage.sh module install` (zero-touch prod deploy). Tenant: self-service activate/deactivate via Modules page. 9 stories, 5 features.
+
+| # | Story | Status |
+|---|-------|--------|
+| 23.1.1 | Canonical lifecycle API contract + frontend fix | [OPEN] |
+| 23.2.1 | Manifest JSON schema validation | [OPEN] |
+| 23.2.2 | `manage.sh module pack` command | [OPEN] |
+| 23.3.1 | `manage.sh module install` with atomic rollback | [OPEN] |
+| 23.3.2 | `BaseModule` hook wiring | [OPEN] |
+| 23.4.1 | Modules list page | [OPEN] |
+| 23.4.2 | Module activate flow with pre-activation summary | [OPEN] |
+| 23.4.3 | Module deactivate flow | [OPEN] |
+| 23.5.1 | Operator uninstall (two-phase) | [OPEN] |
+| 23.5.2 | Audit trail for all module lifecycle events | [OPEN] |
+
+## EPIC 24 — Frontend Capability Surfacing
+
+> Surface existing backend capability in the UI. 10 stories across 7 features, ~43h. P0 gate: forgot-password flow, notification honesty banner, duplicate route cleanup.
+
+| # | Story | Status |
+|---|-------|--------|
+| 24.1.1 | Forgot-password UI flow | [DONE] |
+| 24.1.2 | Notification settings honesty banner | [DONE] |
+| 24.1.3 | Duplicate report-designer route cleanup | [DONE] |
+| 24.2.1 | Live password-strength feedback | [OPEN] |
+| 24.3.1 | Publish button with migration diff preview | [OPEN] |
+| 24.4.1 | Automation rule test panel | [OPEN] |
+| 24.4.2 | Automation execution history | [OPEN] |
+| 24.5.1 | Job execution log viewer | [OPEN] |
+| 24.6.1 | Page version history sidebar | [OPEN] |
+| 24.7.1 | Remove dev-tool screens from production nav | [OPEN] |

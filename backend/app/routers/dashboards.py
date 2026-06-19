@@ -3,6 +3,7 @@ Dashboard API router.
 """
 import logging
 from typing import List, Optional
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.orm import Session
@@ -99,7 +100,7 @@ def list_dashboards(
 
 @router.get("/{dashboard_id}", response_model=DashboardResponse)
 def get_dashboard(
-    dashboard_id: int,
+    dashboard_id: UUID,
     db: Session = Depends(get_db),
     current_user: User = Depends(has_permission("dashboards:read:tenant"))
 ):
@@ -119,7 +120,7 @@ def get_dashboard(
 
 @router.put("/{dashboard_id}", response_model=DashboardResponse)
 def update_dashboard(
-    dashboard_id: int,
+    dashboard_id: UUID,
     dashboard_data: DashboardUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(has_permission("dashboards:update:own"))
@@ -140,7 +141,7 @@ def update_dashboard(
 
 @router.delete("/{dashboard_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_dashboard(
-    dashboard_id: int,
+    dashboard_id: UUID,
     db: Session = Depends(get_db),
     current_user: User = Depends(has_permission("dashboards:delete:own"))
 ):
@@ -159,7 +160,7 @@ def delete_dashboard(
 
 @router.post("/{dashboard_id}/clone", response_model=DashboardResponse)
 def clone_dashboard(
-    dashboard_id: int,
+    dashboard_id: UUID,
     clone_request: DashboardCloneRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(has_permission("dashboards:clone:tenant"))
@@ -201,7 +202,7 @@ def create_page(
 
 @router.put("/pages/{page_id}", response_model=DashboardPageResponse)
 def update_page(
-    page_id: int,
+    page_id: UUID,
     page_data: DashboardPageUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(has_permission("dashboards:update_page:own"))
@@ -222,7 +223,7 @@ def update_page(
 
 @router.delete("/pages/{page_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_page(
-    page_id: int,
+    page_id: UUID,
     db: Session = Depends(get_db),
     current_user: User = Depends(has_permission("dashboards:delete_page:own"))
 ):
@@ -261,7 +262,7 @@ def create_widget(
 
 @router.put("/widgets/{widget_id}", response_model=DashboardWidgetResponse)
 def update_widget(
-    widget_id: int,
+    widget_id: UUID,
     widget_data: DashboardWidgetUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(has_permission("dashboards:update_widget:own"))
@@ -282,7 +283,7 @@ def update_widget(
 
 @router.delete("/widgets/{widget_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_widget(
-    widget_id: int,
+    widget_id: UUID,
     db: Session = Depends(get_db),
     current_user: User = Depends(has_permission("dashboards:delete_widget:own"))
 ):

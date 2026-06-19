@@ -721,10 +721,10 @@ class DashboardService:
         if not dashboard:
             raise ValueError("Dashboard not found")
 
-        # Serialize dashboard state
+        # Serialize dashboard state (str() on UUIDs so JSON column can serialize them)
         snapshot_dict = {
             'dashboard': {
-                'id': dashboard.id,
+                'id': str(dashboard.id),
                 'name': dashboard.name,
                 'description': dashboard.description,
                 'layout_type': dashboard.layout_type,
@@ -736,13 +736,13 @@ class DashboardService:
 
         for page in dashboard.pages:
             page_dict = {
-                'id': page.id,
+                'id': str(page.id),
                 'name': page.name,
                 'widgets': []
             }
             for widget in page.widgets:
                 widget_dict = {
-                    'id': widget.id,
+                    'id': str(widget.id),
                     'title': widget.title,
                     'widget_type': widget.widget_type,
                     'position': widget.position

@@ -39,9 +39,30 @@ export { default as FlexTable } from './flex-table.js';
 export { default as FlexDataGrid } from './flex-datagrid.js';
 export { default as FlexPagination } from './flex-pagination.js';
 
-// Layout Components
+// Layout Primitives (Story 15.1.1)
+export { default as FlexStack } from './flex-stack.js';
+export { default as FlexGrid } from './flex-grid.js';
+export { default as FlexContainer } from './flex-container.js';
+export { default as FlexSection } from './flex-section.js';
+export { default as FlexSidebar } from './flex-sidebar.js';
+export { default as FlexCluster } from './flex-cluster.js';
+export { default as FlexToolbar } from './flex-toolbar.js';
+export { default as FlexMasonry } from './flex-masonry.js';
+export { default as FlexSplitPane } from './flex-split-pane.js';
+
+// Overlay / Navigation Layout
 export { default as FlexDrawer } from './flex-drawer.js';
 export { default as FlexStepper } from './flex-stepper.js';
 
 // Base Component
 export { default as BaseComponent } from '../core/base-component.js';
+
+// v1.1.0 Components
+export { default as FlexDatepicker } from './flex-datepicker.js';
+export { default as FlexFileUpload } from './flex-file-upload.js';
+export { default as FlexForm } from './flex-form.js';
+
+// v1.2.0 Components
+export { default as FlexNotification } from './flex-notification.js';
+
+export { default as FlexProgress } from './flex-progress.js';

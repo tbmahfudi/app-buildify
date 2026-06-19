@@ -151,5 +151,32 @@ function getAuthToken() {
   return tokens.access;
 }
 
+
+async function requestPasswordReset(email) {
+  const res = await fetch(withBase('/auth/reset-password-request'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email })
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Request failed');
+  }
+  return res.json().catch(() => ({}));
+}
+
+async function confirmPasswordReset(token, new_password) {
+  const res = await fetch(withBase('/auth/reset-password-confirm'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token, new_password })
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Reset failed');
+  }
+  return res.json().catch(() => ({}));
+}
+
 loadTokens();
-export { apiFetch, login, logout, tokens, setTenant, tenantId, setApiBase, getAuthToken };
+export { apiFetch, login, logout, tokens, setTenant, tenantId, setApiBase, getAuthToken, requestPasswordReset, confirmPasswordReset };

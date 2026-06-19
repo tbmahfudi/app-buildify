@@ -66,15 +66,17 @@ Legend: ✅ deep (positive+negative+edge+authz) · 🟡 smoke only (auto GET swe
 | dynamic-data | 11 | ✅ | publish→record CRUD (create/get/update/delete), list/search/paginate, aggregate, bulk, tenant scoping |
 | workflows | 20 | ✅ | definition CRUD, states, transitions, publish/unpublish/simulate, instance create→execute→history |
 | automations | 16 | ✅ | rules CRUD + toggle/test/execute, executions, action-templates, webhooks CRUD |
-| reports | 17 | ⬜ | definitions, parameters, run, export, schedules, history |
-| dashboards | 16 | ⬜ | dashboards, KPI/chart widgets, sharing, filters, drill-down |
-| modules / module-registry / module-extensions | 44 | ⬜ | enable/disable, manifest, extensions |
-| scheduler | 14 | ⬜ | jobs, configs (hierarchical), runs |
-| admin / security | 28 | ⬜ | policies, sessions, login-attempts, notification config/queue |
-| menu | 11 | ⬜ | menu tree, admin, sync preview/status/history |
-| lookups | 8 | ⬜ | configurations, cascading-rules, options |
-| settings | 4 | ⬜ | tenant + user settings |
-| metadata / data / builder / templates / audit | — | ⬜ | remaining surface |
+| reports | 17 | ✅ | definitions CRUD + base_entity derivation, execute/export/history, preview (flat+designer), lookup, schedules CRUD, templates, join-suggestions; SQL injection regression (DEF-011) |
+| dashboards | 16 | ✅ | dashboard CRUD + clone, page CUD, widget CUD + bulk-update + data 404, share creation, snapshot; auth-required on every group; DEF-019 (UUID/default missing on 6 models + int path params → fixed), DEF-020 (shared_with_role_id model/DB mismatch → fixed), DEF-021 (snapshot UUID serialization → fixed) |
+| modules / module-registry / module-extensions | 44 | ✅ | module-registry reads/install/uninstall/enable/disable/configure/register/heartbeat/sync; nocode-modules CRUD/dependencies/versions/validation/components; entity/screen/menu extension CRUD |
+| scheduler | 14 | ✅ | configs CRUD + effective-config resolution + system-level superuser-only, jobs CRUD + execute + schedule-required validation, executions list/get + status filter, execution logs; IDOR regression (DEF-016), creation-breaking type/default (DEF-015), status-param shadow 500→404 (DEF-017), no-schedule 500→422 (DEF-018) |
+| admin / security | 14 | ✅ | policies CRUD (incl. soft-delete semantics), locked-accounts, sessions, login-attempts (filters), notification config/queue (filters) |
+| menu | 11 | ✅ | user menu (DEF-022: 500→200 after builder_pages VARCHAR/UUID fix), admin list, CRUD + 422/400/404 negatives, duplicate-code 400 (DEF-023), update-unknown-404 (DEF-024), system-item delete 404 for tenant user, reorder, sync status/history/preview; auth-required on every group |
+| lookups | 8 | ✅ | configuration CRUD + list/filter, lookup data (static_list + search + pagination), cascading-rule create/list + filter; 422/400/404 negatives; auth-required on all endpoints; no defects found |
+| settings | 4 | ✅ | user get/update (theme/language/timezone/density/preferences), tenant get/update (color/name/explicit-own-tenant_id/cross-tenant 403), superadmin defaults, auth-required; DEF-025 (500→200) + DEF-026 (403→200) fixed |
+| metadata | 6 | ✅ | list (dict/total), get (schema fields + 404), create (201/400 dup/404 missing entity/422), update (description/display_name/version++/404), delete (204/absent from list/re-activatable/404), regenerate (200+valid config/404); auth on all; no defects |
+| data | 6 | ✅ | list/search (4 all-ops filter operators + sort + search + pagination DEF-028/029), get, create, update, delete, bulk (create/update/delete/empty); DEF-027/028/029/030/031 all fixed |
+| builder / templates / audit | — | ⬜ | remaining surface |
 
 ## 5. Cross-cutting cases (every router)
 

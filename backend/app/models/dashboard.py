@@ -13,7 +13,7 @@ from sqlalchemy import ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
 
 from app.models import Base
-from app.models.base import GUID
+from app.models.base import GUID, generate_uuid
 
 
 class DashboardLayout(str, enum.Enum):
@@ -63,7 +63,7 @@ class Dashboard(Base):
     """Dashboard model - container for multiple pages."""
     __tablename__ = "dashboards"
 
-    id = Column(GUID, primary_key=True, index=True)
+    id = Column(GUID, primary_key=True, default=generate_uuid, index=True)
     tenant_id = Column(GUID, nullable=False, index=True)
     # module_id: Associates dashboard with a specific module (optional)
     module_id = Column(GUID, ForeignKey("modules.id"), nullable=True, index=True)
@@ -109,7 +109,7 @@ class DashboardPage(Base):
     """Dashboard page - a single page within a dashboard."""
     __tablename__ = "dashboard_pages"
 
-    id = Column(GUID, primary_key=True, index=True)
+    id = Column(GUID, primary_key=True, default=generate_uuid, index=True)
     dashboard_id = Column(GUID, ForeignKey("dashboards.id"), nullable=False)
     tenant_id = Column(GUID, nullable=False, index=True)
 
@@ -139,7 +139,7 @@ class DashboardWidget(Base):
     """Dashboard widget - individual visualization component."""
     __tablename__ = "dashboard_widgets"
 
-    id = Column(GUID, primary_key=True, index=True)
+    id = Column(GUID, primary_key=True, default=generate_uuid, index=True)
     page_id = Column(GUID, ForeignKey("dashboard_pages.id"), nullable=False)
     tenant_id = Column(GUID, nullable=False, index=True)
 
@@ -182,13 +182,13 @@ class DashboardShare(Base):
     """Dashboard sharing and collaboration."""
     __tablename__ = "dashboard_shares"
 
-    id = Column(GUID, primary_key=True, index=True)
+    id = Column(GUID, primary_key=True, default=generate_uuid, index=True)
     dashboard_id = Column(GUID, ForeignKey("dashboards.id"), nullable=False)
     tenant_id = Column(GUID, nullable=False, index=True)
 
     # Share info
     shared_with_user_id = Column(GUID, nullable=True)  # Specific user
-    shared_with_role_id = Column(GUID, nullable=True)  # Specific role
+    shared_with_role_id = Column(Integer, nullable=True)  # Specific role (integer FK — legacy DB column)
     share_token = Column(String(255), nullable=True, unique=True)  # Public share token
 
     # Permissions
@@ -211,7 +211,7 @@ class DashboardSnapshot(Base):
     """Dashboard snapshot - saved state at a point in time."""
     __tablename__ = "dashboard_snapshots"
 
-    id = Column(GUID, primary_key=True, index=True)
+    id = Column(GUID, primary_key=True, default=generate_uuid, index=True)
     dashboard_id = Column(GUID, ForeignKey("dashboards.id"), nullable=False)
     tenant_id = Column(GUID, nullable=False, index=True)
 
@@ -232,7 +232,7 @@ class WidgetDataCache(Base):
     """Cache for widget data."""
     __tablename__ = "widget_data_cache"
 
-    id = Column(GUID, primary_key=True, index=True)
+    id = Column(GUID, primary_key=True, default=generate_uuid, index=True)
     widget_id = Column(GUID, ForeignKey("dashboard_widgets.id"), nullable=False)
     tenant_id = Column(GUID, nullable=False, index=True)
 

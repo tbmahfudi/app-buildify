@@ -1583,6 +1583,12 @@ async function loadRoute(route) {
   // Normalize route - remove leading slashes
   route = route.replace(/^\/+/, '');
 
+  // Redirect duplicate route → canonical
+  if (route === 'reports-designer') {
+    window.location.hash = 'report-designer';
+    return;
+  }
+
   appState.currentRoute = route;
   updateActiveMenuItem();
 
@@ -1699,6 +1705,22 @@ async function loadRoute(route) {
 
       document.dispatchEvent(new CustomEvent('route:loaded', {
         detail: { route: 'modules', isModule: false }
+      }));
+      return;
+    }
+
+    // T-23.019: tenant module activation page
+    if (route === 'settings/modules') {
+      content.innerHTML = '';
+      try {
+        const { render } = await import('./modules-page.js');
+        await render(content);
+      } catch (error) {
+        console.warn('modules-page loading failed:', error);
+        content.innerHTML = '<div class="p-6 text-red-500">Failed to load modules page.</div>';
+      }
+      document.dispatchEvent(new CustomEvent('route:loaded', {
+        detail: { route: 'settings/modules', isModule: false }
       }));
       return;
     }
