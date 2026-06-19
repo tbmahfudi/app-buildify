@@ -882,3 +882,44 @@ async def sync_modules(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error syncing modules: {str(e)}"
         )
+
+
+# ── Epic 22.4.2 — provisioning-status endpoint ─────────────────────────────
+# Uses a separate router prefix to match /api/v1/modules/{module_id}/...
+_modules_v1_router = APIRouter(prefix="/api/v1/modules", tags=["modules-v1"])
+
+
+@_modules_v1_router.get("/{module_id}/provisioning-status")
+async def get_provisioning_status(
+    module_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Return the provisioning status of a per-tenant module DB.
+
+    Story 22.4.2 — polled by the frontend badge after module enable.
+    """
+    try:
+        result = db.execute(
+            __import__('sqlalchemy').text(
+                "SELECT status, db_name, error_message "
+                "FROM tenant_module_databases "
+                "WHERE tenant_id = :tenant_id AND module_id = :module_id "
+                "LIMIT 1"
+            ),
+            {"tenant_id": str(current_user.tenant_id), "module_id": module_id},
+        ).fetchone()
+    except Exception as exc:
+        logger.warning(f"provisioning-status query failed: {exc}")
+        result = None
+
+    if result is None:
+        return {"status": "not_provisioned", "db_name": None, "error_message": None}
+
+    return {
+        "status": result[0],
+        "db_name": result[1],
+        "error_message": result[2],
+    }
+

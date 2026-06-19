@@ -14,7 +14,7 @@ from app.core.db import SessionLocal
 from app.core.security_middleware import SecurityMiddleware
 from app.core.startup import ensure_default_security_policy
 from app.routers import org, auth, metadata, data, audit, settings, modules, rbac, reports, dashboards, scheduler, menu, builder_pages
-from app.routers import data_model, workflows, automations, lookups, dynamic_data, nocode_modules, module_extensions
+from app.routers import data_model, workflows, automations, lookups, dynamic_data, nocode_modules, module_extensions, modules_lifecycle
 from app.routers.admin import security as admin_security
 from app.core.module_system.registry import ModuleRegistryService
 from pathlib import Path
@@ -35,21 +35,28 @@ async def lifespan(app: FastAPI):
     """
     global module_registry
 
+    import os as _os
+    # Skip slow startup tasks in test environment
+    if _os.environ.get("TESTING"):
+        logger.info("TESTING mode: skipping startup tasks")
+        yield
+        return
+
     # Startup
     logger.info("Starting application", app_name=settings_instance.APP_NAME, environment=settings_instance.ENVIRONMENT)
 
-    # Run database migrations on startup so pending schema changes are applied automatically
-    try:
-        from alembic.config import Config as AlembicConfig
-        from alembic import command as alembic_command
-        import os
-        alembic_cfg = AlembicConfig(os.path.join(os.path.dirname(__file__), '..', 'alembic.ini'))
-        alembic_cfg.set_main_option('script_location', os.path.join(os.path.dirname(__file__), 'alembic'))
-        alembic_command.upgrade(alembic_cfg, 'head')
-        logger.info("Database migrations applied successfully")
-    except Exception as e:
-        logger.warning(f"Failed to run migrations on startup: {e}", exc_info=True)
-        # Continue — app may still work if DB is already up to date
+    # Run database migrations on startup (skipped when TESTING=1)
+    import os as _os
+    if not _os.environ.get("TESTING"):
+        try:
+            from alembic.config import Config as AlembicConfig
+            from alembic import command as alembic_command
+            alembic_cfg = AlembicConfig(_os.path.join(_os.path.dirname(__file__), '..', 'alembic.ini'))
+            alembic_cfg.set_main_option('script_location', _os.path.join(_os.path.dirname(__file__), 'alembic'))
+            alembic_command.upgrade(alembic_cfg, 'head')
+            logger.info("Database migrations applied successfully")
+        except Exception as e:
+            logger.warning(f"Failed to run migrations on startup: {e}", exc_info=True)
 
     # Initialize database session for startup tasks
     db = SessionLocal()
@@ -154,6 +161,16 @@ app = FastAPI(
     openapi_url="/api/openapi.json"
 )
 
+
+# Prometheus metrics endpoint (prometheus-client)
+try:
+    from prometheus_client import make_asgi_app as _make_metrics_app, multiprocess, CollectorRegistry
+    _metrics_app = _make_metrics_app()
+    app.mount("/metrics", _metrics_app)
+    logger.info("Prometheus /metrics endpoint mounted")
+except Exception as _prom_err:
+    logger.warning(f"Prometheus metrics not available: {_prom_err}")
+
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
@@ -219,6 +236,9 @@ app.include_router(data.router)
 app.include_router(audit.router)
 app.include_router(settings.router)
 app.include_router(modules.router)
+app.include_router(modules._modules_v1_router)
+app.include_router(modules_lifecycle.router)
+app.include_router(modules_lifecycle.admin_router)
 app.include_router(rbac.router)
 app.include_router(reports.router)
 app.include_router(dashboards.router)
