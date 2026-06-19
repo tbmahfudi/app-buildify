@@ -539,3 +539,178 @@ async function safeJson(response) {
     return null;
   }
 }
+
+
+// ── Email Templates  (Wave 2 / Screen 2) ─────────────────────────────────────
+
+const EMAIL_TEMPLATES = [
+  { name: 'welcome_user',              label: 'Welcome User'              },
+  { name: 'password_reset',            label: 'Password Reset'            },
+  { name: 'account_locked',            label: 'Account Locked'            },
+  { name: 'password_expiring',         label: 'Password Expiring'         },
+  { name: 'workflow_approval_request', label: 'Workflow Approval Request' },
+];
+
+async function initEmailTemplates() {
+  const loading = document.getElementById('email-templates-loading');
+  const list    = document.getElementById('email-templates-list');
+  const errEl   = document.getElementById('email-templates-error');
+  if (!loading || !list) return;
+
+  // Load all templates
+  let templates = {};
+  try {
+    const res = await apiFetch('/settings/email-templates');
+    if (res.ok) {
+      const data = await res.json();
+      // data may be an array or object keyed by name
+      if (Array.isArray(data)) {
+        data.forEach(t => { templates[t.name] = t; });
+      } else {
+        templates = data;
+      }
+    }
+  } catch (_) { /* will show rows with empty values */ }
+
+  list.innerHTML = EMAIL_TEMPLATES.map(tmpl => `
+    <div class="flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition">
+      <div>
+        <p class="text-sm font-medium text-gray-900">${tmpl.label}</p>
+        <p class="text-xs text-gray-400 font-mono">${tmpl.name}</p>
+      </div>
+      <button class="email-template-edit-btn px-3 py-1.5 text-sm rounded-lg border border-gray-200
+                     text-gray-600 hover:border-blue-300 hover:text-blue-600 transition"
+              data-template-name="${tmpl.name}"
+              data-template-label="${tmpl.label}"
+              data-subject="${encodeURIComponent((templates[tmpl.name] || {}).subject || '')}"
+              data-body="${encodeURIComponent((templates[tmpl.name] || {}).html_body || '')}">
+        <i class="ph ph-pencil-simple mr-1"></i>Edit
+      </button>
+    </div>`).join('');
+
+  loading.classList.add('hidden');
+  list.classList.remove('hidden');
+
+  // Delegate clicks
+  list.addEventListener('click', e => {
+    const btn = e.target.closest('.email-template-edit-btn');
+    if (!btn) return;
+    openTemplateEditor(
+      btn.dataset.templateName,
+      btn.dataset.templateLabel,
+      decodeURIComponent(btn.dataset.subject),
+      decodeURIComponent(btn.dataset.body)
+    );
+  });
+}
+
+function openTemplateEditor(name, label, subject, body) {
+  const host = document.getElementById('email-template-editor-host') || (() => {
+    const el = document.createElement('div');
+    el.id = 'email-template-editor-host';
+    document.body.appendChild(el);
+    return el;
+  })();
+
+  host.innerHTML = `
+    <div class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+      <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+        <!-- header -->
+        <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+          <div>
+            <h2 class="text-base font-semibold text-gray-900">Edit Email Template</h2>
+            <p class="text-sm text-gray-500">${label}</p>
+          </div>
+          <button id="ete-close" class="w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center text-gray-500 transition">
+            <i class="ph ph-x text-lg"></i>
+          </button>
+        </div>
+
+        <!-- tabs -->
+        <div class="flex border-b border-gray-200 px-6">
+          <button class="ete-tab ete-tab-active py-3 px-1 mr-6 text-sm font-medium border-b-2 border-blue-600 text-blue-600"
+                  data-tab="subject">Subject</button>
+          <button class="ete-tab py-3 px-1 mr-6 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700"
+                  data-tab="html-body">HTML Body</button>
+        </div>
+
+        <!-- tab panels -->
+        <div class="flex-1 overflow-y-auto px-6 py-4">
+          <div id="ete-panel-subject">
+            <label class="block text-xs font-medium text-gray-500 mb-2">Subject line</label>
+            <input id="ete-subject" type="text" value="${subject.replace(/"/g, '&quot;')}"
+                   class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <p class="text-xs text-gray-400 mt-2">You may use template variables like <code class="bg-gray-100 px-1 rounded">{{user_name}}</code></p>
+          </div>
+          <div id="ete-panel-html-body" class="hidden">
+            <label class="block text-xs font-medium text-gray-500 mb-2">HTML Body</label>
+            <textarea id="ete-body" rows="14"
+                      class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500">${body.replace(/</g, '&lt;')}</textarea>
+          </div>
+        </div>
+
+        <!-- footer -->
+        <div class="px-6 py-4 border-t border-gray-200 flex gap-3 justify-end">
+          <button id="ete-cancel" class="px-4 py-2 rounded-lg border text-gray-600 hover:bg-gray-50 text-sm transition">Cancel</button>
+          <button id="ete-save" class="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 text-sm transition">Save Template</button>
+        </div>
+      </div>
+    </div>`;
+
+  host.querySelector('#ete-close').onclick  = () => host.innerHTML = '';
+  host.querySelector('#ete-cancel').onclick = () => host.innerHTML = '';
+
+  // Tab switching
+  host.querySelectorAll('.ete-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      host.querySelectorAll('.ete-tab').forEach(t => {
+        t.classList.remove('ete-tab-active', 'border-blue-600', 'text-blue-600');
+        t.classList.add('border-transparent', 'text-gray-500');
+      });
+      tab.classList.add('ete-tab-active', 'border-blue-600', 'text-blue-600');
+      tab.classList.remove('border-transparent', 'text-gray-500');
+      host.querySelectorAll('[id^="ete-panel-"]').forEach(p => p.classList.add('hidden'));
+      host.querySelector(`#ete-panel-${tab.dataset.tab}`).classList.remove('hidden');
+    });
+  });
+
+  // Save
+  host.querySelector('#ete-save').addEventListener('click', async () => {
+    const saveBtn = host.querySelector('#ete-save');
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'Saving…';
+    try {
+      const payload = {
+        subject:   host.querySelector('#ete-subject').value,
+        html_body: host.querySelector('#ete-body').value,
+      };
+      const res = await apiFetch(`/settings/email-templates/${name}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || `HTTP ${res.status}`);
+      }
+      host.innerHTML = '';
+      // simple toast
+      const t = document.createElement('div');
+      t.className = 'fixed top-4 right-4 z-[70] bg-green-600 text-white text-sm px-4 py-2 rounded-lg shadow-lg';
+      t.textContent = `"${label}" saved`;
+      document.body.appendChild(t);
+      setTimeout(() => t.remove(), 3000);
+    } catch (err) {
+      saveBtn.disabled = false;
+      saveBtn.textContent = 'Save Template';
+      alert(`Save failed: ${err.message}`);
+    }
+  });
+}
+
+// Hook into settings route load
+document.addEventListener('route:loaded', (event) => {
+  if (event.detail.route === 'settings') {
+    setTimeout(initEmailTemplates, 100);
+  }
+});

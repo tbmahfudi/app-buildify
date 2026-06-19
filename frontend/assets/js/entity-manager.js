@@ -440,6 +440,15 @@ export class EntityManager {
       size: 'md',
       actions: [
         {
+          label: 'History',
+          variant: 'secondary',
+          onClick: () => {
+            viewModal.close();
+            setTimeout(() => viewModalContainer.remove(), 300);
+            this.showVersionHistoryDrawer(row);
+          }
+        },
+        {
           label: 'Close',
           variant: 'secondary',
           onClick: () => {
@@ -456,6 +465,208 @@ export class EntityManager {
     });
 
     viewModal.open();
+  }
+
+  // ── Screen 3: Version History Drawer ──────────────────────────────────────
+  showVersionHistoryDrawer(record) {
+    const host = document.createElement('div');
+    host.id = 'version-history-host';
+    document.body.appendChild(host);
+
+    function fmtDate(iso) {
+      try { return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(iso)); }
+      catch { return iso || '—'; }
+    }
+
+    function renderDiff(version) {
+      if (!version || !version.changes) return '<p class="text-xs text-gray-400">No diff available</p>';
+      return Object.entries(version.changes).map(([field, change]) => `
+        <div class="mb-3">
+          <p class="text-xs font-semibold text-gray-600 mb-1">${field}</p>
+          <div class="grid grid-cols-2 gap-2 text-xs">
+            <div class="bg-red-50 border border-red-200 rounded p-2 text-red-700">
+              <span class="text-red-400 text-[10px] font-semibold uppercase tracking-wide block mb-0.5">Before</span>
+              ${String(change.before ?? '—')}
+            </div>
+            <div class="bg-green-50 border border-green-200 rounded p-2 text-green-700">
+              <span class="text-green-400 text-[10px] font-semibold uppercase tracking-wide block mb-0.5">After</span>
+              ${String(change.after ?? '—')}
+            </div>
+          </div>
+        </div>`).join('');
+    }
+
+    const entity  = this.entityType || this.entity;
+    const recordId = record.id;
+
+    host.innerHTML = `
+      <div id="vh-backdrop" class="fixed inset-0 bg-gray-900/50 z-40 transition-opacity duration-300 opacity-0"></div>
+      <div id="vh-panel"
+           class="fixed top-0 right-0 bottom-0 z-50 w-[520px] max-w-full bg-white shadow-2xl flex flex-col translate-x-full transition-transform duration-300">
+        <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+          <div>
+            <h2 class="text-base font-semibold text-gray-900 flex items-center gap-2">
+              <i class="ph-duotone ph-clock-counter-clockwise text-blue-600 text-xl"></i>
+              Version History
+            </h2>
+            <p class="text-xs text-gray-400 mt-0.5">Record ID: ${recordId}</p>
+          </div>
+          <button id="vh-close" class="w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center text-gray-500">
+            <i class="ph ph-x text-lg"></i>
+          </button>
+        </div>
+
+        <div class="flex-1 flex overflow-hidden">
+          <!-- Version list -->
+          <div id="vh-list" class="w-2/5 border-r border-gray-100 overflow-y-auto">
+            <div class="p-3 space-y-2">
+              ${Array.from({length: 4}).map(() => `
+                <div class="animate-pulse p-3 rounded-lg bg-gray-50 space-y-1.5">
+                  <div class="h-2 bg-gray-200 rounded w-4/5"></div>
+                  <div class="h-2 bg-gray-200 rounded w-3/5"></div>
+                </div>`).join('')}
+            </div>
+          </div>
+          <!-- Diff panel -->
+          <div id="vh-diff" class="flex-1 overflow-y-auto p-4">
+            <p class="text-xs text-gray-400">Select a version to see changes</p>
+          </div>
+        </div>
+      </div>`;
+
+    requestAnimationFrame(() => {
+      host.querySelector('#vh-backdrop').classList.replace('opacity-0', 'opacity-100');
+      host.querySelector('#vh-panel').classList.replace('translate-x-full', 'translate-x-0');
+    });
+
+    function close() {
+      host.querySelector('#vh-backdrop').classList.replace('opacity-100', 'opacity-0');
+      host.querySelector('#vh-panel').classList.replace('translate-x-0', 'translate-x-full');
+      setTimeout(() => host.remove(), 320);
+    }
+
+    host.querySelector('#vh-close').addEventListener('click', close);
+    host.querySelector('#vh-backdrop').addEventListener('click', close);
+
+    // Load versions
+    import('./api.js').then(({ apiFetch }) => {
+      apiFetch(`/${entity}/records/${recordId}/versions`).then(async res => {
+        const listEl = host.querySelector('#vh-list');
+        if (!res.ok) {
+          listEl.innerHTML = `<p class="p-3 text-xs text-red-500">Failed: HTTP ${res.status}</p>`;
+          return;
+        }
+        const data = await res.json();
+        const versions = Array.isArray(data) ? data : (data.versions || []);
+        if (!versions.length) {
+          listEl.innerHTML = `<div class="p-4 text-center text-xs text-gray-400">No version history</div>`;
+          return;
+        }
+        listEl.innerHTML = versions.map((v, i) => `
+          <button class="vh-version-row w-full text-left p-3 border-b border-gray-100 hover:bg-blue-50 transition text-xs ${i === 0 ? 'bg-blue-50' : ''}"
+                  data-version-idx="${i}">
+            <p class="font-medium text-gray-800">${fmtDate(v.changed_at)}</p>
+            <p class="text-gray-500">${v.changed_by || '—'}</p>
+            <p class="text-gray-400">${v.fields_changed_count ?? Object.keys(v.changes || {}).length} field(s) changed</p>
+          </button>`).join('');
+
+        // Show first version diff immediately
+        host.querySelector('#vh-diff').innerHTML = renderDiff(versions[0]);
+
+        listEl.addEventListener('click', e => {
+          const btn = e.target.closest('.vh-version-row');
+          if (!btn) return;
+          listEl.querySelectorAll('.vh-version-row').forEach(r => r.classList.remove('bg-blue-50'));
+          btn.classList.add('bg-blue-50');
+          host.querySelector('#vh-diff').innerHTML = renderDiff(versions[+btn.dataset.versionIdx]);
+        });
+      }).catch(err => {
+        host.querySelector('#vh-list').innerHTML = `<p class="p-3 text-xs text-red-500">${err.message}</p>`;
+      });
+    });
+  }
+
+  // ── Screen 4: Relationship Traversal Sub-Panel ──────────────────────────────
+  async showRelationshipsPanel(record) {
+    const relationships = this.metadata?.relationships || [];
+    if (!relationships.length) return null;
+
+    const entity = this.entityType || this.entity;
+    const recordId = record.id;
+
+    const container = document.createElement('div');
+    container.className = 'mt-4 border-t border-gray-200 pt-4';
+
+    // Build tab header
+    const tabsHtml = relationships.map((rel, i) => `
+      <button class="rel-tab py-2 px-3 text-xs font-medium rounded-md mr-1 transition
+                     ${i === 0 ? 'bg-blue-100 text-blue-700' : 'text-gray-500 hover:bg-gray-100'}"
+              data-rel="${rel.name}" data-rel-idx="${i}">
+        ${rel.display_name || rel.name}
+      </button>`).join('');
+
+    container.innerHTML = `
+      <h4 class="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+        <i class="ph-duotone ph-graph text-blue-500"></i>
+        Related Records
+      </h4>
+      <div class="flex flex-wrap gap-1 mb-3">${tabsHtml}</div>
+      <div id="rel-panel-body" class="min-h-[80px]">
+        <div class="text-xs text-gray-400 flex items-center gap-2 py-4">
+          <div class="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin"></div>
+          Loading…
+        </div>
+      </div>`;
+
+    // Load first relationship immediately
+    const loadRelationship = async (relName) => {
+      const panelBody = container.querySelector('#rel-panel-body');
+      panelBody.innerHTML = `<div class="text-xs text-gray-400 flex items-center gap-2 py-4">
+        <div class="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin"></div>Loading…</div>`;
+      try {
+        const { apiFetch } = await import('./api.js');
+        const res = await apiFetch(`/${entity}/records/${recordId}/${relName}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        const items = Array.isArray(data) ? data : (data.items || data.results || []);
+        if (!items.length) {
+          panelBody.innerHTML = `<p class="text-xs text-gray-400 py-2">No related records found</p>`;
+          return;
+        }
+        // Build simple table from first record keys
+        const keys = Object.keys(items[0]).filter(k => !['id','tenant_id'].includes(k)).slice(0, 5);
+        panelBody.innerHTML = `
+          <div class="overflow-x-auto rounded-lg border border-gray-200">
+            <table class="min-w-full text-xs divide-y divide-gray-100">
+              <thead class="bg-gray-50">
+                <tr>${keys.map(k => `<th class="px-3 py-2 text-left font-medium text-gray-500 capitalize">${k}</th>`).join('')}</tr>
+              </thead>
+              <tbody class="divide-y divide-gray-100 bg-white">
+                ${items.map(row => `<tr class="hover:bg-gray-50">${keys.map(k => `<td class="px-3 py-2 text-gray-700">${row[k] ?? '—'}</td>`).join('')}</tr>`).join('')}
+              </tbody>
+            </table>
+          </div>
+          ${data.total > items.length ? `<p class="text-xs text-gray-400 mt-2">Showing ${items.length} of ${data.total}</p>` : ''}`;
+      } catch (err) {
+        panelBody.innerHTML = `<p class="text-xs text-red-500 py-2">${err.message}</p>`;
+      }
+    };
+
+    if (relationships[0]) await loadRelationship(relationships[0].name);
+
+    container.addEventListener('click', e => {
+      const tab = e.target.closest('.rel-tab');
+      if (!tab) return;
+      container.querySelectorAll('.rel-tab').forEach(t => {
+        t.classList.remove('bg-blue-100', 'text-blue-700');
+        t.classList.add('text-gray-500');
+      });
+      tab.classList.add('bg-blue-100', 'text-blue-700');
+      tab.classList.remove('text-gray-500');
+      loadRelationship(tab.dataset.rel);
+    });
+
+    return container;
   }
 
   /**
