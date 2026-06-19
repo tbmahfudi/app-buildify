@@ -593,6 +593,160 @@ class DynamicEntityService:
             for r in rows
         ]
 
+
+    async def get_related_records(
+        self,
+        entity_name: str,
+        record_id: str,
+        relationship_name: str,
+        page: int = 1,
+        page_size: int = 25,
+        sort: list = None,
+        filters: dict = None,
+        search: str = None,
+        include_deleted: bool = False,
+    ) -> dict:
+        """
+        Return paginated records related to a given record via a relationship
+        field. Supports both FK (many-to-one stored on the related side) and
+        reverse FK (one-to-many). (Story 5.3.2)
+        """
+        tenant_id = str(self.current_user.tenant_id) if self.current_user.tenant_id else None
+        self._check_entity_permission(entity_name, 'read')
+
+        # Load the source entity's field definitions to find the relationship
+        field_defs = self.model_generator.get_field_definitions(entity_name, tenant_id)
+        rel_field = next(
+            (f for f in field_defs if f.get('name') == relationship_name and
+             f.get('field_type') in ('relationship', 'lookup')),
+            None
+        )
+
+        if not rel_field:
+            # Try as a reverse relationship: another entity has a FK pointing here
+            # Scan all entity fields for ref_entity_name == entity_name
+            from app.models.data_model import EntityDefinition, FieldDefinition
+            ref_fields = (
+                self.db.query(FieldDefinition)
+                .join(FieldDefinition.entity)
+                .filter(
+                    FieldDefinition.reference_entity_name == entity_name,
+                    FieldDefinition.is_active == True,
+                    FieldDefinition.name == relationship_name,
+                )
+                .first()
+            )
+            if not ref_fields:
+                # Try matching by entity name (e.g. "orders" → entity named "order")
+                target_entity_name = relationship_name.rstrip('s')  # naive depluralize
+                ref_fields = (
+                    self.db.query(FieldDefinition)
+                    .join(FieldDefinition.entity)
+                    .filter(
+                        FieldDefinition.reference_entity_name == entity_name,
+                        FieldDefinition.is_active == True,
+                        EntityDefinition.name.in_([relationship_name, target_entity_name]),
+                    )
+                    .first()
+                )
+
+            if ref_fields:
+                # Reverse FK: find all records in the related entity where FK == record_id
+                target_entity = ref_fields.entity.name
+                fk_field_name = ref_fields.name
+                self._check_entity_permission(target_entity, 'read')
+                target_model = self.model_generator.get_model(target_entity, tenant_id)
+                target_field_defs = self.model_generator.get_field_definitions(target_entity, tenant_id)
+
+                query = self.db.query(target_model).filter(
+                    getattr(target_model, fk_field_name) == record_id
+                )
+                if hasattr(target_model, 'deleted_at') and not include_deleted:
+                    query = query.filter(target_model.deleted_at.is_(None))
+                if filters:
+                    query = self.query_builder.apply_filters(query, target_model, filters)
+                if search:
+                    query = self.query_builder.apply_search(query, target_model, search)
+
+                total = query.count()
+                if sort:
+                    for field_name, direction in sort:
+                        col = getattr(target_model, field_name, None)
+                        if col is not None:
+                            query = query.order_by(col.desc() if direction == 'desc' else col.asc())
+                else:
+                    if hasattr(target_model, 'created_at'):
+                        query = query.order_by(target_model.created_at.desc())
+
+                offset = (page - 1) * page_size
+                records = query.offset(offset).limit(page_size).all()
+                items = [self._model_to_dict(r, target_field_defs) for r in records]
+                return {
+                    'items': items,
+                    'total': total,
+                    'page': page,
+                    'page_size': page_size,
+                    'pages': max(1, -(-total // page_size)),
+                }
+
+            raise ValueError(
+                f"No relationship '{relationship_name}' found on entity '{entity_name}'. "
+                f"Check that the field exists and is of type 'relationship'."
+            )
+
+        # Forward FK/lookup: the relationship field is on the source entity
+        ref_entity = (
+            rel_field.get('reference_entity_name') or
+            rel_field.get('ref_entity_name') or
+            rel_field.get('lookup_entity')
+        )
+        if not ref_entity:
+            raise ValueError(f"Relationship field '{relationship_name}' has no target entity configured")
+
+        self._check_entity_permission(ref_entity, 'read')
+
+        # Fetch the source record to get the FK value
+        source_model = self.model_generator.get_model(entity_name, tenant_id)
+        source_record = self.db.query(source_model).filter(source_model.id == record_id).first()
+        if not source_record:
+            raise ValueError(f"Record not found: {record_id}")
+
+        fk_value = getattr(source_record, relationship_name, None)
+        if fk_value is None:
+            return {'items': [], 'total': 0, 'page': page, 'page_size': page_size, 'pages': 0}
+
+        target_model = self.model_generator.get_model(ref_entity, tenant_id)
+        target_field_defs = self.model_generator.get_field_definitions(ref_entity, tenant_id)
+        ref_field_col = rel_field.get('ref_field') or 'id'
+
+        query = self.db.query(target_model).filter(
+            getattr(target_model, ref_field_col) == fk_value
+        )
+        if hasattr(target_model, 'deleted_at') and not include_deleted:
+            query = query.filter(target_model.deleted_at.is_(None))
+        if filters:
+            query = self.query_builder.apply_filters(query, target_model, filters)
+        if search:
+            query = self.query_builder.apply_search(query, target_model, search)
+
+        total = query.count()
+        if sort:
+            for field_name, direction in sort:
+                col = getattr(target_model, field_name, None)
+                if col is not None:
+                    query = query.order_by(col.desc() if direction == 'desc' else col.asc())
+
+        offset = (page - 1) * page_size
+        records = query.offset(offset).limit(page_size).all()
+        items = [self._model_to_dict(r, target_field_defs) for r in records]
+        return {
+            'items': items,
+            'total': total,
+            'page': page,
+            'page_size': page_size,
+            'pages': max(1, -(-total // page_size)),
+        }
+
     async def bulk_create(
         self,
         entity_name: str,

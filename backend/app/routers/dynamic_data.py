@@ -807,6 +807,10 @@ async def get_related_records(
     relationship_name: str = Path(..., description="Relationship name"),
     page: int = Query(1, ge=1),
     page_size: int = Query(25, ge=1, le=100),
+    sort: Optional[str] = Query(None, description="Sort spec e.g. 'name:asc'"),
+    filters: Optional[str] = Query(None, description="Filter JSON string"),
+    search: Optional[str] = Query(None, description="Search term"),
+    include_deleted: bool = Query(False, description="Include soft-deleted related records"),
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
 ):
@@ -832,17 +836,46 @@ async def get_related_records(
 
     Note: This endpoint requires Phase 2 relationship support to be fully implemented.
     """
-    # TODO: Implement relationship traversal
-    # This requires:
-    # 1. Loading RelationshipDefinition
-    # 2. Determining target entity
-    # 3. Building appropriate join query
-    # 4. Applying RBAC for target entity
+    service = DynamicEntityService(db, current_user)
 
-    raise HTTPException(
-        status_code=501,
-        detail="Relationship traversal not yet implemented in Phase 2"
-    )
+    # Parse sort
+    sort_list = None
+    if sort:
+        sort_list = []
+        for part in sort.split(','):
+            part = part.strip()
+            if ':' in part:
+                f, d = part.rsplit(':', 1)
+                sort_list.append((f.strip(), d.strip()))
+            else:
+                sort_list.append((part, 'asc'))
+
+    # Parse filters
+    filter_dict = None
+    if filters:
+        try:
+            filter_dict = json.loads(filters)
+        except json.JSONDecodeError:
+            raise HTTPException(status_code=400, detail="Invalid filters JSON")
+
+    try:
+        result = await service.get_related_records(
+            entity_name=entity_name,
+            record_id=record_id,
+            relationship_name=relationship_name,
+            page=page,
+            page_size=page_size,
+            sort=sort_list,
+            filters=filter_dict,
+            search=search,
+            include_deleted=include_deleted,
+        )
+        return DynamicDataListResponse(**result)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error traversing {entity_name}/{record_id}/{relationship_name}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # ==============================================================================

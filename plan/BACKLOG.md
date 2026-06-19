@@ -459,7 +459,7 @@
 - Calculated fields are filterable and sortable; flagged as read-only in metadata response
 - Clients cannot submit values for calculated fields; service ignores or rejects them
 
-#### Story 5.2.4 — Custom Validation Rules `[OPEN]`
+#### Story 5.2.4 — Custom Validation Rules `[DONE]`
 *As a tenant administrator, I want to define custom field validation rules beyond built-in constraints, so that business-specific rules are enforced on data entry.*
 - `validation_rules` JSONB schema: `[{"type": "regex", "pattern": "^[A-Z]", "message": "Must start with uppercase"}]`
 - Supported rule types: `regex`, `min_length`, `max_length`, `min_value`, `max_value`
@@ -484,7 +484,7 @@
 - `GET /dynamic-data/{entity}/records?expand=customer_id` inlines related records as `customer_id_data` (no N+1)
 - Expand depth is limited to 1 level
 
-#### Story 5.3.2 — Relationship Traversal Endpoint `[OPEN]`
+#### Story 5.3.2 — Relationship Traversal Endpoint `[DONE]`
 *As a frontend developer, I want to retrieve all related records for a given record in one API call, so that related-record panels can be built without complex joins.*
 - `GET /dynamic-data/{entity}/records/{id}/{relationship}` returns paginated related records
 - Supports `page`, `page_size`, `sort_by`, `filters`, `search` consistent with `list_records`
@@ -1453,7 +1453,7 @@ All 5 constituent stories `[DONE]` per their canonical AC; smoke test passes; on
 | 24.4.2 | Automation execution history | [DONE] |
 | 24.5.1 | Job execution log viewer | [DONE] |
 | 24.6.1 | Page version history sidebar | [DONE] |
-| 24.7.1 | Remove dev-tool screens from production nav | [OPEN] |
+| 24.7.1 | Remove dev-tool screens from production nav | [DONE] |
 | B3-P2.1 | Workflow simulator panel | [DONE] |
 | B3-P2.2 | Permission matrix table | [DONE] |
 | B3-P2.3 | Dashboard share + snapshot buttons | [DONE] |
