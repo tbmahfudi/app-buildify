@@ -41,6 +41,26 @@ class BaseModule(ABC):
         self.display_name = self.manifest.get("display_name", self.name)
         self.router: Optional[APIRouter] = None
 
+    # ── Epic 22.5.2 — tenant isolation SDK ──────────────────────────────────
+    #: When True, all tables returned by get_tenant_scoped_tables() will have
+    #: their queries automatically filtered by the active tenant_id via
+    #: TenantScopeListener. Set to False only for platform-wide reference tables.
+    tenant_scoped: bool = True
+
+    def get_tenant_scoped_tables(self) -> List[str]:
+        """
+        Return the list of table names in this module that carry a tenant_id column
+        and should be filtered by TenantScopeListener.
+
+        Override this in your module if you want to enumerate specific tables.
+        The default returns an empty list; when tenant_scoped=True the listener
+        still applies its generic model-level guard via ``__tenant_scoped__``.
+
+        Returns:
+            List of table name strings (e.g. ["invoices", "invoice_lines"])
+        """
+        return []
+
         if not self.name or not self.version:
             raise ValueError(f"Module manifest must contain 'name' and 'version' fields")
 
