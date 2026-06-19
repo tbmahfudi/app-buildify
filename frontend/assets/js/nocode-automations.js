@@ -1,3 +1,4 @@
+import { initAutomationEnhancements } from './automation-enhancements.js';
 /**
  * Automation Rules Page
  *
@@ -2952,3 +2953,6 @@ export class AutomationsPage {
     delete window.AutomationApp;
   }
 }
+
+// Initialize automation execution history + test panels (Story 24.4.1 + 24.4.2)
+document.addEventListener("route:loaded", (e) => { if (e.detail.route === "nocode-automations") setTimeout(initAutomationEnhancements, 300); });

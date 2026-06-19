@@ -1,3 +1,4 @@
+import { initSchedulerLogViewer } from './scheduler-log-viewer.js';
 /**
  * Scheduler Management Module
  * Handles configuration and job management for the hierarchical scheduler
@@ -285,3 +286,6 @@ document.addEventListener('DOMContentLoaded', () => {
 document.getElementById('filter-config-level').addEventListener('change', loadConfigurations);
 document.getElementById('filter-job-type').addEventListener('change', loadJobs);
 document.getElementById('filter-job-status').addEventListener('change', loadJobs);
+
+// Initialize job execution log viewer (Story 24.5.1)
+if (document.readyState === "loading") { document.addEventListener("DOMContentLoaded", () => setTimeout(initSchedulerLogViewer, 500)); } else { setTimeout(initSchedulerLogViewer, 500); }

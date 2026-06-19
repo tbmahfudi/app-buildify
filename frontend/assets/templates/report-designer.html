@@ -15,16 +15,19 @@
         </div>
       </div>
       <div class="flex items-center space-x-2">
-        <button id="preview-report-btn" class="btn btn-secondary btn-sm">
+        <button id="preview-report-btn" class="inline-flex items-center gap-1 px-3 py-1.5 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition text-sm font-medium">
           <i class="ph ph-eye mr-1.5"></i>Preview
         </button>
-        <button id="save-report-btn" class="btn btn-primary btn-sm">
+        <button id="save-report-btn" class="inline-flex items-center gap-1 px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 shadow-sm transition text-sm font-medium">
           <i class="ph ph-floppy-disk mr-1.5"></i>Save
         </button>
-        <button id="run-report-btn" class="btn btn-success btn-sm">
+        <button id="run-report-btn" class="inline-flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 shadow-sm transition text-sm font-medium">
           <i class="ph ph-play mr-1.5"></i>Run
         </button>
-        <button id="clear-report-btn" class="btn btn-secondary btn-sm text-red-600 hover:text-red-700">
+        <button id="export-report-btn" class="inline-flex items-center gap-1 px-3 py-1.5 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition text-sm font-medium" title="Export as CSV">
+          <i class="ph ph-download-simple mr-1.5"></i>Export
+        </button>
+        <button id="clear-report-btn" class="inline-flex items-center gap-1 px-3 py-1.5 bg-white border border-gray-300 text-red-600 rounded-lg hover:bg-red-50 transition text-sm font-medium">
           <i class="ph ph-trash mr-1.5"></i>Clear
         </button>
       </div>
@@ -63,7 +66,7 @@
       <i class="ph ph-arrow-left mr-1.5"></i>Previous
     </button>
     <span id="wizard-step-label" class="text-sm text-gray-500 font-medium">Step 1 of 5 — Properties</span>
-    <button id="wizard-next-btn" class="btn btn-secondary btn-sm">
+    <button id="wizard-next-btn" class="inline-flex items-center gap-1 px-3 py-1.5 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition text-sm font-medium">
       Next<i class="ph ph-arrow-right ml-1.5"></i>
     </button>
   </div>
@@ -168,7 +171,7 @@
         Report Preview
       </h3>
       <div class="flex items-center gap-2">
-        <button id="print-preview-btn" class="btn btn-secondary btn-sm">
+        <button id="print-preview-btn" class="inline-flex items-center gap-1 px-3 py-1.5 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition text-sm font-medium">
           <i class="ph ph-printer mr-1.5"></i>Print
         </button>
         <button id="close-preview-modal" class="text-gray-400 hover:text-gray-600 ml-1">
@@ -194,7 +197,7 @@
         <p class="text-xs text-gray-500 mt-0.5">Pick a template to pre-configure your report, or start blank</p>
       </div>
       <div class="flex items-center gap-3">
-        <button id="skip-template-btn" class="btn btn-secondary btn-sm">
+        <button id="skip-template-btn" class="inline-flex items-center gap-1 px-3 py-1.5 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition text-sm font-medium">
           <i class="ph ph-arrow-right mr-1.5"></i>Start Blank
         </button>
         <button id="close-template-modal" class="text-gray-400 hover:text-gray-600">

@@ -1449,8 +1449,8 @@ All 5 constituent stories `[DONE]` per their canonical AC; smoke test passes; on
 | 24.1.3 | Duplicate report-designer route cleanup | [DONE] |
 | 24.2.1 | Live password-strength feedback | [DONE] |
 | 24.3.1 | Publish button with migration diff preview | [DONE] |
-| 24.4.1 | Automation rule test panel | [OPEN] |
-| 24.4.2 | Automation execution history | [OPEN] |
-| 24.5.1 | Job execution log viewer | [OPEN] |
-| 24.6.1 | Page version history sidebar | [OPEN] |
+| 24.4.1 | Automation rule test panel | [DONE] |
+| 24.4.2 | Automation execution history | [DONE] |
+| 24.5.1 | Job execution log viewer | [DONE] |
+| 24.6.1 | Page version history sidebar | [DONE] |
 | 24.7.1 | Remove dev-tool screens from production nav | [OPEN] |
