@@ -763,6 +763,14 @@ case $COMMAND in
             *) echo "Unknown module subcommand: $SUBCOMMAND"; echo "  pack  <dir> [--out <dir>]  install <pkg>  uninstall <name>"; exit 1 ;;
         esac
         ;;
+    check-tenant-scope)
+        echo "==> Checking services/ for unguarded tenant_id literals..."
+        if grep -rn "\.tenant_id ==" /home/mahfudi/app-buildify/backend/app/services/ 2>/dev/null | grep -v "apply_tenant_scope\|tenant_scope"; then
+            echo "ERROR: Found raw tenant_id filter(s) — use apply_tenant_scope() instead"
+            exit 1
+        fi
+        echo "check-tenant-scope: PASS — no raw tenant_id filters found in services/"
+        ;;
     help|--help|-h)
         show_help
         ;;
