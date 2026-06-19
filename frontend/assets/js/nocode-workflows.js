@@ -1,3 +1,4 @@
+import { initWorkflowSimulator } from './workflow-simulator.js';
 /**
  * Workflow Designer Page
  *
@@ -2228,3 +2229,6 @@ export class WorkflowsPage {
     delete window.WorkflowApp;
   }
 }
+
+// Initialize workflow simulator (Story B3-P2)
+document.addEventListener('route:loaded', (e) => { if (e.detail.route === 'nocode-workflows') setTimeout(initWorkflowSimulator, 400); });

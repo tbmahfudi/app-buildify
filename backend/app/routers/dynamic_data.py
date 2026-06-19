@@ -194,6 +194,10 @@ async def list_records(
             "as '{field}_data' in each row. Depth is limited to 1 level."
         )
     ),
+    include_deleted: bool = Query(
+        False,
+        description="When true, includes soft-deleted records in results (admin only)"
+    ),
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
 ):
@@ -271,7 +275,8 @@ async def list_records(
             page=page,
             page_size=page_size,
             search=search,
-            expand=expand_list
+            expand=expand_list,
+            include_deleted=include_deleted
         )
 
         return DynamicDataListResponse(**result)
@@ -603,6 +608,53 @@ async def bulk_delete_records(
 
 
 # ==============================================================================
+# Soft Delete Restore + Version History Endpoints (Stories 5.4.1, 5.1.5)
+# ==============================================================================
+
+@router.post(
+    "/{entity_name}/records/{record_id}/restore",
+    summary="Restore Soft-Deleted Record",
+    description="Clears deleted_at on a soft-deleted record (Story 5.4.1)",
+)
+async def restore_record(
+    entity_name: str = Path(...),
+    record_id: str = Path(...),
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    service = DynamicEntityService(db, current_user)
+    try:
+        result = await service.restore_soft_deleted_record(entity_name, record_id)
+        return {"message": "Record restored", "data": result}
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        logger.error(f"Restore {entity_name}/{record_id} failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get(
+    "/{entity_name}/records/{record_id}/versions",
+    summary="Record Version History",
+    description="Returns change history for a versioned entity record (Story 5.1.5)",
+)
+async def get_record_versions(
+    entity_name: str = Path(...),
+    record_id: str = Path(...),
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    service = DynamicEntityService(db, current_user)
+    try:
+        versions = await service.get_record_versions(entity_name, record_id)
+        return {"items": versions, "total": len(versions)}
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        logger.error(f"Versions {entity_name}/{record_id} failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # Aggregation Endpoint
 # ==============================================================================
 
@@ -755,6 +807,10 @@ async def get_related_records(
     relationship_name: str = Path(..., description="Relationship name"),
     page: int = Query(1, ge=1),
     page_size: int = Query(25, ge=1, le=100),
+    sort: Optional[str] = Query(None, description="Sort spec e.g. 'name:asc'"),
+    filters: Optional[str] = Query(None, description="Filter JSON string"),
+    search: Optional[str] = Query(None, description="Search term"),
+    include_deleted: bool = Query(False, description="Include soft-deleted related records"),
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
 ):
@@ -780,17 +836,46 @@ async def get_related_records(
 
     Note: This endpoint requires Phase 2 relationship support to be fully implemented.
     """
-    # TODO: Implement relationship traversal
-    # This requires:
-    # 1. Loading RelationshipDefinition
-    # 2. Determining target entity
-    # 3. Building appropriate join query
-    # 4. Applying RBAC for target entity
+    service = DynamicEntityService(db, current_user)
 
-    raise HTTPException(
-        status_code=501,
-        detail="Relationship traversal not yet implemented in Phase 2"
-    )
+    # Parse sort
+    sort_list = None
+    if sort:
+        sort_list = []
+        for part in sort.split(','):
+            part = part.strip()
+            if ':' in part:
+                f, d = part.rsplit(':', 1)
+                sort_list.append((f.strip(), d.strip()))
+            else:
+                sort_list.append((part, 'asc'))
+
+    # Parse filters
+    filter_dict = None
+    if filters:
+        try:
+            filter_dict = json.loads(filters)
+        except json.JSONDecodeError:
+            raise HTTPException(status_code=400, detail="Invalid filters JSON")
+
+    try:
+        result = await service.get_related_records(
+            entity_name=entity_name,
+            record_id=record_id,
+            relationship_name=relationship_name,
+            page=page,
+            page_size=page_size,
+            sort=sort_list,
+            filters=filter_dict,
+            search=search,
+            include_deleted=include_deleted,
+        )
+        return DynamicDataListResponse(**result)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error traversing {entity_name}/{record_id}/{relationship_name}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # ==============================================================================
@@ -834,11 +919,44 @@ async def get_entity_metadata(
         # Get entity definition for display name
         entity_def = generator._load_entity_definition(entity_name, tenant_id)
 
+        # Story 6.2.2 — aggregation hints
+        NUMERIC_TYPES = {'number', 'integer', 'decimal', 'float', 'money', 'bigint'}
+        NUMERIC_FUNCS = ['count', 'sum', 'avg', 'min', 'max']
+        FORMAT_MAP = {'number': 'number', 'decimal': 'decimal', 'money': 'currency', 'integer': 'integer'}
+
+        table_config_cols = []
+        for f in fields:
+            ft = f.get('field_type', '') if isinstance(f, dict) else ''
+            aggregatable = ft in NUMERIC_TYPES
+            col = {
+                'field': f.get('name') if isinstance(f, dict) else str(f),
+                'label': f.get('label', f.get('name')) if isinstance(f, dict) else str(f),
+                'visible': True,
+                'sortable': True,
+                'filterable': True,
+                'aggregatable': aggregatable,
+                'aggregate_functions': NUMERIC_FUNCS if aggregatable else [],
+                'format': FORMAT_MAP.get(ft, 'text'),
+            }
+            if isinstance(f, dict):
+                if f.get('prefix'):
+                    col['prefix'] = f['prefix']
+                if f.get('suffix'):
+                    col['suffix'] = f['suffix']
+            table_config_cols.append(col)
+
+        # Prefer existing table_config if set on entity_def
+        if entity_def and getattr(entity_def, 'table_config', None):
+            computed_table_config = entity_def.table_config
+        else:
+            computed_table_config = {"columns": table_config_cols}
+
         return {
             "entity_name": entity_name,
             "display_name": entity_def.label if entity_def else entity_name,
             "fields": fields,
-            "relationships": relationships
+            "relationships": relationships,
+            "table_config": computed_table_config,
         }
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))

@@ -36,6 +36,19 @@ services:
   #     timeout: 5s
   #     retries: 5
 
+
+  redis:
+    container_name: app_buildify_redis
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
   backend:
     container_name: app_buildify_backend
     build:
@@ -53,6 +66,13 @@ services:
       ACCESS_TOKEN_EXPIRE_MIN: 30
       REFRESH_TOKEN_EXPIRE_DAYS: 7
       ALLOWED_ORIGINS: http://localhost:8080,http://localhost:3000
+      REDIS_URL: redis://redis:6379/0
+      # SMTP via MailHog (dev) — swap for real SMTP creds in staging/prod
+      SMTP_HOST: mailhog
+      SMTP_PORT: "1025"
+      SMTP_FROM: noreply@app-buildify.local
+      SMTP_USE_TLS: "false"
+      NOTIFICATION_WORKER_INPROCESS: "true"
     working_dir: /app
     volumes:
       - ../backend:/app
@@ -60,6 +80,10 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      redis:
+        condition: service_healthy
+      mailhog:
+        condition: service_started
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
   financial-module:
@@ -101,6 +125,13 @@ services:
     depends_on:
       - backend
       - financial-module
+
+  mailhog:
+    container_name: app_buildify_mailhog
+    image: mailhog/mailhog:latest
+    ports:
+      - "1025:1025"   # SMTP
+      - "8025:8025"   # Web UI — open http://localhost:8025 to view sent mail
 
 volumes:
   postgres_data:

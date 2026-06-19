@@ -87,6 +87,8 @@ show_help() {
     echo "  seed-menu          - Seed menu items from frontend/config/menu.json"
     echo "  seed-menu-rbac [TENANT] - Seed menu management RBAC for tenant"
     echo "  seed-module-rbac [TENANT] - Seed module management RBAC for tenant"
+    echo "  module pack <dir> [--out <dir>] - Pack a module into a tarball with SHA256"
+    echo "  module install <tarball>       - Install a packed module (8-step pipeline)"
     echo "  seed-financial-rbac [TENANT] - Seed financial module RBAC for tenant"
     echo ""
     echo "Development:"
@@ -751,6 +753,16 @@ case $COMMAND in
         check_services_running
         seed_rbac_with_groups
         ;;
+    module)
+        SUBCOMMAND="${2:-}"
+        shift 2 || true
+        case "$SUBCOMMAND" in
+            pack) module_pack "$@" ;;
+            install) shift; module_install "$@" ;;
+            uninstall) shift; module_uninstall "$@" ;;
+            *) echo "Unknown module subcommand: $SUBCOMMAND"; echo "  pack  <dir> [--out <dir>]  install <pkg>  uninstall <name>"; exit 1 ;;
+        esac
+        ;;
     help|--help|-h)
         show_help
         ;;
@@ -761,3 +773,314 @@ case $COMMAND in
         exit 1
         ;;
 esac
+
+# ---------------------------------------------------------------------------
+# T-23.008  module pack <dir> [--out <outdir>]
+# T-23.009  validate manifest before bundling
+# ---------------------------------------------------------------------------
+module_pack() {
+    local MODULE_DIR="${1:-}"
+    local OUT_DIR="."
+    shift || true
+
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --out) OUT_DIR="${2:-.}"; shift 2 ;;
+            *) echo "Unknown flag: $1" >&2; exit 1 ;;
+        esac
+    done
+
+    if [[ -z "$MODULE_DIR" || ! -d "$MODULE_DIR" ]]; then
+        echo "Usage: manage.sh module pack <module-dir> [--out <output-dir>]" >&2
+        exit 1
+    fi
+
+    MODULE_DIR="$(realpath "$MODULE_DIR")"
+    OUT_DIR="$(realpath "$OUT_DIR")"
+    local MANIFEST="$MODULE_DIR/manifest.json"
+
+    if [[ ! -f "$MANIFEST" ]]; then
+        echo "manifest.json not found in $MODULE_DIR" >&2; exit 1
+    fi
+
+    local MODULE_NAME MODULE_VERSION
+    MODULE_NAME=$(python3 - "$MANIFEST" <<'PY'
+import sys, json; m=json.load(open(sys.argv[1])); print(m['name'])
+PY
+)
+    MODULE_VERSION=$(python3 - "$MANIFEST" <<'PY'
+import sys, json; m=json.load(open(sys.argv[1])); print(m['version'])
+PY
+)
+
+    if [[ -z "$MODULE_NAME" || -z "$MODULE_VERSION" ]]; then
+        echo "Could not read name/version from manifest.json" >&2; exit 1
+    fi
+
+    # T-23.009: validate manifest before bundling
+    echo "Validating manifest for $MODULE_NAME $MODULE_VERSION ..."
+    local HTTP_CODE
+    HTTP_CODE=$(curl -s -o /tmp/_validate_out.json -w "%{http_code}" \
+        -X POST http://localhost:8000/api/v1/modules/validate \
+        -H "Content-Type: application/json" \
+        --data-binary "@$MANIFEST" \
+        --data-urlencode "" 2>/dev/null | tail -1 || echo "000")
+
+    # Send the whole manifest as {"manifest": {...}}
+    local JSON_BODY
+    JSON_BODY=$(python3 - "$MANIFEST" <<'PY'
+import sys, json; print(json.dumps({"manifest": json.load(open(sys.argv[1]))}))
+PY
+)
+    HTTP_CODE=$(curl -s -o /tmp/_validate_out.json -w "%{http_code}" \
+        -X POST http://localhost:8000/api/v1/modules/validate \
+        -H "Content-Type: application/json" \
+        -d "$JSON_BODY" 2>/dev/null || echo "000")
+
+    if [[ "$HTTP_CODE" == "422" ]]; then
+        echo "Manifest validation failed:" >&2
+        python3 - <<'PY'
+import json
+d = json.load(open('/tmp/_validate_out.json'))
+errs = (d.get('detail') or {}).get('errors', ['unknown'])
+[print('  -', e) for e in errs]
+PY
+        exit 1
+    elif [[ "$HTTP_CODE" != "200" ]]; then
+        echo "WARNING: API not reachable (HTTP $HTTP_CODE) — skipping validation"
+    else
+        echo "Manifest valid."
+    fi
+
+    mkdir -p "$OUT_DIR"
+    local TARBALL="$OUT_DIR/${MODULE_NAME}_${MODULE_VERSION}.tar.gz"
+    local SHA_FILE="$OUT_DIR/SHA256SUMS"
+
+    echo "Packing $MODULE_NAME $MODULE_VERSION -> $TARBALL"
+
+    # Normalise timestamps for deterministic builds (reproducible tarballs)
+    find "$MODULE_DIR" -not -path "*/__pycache__/*" -not -name "*.pyc" \
+        -exec touch -d "2020-01-01 00:00:00" {} + 2>/dev/null || true
+
+    tar --exclude="*/__pycache__" --exclude="*.pyc" --sort=name \
+        -czf "$TARBALL" \
+        -C "$(dirname "$MODULE_DIR")" "$(basename "$MODULE_DIR")"
+
+    sha256sum "$TARBALL" > "$SHA_FILE"
+
+    echo "Packed:    $TARBALL"
+    echo "Checksum:  $(awk '{print $1}' "$SHA_FILE")"
+}
+
+
+# ---------------------------------------------------------------------------
+# T-23.010/T-23.011/T-23.012  module install <tarball>
+# ---------------------------------------------------------------------------
+module_install() {
+    local TARBALL="${1:-}"
+    local API_BASE="http://localhost:8000"
+
+    if [[ -z "$TARBALL" || ! -f "$TARBALL" ]]; then
+        echo "[ERROR] Usage: manage.sh module install <tarball>" >&2; exit 1
+    fi
+    TARBALL="$(realpath "$TARBALL")"
+    local WORK_DIR
+    WORK_DIR=$(mktemp -d /tmp/module_install_XXXXXX)
+    trap 'rm -rf "$WORK_DIR"' EXIT
+
+    echo "[INFO] Tarball: $TARBALL"
+
+    # Step 1: Verify SHA256
+    local SHA_FILE; SHA_FILE="$(dirname "$TARBALL")/SHA256SUMS"
+    if [[ -f "$SHA_FILE" ]]; then
+        echo "[INFO] Step 1/8: Verifying checksum..."
+        local EXPECTED ACTUAL
+        EXPECTED=$(grep "$(basename "$TARBALL")" "$SHA_FILE" | awk '{print $1}')
+        ACTUAL=$(sha256sum "$TARBALL" | awk '{print $1}')
+        if [[ "$EXPECTED" != "$ACTUAL" ]]; then
+            echo "[ERROR] SHA256 mismatch — expected $EXPECTED got $ACTUAL" >&2; exit 1
+        fi
+        echo "[INFO] Checksum OK."
+    else
+        echo "[WARNING] No SHA256SUMS — skipping checksum check"
+    fi
+
+    # Extract
+    tar -xzf "$TARBALL" -C "$WORK_DIR"
+    local MODULE_DIR; MODULE_DIR=$(find "$WORK_DIR" -maxdepth 1 -mindepth 1 -type d | head -1)
+    [[ -z "$MODULE_DIR" ]] && { echo "[ERROR] Empty tarball" >&2; exit 1; }
+    local MANIFEST="$MODULE_DIR/manifest.json"
+    [[ ! -f "$MANIFEST" ]] && { echo "[ERROR] No manifest.json in tarball" >&2; exit 1; }
+
+    local MODULE_NAME MODULE_VERSION
+    MODULE_NAME=$(python3 -c "import json,sys; m=json.load(open('$MANIFEST')); print(m['name'])")
+    MODULE_VERSION=$(python3 -c "import json,sys; m=json.load(open('$MANIFEST')); print(m['version'])")
+    echo "[INFO] Module: $MODULE_NAME v$MODULE_VERSION"
+
+    # Step 2: Validate manifest via API
+    echo "[INFO] Step 2/8: Validating manifest..."
+    local MJSON; MJSON=$(python3 -c "import json; print(json.dumps({'manifest':json.load(open('$MANIFEST'))}))")
+    local VCODE; VCODE=$(curl -s -o /tmp/_mv.json -w "%{http_code}"         -X POST "$API_BASE/api/v1/modules/validate"         -H "Content-Type: application/json" -d "$MJSON" 2>/dev/null || echo "000")
+    if [[ "$VCODE" == "422" ]]; then
+        echo "[ERROR] Manifest invalid — aborting" >&2; cat /tmp/_mv.json >&2; exit 1
+    elif [[ "$VCODE" != "200" ]]; then
+        echo "[WARNING] API unreachable (HTTP $VCODE) — skipping validation"
+    else
+        echo "[INFO] Manifest valid."
+    fi
+
+    # Idempotency check (T-23.012)
+    local ALREADY; ALREADY=$(docker exec app_buildify_backend python3 -c         "import os; os.environ['TESTING']='1'
+from app.core.db import SessionLocal
+from app.models.nocode_module import Module
+db=SessionLocal()
+m=db.query(Module).filter(Module.name=='$MODULE_NAME',Module.version=='$MODULE_VERSION').first()
+print('yes' if (m and getattr(m,'install_status','ready')=='ready') else 'no')
+db.close()" 2>/dev/null || echo "no")
+    if [[ "$ALREADY" == "yes" ]]; then
+        echo "[INFO] $MODULE_NAME v$MODULE_VERSION already installed — nothing to do."; exit 0
+    fi
+
+    # Step 3: mark in_progress
+    echo "[INFO] Step 3/8: Marking install_status=in_progress..."
+    docker exec app_buildify_backend python3 -c         "import os; os.environ['TESTING']='1'
+from datetime import datetime
+from app.core.db import SessionLocal
+from app.models.nocode_module import Module
+from app.models.base import generate_uuid
+db=SessionLocal()
+m=db.query(Module).filter(Module.name=='$MODULE_NAME').first()
+if m:
+    m.install_status='in_progress'; m.install_error_message=None
+else:
+    m=Module(id=generate_uuid(),name='$MODULE_NAME',display_name='$MODULE_NAME',
+             module_type='code',version='$MODULE_VERSION',is_installed=False,
+             install_status='in_progress')
+    db.add(m)
+db.commit(); db.close()" 2>/dev/null || true
+
+    # Step 4: Module-specific Alembic migrations
+    echo "[INFO] Step 4/8: Running module migrations..."
+    if [[ -d "$MODULE_DIR/alembic" ]]; then
+        docker exec app_buildify_backend bash -c "cd /app && alembic upgrade head" 2>&1             | sed 's/^/  /' || { _module_rollback "$MODULE_NAME" "migration failed"; exit 1; }
+    else
+        echo "[INFO] No module migrations — skipping"
+    fi
+
+    # Step 5: Copy backend service files
+    echo "[INFO] Step 5/8: Copying backend files..."
+    if [[ -d "$MODULE_DIR/backend" ]]; then
+        mkdir -p "/home/mahfudi/app-buildify/backend/modules/$MODULE_NAME"
+        cp -r "$MODULE_DIR/backend/"* "/home/mahfudi/app-buildify/backend/modules/$MODULE_NAME/" 2>/dev/null || true
+        echo "[INFO] Backend files copied."
+    fi
+
+    # Step 6: Copy frontend assets
+    echo "[INFO] Step 6/8: Copying frontend assets..."
+    if [[ -d "$MODULE_DIR/frontend" ]]; then
+        mkdir -p "/home/mahfudi/app-buildify/frontend/assets/modules/$MODULE_NAME"
+        cp -r "$MODULE_DIR/frontend/"* "/home/mahfudi/app-buildify/frontend/assets/modules/$MODULE_NAME/" 2>/dev/null || true
+        echo "[INFO] Frontend assets copied."
+    fi
+
+    # Step 7: Register via API
+    echo "[INFO] Step 7/8: Registering module..."
+    local RJSON; RJSON=$(python3 -c "import json; m=json.load(open('$MANIFEST')); print(json.dumps({'manifest':m,'backend_service_url':m.get('backend_service_url','')}))")
+    local RCODE; RCODE=$(curl -s -o /tmp/_mr.json -w "%{http_code}"         -X POST "$API_BASE/api/v1/module-registry/register"         -H "Content-Type: application/json" -d "$RJSON" 2>/dev/null || echo "000")
+    if [[ "$RCODE" != "200" ]]; then
+        echo "[ERROR] Registration failed (HTTP $RCODE)" >&2; cat /tmp/_mr.json >&2
+        _module_rollback "$MODULE_NAME" "registration failed HTTP $RCODE"; exit 1
+    fi
+    echo "[INFO] Module registered."
+
+    # Step 8: mark ready
+    echo "[INFO] Step 8/8: Marking install_status=ready..."
+    docker exec app_buildify_backend python3 -c         "import os; os.environ['TESTING']='1'
+from datetime import datetime
+from app.core.db import SessionLocal
+from app.models.nocode_module import Module
+db=SessionLocal()
+m=db.query(Module).filter(Module.name=='$MODULE_NAME').first()
+if m:
+    m.install_status='ready'; m.is_installed=True
+    m.version='$MODULE_VERSION'; m.install_error_message=None
+    m.installed_at=datetime.utcnow(); m.updated_at=datetime.utcnow()
+    db.commit()
+db.close()" 2>/dev/null
+    echo "[INFO] Module $MODULE_NAME v$MODULE_VERSION installed successfully."
+}
+
+# ── T-23.026: module uninstall ──────────────────────────────────────────────
+module_uninstall() {
+    local MODULE_NAME="${1:-}"
+    if [ -z "$MODULE_NAME" ]; then
+        echo "Usage: manage.sh module uninstall <module-name>"
+        exit 1
+    fi
+
+    API_URL="${APP_URL:-http://localhost:8000}/api/v1"
+    TOKEN="${SUPERADMIN_TOKEN:-}"
+
+    if [ -z "$TOKEN" ]; then
+        echo "ERROR: SUPERADMIN_TOKEN env var is required for uninstall"
+        exit 1
+    fi
+
+    echo "==> Uninstalling module: $MODULE_NAME"
+
+    # Step 1: resolve module ID
+    echo "  [1/4] Resolving module ID..."
+    MOD_JSON=$(curl -sf -H "Authorization: Bearer $TOKEN" "$API_URL/modules/$MODULE_NAME" 2>/dev/null || true)
+    if [ -z "$MOD_JSON" ]; then
+        echo "ERROR: module '$MODULE_NAME' not found via API"
+        exit 1
+    fi
+    MOD_ID=$(echo "$MOD_JSON" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('id',''))" 2>/dev/null || true)
+    if [ -z "$MOD_ID" ]; then
+        MOD_ID="$MODULE_NAME"  # fallback: use name as ID
+    fi
+
+    # Step 2: deactivate-all tenants
+    echo "  [2/4] Deactivating module for all tenants..."
+    DA_CODE=$(curl -sf -o /dev/null -w "%{http_code}" -X POST \
+        -H "Authorization: Bearer $TOKEN" \
+        "$API_URL/admin/modules/$MOD_ID/deactivate-all" 2>/dev/null || echo "000")
+    if [ "$DA_CODE" != "200" ]; then
+        echo "WARNING: deactivate-all returned HTTP $DA_CODE (may already be inactive)"
+    fi
+
+    # Step 3: remove module files from backend/frontend (best-effort)
+    echo "  [3/4] Removing module files..."
+    BACKEND_DIR="/home/mahfudi/app-buildify/backend/modules/$MODULE_NAME"
+    FRONTEND_DIR="/home/mahfudi/app-buildify/frontend/assets/js/modules/$MODULE_NAME"
+    [ -d "$BACKEND_DIR" ]  && rm -rf "$BACKEND_DIR"  && echo "    removed backend dir"  || true
+    [ -d "$FRONTEND_DIR" ] && rm -rf "$FRONTEND_DIR" && echo "    removed frontend dir" || true
+
+    # Step 4: call DELETE /api/v1/admin/modules/{id}
+    echo "  [4/4] Calling uninstall API..."
+    DEL_CODE=$(curl -sf -o /dev/null -w "%{http_code}" -X DELETE \
+        -H "Authorization: Bearer $TOKEN" \
+        -H "X-Confirm-Uninstall: true" \
+        "$API_URL/admin/modules/$MOD_ID" 2>/dev/null || echo "000")
+    if [ "$DEL_CODE" = "200" ]; then
+        echo "==> Module '$MODULE_NAME' uninstalled successfully."
+    else
+        echo "ERROR: DELETE returned HTTP $DEL_CODE"
+        exit 1
+    fi
+}
+
+_module_rollback() {
+    local NAME="$1" REASON="${2:-unknown}"
+    echo "[WARNING] Rolling back: $REASON" >&2
+    docker exec app_buildify_backend python3 -c         "import os; os.environ['TESTING']='1'
+from datetime import datetime
+from app.core.db import SessionLocal
+from app.models.nocode_module import Module
+db=SessionLocal()
+m=db.query(Module).filter(Module.name=='$NAME').first()
+if m:
+    m.install_status='failed'; m.install_error_message='$REASON'[:200]
+    m.updated_at=datetime.utcnow(); db.commit()
+db.close()" 2>/dev/null || true
+}

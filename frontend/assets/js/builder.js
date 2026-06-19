@@ -1,3 +1,4 @@
+import { initBuilderVersionHistory } from './builder-version-history.js';
 /**
  * Builder Page - Main GrapeJS UI Builder
  *
@@ -878,3 +879,6 @@ export class BuilderPage {
         }
     }
 }
+
+// Initialize version history sidebar (Story 24.6.1)
+document.addEventListener("route:loaded", (e) => { if (e.detail.route === "builder" || e.detail.route?.startsWith("builder?")) initBuilderVersionHistory(); });

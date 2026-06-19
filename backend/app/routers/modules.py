@@ -659,7 +659,24 @@ async def register_module(
                 detail="Module manifest must contain 'name' field"
             )
 
-        # Add backend_service_url to manifest if not present
+        # T-23.007: validate manifest against JSON Schema before registration
+        try:
+            from app.core.module_system.loader import ModuleLoader
+            from pathlib import Path as _Path
+            _loader = ModuleLoader(_Path("/tmp"))
+            _ok, _err = _loader.validate_manifest(manifest)
+            if not _ok:
+                from fastapi import status as _status
+                raise HTTPException(
+                    status_code=_status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail={"valid": False, "errors": [_err]},
+                )
+        except HTTPException:
+            raise
+        except Exception as _ve:
+            logger.warning(f"Manifest schema validation error: {_ve}")
+
+                # Add backend_service_url to manifest if not present
         if 'backend_service_url' not in manifest:
             manifest['backend_service_url'] = request_data.backend_service_url
 
@@ -736,6 +753,24 @@ async def register_module(
             db.add(new_module)
             db.commit()
             db.refresh(new_module)
+
+            # T-23.014: call post_install hook if a BaseModule class exists
+            try:
+                import importlib, sys as _sys
+                from pathlib import Path as _Path
+                from app.core.module_system.loader import ModuleLoader
+                _modules_root = _Path(__file__).parent.parent.parent / "modules"
+                _loader = ModuleLoader(_modules_root)
+                _instance = _loader.load_module(module_name)
+                if _instance is not None:
+                    _instance.post_install(db)
+                    logger.info(f"post_install hook completed for '{module_name}'")
+            except Exception as _hook_err:
+                logger.warning(
+                    f"post_install hook failed for '{module_name}': {_hook_err}",
+                    exc_info=True,
+                )
+                # log but do NOT roll back — hook failure is non-fatal per T-23.014
 
             logger.info(f"Module '{module_name}' registered successfully (new)")
 

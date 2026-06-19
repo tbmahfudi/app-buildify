@@ -221,7 +221,8 @@ class DynamicEntityService:
         page: int = 1,
         page_size: int = 25,
         search: Optional[str] = None,
-        expand: Optional[List[str]] = None
+        expand: Optional[List[str]] = None,
+        include_deleted: bool = False
     ) -> Dict[str, Any]:
         """
         List records with filtering, sorting, and pagination
@@ -251,8 +252,8 @@ class DynamicEntityService:
         for col_name, col_value in org_context.items():
             query = query.filter(getattr(model, col_name) == col_value)
 
-        # Exclude soft-deleted records (Gap 4.1)
-        if hasattr(model, 'deleted_at'):
+        # Exclude soft-deleted records unless include_deleted requested (Story 5.4.1)
+        if hasattr(model, 'deleted_at') and not include_deleted:
             query = query.filter(model.deleted_at.is_(None))
 
         # Apply filters
@@ -397,6 +398,33 @@ class DynamicEntityService:
 
             after = self._model_to_dict(record, field_defs)
 
+            # Write to shadow versions table if entity is versioned (Story 5.1.5)
+            try:
+                entity_def = self.model_generator._load_entity_definition(entity_name, tenant_id)
+                if entity_def and getattr(entity_def, 'is_versioned', False):
+                    table_prefix = f"t_{str(tenant_id).replace('-', '_')}_" if tenant_id else ""
+                    version_table = f"{table_prefix}{entity_name}_versions"
+                    changed_fields = {k: v for k, v in after.items() if before.get(k) != v and k not in ('updated_at', 'updated_by')}
+                    import json as _json
+                    from sqlalchemy import text as _text
+                    self.db.execute(
+                        _text(f"""
+                            INSERT INTO {version_table}
+                                (record_id, record_data, changed_fields, changed_by, changed_at)
+                            VALUES
+                                (:record_id, :before::jsonb, :changed::jsonb, :changed_by, NOW())
+                        """),
+                        {
+                            'record_id': str(record_id),
+                            'before': _json.dumps(before),
+                            'changed': _json.dumps(changed_fields),
+                            'changed_by': str(self.current_user.id),
+                        }
+                    )
+                    self.db.commit()
+            except Exception as _ve:
+                logger.debug(f"Version insert skipped: {_ve}")
+
             # Audit log
             await self._create_audit_log(
                 'UPDATE',
@@ -489,6 +517,235 @@ class DynamicEntityService:
         )
 
         logger.info(f"Deleted {entity_name} record: {record_id} ({deletion_type})")
+
+    async def restore_soft_deleted_record(
+        self,
+        entity_name: str,
+        record_id: str
+    ) -> dict:
+        """Restore a soft-deleted record (Story 5.4.1)."""
+        tenant_id = str(self.current_user.tenant_id) if self.current_user.tenant_id else None
+        self._check_entity_permission(entity_name, 'delete')
+        model = self.model_generator.get_model(entity_name, tenant_id)
+        field_defs = self.model_generator.get_field_definitions(entity_name, tenant_id)
+
+        if not hasattr(model, 'deleted_at'):
+            raise ValueError(f"Entity '{entity_name}' does not support soft delete")
+
+        record = self.db.query(model).filter(model.id == record_id).first()
+        if not record:
+            raise ValueError(f"Record not found: {record_id}")
+        if record.deleted_at is None:
+            raise ValueError(f"Record is not deleted: {record_id}")
+
+        record.deleted_at = None
+        if hasattr(record, 'deleted_by'):
+            record.deleted_by = None
+        if hasattr(record, 'is_deleted'):
+            record.is_deleted = False
+        self.db.commit()
+
+        await self._create_audit_log('RESTORE', entity_name, str(record_id))
+        return self._model_to_dict(record, field_defs)
+
+    async def get_record_versions(
+        self,
+        entity_name: str,
+        record_id: str
+    ):
+        """Return change history for a versioned entity record (Story 5.1.5)."""
+        tenant_id = str(self.current_user.tenant_id) if self.current_user.tenant_id else None
+        self._check_entity_permission(entity_name, 'read')
+
+        entity_def = self.model_generator._load_entity_definition(entity_name, tenant_id)
+        if not entity_def or not getattr(entity_def, 'is_versioned', False):
+            raise ValueError(f"Entity '{entity_name}' does not support versioning")
+
+        table_prefix = f"t_{str(tenant_id).replace('-', '_')}_" if tenant_id else ""
+        version_table = f"{table_prefix}{entity_name}_versions"
+
+        from sqlalchemy import text as _text
+        import json as _json
+        try:
+            result = self.db.execute(
+                _text(f"""
+                    SELECT id, record_id, record_data, changed_fields, changed_by, changed_at
+                    FROM {version_table}
+                    WHERE record_id = :record_id
+                    ORDER BY changed_at DESC
+                    LIMIT 100
+                """),
+                {'record_id': str(record_id)}
+            )
+            rows = result.mappings().all()
+        except Exception as e:
+            raise ValueError(f"Could not read version history: {e}")
+
+        return [
+            {
+                'id': str(r['id']),
+                'record_id': str(r['record_id']),
+                'record_data': r['record_data'] if isinstance(r['record_data'], dict) else _json.loads(r['record_data'] or '{}'),
+                'changed_fields': r['changed_fields'] if isinstance(r['changed_fields'], dict) else _json.loads(r['changed_fields'] or '{}'),
+                'changed_by': str(r['changed_by']),
+                'changed_at': r['changed_at'].isoformat() if r['changed_at'] else None,
+            }
+            for r in rows
+        ]
+
+
+    async def get_related_records(
+        self,
+        entity_name: str,
+        record_id: str,
+        relationship_name: str,
+        page: int = 1,
+        page_size: int = 25,
+        sort: list = None,
+        filters: dict = None,
+        search: str = None,
+        include_deleted: bool = False,
+    ) -> dict:
+        """
+        Return paginated records related to a given record via a relationship
+        field. Supports both FK (many-to-one stored on the related side) and
+        reverse FK (one-to-many). (Story 5.3.2)
+        """
+        tenant_id = str(self.current_user.tenant_id) if self.current_user.tenant_id else None
+        self._check_entity_permission(entity_name, 'read')
+
+        # Load the source entity's field definitions to find the relationship
+        field_defs = self.model_generator.get_field_definitions(entity_name, tenant_id)
+        rel_field = next(
+            (f for f in field_defs if f.get('name') == relationship_name and
+             f.get('field_type') in ('relationship', 'lookup')),
+            None
+        )
+
+        if not rel_field:
+            # Try as a reverse relationship: another entity has a FK pointing here
+            # Scan all entity fields for ref_entity_name == entity_name
+            from app.models.data_model import EntityDefinition, FieldDefinition
+            ref_fields = (
+                self.db.query(FieldDefinition)
+                .join(FieldDefinition.entity)
+                .filter(
+                    FieldDefinition.reference_entity_name == entity_name,
+                    FieldDefinition.is_active == True,
+                    FieldDefinition.name == relationship_name,
+                )
+                .first()
+            )
+            if not ref_fields:
+                # Try matching by entity name (e.g. "orders" → entity named "order")
+                target_entity_name = relationship_name.rstrip('s')  # naive depluralize
+                ref_fields = (
+                    self.db.query(FieldDefinition)
+                    .join(FieldDefinition.entity)
+                    .filter(
+                        FieldDefinition.reference_entity_name == entity_name,
+                        FieldDefinition.is_active == True,
+                        EntityDefinition.name.in_([relationship_name, target_entity_name]),
+                    )
+                    .first()
+                )
+
+            if ref_fields:
+                # Reverse FK: find all records in the related entity where FK == record_id
+                target_entity = ref_fields.entity.name
+                fk_field_name = ref_fields.name
+                self._check_entity_permission(target_entity, 'read')
+                target_model = self.model_generator.get_model(target_entity, tenant_id)
+                target_field_defs = self.model_generator.get_field_definitions(target_entity, tenant_id)
+
+                query = self.db.query(target_model).filter(
+                    getattr(target_model, fk_field_name) == record_id
+                )
+                if hasattr(target_model, 'deleted_at') and not include_deleted:
+                    query = query.filter(target_model.deleted_at.is_(None))
+                if filters:
+                    query = self.query_builder.apply_filters(query, target_model, filters)
+                if search:
+                    query = self.query_builder.apply_search(query, target_model, search)
+
+                total = query.count()
+                if sort:
+                    for field_name, direction in sort:
+                        col = getattr(target_model, field_name, None)
+                        if col is not None:
+                            query = query.order_by(col.desc() if direction == 'desc' else col.asc())
+                else:
+                    if hasattr(target_model, 'created_at'):
+                        query = query.order_by(target_model.created_at.desc())
+
+                offset = (page - 1) * page_size
+                records = query.offset(offset).limit(page_size).all()
+                items = [self._model_to_dict(r, target_field_defs) for r in records]
+                return {
+                    'items': items,
+                    'total': total,
+                    'page': page,
+                    'page_size': page_size,
+                    'pages': max(1, -(-total // page_size)),
+                }
+
+            raise ValueError(
+                f"No relationship '{relationship_name}' found on entity '{entity_name}'. "
+                f"Check that the field exists and is of type 'relationship'."
+            )
+
+        # Forward FK/lookup: the relationship field is on the source entity
+        ref_entity = (
+            rel_field.get('reference_entity_name') or
+            rel_field.get('ref_entity_name') or
+            rel_field.get('lookup_entity')
+        )
+        if not ref_entity:
+            raise ValueError(f"Relationship field '{relationship_name}' has no target entity configured")
+
+        self._check_entity_permission(ref_entity, 'read')
+
+        # Fetch the source record to get the FK value
+        source_model = self.model_generator.get_model(entity_name, tenant_id)
+        source_record = self.db.query(source_model).filter(source_model.id == record_id).first()
+        if not source_record:
+            raise ValueError(f"Record not found: {record_id}")
+
+        fk_value = getattr(source_record, relationship_name, None)
+        if fk_value is None:
+            return {'items': [], 'total': 0, 'page': page, 'page_size': page_size, 'pages': 0}
+
+        target_model = self.model_generator.get_model(ref_entity, tenant_id)
+        target_field_defs = self.model_generator.get_field_definitions(ref_entity, tenant_id)
+        ref_field_col = rel_field.get('ref_field') or 'id'
+
+        query = self.db.query(target_model).filter(
+            getattr(target_model, ref_field_col) == fk_value
+        )
+        if hasattr(target_model, 'deleted_at') and not include_deleted:
+            query = query.filter(target_model.deleted_at.is_(None))
+        if filters:
+            query = self.query_builder.apply_filters(query, target_model, filters)
+        if search:
+            query = self.query_builder.apply_search(query, target_model, search)
+
+        total = query.count()
+        if sort:
+            for field_name, direction in sort:
+                col = getattr(target_model, field_name, None)
+                if col is not None:
+                    query = query.order_by(col.desc() if direction == 'desc' else col.asc())
+
+        offset = (page - 1) * page_size
+        records = query.offset(offset).limit(page_size).all()
+        items = [self._model_to_dict(r, target_field_defs) for r in records]
+        return {
+            'items': items,
+            'total': total,
+            'page': page,
+            'page_size': page_size,
+            'pages': max(1, -(-total // page_size)),
+        }
 
     async def bulk_create(
         self,

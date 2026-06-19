@@ -1673,7 +1673,18 @@ async function loadRoute(route) {
     }
 
     if (route === 'builder-showcase') {
-      console.log('Loading builder showcase page');
+      // Dev-only route guard (Story 24.7.1)
+      const isDevEnv = (
+        window.location.hostname === 'localhost' ||
+        window.location.hostname === '127.0.0.1' ||
+        window.location.hostname.endsWith('.local') ||
+        window.__APP_ENV__ === 'development'
+      );
+      if (!isDevEnv) {
+        window.location.hash = 'dashboard';
+        return;
+      }
+      console.log('Loading builder showcase page (dev only)');
       const bodyContent = await window.resourceLoader.loadTemplate('builder-showcase');
       content.innerHTML = bodyContent;
 

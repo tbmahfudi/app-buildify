@@ -279,24 +279,87 @@ class FieldTypeMapper:
             if not re.match(url_pattern, value):
                 return False, f"{field_label} must be a valid URL starting with http:// or https://"
 
-        # Enum validation
-        if field_type == 'enum':
-            allowed_values = field_definition.get('allowed_values', [])
-            if allowed_values and value not in allowed_values:
-                return False, f"{field_label} must be one of: {', '.join(map(str, allowed_values))}"
+        # Enum / Select allowed-values validation (Story 5.2.2)
+        if field_type in ('enum', 'select', 'multi_select'):
+            raw_av = field_definition.get('allowed_values', [])
+            # Normalise: allowed_values may be a list of strings,
+            # a list of {"value": ..., "label": ...} dicts, or a plain dict
+            if isinstance(raw_av, dict):
+                allowed_values = list(raw_av.keys())
+            else:
+                allowed_values = [
+                    (item['value'] if isinstance(item, dict) else item)
+                    for item in raw_av
+                ]
+            if allowed_values:
+                if field_type == 'multi_select':
+                    submitted = value if isinstance(value, list) else [value]
+                    bad = [v for v in submitted if v not in allowed_values]
+                    if bad:
+                        return False, f"{field_label} contains invalid values: {', '.join(map(str, bad))}. Allowed: {', '.join(map(str, allowed_values))}"
+                else:
+                    if value not in allowed_values:
+                        return False, f"{field_label} must be one of: {', '.join(map(str, allowed_values))}"
 
-        # Custom validation rules (from field_definition.validation_rules JSON)
+        # Custom validation rules — full list-of-rules support (Story 5.2.4)
+        # Schema: [{"type": "regex|min_length|max_length|min_value|max_value", "value": ..., "pattern": ..., "message": ...}]
+        # Legacy single-dict {"pattern": "...", "message": "..."} also accepted.
         validation_rules = field_definition.get('validation_rules')
         if validation_rules:
-            # validation_rules is a JSON object with custom rules
-            # Example: {"pattern": "^[A-Z]{3}-\\d{4}$", "message": "Must match format XXX-1234"}
+            import re as _re
+
+            # Normalise to list
             if isinstance(validation_rules, dict):
-                if 'pattern' in validation_rules and isinstance(value, str):
-                    import re
-                    pattern = validation_rules['pattern']
-                    if not re.match(pattern, value):
-                        error_msg = validation_rules.get('message', f"{field_label} format is invalid")
-                        return False, error_msg
+                if 'type' in validation_rules:
+                    rules_list = [validation_rules]
+                elif 'pattern' in validation_rules:
+                    rules_list = [{'type': 'regex', 'pattern': validation_rules['pattern'],
+                                   'message': validation_rules.get('message')}]
+                else:
+                    rules_list = []
+            elif isinstance(validation_rules, list):
+                rules_list = validation_rules
+            else:
+                rules_list = []
+
+            for rule in rules_list:
+                if not isinstance(rule, dict):
+                    continue
+                rule_type = rule.get('type', 'regex')
+                err_msg = rule.get('message')
+
+                if rule_type == 'regex':
+                    pattern = rule.get('pattern')
+                    if pattern and isinstance(value, str) and not _re.search(pattern, value):
+                        return False, err_msg or f"{field_label} format is invalid (expected pattern: {pattern})"
+
+                elif rule_type == 'min_length':
+                    min_len = int(rule.get('value', rule.get('min', 0)))
+                    if isinstance(value, str) and len(value) < min_len:
+                        return False, err_msg or f"{field_label} must be at least {min_len} characters"
+
+                elif rule_type == 'max_length':
+                    max_len = int(rule.get('value', rule.get('max', 0)))
+                    if isinstance(value, str) and len(value) > max_len:
+                        return False, err_msg or f"{field_label} must be at most {max_len} characters"
+
+                elif rule_type == 'min_value':
+                    min_val = rule.get('value', rule.get('min'))
+                    if min_val is not None:
+                        try:
+                            if float(value) < float(min_val):
+                                return False, err_msg or f"{field_label} must be at least {min_val}"
+                        except (TypeError, ValueError):
+                            pass
+
+                elif rule_type == 'max_value':
+                    max_val = rule.get('value', rule.get('max'))
+                    if max_val is not None:
+                        try:
+                            if float(value) > float(max_val):
+                                return False, err_msg or f"{field_label} must be at most {max_val}"
+                        except (TypeError, ValueError):
+                            pass
 
         return True, None
 

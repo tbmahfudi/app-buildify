@@ -886,6 +886,97 @@ def reset_password_confirm(
     return {"message": "Password has been reset successfully. You can now log in with your new password."}
 
 
+
+@router.get("/me/sessions")
+def list_my_sessions(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    request: Request = None,
+):
+    """List current user's active sessions. Story 1.2.3"""
+    from app.core.session_manager import SessionManager
+    mgr = SessionManager(db)
+    sessions = mgr.get_active_sessions(current_user)
+    current_jti = None
+    try:
+        token = request.headers.get("Authorization", "").replace("Bearer ", "")
+        if token:
+            import jwt as pyjwt
+            payload = pyjwt.decode(token, options={"verify_signature": False})
+            current_jti = payload.get("jti")
+    except Exception:
+        pass
+    return {
+        "items": [
+            {
+                "id": str(s.jti),
+                "jti": str(s.jti),
+                "device_hint": getattr(s, "device_hint", None) or getattr(s, "user_agent", None),
+                "ip_address": getattr(s, "ip_address", None),
+                "last_seen": s.last_activity.isoformat() if s.last_activity else None,
+                "created_at": s.created_at.isoformat() if hasattr(s, "created_at") and s.created_at else None,
+                "is_current": str(s.jti) == current_jti,
+            }
+            for s in sessions
+        ],
+        "total": len(sessions),
+    }
+
+
+@router.delete("/me/sessions/{session_jti}")
+def terminate_session(
+    session_jti: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    http_request: Request = None,
+):
+    """Terminate a specific session. Story 1.2.3"""
+    from app.core.session_manager import SessionManager
+    from app.core.audit import create_audit_log
+    mgr = SessionManager(db)
+    from app.models.user_session import UserSession
+    session = db.query(UserSession).filter(
+        UserSession.jti == session_jti,
+        UserSession.user_id == str(current_user.id),
+    ).first()
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    success = mgr.revoke_session(session_jti, reason="user_terminated")
+    if not success:
+        raise HTTPException(status_code=400, detail="Session could not be revoked")
+    create_audit_log(db=db, action="session_terminated", user=current_user,
+                     entity_type="session", entity_id=session_jti,
+                     request=http_request, status="success")
+    return {"message": "Session terminated"}
+
+
+@router.delete("/me/sessions")
+def terminate_all_sessions(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    http_request: Request = None,
+):
+    """Terminate all sessions except current. Story 1.2.3"""
+    from app.core.session_manager import SessionManager
+    from app.core.audit import create_audit_log
+    current_jti = None
+    try:
+        token = http_request.headers.get("Authorization", "").replace("Bearer ", "") if http_request else ""
+        if token:
+            import jwt as pyjwt
+            payload = pyjwt.decode(token, options={"verify_signature": False})
+            current_jti = payload.get("jti")
+    except Exception:
+        pass
+    mgr = SessionManager(db)
+    count = mgr.revoke_all_user_sessions(current_user, except_jti=current_jti)
+    create_audit_log(db=db, action="sessions_terminated_all", user=current_user,
+                     entity_type="user", entity_id=str(current_user.id),
+                     context_info={"count": count},
+                     request=http_request, status="success")
+    return {"message": f"Terminated {count} sessions", "count": count}
+
+
 @router.post("/logout")
 def logout(
     request: Request,
@@ -923,6 +1014,18 @@ def logout(
 
     db.add(blacklist_entry)
     db.commit()
+
+    # Mirror revocation into Redis for fast lookup (non-fatal)
+    try:
+        import os as _os, redis as _redis
+        _redis_url = _os.environ.get("REDIS_URL", "")
+        if _redis_url:
+            _ttl = max(0, int(payload.get("exp", 0)) - int(__import__("time").time()))
+            if _ttl > 0:
+                _r = _redis.from_url(_redis_url, socket_timeout=1)
+                _r.setex(f"blacklist:{jti}", _ttl, "1")
+    except Exception:
+        pass
 
     # Audit successful logout
     create_audit_log(

@@ -324,5 +324,25 @@ class ModuleLoader:
 
         return True, None
 
+
+    def validate_manifest(self, manifest: dict):
+        """Validate a manifest dict against manifest.schema.json.
+        Returns (True, None) on success; (False, error_string) on failure.
+        """
+        try:
+            import json as _json, jsonschema
+            from pathlib import Path as _Path
+            schema_file = _Path(__file__).parent / "manifest.schema.json"
+            schema = _json.load(open(schema_file))
+            jsonschema.validate(instance=manifest, schema=schema)
+            return True, None
+        except ImportError:
+            logger.warning("jsonschema not installed -- manifest validation skipped")
+            return True, None
+        except jsonschema.ValidationError as exc:
+            return False, exc.message
+        except Exception as exc:
+            return False, str(exc)
+
     def __repr__(self):
         return f"<ModuleLoader(path={self.modules_path}, loaded={len(self.loaded_modules)})>"

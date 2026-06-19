@@ -135,6 +135,8 @@ class MigrationGenerator:
             reserved_col_names |= {'created_at', 'created_by', 'updated_at', 'updated_by'}
         if entity.supports_soft_delete:
             reserved_col_names |= {'is_deleted', 'deleted_at', 'deleted_by'}
+        if entity.is_versioned:
+            reserved_col_names |= {'_version_id', '_changed_by', '_changed_at'}
 
         # Add user-defined fields
         for field in fields:
@@ -165,6 +167,24 @@ class MigrationGenerator:
         up_sql_parts.append(");")
 
         up_sql = "\n".join(up_sql_parts)
+
+        # Generate shadow versions table if entity is versioned (Story 5.1.5)
+        if entity.is_versioned:
+            versions_table = f"{table_name}_versions"
+            versions_sql = f"""
+CREATE TABLE IF NOT EXISTS {versions_table} (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    record_id UUID NOT NULL,
+    record_data JSONB NOT NULL,
+    changed_fields JSONB,
+    changed_by UUID,
+    changed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_{versions_table}_record_id ON {versions_table}(record_id);
+CREATE INDEX IF NOT EXISTS idx_{versions_table}_changed_at ON {versions_table}(changed_at DESC);
+"""
+            versions_down_sql = f"DROP TABLE IF EXISTS {versions_table};"
+            up_sql = up_sql + "\n" + versions_sql.strip()
 
         # Add indexes
         index_sql = []

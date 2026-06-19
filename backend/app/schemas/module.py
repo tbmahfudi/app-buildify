@@ -203,3 +203,61 @@ class ModuleHeartbeatResponse(BaseModel):
     success: bool
     message: str
     last_seen: datetime
+
+
+# ── Epic-23 additions ─────────────────────────────────────────────────────────
+
+class ModuleErrorResponse(BaseModel):
+    """Structured error body for /api/v1/modules endpoints (T-23.003)."""
+    code: str
+    message: str
+    detail: Optional[Any] = None
+
+
+class ActivationPreviewPermission(BaseModel):
+    name: str
+    description: Optional[str] = None
+    resource: Optional[str] = None
+    action: Optional[str] = None
+
+
+class ActivationPreviewMenuItem(BaseModel):
+    label: str
+    route: Optional[str] = None
+    icon: Optional[str] = None
+
+
+class ActivationPreviewDependency(BaseModel):
+    name: str
+    display_name: Optional[str] = None
+    status: str  # "active" | "inactive" | "not_installed"
+    required_version: Optional[str] = None
+
+
+class ActivationPreviewResponse(BaseModel):
+    """Response for GET /modules/{name}/activation-preview (T-23.002)."""
+    module_name: str
+    display_name: str
+    permissions: List[ActivationPreviewPermission]
+    menu_items: List[ActivationPreviewMenuItem]
+    dependencies: List[ActivationPreviewDependency]
+
+
+class ModuleListItemV2(BaseModel):
+    """Module list item for GET /api/v1/modules (includes activation_status)."""
+    name: str
+    display_name: str
+    version: str
+    description: Optional[str] = None
+    category: Optional[str] = None
+    is_core: bool
+    install_status: str = "ready"
+    activation_status: str  # "active" | "inactive"
+
+    class Config:
+        from_attributes = True
+
+
+class ModulesListResponse(BaseModel):
+    modules: List[ModuleListItemV2]
+    total: int
