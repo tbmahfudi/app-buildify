@@ -1454,3 +1454,7 @@ All 5 constituent stories `[DONE]` per their canonical AC; smoke test passes; on
 | 24.5.1 | Job execution log viewer | [DONE] |
 | 24.6.1 | Page version history sidebar | [DONE] |
 | 24.7.1 | Remove dev-tool screens from production nav | [OPEN] |
+| B3-P2.1 | Workflow simulator panel | [DONE] |
+| B3-P2.2 | Permission matrix table | [DONE] |
+| B3-P2.3 | Dashboard share + snapshot buttons | [DONE] |
+| B3-P2.4 | User effective permissions panel | [DONE] |

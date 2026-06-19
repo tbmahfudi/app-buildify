@@ -1,3 +1,5 @@
+import { initPermissionMatrix } from './permission-matrix.js';
+import { initUserEffectivePermissions } from './user-effective-permissions.js';
 /**
  * RBAC Page Route Handler
  * Initializes the RBAC management interface when the rbac route is loaded
@@ -22,3 +24,6 @@ document.addEventListener('route:loaded', async (event) => {
     }
   }
 });
+
+// Initialize RBAC enhancements (Story B3-P2)
+document.addEventListener('route:loaded', (e) => { if (e.detail.route === 'rbac') { setTimeout(initPermissionMatrix, 400); setTimeout(initUserEffectivePermissions, 500); } });

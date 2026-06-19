@@ -1,3 +1,4 @@
+import { initDashboardShareSnapshot } from './dashboard-share-snapshot.js';
 /**
  * Dashboard Service - Singleton service for dashboard operations
  *
@@ -376,3 +377,6 @@ class DashboardService {
 
 // Create singleton instance
 export const dashboardService = new DashboardService();
+
+// Initialize dashboard share/snapshot (Story B3-P2)
+initDashboardShareSnapshot();
