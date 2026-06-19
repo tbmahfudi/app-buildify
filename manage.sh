@@ -763,6 +763,28 @@ case $COMMAND in
             *) echo "Unknown module subcommand: $SUBCOMMAND"; echo "  pack  <dir> [--out <dir>]  install <pkg>  uninstall <name>"; exit 1 ;;
         esac
         ;;
+    tenant)
+        SUBCOMMAND="${2:-}"
+        shift 2 || true
+        case "$SUBCOMMAND" in
+            deactivate)
+                TENANT_ID="${1:-}"
+                if [ -z "$TENANT_ID" ]; then
+                    echo "Usage: manage.sh tenant deactivate <tenant_id>"
+                    exit 1
+                fi
+                echo "==> Deactivating tenant: $TENANT_ID"
+                docker exec app_buildify_backend python3 /app/scripts/cleanup_tenant_module_dbs.py "$TENANT_ID" || \
+                    python3 /home/mahfudi/app-buildify/scripts/cleanup_tenant_module_dbs.py "$TENANT_ID"
+                echo "Tenant $TENANT_ID deactivated."
+                ;;
+            *)
+                echo "Unknown tenant subcommand: $SUBCOMMAND"
+                echo "  deactivate <tenant_id>"
+                exit 1
+                ;;
+        esac
+        ;;
     check-tenant-scope)
         echo "==> Checking services/ for unguarded tenant_id literals..."
         if grep -rn "\.tenant_id ==" /home/mahfudi/app-buildify/backend/app/services/ 2>/dev/null | grep -v "apply_tenant_scope\|tenant_scope"; then
