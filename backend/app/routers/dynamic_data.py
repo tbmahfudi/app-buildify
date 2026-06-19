@@ -951,11 +951,67 @@ async def get_entity_metadata(
         else:
             computed_table_config = {"columns": table_config_cols}
 
+        # Story 5.3.2 — field-based relationships (forward + reverse)
+        REL_TYPES = {'relationship', 'lookup'}
+        field_relationships = []
+
+        # Forward relationships: fields on this entity that reference another entity
+        for f in fields:
+            if not isinstance(f, dict):
+                continue
+            ft = f.get('field_type', '')
+            target = f.get('reference_entity_name') or f.get('reference_table_name')
+            if ft in REL_TYPES and target:
+                field_relationships.append({
+                    'name': f['name'],
+                    'label': f.get('label') or f['name'],
+                    'target_entity': target,
+                    'type': 'forward',
+                })
+
+        # Reverse relationships: fields on OTHER entities that reference this entity
+        try:
+            from app.models.data_model import FieldDefinition as _FD, EntityDefinition as _EDef
+            if entity_def:
+                rev_rows = (
+                    db.query(_FD, _EDef)
+                    .join(_EDef, _FD.entity_id == _EDef.id)
+                    .filter(
+                        _FD.reference_entity_id == entity_def.id,
+                        _FD.field_type.in_(list(REL_TYPES)),
+                    )
+                    .all()
+                )
+                for rev_field, src_entity in rev_rows:
+                    field_relationships.append({
+                        'name': f'{src_entity.name}_set',
+                        'label': f'{src_entity.label or src_entity.name} (reverse)',
+                        'target_entity': src_entity.name,
+                        'field_name': rev_field.name,
+                        'type': 'reverse',
+                    })
+        except Exception as _rev_exc:
+            logger.warning(f"Could not compute reverse relationships for {entity_name}: {_rev_exc}")
+
+        # Story 5.3.2 — aggregation_hints
+        NUMERIC_HINT_TYPES = {'number', 'decimal', 'currency', 'integer'}
+        aggregation_hints = [
+            {
+                'field': f['name'],
+                'label': f.get('label', f['name']),
+                'aggregatable': True,
+                'aggregate_functions': ['sum', 'avg', 'min', 'max', 'count'],
+            }
+            for f in fields
+            if isinstance(f, dict) and f.get('field_type', '') in NUMERIC_HINT_TYPES
+        ]
+
         return {
             "entity_name": entity_name,
             "display_name": entity_def.label if entity_def else entity_name,
             "fields": fields,
-            "relationships": relationships,
+            "relationships": field_relationships,
+            "aggregation_hints": aggregation_hints,
             "table_config": computed_table_config,
         }
     except ValueError as e:
