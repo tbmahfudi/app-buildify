@@ -11,6 +11,23 @@ from .db import SessionLocal
 
 security = HTTPBearer()
 
+import os as _os
+
+def _is_token_revoked_redis(jti: str) -> bool:
+    """Check token blacklist in Redis. Returns False if Redis unavailable."""
+    try:
+        import redis as _redis
+        _url = _os.environ.get("REDIS_URL", "")
+        if not _url:
+            return False
+        _r = _redis.from_url(_url, socket_timeout=0.1, socket_connect_timeout=0.1)
+        return bool(_r.get(f"blacklist:{jti}"))
+    except Exception:
+        return False
+
+
+
+
 def get_db():
     db = SessionLocal()
     try:
@@ -36,11 +53,13 @@ def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    # Check if token is blacklisted (revoked)
+    # Check if token is blacklisted (revoked): Redis first, DB fallback
     jti = payload.get("jti")
     if jti:
-        blacklisted = db.query(TokenBlacklist).filter(TokenBlacklist.jti == jti).first()
-        if blacklisted:
+        revoked = _is_token_revoked_redis(jti)
+        if not revoked:
+            revoked = bool(db.query(TokenBlacklist).filter(TokenBlacklist.jti == jti).first())
+        if revoked:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Token has been revoked",
@@ -214,3 +233,31 @@ def has_role(role_code: str):
             )
         return current_user
     return role_checker
+
+
+def tenant_scoped_session(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Session:
+    """
+    FastAPI dependency — yields a SQLAlchemy session pre-bound to the current user's
+    tenant_id via TenantScopeListener.  Superusers get a ``__superuser__`` marker so
+    the listener skips filtering.
+
+    Story 22.3.2
+    """
+    from app.core.tenant_listener import set_tenant_scope, clear_tenant_scope
+
+    if current_user.is_superuser:
+        set_tenant_scope(db, '__superuser__')
+    elif current_user.tenant_id:
+        set_tenant_scope(db, str(current_user.tenant_id))
+    else:
+        from app.core.scope import TenantScopeMissingError
+        raise TenantScopeMissingError("No tenant_id on authenticated user")
+
+    try:
+        yield db
+    finally:
+        clear_tenant_scope(db)
+
