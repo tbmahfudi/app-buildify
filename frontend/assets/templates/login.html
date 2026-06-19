@@ -431,6 +431,7 @@
 
   <script type="module">
     import { login, requestPasswordReset, confirmPasswordReset } from '../js/api.js';
+    import PasswordStrengthIndicator from '../js/password-strength-indicator.js';
 
     const form = document.getElementById('login-form');
     const errorDiv = document.getElementById('login-error');
@@ -517,6 +518,8 @@
     const requestView  = document.getElementById('reset-request-view');
     const confirmView  = document.getElementById('reset-confirm-view');
 
+    let _psi = null;
+
     function showView(hash) {
       const isRequest = hash === 'reset-password';
       const isConfirm = hash === 'reset-password-confirm';
@@ -527,6 +530,15 @@
         const token = new URLSearchParams(window.location.search).get('token');
         document.getElementById('reset-no-token').classList.toggle('hidden', !!token);
         document.getElementById('reset-confirm-form').classList.toggle('hidden', !token);
+        if (token && !_psi) {
+          _psi = new PasswordStrengthIndicator(
+            document.getElementById('new-password'),
+            document.getElementById('reset-confirm-btn')
+          );
+        }
+      } else {
+        _psi?.destroy();
+        _psi = null;
       }
     }
 

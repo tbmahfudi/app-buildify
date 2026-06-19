@@ -976,7 +976,7 @@
 
 ### Feature 14.2 — Email Delivery `[OPEN]`
 
-#### Story 14.2.1 — SMTP Email Delivery Adapter `[OPEN]`
+#### Story 14.2.1 — SMTP Email Delivery Adapter `[DONE]`
 *As a tenant administrator, I want email notifications actually sent, so that users receive password reset links, lockout alerts, and workflow notifications.*
 - `NotificationConfig` SMTP settings (`smtp_host`, `smtp_port`, `smtp_user`, `smtp_password`, `email_from`) used by the delivery worker
 - Delivery worker implements actual SMTP send using `aiosmtplib`
@@ -1395,7 +1395,7 @@
 | # | Item | Canonical story | Status | Why this position |
 |---|------|-----------------|--------|--------------------|
 | 21.1 | Layout Component Suite | [Story 15.1.1](epics/epic-15-flex-component-library.md) | `[DONE]` | Unblocks all UI work — every other Frontend section depends on these components |
-| 21.2 | SMTP Email Delivery Adapter | [Story 14.2.1](epics/epic-14-notification-system.md) | `[OPEN]` | Pure backend, parallelizable with 21.1; closes user-journey step 8 (password-reset deadletter) |
+| 21.2 | SMTP Email Delivery Adapter | [Story 14.2.1](epics/epic-14-notification-system.md) | `[DONE]` | Pure backend, parallelizable with 21.1; closes user-journey step 8 (password-reset deadletter) |
 | 21.3 | Role CRUD + Wildcard Permissions | [Story 4.1.1](epics/epic-04-rbac-permissions.md) + [Story 4.2.1](epics/epic-04-rbac-permissions.md) | `[IN-PROGRESS]` | Needs 21.1 (layout components for Roles page); shipped together to avoid half-feature |
 | 21.4 | Per-Entity Permission Enforcement | [Story 4.2.4](epics/epic-04-rbac-permissions.md) | `[OPEN]` | Needs 21.3 (role list) and 21.1 (matrix layout) — sprint-closer |
 
@@ -1447,8 +1447,8 @@ All 5 constituent stories `[DONE]` per their canonical AC; smoke test passes; on
 | 24.1.1 | Forgot-password UI flow | [DONE] |
 | 24.1.2 | Notification settings honesty banner | [DONE] |
 | 24.1.3 | Duplicate report-designer route cleanup | [DONE] |
-| 24.2.1 | Live password-strength feedback | [OPEN] |
-| 24.3.1 | Publish button with migration diff preview | [OPEN] |
+| 24.2.1 | Live password-strength feedback | [DONE] |
+| 24.3.1 | Publish button with migration diff preview | [DONE] |
 | 24.4.1 | Automation rule test panel | [OPEN] |
 | 24.4.2 | Automation execution history | [OPEN] |
 | 24.5.1 | Job execution log viewer | [OPEN] |
