@@ -8,18 +8,23 @@ downstream: []
 status: approved
 created: 2026-06-20
 updated: 2026-06-20
-verdict: not-clear-to-ship
+re-reviewed: 2026-06-20
+verdict: clear-to-ship
 findings_count:
   critical: 0
-  high: 2
-  medium: 2
+  high: 0
+  medium: 1
   low: 2
   informational: 3
 ---
 
 # Security Review — Epic 22 Tenant Isolation Hardening
 
-> **Verdict: NOT CLEAR TO SHIP.** Two high-severity findings must be resolved before release: (H-1) the `TenantScopeListener` only guards SELECT statements, leaving ORM UPDATE and DELETE paths unscoped; (H-2) `connection_url` (full DB DSN including credentials) is stored plaintext in the `tenant_module_databases` table with no access controls documented. Two medium-severity findings are documented for prompt follow-up. This review is re-entrant — address H-1 and H-2, then re-submit for a targeted re-review.
+> **Verdict: CLEAR TO SHIP** *(re-reviewed 2026-06-20)*. Both HIGH findings resolved:
+> - **H-1 resolved** — `is_select` guard removed from `TenantScopeListener`; listener now fires on SELECT, UPDATE, and DELETE.
+> - **H-2 resolved** — `connection_url` column renamed to `connection_secret_ref`; contract now requires a secrets-manager reference, not a raw DSN.
+> - **M-2 resolved** — `check-tenant-scope` gate extended to cover `routers/` in addition to `services/`; all raw literals annotated and gate passes clean.
+> One medium finding (M-1: `text()` raw SQL bypass not covered by listener) remains as a documented residual risk with mitigation in `TENANT_ISOLATION.md`.
 
 ---
 
