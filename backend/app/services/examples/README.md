@@ -49,6 +49,7 @@ The **Module Service Registry** enables secure, audited cross-module communicati
 
 from typing import Optional, List
 from sqlalchemy.orm import Session
+from app.core.scope import apply_tenant_scope
 
 class EmployeeService:
     """Service for employee operations"""
@@ -65,9 +66,10 @@ class EmployeeService:
             raise PermissionError("No permission to read employee data")
 
         # 2. Query with tenant isolation
-        employee = self.db.query(Employee).filter(
-            Employee.id == employee_id,
-            Employee.tenant_id == self.current_user.tenant_id
+        employee = apply_tenant_scope(
+            self.db.query(Employee), Employee, self.current_user
+        ).filter(
+            Employee.id == employee_id
         ).first()
 
         if not employee:
