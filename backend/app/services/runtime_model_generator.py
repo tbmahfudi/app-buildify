@@ -14,6 +14,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from app.models.data_model import EntityDefinition, FieldDefinition, RelationshipDefinition
 from app.utils.field_type_mapper import FieldTypeMapper
 from app.core.model_cache import get_model_cache, ModelCache
+from app.core.scope import apply_tenant_scope_by_id
 import logging
 
 logger = logging.getLogger(__name__)
@@ -158,7 +159,7 @@ class RuntimeModelGenerator:
         if tenant_id:
             query = query.filter(
                 or_(
-                    EntityDefinition.tenant_id == tenant_id,
+                    EntityDefinition.tenant_id == tenant_id,  # tenant_scope
                     EntityDefinition.tenant_id.is_(None)
                 )
             )
