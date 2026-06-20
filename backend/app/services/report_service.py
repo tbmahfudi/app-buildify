@@ -15,6 +15,7 @@ from app.models.report import (
     ReportCache,
     ExportFormat
 )
+from app.core.scope import apply_tenant_scope_by_id
 from app.schemas.report import (
     ReportDefinitionCreate,
     ReportDefinitionUpdate,
@@ -126,9 +127,10 @@ class ReportService:
         user_id: Optional[int] = None
     ) -> Optional[ReportDefinition]:
         """Get a report definition by ID."""
-        query = db.query(ReportDefinition).filter(
+        query = apply_tenant_scope_by_id(
+            db.query(ReportDefinition), ReportDefinition, tenant_id
+        ).filter(
             ReportDefinition.id == report_id,
-            ReportDefinition.tenant_id == tenant_id,
             ReportDefinition.is_active == True
         )
 
@@ -152,8 +154,9 @@ class ReportService:
         limit: int = 100
     ) -> List[ReportDefinition]:
         """List report definitions."""
-        query = db.query(ReportDefinition).filter(
-            ReportDefinition.tenant_id == tenant_id,
+        query = apply_tenant_scope_by_id(
+            db.query(ReportDefinition), ReportDefinition, tenant_id
+        ).filter(
             ReportDefinition.is_active == True
         )
 
@@ -181,9 +184,10 @@ class ReportService:
         report_data: ReportDefinitionUpdate
     ) -> Optional[ReportDefinition]:
         """Update a report definition."""
-        db_report = db.query(ReportDefinition).filter(
-            ReportDefinition.id == report_id,
-            ReportDefinition.tenant_id == tenant_id
+        db_report = apply_tenant_scope_by_id(
+            db.query(ReportDefinition), ReportDefinition, tenant_id
+        ).filter(
+            ReportDefinition.id == report_id
         ).first()
 
         if not db_report:
@@ -208,9 +212,10 @@ class ReportService:
         report_id
     ) -> bool:
         """Soft delete a report definition."""
-        db_report = db.query(ReportDefinition).filter(
-            ReportDefinition.id == report_id,
-            ReportDefinition.tenant_id == tenant_id
+        db_report = apply_tenant_scope_by_id(
+            db.query(ReportDefinition), ReportDefinition, tenant_id
+        ).filter(
+            ReportDefinition.id == report_id
         ).first()
 
         if not db_report:
@@ -509,8 +514,9 @@ class ReportService:
         """Get cached report data if available and not expired."""
         cache_key = ReportService._generate_cache_key(report_id, parameters)
 
-        cache_entry = db.query(ReportCache).filter(
-            ReportCache.tenant_id == tenant_id,
+        cache_entry = apply_tenant_scope_by_id(
+            db.query(ReportCache), ReportCache, tenant_id
+        ).filter(
             ReportCache.report_definition_id == report_id,
             ReportCache.cache_key == cache_key,
             ReportCache.expires_at > datetime.utcnow()
