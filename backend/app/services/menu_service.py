@@ -16,6 +16,7 @@ from app.models.menu_item import MenuItem
 from app.models.user import User
 from app.models.nocode_module import ModuleActivation as TenantModule
 from app.models.builder_page import BuilderPage
+from app.core.scope import apply_tenant_scope_by_id
 
 
 class MenuService:
@@ -92,8 +93,8 @@ class MenuService:
             MenuItem.is_active == True,
             MenuItem.is_visible == True,
             or_(
-                MenuItem.tenant_id == None,  # System menus
-                MenuItem.tenant_id == user.tenant_id  # Tenant menus
+                MenuItem.tenant_id == None,  # System menus  # tenant_scope
+                MenuItem.tenant_id == user.tenant_id  # Tenant menus  # tenant_scope
             )
         )
 
@@ -162,8 +163,9 @@ class MenuService:
         logger = logging.getLogger(__name__)
 
         # Get enabled modules for tenant
-        tenant_modules = db.query(TenantModule).filter(
-            TenantModule.tenant_id == user.tenant_id,
+        tenant_modules = apply_tenant_scope_by_id(
+            db.query(TenantModule), TenantModule, user.tenant_id
+        ).filter(
             TenantModule.is_enabled == True
         ).all()
 
@@ -285,8 +287,9 @@ class MenuService:
         # Get builder pages with show_in_menu=True for this tenant.
         # BuilderPage.tenant_id is String(36) (VARCHAR), not GUID, so cast to str
         # to avoid "operator does not exist: character varying = uuid" in Postgres.
-        builder_pages = db.query(BuilderPage).filter(
-            BuilderPage.tenant_id == str(user.tenant_id),
+        builder_pages = apply_tenant_scope_by_id(
+            db.query(BuilderPage), BuilderPage, str(user.tenant_id)
+        ).filter(
             BuilderPage.show_in_menu == True,
             BuilderPage.published == True  # Only show published pages
         ).order_by(BuilderPage.menu_order, BuilderPage.name).all()
@@ -474,16 +477,16 @@ class MenuService:
             # Filter by tenant
             query = query.filter(
                 or_(
-                    MenuItem.tenant_id == user.tenant_id,
-                    MenuItem.tenant_id == None  # System menus
+                    MenuItem.tenant_id == user.tenant_id,  # tenant_scope
+                    MenuItem.tenant_id == None  # System menus  # tenant_scope
                 )
             )
         elif tenant_id:
             # Superuser with specific tenant filter
             query = query.filter(
                 or_(
-                    MenuItem.tenant_id == tenant_id,
-                    MenuItem.tenant_id == None
+                    MenuItem.tenant_id == tenant_id,  # tenant_scope
+                    MenuItem.tenant_id == None  # tenant_scope
                 )
             )
 
@@ -661,8 +664,8 @@ class MenuService:
         parent = db.query(MenuItem).filter(
             MenuItem.code == 'nocode_entities',
             or_(
-                MenuItem.tenant_id == tenant_id,
-                MenuItem.tenant_id == None  # System menu
+                MenuItem.tenant_id == tenant_id,  # tenant_scope
+                MenuItem.tenant_id == None  # System menu  # tenant_scope
             )
         ).first()
 
