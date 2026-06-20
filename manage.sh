@@ -833,7 +833,7 @@ pack) module_pack "$@" ;;
         ;;
     check-tenant-scope)
         echo "==> Checking services/ for unguarded tenant_id literals..."
-        if grep -rn "\.tenant_id ==" /home/mahfudi/app-buildify/backend/app/services/ 2>/dev/null | grep -v "apply_tenant_scope\|tenant_scope"; then
+        if grep -rn "\.tenant_id ==" /home/mahfudi/app-buildify/backend/app/services/ /home/mahfudi/app-buildify/backend/app/routers/ 2>/dev/null | grep -v "apply_tenant_scope\|tenant_scope\|== None"; then
             echo "ERROR: Found raw tenant_id filter(s) — use apply_tenant_scope() instead"
             exit 1
         fi
@@ -841,7 +841,7 @@ pack) module_pack "$@" ;;
         ;;
     check-tenant-scope)
         echo "==> Checking services/ for unguarded tenant_id literals..."
-        if grep -rn "\.tenant_id ==" /home/mahfudi/app-buildify/backend/app/services/ 2>/dev/null | grep -v "apply_tenant_scope\|tenant_scope"; then
+        if grep -rn "\.tenant_id ==" /home/mahfudi/app-buildify/backend/app/services/ /home/mahfudi/app-buildify/backend/app/routers/ 2>/dev/null | grep -v "apply_tenant_scope\|tenant_scope\|== None"; then
             echo "ERROR: Found raw tenant_id filter(s) — use apply_tenant_scope() instead"
             exit 1
         fi
@@ -849,7 +849,7 @@ pack) module_pack "$@" ;;
         ;;
     check-tenant-scope)
         echo "==> Checking services/ for unguarded tenant_id literals..."
-        if grep -rn "\.tenant_id ==" /home/mahfudi/app-buildify/backend/app/services/ 2>/dev/null | grep -v "apply_tenant_scope\|tenant_scope"; then
+        if grep -rn "\.tenant_id ==" /home/mahfudi/app-buildify/backend/app/services/ /home/mahfudi/app-buildify/backend/app/routers/ 2>/dev/null | grep -v "apply_tenant_scope\|tenant_scope\|== None"; then
             echo "ERROR: Found raw tenant_id filter(s) — use apply_tenant_scope() instead"
             exit 1
         fi

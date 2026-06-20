@@ -63,8 +63,9 @@ class TenantScopeListener:
         Superuser bypass: if the session carries ``_tenant_scope = '__superuser__'``
         the filter is skipped entirely.
         """
-        if not orm_execute_state.is_select:
-            return  # only guard SELECTs for now
+        # Guard both SELECT and mutation statements (UPDATE/DELETE).
+        # is_select=False means an ORM UPDATE/DELETE — we still need the tenant filter
+        # so cross-tenant mutations are blocked, not just reads.
 
         statement = orm_execute_state.statement
         # Inspect the first mapper entity in the query

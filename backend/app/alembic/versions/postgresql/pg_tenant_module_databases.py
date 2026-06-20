@@ -20,7 +20,9 @@ def upgrade() -> None:
             tenant_id UUID NOT NULL,
             module_id UUID NOT NULL,
             db_name VARCHAR(255) NOT NULL,
-            connection_url TEXT,
+            -- Store a secrets-manager reference, NOT the raw DSN
+            -- Format: "vault:<path>" or "env:<VAR_NAME>" or "arn:aws:secretsmanager:..."
+            connection_secret_ref TEXT,
             status VARCHAR(30) NOT NULL DEFAULT 'provisioning',
             error_message TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
