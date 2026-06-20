@@ -20,6 +20,7 @@ from app.models.lookup import (
     LookupCache,
     CascadingLookupRule,
 )
+from app.core.scope import apply_tenant_scope
 from app.schemas.lookup import (
     LookupConfigurationCreate,
     LookupConfigurationUpdate,
@@ -41,11 +42,12 @@ class LookupService:
     async def create_configuration(self, config_data: LookupConfigurationCreate):
         """Create a new lookup configuration"""
         # Check if configuration name already exists
-        existing = self.db.query(LookupConfiguration).filter(
-            LookupConfiguration.tenant_id == self.tenant_id,
+        existing_q = self.db.query(LookupConfiguration).filter(
             LookupConfiguration.name == config_data.name,
             LookupConfiguration.is_deleted == False
-        ).first()
+        )
+        existing_q = apply_tenant_scope(existing_q, LookupConfiguration, self.current_user)
+        existing = existing_q.first()
 
         if existing:
             raise HTTPException(
@@ -76,18 +78,17 @@ class LookupService:
         from sqlalchemy import or_
 
         # Build tenant filter: include current tenant and optionally platform-level (tenant_id=NULL)
-        if include_platform:
-            tenant_filter = or_(
-                LookupConfiguration.tenant_id == self.tenant_id,
-                LookupConfiguration.tenant_id == None  # Platform-level lookups
-            )
-        else:
-            tenant_filter = LookupConfiguration.tenant_id == self.tenant_id
-
         query = self.db.query(LookupConfiguration).filter(
-            tenant_filter,
             LookupConfiguration.is_deleted == False
         )
+        if include_platform:
+            _tid = self.current_user.tenant_id  # tenant_scope: or_() platform-include
+            query = query.filter(or_(
+                LookupConfiguration.tenant_id == None,  # tenant_scope: platform-level None check
+                LookupConfiguration.tenant_id == _tid  # tenant_scope: or_() branch
+            ))
+        else:
+            query = apply_tenant_scope(query, LookupConfiguration, self.current_user)
 
         if source_type:
             query = query.filter(LookupConfiguration.source_type == source_type)
@@ -101,19 +102,19 @@ class LookupService:
         from sqlalchemy import or_
 
         # Build tenant filter
-        if include_platform:
-            tenant_filter = or_(
-                LookupConfiguration.tenant_id == self.tenant_id,
-                LookupConfiguration.tenant_id == None  # Platform-level lookups
-            )
-        else:
-            tenant_filter = LookupConfiguration.tenant_id == self.tenant_id
-
-        config = self.db.query(LookupConfiguration).filter(
+        cfg_q = self.db.query(LookupConfiguration).filter(
             LookupConfiguration.id == config_id,
-            tenant_filter,
             LookupConfiguration.is_deleted == False
-        ).first()
+        )
+        if include_platform:
+            _tid = self.current_user.tenant_id  # tenant_scope: or_() platform-include
+            cfg_q = cfg_q.filter(or_(
+                LookupConfiguration.tenant_id == None,  # tenant_scope: platform-level None check
+                LookupConfiguration.tenant_id == _tid  # tenant_scope: or_() branch
+            ))
+        else:
+            cfg_q = apply_tenant_scope(cfg_q, LookupConfiguration, self.current_user)
+        config = cfg_q.first()
 
         if not config:
             raise HTTPException(
@@ -221,9 +222,9 @@ class LookupService:
     ):
         """List cascading lookup rules"""
         query = self.db.query(CascadingLookupRule).filter(
-            CascadingLookupRule.tenant_id == self.tenant_id,
             CascadingLookupRule.is_active == True
         )
+        query = apply_tenant_scope(query, CascadingLookupRule, self.current_user)
 
         if parent_lookup_id:
             query = query.filter(CascadingLookupRule.parent_lookup_id == parent_lookup_id)

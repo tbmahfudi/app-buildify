@@ -29,6 +29,7 @@ from app.schemas.dashboard import (
     DashboardShareCreate,
     DashboardSnapshotCreate
 )
+from app.core.scope import apply_tenant_scope_by_id
 from app.services.report_service import ReportService
 from app.schemas.report import ReportExecutionRequest
 
@@ -76,11 +77,12 @@ class DashboardService:
         user_id: Optional[int] = None
     ) -> Optional[Dashboard]:
         """Get dashboard by ID with permission check."""
-        dashboard = db.query(Dashboard).filter(
+        q = db.query(Dashboard).filter(
             Dashboard.id == dashboard_id,
-            Dashboard.tenant_id == tenant_id,
             Dashboard.is_active == True
-        ).first()
+        )
+        q = apply_tenant_scope_by_id(q, Dashboard, tenant_id)
+        dashboard = q.first()
 
         if not dashboard:
             return None
@@ -111,9 +113,9 @@ class DashboardService:
     ) -> List[Dashboard]:
         """List dashboards with filtering."""
         query = db.query(Dashboard).filter(
-            Dashboard.tenant_id == tenant_id,
             Dashboard.is_active == True
         )
+        query = apply_tenant_scope_by_id(query, Dashboard, tenant_id)
 
         if category:
             query = query.filter(Dashboard.category == category)
@@ -142,10 +144,9 @@ class DashboardService:
         dashboard_data: DashboardUpdate
     ) -> Optional[Dashboard]:
         """Update dashboard."""
-        db_dashboard = db.query(Dashboard).filter(
-            Dashboard.id == dashboard_id,
-            Dashboard.tenant_id == tenant_id
-        ).first()
+        q = db.query(Dashboard).filter(Dashboard.id == dashboard_id)
+        q = apply_tenant_scope_by_id(q, Dashboard, tenant_id)
+        db_dashboard = q.first()
 
         if not db_dashboard:
             return None
@@ -177,10 +178,9 @@ class DashboardService:
         dashboard_id: int
     ) -> bool:
         """Soft delete dashboard."""
-        db_dashboard = db.query(Dashboard).filter(
-            Dashboard.id == dashboard_id,
-            Dashboard.tenant_id == tenant_id
-        ).first()
+        q = db.query(Dashboard).filter(Dashboard.id == dashboard_id)
+        q = apply_tenant_scope_by_id(q, Dashboard, tenant_id)
+        db_dashboard = q.first()
 
         if not db_dashboard:
             return False
@@ -297,10 +297,9 @@ class DashboardService:
         page_data: DashboardPageUpdate
     ) -> Optional[DashboardPage]:
         """Update dashboard page."""
-        db_page = db.query(DashboardPage).filter(
-            DashboardPage.id == page_id,
-            DashboardPage.tenant_id == tenant_id
-        ).first()
+        q = db.query(DashboardPage).filter(DashboardPage.id == page_id)
+        q = apply_tenant_scope_by_id(q, DashboardPage, tenant_id)
+        db_page = q.first()
 
         if not db_page:
             return None
@@ -327,10 +326,9 @@ class DashboardService:
         page_id: int
     ) -> bool:
         """Delete dashboard page."""
-        db_page = db.query(DashboardPage).filter(
-            DashboardPage.id == page_id,
-            DashboardPage.tenant_id == tenant_id
-        ).first()
+        q = db.query(DashboardPage).filter(DashboardPage.id == page_id)
+        q = apply_tenant_scope_by_id(q, DashboardPage, tenant_id)
+        db_page = q.first()
 
         if not db_page:
             return False
@@ -375,10 +373,9 @@ class DashboardService:
         widget_data: DashboardWidgetUpdate
     ) -> Optional[DashboardWidget]:
         """Update dashboard widget."""
-        db_widget = db.query(DashboardWidget).filter(
-            DashboardWidget.id == widget_id,
-            DashboardWidget.tenant_id == tenant_id
-        ).first()
+        q = db.query(DashboardWidget).filter(DashboardWidget.id == widget_id)
+        q = apply_tenant_scope_by_id(q, DashboardWidget, tenant_id)
+        db_widget = q.first()
 
         if not db_widget:
             return None
@@ -408,10 +405,9 @@ class DashboardService:
         widget_id: int
     ) -> bool:
         """Delete dashboard widget."""
-        db_widget = db.query(DashboardWidget).filter(
-            DashboardWidget.id == widget_id,
-            DashboardWidget.tenant_id == tenant_id
-        ).first()
+        q = db.query(DashboardWidget).filter(DashboardWidget.id == widget_id)
+        q = apply_tenant_scope_by_id(q, DashboardWidget, tenant_id)
+        db_widget = q.first()
 
         if not db_widget:
             return False
@@ -432,10 +428,9 @@ class DashboardService:
             position = update.get('position')
             order = update.get('order')
 
-            db_widget = db.query(DashboardWidget).filter(
-                DashboardWidget.id == widget_id,
-                DashboardWidget.tenant_id == tenant_id
-            ).first()
+            _wq = db.query(DashboardWidget).filter(DashboardWidget.id == widget_id)
+            _wq = apply_tenant_scope_by_id(_wq, DashboardWidget, tenant_id)
+            db_widget = _wq.first()
 
             if db_widget:
                 if position:
@@ -461,10 +456,9 @@ class DashboardService:
         """
         Get data for a widget - REUSES ReportService for report-based widgets.
         """
-        widget = db.query(DashboardWidget).filter(
-            DashboardWidget.id == widget_id,
-            DashboardWidget.tenant_id == tenant_id
-        ).first()
+        wq = db.query(DashboardWidget).filter(DashboardWidget.id == widget_id)
+        wq = apply_tenant_scope_by_id(wq, DashboardWidget, tenant_id)
+        widget = wq.first()
 
         if not widget:
             raise ValueError("Widget not found")
@@ -622,12 +616,13 @@ class DashboardService:
         """Get cached widget data."""
         cache_key = DashboardService._generate_widget_cache_key(widget_id, parameters)
 
-        cache_entry = db.query(WidgetDataCache).filter(
-            WidgetDataCache.tenant_id == tenant_id,
+        cache_q = db.query(WidgetDataCache).filter(
             WidgetDataCache.widget_id == widget_id,
             WidgetDataCache.cache_key == cache_key,
             WidgetDataCache.expires_at > datetime.utcnow()
-        ).first()
+        )
+        cache_q = apply_tenant_scope_by_id(cache_q, WidgetDataCache, tenant_id)
+        cache_entry = cache_q.first()
 
         if cache_entry:
             cache_entry.hit_count += 1

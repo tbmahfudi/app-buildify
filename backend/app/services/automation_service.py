@@ -18,6 +18,7 @@ from app.models.automation import (
     ActionTemplate,
     WebhookConfig,
 )
+from app.core.scope import apply_tenant_scope
 from app.schemas.automation import (
     AutomationRuleCreate,
     AutomationRuleUpdate,
@@ -40,11 +41,12 @@ class AutomationService:
     async def create_rule(self, rule_data: AutomationRuleCreate):
         """Create a new automation rule"""
         # Check if rule name already exists
-        existing = self.db.query(AutomationRule).filter(
-            AutomationRule.tenant_id == self.tenant_id,
+        existing_q = self.db.query(AutomationRule).filter(
             AutomationRule.name == rule_data.name,
             AutomationRule.is_deleted == False
-        ).first()
+        )
+        existing_q = apply_tenant_scope(existing_q, AutomationRule, self.current_user)
+        existing = existing_q.first()
 
         if existing:
             raise HTTPException(
@@ -77,18 +79,17 @@ class AutomationService:
         from sqlalchemy import or_
 
         # Build tenant filter: include current tenant and optionally platform-level (tenant_id=NULL)
-        if include_platform:
-            tenant_filter = or_(
-                AutomationRule.tenant_id == self.tenant_id,
-                AutomationRule.tenant_id == None  # Platform-level rules
-            )
-        else:
-            tenant_filter = AutomationRule.tenant_id == self.tenant_id
-
         query = self.db.query(AutomationRule).filter(
-            tenant_filter,
             AutomationRule.is_deleted == False
         )
+        if include_platform:
+            _tid = self.current_user.tenant_id  # tenant_scope: or_() platform-include
+            query = query.filter(or_(
+                AutomationRule.tenant_id == None,  # tenant_scope: platform-level None check
+                AutomationRule.tenant_id == _tid  # tenant_scope: or_() branch
+            ))
+        else:
+            query = apply_tenant_scope(query, AutomationRule, self.current_user)
 
         if entity_id:
             query = query.filter(AutomationRule.entity_id == entity_id)
@@ -106,19 +107,19 @@ class AutomationService:
         from sqlalchemy import or_
 
         # Build tenant filter
-        if include_platform:
-            tenant_filter = or_(
-                AutomationRule.tenant_id == self.tenant_id,
-                AutomationRule.tenant_id == None  # Platform-level rules
-            )
-        else:
-            tenant_filter = AutomationRule.tenant_id == self.tenant_id
-
-        rule = self.db.query(AutomationRule).filter(
+        rule_q = self.db.query(AutomationRule).filter(
             AutomationRule.id == rule_id,
-            tenant_filter,
             AutomationRule.is_deleted == False
-        ).first()
+        )
+        if include_platform:
+            _tid = self.current_user.tenant_id  # tenant_scope: or_() platform-include
+            rule_q = rule_q.filter(or_(
+                AutomationRule.tenant_id == None,  # tenant_scope: platform-level None check
+                AutomationRule.tenant_id == _tid  # tenant_scope: or_() branch
+            ))
+        else:
+            rule_q = apply_tenant_scope(rule_q, AutomationRule, self.current_user)
+        rule = rule_q.first()
 
         if not rule:
             raise HTTPException(
@@ -204,9 +205,8 @@ class AutomationService:
         limit: int = 50
     ):
         """List automation executions"""
-        query = self.db.query(AutomationExecution).filter(
-            AutomationExecution.tenant_id == self.tenant_id
-        )
+        query = self.db.query(AutomationExecution)
+        query = apply_tenant_scope(query, AutomationExecution, self.current_user)
 
         if rule_id:
             query = query.filter(AutomationExecution.rule_id == rule_id)
@@ -217,10 +217,11 @@ class AutomationService:
 
     async def get_execution(self, execution_id: UUID):
         """Get automation execution by ID"""
-        execution = self.db.query(AutomationExecution).filter(
-            AutomationExecution.id == execution_id,
-            AutomationExecution.tenant_id == self.tenant_id
-        ).first()
+        exec_q = self.db.query(AutomationExecution).filter(
+            AutomationExecution.id == execution_id
+        )
+        exec_q = apply_tenant_scope(exec_q, AutomationExecution, self.current_user)
+        execution = exec_q.first()
 
         if not execution:
             raise HTTPException(
@@ -307,8 +308,9 @@ class AutomationService:
 
     async def list_action_templates(self):
         """List all available action templates"""
+        _tid = self.current_user.tenant_id  # tenant_scope: or_() system template branch
         return self.db.query(ActionTemplate).filter(
-            (ActionTemplate.tenant_id == self.tenant_id) |
+            (ActionTemplate.tenant_id == _tid) |  # tenant_scope: or_() branch
             (ActionTemplate.is_system == True),
             ActionTemplate.is_deleted == False,
             ActionTemplate.is_active == True
@@ -334,9 +336,9 @@ class AutomationService:
     async def list_webhooks(self, webhook_type: Optional[str] = None):
         """List webhook configurations"""
         query = self.db.query(WebhookConfig).filter(
-            WebhookConfig.tenant_id == self.tenant_id,
             WebhookConfig.is_deleted == False
         )
+        query = apply_tenant_scope(query, WebhookConfig, self.current_user)
 
         if webhook_type:
             query = query.filter(WebhookConfig.webhook_type == webhook_type)
@@ -345,11 +347,12 @@ class AutomationService:
 
     async def get_webhook(self, webhook_id: UUID):
         """Get webhook configuration by ID"""
-        webhook = self.db.query(WebhookConfig).filter(
+        wh_q = self.db.query(WebhookConfig).filter(
             WebhookConfig.id == webhook_id,
-            WebhookConfig.tenant_id == self.tenant_id,
             WebhookConfig.is_deleted == False
-        ).first()
+        )
+        wh_q = apply_tenant_scope(wh_q, WebhookConfig, self.current_user)
+        webhook = wh_q.first()
 
         if not webhook:
             raise HTTPException(

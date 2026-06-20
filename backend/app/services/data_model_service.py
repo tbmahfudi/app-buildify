@@ -19,6 +19,7 @@ from app.models.data_model import (
 )
 from app.models.nocode_module import NocodeModule
 from app.models.base import generate_uuid
+from app.core.scope import apply_tenant_scope
 from app.schemas.data_model import (
     EntityDefinitionCreate,
     EntityDefinitionUpdate,
@@ -56,12 +57,13 @@ class DataModelService:
         # Check if entity name already exists at the target scope
         if is_platform_level:
             # Check platform-level entities only
-            existing_filter = EntityDefinition.tenant_id == None
+            existing_filter = EntityDefinition.tenant_id == None  # tenant_scope: platform-level None check
         else:
             # Check both tenant-level and platform-level (to avoid conflicts)
+            _tid = self.current_user.tenant_id  # tenant_scope: or_() platform-include
             existing_filter = or_(
-                EntityDefinition.tenant_id == self.tenant_id,
-                EntityDefinition.tenant_id == None
+                EntityDefinition.tenant_id == None,  # tenant_scope: platform-level None check
+                EntityDefinition.tenant_id == _tid  # tenant_scope: or_() branch
             )
 
         existing = self.db.query(EntityDefinition).filter(
@@ -245,18 +247,17 @@ class DataModelService:
         from sqlalchemy import or_
 
         # Build tenant filter: include current tenant and optionally platform-level (tenant_id=NULL)
-        if include_platform:
-            tenant_filter = or_(
-                EntityDefinition.tenant_id == self.tenant_id,
-                EntityDefinition.tenant_id == None  # Platform-level entities
-            )
-        else:
-            tenant_filter = EntityDefinition.tenant_id == self.tenant_id
-
         query = self.db.query(EntityDefinition).filter(
-            tenant_filter,
             EntityDefinition.is_deleted == False
         )
+        if include_platform:
+            _tid = self.current_user.tenant_id  # tenant_scope: or_() platform-include
+            query = query.filter(or_(
+                EntityDefinition.tenant_id == None,  # tenant_scope: platform-level None check
+                EntityDefinition.tenant_id == _tid  # tenant_scope: or_() branch
+            ))
+        else:
+            query = apply_tenant_scope(query, EntityDefinition, self.current_user)
 
         if category:
             query = query.filter(EntityDefinition.category == category)
@@ -272,19 +273,19 @@ class DataModelService:
         from sqlalchemy import or_
 
         # Build tenant filter
-        if include_platform:
-            tenant_filter = or_(
-                EntityDefinition.tenant_id == self.tenant_id,
-                EntityDefinition.tenant_id == None  # Platform-level entities
-            )
-        else:
-            tenant_filter = EntityDefinition.tenant_id == self.tenant_id
-
-        entity = self.db.query(EntityDefinition).filter(
+        entity_q = self.db.query(EntityDefinition).filter(
             EntityDefinition.id == entity_id,
-            tenant_filter,
             EntityDefinition.is_deleted == False
-        ).first()
+        )
+        if include_platform:
+            _tid = self.current_user.tenant_id  # tenant_scope: or_() platform-include
+            entity_q = entity_q.filter(or_(
+                EntityDefinition.tenant_id == None,  # tenant_scope: platform-level None check
+                EntityDefinition.tenant_id == _tid  # tenant_scope: or_() branch
+            ))
+        else:
+            entity_q = apply_tenant_scope(entity_q, EntityDefinition, self.current_user)
+        entity = entity_q.first()
 
         if not entity:
             raise HTTPException(
@@ -512,10 +513,11 @@ class DataModelService:
 
         # Check if name already exists in tenant
         from sqlalchemy import or_
+        _tid = self.current_user.tenant_id  # tenant_scope: or_() platform-include
         existing = self.db.query(EntityDefinition).filter(
             or_(
-                EntityDefinition.tenant_id == self.tenant_id,
-                EntityDefinition.tenant_id == None
+                EntityDefinition.tenant_id == None,  # tenant_scope: platform-level None check
+                EntityDefinition.tenant_id == _tid  # tenant_scope: or_() branch
             ),
             EntityDefinition.name == new_name,
             EntityDefinition.is_deleted == False
@@ -629,9 +631,9 @@ class DataModelService:
     async def list_relationships(self, entity_id: Optional[UUID] = None):
         """List relationships"""
         query = self.db.query(RelationshipDefinition).filter(
-            RelationshipDefinition.tenant_id == self.tenant_id,
             RelationshipDefinition.is_deleted == False
         )
+        query = apply_tenant_scope(query, RelationshipDefinition, self.current_user)
 
         if entity_id:
             from sqlalchemy import or_
@@ -646,10 +648,11 @@ class DataModelService:
 
     async def delete_relationship(self, relationship_id: UUID):
         """Delete a relationship"""
-        relationship = self.db.query(RelationshipDefinition).filter(
-            RelationshipDefinition.id == relationship_id,
-            RelationshipDefinition.tenant_id == self.tenant_id
-        ).first()
+        rel_q = self.db.query(RelationshipDefinition).filter(
+            RelationshipDefinition.id == relationship_id
+        )
+        rel_q = apply_tenant_scope(rel_q, RelationshipDefinition, self.current_user)
+        relationship = rel_q.first()
 
         if not relationship:
             raise ValueError("Relationship not found")

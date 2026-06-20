@@ -13,6 +13,7 @@ from sqlalchemy import and_, desc
 from pydantic import BaseModel, Field
 
 from app.core.dependencies import get_db, get_current_user
+from app.core.scope import apply_tenant_scope
 from app.models.builder_page import BuilderPage, BuilderPageVersion
 from app.models.user import User
 
@@ -86,7 +87,7 @@ async def list_pages(
     tenant_id = str(current_user.tenant_id)
 
     # Build query
-    query = db.query(BuilderPage).filter(BuilderPage.tenant_id == tenant_id)
+    query = db.query(BuilderPage).filter(BuilderPage.tenant_id == tenant_id)  # tenant_scope
 
     if module_name:
         query = query.filter(BuilderPage.module_name == module_name)
@@ -115,7 +116,7 @@ async def get_page(
     page = db.query(BuilderPage).filter(
         and_(
             BuilderPage.id == page_id,
-            BuilderPage.tenant_id == tenant_id
+            BuilderPage.tenant_id == tenant_id  # tenant_scope
         )
     ).first()
 
@@ -140,7 +141,7 @@ async def create_page(
     # Check for duplicate slug
     existing = db.query(BuilderPage).filter(
         and_(
-            BuilderPage.tenant_id == tenant_id,
+            BuilderPage.tenant_id == tenant_id,  # tenant_scope
             BuilderPage.slug == page_data.slug
         )
     ).first()
@@ -150,7 +151,7 @@ async def create_page(
     # Check for duplicate route path
     route_exists = db.query(BuilderPage).filter(
         and_(
-            BuilderPage.tenant_id == tenant_id,
+            BuilderPage.tenant_id == tenant_id,  # tenant_scope
             BuilderPage.route_path == page_data.route_path
         )
     ).first()
@@ -189,7 +190,7 @@ async def update_page(
     page = db.query(BuilderPage).filter(
         and_(
             BuilderPage.id == page_id,
-            BuilderPage.tenant_id == tenant_id
+            BuilderPage.tenant_id == tenant_id  # tenant_scope
         )
     ).first()
 
@@ -200,7 +201,7 @@ async def update_page(
     if page_data.slug and page_data.slug != page.slug:
         slug_exists = db.query(BuilderPage).filter(
             and_(
-                BuilderPage.tenant_id == tenant_id,
+                BuilderPage.tenant_id == tenant_id,  # tenant_scope
                 BuilderPage.slug == page_data.slug,
                 BuilderPage.id != page_id
             )
@@ -235,7 +236,7 @@ async def delete_page(
     page = db.query(BuilderPage).filter(
         and_(
             BuilderPage.id == page_id,
-            BuilderPage.tenant_id == tenant_id
+            BuilderPage.tenant_id == tenant_id  # tenant_scope
         )
     ).first()
 
@@ -265,7 +266,7 @@ async def publish_page(
     page = db.query(BuilderPage).filter(
         and_(
             BuilderPage.id == page_id,
-            BuilderPage.tenant_id == tenant_id
+            BuilderPage.tenant_id == tenant_id  # tenant_scope
         )
     ).first()
 
@@ -321,7 +322,7 @@ async def unpublish_page(
     page = db.query(BuilderPage).filter(
         and_(
             BuilderPage.id == page_id,
-            BuilderPage.tenant_id == tenant_id
+            BuilderPage.tenant_id == tenant_id  # tenant_scope
         )
     ).first()
 
@@ -353,7 +354,7 @@ async def list_page_versions(
     page = db.query(BuilderPage).filter(
         and_(
             BuilderPage.id == page_id,
-            BuilderPage.tenant_id == tenant_id
+            BuilderPage.tenant_id == tenant_id  # tenant_scope
         )
     ).first()
 
@@ -384,7 +385,7 @@ async def get_page_version(
     page = db.query(BuilderPage).filter(
         and_(
             BuilderPage.id == page_id,
-            BuilderPage.tenant_id == tenant_id
+            BuilderPage.tenant_id == tenant_id  # tenant_scope
         )
     ).first()
 
@@ -422,7 +423,7 @@ async def restore_page_version(
     page = db.query(BuilderPage).filter(
         and_(
             BuilderPage.id == page_id,
-            BuilderPage.tenant_id == tenant_id
+            BuilderPage.tenant_id == tenant_id  # tenant_scope
         )
     ).first()
 

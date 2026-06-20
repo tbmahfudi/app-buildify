@@ -20,6 +20,7 @@ from app.models.workflow import (
     WorkflowInstance,
     WorkflowHistory,
 )
+from app.core.scope import apply_tenant_scope
 from app.schemas.workflow import (
     WorkflowDefinitionCreate,
     WorkflowDefinitionUpdate,
@@ -45,11 +46,12 @@ class WorkflowService:
     async def create_workflow(self, workflow_data: WorkflowDefinitionCreate):
         """Create a new workflow definition"""
         # Check if workflow name already exists
-        existing = self.db.query(WorkflowDefinition).filter(
-            WorkflowDefinition.tenant_id == self.tenant_id,
+        existing_q = self.db.query(WorkflowDefinition).filter(
             WorkflowDefinition.name == workflow_data.name,
             WorkflowDefinition.is_deleted == False
-        ).first()
+        )
+        existing_q = apply_tenant_scope(existing_q, WorkflowDefinition, self.current_user)
+        existing = existing_q.first()
 
         if existing:
             raise HTTPException(
@@ -101,18 +103,17 @@ class WorkflowService:
     ):
         """List all workflow definitions (tenant-specific and optionally platform-level)"""
         # Build tenant filter: include current tenant and optionally platform-level (tenant_id=NULL)
-        if include_platform:
-            tenant_filter = or_(
-                WorkflowDefinition.tenant_id == self.tenant_id,
-                WorkflowDefinition.tenant_id == None  # Platform-level workflows
-            )
-        else:
-            tenant_filter = WorkflowDefinition.tenant_id == self.tenant_id
-
         query = self.db.query(WorkflowDefinition).filter(
-            tenant_filter,
             WorkflowDefinition.is_deleted == False
         )
+        if include_platform:
+            _tid = self.current_user.tenant_id  # tenant_scope: or_() platform-include branch
+            query = query.filter(or_(
+                WorkflowDefinition.tenant_id == None,  # tenant_scope: platform-level None check
+                WorkflowDefinition.tenant_id == _tid  # tenant_scope: or_() branch
+            ))
+        else:
+            query = apply_tenant_scope(query, WorkflowDefinition, self.current_user)
 
         if entity_id:
             query = query.filter(WorkflowDefinition.entity_id == entity_id)
@@ -124,19 +125,19 @@ class WorkflowService:
     async def get_workflow(self, workflow_id: UUID, include_platform: bool = True):
         """Get workflow definition by ID (checks tenant-specific and optionally platform-level)"""
         # Build tenant filter
-        if include_platform:
-            tenant_filter = or_(
-                WorkflowDefinition.tenant_id == self.tenant_id,
-                WorkflowDefinition.tenant_id == None  # Platform-level workflows
-            )
-        else:
-            tenant_filter = WorkflowDefinition.tenant_id == self.tenant_id
-
-        workflow = self.db.query(WorkflowDefinition).filter(
+        query = self.db.query(WorkflowDefinition).filter(
             WorkflowDefinition.id == workflow_id,
-            tenant_filter,
             WorkflowDefinition.is_deleted == False
-        ).first()
+        )
+        if include_platform:
+            _tid = self.current_user.tenant_id  # tenant_scope: or_() platform-include branch
+            query = query.filter(or_(
+                WorkflowDefinition.tenant_id == None,  # tenant_scope: platform-level None check
+                WorkflowDefinition.tenant_id == _tid  # tenant_scope: or_() branch
+            ))
+        else:
+            query = apply_tenant_scope(query, WorkflowDefinition, self.current_user)
+        workflow = query.first()
 
         if not workflow:
             raise HTTPException(
@@ -477,10 +478,11 @@ class WorkflowService:
 
     async def get_instance(self, instance_id: UUID):
         """Get workflow instance by ID"""
-        instance = self.db.query(WorkflowInstance).filter(
-            WorkflowInstance.id == instance_id,
-            WorkflowInstance.tenant_id == self.tenant_id
-        ).first()
+        query = self.db.query(WorkflowInstance).filter(
+            WorkflowInstance.id == instance_id
+        )
+        query = apply_tenant_scope(query, WorkflowInstance, self.current_user)
+        instance = query.first()
 
         if not instance:
             raise HTTPException(
@@ -497,9 +499,8 @@ class WorkflowService:
         entity_id: UUID = None
     ):
         """List workflow instances with optional filters"""
-        query = self.db.query(WorkflowInstance).filter(
-            WorkflowInstance.tenant_id == self.tenant_id
-        )
+        query = self.db.query(WorkflowInstance)
+        query = apply_tenant_scope(query, WorkflowInstance, self.current_user)
 
         if workflow_id:
             query = query.filter(WorkflowInstance.workflow_id == workflow_id)
