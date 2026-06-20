@@ -1,0 +1,61 @@
+{
+  "name": "TEMPLATE",
+  "display_name": "TODO: Module Display Name",
+  "version": "1.0.0",
+  "description": "TODO: Describe what this module does",
+  "author": "TODO: Your Name / Team",
+
+  "entry_point": "module.js",
+
+  "routes": [
+    {
+      "path": "#/TEMPLATE/index",
+      "name": "TODO: Page Name",
+      "component": "pages/index.js",
+      "permission": "TEMPLATE:index:read:company",
+      "menu": {
+        "label": "TODO: Menu Label",
+        "icon": "ph-duotone ph-placeholder",
+        "order": 100,
+        "parent": "TEMPLATE"
+      }
+    }
+  ],
+
+  "navigation": {
+    "primary_menu": true,
+    "menu_items": [
+      {
+        "code": "TEMPLATE",
+        "label": "TODO: Nav Label",
+        "icon": "ph-duotone ph-placeholder",
+        "icon_color": "text-blue-600",
+        "order": 100,
+        "is_parent": true,
+        "permission": null
+      }
+    ],
+    "dashboard_widgets": []
+  },
+
+  "dependencies": {
+    "required_modules": [],
+    "optional_modules": []
+  },
+
+  "configuration": {
+    "settings": []
+  },
+
+  "subscription_tier": "basic",
+
+  "permissions": [
+    {
+      "code": "TEMPLATE:index:read:company",
+      "name": "TODO: Read Index",
+      "description": "TODO: Describe what this permission allows",
+      "category": "TEMPLATE",
+      "scope": "company"
+    }
+  ]
+}

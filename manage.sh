@@ -757,10 +757,11 @@ case $COMMAND in
         SUBCOMMAND="${2:-}"
         shift 2 || true
         case "$SUBCOMMAND" in
-            pack) module_pack "$@" ;;
+                        new) module_new "$@" ;;
+pack) module_pack "$@" ;;
             install) shift; module_install "$@" ;;
             uninstall) shift; module_uninstall "$@" ;;
-            *) echo "Unknown module subcommand: $SUBCOMMAND"; echo "  pack  <dir> [--out <dir>]  install <pkg>  uninstall <name>"; exit 1 ;;
+            *) echo "Unknown module subcommand: $SUBCOMMAND"; echo "  new <name>  pack  <dir> [--out <dir>]  install <pkg>  uninstall <name>"; exit 1 ;;
         esac
         ;;
     tenant)
@@ -793,6 +794,22 @@ case $COMMAND in
         fi
         echo "check-tenant-scope: PASS — no raw tenant_id filters found in services/"
         ;;
+    check-tenant-scope)
+        echo "==> Checking services/ for unguarded tenant_id literals..."
+        if grep -rn "\.tenant_id ==" /home/mahfudi/app-buildify/backend/app/services/ 2>/dev/null | grep -v "apply_tenant_scope\|tenant_scope"; then
+            echo "ERROR: Found raw tenant_id filter(s) — use apply_tenant_scope() instead"
+            exit 1
+        fi
+        echo "check-tenant-scope: PASS — no raw tenant_id filters found in services/"
+        ;;
+    check-tenant-scope)
+        echo "==> Checking services/ for unguarded tenant_id literals..."
+        if grep -rn "\.tenant_id ==" /home/mahfudi/app-buildify/backend/app/services/ 2>/dev/null | grep -v "apply_tenant_scope\|tenant_scope"; then
+            echo "ERROR: Found raw tenant_id filter(s) — use apply_tenant_scope() instead"
+            exit 1
+        fi
+        echo "check-tenant-scope: PASS — no raw tenant_id filters found in services/"
+        ;;
     help|--help|-h)
         show_help
         ;;
@@ -805,6 +822,50 @@ case $COMMAND in
 esac
 
 # ---------------------------------------------------------------------------
+
+# -- module new <name> -- scaffold a new module from the template
+module_new() {
+    local MODULE_NAME="${1:-}"
+    if [[ -z "$MODULE_NAME" ]]; then
+        echo "[ERROR] Usage: manage.sh module new <name>" >&2
+        exit 1
+    fi
+
+    local SCRIPT_DIR
+    SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+    local TEMPLATE_DIR="$SCRIPT_DIR/modules/template"
+    local DEST_DIR="$SCRIPT_DIR/modules/$MODULE_NAME"
+
+    if [[ ! -d "$TEMPLATE_DIR" ]]; then
+        echo "[ERROR] Template not found at $TEMPLATE_DIR" >&2
+        exit 1
+    fi
+
+    if [[ -d "$DEST_DIR" ]]; then
+        echo "[ERROR] Module directory already exists: $DEST_DIR" >&2
+        exit 1
+    fi
+
+    echo "[INFO] Scaffolding module $MODULE_NAME from template..."
+    cp -r "$TEMPLATE_DIR" "$DEST_DIR"
+
+    find "$DEST_DIR" -type f | while read -r f; do
+        if file "$f" | grep -q text; then
+            sed -i "s/TEMPLATE/$MODULE_NAME/g" "$f"
+        fi
+    done
+
+    echo "[OK] Module scaffolded at: $DEST_DIR"
+    echo ""
+    echo "Next steps:"
+    echo "  1. Edit  modules/$MODULE_NAME/manifest.json   -- set name, display_name, permissions"
+    echo "  2. Edit  modules/$MODULE_NAME/module.py       -- implement lifecycle hooks"
+    echo "  3. Edit  modules/$MODULE_NAME/routes.py       -- add your API endpoints"
+    echo "  4. Edit  modules/$MODULE_NAME/models.py       -- define tenant-scoped models"
+    echo "  5. Build:   ./manage.sh module pack $MODULE_NAME"
+    echo "  6. Install: ./manage.sh module install ${MODULE_NAME}_v1.0.0.tar.gz"
+}
+
 # T-23.008  module pack <dir> [--out <outdir>]
 # T-23.009  validate manifest before bundling
 # ---------------------------------------------------------------------------
