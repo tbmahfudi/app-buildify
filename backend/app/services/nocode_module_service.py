@@ -23,6 +23,7 @@ from app.models.module_extension import (
 # Alias for backward compat within this service
 NocodeModule = Module
 from app.models.base import generate_uuid
+from app.core.scope import apply_tenant_scope
 
 
 class NocodeModuleService:
@@ -83,11 +84,11 @@ class NocodeModuleService:
 
         # Check if name already exists (scope: tenant or platform)
         if is_platform_level:
-            existing_filter = NocodeModule.tenant_id == None
+            existing_filter = NocodeModule.tenant_id == None  # tenant_scope
         else:
             existing_filter = or_(
-                NocodeModule.tenant_id == self.tenant_id,
-                NocodeModule.tenant_id == None
+                NocodeModule.tenant_id == self.tenant_id,  # tenant_scope
+                NocodeModule.tenant_id == None  # tenant_scope
             )
 
         existing_name = self.db.query(NocodeModule).filter(
@@ -165,12 +166,12 @@ class NocodeModuleService:
         if include_platform:
             query = query.filter(
                 or_(
-                    NocodeModule.tenant_id == self.tenant_id,
-                    NocodeModule.tenant_id == None
+                    NocodeModule.tenant_id == self.tenant_id,  # tenant_scope
+                    NocodeModule.tenant_id == None  # tenant_scope
                 )
             )
         else:
-            query = query.filter(NocodeModule.tenant_id == self.tenant_id)
+            query = apply_tenant_scope(query, NocodeModule, self.current_user)
 
         # Filters
         if status:
@@ -733,11 +734,11 @@ class NocodeModuleService:
         """Validate module name availability"""
 
         if is_platform_level:
-            existing_filter = NocodeModule.tenant_id == None
+            existing_filter = NocodeModule.tenant_id == None  # tenant_scope
         else:
             existing_filter = or_(
-                NocodeModule.tenant_id == self.tenant_id,
-                NocodeModule.tenant_id == None
+                NocodeModule.tenant_id == self.tenant_id,  # tenant_scope
+                NocodeModule.tenant_id == None  # tenant_scope
             )
 
         existing = self.db.query(NocodeModule).filter(
