@@ -7,6 +7,7 @@ from typing import List, Dict, Any, Optional
 from datetime import datetime
 import uuid
 
+from app.core.scope import apply_tenant_scope_by_id
 from app.models.scheduler import (
     SchedulerConfig,
     SchedulerJob,
@@ -46,9 +47,10 @@ class SchedulerService:
         """
         # Try branch level first
         if branch_id and company_id and tenant_id:
-            config = db.query(SchedulerConfig).filter(
+            config = apply_tenant_scope_by_id(
+                db.query(SchedulerConfig), SchedulerConfig, tenant_id
+            ).filter(
                 SchedulerConfig.config_level == ConfigLevel.BRANCH,
-                SchedulerConfig.tenant_id == tenant_id,
                 SchedulerConfig.company_id == company_id,
                 SchedulerConfig.branch_id == branch_id,
                 SchedulerConfig.is_active == True
@@ -58,9 +60,10 @@ class SchedulerService:
 
         # Try company level
         if company_id and tenant_id:
-            config = db.query(SchedulerConfig).filter(
+            config = apply_tenant_scope_by_id(
+                db.query(SchedulerConfig), SchedulerConfig, tenant_id
+            ).filter(
                 SchedulerConfig.config_level == ConfigLevel.COMPANY,
-                SchedulerConfig.tenant_id == tenant_id,
                 SchedulerConfig.company_id == company_id,
                 SchedulerConfig.is_active == True
             ).first()
@@ -69,9 +72,10 @@ class SchedulerService:
 
         # Try tenant level
         if tenant_id:
-            config = db.query(SchedulerConfig).filter(
+            config = apply_tenant_scope_by_id(
+                db.query(SchedulerConfig), SchedulerConfig, tenant_id
+            ).filter(
                 SchedulerConfig.config_level == ConfigLevel.TENANT,
-                SchedulerConfig.tenant_id == tenant_id,
                 SchedulerConfig.is_active == True
             ).first()
             if config:
@@ -282,7 +286,7 @@ class SchedulerService:
         query = db.query(SchedulerJob)
 
         if tenant_id is not None:
-            query = query.filter(SchedulerJob.tenant_id == tenant_id)
+            query = apply_tenant_scope_by_id(query, SchedulerJob, tenant_id)
         if company_id is not None:
             query = query.filter(SchedulerJob.company_id == company_id)
         if branch_id is not None:
