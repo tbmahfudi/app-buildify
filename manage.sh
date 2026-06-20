@@ -1,5 +1,48 @@
 #!/bin/bash
 
+# -- module new <name> -- scaffold a new module from the template
+module_new() {
+    local MODULE_NAME="${1:-}"
+    if [[ -z "$MODULE_NAME" ]]; then
+        echo "[ERROR] Usage: manage.sh module new <name>" >&2
+        exit 1
+    fi
+
+    local SCRIPT_DIR
+    SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+    local TEMPLATE_DIR="$SCRIPT_DIR/modules/template"
+    local DEST_DIR="$SCRIPT_DIR/modules/$MODULE_NAME"
+
+    if [[ ! -d "$TEMPLATE_DIR" ]]; then
+        echo "[ERROR] Template not found at $TEMPLATE_DIR" >&2
+        exit 1
+    fi
+
+    if [[ -d "$DEST_DIR" ]]; then
+        echo "[ERROR] Module directory already exists: $DEST_DIR" >&2
+        exit 1
+    fi
+
+    echo "[INFO] Scaffolding module $MODULE_NAME from template..."
+    cp -r "$TEMPLATE_DIR" "$DEST_DIR"
+
+    find "$DEST_DIR" -type f | while read -r f; do
+        if file "$f" | grep -q text; then
+            sed -i "s/TEMPLATE/$MODULE_NAME/g" "$f"
+        fi
+    done
+
+    echo "[OK] Module scaffolded at: $DEST_DIR"
+    echo ""
+    echo "Next steps:"
+    echo "  1. Edit  modules/$MODULE_NAME/manifest.json   -- set name, display_name, permissions"
+    echo "  2. Edit  modules/$MODULE_NAME/module.py       -- implement lifecycle hooks"
+    echo "  3. Edit  modules/$MODULE_NAME/routes.py       -- add your API endpoints"
+    echo "  4. Edit  modules/$MODULE_NAME/models.py       -- define tenant-scoped models"
+    echo "  5. Build:   ./manage.sh module pack $MODULE_NAME"
+    echo "  6. Install: ./manage.sh module install ${MODULE_NAME}_v1.0.0.tar.gz"
+}
+
 # Script to manage Docker Compose services with database type parameter
 # Usage: ./manage.sh [command] [database_type]
 # Commands: start, stop, restart, migrate, logs, clean
@@ -757,6 +800,8 @@ case $COMMAND in
         SUBCOMMAND="${2:-}"
         shift 2 || true
         case "$SUBCOMMAND" in
+
+
                         new) module_new "$@" ;;
 pack) module_pack "$@" ;;
             install) shift; module_install "$@" ;;
@@ -823,48 +868,6 @@ esac
 
 # ---------------------------------------------------------------------------
 
-# -- module new <name> -- scaffold a new module from the template
-module_new() {
-    local MODULE_NAME="${1:-}"
-    if [[ -z "$MODULE_NAME" ]]; then
-        echo "[ERROR] Usage: manage.sh module new <name>" >&2
-        exit 1
-    fi
-
-    local SCRIPT_DIR
-    SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-    local TEMPLATE_DIR="$SCRIPT_DIR/modules/template"
-    local DEST_DIR="$SCRIPT_DIR/modules/$MODULE_NAME"
-
-    if [[ ! -d "$TEMPLATE_DIR" ]]; then
-        echo "[ERROR] Template not found at $TEMPLATE_DIR" >&2
-        exit 1
-    fi
-
-    if [[ -d "$DEST_DIR" ]]; then
-        echo "[ERROR] Module directory already exists: $DEST_DIR" >&2
-        exit 1
-    fi
-
-    echo "[INFO] Scaffolding module $MODULE_NAME from template..."
-    cp -r "$TEMPLATE_DIR" "$DEST_DIR"
-
-    find "$DEST_DIR" -type f | while read -r f; do
-        if file "$f" | grep -q text; then
-            sed -i "s/TEMPLATE/$MODULE_NAME/g" "$f"
-        fi
-    done
-
-    echo "[OK] Module scaffolded at: $DEST_DIR"
-    echo ""
-    echo "Next steps:"
-    echo "  1. Edit  modules/$MODULE_NAME/manifest.json   -- set name, display_name, permissions"
-    echo "  2. Edit  modules/$MODULE_NAME/module.py       -- implement lifecycle hooks"
-    echo "  3. Edit  modules/$MODULE_NAME/routes.py       -- add your API endpoints"
-    echo "  4. Edit  modules/$MODULE_NAME/models.py       -- define tenant-scoped models"
-    echo "  5. Build:   ./manage.sh module pack $MODULE_NAME"
-    echo "  6. Install: ./manage.sh module install ${MODULE_NAME}_v1.0.0.tar.gz"
-}
 
 # T-23.008  module pack <dir> [--out <outdir>]
 # T-23.009  validate manifest before bundling
