@@ -282,7 +282,7 @@ async def list_roles(
         # (company-specific roles don't exist in current schema, so show tenant + system)
         query = query.filter(
             or_(
-                Role.tenant_id == current_user.tenant_id,
+                Role.tenant_id == current_user.tenant_id,  # tenant_scope
                 Role.tenant_id.is_(None)  # Include system roles
             )
         )
@@ -290,7 +290,7 @@ async def list_roles(
     elif tenant_id:
         query = query.filter(
             or_(
-                Role.tenant_id == tenant_id,
+                Role.tenant_id == tenant_id,  # tenant_scope
                 Role.tenant_id.is_(None)  # Include system roles
             )
         )
@@ -298,7 +298,7 @@ async def list_roles(
         # Non-superusers see only their tenant's roles + system roles
         query = query.filter(
             or_(
-                Role.tenant_id == current_user.tenant_id,
+                Role.tenant_id == current_user.tenant_id,  # tenant_scope
                 Role.tenant_id.is_(None)
             )
         )
@@ -431,7 +431,7 @@ async def create_role(
     existing = (
         db.query(Role)
         .filter(Role.code == payload.code)
-        .filter(or_(Role.tenant_id == current_user.tenant_id, Role.tenant_id.is_(None)))
+        .filter(or_(Role.tenant_id == current_user.tenant_id, Role.tenant_id.is_(None)))  # tenant_scope
         .first()
     )
     if existing:
@@ -457,7 +457,7 @@ async def create_role(
         source = (
             db.query(Role)
             .filter(Role.id == payload.copy_permissions_from)
-            .filter(or_(Role.tenant_id == current_user.tenant_id, Role.tenant_id.is_(None)))
+            .filter(or_(Role.tenant_id == current_user.tenant_id, Role.tenant_id.is_(None)))  # tenant_scope
             .first()
         )
         if not source:
@@ -804,7 +804,7 @@ async def list_groups(
 
     # Apply filters
     if not current_user.is_superuser:
-        query = query.filter(Group.tenant_id == current_user.tenant_id)
+        query = query.filter(Group.tenant_id == current_user.tenant_id)  # tenant_scope
 
     if group_type:
         query = query.filter(Group.group_type == group_type)
@@ -1272,24 +1272,24 @@ async def get_organization_structure(
         raise HTTPException(status_code=404, detail=f"Tenant not found: {query_tenant_id}")
 
     # Get companies
-    companies = db.query(Company).filter(Company.tenant_id == query_tenant_id).all()
+    companies = db.query(Company).filter(Company.tenant_id == query_tenant_id).all()  # tenant_scope
 
     # Get branches
-    branches = db.query(Branch).filter(Branch.tenant_id == query_tenant_id).all()
+    branches = db.query(Branch).filter(Branch.tenant_id == query_tenant_id).all()  # tenant_scope
 
     # Get departments
-    departments = db.query(Department).filter(Department.tenant_id == query_tenant_id).all()
+    departments = db.query(Department).filter(Department.tenant_id == query_tenant_id).all()  # tenant_scope
 
     # Get groups
-    groups = db.query(Group).filter(Group.tenant_id == query_tenant_id).all()
+    groups = db.query(Group).filter(Group.tenant_id == query_tenant_id).all()  # tenant_scope
 
     # Get users
-    users = db.query(User).filter(User.tenant_id == query_tenant_id).all()
+    users = db.query(User).filter(User.tenant_id == query_tenant_id).all()  # tenant_scope
 
     # Get roles (system + tenant-specific)
     roles = db.query(Role).filter(
         or_(
-            Role.tenant_id == query_tenant_id,
+            Role.tenant_id == query_tenant_id,  # tenant_scope
             Role.tenant_id.is_(None)
         )
     ).all()

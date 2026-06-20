@@ -27,7 +27,7 @@ def list_audit_logs(
     
     # Non-superusers can only see their own tenant's logs
     if not current_user.is_superuser and current_user.tenant_id:
-        query = query.filter(AuditLog.tenant_id == current_user.tenant_id)
+        query = query.filter(AuditLog.tenant_id == current_user.tenant_id)  # tenant_scope
     
     # Apply filters
     if request.user_id:
@@ -104,7 +104,7 @@ def _get_audit_summary_impl(db: Session, current_user: User):
 
     # Filter by tenant for non-superusers
     if not current_user.is_superuser and current_user.tenant_id:
-        query = query.filter(AuditLog.tenant_id == current_user.tenant_id)
+        query = query.filter(AuditLog.tenant_id == current_user.tenant_id)  # tenant_scope
 
     total = query.count()
     success = query.filter(AuditLog.status == "success").count()

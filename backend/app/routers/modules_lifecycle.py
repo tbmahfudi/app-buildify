@@ -76,7 +76,7 @@ async def list_modules(
     enabled_ids = {
         tm.module_id
         for tm in db.query(TenantModule).filter(
-            TenantModule.tenant_id == current_user.tenant_id,
+            TenantModule.tenant_id == current_user.tenant_id,  # tenant_scope
             TenantModule.is_enabled == True,
         ).all()
     }
@@ -157,7 +157,7 @@ async def activation_preview(
     enabled_names = {
         tm.module.name
         for tm in db.query(TenantModule).filter(
-            TenantModule.tenant_id == current_user.tenant_id,
+            TenantModule.tenant_id == current_user.tenant_id,  # tenant_scope
             TenantModule.is_enabled == True,
         ).all()
         if tm.module
@@ -225,7 +225,7 @@ async def enable_module(
         enabled_names = {
             tm.module.name
             for tm in db.query(TenantModule).filter(
-                TenantModule.tenant_id == current_user.tenant_id,
+                TenantModule.tenant_id == current_user.tenant_id,  # tenant_scope
                 TenantModule.is_enabled == True,
             ).all()
             if tm.module
@@ -242,7 +242,7 @@ async def enable_module(
     # Create or update TenantModule
     from datetime import datetime
     tenant_module = db.query(TenantModule).filter(
-        TenantModule.tenant_id == current_user.tenant_id,
+        TenantModule.tenant_id == current_user.tenant_id,  # tenant_scope
         TenantModule.module_id == module.id,
     ).first()
 
@@ -378,7 +378,7 @@ async def disable_module(
         module_error("SYSTEM_MODULE_PROTECTED", f"Core module '{module_name}' cannot be toggled.", 403)
 
     tenant_module = db.query(TenantModule).filter(
-        TenantModule.tenant_id == current_user.tenant_id,
+        TenantModule.tenant_id == current_user.tenant_id,  # tenant_scope
         TenantModule.module_id == module.id,
     ).first()
 
@@ -388,7 +388,7 @@ async def disable_module(
     # T-23.022: check whether any active modules depend on this one
     _active_dep_names = []
     _all_tenant_modules = db.query(TenantModule).filter(
-        TenantModule.tenant_id == current_user.tenant_id,
+        TenantModule.tenant_id == current_user.tenant_id,  # tenant_scope
         TenantModule.is_enabled == True,
         TenantModule.module_id != module.id,
     ).all()
@@ -419,7 +419,7 @@ async def disable_module(
     try:
         _menu_rows = db.query(MenuItem).filter(
             MenuItem.module_code == module_name,
-            MenuItem.tenant_id == current_user.tenant_id,
+            MenuItem.tenant_id == current_user.tenant_id,  # tenant_scope
         ).all()
         for _row in _menu_rows:
             _row.is_active = False
@@ -546,7 +546,7 @@ async def admin_deactivate_all(
             # Deactivate menu items for this tenant
             db.query(MenuItem).filter(
                 MenuItem.module_code == module.name,
-                MenuItem.tenant_id == tm.tenant_id,
+                MenuItem.tenant_id == tm.tenant_id,  # tenant_scope
             ).update({"is_active": False})
 
             tm.is_enabled = False

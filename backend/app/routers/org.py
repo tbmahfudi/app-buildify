@@ -89,7 +89,7 @@ def list_companies(
     """
     query = db.query(Company)
     if tenant_id:
-        query = query.filter(Company.tenant_id == tenant_id)
+        query = query.filter(Company.tenant_id == tenant_id)  # tenant_scope
     return build_list_response(query, skip, limit)
 
 @router.get("/companies/{company_id}", response_model=CompanyResponse)
@@ -185,7 +185,7 @@ def create_company(
         tenant = db.query(Tenant).filter(Tenant.id == db_company.tenant_id).first()
         if tenant:
             tenant.current_companies = db.query(Company).filter(
-                Company.tenant_id == tenant.id,
+                Company.tenant_id == tenant.id,  # tenant_scope
                 Company.deleted_at.is_(None)
             ).count()
             db.commit()
@@ -269,7 +269,7 @@ def delete_company(
         tenant = db.query(Tenant).filter(Tenant.id == tenant_id).first()
         if tenant:
             tenant.current_companies = db.query(Company).filter(
-                Company.tenant_id == tenant.id,
+                Company.tenant_id == tenant.id,  # tenant_scope
                 Company.deleted_at.is_(None)
             ).count()
             db.commit()
@@ -303,7 +303,7 @@ def list_branches(
     """List branches, optionally filtered by tenant and/or company"""
     query = db.query(Branch)
     if tenant_id:
-        query = query.filter(Branch.tenant_id == tenant_id)
+        query = query.filter(Branch.tenant_id == tenant_id)  # tenant_scope
     if company_id:
         query = query.filter(Branch.company_id == company_id)
     return build_list_response(query, skip, limit)
@@ -437,7 +437,7 @@ def list_departments(
     """List departments, optionally filtered by tenant, company, and/or branch"""
     query = db.query(Department)
     if tenant_id:
-        query = query.filter(Department.tenant_id == tenant_id)
+        query = query.filter(Department.tenant_id == tenant_id)  # tenant_scope
     if company_id:
         query = query.filter(Department.company_id == company_id)
     if branch_id:
@@ -864,7 +864,7 @@ def list_users(
     # Filter by tenant for non-superusers
     if not current_user.is_superuser:
         if current_user.tenant_id:
-            query = query.filter(User.tenant_id == current_user.tenant_id)
+            query = query.filter(User.tenant_id == current_user.tenant_id)  # tenant_scope
         else:
             # Non-superuser without tenant - return empty
             return {"items": [], "total": 0}
@@ -952,7 +952,7 @@ def create_user(
 
     existing = db.query(User).filter(
         User.email == email,
-        User.tenant_id == effective_tenant_id,
+        User.tenant_id == effective_tenant_id,  # tenant_scope
     ).first()
     if existing:
         raise HTTPException(status_code=409, detail=f"Email '{email}' already exists in this tenant")

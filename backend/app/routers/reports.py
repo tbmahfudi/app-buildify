@@ -497,7 +497,7 @@ def get_execution_history(
     from app.models.report import ReportExecution
 
     query = db.query(ReportExecution).filter(
-        ReportExecution.tenant_id == current_user.tenant_id
+        ReportExecution.tenant_id == current_user.tenant_id  # tenant_scope
     )
 
     if report_id:
@@ -586,7 +586,7 @@ def list_report_schedules(
     from app.models.report import ReportSchedule
 
     query = db.query(ReportSchedule).filter(
-        ReportSchedule.tenant_id == current_user.tenant_id
+        ReportSchedule.tenant_id == current_user.tenant_id  # tenant_scope
     )
 
     if report_id:
@@ -612,7 +612,7 @@ def update_report_schedule(
 
     db_schedule = db.query(ReportSchedule).filter(
         ReportSchedule.id == schedule_id,
-        ReportSchedule.tenant_id == current_user.tenant_id
+        ReportSchedule.tenant_id == current_user.tenant_id  # tenant_scope
     ).first()
 
     if not db_schedule:
@@ -642,7 +642,7 @@ def delete_report_schedule(
 
     db_schedule = db.query(ReportSchedule).filter(
         ReportSchedule.id == schedule_id,
-        ReportSchedule.tenant_id == current_user.tenant_id
+        ReportSchedule.tenant_id == current_user.tenant_id  # tenant_scope
     ).first()
 
     if not db_schedule:

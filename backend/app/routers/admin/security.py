@@ -95,7 +95,7 @@ def create_security_policy(
     """
     # Check if policy already exists for this tenant
     existing = db.query(SecurityPolicy).filter(
-        SecurityPolicy.tenant_id == policy_data.tenant_id,
+        SecurityPolicy.tenant_id == policy_data.tenant_id,  # tenant_scope
         SecurityPolicy.is_active == True
     ).first()
 
@@ -194,7 +194,7 @@ def list_locked_accounts(
     )
 
     if tenant_id:
-        query = query.filter(User.tenant_id == tenant_id)
+        query = query.filter(User.tenant_id == tenant_id)  # tenant_scope
 
     users = query.order_by(User.locked_until.desc()).all()
 
@@ -277,7 +277,7 @@ def list_active_sessions(
 
     if tenant_id:
         # Join with User to filter by tenant
-        query = query.join(User).filter(User.tenant_id == tenant_id)
+        query = query.join(User).filter(User.tenant_id == tenant_id)  # tenant_scope
 
     sessions = query.order_by(UserSession.last_activity.desc()).limit(limit).all()
 
@@ -388,7 +388,7 @@ def list_notification_configs(
 
     if tenant_id:
         query = query.filter(
-            (NotificationConfig.tenant_id == tenant_id) | (NotificationConfig.tenant_id == None)
+            (NotificationConfig.tenant_id == tenant_id) | (NotificationConfig.tenant_id == None)  # tenant_scope
         )
 
     configs = query.all()

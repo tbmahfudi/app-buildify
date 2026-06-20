@@ -482,8 +482,8 @@ async def regenerate_entity_menus(
     published_entities = db.query(EntityDefinition).filter(
         EntityDefinition.status == 'published',
         or_(
-            EntityDefinition.tenant_id == current_user.tenant_id,
-            EntityDefinition.tenant_id == None
+            EntityDefinition.tenant_id == current_user.tenant_id,  # tenant_scope
+            EntityDefinition.tenant_id == None  # tenant_scope
         )
     ).all()
 

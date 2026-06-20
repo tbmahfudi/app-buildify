@@ -295,7 +295,7 @@ def list_scheduler_jobs(
     from app.models.scheduler import SchedulerJob
     query = db.query(SchedulerJob)
     if tenant_id:
-        query = query.filter(SchedulerJob.tenant_id == tenant_id)
+        query = query.filter(SchedulerJob.tenant_id == tenant_id)  # tenant_scope
     if company_id:
         query = query.filter(SchedulerJob.company_id == company_id)
     if branch_id:

@@ -104,7 +104,7 @@ async def list_enabled_modules(
         List of enabled modules with configuration
     """
     tenant_modules = db.query(TenantModule).join(ModuleRegistry).filter(
-        TenantModule.tenant_id == current_user.tenant_id,
+        TenantModule.tenant_id == current_user.tenant_id,  # tenant_scope
         TenantModule.is_enabled == True,
         ModuleRegistry.is_installed == True
     ).all()
@@ -163,7 +163,7 @@ async def list_all_tenants_modules(
     tenant_modules = db.query(TenantModule, Tenant).join(
         ModuleRegistry, TenantModule.module_id == ModuleRegistry.id
     ).join(
-        Tenant, TenantModule.tenant_id == Tenant.id
+        Tenant, TenantModule.tenant_id == Tenant.id  # tenant_scope
     ).filter(
         TenantModule.is_enabled == True,
         ModuleRegistry.is_installed == True
@@ -593,7 +593,7 @@ async def update_module_configuration(
 
     # Get tenant module
     tenant_module = db.query(TenantModule).filter(
-        TenantModule.tenant_id == current_user.tenant_id,
+        TenantModule.tenant_id == current_user.tenant_id,  # tenant_scope
         TenantModule.module_id == module_entry.id
     ).first()
 

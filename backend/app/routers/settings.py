@@ -163,7 +163,7 @@ def get_tenant_settings(
         raise HTTPException(status_code=403, detail="Cannot access other tenant's settings")
     
     settings = db.query(TenantSettings).filter(
-        TenantSettings.tenant_id == target_tenant
+        TenantSettings.tenant_id == target_tenant  # tenant_scope
     ).first()
     
     if not settings:
@@ -216,7 +216,7 @@ def update_tenant_settings(
         raise HTTPException(status_code=403, detail="Cannot modify other tenant's settings")
     
     settings = db.query(TenantSettings).filter(
-        TenantSettings.tenant_id == target_tenant
+        TenantSettings.tenant_id == target_tenant  # tenant_scope
     ).first()
     
     if not settings:
@@ -307,7 +307,7 @@ def list_email_templates(
     """List available email templates and any tenant overrides. Story 14.2.2"""
     from app.models.notification_config import NotificationConfig
     nc = db.query(NotificationConfig).filter(
-        NotificationConfig.tenant_id == current_user.tenant_id
+        NotificationConfig.tenant_id == current_user.tenant_id  # tenant_scope
     ).first()
     overrides = {}
     if nc and getattr(nc, "email_template_overrides", None):
@@ -337,7 +337,7 @@ def update_email_template(
         raise HTTPException(status_code=404, detail=f"Template '{template_name}' not found")
 
     nc = db.query(NotificationConfig).filter(
-        NotificationConfig.tenant_id == current_user.tenant_id
+        NotificationConfig.tenant_id == current_user.tenant_id  # tenant_scope
     ).first()
     if not nc:
         raise HTTPException(status_code=404, detail="Notification config not found for this tenant")
