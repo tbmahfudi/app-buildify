@@ -1,4 +1,4 @@
-﻿"""
+"""
 Admin Module Management API Endpoints
 
 Provides REST API for superuser-level module management:
@@ -12,6 +12,9 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import time
+
+import requests
 import os
 import shutil
 import subprocess
@@ -21,7 +24,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.core.dependencies import get_db, require_superuser
@@ -30,6 +33,8 @@ from app.models.nocode_module import Module
 from app.models.user import User
 
 logger = logging.getLogger(__name__)
+
+HOST_PROJECT_ROOT = os.environ.get('HOST_PROJECT_ROOT', '/home/mahfudi/app-buildify')
 
 router = APIRouter(tags=["admin-modules"])
 
@@ -115,6 +120,7 @@ async def get_install_status(
 async def upload_and_install_module(
     file: UploadFile = File(...),
     checksum_file: Optional[UploadFile] = File(None),
+    deploy_mode: str = Form("auto"),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_superuser),
 ):
@@ -249,10 +255,32 @@ async def upload_and_install_module(
         db.commit()
         db.refresh(db_module)
 
-        # Steps 7 & 8 — copy backend/frontend files, branched on parent_module
+        # Steps 7 & 8 — copy backend/frontend files
+        # Branch order: standalone > sub-module > top-level embedded
+        deploy_config = manifest.get("deployment", {})
+        manifest_mode = deploy_config.get("mode", "embedded")
+        effective_mode = deploy_mode if deploy_mode != "auto" else manifest_mode
+
         parent_module_name = manifest.get("parent_module")  # None for top-level
 
-        if parent_module_name:
+        if effective_mode == "standalone" and not parent_module_name:
+            # Standalone: spin up its own Docker container
+            port = deploy_config.get("port")
+            if not port or not (9002 <= int(port) <= 9099):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Standalone modules must declare deployment.port (9002-9099) in manifest",
+                )
+            port = int(port)
+            all_ready = db.query(Module).filter(Module.install_status == "ready").all()
+            for cm in all_ready:
+                if cm.manifest and cm.manifest.get("deployment", {}).get("port") == port:
+                    raise HTTPException(
+                        status_code=status.HTTP_409_CONFLICT,
+                        detail=f"Port {port} already claimed by module '{cm.name}'",
+                    )
+            _install_standalone(module_dir, module_name, module_version, port, db_module, db)
+        elif parent_module_name:
             # Sub-module: inject into parent service directory instead of creating new
             parent = db.query(Module).filter(
                 Module.name == parent_module_name,
@@ -309,22 +337,9 @@ async def upload_and_install_module(
                     else:
                         shutil.copy2(s, d)
 
-        # Step 9 — run alembic migrations
-        try:
-            result = subprocess.run(
-                ["alembic", "upgrade", "head"],
-                cwd="/app",
-                capture_output=True,
-                text=True,
-                timeout=300,
-            )
-            if result.returncode != 0:
-                raise RuntimeError(
-                    f"alembic upgrade head failed (exit {result.returncode}):\n{result.stderr}"
-                )
-            logger.info("Alembic migrations completed successfully")
-        except subprocess.TimeoutExpired:
-            raise RuntimeError("alembic upgrade head timed out after 300 seconds")
+        # Step 9 — alembic migrations (standalone runs its own inside _install_standalone)
+        if effective_mode != "standalone":
+            _run_alembic()
 
         # Step 10 — mark ready
         db_module.install_status = "ready"
@@ -374,6 +389,130 @@ async def upload_and_install_module(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Module installation failed: {exc}",
         )
+
+
+
+def _install_standalone(
+    module_dir: Path,
+    name: str,
+    version: str,
+    port: int,
+    db_module,
+    db,
+) -> None:
+    """Install a module as its own Docker service."""
+    host_root = HOST_PROJECT_ROOT
+
+    # Copy backend
+    backend_src = module_dir / "backend"
+    if backend_src.is_dir():
+        dest = Path(host_root) / "modules" / name / "backend"
+        if dest.exists():
+            shutil.rmtree(dest)
+        shutil.copytree(backend_src, dest)
+
+    # Copy frontend
+    frontend_src = module_dir / "frontend"
+    if frontend_src.is_dir():
+        dest = Path("/frontend/assets/modules") / name
+        dest.mkdir(parents=True, exist_ok=True)
+        for item in frontend_src.iterdir():
+            d = dest / item.name
+            if item.is_dir():
+                if d.exists():
+                    shutil.rmtree(d)
+                shutil.copytree(item, d)
+            else:
+                shutil.copy2(item, d)
+
+    # Write compose file on the host
+    compose_path = Path(host_root) / "infra" / "modules" / f"{name}-compose.yml"
+    compose_path.parent.mkdir(parents=True, exist_ok=True)
+    compose_path.write_text(
+        f"services:\n"
+        f"  {name}:\n"
+        f"    container_name: app_buildify_{name}\n"
+        f"    build:\n"
+        f"      context: ../../modules/{name}/backend\n"
+        f"      dockerfile: Dockerfile\n"
+        f"    ports:\n"
+        f"      - \"{port}:{port}\"\n"
+        f"    environment:\n"
+        f"      SQLALCHEMY_DATABASE_URL: postgresql+psycopg2://appuser:apppass@postgres:5432/appdb\n"
+        f"      MODULE_NAME: {name}\n"
+        f"      MODULE_PORT: {port}\n"
+        f"      PLATFORM_API_URL: http://backend:8000\n"
+        f"    networks:\n"
+        f"      - app_buildify_default\n"
+        f"    depends_on:\n"
+        f"      - postgres\n"
+        f"\n"
+        f"networks:\n"
+        f"  app_buildify_default:\n"
+        f"    external: true\n"
+    )
+
+    # Write nginx conf
+    nginx_conf = Path(host_root) / "infra" / "nginx" / "modules" / f"{name}.conf"
+    nginx_conf.parent.mkdir(parents=True, exist_ok=True)
+    nginx_conf.write_text(
+        f"location ~ ^/api/(v[0-9]+)/{name}/(.*)$ {{\n"
+        f"    proxy_pass http://{name}-module:{port}/api/$1/{name}/$2$is_args$args;\n"
+        f"    proxy_http_version 1.1;\n"
+        f"    proxy_set_header Host $http_host;\n"
+        f"    proxy_set_header X-Real-IP $remote_addr;\n"
+        f"    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;\n"
+        f"    proxy_set_header X-Forwarded-Proto $scheme;\n"
+        f"}}\n"
+    )
+
+    # Alembic before container starts
+    _run_alembic()
+
+    # Start the container
+    subprocess.run(
+        ["docker", "compose", "-f", str(compose_path), "-p", f"app_buildify_{name}", "up", "-d", "--build"],
+        check=True,
+        timeout=300,
+    )
+    logger.info(f"Started standalone container for module '{name}' on port {port}")
+
+    # Reload nginx
+    subprocess.run(
+        ["docker", "exec", "app_buildify_frontend", "nginx", "-s", "reload"],
+        check=True,
+        timeout=30,
+    )
+
+    # Health poll (120s)
+    health_url = f"http://localhost:{port}/health"
+    deadline = time.time() + 120
+    while time.time() < deadline:
+        try:
+            r = requests.get(health_url, timeout=3)
+            if r.status_code < 500:
+                logger.info(f"Module '{name}' healthy on port {port}")
+                return
+        except requests.RequestException:
+            pass
+        time.sleep(3)
+    raise RuntimeError(f"Module '{name}' did not become healthy within 120s at {health_url}")
+
+
+def _run_alembic() -> None:
+    """Run alembic upgrade head against the platform database."""
+    result = subprocess.run(
+        ["alembic", "upgrade", "head"],
+        cwd="/app",
+        capture_output=True,
+        text=True,
+        timeout=300,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(
+            f"alembic upgrade head failed (exit {result.returncode}):\n{result.stderr}"
+        )
+    logger.info("Alembic migrations completed")
 
 
 def _mark_failed(

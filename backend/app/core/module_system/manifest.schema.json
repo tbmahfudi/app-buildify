@@ -277,6 +277,12 @@
             "any"
           ],
           "description": "embedded: runs inside the core platform process. standalone: runs as its own service/container. inherit: sub-module; inherits the parent's deployment mode (no new container). any: platform chooses the mode."
+        },
+        "port": {
+          "type": "integer",
+          "minimum": 9002,
+          "maximum": 9099,
+          "description": "Port for standalone service. Port 9001 is reserved for the financial module. Valid range: 9002-9099."
         }
       },
       "additionalProperties": false

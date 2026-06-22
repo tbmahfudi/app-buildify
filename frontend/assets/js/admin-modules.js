@@ -154,6 +154,7 @@ export async function render(container) {
   const checksumClear      = page.querySelector('#admin-modules-checksum-clear');
 
   const installBtn         = page.querySelector('#admin-modules-install-btn');
+  const deployModeSelect    = page.querySelector('#admin-modules-deploy-mode');
 
   const progressPanel      = page.querySelector('#admin-modules-progress');
   const progressSpinner    = page.querySelector('#admin-modules-progress-spinner');
@@ -314,6 +315,8 @@ export async function render(container) {
     // Build FormData
     const formData = new FormData();
     formData.append('file', selectedFile);
+    const deployMode = deployModeSelect ? deployModeSelect.value : 'auto';
+    formData.append('deploy_mode', deployMode);
     if (selectedChecksum) formData.append('checksum_file', selectedChecksum);
 
     try {
