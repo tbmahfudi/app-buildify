@@ -254,3 +254,143 @@ app_buildify_healthcare  (one standalone service)
 All `healthcare-*` sub-modules prefix DB tables with `hc_` to share the parent's namespace
 without conflicts. The parent module (`healthcare/core`) owns that namespace; sub-modules lease
 from it and must not create tables outside it.
+
+---
+
+## Public Portal & Patient-Facing Pages
+
+### When to use a public portal
+
+Create a public portal for any page that must be accessible without a login:
+
+- Clinic or service discovery directories
+- Patient self-registration forms
+- Appointment booking widgets embedded in external sites
+- Any landing page reachable from a public URL or QR code
+
+If a page is for staff or authenticated tenants only, it belongs in the existing
+staff SPA (`#/{module}/...`) — not in the public portal.
+
+### Declaring the portal in manifest.json
+
+Add the `public_portal` field to your module's `manifest.json`:
+
+```json
+{
+  "name": "healthcare",
+  "public_portal": {
+    "enabled": true,
+    "entry_point": "frontend/public/index.html",
+    "title": "Find a Clinic"
+  },
+  "...":  "..."
+}
+```
+
+- `enabled` — set to `true` to activate the portal; `false` disables it without
+  removing the field.
+- `entry_point` — relative path to the SPA entry point inside the module package.
+- `title` — displayed in browser tabs and any platform-level portal directory.
+
+### Where to put files
+
+Place all public portal assets in:
+
+```
+modules/{name}/frontend/public/
+└── index.html          ← SPA shell (required)
+└── assets/             ← JS/CSS bundles, images
+```
+
+The `index.html` must be a self-contained SPA shell. Use **hash fragments** for
+client-side routing (`#search`, `#clinic/medcare`, `#register`) so that the
+nginx SPA fallback always serves `index.html` regardless of the route.
+
+### URL your portal will be served at
+
+```
+/portal/{module_slug}/
+```
+
+Example: the healthcare module's portal is at `/portal/healthcare/`.
+
+The platform nginx config serves your `frontend/public/` assets at this path
+automatically once `public_portal.enabled` is `true` in your manifest. You do
+not need to add any nginx configuration yourself.
+
+### Using the platform OTP service
+
+**Modules must never implement their own OTP logic.** The platform provides a
+shared OTP service for all phone-number verification flows (patient registration,
+2FA, booking confirmation, etc.).
+
+To verify a phone number in your public portal:
+
+**Step 1 — Send the code**
+
+Your portal's frontend (or a thin backend proxy) calls:
+
+```
+POST /api/v1/otp/send
+{
+  "phone":       "+628123456789",
+  "purpose":     "patient_registration",
+  "tenant_code": "clinic_medcare"
+}
+```
+
+Choose a `purpose` string that is unique to your workflow (e.g.
+`patient_registration`, `booking_confirm`). The response includes
+`resend_after: 60` — honour this in your UI to prevent spam.
+
+**Step 2 — User enters the code; verify it**
+
+```
+POST /api/v1/otp/verify
+{
+  "phone":       "+628123456789",
+  "purpose":     "patient_registration",
+  "tenant_code": "clinic_medcare",
+  "code":        "482910"
+}
+```
+
+On success you receive:
+```json
+{ "verified": true, "otp_token": "<uuid>" }
+```
+
+**Step 3 — Pass `otp_token` to your registration endpoint**
+
+The `otp_token` is single-use and expires after 5 minutes. Pass it as a field
+in your module's own registration request:
+
+```
+POST /api/v1/modules/healthcare/patients/register
+{
+  "otp_token":  "<uuid>",
+  "name":       "Budi Santoso",
+  "phone":      "+628123456789",
+  "tenant_code": "clinic_medcare"
+}
+```
+
+Your registration endpoint must call the platform's
+`consume_otp_token(token, phone, tenant_code, purpose)` helper **before**
+creating the patient record. A consumed, expired, or mismatched token returns
+`403 Forbidden` — the registration is rejected.
+
+### Patient / user identity
+
+If your module creates its own user type (e.g. `hc_patients`), that identity is
+**not** in the platform `users` table. Issue your own JWT with a distinct
+`roles` claim (e.g. `"roles": ["hc_patient"]`) so that platform staff
+endpoints automatically reject it. Never reuse platform user IDs or tokens for
+module-specific patient identities.
+
+### Sub-modules and the public portal
+
+Sub-modules do not get their own `/portal/{sub_module_slug}/` path. Any
+public-facing pages for a sub-module must be surfaced through the parent
+module's portal (`/portal/{parent_slug}/`). This maintains a single public
+URL per clinic service and prevents URL proliferation (see ADR-008 and ADR-010).

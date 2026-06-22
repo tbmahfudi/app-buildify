@@ -114,3 +114,10 @@ module version and coordinator approval.
 - [ ] **Docs**: `docs/modules/CREATING_A_MODULE.md` — add Sub-modules section.
 - [ ] **Template**: `modules/template/manifest.json` — add `deployment` block; document
       `parent_module` in `modules/template/README.md`.
+
+### Public portal inheritance
+
+Sub-modules deployed inside a parent service do not get their own
+`/portal/{sub_module_slug}/` path. They must surface any public-facing pages
+through the parent module's portal (`/portal/{parent_slug}/`). This maintains
+a single public URL per clinic service and prevents URL proliferation.
