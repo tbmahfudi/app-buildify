@@ -30,6 +30,7 @@ from app.models.login_attempt import LoginAttempt
 from app.models.password_reset_token import PasswordResetToken
 from app.models.token_blacklist import TokenBlacklist
 from app.models.user import User
+from app.models.user_session import UserSession
 from app.schemas.auth import (
     LoginRequest,
     PasswordChangeRequest,
@@ -278,6 +279,20 @@ def login(
     return TokenResponse(**response_data)
 
 
+@router.get("/config")
+def get_auth_config(
+    tenant_id: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    """
+    Get auth configuration for the frontend.
+    Public endpoint — returns platform default when no tenant_id is provided.
+    """
+    svc = SecurityConfigService(db)
+    timeout = svc.get_config("session_timeout_minutes", tenant_id) or 30
+    return {"idle_timeout_minutes": int(timeout)}
+
+
 @router.get("/password-policy", response_model=PasswordPolicyRequirements)
 def get_password_policy(
     tenant_id: Optional[str] = None,
@@ -351,6 +366,28 @@ def refresh(refresh_req: RefreshRequest, db: Session = Depends(get_db)):
     if not user or not user.is_active:
         raise HTTPException(status_code=401, detail="User not found or inactive")
 
+    # Enforce idle session timeout
+    session_manager = SessionManager(db)
+    security_config = SecurityConfigService(db)
+    idle_timeout_minutes = security_config.get_config("session_timeout_minutes", user.tenant_id) or 30
+
+    # Find the most recent active session for this user
+    active_session = (
+        db.query(UserSession)
+        .filter(
+            UserSession.user_id == str(user.id),
+            UserSession.revoked_at == None,
+            UserSession.expires_at > datetime.utcnow(),
+        )
+        .order_by(UserSession.last_activity.desc())
+        .first()
+    )
+
+    if active_session and active_session.last_activity:
+        idle_seconds = (datetime.utcnow() - active_session.last_activity).total_seconds()
+        if idle_seconds / 60 > idle_timeout_minutes:
+            raise HTTPException(status_code=401, detail="Session expired due to inactivity")
+
     # Get user permissions from RBAC system
     permissions = list(user.get_permissions()) if hasattr(user, 'get_permissions') else []
 
@@ -364,6 +401,10 @@ def refresh(refresh_req: RefreshRequest, db: Session = Depends(get_db)):
 
     access_token = create_access_token(token_data)
     new_refresh_token = create_refresh_token({"sub": str(user.id)})
+
+    # Bump last_activity on the session so active users stay logged in
+    if active_session:
+        session_manager.update_activity(active_session.jti)
 
     return TokenResponse(
         access_token=access_token,

@@ -16,6 +16,18 @@ const deriveApiBase = () => {
 
 let apiBase = deriveApiBase();
 let tokens = { access: null, refresh: null };
+
+let IDLE_TIMEOUT_MS = 30 * 60 * 1000; // default until /auth/config loads
+
+function touchActivity() {
+  localStorage.setItem('lastActivity', Date.now().toString());
+}
+
+function isSessionIdle() {
+  const last = parseInt(localStorage.getItem('lastActivity') || '0', 10);
+  if (!last) return false; // no record yet — don't lock out on first load
+  return (Date.now() - last) > IDLE_TIMEOUT_MS;
+}
 let tenantId = null;
 
 // SECURITY NOTE: Token storage in localStorage is vulnerable to XSS attacks.
@@ -70,6 +82,7 @@ function saveTokens() {
 function clearTokens() {
   localStorage.removeItem("tokens");
   localStorage.removeItem("tenantId");
+  localStorage.removeItem('lastActivity');
   tokens = { access: null, refresh: null };
   tenantId = null;
 }
@@ -95,7 +108,17 @@ async function apiFetch(path, opts = {}) {
 
   const res = await fetch(withBase(path), { ...opts, headers });
 
+  if (res.status !== 401) {
+    touchActivity();
+  }
+
   if (res.status === 401 && tokens.refresh) {
+    if (isSessionIdle()) {
+      console.warn('[API] Session idle timeout — logging out');
+      clearTokens();
+      window.location.href = '/login';
+      return res;
+    }
     console.log('[API] Received 401, attempting token refresh...');
     const r = await fetch(withBase('/auth/refresh'), {
       method: 'POST',
@@ -136,6 +159,7 @@ async function login(email, password, tenant) {
   tokens.access = j.access_token;
   tokens.refresh = j.refresh_token;
   saveTokens();
+  touchActivity();
   setTenant(tenant || null);
   return j;
 }
@@ -178,5 +202,19 @@ async function confirmPasswordReset(token, new_password) {
   return res.json().catch(() => ({}));
 }
 
+
+async function initIdleTimeout() {
+  try {
+    const res = await fetch(withBase('/auth/config'));
+    if (res.ok) {
+      const cfg = await res.json();
+      if (cfg.idle_timeout_minutes && cfg.idle_timeout_minutes > 0) {
+        IDLE_TIMEOUT_MS = cfg.idle_timeout_minutes * 60 * 1000;
+      }
+    }
+  } catch (_) {}
+}
+
 loadTokens();
+initIdleTimeout();
 export { apiFetch, login, logout, tokens, setTenant, tenantId, setApiBase, getAuthToken, requestPasswordReset, confirmPasswordReset };
