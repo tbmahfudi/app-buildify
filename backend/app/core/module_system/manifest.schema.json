@@ -3,7 +3,11 @@
   "title": "AppBuildify Module Manifest",
   "description": "Schema for module manifest.json files",
   "type": "object",
-  "required": ["name", "version", "display_name"],
+  "required": [
+    "name",
+    "version",
+    "display_name"
+  ],
   "additionalProperties": true,
   "properties": {
     "name": {
@@ -13,7 +17,7 @@
     },
     "version": {
       "type": "string",
-      "pattern": "^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(-(0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(\.(0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*)?(\+[0-9a-zA-Z-]+(\.[0-9a-zA-Z-]+)*)$",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+([-+].+)?$",
       "description": "Semantic version (semver 2.0)"
     },
     "display_name": {
@@ -27,7 +31,11 @@
     },
     "module_type": {
       "type": "string",
-      "enum": ["code", "nocode", "hybrid"],
+      "enum": [
+        "code",
+        "nocode",
+        "hybrid"
+      ],
       "default": "code"
     },
     "category": {
@@ -56,7 +64,12 @@
     },
     "subscription_tier": {
       "type": "string",
-      "enum": ["free", "basic", "premium", "enterprise"]
+      "enum": [
+        "free",
+        "basic",
+        "premium",
+        "enterprise"
+      ]
     },
     "is_core": {
       "type": "boolean",
@@ -80,12 +93,16 @@
       "properties": {
         "required": {
           "type": "array",
-          "items": {"type": "string"},
+          "items": {
+            "type": "string"
+          },
           "uniqueItems": true
         },
         "optional": {
           "type": "array",
-          "items": {"type": "string"},
+          "items": {
+            "type": "string"
+          },
           "uniqueItems": true
         }
       },
@@ -95,31 +112,57 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["name"],
+        "required": [
+          "name"
+        ],
         "properties": {
-          "name": {"type": "string"},
-          "description": {"type": "string"},
-          "resource": {"type": "string"},
-          "action": {"type": "string"}
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "resource": {
+            "type": "string"
+          },
+          "action": {
+            "type": "string"
+          }
         }
       }
     },
     "frontend": {
       "type": "object",
       "properties": {
-        "entry_point": {"type": "string"},
+        "entry_point": {
+          "type": "string"
+        },
         "menu_items": {
           "type": "array",
           "items": {
             "type": "object",
-            "required": ["label"],
+            "required": [
+              "label"
+            ],
             "properties": {
-              "label": {"type": "string"},
-              "route": {"type": "string"},
-              "icon": {"type": "string"},
-              "permission": {"type": "string"},
-              "order": {"type": "integer"},
-              "parent": {"type": "string"}
+              "label": {
+                "type": "string"
+              },
+              "route": {
+                "type": "string"
+              },
+              "icon": {
+                "type": "string"
+              },
+              "permission": {
+                "type": "string"
+              },
+              "order": {
+                "type": "integer"
+              },
+              "parent": {
+                "type": "string"
+              }
             }
           }
         }
@@ -129,19 +172,38 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["path", "name"],
+        "required": [
+          "path",
+          "name"
+        ],
         "properties": {
-          "path": {"type": "string"},
-          "name": {"type": "string"},
-          "component": {"type": "string"},
-          "permission": {"type": "string"},
+          "path": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "component": {
+            "type": "string"
+          },
+          "permission": {
+            "type": "string"
+          },
           "menu": {
             "type": "object",
             "properties": {
-              "label": {"type": "string"},
-              "icon": {"type": "string"},
-              "order": {"type": "integer"},
-              "parent": {"type": "string"}
+              "label": {
+                "type": "string"
+              },
+              "icon": {
+                "type": "string"
+              },
+              "order": {
+                "type": "integer"
+              },
+              "parent": {
+                "type": "string"
+              }
             }
           }
         }
@@ -154,13 +216,30 @@
           "type": "array",
           "items": {
             "type": "object",
-            "required": ["key", "type"],
+            "required": [
+              "key",
+              "type"
+            ],
             "properties": {
-              "key": {"type": "string"},
-              "type": {"type": "string", "enum": ["string", "integer", "boolean", "json"]},
+              "key": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "string",
+                  "integer",
+                  "boolean",
+                  "json"
+                ]
+              },
               "default": {},
-              "description": {"type": "string"},
-              "required": {"type": "boolean"}
+              "description": {
+                "type": "string"
+              },
+              "required": {
+                "type": "boolean"
+              }
             }
           }
         }
@@ -168,7 +247,39 @@
     },
     "tags": {
       "type": "array",
-      "items": {"type": "string"}
+      "items": {
+        "type": "string"
+      }
+    },
+    "parent_module": {
+      "oneOf": [
+        {
+          "type": "string",
+          "minLength": 1
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Name of the parent module this sub-module belongs to. If set, this module is installed inside the parent service rather than as a new deployment unit. The parent module must be installed before this sub-module."
+    },
+    "deployment": {
+      "type": "object",
+      "description": "Deployment topology configuration for this module.",
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": [
+            "embedded",
+            "standalone",
+            "inherit",
+            "any"
+          ],
+          "description": "embedded: runs inside the core platform process. standalone: runs as its own service/container. inherit: sub-module; inherits the parent's deployment mode (no new container). any: platform chooses the mode."
+        }
+      },
+      "additionalProperties": false
     }
   }
 }

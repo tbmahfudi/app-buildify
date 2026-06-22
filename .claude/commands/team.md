@@ -139,3 +139,11 @@ Example queries:
 | Date | Area | Fix | Files |
 |------|------|-----|-------|
 | 2026-06-22 | Auth | Idle session timeout enforcement ? sessions idle beyond `session_timeout_minutes` (default 30 min) are rejected at `/auth/refresh`; frontend fetches live timeout from `GET /auth/config` instead of hardcoded constant | `backend/app/routers/auth.py`, `frontend/assets/js/api.js` |
+
+---
+
+# Architecture decisions
+
+| Date | Decision | ADR |
+|------|----------|-----|
+| 2026-06-22 | Sub-module deployment topology — sub-modules deploy inside their parent service; `parent_module` field in manifest is the routing key; `deployment.mode: inherit` required for sub-modules (A3 x B1 design discussion) | [ADR-008](../plan/architecture/adr-008-submodule-deployment-topology.md) |

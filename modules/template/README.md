@@ -62,3 +62,35 @@ modules/my_module/
 └── tests/
     └── test_module.py  # pytest test suite
 ```
+
+## Sub-module fields (`parent_module` and `deployment`)
+
+Two fields in `manifest.json` control deployment topology:
+
+### `parent_module`
+
+| Value | Meaning |
+|-------|---------|
+| `null` (default) | This is a **top-level module**. It gets its own deployment unit. |
+| `"<module-name>"` | This is a **sub-module**. It is injected into the named parent service at install time. The parent module must already be installed. |
+
+Example for a sub-module:
+
+```json
+{
+  "name": "healthcare-lab",
+  "parent_module": "healthcare",
+  "deployment": { "mode": "inherit" }
+}
+```
+
+### `deployment.mode`
+
+| Value | Meaning |
+|-------|---------|
+| `"embedded"` | Module runs inside the core platform process (default for top-level modules). |
+| `"standalone"` | Module runs as its own service/container. |
+| `"inherit"` | **Required for sub-modules.** The module inherits the parent's deployment mode — no new container is provisioned. |
+
+See [ADR-008](../../plan/architecture/adr-008-submodule-deployment-topology.md) for the full
+design rationale and the graduation path for promoting a sub-module to top-level.

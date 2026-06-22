@@ -118,6 +118,10 @@ class Module(Base):
     published_at = Column(DateTime(timezone=True))
     published_by = Column(GUID, ForeignKey('users.id'))
 
+    # Sub-module hierarchy (B1 design)
+    parent_module_id = Column(GUID, ForeignKey('modules.id', ondelete='RESTRICT'), nullable=True)
+    parent_module = relationship('Module', foreign_keys=[parent_module_id], remote_side='Module.id', backref='sub_modules')
+
     # Relationships
     tenant = relationship("Tenant", foreign_keys=[tenant_id], backref="modules")
     creator = relationship("User", foreign_keys=[created_by])
@@ -159,6 +163,7 @@ class Module(Base):
 
     # Constraints
     __table_args__ = (
+        CheckConstraint('id != parent_module_id', name='no_self_parent'),
         CheckConstraint(
             "module_type IN ('code', 'nocode', 'hybrid')",
             name='valid_module_type'

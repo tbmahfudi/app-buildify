@@ -4,9 +4,11 @@
   "version": "1.0.0",
   "description": "TODO: Describe what this module does",
   "author": "TODO: Your Name / Team",
-
+  "parent_module": null,
   "entry_point": "module.js",
-
+  "deployment": {
+    "mode": "embedded"
+  },
   "routes": [
     {
       "path": "#/TEMPLATE/index",
@@ -21,7 +23,6 @@
       }
     }
   ],
-
   "navigation": {
     "primary_menu": true,
     "menu_items": [
@@ -37,18 +38,14 @@
     ],
     "dashboard_widgets": []
   },
-
   "dependencies": {
     "required": [],
     "optional": []
   },
-
   "configuration": {
     "settings": []
   },
-
   "subscription_tier": "basic",
-
   "permissions": [
     {
       "code": "TEMPLATE:index:read:company",
