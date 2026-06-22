@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="id-ID">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title data-i18n="schedule.title">Jadwal Dokter</title>
+  <link rel="stylesheet" href="/frontend/assets/css/app.css" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; background: var(--color-bg-main); color: var(--color-text-primary); }
+
+    .hc-toolbar {
+      position: sticky; top: 0; z-index: 10;
+      background: var(--color-bg-card); border-bottom: 1px solid var(--color-border);
+      padding: var(--spacing-md) var(--spacing-xl);
+      display: flex; align-items: center; gap: var(--spacing-md); flex-wrap: wrap;
+    }
+    .hc-toolbar__title { font-size: var(--font-lg); font-weight: 700; flex: 1; }
+    .hc-toolbar__status { font-size: var(--font-sm); color: var(--color-text-secondary); }
+    .hc-toolbar__tz { font-size: var(--font-xs); color: var(--color-text-tertiary); background: var(--color-bg-main); padding: 2px 8px; border-radius: var(--radius-sm); border: 1px solid var(--color-border); }
+
+    .hc-duration-row { display: flex; align-items: center; gap: var(--spacing-sm); }
+    .hc-duration-row label { font-size: var(--font-sm); font-weight: 600; color: var(--color-text-secondary); }
+    .hc-duration-row select { padding: var(--spacing-xs) var(--spacing-sm); border: 1.5px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-bg-main); color: var(--color-text-primary); font-size: var(--font-sm); }
+
+    .hc-page { padding: var(--spacing-xl); }
+
+    /* Desktop grid */
+    .hc-grid-wrap { overflow-x: auto; }
+    .hc-grid { display: grid; grid-template-columns: 80px repeat(7, 1fr); border-left: 1px solid var(--color-border); border-top: 1px solid var(--color-border); min-width: 640px; }
+    .hc-grid__corner, .hc-grid__col-head, .hc-grid__time, .hc-grid__cell {
+      border-right: 1px solid var(--color-border); border-bottom: 1px solid var(--color-border);
+      padding: var(--spacing-xs); font-size: var(--font-xs);
+    }
+    .hc-grid__col-head { text-align: center; font-weight: 700; background: var(--color-bg-main); padding: var(--spacing-sm); font-size: var(--font-sm); }
+    .hc-grid__time { color: var(--color-text-secondary); display: flex; align-items: center; justify-content: center; background: var(--color-bg-main); }
+    .hc-grid__cell { cursor: pointer; min-height: 28px; transition: background 0.1s; user-select: none; }
+    .hc-grid__cell:hover { background: rgba(var(--color-primary-rgb, 37,99,235), 0.08); }
+    .hc-grid__cell.active { background: var(--color-primary); }
+    .hc-grid__cell.active:hover { opacity: 0.85; }
+
+    /* Appointment type row */
+    .hc-appt-types { display: flex; gap: var(--spacing-sm); flex-wrap: wrap; margin-top: var(--spacing-xl); }
+    .hc-appt-types label { display: flex; align-items: center; gap: var(--spacing-xs); font-size: var(--font-sm); padding: var(--spacing-xs) var(--spacing-sm); border: 1.5px solid var(--color-border); border-radius: var(--radius-sm); cursor: pointer; }
+    .hc-appt-types input:checked + span { color: var(--color-primary); font-weight: 600; }
+
+    /* Mobile accordion */
+    .hc-mobile-accordion { display: none; }
+    .hc-accordion-day { border: 1px solid var(--color-border); border-radius: var(--radius-md); margin-bottom: var(--spacing-sm); overflow: hidden; }
+    .hc-accordion-day__header { padding: var(--spacing-md); font-weight: 600; cursor: pointer; background: var(--color-bg-card); display: flex; justify-content: space-between; align-items: center; }
+    .hc-accordion-day__body { display: none; padding: var(--spacing-md); background: var(--color-bg-main); }
+    .hc-accordion-day__body.open { display: block; }
+    .hc-time-range { display: flex; gap: var(--spacing-sm); align-items: center; margin-bottom: var(--spacing-sm); }
+    .hc-time-range label { font-size: var(--font-sm); color: var(--color-text-secondary); }
+    .hc-time-range input[type=time] { padding: var(--spacing-xs) var(--spacing-sm); border: 1.5px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-bg-main); color: var(--color-text-primary); font-size: var(--font-sm); }
+
+    .hc-btn { padding: var(--spacing-sm) var(--spacing-xl); border: none; border-radius: var(--radius-md); font-size: var(--font-base); font-weight: 700; cursor: pointer; }
+    .hc-btn--primary { background: var(--color-primary); color: var(--color-text-inverse); }
+    .hc-btn--primary:hover { background: var(--color-primary-hover); }
+    .hc-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    @media (max-width: 767px) {
+      .hc-grid-wrap { display: none; }
+      .hc-mobile-accordion { display: block; }
+    }
+  </style>
+</head>
+<body>
+  <div class="hc-toolbar">
+    <span class="hc-toolbar__title" data-i18n="schedule.title"></span>
+    <span class="hc-toolbar__tz" id="tz-label"></span>
+    <div class="hc-duration-row">
+      <label for="slot-duration" data-i18n="schedule.slot_duration"></label>
+      <select id="slot-duration">
+        <option value="15">15 min</option>
+        <option value="30" selected>30 min</option>
+        <option value="60">60 min</option>
+      </select>
+    </div>
+    <span class="hc-toolbar__status" id="save-status"></span>
+    <button class="hc-btn hc-btn--primary" id="btn-save" data-i18n="schedule.save"></button>
+    <div data-locale-switcher></div>
+  </div>
+
+  <div class="hc-page">
+    <div id="alert-container"></div>
+
+    <!-- Desktop weekly grid -->
+    <div class="hc-grid-wrap">
+      <div class="hc-grid" id="weekly-grid" role="grid" aria-label="Weekly schedule grid"></div>
+    </div>
+
+    <!-- Mobile accordion -->
+    <div class="hc-mobile-accordion" id="mobile-accordion"></div>
+
+    <!-- Appointment types -->
+    <div class="hc-appt-types" id="appt-types" style="margin-top: var(--spacing-xl);">
+      <label><input type="checkbox" name="appt_type" value="general" checked /> <span data-i18n="booking.type_general"></span></label>
+      <label><input type="checkbox" name="appt_type" value="specialist" /> <span data-i18n="booking.type_specialist"></span></label>
+      <label><input type="checkbox" name="appt_type" value="procedure" /> <span data-i18n="booking.type_procedure"></span></label>
+      <label><input type="checkbox" name="appt_type" value="follow_up" /> <span data-i18n="booking.type_follow_up"></span></label>
+    </div>
+  </div>
+
+  <script src="/frontend/assets/js/flex-components.js"></script>
+  <script type="module" src="./schedule-editor.js"></script>
+</body>
+</html>

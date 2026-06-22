@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Order Lab</title>
+  <link rel="stylesheet" href="/static/css/main.css"/>
+  <style>
+    .badge{display:inline-block;padding:2px 10px;border-radius:12px;font-size:.75rem;font-weight:700}
+    .priority-stat{background:var(--color-danger);color:#fff}
+    .priority-urgent{background:var(--color-warning);color:#fff}
+    .priority-routine{background:var(--color-surface-2);color:var(--color-text-muted)}
+    .status-badge{background:var(--color-info-light);color:var(--color-info)}
+    .status-resulted{background:var(--color-success-light);color:var(--color-success)}
+    .status-cancelled{background:var(--color-surface-2);color:var(--color-text-muted)}
+    .critical-badge{background:var(--color-danger);color:#fff;margin-left:8px}
+    .order-card{background:var(--color-surface);border:1px solid var(--color-border);border-radius:10px;padding:16px;margin-bottom:12px}
+    .order-card-header{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px}
+    .order-card-meta{font-size:.85rem;color:var(--color-text-muted);margin-bottom:8px}
+    .order-card-panels{font-size:.9rem;margin-bottom:10px}
+    .order-card-footer{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+    .btn{padding:7px 16px;border:none;border-radius:6px;cursor:pointer;font-size:.88rem;font-weight:600}
+    .btn-primary{background:var(--color-primary);color:#fff}
+    .btn-secondary{background:var(--color-surface-2);color:var(--color-text)}
+    .filter-bar{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:20px;align-items:center}
+    .filter-bar select,.filter-bar input{padding:7px 10px;border:1px solid var(--color-border);border-radius:6px;font-size:.9rem;background:var(--color-surface);color:var(--color-text)}
+    .page-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+    .load-more-wrap{text-align:center;margin-top:16px}
+  </style>
+</head>
+<body>
+<div class="container" style="max-width:860px;margin:0 auto;padding:24px">
+  <div class="page-header">
+    <h1 style="font-size:1.4rem;font-weight:700">Order Lab</h1>
+  </div>
+  <div class="filter-bar">
+    <select id="filter-status">
+      <option value="">Semua Status</option>
+      <option value="ordered">Ordered</option>
+      <option value="specimen_collected">Spesimen Dikumpulkan</option>
+      <option value="processing">Diproses</option>
+      <option value="resulted">Selesai</option>
+      <option value="cancelled">Dibatalkan</option>
+    </select>
+    <select id="filter-priority">
+      <option value="">Semua Prioritas</option>
+      <option value="routine">Rutin</option>
+      <option value="urgent">Urgent</option>
+      <option value="stat">STAT</option>
+    </select>
+    <input type="date" id="filter-date-from" placeholder="Dari"/>
+    <input type="date" id="filter-date-to" placeholder="Sampai"/>
+    <button class="btn btn-secondary" id="btn-search">Cari</button>
+  </div>
+  <div id="orders-list"></div>
+  <div class="load-more-wrap">
+    <button class="btn btn-secondary hidden" id="btn-load-more">Muat Lebih Banyak</button>
+  </div>
+</div>
+<script src="/static/js/i18n.js"></script>
+<script src="lab-orders.js"></script>
+</body>
+</html>

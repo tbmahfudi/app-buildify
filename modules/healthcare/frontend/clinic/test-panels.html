@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Panel Pemeriksaan Lab</title>
+  <link rel="stylesheet" href="/static/css/main.css"/>
+  <style>
+    .badge{display:inline-block;padding:2px 8px;border-radius:12px;font-size:.75rem;font-weight:600}
+    .badge-hematologi{background:var(--color-info-light);color:var(--color-info)}
+    .badge-kimia{background:var(--color-warning-light);color:var(--color-warning)}
+    .badge-imunologi{background:var(--color-success-light);color:var(--color-success)}
+    .badge-mikrobiologi{background:var(--color-danger-light);color:var(--color-danger)}
+    .badge-urinalisis{background:var(--color-purple-light,#ede9fe);color:var(--color-purple,#7c3aed)}
+    .badge-lainnya{background:var(--color-surface-2);color:var(--color-text-muted)}
+    .badge-active{background:var(--color-success-light);color:var(--color-success)}
+    .badge-inactive{background:var(--color-surface-2);color:var(--color-text-muted)}
+    .fasting-icon{font-size:1.1rem;title:"Puasa diperlukan"}
+    table{width:100%;border-collapse:collapse}
+    th,td{padding:10px 12px;text-align:left;border-bottom:1px solid var(--color-border)}
+    th{background:var(--color-surface-2);font-weight:600;font-size:.85rem}
+    tr:hover{background:var(--color-surface-2)}
+    tr{cursor:pointer}
+    .filter-bar{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px;align-items:center}
+    .filter-bar select,.filter-bar label{font-size:.9rem}
+    .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;z-index:100}
+    .modal-box{background:var(--color-surface);border-radius:12px;padding:28px;width:500px;max-width:95vw;max-height:90vh;overflow-y:auto}
+    .hidden{display:none!important}
+    .form-group{margin-bottom:14px}
+    .form-group label{display:block;font-size:.85rem;font-weight:600;margin-bottom:4px}
+    .form-group input,.form-group select,.form-group textarea{width:100%;padding:8px 10px;border:1px solid var(--color-border);border-radius:6px;font-size:.95rem;background:var(--color-surface);color:var(--color-text)}
+    .btn{padding:8px 18px;border:none;border-radius:6px;cursor:pointer;font-size:.95rem;font-weight:600}
+    .btn-primary{background:var(--color-primary);color:#fff}
+    .btn-secondary{background:var(--color-surface-2);color:var(--color-text)}
+    .btn-sm{padding:5px 12px;font-size:.82rem}
+    .page-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+  </style>
+</head>
+<body>
+<div class="container" style="max-width:1100px;margin:0 auto;padding:24px">
+  <div class="page-header">
+    <h1 id="page-title" style="font-size:1.4rem;font-weight:700"></h1>
+    <button class="btn btn-primary" id="btn-add"></button>
+  </div>
+  <div class="filter-bar">
+    <select id="filter-category">
+      <option value="">Semua Kategori</option>
+      <option value="hematologi">Hematologi</option>
+      <option value="kimia">Kimia</option>
+      <option value="imunologi">Imunologi</option>
+      <option value="mikrobiologi">Mikrobiologi</option>
+      <option value="urinalisis">Urinalisis</option>
+      <option value="lainnya">Lainnya</option>
+    </select>
+    <select id="filter-sample">
+      <option value="">Semua Sampel</option>
+      <option value="darah">Darah</option>
+      <option value="urin">Urin</option>
+      <option value="tinja">Tinja</option>
+      <option value="swab">Swab</option>
+      <option value="jaringan">Jaringan</option>
+      <option value="lainnya">Lainnya</option>
+    </select>
+    <label><input type="checkbox" id="filter-active"/> Aktif saja</label>
+  </div>
+  <div style="overflow-x:auto">
+    <table id="panels-table">
+      <thead>
+        <tr>
+          <th>Kode</th><th>Nama</th><th>Kategori</th><th>Jenis Sampel</th>
+          <th>TAT (jam)</th><th>Harga (IDR)</th><th>Puasa</th><th>Status</th>
+        </tr>
+      </thead>
+      <tbody id="panels-body"></tbody>
+    </table>
+  </div>
+  <div id="empty-state" class="hidden" style="text-align:center;padding:40px;color:var(--color-text-muted)">
+    Tidak ada panel ditemukan.
+  </div>
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay hidden" id="modal-overlay">
+  <div class="modal-box">
+    <h2 id="modal-title" style="margin-bottom:18px;font-size:1.1rem;font-weight:700"></h2>
+    <form id="panel-form">
+      <input type="hidden" id="panel-id"/>
+      <div class="form-group">
+        <label>Nama Panel</label>
+        <input type="text" id="f-name" required/>
+      </div>
+      <div class="form-group">
+        <label>Kode</label>
+        <input type="text" id="f-code" required/>
+      </div>
+      <div class="form-group">
+        <label>Kategori</label>
+        <select id="f-category">
+          <option value="hematologi">Hematologi</option>
+          <option value="kimia">Kimia</option>
+          <option value="imunologi">Imunologi</option>
+          <option value="mikrobiologi">Mikrobiologi</option>
+          <option value="urinalisis">Urinalisis</option>
+          <option value="lainnya">Lainnya</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Jenis Sampel</label>
+        <select id="f-sample">
+          <option value="darah">Darah</option>
+          <option value="urin">Urin</option>
+          <option value="tinja">Tinja</option>
+          <option value="swab">Swab</option>
+          <option value="jaringan">Jaringan</option>
+          <option value="lainnya">Lainnya</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Turnaround (jam)</label>
+        <input type="number" id="f-tat" min="1" required/>
+      </div>
+      <div class="form-group">
+        <label>Harga (IDR)</label>
+        <input type="number" id="f-price" min="0" required/>
+      </div>
+      <div class="form-group">
+        <label><input type="checkbox" id="f-fasting"/> Memerlukan puasa</label>
+      </div>
+      <div class="form-group">
+        <label><input type="checkbox" id="f-active" checked/> Aktif</label>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:18px">
+        <button type="button" class="btn btn-secondary" id="btn-cancel">Batal</button>
+        <button type="submit" class="btn btn-primary" id="btn-save">Simpan</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="/static/js/i18n.js"></script>
+<script src="test-panels.js"></script>
+</body>
+</html>

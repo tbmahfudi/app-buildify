@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Detail Resep</title>
+  <link rel="stylesheet" href="/static/css/platform.css"/>
+  <style>
+    .card{background:var(--color-surface);border:1px solid var(--color-border);border-radius:10px;padding:16px;margin-bottom:16px;}
+    .badge{display:inline-block;padding:2px 8px;border-radius:12px;font-size:.75rem;font-weight:600;}
+    .badge-pending{background:var(--color-warning-light);color:var(--color-warning-dark);}
+    .badge-dispensed{background:var(--color-success-light);color:var(--color-success);}
+    .badge-partial{background:var(--color-info-light);color:var(--color-info);}
+    .badge-cancelled{background:var(--color-muted);color:var(--color-text-secondary);}
+    .flex-alert{padding:12px 16px;border-radius:8px;margin-bottom:12px;display:none;}
+    .alert-danger{background:var(--color-danger-light);color:var(--color-danger-dark);border:1px solid var(--color-danger);}
+    .alert-success{background:var(--color-success-light);color:var(--color-success);border:1px solid var(--color-success);}
+    table{width:100%;border-collapse:collapse;}
+    th,td{padding:10px 12px;border-bottom:1px solid var(--color-border);font-size:.875rem;text-align:left;}
+    th{background:var(--color-surface-alt);font-weight:600;color:var(--color-text-secondary);}
+    input[type=number],input[type=text],input[type=date]{width:100%;padding:6px 8px;border:1px solid var(--color-border);border-radius:5px;background:var(--color-surface);color:var(--color-text);box-sizing:border-box;}
+    .btn{padding:8px 16px;border-radius:6px;border:none;cursor:pointer;font-size:.875rem;font-weight:600;}
+    .btn-primary{background:var(--color-primary);color:#fff;}
+    .btn-danger{background:var(--color-danger);color:#fff;}
+    .btn-sm{padding:4px 10px;font-size:.75rem;}
+    .action-row{display:flex;gap:12px;flex-wrap:wrap;margin-top:16px;}
+    .page-header{display:flex;align-items:center;gap:12px;margin-bottom:20px;}
+    .back-btn{background:none;border:none;cursor:pointer;color:var(--color-primary);font-size:1.1rem;padding:4px;}
+  </style>
+</head>
+<body>
+<div class="app-shell">
+  <div id="sidebar-placeholder"></div>
+  <main class="main-content">
+    <div class="page-header">
+      <button class="back-btn" onclick="history.back()">&#8592;</button>
+      <h1>Detail Resep</h1>
+    </div>
+    <div class="flex-alert alert-danger" id="interaction-panel"></div>
+    <div class="flex-alert alert-danger" id="error-alert"></div>
+    <div class="flex-alert alert-success" id="success-alert"></div>
+    <div class="card"><div id="rx-header-content" style="color:var(--color-text-secondary);">Memuat&hellip;</div></div>
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+        <h3 style="margin:0;">Item Resep</h3>
+        <button class="btn btn-primary btn-sm" id="btn-dispense-all" data-i18n="pharmacy.dispense_all">Dispense Semua</button>
+      </div>
+      <div style="overflow-x:auto;">
+        <table>
+          <thead>
+            <tr>
+              <th>Obat</th><th>Aturan Pakai</th><th>Dipesan</th><th>Sudah Dispense</th>
+              <th>Sisa</th><th>Status</th><th>Qty Dispense</th><th>No. Batch</th><th>Tgl Kadaluarsa</th>
+            </tr>
+          </thead>
+          <tbody id="lines-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="action-row">
+      <button class="btn btn-primary" id="btn-submit">Simpan Dispense</button>
+      <button class="btn btn-danger" id="btn-cancel-rx" style="display:none;">Batalkan Resep</button>
+    </div>
+  </main>
+</div>
+<script src="/static/js/platform.js"></script>
+<script src="/modules/healthcare/frontend/i18n.js"></script>
+<script src="/modules/healthcare/frontend/clinic/prescription-detail.js"></script>
+</body>
+</html>

@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title data-i18n="pharmacy.medications_title">Katalog Obat</title>
+  <link rel="stylesheet" href="/static/css/platform.css"/>
+  <style>
+    .badge{display:inline-block;padding:2px 8px;border-radius:12px;font-size:.75rem;font-weight:600;}
+    .badge-active{background:var(--color-success-light);color:var(--color-success);}
+    .badge-inactive{background:var(--color-muted);color:var(--color-text-secondary);}
+    .badge-cat{background:var(--color-primary-light);color:var(--color-primary);}
+    .stock-low{color:var(--color-danger);font-weight:700;}
+    .alert-banner{padding:12px 16px;border-radius:8px;margin-bottom:16px;display:none;}
+    .alert-warning{background:var(--color-warning-light);color:var(--color-warning-dark);border:1px solid var(--color-warning);}
+    .filter-bar{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px;align-items:center;}
+    .filter-bar select,.filter-bar input{padding:6px 10px;border:1px solid var(--color-border);border-radius:6px;background:var(--color-surface);color:var(--color-text);}
+    table{width:100%;border-collapse:collapse;}
+    th,td{padding:10px 12px;border-bottom:1px solid var(--color-border);text-align:left;font-size:.875rem;}
+    th{background:var(--color-surface-alt);font-weight:600;color:var(--color-text-secondary);}
+    tr:hover td{background:var(--color-surface-hover);cursor:pointer;}
+    .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;z-index:900;align-items:center;justify-content:center;}
+    .modal-overlay.open{display:flex;}
+    .modal{background:var(--color-surface);border-radius:12px;padding:24px;width:min(520px,95vw);max-height:90vh;overflow-y:auto;}
+    .modal h2{margin:0 0 16px;font-size:1.1rem;}
+    .form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;}
+    .form-row.single{grid-template-columns:1fr;}
+    label{display:block;font-size:.8rem;color:var(--color-text-secondary);margin-bottom:4px;}
+    input[type=text],input[type=number],select,textarea{width:100%;padding:8px 10px;border:1px solid var(--color-border);border-radius:6px;background:var(--color-surface);color:var(--color-text);box-sizing:border-box;}
+    .btn{padding:8px 16px;border-radius:6px;border:none;cursor:pointer;font-size:.875rem;font-weight:600;}
+    .btn-primary{background:var(--color-primary);color:#fff;}
+    .btn-secondary{background:var(--color-surface-alt);color:var(--color-text);}
+    .btn-danger{background:var(--color-danger);color:#fff;}
+    .btn-sm{padding:4px 10px;font-size:.75rem;}
+    .modal-footer{display:flex;gap:8px;justify-content:flex-end;margin-top:16px;}
+    .page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;}
+  </style>
+</head>
+<body>
+<div class="app-shell">
+  <div id="sidebar-placeholder"></div>
+  <main class="main-content">
+    <div class="page-header">
+      <h1 data-i18n="pharmacy.medications_title">Katalog Obat</h1>
+      <button class="btn btn-primary" id="btn-add-med">+ <span data-i18n="pharmacy.add_medication">Tambah Obat</span></button>
+    </div>
+    <div class="alert-banner alert-warning" id="low-stock-banner"></div>
+    <div class="filter-bar">
+      <select id="filter-category"><option value="">Semua Kategori</option></select>
+      <label style="display:flex;align-items:center;gap:6px;margin:0;">
+        <input type="checkbox" id="filter-low-stock"/> Stok Rendah
+      </label>
+      <input type="text" id="filter-search" placeholder="Cari nama obat..." style="flex:1;min-width:160px;"/>
+    </div>
+    <div style="overflow-x:auto;">
+      <table>
+        <thead>
+          <tr>
+            <th>Nama Obat</th><th>Nama Generik</th><th>Kategori</th><th>Sediaan</th>
+            <th>Kekuatan</th><th>Stok</th><th>Harga Satuan</th><th>Status</th><th>Aksi</th>
+          </tr>
+        </thead>
+        <tbody id="med-tbody"></tbody>
+      </table>
+    </div>
+    <div id="empty-state" style="display:none;text-align:center;padding:40px;color:var(--color-text-secondary);">Tidak ada data obat.</div>
+  </main>
+</div>
+<!-- Medication Modal -->
+<div class="modal-overlay" id="med-modal">
+  <div class="modal">
+    <h2 id="med-modal-title">Tambah Obat</h2>
+    <input type="hidden" id="med-id"/>
+    <div class="form-row">
+      <div><label>Nama Obat*</label><input type="text" id="med-name"/></div>
+      <div><label>Nama Generik</label><input type="text" id="med-generic-name"/></div>
+    </div>
+    <div class="form-row">
+      <div><label>Nama Merek</label><input type="text" id="med-brand-name"/></div>
+      <div><label>Kategori*</label>
+        <select id="med-category">
+          <option value="analgesic">Analgesik</option>
+          <option value="antibiotic">Antibiotik</option>
+          <option value="antihypertensive">Antihipertensi</option>
+          <option value="antidiabetic">Antidiabetik</option>
+          <option value="vitamin">Vitamin &amp; Suplemen</option>
+          <option value="other">Lainnya</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div><label>Sediaan*</label>
+        <select id="med-form">
+          <option value="tablet">Tablet</option>
+          <option value="capsule">Kapsul</option>
+          <option value="syrup">Sirup</option>
+          <option value="injection">Injeksi</option>
+          <option value="cream">Krim</option>
+          <option value="drops">Tetes</option>
+          <option value="inhaler">Inhaler</option>
+          <option value="other">Lainnya</option>
+        </select>
+      </div>
+      <div><label>Kekuatan</label><input type="text" id="med-strength" placeholder="misal: 500"/></div>
+    </div>
+    <div class="form-row">
+      <div><label>Satuan</label><input type="text" id="med-unit" placeholder="misal: mg"/></div>
+      <div><label>Stok Minimum</label><input type="number" id="med-min-stock" min="0" value="0"/></div>
+    </div>
+    <div class="form-row">
+      <div><label>Harga Satuan (IDR)*</label><input type="number" id="med-unit-price" min="0" value="0"/></div>
+      <div style="display:flex;align-items:flex-end;">
+        <label style="display:flex;align-items:center;gap:8px;margin:0;">
+          <input type="checkbox" id="med-active" checked/> Aktif
+        </label>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" id="med-modal-cancel">Batal</button>
+      <button class="btn btn-primary" id="med-modal-save">Simpan</button>
+    </div>
+  </div>
+</div>
+<!-- Stock Adjust Modal -->
+<div class="modal-overlay" id="stock-modal">
+  <div class="modal">
+    <h2 data-i18n="pharmacy.stock_adjust">Sesuaikan Stok</h2>
+    <input type="hidden" id="stock-med-id"/>
+    <p id="stock-med-name" style="color:var(--color-text-secondary);margin:0 0 16px;"></p>
+    <div class="form-row single">
+      <div><label>Penyesuaian Jumlah (+ tambah / - kurang)*</label><input type="number" id="stock-delta"/></div>
+    </div>
+    <div class="form-row single">
+      <div><label>Alasan*</label><input type="text" id="stock-reason" placeholder="misal: Penerimaan barang, Koreksi stok"/></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" id="stock-modal-cancel">Batal</button>
+      <button class="btn btn-primary" id="stock-modal-save">Simpan</button>
+    </div>
+  </div>
+</div>
+<script src="/static/js/platform.js"></script>
+<script src="/modules/healthcare/frontend/i18n.js"></script>
+<script src="/modules/healthcare/frontend/clinic/medications.js"></script>
+</body>
+</html>

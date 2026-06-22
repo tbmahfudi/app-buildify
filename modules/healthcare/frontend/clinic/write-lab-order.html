@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Buat Order Lab</title>
+  <link rel="stylesheet" href="/static/css/main.css"/>
+  <style>
+    .section{background:var(--color-surface);border:1px solid var(--color-border);border-radius:10px;padding:20px;margin-bottom:20px}
+    .section h2{font-size:1rem;font-weight:700;margin-bottom:14px}
+    .form-group{margin-bottom:14px}
+    .form-group label{display:block;font-size:.85rem;font-weight:600;margin-bottom:4px}
+    .form-group input,.form-group select,.form-group textarea{width:100%;padding:8px 10px;border:1px solid var(--color-border);border-radius:6px;font-size:.95rem;background:var(--color-surface);color:var(--color-text)}
+    .btn{padding:8px 18px;border:none;border-radius:6px;cursor:pointer;font-size:.9rem;font-weight:600}
+    .btn-primary{background:var(--color-primary);color:#fff}
+    .btn-danger-sm{background:transparent;color:var(--color-danger);border:1px solid var(--color-danger);padding:3px 10px;border-radius:6px;cursor:pointer;font-size:.8rem}
+    .badge{display:inline-block;padding:2px 8px;border-radius:12px;font-size:.75rem;font-weight:600}
+    .priority-radio{display:flex;gap:16px;margin-top:6px}
+    .priority-radio label{display:flex;align-items:center;gap:6px;font-size:.9rem;cursor:pointer}
+    .priority-stat-label{color:var(--color-danger);font-weight:700}
+    .autocomplete-wrap{position:relative}
+    .autocomplete-list{position:absolute;top:100%;left:0;right:0;background:var(--color-surface);border:1px solid var(--color-border);border-radius:6px;z-index:50;max-height:280px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,.1)}
+    .autocomplete-item{padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--color-border)}
+    .autocomplete-item:last-child{border-bottom:none}
+    .autocomplete-item:hover{background:var(--color-surface-2)}
+    .selected-panel-row{display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--color-surface-2);border-radius:6px;margin-bottom:8px}
+    .selected-panel-row .pname{font-weight:600;flex:1}
+    .tat-estimate{font-size:.95rem;font-weight:600;color:var(--color-primary);margin-top:10px}
+    .internal-note{font-size:.78rem;color:var(--color-text-muted);margin-top:4px}
+  </style>
+</head>
+<body>
+<div class="container" style="max-width:760px;margin:0 auto;padding:24px">
+  <h1 style="font-size:1.4rem;font-weight:700;margin-bottom:20px">Buat Order Lab</h1>
+
+  <!-- Encounter ref -->
+  <div class="section" id="encounter-section">
+    <h2>Kunjungan</h2>
+    <div id="encounter-info" style="font-size:.9rem;color:var(--color-text-muted)">Memuat data kunjungan…</div>
+  </div>
+
+  <!-- Panel search -->
+  <div class="section">
+    <h2>Pilih Panel Pemeriksaan</h2>
+    <div class="autocomplete-wrap form-group">
+      <label>Cari panel (nama / kode)</label>
+      <input type="text" id="panel-search" placeholder="Ketik untuk mencari…" autocomplete="off"/>
+      <div class="autocomplete-list hidden" id="autocomplete-list"></div>
+    </div>
+    <div id="selected-panels"></div>
+    <div class="tat-estimate hidden" id="tat-estimate"></div>
+  </div>
+
+  <!-- Priority -->
+  <div class="section">
+    <h2>Prioritas</h2>
+    <div class="priority-radio">
+      <label><input type="radio" name="priority" value="routine" checked/> Rutin</label>
+      <label><input type="radio" name="priority" value="urgent"/> Urgent</label>
+      <label class="priority-stat-label"><input type="radio" name="priority" value="stat"/> STAT</label>
+    </div>
+  </div>
+
+  <!-- Clinical notes -->
+  <div class="section">
+    <h2>Catatan Klinis</h2>
+    <div class="form-group">
+      <textarea id="clinical-notes" rows="3" placeholder="Catatan untuk lab tech…"></textarea>
+      <div class="internal-note">(Catatan ini tidak terlihat oleh pasien)</div>
+    </div>
+  </div>
+
+  <button class="btn btn-primary" id="btn-submit" style="width:100%;padding:12px">Buat Order</button>
+</div>
+
+<script src="/static/js/i18n.js"></script>
+<script src="write-lab-order.js"></script>
+</body>
+</html>

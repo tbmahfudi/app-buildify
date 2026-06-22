@@ -5,9 +5,9 @@ producer: D3 Security Engineer
 consumers: [C1 Tech Lead, A3 Product Owner, stakeholders]
 upstream: [epic-21-risk-retirement, arch-21, tasks-21]
 downstream: []
-status: review
+status: approved
 created: 2026-05-08
-updated: 2026-05-08
+updated: 2026-06-18
 verdict: clear-to-ship
 findings_count:
   critical: 0

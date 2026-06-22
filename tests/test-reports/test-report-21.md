@@ -5,9 +5,9 @@ producer: D1 QA Engineer
 consumers: [stakeholders, A3 Product Owner, C1 Tech Lead]
 upstream: [test-plan-21, epic-21-risk-retirement, tasks-21]
 downstream: []
-status: review
+status: approved
 created: 2026-05-08
-updated: 2026-05-08
+updated: 2026-06-18
 verdict: code-walk-PASS / live-run-pending
 covers_tasks: [T-21.X.1, T-21.2.8, T-21.3.8, T-21.4.6]
 ---

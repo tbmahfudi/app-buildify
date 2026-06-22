@@ -20,6 +20,19 @@ def apply_tenant_scope(query: Query, model: Any, user: Any) -> Query:
     return query.filter(model.tenant_id == tenant_id)
 
 
+def apply_tenant_scope_by_id(query: Query, model: Any, tenant_id: Any) -> Query:
+    """Apply tenant_id filter using a plain tenant_id value (for static/classmethod contexts).
+
+    Use apply_tenant_scope(query, model, user) in instance-method contexts where a
+    current_user is available.  Use this variant in static methods that receive only
+    a bare tenant_id parameter.
+    """
+    if not hasattr(model, 'tenant_id'):
+        return query
+    if tenant_id is None:
+        raise TenantScopeMissingError(f"No tenant_id provided when querying {model.__name__}")
+    return query.filter(model.tenant_id == tenant_id)
+
 def tenant_scope_dependency(user):
     """FastAPI dependency — validates user has tenant context. Returns user."""
     if not getattr(user, 'is_superuser', False) and getattr(user, 'tenant_id', None) is None:

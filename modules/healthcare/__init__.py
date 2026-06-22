@@ -1,0 +1,1 @@
+"""Healthcare base module."""

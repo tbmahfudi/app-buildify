@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="id-ID">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title data-i18n="onboarding.pageTitle">Daftar Klinik</title>
+  <link rel="stylesheet" href="/frontend/assets/css/app.css" />
+  <style>
+    /* ── layout ─────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: system-ui, sans-serif;
+      background: var(--color-bg-main);
+      color: var(--color-text-primary);
+      min-height: 100vh;
+    }
+
+    header.hc-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: var(--spacing-md) var(--spacing-xl);
+      background: var(--color-bg-header);
+      border-bottom: 1px solid var(--color-border);
+    }
+
+    .hc-header__logo { font-weight: 700; font-size: var(--font-lg); color: var(--color-primary); }
+
+    main {
+      max-width: 600px;
+      margin: var(--spacing-2xl) auto;
+      padding: 0 var(--spacing-lg);
+    }
+
+    /* ── stepper ─────────────────────────────────────────────────── */
+    .hc-stepper {
+      display: flex;
+      gap: var(--spacing-sm);
+      margin-bottom: var(--spacing-2xl);
+      counter-reset: step;
+    }
+
+    .hc-stepper__item {
+      flex: 1;
+      height: 4px;
+      background: var(--color-border);
+      border-radius: var(--radius-sm);
+      transition: background 0.3s;
+    }
+
+    .hc-stepper__item.active { background: var(--color-primary); }
+    .hc-stepper__item.done   { background: var(--color-primary-hover); }
+
+    /* ── card ─────────────────────────────────────────────────────── */
+    .hc-card {
+      background: var(--color-bg-card);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      padding: var(--spacing-2xl);
+    }
+
+    .hc-card h2 {
+      font-size: var(--font-xl);
+      margin-bottom: var(--spacing-xl);
+      color: var(--color-text-primary);
+    }
+
+    /* ── form elements ────────────────────────────────────────────── */
+    .hc-field { margin-bottom: var(--spacing-lg); }
+
+    .hc-field label {
+      display: block;
+      font-size: var(--font-sm);
+      font-weight: 600;
+      color: var(--color-text-secondary);
+      margin-bottom: var(--spacing-xs);
+    }
+
+    .hc-field input,
+    .hc-field select,
+    .hc-field textarea {
+      width: 100%;
+      padding: var(--spacing-sm) var(--spacing-md);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      background: var(--color-bg-main);
+      color: var(--color-text-primary);
+      font-size: var(--font-base);
+    }
+
+    .hc-field input:focus,
+    .hc-field select:focus,
+    .hc-field textarea:focus {
+      outline: 2px solid var(--color-primary);
+      outline-offset: 1px;
+    }
+
+    .hc-field__error {
+      color: #dc2626;
+      font-size: var(--font-xs);
+      margin-top: var(--spacing-xs);
+      display: none;
+    }
+
+    .hc-field.has-error input,
+    .hc-field.has-error select { border-color: #dc2626; }
+    .hc-field.has-error .hc-field__error { display: block; }
+
+    /* ── phone + OTP row ──────────────────────────────────────────── */
+    .hc-phone-row { display: flex; gap: var(--spacing-sm); }
+    .hc-phone-row input { flex: 1; }
+    .hc-phone-row button { white-space: nowrap; }
+
+    /* ── OTP boxes ────────────────────────────────────────────────── */
+    .hc-otp-row {
+      display: flex;
+      gap: var(--spacing-sm);
+      justify-content: center;
+      margin-bottom: var(--spacing-lg);
+    }
+
+    .hc-otp-box {
+      width: 48px;
+      height: 56px;
+      text-align: center;
+      font-size: var(--font-xl);
+      font-weight: 700;
+      border: 2px solid var(--color-border);
+      border-radius: var(--radius-md);
+      background: var(--color-bg-main);
+      color: var(--color-text-primary);
+    }
+
+    .hc-otp-box:focus { outline: 2px solid var(--color-primary); }
+
+    /* ── DPA scroll area ──────────────────────────────────────────── */
+    .hc-dpa-scroll {
+      height: 200px;
+      overflow-y: auto;
+      padding: var(--spacing-md);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      background: var(--color-bg-main);
+      font-size: var(--font-sm);
+      color: var(--color-text-secondary);
+      margin-bottom: var(--spacing-md);
+      line-height: 1.6;
+    }
+
+    /* ── buttons ──────────────────────────────────────────────────── */
+    .hc-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: var(--spacing-sm) var(--spacing-xl);
+      border: none;
+      border-radius: var(--radius-md);
+      font-size: var(--font-base);
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .hc-btn--primary {
+      background: var(--color-primary);
+      color: var(--color-text-inverse);
+    }
+
+    .hc-btn--primary:hover { background: var(--color-primary-hover); }
+
+    .hc-btn--secondary {
+      background: transparent;
+      color: var(--color-text-secondary);
+      border: 1px solid var(--color-border);
+    }
+
+    .hc-btn--secondary:hover { background: var(--color-bg-card-hover); }
+    .hc-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .hc-btn-row {
+      display: flex;
+      justify-content: space-between;
+      margin-top: var(--spacing-xl);
+      gap: var(--spacing-sm);
+    }
+
+    /* ── success ──────────────────────────────────────────────────── */
+    .hc-success {
+      text-align: center;
+      padding: var(--spacing-2xl) 0;
+    }
+
+    .hc-success__icon {
+      font-size: 3rem;
+      margin-bottom: var(--spacing-md);
+    }
+
+    .hc-success__name {
+      font-size: var(--font-xl);
+      font-weight: 700;
+      color: var(--color-primary);
+      margin-bottom: var(--spacing-sm);
+    }
+
+    /* ── checkbox row ─────────────────────────────────────────────── */
+    .hc-check-row {
+      display: flex;
+      align-items: flex-start;
+      gap: var(--spacing-sm);
+      margin-bottom: var(--spacing-sm);
+    }
+
+    .hc-check-row input[type="checkbox"] { margin-top: 3px; flex-shrink: 0; }
+
+    .hc-check-row label { font-size: var(--font-sm); color: var(--color-text-primary); }
+
+    .hc-check-translation { font-size: var(--font-xs); color: var(--color-text-tertiary); }
+
+    /* ── resend ───────────────────────────────────────────────────── */
+    .hc-resend { font-size: var(--font-sm); color: var(--color-text-secondary); margin-top: var(--spacing-sm); text-align: center; }
+    .hc-resend button { background: none; border: none; color: var(--color-primary); cursor: pointer; font-size: var(--font-sm); }
+    .hc-resend button:disabled { color: var(--color-text-tertiary); cursor: default; }
+
+    /* ── step panels ──────────────────────────────────────────────── */
+    .hc-step { display: none; }
+    .hc-step.active { display: block; }
+  </style>
+</head>
+<body>
+  <header class="hc-header">
+    <span class="hc-header__logo">App-Buildify Healthcare</span>
+    <div data-locale-switcher></div>
+  </header>
+
+  <main>
+    <!-- Step progress bar -->
+    <div class="hc-stepper" id="stepper" aria-label="Steps">
+      <div class="hc-stepper__item active" id="step-bar-1"></div>
+      <div class="hc-stepper__item"        id="step-bar-2"></div>
+      <div class="hc-stepper__item"        id="step-bar-3"></div>
+      <div class="hc-stepper__item"        id="step-bar-4"></div>
+    </div>
+
+    <div class="hc-card">
+
+      <!-- Step 1: owner info + OTP send -->
+      <div class="hc-step active" id="step-1">
+        <h2 data-i18n="onboarding.step1.title"></h2>
+
+        <div class="hc-field" id="field-owner-name">
+          <label for="owner-name" data-i18n="onboarding.step1.ownerName"></label>
+          <input id="owner-name" type="text" autocomplete="name" />
+          <span class="hc-field__error" data-i18n="error.required"></span>
+        </div>
+
+        <div class="hc-field" id="field-email">
+          <label for="email" data-i18n="onboarding.step1.email"></label>
+          <input id="email" type="email" autocomplete="email" />
+          <span class="hc-field__error" data-i18n="error.emailInvalid"></span>
+        </div>
+
+        <div class="hc-field" id="field-phone">
+          <label for="phone" data-i18n="onboarding.step1.phone"></label>
+          <div class="hc-phone-row">
+            <input id="phone" type="tel" autocomplete="tel" />
+            <button class="hc-btn hc-btn--secondary" id="btn-send-otp" data-i18n="onboarding.step1.sendOtp"></button>
+          </div>
+          <span class="hc-field__error" data-i18n="error.phoneInvalid"></span>
+        </div>
+
+        <!-- OTP entry (hidden until sent) -->
+        <div id="otp-section" style="display:none">
+          <div class="hc-otp-row" id="otp-boxes-1" aria-label="OTP"></div>
+          <div class="hc-resend">
+            <span id="otp-countdown-1"></span>
+            <button id="btn-resend-1" disabled data-i18n="onboarding.otp.resend"></button>
+          </div>
+        </div>
+
+        <!-- hCaptcha container -->
+        <div id="hcaptcha-1" class="h-captcha" style="margin-top: var(--spacing-md);"></div>
+
+        <div class="hc-btn-row">
+          <span></span>
+          <button class="hc-btn hc-btn--primary" id="btn-next-1" data-i18n="common.next"></button>
+        </div>
+      </div>
+
+      <!-- Step 2: clinic details -->
+      <div class="hc-step" id="step-2">
+        <h2 data-i18n="onboarding.step2.title"></h2>
+
+        <div class="hc-field" id="field-clinic-name">
+          <label for="clinic-name" data-i18n="onboarding.step2.clinicName"></label>
+          <input id="clinic-name" type="text" />
+          <span class="hc-field__error" data-i18n="error.required"></span>
+        </div>
+
+        <div class="hc-field" id="field-specialty">
+          <label for="specialty" data-i18n="onboarding.step2.specialty"></label>
+          <select id="specialty">
+            <option value="" data-i18n="common.selectOption"></option>
+            <option value="umum"         data-i18n="specialty.umum"></option>
+            <option value="gigi"         data-i18n="specialty.gigi"></option>
+            <option value="anak"         data-i18n="specialty.anak"></option>
+            <option value="kandungan"    data-i18n="specialty.kandungan"></option>
+            <option value="jantung"      data-i18n="specialty.jantung"></option>
+            <option value="kulit"        data-i18n="specialty.kulit"></option>
+            <option value="mata"         data-i18n="specialty.mata"></option>
+            <option value="tht"          data-i18n="specialty.tht"></option>
+            <option value="ortopedi"     data-i18n="specialty.ortopedi"></option>
+            <option value="saraf"        data-i18n="specialty.saraf"></option>
+            <option value="psikiatri"    data-i18n="specialty.psikiatri"></option>
+            <option value="fisioterapi"  data-i18n="specialty.fisioterapi"></option>
+          </select>
+          <span class="hc-field__error" data-i18n="error.required"></span>
+        </div>
+
+        <div class="hc-field" id="field-city">
+          <label for="city" data-i18n="onboarding.step2.city"></label>
+          <input id="city" type="text" />
+          <span class="hc-field__error" data-i18n="error.required"></span>
+        </div>
+
+        <div class="hc-field">
+          <label for="website" data-i18n="onboarding.step2.website"></label>
+          <input id="website" type="url" placeholder="https://" />
+        </div>
+
+        <div class="hc-btn-row">
+          <button class="hc-btn hc-btn--secondary" id="btn-back-2" data-i18n="common.back"></button>
+          <button class="hc-btn hc-btn--primary"   id="btn-next-2" data-i18n="common.next"></button>
+        </div>
+      </div>
+
+      <!-- Step 3: DPA consent -->
+      <div class="hc-step" id="step-3">
+        <h2 data-i18n="onboarding.step3.title"></h2>
+
+        <div class="hc-dpa-scroll" id="dpa-text" data-i18n="onboarding.step3.dpaText"></div>
+
+        <div class="hc-check-row">
+          <input type="checkbox" id="dpa-consent" />
+          <div>
+            <label for="dpa-consent" data-i18n="onboarding.step3.consentLabel"></label>
+            <div class="hc-check-translation" data-i18n="onboarding.step3.consentTranslation"></div>
+          </div>
+        </div>
+        <div id="field-consent-error" class="hc-field__error" style="display:none" data-i18n="error.consentRequired"></div>
+
+        <div class="hc-btn-row">
+          <button class="hc-btn hc-btn--secondary" id="btn-back-3" data-i18n="common.back"></button>
+          <button class="hc-btn hc-btn--primary"   id="btn-submit" data-i18n="onboarding.step3.submit"></button>
+        </div>
+      </div>
+
+      <!-- Step 4: success -->
+      <div class="hc-step" id="step-4">
+        <div class="hc-success">
+          <div class="hc-success__icon">✅</div>
+          <div class="hc-success__name" id="success-clinic-name"></div>
+          <p data-i18n="onboarding.step4.message"></p>
+          <div class="hc-btn-row" style="justify-content:center; margin-top: var(--spacing-2xl);">
+            <a class="hc-btn hc-btn--primary" href="/dashboard" data-i18n="onboarding.step4.dashboard"></a>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /.hc-card -->
+  </main>
+
+  <script type="module" src="./onboarding.js"></script>
+</body>
+</html>

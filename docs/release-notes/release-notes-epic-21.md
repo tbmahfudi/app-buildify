@@ -5,9 +5,9 @@ producer: E2 Technical Writer
 consumers: [stakeholders, tenant administrators, operators]
 upstream: [epic-21-risk-retirement, tasks-21]
 downstream: []
-status: review
+status: approved
 created: 2026-05-08
-updated: 2026-05-08
+updated: 2026-06-18
 sprint: epic-21 — Risk Retirement (Sprint 1)
 ---
 

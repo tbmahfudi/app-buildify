@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title data-i18n="pharmacy.write_prescription">Tulis Resep</title>
+  <link rel="stylesheet" href="/static/css/platform.css"/>
+  <style>
+    .card{background:var(--color-surface);border:1px solid var(--color-border);border-radius:10px;padding:16px;margin-bottom:16px;}
+    .flex-alert{padding:12px 16px;border-radius:8px;margin-bottom:12px;display:none;}
+    .alert-danger{background:var(--color-danger-light);color:var(--color-danger-dark);border:1px solid var(--color-danger);}
+    .alert-warning{background:var(--color-warning-light);color:var(--color-warning-dark);border:1px solid var(--color-warning);}
+    .alert-success{background:var(--color-success-light);color:var(--color-success);border:1px solid var(--color-success);}
+    input[type=text],input[type=number],textarea{width:100%;padding:8px 10px;border:1px solid var(--color-border);border-radius:6px;background:var(--color-surface);color:var(--color-text);box-sizing:border-box;}
+    .ac-wrap{position:relative;}
+    .ac-list{position:absolute;top:100%;left:0;right:0;background:var(--color-surface);border:1px solid var(--color-border);border-radius:6px;max-height:200px;overflow-y:auto;z-index:200;box-shadow:0 4px 12px rgba(0,0,0,.15);display:none;}
+    .ac-item{padding:8px 12px;cursor:pointer;font-size:.875rem;}
+    .ac-item:hover{background:var(--color-surface-hover);}
+    table{width:100%;border-collapse:collapse;}
+    th,td{padding:8px 10px;border-bottom:1px solid var(--color-border);font-size:.875rem;text-align:left;}
+    th{background:var(--color-surface-alt);font-weight:600;color:var(--color-text-secondary);}
+    .btn{padding:8px 16px;border-radius:6px;border:none;cursor:pointer;font-size:.875rem;font-weight:600;}
+    .btn-primary{background:var(--color-primary);color:#fff;}
+    .btn-secondary{background:var(--color-surface-alt);color:var(--color-text);}
+    .btn-danger{background:var(--color-danger);color:#fff;}
+    .btn-sm{padding:4px 10px;font-size:.75rem;}
+    .page-header{display:flex;align-items:center;gap:12px;margin-bottom:20px;}
+    .back-btn{background:none;border:none;cursor:pointer;color:var(--color-primary);font-size:1.1rem;}
+    label{display:block;font-size:.8rem;color:var(--color-text-secondary);margin-bottom:4px;}
+    .note-hint{font-size:.75rem;color:var(--color-text-secondary);}
+  </style>
+</head>
+<body>
+<div class="app-shell">
+  <div id="sidebar-placeholder"></div>
+  <main class="main-content">
+    <div class="page-header">
+      <button class="back-btn" onclick="history.back()">&#8592;</button>
+      <h1 data-i18n="pharmacy.write_prescription">Tulis Resep</h1>
+    </div>
+    <div class="card"><div id="encounter-info" style="color:var(--color-text-secondary);">Kunjungan: &mdash;</div></div>
+    <div class="flex-alert alert-danger" id="interaction-severe"></div>
+    <div class="flex-alert alert-warning" id="interaction-mild"></div>
+    <div class="flex-alert alert-danger" id="error-alert"></div>
+    <div class="flex-alert alert-success" id="success-alert"></div>
+    <div class="card">
+      <h3 style="margin:0 0 12px;">Cari &amp; Tambah Obat</h3>
+      <div class="ac-wrap">
+        <input type="text" id="med-search" placeholder="Ketik nama obat&hellip;" autocomplete="off"/>
+        <div class="ac-list" id="ac-list"></div>
+      </div>
+    </div>
+    <div class="card">
+      <h3 style="margin:0 0 12px;">Item Resep</h3>
+      <div style="overflow-x:auto;">
+        <table>
+          <thead>
+            <tr>
+              <th>Obat</th>
+              <th data-i18n="pharmacy.dosage_instructions">Aturan Pakai</th>
+              <th>Jumlah</th>
+              <th data-i18n="pharmacy.days_supply">Durasi (hari)</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="lines-tbody"></tbody>
+        </table>
+      </div>
+      <div id="lines-empty" style="text-align:center;padding:20px;color:var(--color-text-secondary);">Belum ada obat ditambahkan.</div>
+    </div>
+    <div class="card">
+      <label>Catatan Dokter <span class="note-hint">(Catatan ini tidak terlihat oleh pasien)</span></label>
+      <textarea id="notes" rows="3" placeholder="Catatan internal&hellip;"></textarea>
+    </div>
+    <div id="severe-override-wrap" style="display:none;" class="card">
+      <label style="display:flex;align-items:center;gap:8px;color:var(--color-danger-dark);">
+        <input type="checkbox" id="override-check"/>
+        Saya memahami risiko interaksi obat berbahaya dan mengkonfirmasi untuk melanjutkan
+      </label>
+    </div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;">
+      <button class="btn btn-primary" id="btn-submit">Kirim Resep</button>
+      <button class="btn btn-secondary" onclick="history.back()">Batal</button>
+    </div>
+  </main>
+</div>
+<script src="/static/js/platform.js"></script>
+<script src="/modules/healthcare/frontend/i18n.js"></script>
+<script src="/modules/healthcare/frontend/clinic/write-prescription.js"></script>
+</body>
+</html>

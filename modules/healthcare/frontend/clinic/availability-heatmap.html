@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="id-ID">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title data-i18n="availability.title">Ketersediaan Dokter</title>
+  <link rel="stylesheet" href="/frontend/assets/css/app.css" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; background: var(--color-bg-main); color: var(--color-text-primary); }
+
+    .hc-page { max-width: 960px; margin: 0 auto; padding: var(--spacing-xl); }
+    .hc-page__header { display: flex; align-items: center; flex-wrap: wrap; gap: var(--spacing-md); margin-bottom: var(--spacing-xl); }
+    .hc-page__title { font-size: var(--font-xl); font-weight: 800; flex: 1; }
+
+    .hc-controls { display: flex; align-items: center; gap: var(--spacing-md); flex-wrap: wrap; margin-bottom: var(--spacing-lg); }
+    .hc-controls label { font-size: var(--font-sm); color: var(--color-text-secondary); font-weight: 600; }
+    .hc-controls input[type=date] { padding: var(--spacing-xs) var(--spacing-sm); border: 1.5px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-bg-main); color: var(--color-text-primary); font-size: var(--font-sm); }
+    .hc-btn { padding: var(--spacing-sm) var(--spacing-lg); border: none; border-radius: var(--radius-md); font-size: var(--font-sm); font-weight: 700; cursor: pointer; }
+    .hc-btn--outline { background: transparent; border: 1.5px solid var(--color-primary); color: var(--color-primary); }
+    .hc-btn--outline:hover { background: var(--color-primary); color: var(--color-text-inverse); }
+
+    /* Heatmap table */
+    .hc-heatmap { width: 100%; border-collapse: collapse; border: 1px solid var(--color-border); border-radius: var(--radius-md); overflow: hidden; }
+    .hc-heatmap th, .hc-heatmap td { border: 1px solid var(--color-border); padding: var(--spacing-sm) var(--spacing-md); text-align: center; font-size: var(--font-sm); }
+    .hc-heatmap th { background: var(--color-bg-main); font-weight: 700; white-space: nowrap; }
+    .hc-heatmap td.hc-cell--provider { text-align: left; font-weight: 600; white-space: nowrap; background: var(--color-bg-card); }
+    .hc-heatmap td.hc-cell--data { cursor: pointer; transition: opacity 0.15s; }
+    .hc-heatmap td.hc-cell--data:hover { opacity: 0.75; }
+    .hc-heatmap td.hc-cell--high { background: var(--color-success); color: #fff; }
+    .hc-heatmap td.hc-cell--mid { background: var(--color-warning); color: #fff; }
+    .hc-heatmap td.hc-cell--low { background: var(--color-danger); color: #fff; }
+    .hc-heatmap td.hc-cell--none { background: var(--color-bg-main); color: var(--color-text-tertiary); }
+
+    /* Skeleton */
+    .hc-skeleton { background: var(--color-border); border-radius: var(--radius-sm); animation: pulse 1.2s ease-in-out infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+    .hc-skeleton-row td { padding: var(--spacing-sm); }
+  </style>
+</head>
+<body>
+  <div class="hc-page">
+    <div class="hc-page__header">
+      <h1 class="hc-page__title" data-i18n="availability.title"></h1>
+      <div data-locale-switcher></div>
+    </div>
+
+    <div id="alert-container" style="margin-bottom:var(--spacing-md);"></div>
+
+    <div class="hc-controls">
+      <label for="range-start">Dari:</label>
+      <input type="date" id="range-start" />
+      <label for="range-end">Sampai:</label>
+      <input type="date" id="range-end" />
+      <button class="hc-btn hc-btn--outline" id="btn-apply-range">Terapkan</button>
+      <button class="hc-btn hc-btn--outline" id="btn-export-csv" data-i18n="availability.export_csv" style="margin-left:auto;"></button>
+    </div>
+
+    <div style="overflow-x:auto;">
+      <table class="hc-heatmap" id="heatmap-table">
+        <thead id="heatmap-head"></thead>
+        <tbody id="heatmap-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script src="/frontend/assets/js/flex-components.js"></script>
+  <script type="module" src="./availability-heatmap.js"></script>
+</body>
+</html>

@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title data-i18n="review.title"></title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:system-ui,sans-serif;background:var(--color-bg,#f5f5f5);color:var(--color-text,#1a1a1a);max-width:480px;margin:0 auto;min-height:100vh;padding-bottom:64px}
+    :root{--color-primary:#007bff;--color-primary-light:#e8f0fe;--color-bg:#f5f5f5;--color-surface:#fff;--color-text:#1a1a1a;--color-muted:#6b7280;--color-border:#e5e7eb;--color-success:#16a34a;--color-error:#dc2626;--color-warning:#f59e0b;--color-badge-upcoming:#dbeafe;--color-badge-past:#f3f4f6;--color-badge-completed:#dcfce7;--color-badge-cancelled:#fee2e2}
+    .flex-alert{display:flex;align-items:center;gap:8px;padding:12px 16px;border-radius:8px;font-size:14px;margin:8px 16px}
+    .flex-alert.success{background:var(--color-badge-completed);color:var(--color-success)}
+    .flex-alert.error{background:var(--color-badge-cancelled);color:var(--color-error)}
+    .skeleton{background:linear-gradient(90deg,var(--color-border) 25%,#f0f0f0 50%,var(--color-border) 75%);background-size:200% 100%;animation:shimmer 1.2s infinite;border-radius:6px}
+    @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+    .bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;background:var(--color-surface);border-top:1px solid var(--color-border);display:flex;z-index:100}
+    .bottom-nav a{flex:1;display:flex;flex-direction:column;align-items:center;padding:8px 4px;font-size:11px;color:var(--color-muted);text-decoration:none;gap:2px}
+    .bottom-nav a.active{color:var(--color-primary)}
+    .bottom-nav a svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8}
+    
+    .page-header{padding:16px;background:var(--color-surface);border-bottom:1px solid var(--color-border);display:flex;align-items:center;gap:12px}
+    .back-btn{background:none;border:none;cursor:pointer;padding:4px;color:var(--color-primary);display:flex;align-items:center}
+    .back-btn svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:2}
+    .form-card{background:var(--color-surface);margin:12px;border-radius:12px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+    .form-label{font-size:13px;font-weight:500;color:var(--color-muted);margin-bottom:8px;display:block}
+    .star-row{display:flex;gap:8px;margin-bottom:16px}
+    .star{font-size:36px;cursor:pointer;color:var(--color-border);transition:color .15s;user-select:none}
+    .star.filled{color:var(--color-warning)}
+    textarea{width:100%;border:1px solid var(--color-border);border-radius:8px;padding:10px 12px;font-size:15px;font-family:inherit;resize:vertical;min-height:100px;background:var(--color-bg);color:var(--color-text)}
+    textarea:focus{outline:none;border-color:var(--color-primary)}
+    .char-counter{font-size:12px;color:var(--color-muted);text-align:right;margin-top:4px}
+    .btn-submit{width:100%;padding:14px;background:var(--color-primary);color:#fff;border:none;border-radius:10px;font-size:16px;font-weight:600;cursor:pointer;margin-top:16px}
+    .btn-submit:disabled{opacity:.6;cursor:not-allowed}
+
+  </style>
+</head>
+<body>
+<div id="alert-area"></div>
+<div class="page-header">
+  <button class="back-btn" onclick="history.back()">
+    <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
+  </button>
+  <h1 style="font-size:18px;font-weight:700" data-i18n="review.title"></h1>
+</div>
+<div class="form-card">
+  <label class="form-label" data-i18n="review.rating_label"></label>
+  <div class="star-row" id="stars">
+    <span class="star" data-val="1">★</span>
+    <span class="star" data-val="2">★</span>
+    <span class="star" data-val="3">★</span>
+    <span class="star" data-val="4">★</span>
+    <span class="star" data-val="5">★</span>
+  </div>
+  <label class="form-label" for="review-text" data-i18n="review.text_label"></label>
+  <textarea id="review-text" maxlength="500" rows="4"></textarea>
+  <div class="char-counter"><span id="char-count">0</span>/500</div>
+  <button class="btn-submit" id="btn-submit" data-i18n="review.submit"></button>
+</div>
+<script src="review-new.js"></script>
+
+<script src="../i18n.js"></script>
+<script src="../locale-switcher.js"></script>
+</body>
+</html>

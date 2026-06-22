@@ -50,7 +50,7 @@ class TestAuthentication:
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
         assert data["email"] == test_user.email
-        assert data["tenant_id"] == test_user.tenant_id
+        assert data["tenant_id"] == str(test_user.tenant_id)
 
     def test_get_current_user_unauthorized(self, client):
         """Test getting current user without authentication"""
@@ -107,4 +107,4 @@ class TestTenantIsolation:
         # Should still work, tenant ID from JWT is used
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
-        assert data["tenant_id"] == test_user.tenant_id
+        assert data["tenant_id"] == str(test_user.tenant_id)

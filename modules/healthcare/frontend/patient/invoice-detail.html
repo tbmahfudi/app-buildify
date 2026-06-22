@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Detail Tagihan</title>
+  <link rel="stylesheet" href="/platform/css/design-system.css"/>
+  <link rel="stylesheet" href="/platform/css/components.css"/>
+  <link rel="stylesheet" href="/modules/healthcare/frontend/healthcare.css"/>
+  
+  <style>
+    .status-badge{display:inline-block;padding:2px 10px;border-radius:12px;font-size:.8rem;font-weight:600}
+    .badge-draft{background:var(--color-neutral-200);color:var(--color-neutral-700)}
+    .badge-finalized{background:var(--color-success-100);color:var(--color-success-700)}
+    .badge-void{background:var(--color-danger-100);color:var(--color-danger-700)}
+    .flex-alert{display:flex;align-items:flex-start;gap:.75rem;padding:.875rem 1rem;border-radius:8px;margin-bottom:1.25rem}
+    .flex-alert-warning{background:var(--color-warning-50);border:1px solid var(--color-warning-300);color:var(--color-warning-900)}
+    .phi-mask{color:var(--color-neutral-400);letter-spacing:.1em}
+    .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;align-items:center;justify-content:center}
+    .modal-overlay.open{display:flex}
+    .modal-box{background:var(--color-surface);border-radius:12px;padding:1.5rem;min-width:340px;max-width:520px;width:100%;box-shadow:var(--shadow-lg)}
+    .datagrid{width:100%;border-collapse:collapse}
+    .datagrid th,.datagrid td{padding:.6rem .75rem;border-bottom:1px solid var(--color-border);text-align:left;font-size:.9rem}
+    .datagrid th{background:var(--color-neutral-50);font-weight:600;color:var(--color-neutral-600)}
+    .datagrid tr:hover td{background:var(--color-neutral-50)}
+    .page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem}
+    .filter-bar{display:flex;flex-wrap:wrap;gap:.75rem;margin-bottom:1rem}
+    .filter-bar select,.filter-bar input{padding:.45rem .7rem;border:1px solid var(--color-border);border-radius:6px;font-size:.9rem;background:var(--color-surface)}
+    .btn{display:inline-flex;align-items:center;gap:.4rem;padding:.5rem 1rem;border-radius:6px;border:none;cursor:pointer;font-size:.9rem;font-weight:500}
+    .btn-primary{background:var(--color-primary);color:#fff}
+    .btn-secondary{background:var(--color-neutral-100);color:var(--color-neutral-800);border:1px solid var(--color-border)}
+    .btn-danger{background:var(--color-danger);color:#fff}
+    .btn-sm{padding:.3rem .65rem;font-size:.8rem}
+    .line-items-table{width:100%;border-collapse:collapse;margin:.75rem 0}
+    .line-items-table th,.line-items-table td{padding:.5rem .6rem;border:1px solid var(--color-border);font-size:.875rem}
+    .line-items-table th{background:var(--color-neutral-50)}
+    .total-row{font-weight:700;font-size:1.05rem;text-align:right;padding:.75rem 0}
+    .card{background:var(--color-surface);border:1px solid var(--color-border);border-radius:10px;padding:1.25rem;margin-bottom:1rem}
+    .invoice-card{cursor:pointer;transition:box-shadow .15s}
+    .invoice-card:hover{box-shadow:var(--shadow-md)}
+    .spinner{display:none;width:24px;height:24px;border:3px solid var(--color-neutral-200);border-top-color:var(--color-primary);border-radius:50%;animation:spin .7s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .empty-state{text-align:center;padding:3rem 1rem;color:var(--color-neutral-500)}
+  </style>
+</head>
+<body>
+<div class="app-container" style="max-width:600px;margin:0 auto;padding:1.5rem 1rem 5rem">
+  <div class="page-header">
+    <div>
+      <h1 style="font-size:1.4rem;font-weight:700" id="inv-number">—</h1>
+      <div id="inv-status" style="margin-top:.25rem"></div>
+    </div>
+    <button class="btn btn-secondary btn-sm" onclick="location.href='/patient/invoices'">← Kembali</button>
+  </div>
+
+  <div class="card">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;font-size:.875rem">
+      <div><div style="color:var(--color-neutral-500)">Klinik</div><div id="inv-clinic">—</div></div>
+      <div><div style="color:var(--color-neutral-500)">Tanggal</div><div id="inv-date">—</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-bottom:.75rem">Item Layanan</h3>
+    <table class="line-items-table" id="line-items-table">
+      <thead><tr><th>Layanan</th><th>Qty</th><th>Harga</th><th>Subtotal</th></tr></thead>
+      <tbody id="line-items-body"></tbody>
+    </table>
+    <div style="font-size:1.2rem;font-weight:700;color:var(--color-primary);text-align:right;margin-top:.75rem" id="inv-total">Total: Rp 0</div>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-bottom:.5rem">Status Pembayaran</h3>
+    <div id="payment-status" style="font-size:.9rem;color:var(--color-neutral-600)">Memuat…</div>
+  </div>
+
+  <button class="btn btn-secondary" id="btn-print" style="width:100%;justify-content:center;padding:.65rem">Download / Cetak</button>
+</div>
+
+<!-- Bottom nav -->
+<nav style="position:fixed;bottom:0;left:0;right:0;background:var(--color-surface);border-top:1px solid var(--color-border);display:flex;justify-content:space-around;padding:.5rem 0;z-index:100">
+  <a href="/patient/portal" style="display:flex;flex-direction:column;align-items:center;font-size:.7rem;color:var(--color-neutral-500);text-decoration:none;gap:2px">🏠<span>Beranda</span></a>
+  <a href="/patient/appointments" style="display:flex;flex-direction:column;align-items:center;font-size:.7rem;color:var(--color-neutral-500);text-decoration:none;gap:2px">📅<span>Janji</span></a>
+  <a href="/patient/records" style="display:flex;flex-direction:column;align-items:center;font-size:.7rem;color:var(--color-neutral-500);text-decoration:none;gap:2px">📋<span>Rekam Medis</span></a>
+  <a href="/patient/invoices" style="display:flex;flex-direction:column;align-items:center;font-size:.7rem;color:var(--color-primary);text-decoration:none;gap:2px;font-weight:600">💳<span>Tagihan</span></a>
+  <a href="/patient/profile" style="display:flex;flex-direction:column;align-items:center;font-size:.7rem;color:var(--color-neutral-500);text-decoration:none;gap:2px">👤<span>Profil</span></a>
+</nav>
+<script src="/platform/js/api.js"></script>
+<script src="/modules/healthcare/frontend/i18n.js"></script>
+<script src="/modules/healthcare/frontend/locale-switcher.js"></script>
+<script src="invoice-detail.js"></script>
+</body>
+</html>

@@ -10,8 +10,7 @@ from .types import (
 )
 from .platform_bridge import PlatformBridge
 
-__all__ = [
-    'BaseModule', 'ModuleManifest', 'ModulePermission',
-    'ModuleMenuItem', 'ModuleDependency', 'HookResult',
-    'ModuleEvent', 'PlatformBridge',
-]
+__all__ = ['BaseModule', 'ModuleManifest', 'ModulePermission', 'ModuleMenuItem', 'ModuleDependency', 'HookResult', 'ModuleEvent', 'PlatformBridge', 'Base', 'GUID', 'generate_uuid', 'tenant_scoped_session', 'get_current_user', 'has_permission']
+
+from modules.sdk.db import Base, GUID, generate_uuid
+from modules.sdk.dependencies import tenant_scoped_session, get_current_user, has_permission

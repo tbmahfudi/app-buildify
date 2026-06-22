@@ -32,15 +32,37 @@ module_new() {
         fi
     done
 
-    echo "[OK] Module scaffolded at: $DEST_DIR"
+    echo "[OK] Module code scaffolded at: $DEST_DIR"
+
+    # Scaffold module planning directory from plan-mod-template
+    local PLAN_TEMPLATE_DIR="$SCRIPT_DIR/plan-mod-template"
+    local PLAN_DEST_DIR="$SCRIPT_DIR/plan-mod-$MODULE_NAME"
+
+    if [[ -d "$PLAN_TEMPLATE_DIR" ]]; then
+        cp -r "$PLAN_TEMPLATE_DIR" "$PLAN_DEST_DIR"
+        find "$PLAN_DEST_DIR" -type f | while read -r f; do
+            if file "$f" | grep -q text; then
+                sed -i "s/TEMPLATE/$MODULE_NAME/g" "$f"
+            fi
+        done
+        echo "[OK] Module planning scaffolded at: $PLAN_DEST_DIR"
+    else
+        echo "[WARN] plan-mod-template not found — skipping planning scaffold"
+    fi
+
     echo ""
     echo "Next steps:"
-    echo "  1. Edit  modules/$MODULE_NAME/manifest.json   -- set name, display_name, permissions"
-    echo "  2. Edit  modules/$MODULE_NAME/module.py       -- implement lifecycle hooks"
-    echo "  3. Edit  modules/$MODULE_NAME/routes.py       -- add your API endpoints"
-    echo "  4. Edit  modules/$MODULE_NAME/models.py       -- define tenant-scoped models"
-    echo "  5. Build:   ./manage.sh module pack $MODULE_NAME"
-    echo "  6. Install: ./manage.sh module install ${MODULE_NAME}_v1.0.0.tar.gz"
+    echo "  Module code:"
+    echo "    1. Edit  modules/$MODULE_NAME/manifest.json   -- set name, display_name, permissions"
+    echo "    2. Edit  modules/$MODULE_NAME/module.py       -- implement lifecycle hooks"
+    echo "    3. Edit  modules/$MODULE_NAME/routes.py       -- add your API endpoints"
+    echo "    4. Edit  modules/$MODULE_NAME/models.py       -- define tenant-scoped models"
+    echo "    5. Build:   ./manage.sh module pack $MODULE_NAME"
+    echo "    6. Install: ./manage.sh module install ${MODULE_NAME}_v1.0.0.tar.gz"
+    echo "  Module planning (use /c4 or /c5 agents):"
+    echo "    7. Update plan-mod-$MODULE_NAME/BACKLOG.md   -- add your module stories"
+    echo "    8. Write  plan-mod-$MODULE_NAME/epics/       -- expand epics with full AC"
+    echo "    9. Write  modules/$MODULE_NAME/docs/         -- document your module API"
 }
 
 # Script to manage Docker Compose services with database type parameter

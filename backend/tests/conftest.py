@@ -3,40 +3,68 @@ import uuid
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, text as sa_text
+from sqlalchemy.pool import StaticPool
 from sqlalchemy.orm import sessionmaker
 from faker import Faker
 
 from app.main import app
-from app.core.db import Base, get_db
+from app.models.base import Base
+from app.core.dependencies import get_db
 from app.core.auth import create_access_token, hash_password
 from app.models.user import User
+
+# ── SQLite compatibility: map PostgreSQL JSONB to JSON ──────────────────────
+# Some models use sqlalchemy.dialects.postgresql.JSONB. When Base.metadata
+# creates tables against SQLite, JSONB is not recognised. Register a
+# before-cursor-execute event that no-ops, and patch the type at import time.
+try:
+    from sqlalchemy.dialects.postgresql import JSONB as _PG_JSONB
+    from sqlalchemy import JSON as _SA_JSON
+    from sqlalchemy.dialects.sqlite import base as _sqlite_base
+
+    _orig_visit = getattr(_sqlite_base.SQLiteTypeCompiler, 'visit_JSONB', None)
+    if _orig_visit is None:
+        def _visit_jsonb(self, type_, **kw):
+            return self.visit_JSON(type_, **kw)
+        _sqlite_base.SQLiteTypeCompiler.visit_JSONB = _visit_jsonb
+except Exception:
+    pass
+# ─────────────────────────────────────────────────────────────────────────────
+
 
 
 # ---------------------------------------------------------------------------
 # SQLite fixtures — used by existing auth tests
 # ---------------------------------------------------------------------------
 
-SQLALCHEMY_TEST_DATABASE_URL = "sqlite:///./test.db"
-
-engine = create_engine(
-    SQLALCHEMY_TEST_DATABASE_URL,
-    connect_args={"check_same_thread": False}
-)
-TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
 fake = Faker()
 
 
 @pytest.fixture(scope="function")
 def db_session():
-    """Create a fresh database session for each test"""
-    Base.metadata.create_all(bind=engine)
-    session = TestingSessionLocal()
+    """Create a fresh in-memory SQLite DB and session for each test."""
+    _engine = create_engine(
+        "sqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    # Apply the JSONB shim to this new engine's dialect
+    try:
+        from sqlalchemy.dialects.sqlite import base as _sqlite_base
+        if not hasattr(_sqlite_base.SQLiteTypeCompiler, "visit_JSONB"):
+            def _visit_jsonb(self, type_, **kw):
+                return self.visit_JSON(type_, **kw)
+            _sqlite_base.SQLiteTypeCompiler.visit_JSONB = _visit_jsonb
+    except Exception:
+        pass
+    Base.metadata.create_all(bind=_engine)
+    _Session = sessionmaker(autocommit=False, autoflush=False, bind=_engine)
+    session = _Session()
     try:
         yield session
     finally:
         session.close()
-        Base.metadata.drop_all(bind=engine)
+        _engine.dispose()
 
 
 @pytest.fixture(scope="function")
@@ -63,8 +91,7 @@ def test_user(db_session):
         full_name="Test User",
         is_active=True,
         is_superuser=False,
-        tenant_id="tenant-123",
-        roles='["user"]'
+        tenant_id="00000000-0000-0000-0000-000000000123"
     )
     db_session.add(user)
     db_session.commit()
@@ -81,8 +108,7 @@ def test_superuser(db_session):
         full_name="Admin User",
         is_active=True,
         is_superuser=True,
-        tenant_id="tenant-123",
-        roles='["admin"]'
+        tenant_id="00000000-0000-0000-0000-000000000123",
     )
     db_session.add(user)
     db_session.commit()
@@ -96,7 +122,7 @@ def auth_headers(test_user):
     token = create_access_token({
         "sub": str(test_user.id),
         "email": test_user.email,
-        "tenant_id": test_user.tenant_id,
+        "tenant_id": str(test_user.tenant_id),
         "roles": ["user"]
     })
     return {"Authorization": f"Bearer {token}"}
@@ -163,7 +189,6 @@ def pg_admin_user(pg_session):
         is_active=True,
         is_superuser=True,
         tenant_id=TEST_TENANT_ID,
-        roles='["admin"]',
     )
     pg_session.add(user)
     pg_session.commit()

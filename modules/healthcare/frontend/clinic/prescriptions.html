@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title data-i18n="pharmacy.prescriptions_title">Resep Masuk</title>
+  <link rel="stylesheet" href="/static/css/platform.css"/>
+  <style>
+    .filter-bar{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px;align-items:center;}
+    .filter-bar select,.filter-bar input{padding:6px 10px;border:1px solid var(--color-border);border-radius:6px;background:var(--color-surface);color:var(--color-text);}
+    .card{background:var(--color-surface);border:1px solid var(--color-border);border-radius:10px;padding:16px;margin-bottom:12px;}
+    .card-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;}
+    .card-title{font-weight:700;font-size:.95rem;}
+    .badge{display:inline-block;padding:2px 8px;border-radius:12px;font-size:.75rem;font-weight:600;}
+    .badge-pending{background:var(--color-warning-light);color:var(--color-warning-dark);}
+    .badge-dispensed{background:var(--color-success-light);color:var(--color-success);}
+    .badge-partial{background:var(--color-info-light);color:var(--color-info);}
+    .badge-cancelled{background:var(--color-muted);color:var(--color-text-secondary);}
+    .card-meta{font-size:.8rem;color:var(--color-text-secondary);margin-bottom:10px;}
+    .card-footer{display:flex;align-items:center;justify-content:space-between;}
+    .btn{padding:8px 16px;border-radius:6px;border:none;cursor:pointer;font-size:.875rem;font-weight:600;}
+    .btn-primary{background:var(--color-primary);color:#fff;}
+    .btn-sm{padding:4px 10px;font-size:.75rem;}
+    .phi-toggle{font-size:.8rem;color:var(--color-primary);cursor:pointer;text-decoration:underline;}
+    .load-more-wrap{text-align:center;margin-top:16px;}
+    .page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;}
+  </style>
+</head>
+<body>
+<div class="app-shell">
+  <div id="sidebar-placeholder"></div>
+  <main class="main-content">
+    <div class="page-header">
+      <h1 data-i18n="pharmacy.prescriptions_title">Resep Masuk</h1>
+    </div>
+    <div class="filter-bar">
+      <select id="filter-status">
+        <option value="">Semua Status</option>
+        <option value="pending">Pending</option>
+        <option value="dispensed">Dispensed</option>
+        <option value="partially_dispensed">Sebagian Dispensed</option>
+        <option value="cancelled">Dibatalkan</option>
+      </select>
+      <input type="date" id="filter-date-from"/>
+      <input type="date" id="filter-date-to"/>
+      <span class="phi-toggle" id="phi-toggle">Tampilkan Info Pasien</span>
+    </div>
+    <div id="rx-list"></div>
+    <div class="load-more-wrap" id="load-more-wrap" style="display:none;">
+      <button class="btn btn-sm" id="btn-load-more">Muat Lebih Banyak</button>
+    </div>
+    <div id="empty-state" style="display:none;text-align:center;padding:40px;color:var(--color-text-secondary);">Tidak ada resep.</div>
+  </main>
+</div>
+<script src="/static/js/platform.js"></script>
+<script src="/modules/healthcare/frontend/i18n.js"></script>
+<script src="/modules/healthcare/frontend/clinic/prescriptions.js"></script>
+</body>
+</html>

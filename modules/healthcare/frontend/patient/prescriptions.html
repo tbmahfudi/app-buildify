@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title data-i18n="pharmacy.patient_prescriptions_title">Resep Saya</title>
+  <link rel="stylesheet" href="/static/css/platform.css"/>
+  <style>
+    .card{background:var(--color-surface);border:1px solid var(--color-border);border-radius:10px;padding:16px;margin-bottom:12px;}
+    .card-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;}
+    .card-title{font-weight:700;font-size:.95rem;}
+    .badge{display:inline-block;padding:2px 8px;border-radius:12px;font-size:.75rem;font-weight:600;}
+    .badge-pending{background:var(--color-warning-light);color:var(--color-warning-dark);}
+    .badge-dispensed{background:var(--color-success-light);color:var(--color-success);}
+    .badge-partial{background:var(--color-info-light);color:var(--color-info);}
+    .badge-cancelled{background:var(--color-muted);color:var(--color-text-secondary);}
+    .card-meta{font-size:.8rem;color:var(--color-text-secondary);margin-bottom:10px;}
+    .card-footer{text-align:right;}
+    .btn{padding:8px 16px;border-radius:6px;border:none;cursor:pointer;font-size:.875rem;font-weight:600;text-decoration:none;display:inline-block;}
+    .btn-primary{background:var(--color-primary);color:#fff;}
+    .btn-sm{padding:4px 10px;font-size:.75rem;}
+    .empty-state{text-align:center;padding:60px 20px;color:var(--color-text-secondary);}
+    .bottom-nav{position:fixed;bottom:0;left:0;right:0;background:var(--color-surface);border-top:1px solid var(--color-border);display:flex;justify-content:space-around;padding:8px 0;z-index:100;}
+    .bottom-nav a{display:flex;flex-direction:column;align-items:center;font-size:.7rem;color:var(--color-text-secondary);text-decoration:none;gap:2px;}
+    .bottom-nav a.active{color:var(--color-primary);}
+    main{padding-bottom:72px;}
+  </style>
+</head>
+<body>
+<main class="main-content" style="padding:16px;">
+  <h1 style="margin-bottom:16px;" data-i18n="pharmacy.patient_prescriptions_title">Resep Saya</h1>
+  <div id="rx-list"></div>
+  <div id="empty-state" class="empty-state" style="display:none;">
+    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom:12px;opacity:.4;display:block;margin-left:auto;margin-right:auto;"><path d="M9 12h6M9 16h6M9 8h6M5 4h14a1 1 0 011 1v14a1 1 0 01-1 1H5a1 1 0 01-1-1V5a1 1 0 011-1z"/></svg>
+    <div data-i18n="pharmacy.empty_prescriptions">Belum ada resep obat</div>
+  </div>
+</main>
+<nav class="bottom-nav">
+  <a href="/patient/">&#127968;<span>Beranda</span></a>
+  <a href="/patient/appointments">&#128197;<span>Janji</span></a>
+  <a href="/patient/prescriptions" class="active">&#128138;<span>Resep</span></a>
+  <a href="/patient/records">&#128203;<span>Rekam Medis</span></a>
+  <a href="/patient/profile">&#128100;<span>Profil</span></a>
+</nav>
+<script src="/static/js/platform.js"></script>
+<script src="/modules/healthcare/frontend/i18n.js"></script>
+<script src="/modules/healthcare/frontend/patient/prescriptions.js"></script>
+</body>
+</html>

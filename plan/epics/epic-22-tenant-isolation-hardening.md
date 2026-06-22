@@ -5,9 +5,9 @@ producer: A3 Product Owner
 consumers: [B1 Software Architect, B2 Data Engineer, B3 UX Designer, C1 Tech Lead]
 upstream: [vision-02-tenant-isolation-hardening, research-02-tenant-isolation-hardening]
 downstream: []
-status: review
+status: approved
 created: 2026-05-08
-updated: 2026-05-08
+updated: 2026-06-18
 shape: feature
 sprint_target: epic-22 sprint 1
 decisions:

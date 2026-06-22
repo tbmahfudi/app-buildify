@@ -43,4 +43,4 @@ pytest
 pytest-asyncio
 pytest-bdd>=7.0
 httpx
-faker
+fakerjsonschema>=4.17

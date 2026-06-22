@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Buat Invoice</title>
+  <link rel="stylesheet" href="/platform/css/design-system.css"/>
+  <link rel="stylesheet" href="/platform/css/components.css"/>
+  <link rel="stylesheet" href="/modules/healthcare/frontend/healthcare.css"/>
+  
+  <style>
+    .status-badge{display:inline-block;padding:2px 10px;border-radius:12px;font-size:.8rem;font-weight:600}
+    .badge-draft{background:var(--color-neutral-200);color:var(--color-neutral-700)}
+    .badge-finalized{background:var(--color-success-100);color:var(--color-success-700)}
+    .badge-void{background:var(--color-danger-100);color:var(--color-danger-700)}
+    .flex-alert{display:flex;align-items:flex-start;gap:.75rem;padding:.875rem 1rem;border-radius:8px;margin-bottom:1.25rem}
+    .flex-alert-warning{background:var(--color-warning-50);border:1px solid var(--color-warning-300);color:var(--color-warning-900)}
+    .phi-mask{color:var(--color-neutral-400);letter-spacing:.1em}
+    .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;align-items:center;justify-content:center}
+    .modal-overlay.open{display:flex}
+    .modal-box{background:var(--color-surface);border-radius:12px;padding:1.5rem;min-width:340px;max-width:520px;width:100%;box-shadow:var(--shadow-lg)}
+    .datagrid{width:100%;border-collapse:collapse}
+    .datagrid th,.datagrid td{padding:.6rem .75rem;border-bottom:1px solid var(--color-border);text-align:left;font-size:.9rem}
+    .datagrid th{background:var(--color-neutral-50);font-weight:600;color:var(--color-neutral-600)}
+    .datagrid tr:hover td{background:var(--color-neutral-50)}
+    .page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem}
+    .filter-bar{display:flex;flex-wrap:wrap;gap:.75rem;margin-bottom:1rem}
+    .filter-bar select,.filter-bar input{padding:.45rem .7rem;border:1px solid var(--color-border);border-radius:6px;font-size:.9rem;background:var(--color-surface)}
+    .btn{display:inline-flex;align-items:center;gap:.4rem;padding:.5rem 1rem;border-radius:6px;border:none;cursor:pointer;font-size:.9rem;font-weight:500}
+    .btn-primary{background:var(--color-primary);color:#fff}
+    .btn-secondary{background:var(--color-neutral-100);color:var(--color-neutral-800);border:1px solid var(--color-border)}
+    .btn-danger{background:var(--color-danger);color:#fff}
+    .btn-sm{padding:.3rem .65rem;font-size:.8rem}
+    .line-items-table{width:100%;border-collapse:collapse;margin:.75rem 0}
+    .line-items-table th,.line-items-table td{padding:.5rem .6rem;border:1px solid var(--color-border);font-size:.875rem}
+    .line-items-table th{background:var(--color-neutral-50)}
+    .total-row{font-weight:700;font-size:1.05rem;text-align:right;padding:.75rem 0}
+    .card{background:var(--color-surface);border:1px solid var(--color-border);border-radius:10px;padding:1.25rem;margin-bottom:1rem}
+    .invoice-card{cursor:pointer;transition:box-shadow .15s}
+    .invoice-card:hover{box-shadow:var(--shadow-md)}
+    .spinner{display:none;width:24px;height:24px;border:3px solid var(--color-neutral-200);border-top-color:var(--color-primary);border-radius:50%;animation:spin .7s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .empty-state{text-align:center;padding:3rem 1rem;color:var(--color-neutral-500)}
+  </style>
+</head>
+<body>
+<div class="app-container" style="max-width:780px;margin:0 auto;padding:1.5rem">
+  <div class="page-header">
+    <h1 style="font-size:1.4rem;font-weight:700" id="page-title"></h1>
+    <button class="btn btn-secondary" onclick="history.back()">← Kembali</button>
+  </div>
+
+  <!-- Patient search -->
+  <div class="card">
+    <label style="font-weight:600;display:block;margin-bottom:.5rem">Pasien</label>
+    <div style="position:relative">
+      <input type="text" id="patient-search" placeholder="Cari nama pasien…" autocomplete="off"
+             style="width:100%;padding:.5rem .75rem;border:1px solid var(--color-border);border-radius:6px;font-size:.9rem"/>
+      <div id="patient-suggestions" style="position:absolute;left:0;right:0;top:100%;background:var(--color-surface);border:1px solid var(--color-border);border-radius:0 0 6px 6px;z-index:50;display:none;max-height:200px;overflow-y:auto"></div>
+    </div>
+    <input type="hidden" id="patient-id"/>
+    <div id="patient-selected" style="margin-top:.5rem;font-size:.875rem;color:var(--color-primary);display:none"></div>
+  </div>
+
+  <!-- Encounter + Insurance -->
+  <div class="card">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+      <div>
+        <label style="font-weight:600;font-size:.875rem;display:block;margin-bottom:.35rem">Encounter ID (opsional)</label>
+        <input type="text" id="encounter-id" placeholder="ID kunjungan"
+               style="width:100%;padding:.45rem .7rem;border:1px solid var(--color-border);border-radius:6px;font-size:.9rem"/>
+      </div>
+      <div>
+        <label style="font-weight:600;font-size:.875rem;display:block;margin-bottom:.35rem">ID Profil Asuransi (opsional)</label>
+        <input type="text" id="insurance-profile-id" placeholder="Insurance profile ID"
+               style="width:100%;padding:.45rem .7rem;border:1px solid var(--color-border);border-radius:6px;font-size:.9rem"/>
+      </div>
+    </div>
+  </div>
+
+  <!-- Line items -->
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem">
+      <span style="font-weight:600" id="lbl-items">Item Layanan</span>
+      <button class="btn btn-secondary btn-sm" id="btn-add-item"></button>
+    </div>
+    <table class="line-items-table" id="line-items-table">
+      <thead><tr>
+        <th>Layanan</th><th style="width:80px">Qty</th><th style="width:130px">Harga Satuan</th><th style="width:130px">Subtotal</th><th style="width:40px"></th>
+      </tr></thead>
+      <tbody id="line-items-body">
+        <tr id="empty-line-row"><td colspan="5" style="text-align:center;color:var(--color-neutral-400);padding:.75rem">Belum ada item. Klik "+ Tambah Layanan".</td></tr>
+      </tbody>
+    </table>
+    <div class="total-row" id="total-row">Total: Rp 0</div>
+    <div id="line-error" style="color:var(--color-danger);font-size:.8rem;display:none">Tambahkan minimal 1 item layanan.</div>
+  </div>
+
+  <!-- Notes -->
+  <div class="card">
+    <label style="font-weight:600;font-size:.875rem;display:block;margin-bottom:.35rem">Catatan</label>
+    <textarea id="notes" rows="3" placeholder="Catatan tambahan…"
+              style="width:100%;padding:.5rem .75rem;border:1px solid var(--color-border);border-radius:6px;font-size:.9rem;resize:vertical"></textarea>
+  </div>
+
+  <button class="btn btn-primary" id="btn-save-draft" style="width:100%;justify-content:center;padding:.7rem">Simpan Draft</button>
+</div>
+
+<!-- Service item search modal -->
+<div class="modal-overlay" id="service-modal">
+  <div class="modal-box" style="max-width:600px">
+    <h3 style="margin-bottom:.75rem">Pilih Layanan</h3>
+    <input type="text" id="service-search" placeholder="Cari layanan…"
+           style="width:100%;padding:.45rem .7rem;border:1px solid var(--color-border);border-radius:6px;font-size:.9rem;margin-bottom:.75rem"/>
+    <div id="service-list" style="max-height:320px;overflow-y:auto"></div>
+    <button class="btn btn-secondary" style="margin-top:.75rem;width:100%" id="service-modal-close">Batal</button>
+  </div>
+</div>
+<script src="/platform/js/api.js"></script>
+<script src="/modules/healthcare/frontend/i18n.js"></script>
+<script src="/modules/healthcare/frontend/locale-switcher.js"></script>
+<script src="invoice-new.js"></script>
+</body>
+</html>

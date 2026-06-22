@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="id-ID">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title data-i18n="clinics.pageTitle">Cari Klinik</title>
+  <link rel="stylesheet" href="/frontend/assets/css/app.css" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: system-ui, sans-serif;
+      background: var(--color-bg-main);
+      color: var(--color-text-primary);
+      min-height: 100vh;
+    }
+
+    /* ── header ──────────────────────────────────────────────────── */
+    header.hc-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: var(--spacing-sm);
+      padding: var(--spacing-md) var(--spacing-xl);
+      background: var(--color-bg-header);
+      border-bottom: 1px solid var(--color-border);
+    }
+
+    .hc-header__logo { font-weight: 700; font-size: var(--font-lg); color: var(--color-primary); }
+
+    .hc-header__nav { display: flex; gap: var(--spacing-md); align-items: center; }
+
+    .hc-header__nav a {
+      color: var(--color-text-secondary);
+      text-decoration: none;
+      font-size: var(--font-sm);
+      font-weight: 600;
+    }
+
+    .hc-header__nav a:hover { color: var(--color-primary); }
+
+    /* ── search bar ──────────────────────────────────────────────── */
+    .hc-search-bar {
+      max-width: 900px;
+      margin: var(--spacing-2xl) auto var(--spacing-xl);
+      padding: 0 var(--spacing-lg);
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--spacing-sm);
+    }
+
+    .hc-search-bar input,
+    .hc-search-bar select {
+      flex: 1 1 160px;
+      padding: var(--spacing-sm) var(--spacing-md);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      background: var(--color-bg-card);
+      color: var(--color-text-primary);
+      font-size: var(--font-base);
+    }
+
+    .hc-search-bar button {
+      padding: var(--spacing-sm) var(--spacing-xl);
+      background: var(--color-primary);
+      color: var(--color-text-inverse);
+      border: none;
+      border-radius: var(--radius-md);
+      font-size: var(--font-base);
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .hc-search-bar button:hover { background: var(--color-primary-hover); }
+
+    /* ── results grid ────────────────────────────────────────────── */
+    #results-container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 0 var(--spacing-lg) var(--spacing-2xl);
+    }
+
+    .hc-clinic-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: var(--spacing-lg);
+    }
+
+    @media (min-width: 768px) {
+      .hc-clinic-grid { grid-template-columns: 1fr 1fr; }
+    }
+
+    /* ── clinic card ─────────────────────────────────────────────── */
+    .hc-clinic-card {
+      background: var(--color-bg-card);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      padding: var(--spacing-lg);
+      display: flex;
+      flex-direction: column;
+      gap: var(--spacing-sm);
+    }
+
+    .hc-clinic-card__name { font-size: var(--font-lg); font-weight: 700; }
+
+    .hc-clinic-card__tags { display: flex; flex-wrap: wrap; gap: var(--spacing-xs); }
+
+    .hc-tag {
+      background: var(--color-primary);
+      color: var(--color-text-inverse);
+      font-size: var(--font-xs);
+      padding: 2px var(--spacing-sm);
+      border-radius: var(--radius-sm);
+    }
+
+    .hc-clinic-card__meta { font-size: var(--font-sm); color: var(--color-text-secondary); }
+
+    .hc-clinic-card__rating { color: #f59e0b; font-size: var(--font-sm); }
+
+    .hc-clinic-card__footer {
+      margin-top: auto;
+      padding-top: var(--spacing-sm);
+      border-top: 1px solid var(--color-border-light);
+    }
+
+    .hc-clinic-card__book {
+      display: inline-block;
+      padding: var(--spacing-xs) var(--spacing-lg);
+      background: var(--color-primary);
+      color: var(--color-text-inverse);
+      border: none;
+      border-radius: var(--radius-md);
+      font-size: var(--font-sm);
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+    }
+
+    .hc-clinic-card__book:hover { background: var(--color-primary-hover); }
+
+    /* ── skeleton ────────────────────────────────────────────────── */
+    .hc-skeleton {
+      background: linear-gradient(90deg, var(--color-border) 25%, var(--color-border-light) 50%, var(--color-border) 75%);
+      background-size: 200% 100%;
+      animation: skeleton-shimmer 1.5s infinite;
+      border-radius: var(--radius-md);
+    }
+
+    @keyframes skeleton-shimmer {
+      0%   { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+
+    .hc-skeleton-card {
+      height: 160px;
+      border-radius: var(--radius-lg);
+    }
+
+    /* ── empty state ─────────────────────────────────────────────── */
+    .hc-empty {
+      text-align: center;
+      padding: var(--spacing-2xl);
+      color: var(--color-text-secondary);
+      grid-column: 1 / -1;
+    }
+
+    /* ── pagination ──────────────────────────────────────────────── */
+    .hc-pagination {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--spacing-md);
+      margin-top: var(--spacing-xl);
+    }
+
+    .hc-pagination button {
+      padding: var(--spacing-xs) var(--spacing-md);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      background: var(--color-bg-card);
+      color: var(--color-text-primary);
+      cursor: pointer;
+      font-size: var(--font-sm);
+    }
+
+    .hc-pagination button:disabled { opacity: 0.4; cursor: default; }
+    .hc-pagination__label { font-size: var(--font-sm); color: var(--color-text-secondary); }
+  </style>
+</head>
+<body>
+  <header class="hc-header">
+    <span class="hc-header__logo">App-Buildify Healthcare</span>
+    <div class="hc-header__nav">
+      <div data-locale-switcher></div>
+      <a href="/patient/register" data-i18n="nav.register"></a>
+      <a href="/login" data-i18n="nav.login"></a>
+    </div>
+  </header>
+
+  <form class="hc-search-bar" id="search-form" role="search" aria-label="Search clinics">
+    <input id="q" type="search" data-i18n-placeholder="clinics.search.placeholder" />
+    <select id="specialty-filter">
+      <option value="" data-i18n="clinics.search.allSpecialties"></option>
+      <option value="umum"        data-i18n="specialty.umum"></option>
+      <option value="gigi"        data-i18n="specialty.gigi"></option>
+      <option value="anak"        data-i18n="specialty.anak"></option>
+      <option value="kandungan"   data-i18n="specialty.kandungan"></option>
+      <option value="jantung"     data-i18n="specialty.jantung"></option>
+      <option value="kulit"       data-i18n="specialty.kulit"></option>
+      <option value="mata"        data-i18n="specialty.mata"></option>
+      <option value="tht"         data-i18n="specialty.tht"></option>
+      <option value="ortopedi"    data-i18n="specialty.ortopedi"></option>
+      <option value="saraf"       data-i18n="specialty.saraf"></option>
+      <option value="psikiatri"   data-i18n="specialty.psikiatri"></option>
+      <option value="fisioterapi" data-i18n="specialty.fisioterapi"></option>
+    </select>
+    <input id="city-filter" type="text" data-i18n-placeholder="clinics.search.cityPlaceholder" />
+    <button type="submit" data-i18n="clinics.search.btn"></button>
+  </form>
+
+  <div id="results-container">
+    <div class="hc-clinic-grid" id="clinic-grid"></div>
+    <div class="hc-pagination" id="pagination" style="display:none">
+      <button id="btn-prev" data-i18n="common.prev"></button>
+      <span   class="hc-pagination__label" id="page-label"></span>
+      <button id="btn-next" data-i18n="common.next"></button>
+    </div>
+  </div>
+
+  <script type="module" src="./clinics.js"></script>
+</body>
+</html>

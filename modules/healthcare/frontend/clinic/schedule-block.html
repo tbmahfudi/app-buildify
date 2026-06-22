@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="id-ID">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title data-i18n="schedule.block_title">Blokir Tanggal/Waktu</title>
+  <link rel="stylesheet" href="/frontend/assets/css/app.css" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; background: var(--color-bg-main); color: var(--color-text-primary); }
+
+    .hc-page { max-width: 720px; margin: 0 auto; padding: var(--spacing-xl); }
+    .hc-page__title { font-size: var(--font-xl); font-weight: 800; margin-bottom: var(--spacing-lg); }
+
+    /* Calendar */
+    .hc-cal { background: var(--color-bg-card); border: 1px solid var(--color-border); border-radius: var(--radius-lg); overflow: hidden; margin-bottom: var(--spacing-xl); }
+    .hc-cal__header { display: flex; align-items: center; justify-content: space-between; padding: var(--spacing-md) var(--spacing-lg); border-bottom: 1px solid var(--color-border); font-weight: 700; }
+    .hc-cal__nav { background: none; border: none; cursor: pointer; font-size: var(--font-lg); color: var(--color-text-secondary); padding: var(--spacing-xs) var(--spacing-sm); }
+    .hc-cal__nav:hover { color: var(--color-primary); }
+    .hc-cal__grid { display: grid; grid-template-columns: repeat(7, 1fr); }
+    .hc-cal__dow { text-align: center; font-size: var(--font-xs); font-weight: 600; color: var(--color-text-secondary); padding: var(--spacing-sm) 0; }
+    .hc-cal__day { text-align: center; padding: var(--spacing-sm); font-size: var(--font-sm); cursor: default; border-radius: var(--radius-sm); }
+    .hc-cal__day.other-month { color: var(--color-text-tertiary); }
+    .hc-cal__day.blocked { background: var(--color-border); color: var(--color-text-secondary); border-radius: var(--radius-sm); position: relative; cursor: pointer; }
+    .hc-cal__day.blocked:hover .hc-cal__tooltip { display: block; }
+    .hc-cal__tooltip { display: none; position: absolute; bottom: 110%; left: 50%; transform: translateX(-50%); background: var(--color-bg-card); border: 1px solid var(--color-border); border-radius: var(--radius-sm); padding: var(--spacing-xs) var(--spacing-sm); font-size: var(--font-xs); white-space: nowrap; z-index: 10; box-shadow: 0 2px 8px rgba(0,0,0,0.12); }
+    .hc-cal__remove { display: block; color: var(--color-danger, #dc2626); font-size: var(--font-xs); margin-top: 2px; cursor: pointer; text-decoration: underline; }
+
+    /* Modal overlay */
+    .hc-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 100; align-items: center; justify-content: center; }
+    .hc-modal.open { display: flex; }
+    .hc-modal__box { background: var(--color-bg-card); border-radius: var(--radius-lg); padding: var(--spacing-xl); width: 100%; max-width: 440px; margin: var(--spacing-md); }
+    .hc-modal__title { font-size: var(--font-lg); font-weight: 700; margin-bottom: var(--spacing-lg); }
+    .hc-field { margin-bottom: var(--spacing-md); }
+    .hc-field label { display: block; font-size: var(--font-sm); font-weight: 600; color: var(--color-text-secondary); margin-bottom: var(--spacing-xs); }
+    .hc-field input, .hc-field select, .hc-field textarea { width: 100%; padding: var(--spacing-sm) var(--spacing-md); border: 1.5px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-bg-main); color: var(--color-text-primary); font-size: var(--font-sm); }
+    .hc-field textarea { resize: vertical; min-height: 60px; }
+    .hc-field__hint { font-size: var(--font-xs); color: var(--color-text-tertiary); margin-top: var(--spacing-xs); }
+    .hc-modal__actions { display: flex; gap: var(--spacing-sm); margin-top: var(--spacing-lg); }
+    .hc-btn { padding: var(--spacing-sm) var(--spacing-lg); border: none; border-radius: var(--radius-md); font-size: var(--font-sm); font-weight: 700; cursor: pointer; flex: 1; }
+    .hc-btn--primary { background: var(--color-primary); color: var(--color-text-inverse); }
+    .hc-btn--primary:hover { background: var(--color-primary-hover); }
+    .hc-btn--ghost { background: transparent; border: 1.5px solid var(--color-border); color: var(--color-text-secondary); }
+    .hc-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  </style>
+</head>
+<body>
+  <div class="hc-page">
+    <div style="display:flex;align-items:center;gap:var(--spacing-md);margin-bottom:var(--spacing-lg);">
+      <h1 class="hc-page__title" data-i18n="schedule.block_title" style="margin:0;"></h1>
+      <div data-locale-switcher style="margin-left:auto;"></div>
+    </div>
+
+    <div id="alert-container" style="margin-bottom:var(--spacing-md);"></div>
+
+    <!-- Calendar -->
+    <div class="hc-cal">
+      <div class="hc-cal__header">
+        <button class="hc-cal__nav" id="cal-prev">&lsaquo;</button>
+        <span id="cal-month-label"></span>
+        <button class="hc-cal__nav" id="cal-next">&rsaquo;</button>
+      </div>
+      <div class="hc-cal__grid" id="cal-dow-row">
+        <div class="hc-cal__dow">Sen</div>
+        <div class="hc-cal__dow">Sel</div>
+        <div class="hc-cal__dow">Rab</div>
+        <div class="hc-cal__dow">Kam</div>
+        <div class="hc-cal__dow">Jum</div>
+        <div class="hc-cal__dow">Sab</div>
+        <div class="hc-cal__dow">Min</div>
+      </div>
+      <div class="hc-cal__grid" id="cal-days"></div>
+    </div>
+
+    <button class="hc-btn hc-btn--primary" id="btn-open-block" data-i18n="schedule.block_title" style="width:auto;"></button>
+  </div>
+
+  <!-- Block modal -->
+  <div class="hc-modal" id="block-modal" role="dialog" aria-modal="true">
+    <div class="hc-modal__box">
+      <h2 class="hc-modal__title" data-i18n="schedule.block_title"></h2>
+      <div class="hc-field">
+        <label data-i18n="common.from">Dari Tanggal</label>
+        <input type="date" id="block-start-date" />
+      </div>
+      <div class="hc-field">
+        <label data-i18n="common.to">Sampai Tanggal</label>
+        <input type="date" id="block-end-date" />
+      </div>
+      <div class="hc-field">
+        <label>Mulai Waktu</label>
+        <input type="time" id="block-start-time" value="00:00" />
+      </div>
+      <div class="hc-field">
+        <label>Selesai Waktu</label>
+        <input type="time" id="block-end-time" value="23:59" />
+      </div>
+      <div class="hc-field">
+        <label data-i18n="schedule.reason"></label>
+        <textarea id="block-reason" rows="2"></textarea>
+        <span class="hc-field__hint" data-i18n="schedule.reason"></span>
+      </div>
+      <div class="hc-field">
+        <label data-i18n="schedule.recurrence"></label>
+        <select id="block-recurrence">
+          <option value="none" data-i18n="schedule.recurrence_none">Tidak Ada</option>
+          <option value="annual" data-i18n="schedule.recurrence_annual">Tahunan</option>
+        </select>
+      </div>
+      <div class="hc-modal__actions">
+        <button class="hc-btn hc-btn--ghost" id="btn-cancel-block" data-i18n="common.cancel"></button>
+        <button class="hc-btn hc-btn--primary" id="btn-submit-block" data-i18n="common.confirm"></button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/frontend/assets/js/flex-components.js"></script>
+  <script type="module" src="./schedule-block.js"></script>
+</body>
+</html>
