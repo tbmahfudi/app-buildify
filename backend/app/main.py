@@ -15,6 +15,7 @@ from app.core.security_middleware import SecurityMiddleware
 from app.core.module_scope_middleware import ModuleScopeMiddleware
 from app.core.startup import ensure_default_security_policy
 from app.routers import org, auth, metadata, data, audit, settings, modules, rbac, reports, dashboards, scheduler, menu, builder_pages
+from app.routers import admin_modules as admin_modules_router
 from app.routers import data_model, workflows, automations, lookups, dynamic_data, nocode_modules, module_extensions, modules_lifecycle
 from app.routers.admin import security as admin_security
 from app.core.module_system.registry import ModuleRegistryService
@@ -88,6 +89,8 @@ async def lifespan(app: FastAPI):
         # Make module_registry available to routes
         from app.routers import modules as modules_router
         modules_router.module_registry = module_registry
+        admin_modules_router.router.module_registry = module_registry  # type: ignore
+        import app.routers.admin_modules as _am; _am._module_registry = module_registry
 
         logger.info(f"Module system initialized: {module_registry.get_module_count()} modules loaded")
     except Exception as e:
@@ -243,6 +246,7 @@ app.include_router(modules.router)
 app.include_router(modules._modules_v1_router)
 app.include_router(modules_lifecycle.router)
 app.include_router(modules_lifecycle.admin_router)
+app.include_router(admin_modules_router.router, prefix="/api/v1/admin/modules", tags=["admin-modules"])
 app.include_router(rbac.router)
 app.include_router(reports.router)
 app.include_router(dashboards.router)

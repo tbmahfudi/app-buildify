@@ -1730,6 +1730,22 @@ async function loadRoute(route) {
       return;
     }
 
+    // Admin module installation page (superuser only)
+    if (route === 'admin/modules') {
+      content.innerHTML = '';
+      try {
+        const { render } = await import('./admin-modules.js');
+        await render(content);
+      } catch (error) {
+        console.warn('admin-modules loading failed:', error);
+        content.innerHTML = '<div class="p-6 text-red-500">Failed to load module installation page.</div>';
+      }
+      document.dispatchEvent(new CustomEvent('route:loaded', {
+        detail: { route: 'admin/modules', isModule: false }
+      }));
+      return;
+    }
+
     // T-23.019: tenant module activation page
     if (route === 'settings/modules') {
       content.innerHTML = '';
