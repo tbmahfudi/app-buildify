@@ -39,8 +39,8 @@
   },
 
   "dependencies": {
-    "required_modules": [],
-    "optional_modules": []
+    "required": [],
+    "optional": []
   },
 
   "configuration": {

@@ -16,3 +16,4 @@ backend/create_*.py
 
 # Database backups
 backups/
+backend/modules/

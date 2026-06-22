@@ -1,0 +1,104 @@
+{
+  "name": "healthcare",
+  "display_name": "Healthcare",
+  "version": "1.0.0",
+  "description": "Two-sided healthcare platform: clinic staff portal + patient portal. Includes scheduling, billing, pharmacy, and laboratory sub-modules.",
+  "entry_point": "frontend/module.js",
+  "routes": [
+    {
+      "path": "#/healthcare/dashboard",
+      "name": "Healthcare Dashboard",
+      "component": "frontend/clinic/portal.js",
+      "permission": "healthcare:dashboard:read",
+      "menu": {
+        "label": "Dashboard",
+        "icon": "ph-duotone ph-squares-four",
+        "order": 21,
+        "parent": "healthcare"
+      }
+    },
+    {
+      "path": "#/healthcare/appointments",
+      "name": "Appointments",
+      "component": "frontend/clinic/appointment-queue.js",
+      "permission": "healthcare:appointments:read",
+      "menu": {
+        "label": "Appointments",
+        "icon": "ph-duotone ph-calendar-check",
+        "order": 22,
+        "parent": "healthcare"
+      }
+    },
+    {
+      "path": "#/healthcare/schedules",
+      "name": "Schedules",
+      "component": "frontend/clinic/schedule-editor.js",
+      "permission": "healthcare:schedules:read",
+      "menu": {
+        "label": "Schedules",
+        "icon": "ph-duotone ph-calendar",
+        "order": 23,
+        "parent": "healthcare"
+      }
+    },
+    {
+      "path": "#/healthcare/invoices",
+      "name": "Invoices",
+      "component": "frontend/clinic/invoices.js",
+      "permission": "healthcare:billing:read",
+      "menu": {
+        "label": "Invoices",
+        "icon": "ph-duotone ph-receipt",
+        "order": 24,
+        "parent": "healthcare"
+      }
+    },
+    {
+      "path": "#/healthcare/prescriptions",
+      "name": "Prescriptions",
+      "component": "frontend/clinic/prescriptions.js",
+      "permission": "healthcare:pharmacy:read",
+      "menu": {
+        "label": "Prescriptions",
+        "icon": "ph-duotone ph-pill",
+        "order": 25,
+        "parent": "healthcare"
+      }
+    },
+    {
+      "path": "#/healthcare/lab-orders",
+      "name": "Lab Orders",
+      "component": "frontend/clinic/lab-orders.js",
+      "permission": "healthcare:lab:read",
+      "menu": {
+        "label": "Lab Orders",
+        "icon": "ph-duotone ph-flask",
+        "order": 26,
+        "parent": "healthcare"
+      }
+    }
+  ],
+  "navigation": {
+    "primary_menu": true,
+    "menu_items": [
+      {
+        "code": "healthcare",
+        "label": "Healthcare",
+        "icon": "ph-duotone ph-heart-pulse",
+        "icon_color": "text-red-500",
+        "order": 20,
+        "is_parent": true,
+        "permission": null
+      }
+    ],
+    "dashboard_widgets": []
+  },
+  "dependencies": {
+    "required": [],
+    "optional": []
+  },
+  "assets": {
+    "css": [],
+    "icons": []
+  }
+}

@@ -1,11 +1,11 @@
 # Platform SDK — FastAPI dependencies for module routes
-# Re-exports platform dependencies so modules never import from backend.app.
-from backend.app.core.dependencies import (
+# Re-exports platform dependencies so modules never import from app.
+from app.core.dependencies import (
     tenant_scoped_session,
     get_current_user as _platform_get_current_user,
     has_permission,
 )
-from backend.app.core.auth import decode_token as _decode_token
+from app.core.auth import decode_token as _decode_token
 
 # Re-export decode_token so module SDK files never import from backend.app directly
 decode_token = _decode_token
@@ -71,7 +71,7 @@ def _make_staff_get_current_user():
     This is the safe re-export for all staff endpoints in the healthcare module.
     """
     from fastapi import Depends
-    from backend.app.core.dependencies import get_current_user as _gu
+    from app.core.dependencies import get_current_user as _gu
 
     async def _staff_get_current_user(user=Depends(_gu)):
         roles = getattr(user, "roles", None)
