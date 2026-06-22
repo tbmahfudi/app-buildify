@@ -329,7 +329,7 @@ check_status() {
     print_info "Health checks:"
 
     # Check backend
-    if curl -sf http://localhost:8000/health > /dev/null 2>&1 || curl -sf http://localhost:8000/docs > /dev/null 2>&1; then
+    if curl -sf http://localhost:8000/api/healthz > /dev/null 2>&1; then
         echo -e "${GREEN}✓ Backend: OK${NC}"
     else
         echo -e "${RED}✗ Backend: Down${NC}"

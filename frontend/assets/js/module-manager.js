@@ -12,6 +12,17 @@ export class ModuleManager {
     this.availableModules = [];
     this.enabledModules = [];
   }
+  /**
+   * Extract error message — handles legacy string detail and structured
+   * {code, message, detail} shape added by epic-23 (T-23.003).
+   */
+  extractErrorMessage(result, fallback = 'Operation failed') {
+    if (!result) return fallback;
+    if (typeof result.detail === 'string') return result.detail;
+    if (result.detail && typeof result.detail.message === 'string') return result.detail.message;
+    if (typeof result.message === 'string') return result.message;
+    return fallback;
+  }
 
   /**
    * Render the module manager page
@@ -227,7 +238,7 @@ export class ModuleManager {
     const list = document.getElementById('enabled-modules-list');
 
     try {
-      const response = await apiFetch('/module-registry/enabled');
+      const response = await apiFetch('/modules?activation_status=active');
 
       if (!response.ok) {
         throw new Error('Failed to load enabled modules');
@@ -323,7 +334,7 @@ export class ModuleManager {
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.detail || 'Installation failed');
+        throw new Error(this.extractErrorMessage(result, 'Installation failed'));
       }
 
       alert(`Module "${moduleName}" installed successfully!`);
@@ -348,7 +359,7 @@ export class ModuleManager {
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.detail || 'Uninstallation failed');
+        throw new Error(this.extractErrorMessage(result, 'Uninstallation failed'));
       }
 
       alert(`Module "${moduleName}" uninstalled successfully!`);
@@ -363,24 +374,21 @@ export class ModuleManager {
    */
   async enableModule(moduleName) {
     try {
-      const response = await apiFetch('/module-registry/enable', {
-        method: 'POST',
-        body: JSON.stringify({ module_name: moduleName })
+      const response = await apiFetch(`/modules/${moduleName}/enable`, {
+        method: 'POST'
       });
 
-      const result = await response.json();
+      const result = await response.json().catch(() => ({}));
 
       if (!response.ok) {
-        throw new Error(result.detail || 'Enable failed');
+        throw new Error(this.extractErrorMessage(result, 'Enable failed'));
       }
 
-      alert(`Module "${moduleName}" enabled successfully!`);
+      this._showToast(`Module "${moduleName}" enabled successfully!`, 'success');
       await this.loadEnabledModules();
-
-      // Reload page to load new module
       window.location.reload();
     } catch (error) {
-      alert(`Error enabling module: ${error.message}`);
+      this._showToast(`Error enabling module: ${error.message}`, 'error');
     }
   }
 
@@ -388,28 +396,39 @@ export class ModuleManager {
    * Disable a module for tenant
    */
   async disableModule(moduleName) {
-    if (!confirm(`Disable module "${moduleName}"?`)) return;
+    if (!this._confirmDisable(moduleName)) return;
 
     try {
-      const response = await apiFetch('/module-registry/disable', {
-        method: 'POST',
-        body: JSON.stringify({ module_name: moduleName })
+      const response = await apiFetch(`/modules/${moduleName}/disable`, {
+        method: 'POST'
       });
 
-      const result = await response.json();
+      const result = await response.json().catch(() => ({}));
 
       if (!response.ok) {
-        throw new Error(result.detail || 'Disable failed');
+        throw new Error(this.extractErrorMessage(result, 'Disable failed'));
       }
 
-      alert(`Module "${moduleName}" disabled successfully!`);
+      this._showToast(`Module "${moduleName}" disabled successfully!`, 'success');
       await this.loadEnabledModules();
-
-      // Reload page to unload module
       window.location.reload();
     } catch (error) {
-      alert(`Error disabling module: ${error.message}`);
+      this._showToast(`Error disabling module: ${error.message}`, 'error');
     }
+  }
+
+  _confirmDisable(moduleName) {
+    // Simple native confirm — good enough for legacy ModuleManager
+    return window.confirm(`Disable module "${moduleName}"? This will remove its menu items and permissions from your tenant.`);
+  }
+
+  _showToast(message, type = 'info') {
+    const el = document.createElement('div');
+    const cls = type === 'success' ? 'bg-green-600' : type === 'error' ? 'bg-red-600' : 'bg-blue-600';
+    el.className = `fixed top-4 right-4 z-[70] ${cls} text-white text-sm px-4 py-2.5 rounded-lg shadow-lg max-w-sm`;
+    el.textContent = message;
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 4000);
   }
 
   /**
@@ -434,7 +453,7 @@ export class ModuleManager {
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.detail || 'Sync failed');
+        throw new Error(this.extractErrorMessage(result, 'Sync failed'));
       }
 
       alert('Modules synced successfully!');

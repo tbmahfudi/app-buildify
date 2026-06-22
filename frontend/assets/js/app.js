@@ -239,6 +239,16 @@ function setupEventListeners() {
     });
   }
 
+
+  // My Sessions drawer
+  const mySessionsBtn = document.getElementById('btn-my-sessions');
+  if (mySessionsBtn) {
+    mySessionsBtn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      const { openSessionsDrawer } = await import('./sessions-drawer.js');
+      openSessionsDrawer();
+    });
+  }
   // Sidebar toggle button (navbar)
   const sidebarToggle = document.getElementById('sidebar-toggle');
 

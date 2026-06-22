@@ -105,4 +105,31 @@
       </div>
     </div>
   </div>
+
+
+  <!-- Email Templates Section ─ Wave 2 / Screen 2 -->
+  <div class="bg-white rounded-lg shadow-sm p-6">
+    <div class="flex items-center justify-between mb-5">
+      <div>
+        <h3 class="text-lg font-semibold text-gray-900 flex items-center gap-2">
+          <i class="ph-duotone ph-envelope-simple text-blue-600 text-xl"></i>
+          Email Templates
+        </h3>
+        <p class="text-sm text-gray-500 mt-0.5">Customise transactional email templates sent to users</p>
+      </div>
+    </div>
+
+    <div id="email-templates-loading" class="space-y-3">
+      ${Array.from({length: 3}).map(() => `
+        <div class="animate-pulse flex items-center justify-between p-3 rounded-lg bg-gray-50 border border-gray-100">
+          <div class="h-3 bg-gray-200 rounded w-2/5"></div>
+          <div class="h-7 bg-gray-200 rounded w-16"></div>
+        </div>`).join('')}
+    </div>
+
+    <div id="email-templates-list" class="hidden divide-y divide-gray-100 border border-gray-200 rounded-xl overflow-hidden">
+    </div>
+
+    <div id="email-templates-error" class="hidden mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700"></div>
+  </div>
 </div>
