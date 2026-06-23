@@ -47,3 +47,4 @@ faker>=24.0.0
 jsonschema>=4.17
 python-multipart>=0.0.9
 python-multipart>=0.0.9
+cryptography
