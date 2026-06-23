@@ -227,9 +227,8 @@
     if (!patientToken) { showPage('login'); return; }
     const headers = { 'Authorization': `Bearer ${patientToken}` };
     try {
-      const [profileRes, apptRes, recRes] = await Promise.all([
+      const [profileRes, recRes] = await Promise.all([
         fetch(`${API_BASE}/api/v1/patients/me/profile`, { headers }),
-        fetch(`${API_BASE}/api/v1/patients/me/appointments`, { headers }),
         fetch(`${API_BASE}/api/v1/patients/me/records`, { headers }),
       ]);
       if (profileRes.status === 401 || profileRes.status === 403) {
@@ -238,10 +237,7 @@
       const profile = await profileRes.json();
       document.getElementById('patient-profile-info').innerHTML = `<p class="small mb-1">📞 ${profile.phone}</p>`;
 
-      const appt = await apptRes.json();
-      document.getElementById('patient-appointments').innerHTML = appt.appointments?.length
-        ? appt.appointments.map(a => `<p class="small">${a.date} — ${a.type}</p>`).join('')
-        : `<p class="text-muted small">${appt.note || 'No appointments'}</p>`;
+      loadAppointments();
 
       const rec = await recRes.json();
       document.getElementById('patient-records').innerHTML = rec.records?.length
@@ -268,6 +264,172 @@
     const hashArray = Array.from(new Uint8Array(hashBuffer));
     return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
   }
+
+﻿  // -- Appointment booking --------------------------------------------------
+
+  let selectedSlot = null;
+  let selectedBranchCode = null;
+
+  window.showBookingPage = async function () {
+    if (!patientToken) { showPage('login'); return; }
+    showPage('book');
+    await populateBranchDropdown();
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    document.getElementById('book-date').value = tomorrow.toISOString().split('T')[0];
+    loadSlots();
+  };
+
+  async function populateBranchDropdown() {
+    try {
+      const res = await fetch(`${API_BASE}/api/v1/public/clinics/${tenantCode}`);
+      const data = await res.json();
+      const sel = document.getElementById('book-branch');
+      sel.innerHTML = (data.branches || []).map(b =>
+        `<option value="${b.code || b.id}">${b.name}</option>`
+      ).join('');
+      selectedBranchCode = sel.value;
+    } catch (e) {
+      toast('Could not load branches', 'error');
+    }
+  }
+
+  window.loadSlots = async function () {
+    const branchCode = document.getElementById('book-branch').value;
+    const date = document.getElementById('book-date').value;
+    selectedBranchCode = branchCode;
+    if (!branchCode || !date) return;
+
+    const container = document.getElementById('slots-container');
+    container.innerHTML = '<p class="text-muted small">Loading slots...</p>';
+    document.getElementById('booking-confirm').style.display = 'none';
+    selectedSlot = null;
+
+    try {
+      const res = await fetch(
+        `${API_BASE}/api/v1/public/clinics/${tenantCode}/branches/${branchCode}/slots?date=${date}`
+      );
+      if (!res.ok) throw new Error('Could not load slots');
+      const data = await res.json();
+      const slots = data.slots || [];
+
+      if (!slots.length) {
+        container.innerHTML = '<p class="text-muted">No available slots for this date.</p>';
+        return;
+      }
+
+      container.innerHTML = slots.map(s => `
+        <div class="col-6 col-md-3">
+          <div class="card slot-card ${s.available ? '' : 'opacity-50'} clinic-card"
+               style="cursor:${s.available ? 'pointer' : 'default'}"
+               onclick="${s.available ? `selectSlot('${s.id}','${s.time}','${s.provider_name}','${s.provider_specialty}')` : ''}">
+            <div class="card-body p-2 text-center">
+              <div class="fw-bold">${s.time}</div>
+              <div class="small text-muted">${s.provider_name}</div>
+              <div class="small text-muted fst-italic">${s.provider_specialty || ''}</div>
+              ${s.available ? '' : '<span class="badge bg-secondary mt-1">Booked</span>'}
+            </div>
+          </div>
+        </div>
+      `).join('');
+    } catch (e) {
+      container.innerHTML = '<p class="text-danger small">Failed to load slots. Please try again.</p>';
+    }
+  };
+
+  window.selectSlot = function (slotId, time, providerName, specialty) {
+    selectedSlot = { id: slotId, time, providerName, specialty };
+    document.getElementById('booking-summary').innerHTML =
+      `<strong>${time}</strong> with ${providerName} (${specialty || 'General'})`;
+    document.getElementById('booking-confirm').style.display = 'block';
+    document.querySelectorAll('.slot-card').forEach(c => c.classList.remove('border-primary'));
+    event.currentTarget.classList.add('border-primary');
+  };
+
+  window.cancelBookingSelection = function () {
+    selectedSlot = null;
+    document.getElementById('booking-confirm').style.display = 'none';
+  };
+
+  window.confirmBooking = async function () {
+    if (!selectedSlot) return;
+    const notes = document.getElementById('booking-notes').value.trim();
+    try {
+      const res = await fetch(`${API_BASE}/api/v1/patients/me/appointments`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${patientToken}`,
+        },
+        body: JSON.stringify({
+          slot_id: selectedSlot.id,
+          branch_code: selectedBranchCode,
+          notes,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast(data.detail || 'Booking failed', 'error');
+        return;
+      }
+      toast('Appointment booked!', 'success');
+      selectedSlot = null;
+      showPage('dashboard');
+    } catch (e) {
+      toast('Network error', 'error');
+    }
+  };
+
+  // -- Enhanced appointment list in dashboard --------------------------------
+
+  async function loadAppointments() {
+    if (!patientToken) return;
+    const el = document.getElementById('patient-appointments');
+    try {
+      const res = await fetch(`${API_BASE}/api/v1/patients/me/appointments`, {
+        headers: { 'Authorization': `Bearer ${patientToken}` },
+      });
+      const data = await res.json();
+      const appts = data.appointments || [];
+      if (!appts.length) {
+        el.innerHTML = `<p class="text-muted small">No appointments yet.</p>
+          <button class="btn btn-sm btn-outline-primary mt-1" onclick="showBookingPage()">Book Now</button>`;
+        return;
+      }
+      el.innerHTML = appts.map(a => `
+        <div class="d-flex justify-content-between align-items-start mb-2 border-bottom pb-1">
+          <div>
+            <div class="small fw-semibold">${new Date(a.slot_time).toLocaleString()}</div>
+            <div class="small text-muted">${a.provider_name} &middot; ${a.branch_name}</div>
+            <span class="badge ${a.status === 'confirmed' ? 'bg-success' : 'bg-secondary'}">${a.status}</span>
+          </div>
+          ${a.status === 'confirmed'
+            ? `<button class="btn btn-outline-danger btn-sm" onclick="cancelAppointment('${a.id}')">Cancel</button>`
+            : ''}
+        </div>
+      `).join('') + `<button class="btn btn-sm btn-outline-primary mt-2" onclick="showBookingPage()">Book Another</button>`;
+    } catch (e) {
+      el.innerHTML = '<p class="text-muted small">Could not load appointments.</p>';
+    }
+  }
+
+  window.cancelAppointment = async function (id) {
+    if (!confirm('Cancel this appointment?')) return;
+    try {
+      const res = await fetch(`${API_BASE}/api/v1/patients/me/appointments/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${patientToken}` },
+      });
+      if (res.ok || res.status === 204) {
+        toast('Appointment cancelled', 'info');
+        loadDashboard();
+      } else {
+        toast('Could not cancel', 'error');
+      }
+    } catch (e) {
+      toast('Network error', 'error');
+    }
+  };
 
   // ── Init ──────────────────────────────────────────────────────────────────────
   updateNavAuth();

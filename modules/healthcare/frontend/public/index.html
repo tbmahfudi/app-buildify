@@ -147,6 +147,35 @@
     </div>
   </div>
 
+﻿  <!-- Appointment Booking -->
+  <div id="page-book" class="page">
+    <button class="btn btn-link ps-0 mb-3" onclick="showPage('dashboard')">&larr; Back to Dashboard</button>
+    <h4 class="mb-3">Book an Appointment</h4>
+    <div class="row mb-3">
+      <div class="col-md-4">
+        <label class="form-label small">Branch</label>
+        <select id="book-branch" class="form-select" onchange="loadSlots()"></select>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label small">Date</label>
+        <input type="date" id="book-date" class="form-control" oninput="loadSlots()">
+      </div>
+    </div>
+    <div id="slots-container" class="row g-2"></div>
+    <div id="booking-confirm" style="display:none" class="card mt-3 shadow-sm">
+      <div class="card-body">
+        <h6>Confirm Booking</h6>
+        <p id="booking-summary" class="mb-3"></p>
+        <div class="mb-2">
+          <textarea id="booking-notes" class="form-control" rows="2" placeholder="Notes for the doctor (optional)"></textarea>
+        </div>
+        <button class="btn btn-primary" onclick="confirmBooking()">Confirm</button>
+        <button class="btn btn-outline-secondary ms-2" onclick="cancelBookingSelection()">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+
 </div>
 
 <div id="toast-container"></div>
