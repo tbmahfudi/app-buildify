@@ -16,6 +16,14 @@ from app.core.module_scope_middleware import ModuleScopeMiddleware
 from app.core.startup import ensure_default_security_policy
 from app.routers import org, auth, metadata, data, audit, settings, modules, rbac, reports, dashboards, scheduler, menu, builder_pages
 from app.routers import admin_modules as admin_modules_router
+from app.routers import otp as otp_router
+from app.routers import public as public_router
+from app.routers import otp as otp_router
+from app.routers import public as public_router
+from app.routers import otp as otp_router
+from app.routers import public as public_router
+from app.routers import otp as otp_router
+from app.routers import public as public_router
 from app.routers import data_model, workflows, automations, lookups, dynamic_data, nocode_modules, module_extensions, modules_lifecycle
 from app.routers.admin import security as admin_security
 from app.core.module_system.registry import ModuleRegistryService
@@ -267,6 +275,22 @@ app.include_router(dynamic_data.router)
 # Phase 4 No-Code Platform routers - Module System Foundation (prefix defined in router files)
 app.include_router(nocode_modules.router)
 app.include_router(module_extensions.router)
+
+# Platform services
+app.include_router(otp_router.router)
+app.include_router(public_router.router)
+
+# Platform services
+app.include_router(otp_router.router)
+app.include_router(public_router.router)
+
+# Platform services
+app.include_router(otp_router.router)
+app.include_router(public_router.router)
+
+# Platform services
+app.include_router(otp_router.router)
+app.include_router(public_router.router)
 
 
 @app.get("/")

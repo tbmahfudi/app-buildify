@@ -286,6 +286,15 @@
         }
       },
       "additionalProperties": false
+    },
+    "public_portal": {
+      "type": "object",
+      "properties": {
+        "enabled":     { "type": "boolean" },
+        "entry_point": { "type": "string" },
+        "title":       { "type": "string" }
+      },
+      "additionalProperties": false
     }
   }
 }

@@ -1,6 +1,6 @@
 from typing import List, Optional
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, Header, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
@@ -87,6 +87,24 @@ def get_current_user(
 
     return user
 
+
+async def get_current_user_optional(
+    authorization: Optional[str] = Header(None),
+    db: Session = Depends(get_db),
+) -> Optional[User]:
+    """Returns the current user if a valid token is present; None otherwise. Never raises 401."""
+    if not authorization:
+        return None
+    try:
+        scheme, _, token = authorization.partition(" ")
+        if scheme.lower() != "bearer" or not token:
+            return None
+        creds = HTTPAuthorizationCredentials(scheme=scheme, credentials=token)
+        return get_current_user(credentials=creds, db=db)
+    except HTTPException:
+        return None
+
+
 def verify_tenant_access(user: User, tenant_id: str) -> None:
     """
     Verify that the current user has access to the specified tenant.
@@ -135,7 +153,7 @@ def matches_permission(granted_codes, required_code: str) -> bool:
 
     Hot path: literal ``in`` check first (O(1) on a set). Wildcard scan only runs when
     the literal lookup misses. Per epic-21 story 4.2.1, target is p95 < 5 ms for users
-    with up to 200 permissions — trivially met by this implementation.
+    with up to 200 permissions -- trivially met by this implementation.
     """
     if required_code in granted_codes:
         return True
@@ -156,7 +174,7 @@ def has_permission(permission: str):
     Dependency to check if user has a specific permission.
     Uses the RBAC system to check permissions.
 
-    Wildcards on the granted side are honored — e.g. a user with ``*:*:platform``
+    Wildcards on the granted side are honored -- e.g. a user with ``*:*:platform``
     granted satisfies any required code at platform scope. See ``matches_permission``.
 
     Args:
@@ -240,7 +258,7 @@ def tenant_scoped_session(
     db: Session = Depends(get_db),
 ) -> Session:
     """
-    FastAPI dependency — yields a SQLAlchemy session pre-bound to the current user's
+    FastAPI dependency -- yields a SQLAlchemy session pre-bound to the current user's
     tenant_id via TenantScopeListener.  Superusers get a ``__superuser__`` marker so
     the listener skips filtering.
 
@@ -260,4 +278,3 @@ def tenant_scoped_session(
         yield db
     finally:
         clear_tenant_scope(db)
-
