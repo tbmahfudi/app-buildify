@@ -73,6 +73,7 @@ services:
       SMTP_FROM: noreply@app-buildify.local
       SMTP_USE_TLS: "false"
       NOTIFICATION_WORKER_INPROCESS: "true"
+      PHI_ENCRYPTION_KEY: ${PHI_ENCRYPTION_KEY}
     working_dir: /app
     volumes:
       - ../backend:/app
