@@ -61,7 +61,7 @@ router = APIRouter(tags=["healthcare-public"])
 
 def _get_public_db():
     """Unauthenticated plain DB session for public (no-auth) endpoints."""
-    return next(_platform_get_db())
+    yield from _platform_get_db()
 
 # ---------------------------------------------------------------------------
 # Module-level caches
