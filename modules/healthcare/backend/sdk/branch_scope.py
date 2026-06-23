@@ -21,6 +21,8 @@ import logging
 from typing import Generator, Optional
 
 from fastapi import Depends, Header, HTTPException, status
+from modules.sdk.dependencies import tenant_scoped_session as _tenant_scoped_session
+from modules.sdk.dependencies import get_current_user as _real_get_current_user
 from sqlalchemy import event, text
 from sqlalchemy.orm import Session
 
@@ -182,14 +184,6 @@ def _is_clinic_owner(user) -> bool:
         return "clinic_owner" in roles
     except Exception:
         return False
-
-
-# ---------------------------------------------------------------------------
-# Deferred imports to avoid circular dependencies
-# ---------------------------------------------------------------------------
-
-from modules.sdk.dependencies import tenant_scoped_session as _tenant_scoped_session
-from modules.sdk.dependencies import get_current_user as _real_get_current_user
 
 
 __all__ = [

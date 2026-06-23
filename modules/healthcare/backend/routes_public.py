@@ -20,6 +20,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from modules.sdk.dependencies import tenant_scoped_session
+from app.core.dependencies import get_db as _platform_get_db
 from modules.healthcare.schemas.public import (
     ClinicPublicProfile,
     ClinicSearchItem,
@@ -56,6 +57,11 @@ async def _public_rate_limit(request: Request):
 
 
 router = APIRouter(tags=["healthcare-public"])
+
+
+def _get_public_db():
+    """Unauthenticated plain DB session for public (no-auth) endpoints."""
+    return next(_platform_get_db())
 
 # ---------------------------------------------------------------------------
 # Module-level caches
@@ -366,3 +372,84 @@ def _get_profile(
 
     _profile_cache[slug] = (now, profile)
     return profile
+
+# ---------------------------------------------------------------------------
+# T-HC-PUBLIC-SLOTS — Available slots (PUBLIC, no auth required)
+# GET /api/v1/public/clinics/{tenant_code}/branches/{branch_id}/slots?date=YYYY-MM-DD
+# ---------------------------------------------------------------------------
+
+@router.get(
+    "/api/v1/public/clinics/{tenant_code}/branches/{branch_id}/slots",
+    summary="List available slots for a branch (public, no auth)",
+    tags=["healthcare-public"],
+)
+async def get_available_slots_public(
+    tenant_code: str,
+    branch_id: str,
+    date: str = Query(..., description="YYYY-MM-DD"),
+    db: Session = Depends(_get_public_db),
+):
+    """
+    Returns available appointment slots for a branch on a given date.
+    No authentication required.
+    Only returns slots with status='available'.
+    """
+    # Resolve tenant by code (canonical uppercase)
+    tenant_row = db.execute(
+        text("SELECT id FROM tenants WHERE code = :code LIMIT 1"),
+        {"code": tenant_code.upper()},
+    ).fetchone()
+    if tenant_row is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Clinic not found.",
+        )
+    tenant_id = str(tenant_row[0])
+
+    # Verify branch belongs to tenant
+    branch_row = db.execute(
+        text(
+            "SELECT id FROM hc_branches "
+            "WHERE id = :bid AND tenant_id = :tid AND deleted_at IS NULL LIMIT 1"
+        ),
+        {"bid": branch_id, "tid": tenant_id},
+    ).fetchone()
+    if branch_row is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Branch not found.",
+        )
+
+    rows = db.execute(
+        text(
+            """
+            SELECT
+                s.id              AS id,
+                p.display_name    AS provider_name,
+                p.specialty       AS provider_specialty,
+                s.start_time      AS start_time,
+                s.end_time        AS end_time,
+                s.appointment_type
+            FROM hcs_appointment_slots s
+            JOIN hc_providers p ON p.id = s.provider_id
+            WHERE s.tenant_id = :tid
+              AND s.branch_id  = :bid
+              AND s.slot_date  = :dt
+              AND s.status     = 'available'
+            ORDER BY s.start_time
+            """
+        ),
+        {"tid": tenant_id, "bid": branch_id, "dt": date},
+    ).fetchall()
+
+    return [
+        {
+            "id": str(row.id),
+            "provider_name": row.provider_name or "",
+            "provider_specialty": row.provider_specialty or "",
+            "start_time": str(row.start_time),
+            "end_time": str(row.end_time),
+            "appointment_type": row.appointment_type,
+        }
+        for row in rows
+    ]

@@ -29,6 +29,7 @@ class HealthcareModule(BaseModule):
         from modules.healthcare.routes_schedules import router as schedules_router
         from modules.healthcare.routes_appointments import router as appointments_router
         from modules.healthcare.routes_waitlist import router as waitlist_router
+        from modules.healthcare.routes_patient_appointments import router as patient_appointments_router
 
         for r in (
             branches_router,
@@ -44,6 +45,7 @@ class HealthcareModule(BaseModule):
             schedules_router,
             appointments_router,
             waitlist_router,
+            patient_appointments_router,
         ):
             combined.include_router(r)
 
