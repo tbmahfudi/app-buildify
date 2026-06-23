@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, field_validator
 from typing import Optional, List
 from datetime import datetime
 
@@ -163,6 +163,14 @@ class TenantBase(BaseModel):
 
 class TenantCreate(TenantBase):
     """Create tenant request"""
+
+    @field_validator("code")
+    @classmethod
+    def uppercase_code(cls, v):
+        if v:
+            return v.strip().upper()
+        return v
+
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
@@ -179,6 +187,14 @@ class TenantCreate(TenantBase):
 
 class TenantUpdate(BaseModel):
     """Update tenant request"""
+
+    @field_validator("code")
+    @classmethod
+    def uppercase_code(cls, v):
+        if v:
+            return v.strip().upper()
+        return v
+
     name: Optional[str] = Field(None, max_length=255, description="Tenant name")
     code: Optional[str] = Field(None, max_length=50, description="Tenant code")
     description: Optional[str] = Field(None, description="Tenant description")

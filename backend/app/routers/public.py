@@ -22,7 +22,9 @@ class TenantPublicInfo(BaseModel):
 
 @router.get("/tenants/{code}", response_model=TenantPublicInfo)
 async def get_tenant_by_code(code: str, db: Session = Depends(get_db)):
-    tenant = db.query(Tenant).filter(Tenant.code == code, Tenant.is_active == True).first()
+    tenant = db.query(Tenant).filter(
+        Tenant.code == code.upper(), Tenant.is_active == True
+    ).first()
     if not tenant:
         raise HTTPException(status_code=404, detail="Tenant not found")
     return TenantPublicInfo(
