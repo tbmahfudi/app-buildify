@@ -255,12 +255,13 @@ class TestHealthcarePublicApi:
         assert r.status_code == 404, r.text
 
     @skip_if_no_hc
-    @pytest.mark.xfail(reason="clinic search has DB error, tracked for fix", strict=False)
     def test_clinic_search(self, anon):
         """GET /clinics/search returns a list."""
         r = anon.get("/clinics/search")
         assert r.status_code == 200, r.text
-        assert isinstance(r.json(), list)
+        data = r.json()
+        assert "items" in data
+        assert isinstance(data["items"], list)
 
 
 # ---------------------------------------------------------------------------

@@ -134,7 +134,7 @@ async def clinic_search(
     count_sql = f"""
         SELECT COUNT(DISTINCT t.id)
         FROM hc_branches b
-        JOIN tenants t ON t.id = b.tenant_id
+        JOIN tenants t ON t.id::text = b.tenant_id
         WHERE {where_sql}
     """
     total: int = db.execute(text(count_sql), params).scalar() or 0
@@ -157,7 +157,7 @@ async def clinic_search(
                 ARRAY[]::text[]
             )                                      AS specialty_tags
         FROM hc_branches b
-        JOIN tenants t ON t.id = b.tenant_id
+        JOIN tenants t ON t.id::text = b.tenant_id
         LEFT JOIN hc_clinic_reviews cr ON cr.branch_id = b.id
         LEFT JOIN LATERAL jsonb_array_elements_text(
             COALESCE(b.appointment_types, '[]'::jsonb)
