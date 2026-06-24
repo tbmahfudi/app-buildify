@@ -74,6 +74,7 @@ services:
       SMTP_USE_TLS: "false"
       NOTIFICATION_WORKER_INPROCESS: "true"
       PHI_ENCRYPTION_KEY: ${PHI_ENCRYPTION_KEY}
+      HCAPTCHA_SECRET_KEY: test
     working_dir: /app
     volumes:
       - ../backend:/app

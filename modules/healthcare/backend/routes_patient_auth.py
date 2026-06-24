@@ -19,6 +19,12 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from modules.sdk.dependencies import tenant_scoped_session
+from app.core.dependencies import get_db as _platform_get_db
+
+def _get_public_db():
+    """Plain unauthenticated DB session for public endpoints."""
+    yield from _platform_get_db()
+
 from modules.healthcare.models import HCPatient, HCPatientConsent
 from modules.healthcare.schemas.patient_auth import (
     OTPSendRequest,
@@ -81,7 +87,7 @@ async def patient_register(
     request: Request,
     response: Response,
     _captcha=Depends(require_captcha),
-    db: Session = Depends(tenant_scoped_session),
+    db: Session = Depends(_get_public_db),
 ) -> PatientRegisterResponse:
     """
     Register a new patient.
@@ -134,7 +140,7 @@ async def patient_register(
         )
 
     # Step 4 — Create patient (PHI columns transparently encrypted by EncryptedPHIType)
-    # tenant_id comes from the session scope injected by tenant_scoped_session
+    # tenant_id is resolved from the OTP token payload (tenant_code field)
     tenant_row = db.execute(text("SELECT current_setting('app.tenant_id', true)")).fetchone()
     tenant_id: str = tenant_row[0] if tenant_row and tenant_row[0] else "global"
 

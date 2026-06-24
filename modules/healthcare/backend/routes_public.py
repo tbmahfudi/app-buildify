@@ -93,7 +93,7 @@ async def clinic_search(
     name: Optional[str] = Query(None),
     page: int = Query(1, ge=1),
     page_size: int = Query(10, ge=1, le=50),
-    db: Session = Depends(tenant_scoped_session),
+    db: Session = Depends(_get_public_db),
     _rl: None = Depends(_public_rate_limit),
 ) -> ClinicSearchResponse:
     """
@@ -205,7 +205,7 @@ async def clinic_search(
 async def clinic_public_profile(
     request: Request,
     slug: str,
-    db: Session = Depends(tenant_scoped_session),
+    db: Session = Depends(_get_public_db),
     _rl: None = Depends(_public_rate_limit),
 ) -> ClinicPublicProfile:
     """
@@ -227,7 +227,7 @@ async def clinic_branch_public(
     request: Request,
     slug: str,
     branch_id: str,
-    db: Session = Depends(tenant_scoped_session),
+    db: Session = Depends(_get_public_db),
     _rl: None = Depends(_public_rate_limit),
 ) -> PublicBranchDetail:
     """
@@ -260,13 +260,12 @@ def _get_profile(
     if cached and (now - cached[0]) < _PROFILE_CACHE_TTL and cached[1] is not None:
         return cached[1]
 
-    # Tenant lookup by slug
+    # Tenant lookup by code (slug = tenant code, case-insensitive)
     tenant_row = db.execute(
         text(
-            "SELECT t.id, t.name "
-            "FROM tenants t "
-            "JOIN hc_branches b ON b.tenant_id = t.id "
-            "WHERE b.slug = :slug AND b.deleted_at IS NULL "
+            "SELECT id, name "
+            "FROM tenants "
+            "WHERE UPPER(code) = UPPER(:slug) AND is_active = true "
             "LIMIT 1"
         ),
         {"slug": slug},
