@@ -852,22 +852,22 @@ module_install() {
 
     echo "[INFO] Tarball: $TARBALL"
 
-    # Step 1: Verify SHA256
-    echo "[1/4] Verifying SHA256..."
+    # -- Step 1/8: Verify SHA256 -----------------------------------------------
+    echo "[1/8] Verifying SHA256..."
     local SHA_FILE; SHA_FILE="$(dirname "$TARBALL")/SHA256SUMS"
     if [[ -f "$SHA_FILE" ]]; then
         local EXPECTED ACTUAL
         EXPECTED=$(grep "$(basename "$TARBALL")" "$SHA_FILE" | awk '{print $1}')
         ACTUAL=$(sha256sum "$TARBALL" | awk '{print $1}')
         if [[ "$EXPECTED" != "$ACTUAL" ]]; then
-            echo "[ERROR] SHA256 mismatch — expected $EXPECTED got $ACTUAL" >&2; exit 1
+            echo "  x Failed: SHA256 mismatch -- expected $EXPECTED got $ACTUAL" >&2; exit 1
         fi
-        echo "[INFO] Checksum OK."
+        echo "  + Done (checksum OK)"
     else
-        echo "[WARN] No SHA256SUMS file found — skipping checksum check"
+        echo "  + Done (no SHA256SUMS file -- skipping)"
     fi
 
-    # Extract
+    # Extract tarball
     tar -xzf "$TARBALL" -C "$WORK_DIR"
     local MODULE_DIR; MODULE_DIR=$(find "$WORK_DIR" -maxdepth 1 -mindepth 1 -type d | head -1)
     [[ -z "$MODULE_DIR" ]] && { echo "[ERROR] Empty tarball" >&2; exit 1; }
@@ -879,33 +879,34 @@ module_install() {
     MODULE_VERSION=$(python3 -c "import json,sys; m=json.load(open('$MANIFEST')); print(m['version'])")
     echo "[INFO] Module: $MODULE_NAME v$MODULE_VERSION"
 
-    # Step 2: Validate manifest via API
-    echo "[2/4] Validating manifest..."
+    # -- Idempotency check (T-23.012) ----------------------------------------
+    # Query DB directly: if name+version already has install_status=ready, exit 0.
+    local _EXISTING
+    _EXISTING=$(docker exec app_buildify_postgresql psql -U appuser -d appdb -tAc \
+      "SELECT install_status FROM modules WHERE name='$MODULE_NAME' AND version='$MODULE_VERSION' LIMIT 1" 2>/dev/null)
+    if [ "$_EXISTING" = "ready" ]; then
+        echo "Module '$MODULE_NAME' v$MODULE_VERSION is already installed. Nothing to do."
+        exit 0
+    fi
+
+    # -- Step 2/8: Validate manifest via API ----------------------------------
+    echo "[2/8] Validating manifest via API..."
     local MJSON; MJSON=$(python3 -c "import json; print(json.dumps({'manifest':json.load(open('$MANIFEST'))}))")
-    local VCODE; VCODE=$(curl -s -o /tmp/_mv.json -w "%{http_code}"         -X POST "$API_BASE/api/v1/modules/validate"         -H "Content-Type: application/json" -d "$MJSON" 2>/dev/null || echo "000")
+    local VCODE; VCODE=$(curl -s -o /tmp/_mv.json -w "%{http_code}" \
+        -X POST "$API_BASE/api/v1/modules/validate" \
+        -H "Content-Type: application/json" -d "$MJSON" 2>/dev/null || echo "000")
     if [[ "$VCODE" == "422" ]]; then
-        echo "[ERROR] Manifest invalid — aborting" >&2; cat /tmp/_mv.json >&2; exit 1
+        echo "  x Failed: manifest invalid" >&2; cat /tmp/_mv.json >&2; exit 1
     elif [[ "$VCODE" != "200" ]]; then
-        echo "[WARNING] API unreachable (HTTP $VCODE) — skipping validation"
+        echo "  + Done (API unreachable HTTP $VCODE -- skipping validation)"
     else
-        echo "[INFO] Manifest valid."
+        echo "  + Done (manifest valid)"
     fi
 
-    # Idempotency check (T-23.012)
-    local ALREADY; ALREADY=$(docker exec app_buildify_backend python3 -c         "import os; os.environ['TESTING']='1'
-from app.core.db import SessionLocal
-from app.models.nocode_module import Module
-db=SessionLocal()
-m=db.query(Module).filter(Module.name=='$MODULE_NAME',Module.version=='$MODULE_VERSION').first()
-print('yes' if (m and getattr(m,'install_status','ready')=='ready') else 'no')
-db.close()" 2>/dev/null || echo "no")
-    if [[ "$ALREADY" == "yes" ]]; then
-        echo "[INFO] $MODULE_NAME v$MODULE_VERSION already installed — nothing to do."; exit 0
-    fi
-
-    # Step 3: mark in_progress
-    echo "[3/4] Setting install_status=in_progress..."
-    docker exec app_buildify_backend python3 -c         "import os; os.environ['TESTING']='1'
+    # -- Step 3/8: Set install_status=in_progress -----------------------------
+    echo "[3/8] Setting install_status=in_progress..."
+    docker exec app_buildify_backend python3 -c \
+        "import os; os.environ['TESTING']='1'
 from datetime import datetime
 from app.core.db import SessionLocal
 from app.models.nocode_module import Module
@@ -920,48 +921,55 @@ else:
              install_status='in_progress')
     db.add(m)
 db.commit(); db.close()" 2>/dev/null || true
+    echo "  + Done"
 
-    # Step 4: Module-specific Alembic migrations
-    echo "[4/4] Running module Alembic migrations..."
+    # -- Step 4/8: Module-specific Alembic migrations -------------------------
+    echo "[4/8] Running module Alembic migrations..."
     if [[ -d "$MODULE_DIR/backend/alembic" || -d "$MODULE_DIR/migrations" ]]; then
         if ! docker exec app_buildify_backend bash -c \
                "cd /app/modules/$MODULE_NAME && alembic upgrade head" 2>&1 | sed 's/^/  /'; then
+            echo "  x Failed: Alembic migration error" >&2
             _module_rollback "$MODULE_NAME" "migration failed"
             exit 1
         fi
+        echo "  + Done"
     else
-        echo "[INFO] No migrations found — skipping"
+        echo "  + Done (no migrations found -- skipping)"
     fi
 
-    # Step 5: Copy backend service files into host path (bind-mounted as /app/modules/<name> in container)
-    echo "[INFO] Step 5/8: Copying backend files..."
+    # -- Step 5/8: Copy backend service files ---------------------------------
+    echo "[5/8] Copying backend service files..."
     local BACKEND_DEST="/home/mahfudi/app-buildify/backend/modules/$MODULE_NAME"
     if [[ -d "$MODULE_DIR/backend" ]]; then
         mkdir -p "$BACKEND_DEST"
         if ! cp -r "$MODULE_DIR/backend/"* "$BACKEND_DEST/" 2>/dev/null; then
+            echo "  x Failed: backend copy error" >&2
             _module_rollback "$MODULE_NAME" "backend copy failed"
             exit 1
         fi
-        echo "[INFO] Backend files copied to $BACKEND_DEST (visible in container as /app/modules/$MODULE_NAME)."
+        echo "  + Done (-> $BACKEND_DEST)"
+    else
+        echo "  + Done (no backend dir -- skipping)"
     fi
 
-    # Step 6: Copy frontend assets into host path (bind-mounted as /usr/share/nginx/html in frontend container)
-    echo "[INFO] Step 6/8: Copying frontend assets..."
+    # -- Step 6/8: Copy frontend assets ---------------------------------------
+    echo "[6/8] Copying frontend assets..."
     local FRONTEND_DEST="/home/mahfudi/app-buildify/frontend/assets/modules/$MODULE_NAME"
     if [[ -d "$MODULE_DIR/frontend" ]]; then
         mkdir -p "$FRONTEND_DEST"
         if ! cp -r "$MODULE_DIR/frontend/"* "$FRONTEND_DEST/" 2>/dev/null; then
+            echo "  x Failed: frontend copy error" >&2
             _module_rollback "$MODULE_NAME" "frontend copy failed"
             exit 1
         fi
-        echo "[INFO] Frontend assets copied to $FRONTEND_DEST."
+        echo "  + Done (-> $FRONTEND_DEST)"
+    else
+        echo "  + Done (no frontend dir -- skipping)"
     fi
 
-    # Step 7: Register module via API (POST /api/v1/module-registry/register).
-    # The /register endpoint also calls BaseModule.post_install(db) server-side (T-23.014) —
-    # no separate CLI call is needed.
-    echo "[INFO] Step 7/8: Registering module (server will call post_install hook)..."
-    # Write registration payload to temp file to avoid quoting issues with JSON in eval/curl
+    # -- Step 7/8: Register module via API ------------------------------------
+    # The /register endpoint also calls BaseModule.post_install(db) server-side (T-23.014).
+    echo "[7/8] Registering module (server will call post_install hook)..."
     local _REG_PAYLOAD; _REG_PAYLOAD=$(mktemp /tmp/_mr_payload_XXXXXX.json)
     python3 -c "import json; m=json.load(open('$MANIFEST')); print(json.dumps({'manifest':m,'backend_service_url':m.get('backend_service_url','')}))" > "$_REG_PAYLOAD"
     local _CURL_ARGS=(-s -o /tmp/_mr.json -w "%{http_code}" -X POST "$API_BASE/api/v1/module-registry/register" -H "Content-Type: application/json" --data "@$_REG_PAYLOAD")
@@ -969,17 +977,17 @@ db.commit(); db.close()" 2>/dev/null || true
     local RCODE; RCODE=$(curl "${_CURL_ARGS[@]}" 2>/dev/null || echo "000")
     rm -f "$_REG_PAYLOAD"
     if [[ "$RCODE" != "200" && "$RCODE" != "201" ]]; then
-        echo "[ERROR] Registration failed (HTTP $RCODE)" >&2
+        echo "  x Failed: registration HTTP $RCODE" >&2
         [[ -f /tmp/_mr.json ]] && cat /tmp/_mr.json >&2
         _module_rollback "$MODULE_NAME" "registration failed HTTP $RCODE" "$BACKEND_DEST" "$FRONTEND_DEST"
         exit 1
     fi
-    echo "[INFO] Module registered (post_install hook invoked server-side)."
+    echo "  + Done (post_install hook invoked server-side)"
 
-    # Step 8: Mark install_status=ready via direct DB write (registration may not set this if
-    # the /register endpoint returns before the loader completes).
-    echo "[INFO] Step 8/8: Marking install_status=ready..."
-    if ! docker exec app_buildify_backend python3 -c         "import os; os.environ['TESTING']='1'
+    # -- Step 8/8: Mark install_status=ready ----------------------------------
+    echo "[8/8] Marking install_status=ready..."
+    if ! docker exec app_buildify_backend python3 -c \
+        "import os; os.environ['TESTING']='1'
 from datetime import datetime
 from app.core.db import SessionLocal
 from app.models.nocode_module import Module
@@ -991,12 +999,14 @@ if m:
     m.installed_at=datetime.utcnow(); m.updated_at=datetime.utcnow()
     db.commit()
 db.close()" 2>/dev/null; then
-        echo "[ERROR] Failed to mark install_status=ready" >&2
+        echo "  x Failed: could not set install_status=ready" >&2
         _module_rollback "$MODULE_NAME" "failed to set ready status" "$BACKEND_DEST" "$FRONTEND_DEST"
         exit 1
     fi
+    echo "  + Done"
     echo "[INFO] Module $MODULE_NAME v$MODULE_VERSION installed successfully."
 }
+
 
 # ── T-23.026: module uninstall ──────────────────────────────────────────────
 # ---------------------------------------------------------------------------
