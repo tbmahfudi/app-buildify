@@ -43,6 +43,7 @@ from app.schemas.module import (
     ActivationPreviewResponse,
     ModuleListItemV2,
     ModulesListResponse,
+    ModuleEnableResponse,
 )
 from pathlib import Path
 import logging
@@ -1199,3 +1200,307 @@ async def list_modules_v1(
         )
 
     return ModulesListResponse(modules=items, total=len(items))
+
+
+# ── T-23.020 — POST /api/v1/modules/{module_id}/enable ──────────────────────
+
+@_modules_v1_router.post(
+    "/{module_id}/enable",
+    response_model=ModuleEnableResponse,
+    summary="Enable a module for the requesting tenant",
+    tags=["modules-v1"],
+    status_code=200,
+)
+async def enable_module_v1(
+    module_id: str,
+    http_request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Enable a module for the current tenant.
+
+    Steps:
+    1. 404 if module not found.
+    2. Permission check — superusers bypass; others need is_tenant_admin or
+       the modules:enable:tenant permission on any assigned role.
+    3. Dependency check — 409 deps-unmet if any required dep is inactive.
+    4. Create / update ModuleActivation row (is_enabled=True).
+    5. Merge manifest menu_items into tenant menu_items table.
+    6. Seed manifest permissions into permissions table (upsert, is_active=True).
+    7. Audit log module.enabled.
+    8. Call post_enable(db, tenant_id) hook (non-fatal).
+
+    Returns {status, permissions_added, menu_items_added}.
+
+    T-23.020 -- Story 23.4.2 backend AC.
+    """
+    from uuid import UUID
+    from datetime import datetime, timezone
+    from app.models.nocode_module import Module, ModuleActivation, ModuleDependency
+    from app.models.menu_item import MenuItem
+    from app.models.permission import Permission
+
+    # 1. Lookup module
+    try:
+        module_uuid = UUID(module_id)
+    except (ValueError, AttributeError):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "not_found", "message": f"Module '{module_id}' not found", "detail": None},
+        )
+
+    module = db.query(Module).filter(Module.id == module_uuid).first()
+    if module is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "not_found", "message": f"Module '{module_id}' not found", "detail": None},
+        )
+
+    # 2. Permission check
+    if not current_user.is_superuser:
+        has_enable_perm = False
+        # Shortcut: tenant admin flag
+        if getattr(current_user, "is_tenant_admin", False):
+            has_enable_perm = True
+        # Check via role permissions
+        if not has_enable_perm:
+            for role in getattr(current_user, "roles", []) or []:
+                for rp in getattr(role, "permissions", []) or []:
+                    perm = getattr(rp, "permission", rp)
+                    if getattr(perm, "code", None) == "modules:enable:tenant":
+                        has_enable_perm = True
+                        break
+                if has_enable_perm:
+                    break
+        if not has_enable_perm:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={
+                    "code": "forbidden",
+                    "message": "You do not have permission to enable modules",
+                    "detail": None,
+                },
+            )
+
+    tenant_id = current_user.tenant_id
+
+    # 3. Dependency check
+    manifest: dict = module.manifest or {}
+    manifest_deps = manifest.get("dependencies") or []
+    if isinstance(manifest_deps, dict):
+        manifest_deps = manifest_deps.get("required", [])
+
+    structured_deps = (
+        db.query(ModuleDependency)
+        .filter(
+            ModuleDependency.module_id == module_uuid,
+            ModuleDependency.dependency_type == "required",
+        )
+        .all()
+    )
+    dep_module_ids: set = {d.depends_on_module_id for d in structured_deps}
+
+    manifest_dep_modules: list = []
+    if manifest_deps:
+        dep_names = [d if isinstance(d, str) else (d.get("name") or "") for d in manifest_deps]
+        dep_names = [n for n in dep_names if n]
+        if dep_names:
+            manifest_dep_modules = db.query(Module).filter(Module.name.in_(dep_names)).all()
+            for dm in manifest_dep_modules:
+                dep_module_ids.add(dm.id)
+
+    missing = []
+    if dep_module_ids:
+        active_dep_ids = {
+            row[0]
+            for row in db.query(ModuleActivation.module_id)
+            .filter(
+                ModuleActivation.module_id.in_(list(dep_module_ids)),
+                ModuleActivation.tenant_id == tenant_id,
+                ModuleActivation.is_enabled == True,
+            )
+            .all()
+        }
+        for dep in structured_deps:
+            if dep.depends_on_module_id not in active_dep_ids:
+                dep_mod = dep.depends_on_module
+                missing.append({
+                    "name": dep_mod.name if dep_mod else str(dep.depends_on_module_id),
+                    "id": str(dep.depends_on_module_id),
+                })
+        manifest_dep_map = {dm.id: dm for dm in manifest_dep_modules}
+        for mid, dm in manifest_dep_map.items():
+            if mid not in active_dep_ids and not any(m["id"] == str(mid) for m in missing):
+                missing.append({"name": dm.name, "id": str(mid)})
+
+    if missing:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "code": "dependencies_unmet",
+                "message": "Required modules are not active",
+                "detail": {"missing": missing},
+            },
+        )
+
+    # 4. Create / update ModuleActivation
+    now = datetime.now(timezone.utc)
+    activation = (
+        db.query(ModuleActivation)
+        .filter(
+            ModuleActivation.module_id == module_uuid,
+            ModuleActivation.tenant_id == tenant_id,
+            ModuleActivation.company_id == None,
+            ModuleActivation.branch_id == None,
+            ModuleActivation.department_id == None,
+        )
+        .first()
+    )
+    if activation is None:
+        activation = ModuleActivation(
+            module_id=module_uuid,
+            tenant_id=tenant_id,
+            is_enabled=True,
+            enabled_at=now,
+            enabled_by_user_id=current_user.id,
+        )
+        db.add(activation)
+    else:
+        activation.is_enabled = True
+        activation.enabled_at = now
+        activation.enabled_by_user_id = current_user.id
+        activation.disabled_at = None
+        activation.disabled_by_user_id = None
+
+    db.flush()
+
+    # 5. Merge manifest menu_items into tenant menu tree
+    raw_menu_items = manifest.get("menu_items") or manifest.get("routes") or []
+    menu_items_added: list = []
+    try:
+        for item in raw_menu_items:
+            if not isinstance(item, dict):
+                continue
+            code = item.get("code") or item.get("id") or item.get("route")
+            if not code:
+                continue
+            tenant_code = f"{module.name}_{code}_{str(tenant_id)[:8]}"
+            existing_mi = db.query(MenuItem).filter(MenuItem.code == tenant_code).first()
+            if existing_mi is None:
+                mi = MenuItem(
+                    code=tenant_code,
+                    tenant_id=tenant_id,
+                    title=item.get("label") or item.get("title") or code,
+                    route=item.get("route") or item.get("path"),
+                    icon=item.get("icon"),
+                    order=item.get("order", 0),
+                    module_code=module.name,
+                    is_system=False,
+                    is_active=True,
+                    is_visible=True,
+                )
+                db.add(mi)
+            else:
+                existing_mi.is_active = True
+            menu_items_added.append(tenant_code)
+    except Exception as _mi_err:
+        logger.warning(f"[T-23.020] menu_items merge skipped for module '{module.name}': {_mi_err}")
+
+    # 6. Seed RBAC permissions
+    raw_perms = manifest.get("permissions") or module.permissions or []
+    permissions_added: list = []
+    try:
+        for perm_def in raw_perms:
+            if isinstance(perm_def, str):
+                perm_code = perm_def
+                parts = perm_code.split(":")
+                resource = parts[0] if len(parts) > 0 else perm_code
+                action = parts[1] if len(parts) > 1 else "access"
+                scope = parts[2] if len(parts) > 2 else "tenant"
+                perm_name = perm_code.replace(":", " ").title()
+                description = None
+                category = module.category
+            elif isinstance(perm_def, dict):
+                perm_code = perm_def.get("code") or perm_def.get("name") or perm_def.get("id")
+                if not perm_code:
+                    continue
+                parts = perm_code.split(":")
+                resource = perm_def.get("resource", parts[0] if parts else perm_code)
+                action = perm_def.get("action", parts[1] if len(parts) > 1 else "access")
+                scope = perm_def.get("scope", parts[2] if len(parts) > 2 else "tenant")
+                perm_name = perm_def.get("name") or perm_code
+                description = perm_def.get("description")
+                category = perm_def.get("category") or module.category
+            else:
+                continue
+
+            existing_perm = db.query(Permission).filter(Permission.code == perm_code).first()
+            if existing_perm is None:
+                perm = Permission(
+                    code=perm_code,
+                    name=perm_name,
+                    description=description,
+                    resource=resource,
+                    action=action,
+                    scope=scope,
+                    category=category,
+                    is_active=True,
+                    is_system=False,
+                )
+                db.add(perm)
+            else:
+                existing_perm.is_active = True
+            permissions_added.append(perm_code)
+    except Exception as _perm_err:
+        logger.warning(f"[T-23.020] permission seed skipped for module '{module.name}': {_perm_err}")
+
+    db.commit()
+
+    # 7. Audit log
+    create_audit_log(
+        db=db,
+        action="module.enabled",
+        user=current_user,
+        entity_type="module",
+        entity_id=str(module_uuid),
+        context_info={
+            "module_name": module.name,
+            "tenant_id": str(tenant_id),
+            "permissions_added": permissions_added,
+            "menu_items_added": menu_items_added,
+        },
+        request=http_request,
+        status="success",
+    )
+
+    # 8. post_enable hook (non-fatal)
+    try:
+        from app.core.module_system.loader import ModuleLoader
+        from pathlib import Path as _Path
+        _loader = ModuleLoader(_Path("/opt/buildify/modules"))
+        _instance = _loader.get_module(module.name) or _loader.load_module(module.name)
+        if _instance is not None:
+            _instance.post_enable(db, tenant_id)
+            logger.info(f"[T-23.020] post_enable hook completed for '{module.name}' tenant={tenant_id}")
+    except Exception as _hook_err:
+        logger.warning(
+            f"[T-23.020] post_enable hook failed for '{module.name}': {_hook_err}",
+            exc_info=True,
+        )
+        create_audit_log(
+            db=db,
+            action="module_hook_failure",
+            user=current_user,
+            entity_type="module",
+            entity_id=str(module_uuid),
+            context_info={"hook": "post_enable", "error": str(_hook_err)},
+            request=http_request,
+            status="failure",
+        )
+
+    return ModuleEnableResponse(
+        status="active",
+        permissions_added=permissions_added,
+        menu_items_added=menu_items_added,
+    )

@@ -269,3 +269,10 @@ class ModuleListItemV2(BaseModel):
 class ModulesListResponse(BaseModel):
     modules: List[ModuleListItemV2]
     total: int
+
+
+class ModuleEnableResponse(BaseModel):
+    """Response for POST /api/v1/modules/{module_id}/enable (T-23.020)."""
+    status: str  # "active"
+    permissions_added: List[str] = Field(default_factory=list)
+    menu_items_added: List[str] = Field(default_factory=list)
