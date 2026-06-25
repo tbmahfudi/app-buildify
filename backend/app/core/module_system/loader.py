@@ -325,22 +325,34 @@ class ModuleLoader:
         return True, None
 
 
-    def validate_manifest(self, manifest: dict):
+    def validate_manifest(self, manifest: dict) -> tuple:
         """Validate a manifest dict against manifest.schema.json.
-        Returns (True, None) on success; (False, error_string) on failure.
+
+        Returns:
+            (True, None) on success.
+            (False, formatted_error_string) on jsonschema.ValidationError.
         """
+        import json as _json
         try:
-            import json as _json, jsonschema
-            from pathlib import Path as _Path
-            schema_file = _Path(__file__).parent / "manifest.schema.json"
-            schema = _json.load(open(schema_file))
-            jsonschema.validate(instance=manifest, schema=schema)
-            return True, None
+            import jsonschema
         except ImportError:
             logger.warning("jsonschema not installed -- manifest validation skipped")
             return True, None
+
+        try:
+            schema_file = Path(__file__).parent / "manifest.schema.json"
+            with open(schema_file) as _f:
+                schema = _json.load(_f)
+            jsonschema.validate(instance=manifest, schema=schema)
+            return True, None
         except jsonschema.ValidationError as exc:
-            return False, exc.message
+            # Build a readable error: include JSON path when available
+            path = " -> ".join(str(p) for p in exc.absolute_path) if exc.absolute_path else None
+            if path:
+                error_msg = f"{path}: {exc.message}"
+            else:
+                error_msg = exc.message
+            return False, error_msg
         except Exception as exc:
             return False, str(exc)
 

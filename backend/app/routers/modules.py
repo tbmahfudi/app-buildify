@@ -670,10 +670,13 @@ async def register_module(
             _loader = ModuleLoader(_Path("/tmp"))
             _ok, _err = _loader.validate_manifest(manifest)
             if not _ok:
-                from fastapi import status as _status
                 raise HTTPException(
-                    status_code=_status.HTTP_422_UNPROCESSABLE_ENTITY,
-                    detail={"valid": False, "errors": [_err]},
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail={
+                        "code": "manifest_invalid",
+                        "message": "Manifest validation failed",
+                        "detail": {"errors": [_err]},
+                    },
                 )
         except HTTPException:
             raise
@@ -1034,4 +1037,56 @@ async def get_activation_preview(
         permissions=permissions,
         menu_items=menu_items,
         dependencies=dependencies,
+    )
+
+
+@_modules_v1_router.post(
+    "/validate",
+    summary="Dry-run manifest validation (no DB write)",
+    tags=["modules-v1"],
+)
+async def validate_manifest_endpoint(
+    request_data: dict,
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Validate a module manifest against the JSON Schema without writing to the database.
+
+    Developers call this before packaging (manage.sh module pack also calls it).
+
+    Body: {"manifest": {...}}
+
+    Returns:
+        200 {"valid": true} on success.
+        422 {"code": "manifest_invalid", "message": "...", "detail": {"errors": [...]}} on failure.
+
+    T-23.007 — Story 23.2.1 backend AC.
+    """
+    from app.core.module_system.loader import ModuleLoader
+    from pathlib import Path as _Path
+
+    manifest = request_data.get("manifest")
+    if manifest is None or not isinstance(manifest, dict):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "code": "manifest_invalid",
+                "message": "Request body must contain a 'manifest' key with a dict value",
+                "detail": {"errors": ["'manifest' key missing or not an object"]},
+            },
+        )
+
+    _loader = ModuleLoader(_Path("/tmp"))
+    ok, err = _loader.validate_manifest(manifest)
+
+    if ok:
+        return {"valid": True}
+
+    raise HTTPException(
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        detail={
+            "code": "manifest_invalid",
+            "message": "Manifest validation failed",
+            "detail": {"errors": [err]},
+        },
     )
