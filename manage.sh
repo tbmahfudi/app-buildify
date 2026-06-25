@@ -765,6 +765,50 @@ PY
 
     echo "Packing $MODULE_NAME $MODULE_VERSION -> $TARBALL"
 
+    # ---------------------------------------------------------------------------
+    # T-23.009  Optional pre-pack manifest validation via POST /modules/validate
+    # ---------------------------------------------------------------------------
+    local API_BASE="${BUILDIFY_API_URL:-http://localhost:8000}"
+    local VALIDATE_URL="$API_BASE/api/v1/modules/validate"
+
+    # Check whether backend is reachable (2-second timeout, silent)
+    if curl -sf --max-time 2 "$API_BASE/api/v1/health" -o /dev/null 2>/dev/null || \
+       curl -sf --max-time 2 "$API_BASE/" -o /dev/null 2>/dev/null; then
+        _BACKEND_UP=true
+    else
+        _BACKEND_UP=false
+    fi
+
+    if [[ "$_BACKEND_UP" == "true" && -n "${BUILDIFY_TOKEN:-}" ]]; then
+        echo "Validating manifest against backend..."
+        local MANIFEST_JSON
+        MANIFEST_JSON=$(cat "$MANIFEST")
+        local HTTP_CODE
+        HTTP_CODE=$(curl -sf --max-time 10 -o /tmp/_pack_validate_resp.json -w "%{http_code}" \
+            -X POST "$VALIDATE_URL" \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer $BUILDIFY_TOKEN" \
+            --data "{\"manifest\": $MANIFEST_JSON}" 2>/dev/null || echo "000")
+        if [[ "$HTTP_CODE" == "200" ]]; then
+            echo "Manifest valid."
+        elif [[ "$HTTP_CODE" == "422" ]]; then
+            echo "Manifest validation FAILED (HTTP 422):" >&2
+            cat /tmp/_pack_validate_resp.json >&2 2>/dev/null || true
+            rm -f /tmp/_pack_validate_resp.json
+            exit 1
+        elif [[ "$HTTP_CODE" == "401" || "$HTTP_CODE" == "403" ]]; then
+            echo "⚠ Backend returned $HTTP_CODE (auth error) — skipping pre-pack validation" >&2
+        else
+            echo "⚠ Unexpected response from validate endpoint (HTTP $HTTP_CODE) — skipping pre-pack validation" >&2
+        fi
+        rm -f /tmp/_pack_validate_resp.json
+    elif [[ "$_BACKEND_UP" == "true" && -z "${BUILDIFY_TOKEN:-}" ]]; then
+        echo "⚠ BUILDIFY_TOKEN not set — skipping pre-pack validation (set BUILDIFY_TOKEN to enable)" >&2
+    else
+        echo "⚠ Backend not reachable — skipping pre-pack validation" >&2
+    fi
+    # ---------------------------------------------------------------------------
+
     # Normalise timestamps for deterministic builds (reproducible tarballs)
     find "$MODULE_DIR" -not -path "*/__pycache__/*" -not -name "*.pyc" \
         -exec touch -d "2020-01-01 00:00:00" {} + 2>/dev/null || true
