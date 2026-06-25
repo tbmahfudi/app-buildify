@@ -1,0 +1,5 @@
+# T-23.013 Spike -- Direct Hook Call Findings
+
+**Status**: DONE
+
+The spike confirms that BaseModule.post_install() and post_enable() are standard Python instance methods defined on BaseModule in backend/app/core/module_system/base_module.py (lines 241 and 269 respectively), each accepting a db_session argument and returning None; no event bus, message queue, or async machinery is involved. Direct invocation is already proven in production code: the /register endpoint in backend/app/routers/modules.py (lines 761-774) instantiates the module via ModuleLoader.load_module() and immediately calls _instance.post_install(db) as a plain Python method call wrapped in try/except, logging failures as warnings without rolling back the transaction. The post_enable(db_session, tenant_id) hook follows the identical signature pattern and has not yet been wired at the /enable endpoint, but the same direct-call pattern applies unchanged -- no event bus is needed. T-23.014 can proceed with confidence using the /register wiring as the reference implementation.
