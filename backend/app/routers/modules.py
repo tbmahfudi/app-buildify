@@ -742,12 +742,24 @@ async def register_module(
             existing_module.updated_at = datetime.utcnow()
 
             # Mark as installed if not already
-            if not existing_module.is_installed:
+            _first_install = not existing_module.is_installed
+            if _first_install:
                 existing_module.is_installed = True
                 existing_module.installed_at = datetime.utcnow()
 
             db.commit()
             db.refresh(existing_module)
+
+            # T-23.027: write module.installed audit on first install transition
+            if _first_install:
+                create_audit_log(
+                    db=db,
+                    action="module.installed",
+                    entity_type="module",
+                    entity_id=str(existing_module.id),
+                    context_info={"module_name": module_name, "version": existing_module.version},
+                    status="success"
+                )
 
             logger.info(f"Module '{module_name}' re-registered and updated")
 
@@ -808,6 +820,16 @@ async def register_module(
                     exc_info=True,
                 )
                 # log but do NOT roll back — hook failure is non-fatal per T-23.014
+
+            # T-23.027: write module.installed audit for new module
+            create_audit_log(
+                db=db,
+                action="module.installed",
+                entity_type="module",
+                entity_id=str(new_module.id),
+                context_info={"module_name": module_name, "version": new_module.version},
+                status="success"
+            )
 
             logger.info(f"Module '{module_name}' registered successfully (new)")
 
