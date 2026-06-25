@@ -9,7 +9,7 @@ Provides REST API for managing modules:
 - Update module configuration
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi import APIRouter, Depends, HTTPException, Header, status, Request
 from sqlalchemy.orm import Session
 from typing import List
 
@@ -1851,3 +1851,193 @@ async def deactivate_module_all_tenants(
         status="deactivation_pending",
         tenants_deactivated=tenants_deactivated,
     )
+
+
+# ---------------------------------------------------------------------------
+# T-23.025 — DELETE /api/v1/modules/admin/{module_id}
+# ---------------------------------------------------------------------------
+
+@_modules_v1_router.delete(
+    "/admin/{module_id}",
+    summary="Uninstall a module (superadmin only, X-Confirm-Uninstall: true required)",
+    tags=["modules-v1"],
+    status_code=204,
+)
+async def uninstall_module_v1(
+    module_id: str,
+    http_request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_superuser),
+    x_confirm_uninstall: str = Header(default=None, alias="X-Confirm-Uninstall"),
+):
+    """
+    Hard-delete a module from the platform (superadmin only).
+
+    Guards:
+    - Requires X-Confirm-Uninstall: true header.
+    - Module must have install_status='deactivation_pending' (set by T-23.024).
+
+    Steps:
+    1. Header check: 400 if X-Confirm-Uninstall != 'true'.
+    2. 404 if module not found.
+    3. State check: 409 if install_status != 'deactivation_pending'.
+    4. Epic-22 cleanup stub (no-op — story 22.4.5 not yet merged).
+    5. Delete all ModuleActivation rows for this module.
+    6. Deactivate all RBAC permissions seeded by this module.
+    7. Delete all MenuItem rows with module_code matching this module.
+    8. Remove module files via docker exec (non-fatal on failure).
+    9. Delete the modules row and commit.
+    10. Write audit_log(action='module.uninstalled').
+
+    Returns 204 No Content on success.
+
+    T-23.025 — Story 23.5.1 backend AC phase 2.
+    """
+    import subprocess
+    from uuid import UUID
+    from app.models.nocode_module import Module, ModuleActivation
+    from app.models.menu_item import MenuItem
+    from app.models.permission import Permission
+
+    # 1. Header check
+    if x_confirm_uninstall != "true":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "code": "confirm_header_required",
+                "message": "X-Confirm-Uninstall: true header is required to uninstall a module",
+                "detail": None,
+            },
+        )
+
+    # 2. Lookup module
+    try:
+        module_uuid = UUID(module_id)
+    except (ValueError, AttributeError):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "not_found", "message": f"Module {module_id} not found", "detail": None},
+        )
+
+    module = db.query(Module).filter(Module.id == module_uuid).first()
+    if module is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "not_found", "message": f"Module {module_id} not found", "detail": None},
+        )
+
+    # 3. State check — must be deactivation_pending
+    if module.install_status != "deactivation_pending":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "code": "uninstall_not_ready",
+                "message": "Module must be deactivated from all tenants first",
+                "detail": None,
+            },
+        )
+
+    module_name = module.name
+
+    # 4. Epic-22 cleanup stub
+    # TODO: Epic-22 cleanup service (story 22.4.5) — call cleanup endpoint here once merged
+    logger.info(f"[T-23.025] Epic-22 cleanup service: no-op stub for module {module_name} (22.4.5 not yet merged)")
+
+    # 5. Remove all ModuleActivation rows for this module (including disabled ones)
+    activations_to_delete = (
+        db.query(ModuleActivation)
+        .filter(ModuleActivation.module_id == module_uuid)
+        .all()
+    )
+    activation_count = len(activations_to_delete)
+    for act in activations_to_delete:
+        db.delete(act)
+    db.flush()
+    logger.info(f"[T-23.025] Deleted {activation_count} ModuleActivation rows for module {module_name}")
+
+    # 6. Deactivate RBAC permissions seeded by this module
+    raw_perms = (module.manifest or {}).get("permissions") or module.permissions or []
+    perm_codes = []
+    for perm_def in raw_perms:
+        if isinstance(perm_def, str):
+            perm_codes.append(perm_def)
+        elif isinstance(perm_def, dict):
+            code = perm_def.get("code") or perm_def.get("name") or perm_def.get("id")
+            if code:
+                perm_codes.append(code)
+
+    permissions_removed: list = []
+    if perm_codes:
+        try:
+            perms = db.query(Permission).filter(Permission.code.in_(perm_codes)).all()
+            for p in perms:
+                p.is_active = False
+                permissions_removed.append(p.code)
+            db.flush()
+        except Exception as _perm_err:
+            logger.warning(f"[T-23.025] Permission deactivation skipped for module {module_name}: {_perm_err}")
+
+    # 7. Delete MenuItem rows owned by this module (all tenants)
+    menu_items_removed: list = []
+    try:
+        owned_items = (
+            db.query(MenuItem)
+            .filter(MenuItem.module_code == module_name)
+            .all()
+        )
+        if not owned_items:
+            # Fallback: match by code pattern
+            owned_items = (
+                db.query(MenuItem)
+                .filter(MenuItem.code.like(f"{module_name}_%"))
+                .all()
+            )
+        for mi in owned_items:
+            menu_items_removed.append(mi.code)
+            db.delete(mi)
+        db.flush()
+        logger.info(f"[T-23.025] Deleted {len(menu_items_removed)} MenuItem rows for module {module_name}")
+    except Exception as _mi_err:
+        logger.warning(f"[T-23.025] Menu item removal skipped for module {module_name}: {_mi_err}")
+
+    # 8. Remove module files from container (non-fatal)
+    try:
+        result = subprocess.run(
+            ["docker", "exec", "app_buildify_backend", "bash", "-c", f"rm -rf /app/modules/{module_name}"],
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+        if result.returncode == 0:
+            logger.info(f"[T-23.025] Removed module files: /app/modules/{module_name}")
+        else:
+            logger.warning(
+                f"[T-23.025] Failed to remove module files for {module_name}: {result.stderr.strip()}"
+            )
+    except Exception as _fs_err:
+        logger.warning(f"[T-23.025] Module file removal failed for {module_name} (non-fatal): {_fs_err}")
+
+    # 9. Delete modules row
+    db.delete(module)
+    db.commit()
+    logger.info(f"[T-23.025] Module {module_name} ({module_id}) deleted from database")
+
+    # 10. Audit log
+    create_audit_log(
+        db=db,
+        action="module.uninstalled",
+        user=current_user,
+        entity_type="module",
+        entity_id=module_id,
+        context_info={
+            "module_name": module_name,
+            "activations_removed": activation_count,
+            "permissions_deactivated": permissions_removed,
+            "menu_items_removed": menu_items_removed,
+        },
+        request=http_request,
+        status="success",
+    )
+
+    # 204 No Content — FastAPI returns empty body automatically
+    return None
