@@ -830,9 +830,20 @@ PY
 module_install() {
     local TARBALL="${1:-}"
     local API_BASE="http://localhost:8000"
+    local TOKEN="${BUILDIFY_TOKEN:-}"
+    shift || true
+
+    # Parse optional --api-url / --token flags (T-23.010)
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --api-url) API_BASE="${2:-$API_BASE}"; shift 2 ;;
+            --token)   TOKEN="${2:-}"; shift 2 ;;
+            *) echo "[ERROR] Unknown flag: $1" >&2; exit 1 ;;
+        esac
+    done
 
     if [[ -z "$TARBALL" || ! -f "$TARBALL" ]]; then
-        echo "[ERROR] Usage: manage.sh module install <tarball>" >&2; exit 1
+        echo "[ERROR] Usage: manage.sh module install <tarball> [--api-url <url>] [--token <token>]" >&2; exit 1
     fi
     TARBALL="$(realpath "$TARBALL")"
     local WORK_DIR
@@ -842,9 +853,9 @@ module_install() {
     echo "[INFO] Tarball: $TARBALL"
 
     # Step 1: Verify SHA256
+    echo "[1/4] Verifying SHA256..."
     local SHA_FILE; SHA_FILE="$(dirname "$TARBALL")/SHA256SUMS"
     if [[ -f "$SHA_FILE" ]]; then
-        echo "[INFO] Step 1/8: Verifying checksum..."
         local EXPECTED ACTUAL
         EXPECTED=$(grep "$(basename "$TARBALL")" "$SHA_FILE" | awk '{print $1}')
         ACTUAL=$(sha256sum "$TARBALL" | awk '{print $1}')
@@ -853,7 +864,7 @@ module_install() {
         fi
         echo "[INFO] Checksum OK."
     else
-        echo "[WARNING] No SHA256SUMS — skipping checksum check"
+        echo "[WARN] No SHA256SUMS file found — skipping checksum check"
     fi
 
     # Extract
@@ -869,7 +880,7 @@ module_install() {
     echo "[INFO] Module: $MODULE_NAME v$MODULE_VERSION"
 
     # Step 2: Validate manifest via API
-    echo "[INFO] Step 2/8: Validating manifest..."
+    echo "[2/4] Validating manifest..."
     local MJSON; MJSON=$(python3 -c "import json; print(json.dumps({'manifest':json.load(open('$MANIFEST'))}))")
     local VCODE; VCODE=$(curl -s -o /tmp/_mv.json -w "%{http_code}"         -X POST "$API_BASE/api/v1/modules/validate"         -H "Content-Type: application/json" -d "$MJSON" 2>/dev/null || echo "000")
     if [[ "$VCODE" == "422" ]]; then
@@ -893,7 +904,7 @@ db.close()" 2>/dev/null || echo "no")
     fi
 
     # Step 3: mark in_progress
-    echo "[INFO] Step 3/8: Marking install_status=in_progress..."
+    echo "[3/4] Setting install_status=in_progress..."
     docker exec app_buildify_backend python3 -c         "import os; os.environ['TESTING']='1'
 from datetime import datetime
 from app.core.db import SessionLocal
@@ -911,11 +922,15 @@ else:
 db.commit(); db.close()" 2>/dev/null || true
 
     # Step 4: Module-specific Alembic migrations
-    echo "[INFO] Step 4/8: Running module migrations..."
-    if [[ -d "$MODULE_DIR/alembic" ]]; then
-        docker exec app_buildify_backend bash -c "cd /app && alembic upgrade head" 2>&1             | sed 's/^/  /' || { _module_rollback "$MODULE_NAME" "migration failed"; exit 1; }
+    echo "[4/4] Running module Alembic migrations..."
+    if [[ -d "$MODULE_DIR/backend/alembic" || -d "$MODULE_DIR/migrations" ]]; then
+        if ! docker exec app_buildify_backend bash -c \
+               "cd /app/modules/$MODULE_NAME && alembic upgrade head" 2>&1 | sed 's/^/  /'; then
+            _module_rollback "$MODULE_NAME" "migration failed"
+            exit 1
+        fi
     else
-        echo "[INFO] No module migrations — skipping"
+        echo "[INFO] No migrations found — skipping"
     fi
 
     # Step 5: Copy backend service files

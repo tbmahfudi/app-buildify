@@ -86,7 +86,7 @@ Status legend: `OPEN` = not started · `IN-PROGRESS` = picked up · `BLOCKED` = 
 
 | id | title | owner | depends-on | hrs | AC link | status |
 |----|-------|-------|-----------:|----:|---------|--------|
-| T-23.010 | Implement `manage.sh module install <tarball>` steps 1-4: verify SHA256, call `/modules/validate`, set `install_status=in_progress`, run module Alembic migrations | E1 | T-23.007 | 4 | [epic-23 §23.3.1 backend — install steps 1-4](../epics/epic-23-module-lifecycle-and-activation.md) | OPEN |
+| T-23.010 | Implement `manage.sh module install <tarball>` steps 1-4: verify SHA256, call `/modules/validate`, set `install_status=in_progress`, run module Alembic migrations | E1 | T-23.007 | 4 | [epic-23 §23.3.1 backend — install steps 1-4](../epics/epic-23-module-lifecycle-and-activation.md) | DONE |
 | T-23.011 | Implement install steps 5-8: copy backend service + frontend assets, call `POST /modules/register`, call `BaseModule.post_install()`, set `install_status=ready`; implement rollback on any failure | E1 | T-23.010 | 4 | [epic-23 §23.3.1 backend — install steps 5-8 + rollback](../epics/epic-23-module-lifecycle-and-activation.md) | OPEN |
 | T-23.012 | Idempotency: detect same `name+version` already installed → exit 0 with message; structured per-step log output | E1 | T-23.011 | 2 | [epic-23 §23.3.1 backend — idempotency + logging](../epics/epic-23-module-lifecycle-and-activation.md) | OPEN |
 

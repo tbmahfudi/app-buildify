@@ -3,7 +3,6 @@
   "display_name": "Healthcare",
   "version": "1.0.0",
   "description": "Two-sided healthcare platform: clinic staff portal + patient portal. Includes scheduling, billing, pharmacy, and laboratory sub-modules.",
-  "entry_point": "frontend/module.js",
   "routes": [
     {
       "path": "#/healthcare/dashboard",
@@ -78,27 +77,8 @@
       }
     }
   ],
-  "navigation": {
-    "primary_menu": true,
-    "menu_items": [
-      {
-        "code": "healthcare",
-        "label": "Healthcare",
-        "icon": "ph-duotone ph-heart-pulse",
-        "icon_color": "text-red-500",
-        "order": 20,
-        "is_parent": true,
-        "permission": null
-      }
-    ],
-    "dashboard_widgets": []
-  },
-  "dependencies": {
-    "required": [],
-    "optional": []
-  },
-  "assets": {
-    "css": [],
-    "icons": []
-  }
+  "dependencies": [],
+  "module_type": "code",
+  "category": "vertical",
+  "api_prefix": "/api/v1/healthcare"
 }
