@@ -713,180 +713,6 @@ seed_rbac_with_groups() {
 }
 
 # Main script logic
-case $COMMAND in
-    start)
-        validate_database
-        start_services
-        ;;
-    stop)
-        stop_services
-        ;;
-    restart)
-        validate_database
-        restart_services
-        ;;
-    status)
-        validate_database
-        check_status
-        ;;
-    ps|list)
-        list_containers
-        ;;
-    stats)
-        show_stats
-        ;;
-    migrate)
-        validate_database
-        if [ ! -f "$COMPOSE_FULL_PATH" ]; then
-            print_error "Compose file not found: $COMPOSE_FULL_PATH"
-            exit 1
-        fi
-        check_services_running
-        run_migrations
-        ;;
-    logs)
-        view_logs
-        ;;
-    clean)
-        clean_services
-        ;;
-    build)
-        validate_database
-        build_images
-        ;;
-    shell)
-        open_backend_shell
-        ;;
-    db-shell)
-        open_db_shell
-        ;;
-    seed)
-        validate_database
-        check_services_running
-        seed_database
-        ;;
-    quick-seed)
-        validate_database
-        check_services_running
-        quick_seed_database
-        ;;
-    db-reset)
-        validate_database
-        reset_database
-        ;;
-    backup)
-        validate_database
-        check_services_running
-        backup_database
-        ;;
-    restore)
-        validate_database
-        check_services_running
-        restore_database
-        ;;
-    setup)
-        setup_environment
-        ;;
-    exec)
-        exec_service "$@"
-        ;;
-    test)
-        check_services_running
-        run_tests
-        ;;
-    seed-menu)
-        check_services_running
-        seed_menu_items
-        ;;
-    seed-menu-rbac)
-        check_services_running
-        seed_menu_rbac "$@"
-        ;;
-    seed-module-rbac)
-        check_services_running
-        seed_module_rbac "$@"
-        ;;
-    seed-financial-rbac)
-        check_services_running
-        seed_financial_rbac "$@"
-        ;;
-    seed-permissions)
-        check_services_running
-        seed_all_permissions
-        ;;
-    seed-rbac)
-        check_services_running
-        seed_rbac_with_groups
-        ;;
-    module)
-        SUBCOMMAND="${2:-}"
-        shift 2 || true
-        case "$SUBCOMMAND" in
-
-
-                        new) module_new "$@" ;;
-pack) module_pack "$@" ;;
-            install) shift; module_install "$@" ;;
-            uninstall) shift; module_uninstall "$@" ;;
-            *) echo "Unknown module subcommand: $SUBCOMMAND"; echo "  new <name>  pack  <dir> [--out <dir>]  install <pkg>  uninstall <name>"; exit 1 ;;
-        esac
-        ;;
-    tenant)
-        SUBCOMMAND="${2:-}"
-        shift 2 || true
-        case "$SUBCOMMAND" in
-            deactivate)
-                TENANT_ID="${1:-}"
-                if [ -z "$TENANT_ID" ]; then
-                    echo "Usage: manage.sh tenant deactivate <tenant_id>"
-                    exit 1
-                fi
-                echo "==> Deactivating tenant: $TENANT_ID"
-                docker exec app_buildify_backend python3 /app/scripts/cleanup_tenant_module_dbs.py "$TENANT_ID" || \
-                    python3 /home/mahfudi/app-buildify/scripts/cleanup_tenant_module_dbs.py "$TENANT_ID"
-                echo "Tenant $TENANT_ID deactivated."
-                ;;
-            *)
-                echo "Unknown tenant subcommand: $SUBCOMMAND"
-                echo "  deactivate <tenant_id>"
-                exit 1
-                ;;
-        esac
-        ;;
-    check-tenant-scope)
-        echo "==> Checking services/ for unguarded tenant_id literals..."
-        if grep -rn "\.tenant_id ==" /home/mahfudi/app-buildify/backend/app/services/ /home/mahfudi/app-buildify/backend/app/routers/ 2>/dev/null | grep -v "apply_tenant_scope\|tenant_scope\|== None"; then
-            echo "ERROR: Found raw tenant_id filter(s) — use apply_tenant_scope() instead"
-            exit 1
-        fi
-        echo "check-tenant-scope: PASS — no raw tenant_id filters found in services/"
-        ;;
-    check-tenant-scope)
-        echo "==> Checking services/ for unguarded tenant_id literals..."
-        if grep -rn "\.tenant_id ==" /home/mahfudi/app-buildify/backend/app/services/ /home/mahfudi/app-buildify/backend/app/routers/ 2>/dev/null | grep -v "apply_tenant_scope\|tenant_scope\|== None"; then
-            echo "ERROR: Found raw tenant_id filter(s) — use apply_tenant_scope() instead"
-            exit 1
-        fi
-        echo "check-tenant-scope: PASS — no raw tenant_id filters found in services/"
-        ;;
-    check-tenant-scope)
-        echo "==> Checking services/ for unguarded tenant_id literals..."
-        if grep -rn "\.tenant_id ==" /home/mahfudi/app-buildify/backend/app/services/ /home/mahfudi/app-buildify/backend/app/routers/ 2>/dev/null | grep -v "apply_tenant_scope\|tenant_scope\|== None"; then
-            echo "ERROR: Found raw tenant_id filter(s) — use apply_tenant_scope() instead"
-            exit 1
-        fi
-        echo "check-tenant-scope: PASS — no raw tenant_id filters found in services/"
-        ;;
-    help|--help|-h)
-        show_help
-        ;;
-    *)
-        print_error "Unknown command: $COMMAND"
-        echo ""
-        show_help
-        exit 1
-        ;;
-esac
 
 # ---------------------------------------------------------------------------
 
@@ -933,41 +759,6 @@ PY
         echo "Could not read name/version from manifest.json" >&2; exit 1
     fi
 
-    # T-23.009: validate manifest before bundling
-    echo "Validating manifest for $MODULE_NAME $MODULE_VERSION ..."
-    local HTTP_CODE
-    HTTP_CODE=$(curl -s -o /tmp/_validate_out.json -w "%{http_code}" \
-        -X POST http://localhost:8000/api/v1/modules/validate \
-        -H "Content-Type: application/json" \
-        --data-binary "@$MANIFEST" \
-        --data-urlencode "" 2>/dev/null | tail -1 || echo "000")
-
-    # Send the whole manifest as {"manifest": {...}}
-    local JSON_BODY
-    JSON_BODY=$(python3 - "$MANIFEST" <<'PY'
-import sys, json; print(json.dumps({"manifest": json.load(open(sys.argv[1]))}))
-PY
-)
-    HTTP_CODE=$(curl -s -o /tmp/_validate_out.json -w "%{http_code}" \
-        -X POST http://localhost:8000/api/v1/modules/validate \
-        -H "Content-Type: application/json" \
-        -d "$JSON_BODY" 2>/dev/null || echo "000")
-
-    if [[ "$HTTP_CODE" == "422" ]]; then
-        echo "Manifest validation failed:" >&2
-        python3 - <<'PY'
-import json
-d = json.load(open('/tmp/_validate_out.json'))
-errs = (d.get('detail') or {}).get('errors', ['unknown'])
-[print('  -', e) for e in errs]
-PY
-        exit 1
-    elif [[ "$HTTP_CODE" != "200" ]]; then
-        echo "WARNING: API not reachable (HTTP $HTTP_CODE) — skipping validation"
-    else
-        echo "Manifest valid."
-    fi
-
     mkdir -p "$OUT_DIR"
     local TARBALL="$OUT_DIR/${MODULE_NAME}_${MODULE_VERSION}.tar.gz"
     local SHA_FILE="$OUT_DIR/SHA256SUMS"
@@ -984,8 +775,8 @@ PY
 
     sha256sum "$TARBALL" > "$SHA_FILE"
 
-    echo "Packed:    $TARBALL"
-    echo "Checksum:  $(awk '{print $1}' "$SHA_FILE")"
+    echo "Packed: ${MODULE_NAME}_${MODULE_VERSION}.tar.gz"
+    echo "SHA256: $(awk '{print $1}' "$SHA_FILE")"
 }
 
 
@@ -1200,3 +991,177 @@ if m:
     m.updated_at=datetime.utcnow(); db.commit()
 db.close()" 2>/dev/null || true
 }
+case $COMMAND in
+    start)
+        validate_database
+        start_services
+        ;;
+    stop)
+        stop_services
+        ;;
+    restart)
+        validate_database
+        restart_services
+        ;;
+    status)
+        validate_database
+        check_status
+        ;;
+    ps|list)
+        list_containers
+        ;;
+    stats)
+        show_stats
+        ;;
+    migrate)
+        validate_database
+        if [ ! -f "$COMPOSE_FULL_PATH" ]; then
+            print_error "Compose file not found: $COMPOSE_FULL_PATH"
+            exit 1
+        fi
+        check_services_running
+        run_migrations
+        ;;
+    logs)
+        view_logs
+        ;;
+    clean)
+        clean_services
+        ;;
+    build)
+        validate_database
+        build_images
+        ;;
+    shell)
+        open_backend_shell
+        ;;
+    db-shell)
+        open_db_shell
+        ;;
+    seed)
+        validate_database
+        check_services_running
+        seed_database
+        ;;
+    quick-seed)
+        validate_database
+        check_services_running
+        quick_seed_database
+        ;;
+    db-reset)
+        validate_database
+        reset_database
+        ;;
+    backup)
+        validate_database
+        check_services_running
+        backup_database
+        ;;
+    restore)
+        validate_database
+        check_services_running
+        restore_database
+        ;;
+    setup)
+        setup_environment
+        ;;
+    exec)
+        exec_service "$@"
+        ;;
+    test)
+        check_services_running
+        run_tests
+        ;;
+    seed-menu)
+        check_services_running
+        seed_menu_items
+        ;;
+    seed-menu-rbac)
+        check_services_running
+        seed_menu_rbac "$@"
+        ;;
+    seed-module-rbac)
+        check_services_running
+        seed_module_rbac "$@"
+        ;;
+    seed-financial-rbac)
+        check_services_running
+        seed_financial_rbac "$@"
+        ;;
+    seed-permissions)
+        check_services_running
+        seed_all_permissions
+        ;;
+    seed-rbac)
+        check_services_running
+        seed_rbac_with_groups
+        ;;
+    module)
+        SUBCOMMAND="${2:-}"
+        shift 2 || true
+        case "$SUBCOMMAND" in
+
+
+                        new) module_new "$@" ;;
+pack) module_pack "$@" ;;
+            install) module_install "$@" ;;
+            uninstall) shift; module_uninstall "$@" ;;
+            *) echo "Unknown module subcommand: $SUBCOMMAND"; echo "  new <name>  pack  <dir> [--out <dir>]  install <pkg>  uninstall <name>"; exit 1 ;;
+        esac
+        ;;
+    tenant)
+        SUBCOMMAND="${2:-}"
+        shift 2 || true
+        case "$SUBCOMMAND" in
+            deactivate)
+                TENANT_ID="${1:-}"
+                if [ -z "$TENANT_ID" ]; then
+                    echo "Usage: manage.sh tenant deactivate <tenant_id>"
+                    exit 1
+                fi
+                echo "==> Deactivating tenant: $TENANT_ID"
+                docker exec app_buildify_backend python3 /app/scripts/cleanup_tenant_module_dbs.py "$TENANT_ID" || \
+                    python3 /home/mahfudi/app-buildify/scripts/cleanup_tenant_module_dbs.py "$TENANT_ID"
+                echo "Tenant $TENANT_ID deactivated."
+                ;;
+            *)
+                echo "Unknown tenant subcommand: $SUBCOMMAND"
+                echo "  deactivate <tenant_id>"
+                exit 1
+                ;;
+        esac
+        ;;
+    check-tenant-scope)
+        echo "==> Checking services/ for unguarded tenant_id literals..."
+        if grep -rn "\.tenant_id ==" /home/mahfudi/app-buildify/backend/app/services/ /home/mahfudi/app-buildify/backend/app/routers/ 2>/dev/null | grep -v "apply_tenant_scope\|tenant_scope\|== None"; then
+            echo "ERROR: Found raw tenant_id filter(s) — use apply_tenant_scope() instead"
+            exit 1
+        fi
+        echo "check-tenant-scope: PASS — no raw tenant_id filters found in services/"
+        ;;
+    check-tenant-scope)
+        echo "==> Checking services/ for unguarded tenant_id literals..."
+        if grep -rn "\.tenant_id ==" /home/mahfudi/app-buildify/backend/app/services/ /home/mahfudi/app-buildify/backend/app/routers/ 2>/dev/null | grep -v "apply_tenant_scope\|tenant_scope\|== None"; then
+            echo "ERROR: Found raw tenant_id filter(s) — use apply_tenant_scope() instead"
+            exit 1
+        fi
+        echo "check-tenant-scope: PASS — no raw tenant_id filters found in services/"
+        ;;
+    check-tenant-scope)
+        echo "==> Checking services/ for unguarded tenant_id literals..."
+        if grep -rn "\.tenant_id ==" /home/mahfudi/app-buildify/backend/app/services/ /home/mahfudi/app-buildify/backend/app/routers/ 2>/dev/null | grep -v "apply_tenant_scope\|tenant_scope\|== None"; then
+            echo "ERROR: Found raw tenant_id filter(s) — use apply_tenant_scope() instead"
+            exit 1
+        fi
+        echo "check-tenant-scope: PASS — no raw tenant_id filters found in services/"
+        ;;
+    help|--help|-h)
+        show_help
+        ;;
+    *)
+        print_error "Unknown command: $COMMAND"
+        echo ""
+        show_help
+        exit 1
+        ;;
+esac

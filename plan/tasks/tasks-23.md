@@ -75,7 +75,7 @@ Status legend: `OPEN` = not started · `IN-PROGRESS` = picked up · `BLOCKED` = 
 |----|-------|-------|-----------:|----:|---------|--------|
 | T-23.006 | Create `backend/app/core/module_system/manifest.schema.json` — full JSON Schema for all manifest fields including semver `version` pattern | C2 | T-23.001 | 3 | [epic-23 §23.2.1 backend — schema file](../epics/epic-23-module-lifecycle-and-activation.md) | DONE |
 | T-23.007 | Add `jsonschema.validate()` call in `loader.py`; wire into `POST /modules/register` (422 on violation) and add `POST /modules/validate` dry-run endpoint (no DB write) | C2 | T-23.006 | 3 | [epic-23 §23.2.1 backend — validate endpoint](../epics/epic-23-module-lifecycle-and-activation.md) | DONE |
-| T-23.008 | Implement `manage.sh module pack <dir> [--out <dir>]` — produces `<name>_<version>.tar.gz` + `SHA256SUMS`; normalises file timestamps for determinism | E1 | T-23.007 | 4 | [epic-23 §23.2.2 backend — pack command](../epics/epic-23-module-lifecycle-and-activation.md) | OPEN |
+| T-23.008 | Implement `manage.sh module pack <dir> [--out <dir>]` — produces `<name>_<version>.tar.gz` + `SHA256SUMS`; normalises file timestamps for determinism | E1 | T-23.007 | 4 | [epic-23 §23.2.2 backend — pack command](../epics/epic-23-module-lifecycle-and-activation.md) | DONE |
 | T-23.009 | Pack command calls `POST /modules/validate` before bundling; exits non-zero on validation failure | E1 | T-23.008 | 2 | [epic-23 §23.2.2 backend — pre-pack validation](../epics/epic-23-module-lifecycle-and-activation.md) | OPEN |
 
 **Subtotal: 12 hrs**
