@@ -59,7 +59,7 @@ def get_module_registry() -> ModuleRegistryService:
     if module_registry is None:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Module system not initialized"
+            detail={"code": "service_unavailable", "message": "Module system not initialized", "detail": None}
         )
     return module_registry
 
@@ -216,7 +216,7 @@ async def get_module_info(
     if not module:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Module '{module_name}' not found"
+            detail={"code": "not_found", "message": f"Module '{module_name}' not found", "detail": None}
         )
 
     return ModuleInfo(
@@ -266,7 +266,7 @@ async def get_module_manifest(
     if not module:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Module '{module_name}' not found"
+            detail={"code": "not_found", "message": f"Module '{module_name}' not found", "detail": None}
         )
 
     # Get backend service URL from module's manifest (stored in database)
@@ -299,7 +299,7 @@ async def get_module_manifest(
 
     raise HTTPException(
         status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-        detail=f"Module manifest not available for '{module_name}'"
+        detail={"code": "service_unavailable", "message": f"Module manifest not available for '{module_name}'", "detail": None}
     )
 
 
@@ -338,7 +338,7 @@ async def install_module(
         )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=error
+            detail={"code": "module_install_error", "message": error, "detail": None}
         )
 
     # Audit successful installation
@@ -394,7 +394,7 @@ async def uninstall_module(
         )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=error
+            detail={"code": "module_uninstall_error", "message": error, "detail": None}
         )
 
     # Audit successful uninstallation
@@ -444,7 +444,7 @@ async def enable_module(
         if not current_user.is_superuser:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Only superusers can enable modules for other tenants"
+                detail={"code": "module_enable_error", "message": "Only superusers can enable modules for other tenants", "detail": None}
             )
     else:
         # Use current user's tenant
@@ -457,7 +457,7 @@ async def enable_module(
         if not tenant:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Tenant with ID '{target_tenant_id}' not found"
+                detail={"code": "not_found", "message": f"Tenant with ID '{target_tenant_id}' not found", "detail": None}
             )
 
     success, error = registry.enable_module_for_tenant(
@@ -482,7 +482,7 @@ async def enable_module(
         )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=error
+            detail={"code": "module_enable_error", "message": error, "detail": None}
         )
 
     # Audit successful enable
@@ -544,7 +544,7 @@ async def disable_module(
         )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=error
+            detail={"code": "module_disable_error", "message": error, "detail": None}
         )
 
     # Audit successful disable
@@ -592,7 +592,7 @@ async def update_module_configuration(
     if not module_entry:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Module '{module_name}' not found"
+            detail={"code": "not_found", "message": f"Module '{module_name}' not found", "detail": None}
         )
 
     # Get tenant module
@@ -604,7 +604,7 @@ async def update_module_configuration(
     if not tenant_module or not tenant_module.is_enabled:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Module '{module_name}' is not enabled for this tenant"
+            detail={"code": "module_configure_error", "message": f"Module '{module_name}' is not enabled for this tenant", "detail": None}
         )
 
     # Validate configuration
@@ -614,7 +614,7 @@ async def update_module_configuration(
         if not is_valid:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Invalid configuration: {error}"
+                detail={"code": "module_configure_error", "message": f"Invalid configuration: {error}", "detail": None}
             )
 
     # Update configuration
@@ -660,7 +660,7 @@ async def register_module(
         if not module_name:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Module manifest must contain 'name' field"
+                detail={"code": "module_register_error", "message": "Module manifest must contain 'name' field", "detail": None}
             )
 
         # T-23.007: validate manifest against JSON Schema before registration
@@ -792,7 +792,7 @@ async def register_module(
         logger.error(f"Error registering module: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error registering module: {str(e)}"
+            detail={"code": "module_register_error", "message": f"Error registering module: {str(e)}", "detail": None}
         )
 
 
@@ -827,7 +827,7 @@ async def module_heartbeat(
         if not module:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Module '{module_name}' not found"
+                detail={"code": "not_found", "message": f"Module '{module_name}' not found", "detail": None}
             )
 
         # Update last seen timestamp
@@ -856,7 +856,7 @@ async def module_heartbeat(
         logger.error(f"Error processing heartbeat from '{module_name}': {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error processing heartbeat: {str(e)}"
+            detail={"code": "module_heartbeat_error", "message": f"Error processing heartbeat: {str(e)}", "detail": None}
         )
 
 
@@ -884,7 +884,7 @@ async def sync_modules(
         logger.error(f"Error syncing modules: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error syncing modules: {str(e)}"
+            detail={"code": "module_sync_error", "message": f"Error syncing modules: {str(e)}", "detail": None}
         )
 
 
@@ -952,7 +952,7 @@ async def get_activation_preview(
     if module is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Module '{module_id}' not found",
+            detail={"code": "not_found", "message": f"Module '{module_id}' not found", "detail": None},
         )
 
     manifest: dict = module.manifest or {}
