@@ -176,6 +176,12 @@ class Module(Base):
             "visibility IN ('all_tenants', 'whitelist', 'hidden')",
             name='ck_modules_visibility'
         ),
+        # [sec-review-23 H-2] Restrict module name to safe characters to prevent
+        # path traversal / shell injection when name is used in filesystem operations.
+        CheckConstraint(
+            r"name ~ '^[a-zA-Z0-9_-]+$'",
+            name='ck_modules_name_safe'
+        ),
     )
 
     def __repr__(self):

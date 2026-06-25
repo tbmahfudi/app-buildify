@@ -2023,12 +2023,15 @@ async def uninstall_module_v1(
         logger.warning(f"[T-23.025] Menu item removal skipped for module {module_name}: {_mi_err}")
 
     # 8. Remove module files from container (non-fatal)
+    # [sec-review-23 H-2] Use argument-list form (no shell=True / bash -c) to prevent
+    # shell injection / path traversal via module_name.
     try:
         result = subprocess.run(
-            ["docker", "exec", "app_buildify_backend", "bash", "-c", f"rm -rf /app/modules/{module_name}"],
+            ["docker", "exec", "app_buildify_backend", "rm", "-rf", f"/app/modules/{module_name}"],
             capture_output=True,
             text=True,
             timeout=30,
+            check=False,
         )
         if result.returncode == 0:
             logger.info(f"[T-23.025] Removed module files: /app/modules/{module_name}")
