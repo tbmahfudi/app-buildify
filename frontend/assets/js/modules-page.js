@@ -323,72 +323,180 @@ export class ActivationModal {
 
 // ── DeactivateModal (T-23.023) ───────────────────────────────────────────────
 
-function showDeactivateModal(moduleId, moduleName, displayName) {
-  const modalId = 'deactivate-modal';
-  let el = document.getElementById(modalId);
-  if (!el) { el = document.createElement('div'); el.id = modalId; document.body.appendChild(el); }
+/**
+ * DeactivateModal
+ *
+ * Confirms deactivation of a module, shows a data-safety message, and—if the
+ * POST /modules/{id}/disable returns 409 dependents_active—surfaces a blocking
+ * list and disables the Confirm button.
+ *
+ * UILDC spec — DeactivateModal (FlexModal, size=sm, backdropDismiss=true):
+ *   header: "Deactivate [Module Name]?"
+ *   body:
+ *     FlexAlert(warning, ph-shield-warning) — data-safety message
+ *     dependents-section (hidden until 409): FlexAlert(error, ph-link-break) + list
+ *   footer: Cancel | Deactivate (danger, disabled when dependents blocking)
+ *
+ * States:
+ *   loaded             — safety message shown; Deactivate enabled
+ *   deactivating       — both buttons disabled; spinner on Deactivate
+ *   dependents-active  — 409 caught; blocking list shown; Deactivate disabled
+ *   deactivated        — modal closes; module:deactivated event dispatched
+ *   error              — generic error FlexAlert above footer; buttons re-enabled
+ */
+export class DeactivateModal {
+  constructor(moduleId, moduleName) {
+    this.moduleId    = moduleId;
+    this.moduleName  = moduleName;
+    this._modal      = null;
+    this._confirmBtn = null;
+    this._cancelBtn  = null;
+    this._errorZone  = null;
+    this._confirmId  = null;
+    this._cancelId   = null;
+    this._errorZoneId = null;
+    this._depsSecId  = null;
+    this._depsListId = null;
+  }
 
-  el.innerHTML = `
-    <div class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md">
-        <div class="px-6 py-4 border-b flex items-center justify-between">
-          <h2 class="text-lg font-semibold text-gray-900">Deactivate ${displayName}?</h2>
-          <button id="dm-close" class="text-gray-400 hover:text-gray-600"><i class="ph ph-x text-xl"></i></button>
+  open() {
+    this._buildModal();
+    this._modal.show();
+  }
+
+  close() {
+    if (this._modal) {
+      this._modal.hide();
+      setTimeout(() => { if (this._modal) { this._modal.destroy(); this._modal = null; } }, 350);
+    }
+  }
+
+  _buildModal() {
+    const ts = Date.now();
+    this._confirmId   = `dm-confirm-${ts}`;
+    this._cancelId    = `dm-cancel-${ts}`;
+    this._errorZoneId = `dm-error-${ts}`;
+    this._depsSecId   = `dm-deps-${ts}`;
+    this._depsListId  = `dm-deps-list-${ts}`;
+
+    const bodyHtml = `
+      <div class="space-y-3">
+        <div class="flex items-start gap-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+          <i class="ph ph-shield-warning text-amber-500 text-xl mt-0.5 flex-shrink-0"></i>
+          <p class="text-sm text-amber-800">Your data will not be deleted. Menu items and permissions added by this module will be hidden for all users in your account. You can reactivate at any time.</p>
         </div>
-        <div class="px-6 py-5">
-          <div class="flex items-start gap-3 p-3 bg-amber-50 border border-amber-200 rounded-lg mb-4">
-            <i class="ph ph-shield-warning text-amber-500 text-xl mt-0.5"></i>
-            <p class="text-sm text-amber-800">Your data will not be deleted. Menu items and permissions added by this module will be hidden for all users in your account. You can reactivate at any time.</p>
-          </div>
-          <div id="dm-deps" class="hidden mb-4">
-            <div class="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-800">
-              <i class="ph ph-link-break text-red-500 mt-0.5"></i>
-              <div>
-                <p class="font-medium">The following active modules depend on this one and must be deactivated first:</p>
-                <ul id="dm-deps-list" class="mt-1 list-disc list-inside space-y-0.5"></ul>
-              </div>
+        <div id="${this._depsSecId}" class="hidden">
+          <div class="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+            <i class="ph ph-link-break text-red-500 text-lg mt-0.5 flex-shrink-0"></i>
+            <div class="text-sm text-red-800">
+              <p class="font-medium mb-1">The following active modules depend on this one and must be deactivated first:</p>
+              <div id="${this._depsListId}" class="space-y-1"></div>
             </div>
           </div>
         </div>
-        <div class="px-6 py-4 border-t flex gap-3 justify-end items-center">
-          <div id="dm-error" class="hidden flex-1 text-xs text-red-600"></div>
-          <button id="dm-cancel" class="px-4 py-2 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 transition text-sm font-medium">Cancel</button>
-          <button id="dm-confirm" class="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition text-sm font-medium">Deactivate</button>
-        </div>
-      </div>
-    </div>`;
+      </div>`;
 
-  el.querySelector('#dm-close').onclick  = () => el.remove();
-  el.querySelector('#dm-cancel').onclick = () => el.remove();
-  el.querySelector('#dm-confirm').onclick = async () => {
-    const btn = el.querySelector('#dm-confirm');
-    const cancelBtn = el.querySelector('#dm-cancel');
-    btn.disabled = true; cancelBtn.disabled = true;
-    btn.innerHTML = '<svg class="animate-spin inline h-4 w-4 mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path></svg> Deactivating...';
+    const footerHtml = `
+      <div id="${this._errorZoneId}" class="hidden mb-3"></div>
+      <div class="flex items-center justify-end gap-3">
+        <button id="${this._cancelId}"
+                class="px-4 py-2 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 transition text-sm font-medium">
+          Cancel
+        </button>
+        <button id="${this._confirmId}"
+                class="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
+          Deactivate
+        </button>
+      </div>`;
+
+    this._modal = new FlexModal({
+      title:           `Deactivate ${this.moduleName}?`,
+      size:            'sm',
+      backdropDismiss: true,
+      showFooter:      true,
+      content:         bodyHtml,
+      footer:          footerHtml,
+      onShown:         () => this._bindFooterButtons(),
+    });
+  }
+
+  _bindFooterButtons() {
+    this._confirmBtn = document.getElementById(this._confirmId);
+    this._cancelBtn  = document.getElementById(this._cancelId);
+    this._errorZone  = document.getElementById(this._errorZoneId);
+    if (this._cancelBtn)  this._cancelBtn.onclick  = () => this.close();
+    if (this._confirmBtn) this._confirmBtn.onclick = () => this._handleConfirm();
+  }
+
+  async _handleConfirm() {
+    this._setBothButtonsDisabled(true);
+    this._clearErrorZone();
+    if (this._confirmBtn) {
+      this._confirmBtn.innerHTML = `
+        <svg class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+        </svg>
+        Deactivating...`;
+    }
+
     try {
-      await disableModule(moduleId || moduleName);
-      el.remove();
-      document.dispatchEvent(new CustomEvent('module:deactivated', { detail: { moduleId: moduleId || moduleName } }));
+      await disableModule(this.moduleId);
+      this.close();
+      document.dispatchEvent(new CustomEvent('module:deactivated', { detail: { moduleId: this.moduleId } }));
       document.dispatchEvent(new CustomEvent('modules:refresh'));
     } catch (err) {
       const body = err.body || {};
       const code = body.code || '';
-      if ((code === 'DEPENDENTS_ACTIVE' || code === 'dependents_active') &&
-          body.detail && body.detail.dependents && body.detail.dependents.length) {
-        const list = el.querySelector('#dm-deps-list');
-        list.innerHTML = body.detail.dependents.map(d => `<li>${d.name || d}</li>`).join('');
-        el.querySelector('#dm-deps').classList.remove('hidden');
-        btn.disabled = true; btn.textContent = 'Cannot deactivate';
-        cancelBtn.disabled = false;
+      const dependents = (body.dependents || (body.detail && body.detail.dependents) || []);
+
+      if ((code === 'dependents_active' || code === 'DEPENDENTS_ACTIVE') && dependents.length) {
+        // dependents-blocking state: show list, keep Deactivate disabled
+        this._showDependents(dependents);
+        if (this._confirmBtn) {
+          this._confirmBtn.textContent = 'Deactivate';
+          this._confirmBtn.disabled = true;
+        }
+        if (this._cancelBtn) this._cancelBtn.disabled = false;
       } else {
-        const errZone = el.querySelector('#dm-error');
-        errZone.classList.remove('hidden');
-        errZone.textContent = err.message || 'Deactivation failed';
-        btn.disabled = false; cancelBtn.disabled = false;
-        btn.textContent = 'Deactivate';
+        // generic error state: show error alert above footer, re-enable buttons
+        this._showErrorInZone(err.message || 'Deactivation failed');
+        this._setBothButtonsDisabled(false);
+        if (this._confirmBtn) this._confirmBtn.innerHTML = 'Deactivate';
       }
     }
-  };
+  }
+
+  _showDependents(dependents) {
+    const sec  = document.getElementById(this._depsSecId);
+    const list = document.getElementById(this._depsListId);
+    if (!sec || !list) return;
+    list.innerHTML = dependents.map(d => `
+      <div class="flex items-center gap-2 text-xs text-red-700">
+        <i class="ph ph-cube text-red-400 flex-shrink-0"></i>
+        <span>${d.name || d}</span>
+      </div>`).join('');
+    sec.classList.remove('hidden');
+  }
+
+  _setBothButtonsDisabled(disabled) {
+    if (this._confirmBtn) this._confirmBtn.disabled = disabled;
+    if (this._cancelBtn)  this._cancelBtn.disabled  = disabled;
+  }
+
+  _clearErrorZone() {
+    if (this._errorZone) { this._errorZone.innerHTML = ''; this._errorZone.classList.add('hidden'); }
+  }
+
+  _showErrorInZone(message) {
+    if (!this._errorZone) return;
+    this._errorZone.classList.remove('hidden');
+    this._errorZone.innerHTML = `
+      <div class="flex items-start gap-2 p-3 bg-red-50 border border-red-300 rounded-lg text-sm text-red-800">
+        <i class="ph ph-x-circle text-red-500 mt-0.5 flex-shrink-0"></i>
+        <span>Deactivation failed: ${message}</span>
+      </div>`;
+  }
 }
 
 // ── Page init ────────────────────────────────────────────────────────────────
@@ -455,11 +563,9 @@ async function render(container) {
       const displayName = activateBtn.dataset.display;
       new ActivationModal(moduleId, displayName).open();
     } else if (deactivateBtn) {
-      showDeactivateModal(
-        deactivateBtn.dataset.moduleId || deactivateBtn.dataset.module,
-        deactivateBtn.dataset.module,
-        deactivateBtn.dataset.display
-      );
+      const moduleId   = deactivateBtn.dataset.moduleId || deactivateBtn.dataset.module;
+      const displayName = deactivateBtn.dataset.display;
+      new DeactivateModal(moduleId, displayName).open();
     }
   });
 
