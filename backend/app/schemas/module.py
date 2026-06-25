@@ -244,15 +244,23 @@ class ActivationPreviewResponse(BaseModel):
 
 
 class ModuleListItemV2(BaseModel):
-    """Module list item for GET /api/v1/modules (includes activation_status)."""
+    """Module list item for GET /api/v1/modules (includes activation_status).
+
+    T-23.018 — Story 23.4.1 backend AC.
+    """
+    id: str
     name: str
     display_name: str
-    version: str
     description: Optional[str] = None
+    version: str
     category: Optional[str] = None
+    status: str
     is_core: bool
     install_status: str = "ready"
     activation_status: str  # "active" | "inactive"
+    permissions_added: List[Any] = Field(default_factory=list)
+    menu_items_added: List[Any] = Field(default_factory=list)
+    dependencies: List[Any] = Field(default_factory=list)
 
     class Config:
         from_attributes = True

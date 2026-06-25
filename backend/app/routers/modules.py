@@ -41,6 +41,8 @@ from app.schemas.module import (
     ActivationPreviewMenuItem,
     ActivationPreviewDependency,
     ActivationPreviewResponse,
+    ModuleListItemV2,
+    ModulesListResponse,
 )
 from pathlib import Path
 import logging
@@ -1115,3 +1117,85 @@ async def validate_manifest_endpoint(
             "detail": {"errors": [err]},
         },
     )
+
+
+# ── T-23.018 — GET /api/v1/modules — tenant-scoped module list ──────────────
+
+@_modules_v1_router.get(
+    "",
+    response_model=ModulesListResponse,
+    summary="List all ready, tenant-visible modules with per-tenant activation status",
+    tags=["modules-v1"],
+)
+async def list_modules_v1(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Return all modules where ``install_status='ready'`` AND
+    ``visibility='all_tenants'``, augmented with the requesting tenant's
+    ``activation_status`` derived from the ``module_activations`` table.
+
+    ``activation_status`` is ``"active"`` when a ``ModuleActivation`` row
+    exists for ``(module_id, tenant_id)`` with ``is_enabled=True``, otherwise
+    ``"inactive"``.
+
+    T-23.018 — Story 23.4.1 backend AC.
+    """
+    # 1. Fetch candidate modules
+    modules = (
+        db.query(ModuleRegistry)
+        .filter(
+            ModuleRegistry.install_status == "ready",
+            ModuleRegistry.visibility == "all_tenants",
+        )
+        .all()
+    )
+
+    if not modules:
+        return ModulesListResponse(modules=[], total=0)
+
+    # 2. Bulk-fetch all activations for the requesting tenant in one query
+    module_ids = [m.id for m in modules]
+    activations = (
+        db.query(TenantModule.module_id)
+        .filter(
+            TenantModule.module_id.in_(module_ids),
+            TenantModule.tenant_id == current_user.tenant_id,
+            TenantModule.is_enabled == True,
+        )
+        .all()
+    )
+    active_ids = {row[0] for row in activations}
+
+    # 3. Build response items
+    items: List[ModuleListItemV2] = []
+    for m in modules:
+        manifest: dict = m.manifest or {}
+        permissions_added = manifest.get("permissions") or []
+        menu_items_added = manifest.get("menu_items") or manifest.get("routes") or []
+        raw_deps = manifest.get("dependencies") or m.dependencies_json or []
+        if isinstance(raw_deps, dict):
+            dep_list = raw_deps.get("required", []) + raw_deps.get("optional", [])
+        else:
+            dep_list = list(raw_deps)
+
+        items.append(
+            ModuleListItemV2(
+                id=str(m.id),
+                name=m.name,
+                display_name=m.display_name or m.name,
+                description=m.description,
+                version=m.version,
+                category=m.category,
+                status=m.status,
+                is_core=m.is_core,
+                install_status=m.install_status,
+                activation_status="active" if m.id in active_ids else "inactive",
+                permissions_added=permissions_added,
+                menu_items_added=menu_items_added,
+                dependencies=dep_list,
+            )
+        )
+
+    return ModulesListResponse(modules=items, total=len(items))
