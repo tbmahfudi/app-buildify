@@ -59,7 +59,7 @@ Status legend: `OPEN` = not started · `IN-PROGRESS` = picked up · `BLOCKED` = 
 
 | id | title | owner | depends-on | hrs | AC link | status |
 |----|-------|-------|-----------:|----:|---------|--------|
-| T-23.001 | Audit `backend/app/routers/modules.py` — document canonical lifecycle paths, write decision note in `docs/backend/MODULE_API.md` | C2 | — | 4 | [epic-23 §23.1.1 backend — canonical paths](../epics/epic-23-module-lifecycle-and-activation.md) | OPEN |
+| T-23.001 | Audit `backend/app/routers/modules.py` — document canonical lifecycle paths, write decision note in `docs/backend/MODULE_API.md` | C2 | — | 4 | [epic-23 §23.1.1 backend — canonical paths](../epics/epic-23-module-lifecycle-and-activation.md) | DONE |
 | T-23.002 | Add `GET /api/v1/modules/{id}/activation-preview` → `{permissions, menu_items, dependencies}` | C2 | T-23.001 | 4 | [epic-23 §23.1.1 backend — activation-preview](../epics/epic-23-module-lifecycle-and-activation.md) | OPEN |
 | T-23.003 | Standardise structured error bodies `{code, message, detail}` on all module endpoints; ensure 409 shapes for deps-unmet and dependents-active match spec | C2 | T-23.001 | 3 | [epic-23 §23.1.1 backend — structured errors](../epics/epic-23-module-lifecycle-and-activation.md) | OPEN |
 | T-23.004 | Fix `frontend/assets/js/module-manager.js` — replace `/activate`/`/deactivate` paths with `/enable`/`/disable`; update response-shape handling; smoke-test in dev browser | C3 | T-23.001 | 4 | [epic-23 §23.1.1 frontend — contract fix](../epics/epic-23-module-lifecycle-and-activation.md) | OPEN |
@@ -101,7 +101,7 @@ Status legend: `OPEN` = not started · `IN-PROGRESS` = picked up · `BLOCKED` = 
 
 | id | title | owner | depends-on | hrs | AC link | status |
 |----|-------|-------|-----------:|----:|---------|--------|
-| T-23.016 | Run Alembic migration `pg_module_lifecycle_columns` — add `install_status`, `install_error_message`, `visibility` to `modules` table; test forward + backward | C2 | — | 2 | [schema-23 §5 — migration](../architecture/schema-23.md) | OPEN |
+| T-23.016 | Run Alembic migration  — add , ,  to  table; test forward + backward | C2 | — | 2 | [schema-23 §5 — migration](../architecture/schema-23.md) | DONE |
 | T-23.017 | Update `Module` SQLAlchemy model in `nocode_module.py` — add three new columns + two `CheckConstraint` entries per schema-23 §6 | C2 | T-23.016 | 1 | [schema-23 §6 — model update](../architecture/schema-23.md) | OPEN |
 | T-23.018 | Update `GET /api/v1/modules` — filter `install_status=ready AND visibility=all_tenants`; join `module_activations` for requesting tenant; return `activation_status` field per tenant | C2 | T-23.017, T-23.001 | 3 | [epic-23 §23.4.1 backend](../epics/epic-23-module-lifecycle-and-activation.md) | OPEN |
 | T-23.019 | Build `modules-page.js` + route `#/settings/modules` — FlexGrid of ModuleCards per B3 UILDC spec; loading/empty/error states; wire "Activate"/"Deactivate" buttons to open respective modals | C3 | T-23.018, T-23.005 | 4 | [epic-23 §23.4.1 frontend](../epics/epic-23-module-lifecycle-and-activation.md) | OPEN |
