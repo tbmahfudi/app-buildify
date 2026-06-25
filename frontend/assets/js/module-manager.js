@@ -238,7 +238,7 @@ export class ModuleManager {
     const list = document.getElementById('enabled-modules-list');
 
     try {
-      const response = await apiFetch('/modules?activation_status=active');
+      const response = await apiFetch('/module-registry/enabled');
 
       if (!response.ok) {
         throw new Error('Failed to load enabled modules');
@@ -374,8 +374,9 @@ export class ModuleManager {
    */
   async enableModule(moduleName) {
     try {
-      const response = await apiFetch(`/modules/${moduleName}/enable`, {
-        method: 'POST'
+      const response = await apiFetch('/module-registry/enable', {
+        method: 'POST',
+        body: JSON.stringify({ module_name: moduleName })
       });
 
       const result = await response.json().catch(() => ({}));
@@ -399,8 +400,9 @@ export class ModuleManager {
     if (!this._confirmDisable(moduleName)) return;
 
     try {
-      const response = await apiFetch(`/modules/${moduleName}/disable`, {
-        method: 'POST'
+      const response = await apiFetch('/module-registry/disable', {
+        method: 'POST',
+        body: JSON.stringify({ module_name: moduleName })
       });
 
       const result = await response.json().catch(() => ({}));
