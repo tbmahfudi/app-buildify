@@ -933,35 +933,53 @@ db.commit(); db.close()" 2>/dev/null || true
         echo "[INFO] No migrations found — skipping"
     fi
 
-    # Step 5: Copy backend service files
+    # Step 5: Copy backend service files into host path (bind-mounted as /app/modules/<name> in container)
     echo "[INFO] Step 5/8: Copying backend files..."
+    local BACKEND_DEST="/home/mahfudi/app-buildify/backend/modules/$MODULE_NAME"
     if [[ -d "$MODULE_DIR/backend" ]]; then
-        mkdir -p "/home/mahfudi/app-buildify/backend/modules/$MODULE_NAME"
-        cp -r "$MODULE_DIR/backend/"* "/home/mahfudi/app-buildify/backend/modules/$MODULE_NAME/" 2>/dev/null || true
-        echo "[INFO] Backend files copied."
+        mkdir -p "$BACKEND_DEST"
+        if ! cp -r "$MODULE_DIR/backend/"* "$BACKEND_DEST/" 2>/dev/null; then
+            _module_rollback "$MODULE_NAME" "backend copy failed"
+            exit 1
+        fi
+        echo "[INFO] Backend files copied to $BACKEND_DEST (visible in container as /app/modules/$MODULE_NAME)."
     fi
 
-    # Step 6: Copy frontend assets
+    # Step 6: Copy frontend assets into host path (bind-mounted as /usr/share/nginx/html in frontend container)
     echo "[INFO] Step 6/8: Copying frontend assets..."
+    local FRONTEND_DEST="/home/mahfudi/app-buildify/frontend/assets/modules/$MODULE_NAME"
     if [[ -d "$MODULE_DIR/frontend" ]]; then
-        mkdir -p "/home/mahfudi/app-buildify/frontend/assets/modules/$MODULE_NAME"
-        cp -r "$MODULE_DIR/frontend/"* "/home/mahfudi/app-buildify/frontend/assets/modules/$MODULE_NAME/" 2>/dev/null || true
-        echo "[INFO] Frontend assets copied."
+        mkdir -p "$FRONTEND_DEST"
+        if ! cp -r "$MODULE_DIR/frontend/"* "$FRONTEND_DEST/" 2>/dev/null; then
+            _module_rollback "$MODULE_NAME" "frontend copy failed"
+            exit 1
+        fi
+        echo "[INFO] Frontend assets copied to $FRONTEND_DEST."
     fi
 
-    # Step 7: Register via API
-    echo "[INFO] Step 7/8: Registering module..."
-    local RJSON; RJSON=$(python3 -c "import json; m=json.load(open('$MANIFEST')); print(json.dumps({'manifest':m,'backend_service_url':m.get('backend_service_url','')}))")
-    local RCODE; RCODE=$(curl -s -o /tmp/_mr.json -w "%{http_code}"         -X POST "$API_BASE/api/v1/module-registry/register"         -H "Content-Type: application/json" -d "$RJSON" 2>/dev/null || echo "000")
-    if [[ "$RCODE" != "200" ]]; then
-        echo "[ERROR] Registration failed (HTTP $RCODE)" >&2; cat /tmp/_mr.json >&2
-        _module_rollback "$MODULE_NAME" "registration failed HTTP $RCODE"; exit 1
+    # Step 7: Register module via API (POST /api/v1/module-registry/register).
+    # The /register endpoint also calls BaseModule.post_install(db) server-side (T-23.014) —
+    # no separate CLI call is needed.
+    echo "[INFO] Step 7/8: Registering module (server will call post_install hook)..."
+    # Write registration payload to temp file to avoid quoting issues with JSON in eval/curl
+    local _REG_PAYLOAD; _REG_PAYLOAD=$(mktemp /tmp/_mr_payload_XXXXXX.json)
+    python3 -c "import json; m=json.load(open('$MANIFEST')); print(json.dumps({'manifest':m,'backend_service_url':m.get('backend_service_url','')}))" > "$_REG_PAYLOAD"
+    local _CURL_ARGS=(-s -o /tmp/_mr.json -w "%{http_code}" -X POST "$API_BASE/api/v1/module-registry/register" -H "Content-Type: application/json" --data "@$_REG_PAYLOAD")
+    [[ -n "$TOKEN" ]] && _CURL_ARGS+=(-H "Authorization: Bearer $TOKEN")
+    local RCODE; RCODE=$(curl "${_CURL_ARGS[@]}" 2>/dev/null || echo "000")
+    rm -f "$_REG_PAYLOAD"
+    if [[ "$RCODE" != "200" && "$RCODE" != "201" ]]; then
+        echo "[ERROR] Registration failed (HTTP $RCODE)" >&2
+        [[ -f /tmp/_mr.json ]] && cat /tmp/_mr.json >&2
+        _module_rollback "$MODULE_NAME" "registration failed HTTP $RCODE" "$BACKEND_DEST" "$FRONTEND_DEST"
+        exit 1
     fi
-    echo "[INFO] Module registered."
+    echo "[INFO] Module registered (post_install hook invoked server-side)."
 
-    # Step 8: mark ready
+    # Step 8: Mark install_status=ready via direct DB write (registration may not set this if
+    # the /register endpoint returns before the loader completes).
     echo "[INFO] Step 8/8: Marking install_status=ready..."
-    docker exec app_buildify_backend python3 -c         "import os; os.environ['TESTING']='1'
+    if ! docker exec app_buildify_backend python3 -c         "import os; os.environ['TESTING']='1'
 from datetime import datetime
 from app.core.db import SessionLocal
 from app.models.nocode_module import Module
@@ -972,7 +990,11 @@ if m:
     m.version='$MODULE_VERSION'; m.install_error_message=None
     m.installed_at=datetime.utcnow(); m.updated_at=datetime.utcnow()
     db.commit()
-db.close()" 2>/dev/null
+db.close()" 2>/dev/null; then
+        echo "[ERROR] Failed to mark install_status=ready" >&2
+        _module_rollback "$MODULE_NAME" "failed to set ready status" "$BACKEND_DEST" "$FRONTEND_DEST"
+        exit 1
+    fi
     echo "[INFO] Module $MODULE_NAME v$MODULE_VERSION installed successfully."
 }
 
@@ -1037,8 +1059,18 @@ module_uninstall() {
 }
 
 _module_rollback() {
-    local NAME="$1" REASON="${2:-unknown}"
-    echo "[WARNING] Rolling back: $REASON" >&2
+    local NAME="$1" REASON="${2:-unknown}" BACKEND_DIR="${3:-}" FRONTEND_DIR="${4:-}"
+    echo "[WARNING] Rolling back install of '$NAME': $REASON" >&2
+
+    # Remove copied files if paths were provided
+    if [[ -n "$BACKEND_DIR" && -d "$BACKEND_DIR" ]]; then
+        rm -rf "$BACKEND_DIR" && echo "[INFO] Rollback: removed backend dir $BACKEND_DIR" >&2 || true
+    fi
+    if [[ -n "$FRONTEND_DIR" && -d "$FRONTEND_DIR" ]]; then
+        rm -rf "$FRONTEND_DIR" && echo "[INFO] Rollback: removed frontend dir $FRONTEND_DIR" >&2 || true
+    fi
+
+    # Set install_status=failed in DB
     docker exec app_buildify_backend python3 -c         "import os; os.environ['TESTING']='1'
 from datetime import datetime
 from app.core.db import SessionLocal
