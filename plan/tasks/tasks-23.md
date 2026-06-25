@@ -63,7 +63,7 @@ Status legend: `OPEN` = not started · `IN-PROGRESS` = picked up · `BLOCKED` = 
 | T-23.002 | Add `GET /api/v1/modules/{id}/activation-preview` → `{permissions, menu_items, dependencies}` | C2 | T-23.001 | 4 | [epic-23 §23.1.1 backend — activation-preview](../epics/epic-23-module-lifecycle-and-activation.md) | DONE |
 | T-23.003 | Standardise structured error bodies `{code, message, detail}` on all module endpoints; ensure 409 shapes for deps-unmet and dependents-active match spec | C2 | T-23.001 | 3 | [epic-23 §23.1.1 backend — structured errors](../epics/epic-23-module-lifecycle-and-activation.md) | DONE |
 | T-23.004 | Fix `frontend/assets/js/module-manager.js` — replace `/activate`/`/deactivate` paths with `/enable`/`/disable`; update response-shape handling; smoke-test in dev browser | C3 | T-23.001 | 4 | [epic-23 §23.1.1 frontend — contract fix](../epics/epic-23-module-lifecycle-and-activation.md) | DONE |
-| T-23.005 | Integration tests: install→enable→disable cycle; dep-unmet 409; system-module 403 on delete | D1 | T-23.002, T-23.003, T-23.004 | 4 | [epic-23 §23.1.1 backend — integration tests](../epics/epic-23-module-lifecycle-and-activation.md) | OPEN |
+| T-23.005 | Integration tests: install→enable→disable cycle; dep-unmet 409; system-module 403 on delete | D1 | T-23.002, T-23.003, T-23.004 | 4 | [epic-23 §23.1.1 backend — integration tests](../epics/epic-23-module-lifecycle-and-activation.md) | DONE |
 
 **Subtotal: 19 hrs**
 
