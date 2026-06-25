@@ -1,46 +1,222 @@
 {
-  "": "http://json-schema.org/draft-07/schema#",
+  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "AppBuildify Module Manifest",
   "description": "Schema for module manifest.json files",
   "type": "object",
   "required": [
     "name",
+    "display_name",
     "version",
-    "display_name"
+    "module_type",
+    "category",
+    "api_prefix"
   ],
-  "additionalProperties": true,
+  "additionalProperties": false,
   "properties": {
     "name": {
       "type": "string",
       "pattern": "^[a-z][a-z0-9_-]{1,98}[a-z0-9]$",
       "description": "Unique module identifier (lowercase, underscores/hyphens allowed)"
     },
-    "version": {
-      "type": "string",
-      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+([-+].+)?$",
-      "description": "Semantic version (semver 2.0)"
-    },
     "display_name": {
       "type": "string",
       "minLength": 1,
       "maxLength": 255
     },
-    "description": {
+    "version": {
       "type": "string",
-      "maxLength": 2000
+      "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-((?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\\.(?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\\+([0-9a-zA-Z-]+(?:\\.[0-9a-zA-Z-]+)*))?$",
+      "description": "Semantic version (semver 2.0 strict)"
     },
     "module_type": {
       "type": "string",
       "enum": [
         "code",
-        "nocode",
-        "hybrid"
+        "nocode"
       ],
-      "default": "code"
+      "description": "Module implementation type: code (FastAPI service) or nocode (configuration-driven)"
     },
     "category": {
       "type": "string",
-      "maxLength": 50
+      "minLength": 1,
+      "maxLength": 50,
+      "description": "Module category for UI grouping"
+    },
+    "api_prefix": {
+      "type": "string",
+      "pattern": "^/[a-zA-Z0-9/_-]+$",
+      "description": "URL prefix for this module's API routes (e.g. /api/v1/mymodule)"
+    },
+    "permissions": {
+      "type": "array",
+      "default": [],
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "description"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_.:-]*$",
+            "description": "Permission code (e.g. mymodule.read)"
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          },
+          "resource": {
+            "type": "string"
+          },
+          "action": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "menu_items": {
+      "type": "array",
+      "default": [],
+      "items": {
+        "type": "object",
+        "required": [
+          "label",
+          "route"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "label": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "route": {
+            "type": "string",
+            "minLength": 1
+          },
+          "icon": {
+            "type": "string"
+          },
+          "permission": {
+            "type": "string"
+          },
+          "order": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "parent": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "routes": {
+      "type": "array",
+      "default": [],
+      "items": {
+        "type": "object",
+        "required": [
+          "path",
+          "name"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "component": {
+            "type": "string"
+          },
+          "permission": {
+            "type": "string"
+          },
+          "menu": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "label": {
+                "type": "string"
+              },
+              "icon": {
+                "type": "string"
+              },
+              "order": {
+                "type": "integer"
+              },
+              "parent": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "event_subscriptions": {
+      "type": "array",
+      "default": [],
+      "items": {
+        "type": "object",
+        "required": [
+          "event",
+          "handler"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "event": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Platform event name to subscribe to (e.g. tenant.created)"
+          },
+          "handler": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Python dotted path to the handler callable"
+          },
+          "description": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "dependencies": {
+      "type": "array",
+      "default": [],
+      "items": {
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_-]{1,98}[a-z0-9]$",
+            "description": "Module name of the dependency"
+          },
+          "version": {
+            "type": "string",
+            "description": "Minimum semver version required (optional)"
+          },
+          "optional": {
+            "type": "boolean",
+            "default": false,
+            "description": "If true, module works without this dep but gains features with it"
+          }
+        }
+      }
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 2000
     },
     "author": {
       "type": "string",
@@ -79,138 +255,9 @@
       "type": "string",
       "format": "uri"
     },
-    "api": {
-      "type": "object",
-      "properties": {
-        "prefix": {
-          "type": "string",
-          "pattern": "^/[a-zA-Z0-9/_-]+$"
-        }
-      }
-    },
-    "dependencies": {
-      "type": "object",
-      "properties": {
-        "required": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "uniqueItems": true
-        },
-        "optional": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "uniqueItems": true
-        }
-      },
-      "additionalProperties": false
-    },
-    "permissions": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "required": [
-          "name"
-        ],
-        "properties": {
-          "name": {
-            "type": "string"
-          },
-          "description": {
-            "type": "string"
-          },
-          "resource": {
-            "type": "string"
-          },
-          "action": {
-            "type": "string"
-          }
-        }
-      }
-    },
-    "frontend": {
-      "type": "object",
-      "properties": {
-        "entry_point": {
-          "type": "string"
-        },
-        "menu_items": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "required": [
-              "label"
-            ],
-            "properties": {
-              "label": {
-                "type": "string"
-              },
-              "route": {
-                "type": "string"
-              },
-              "icon": {
-                "type": "string"
-              },
-              "permission": {
-                "type": "string"
-              },
-              "order": {
-                "type": "integer"
-              },
-              "parent": {
-                "type": "string"
-              }
-            }
-          }
-        }
-      }
-    },
-    "routes": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "required": [
-          "path",
-          "name"
-        ],
-        "properties": {
-          "path": {
-            "type": "string"
-          },
-          "name": {
-            "type": "string"
-          },
-          "component": {
-            "type": "string"
-          },
-          "permission": {
-            "type": "string"
-          },
-          "menu": {
-            "type": "object",
-            "properties": {
-              "label": {
-                "type": "string"
-              },
-              "icon": {
-                "type": "string"
-              },
-              "order": {
-                "type": "integer"
-              },
-              "parent": {
-                "type": "string"
-              }
-            }
-          }
-        }
-      }
-    },
     "configuration": {
       "type": "object",
+      "additionalProperties": false,
       "properties": {
         "settings": {
           "type": "array",
@@ -220,6 +267,7 @@
               "key",
               "type"
             ],
+            "additionalProperties": false,
             "properties": {
               "key": {
                 "type": "string"
@@ -262,11 +310,12 @@
         }
       ],
       "default": null,
-      "description": "Name of the parent module this sub-module belongs to. If set, this module is installed inside the parent service rather than as a new deployment unit. The parent module must be installed before this sub-module."
+      "description": "Parent module name for sub-modules"
     },
     "deployment": {
       "type": "object",
-      "description": "Deployment topology configuration for this module.",
+      "additionalProperties": false,
+      "description": "Deployment topology configuration",
       "properties": {
         "mode": {
           "type": "string",
@@ -275,26 +324,29 @@
             "standalone",
             "inherit",
             "any"
-          ],
-          "description": "embedded: runs inside the core platform process. standalone: runs as its own service/container. inherit: sub-module; inherits the parent's deployment mode (no new container). any: platform chooses the mode."
+          ]
         },
         "port": {
           "type": "integer",
           "minimum": 9002,
-          "maximum": 9099,
-          "description": "Port for standalone service. Port 9001 is reserved for the financial module. Valid range: 9002-9099."
+          "maximum": 9099
         }
-      },
-      "additionalProperties": false
+      }
     },
     "public_portal": {
       "type": "object",
+      "additionalProperties": false,
       "properties": {
-        "enabled":     { "type": "boolean" },
-        "entry_point": { "type": "string" },
-        "title":       { "type": "string" }
-      },
-      "additionalProperties": false
+        "enabled": {
+          "type": "boolean"
+        },
+        "entry_point": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        }
+      }
     }
   }
 }
