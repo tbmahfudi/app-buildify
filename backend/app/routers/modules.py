@@ -44,6 +44,7 @@ from app.schemas.module import (
     ModuleListItemV2,
     ModulesListResponse,
     ModuleEnableResponse,
+    ModuleDisableResponse,
 )
 from pathlib import Path
 import logging
@@ -1503,4 +1504,221 @@ async def enable_module_v1(
         status="active",
         permissions_added=permissions_added,
         menu_items_added=menu_items_added,
+    )
+
+
+@_modules_v1_router.post(
+    "/{module_id}/disable",
+    response_model=ModuleDisableResponse,
+    summary="Disable a module for the requesting tenant",
+    tags=["modules-v1"],
+    status_code=200,
+)
+async def disable_module_v1(
+    module_id: str,
+    http_request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Disable a module for the current tenant.
+
+    Steps:
+    1. 404 if module not found.
+    2. Permission check — superusers bypass; others need is_tenant_admin or
+       the modules:disable:tenant permission on any assigned role.
+    3. Dependents check — 409 dependents-active if any currently active module
+       for this tenant lists this module in its manifest.dependencies[].
+    4. Set ModuleActivation.is_enabled=False (disabled_at / disabled_by_user_id).
+    5. Set MenuItem.is_active=False for all menu items owned by this module.
+    6. Set Permission.is_active=False for all RBAC permissions seeded by this module.
+    7. Commit all changes.
+    8. Audit log module.disabled.
+
+    Returns {status: "inactive", permissions_deactivated, menu_items_deactivated}.
+
+    T-23.022 -- Story 23.4.3 backend AC.
+    """
+    from uuid import UUID
+    from datetime import datetime, timezone
+    from app.models.nocode_module import Module, ModuleActivation
+    from app.models.menu_item import MenuItem
+    from app.models.permission import Permission
+
+    # 1. Lookup module
+    try:
+        module_uuid = UUID(module_id)
+    except (ValueError, AttributeError):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "not_found", "message": f"Module '{module_id}' not found", "detail": None},
+        )
+
+    module = db.query(Module).filter(Module.id == module_uuid).first()
+    if module is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "not_found", "message": f"Module '{module_id}' not found", "detail": None},
+        )
+
+    # 2. Permission check
+    if not current_user.is_superuser:
+        has_disable_perm = False
+        if getattr(current_user, "is_tenant_admin", False):
+            has_disable_perm = True
+        if not has_disable_perm:
+            for role in getattr(current_user, "roles", []) or []:
+                for rp in getattr(role, "permissions", []) or []:
+                    perm = getattr(rp, "permission", rp)
+                    if getattr(perm, "code", None) == "modules:disable:tenant":
+                        has_disable_perm = True
+                        break
+                if has_disable_perm:
+                    break
+        if not has_disable_perm:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={
+                    "code": "forbidden",
+                    "message": "You do not have permission to disable modules",
+                    "detail": None,
+                },
+            )
+
+    tenant_id = current_user.tenant_id
+
+    # 3. Dependents check — find other active modules whose manifests list this module as a dependency
+    active_activations = (
+        db.query(ModuleActivation)
+        .filter(
+            ModuleActivation.tenant_id == tenant_id,
+            ModuleActivation.is_enabled == True,
+            ModuleActivation.module_id != module_uuid,
+        )
+        .all()
+    )
+    dependents = []
+    for act in active_activations:
+        other_module = db.query(Module).filter(Module.id == act.module_id).first()
+        if other_module is None:
+            continue
+        other_manifest = other_module.manifest or {}
+        other_deps = other_manifest.get("dependencies") or []
+        if isinstance(other_deps, dict):
+            other_deps = other_deps.get("required", [])
+        dep_names = [
+            (d if isinstance(d, str) else d.get("name") or "")
+            for d in other_deps
+        ]
+        if module.name in dep_names:
+            dependents.append({"name": other_module.name, "id": str(other_module.id)})
+
+    if dependents:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "code": "dependents_active",
+                "message": "Other active modules depend on this module",
+                "detail": {"dependents": dependents},
+            },
+        )
+
+    # 4. Set ModuleActivation.is_enabled=False
+    now = datetime.now(timezone.utc)
+    activation = (
+        db.query(ModuleActivation)
+        .filter(
+            ModuleActivation.module_id == module_uuid,
+            ModuleActivation.tenant_id == tenant_id,
+            ModuleActivation.company_id == None,
+            ModuleActivation.branch_id == None,
+            ModuleActivation.department_id == None,
+        )
+        .first()
+    )
+    if activation is not None:
+        activation.is_enabled = False
+        activation.disabled_at = now
+        activation.disabled_by_user_id = current_user.id
+        activation.enabled_at = None
+        activation.enabled_by_user_id = None
+
+    # 5. Deactivate menu items owned by this module for this tenant
+    tenant_prefix = f"{module.name}_"
+    tenant_suffix = f"_{str(tenant_id)[:8]}"
+    menu_items_deactivated: list = []
+    try:
+        owned_menu_items = (
+            db.query(MenuItem)
+            .filter(
+                MenuItem.tenant_id == tenant_id,
+                MenuItem.module_code == module.name,
+            )
+            .all()
+        )
+        if not owned_menu_items:
+            # Fallback: match by code pattern if module_code column absent / unpopulated
+            owned_menu_items = (
+                db.query(MenuItem)
+                .filter(
+                    MenuItem.tenant_id == tenant_id,
+                    MenuItem.code.like(f"{module.name}_%"),
+                )
+                .all()
+            )
+        for mi in owned_menu_items:
+            mi.is_active = False
+            menu_items_deactivated.append(mi.code)
+    except Exception as _mi_err:
+        logger.warning(f"[T-23.022] menu_items deactivation skipped for module '{module.name}': {_mi_err}")
+
+    # 6. Deactivate RBAC permissions seeded by this module
+    raw_perms = (module.manifest or {}).get("permissions") or module.permissions or []
+    perm_codes = []
+    for perm_def in raw_perms:
+        if isinstance(perm_def, str):
+            perm_codes.append(perm_def)
+        elif isinstance(perm_def, dict):
+            code = perm_def.get("code") or perm_def.get("name") or perm_def.get("id")
+            if code:
+                perm_codes.append(code)
+
+    permissions_deactivated: list = []
+    try:
+        if perm_codes:
+            perms_to_deactivate = (
+                db.query(Permission)
+                .filter(Permission.code.in_(perm_codes))
+                .all()
+            )
+            for p in perms_to_deactivate:
+                p.is_active = False
+                permissions_deactivated.append(p.code)
+    except Exception as _perm_err:
+        logger.warning(f"[T-23.022] permission deactivation skipped for module '{module.name}': {_perm_err}")
+
+    # 7. Commit
+    db.commit()
+
+    # 8. Audit log
+    create_audit_log(
+        db=db,
+        action="module.disabled",
+        user=current_user,
+        entity_type="module",
+        entity_id=str(module_uuid),
+        context_info={
+            "module_name": module.name,
+            "tenant_id": str(tenant_id),
+            "permissions_deactivated": permissions_deactivated,
+            "menu_items_deactivated": menu_items_deactivated,
+        },
+        request=http_request,
+        status="success",
+    )
+
+    return ModuleDisableResponse(
+        status="inactive",
+        permissions_deactivated=permissions_deactivated,
+        menu_items_deactivated=menu_items_deactivated,
     )

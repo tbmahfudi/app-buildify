@@ -276,3 +276,10 @@ class ModuleEnableResponse(BaseModel):
     status: str  # "active"
     permissions_added: List[str] = Field(default_factory=list)
     menu_items_added: List[str] = Field(default_factory=list)
+
+
+class ModuleDisableResponse(BaseModel):
+    """Response for POST /api/v1/modules/{module_id}/disable (T-23.022)."""
+    status: str  # "inactive"
+    permissions_deactivated: List[str] = Field(default_factory=list)
+    menu_items_deactivated: List[str] = Field(default_factory=list)
