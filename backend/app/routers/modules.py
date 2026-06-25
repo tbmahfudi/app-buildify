@@ -497,6 +497,31 @@ async def enable_module(
         status="success"
     )
 
+    # T-23.014: call post_enable hook after ModuleActivation is created
+    module_name = request_data.module_name
+    try:
+        _loader = registry.loader
+        _instance = _loader.get_module(module_name) or _loader.load_module(module_name)
+        if _instance is not None:
+            _instance.post_enable(db, target_tenant_id)
+            logger.info(f"post_enable hook completed for '{module_name}' tenant={target_tenant_id}")
+    except Exception as _hook_err:
+        logger.warning(
+            f"post_enable hook failed for '{module_name}': {_hook_err}",
+            exc_info=True,
+        )
+        create_audit_log(
+            db=db,
+            action="module_hook_failure",
+            user=current_user,
+            entity_type="module",
+            entity_id=request_data.module_name,
+            context_info={"hook": "post_enable", "error": str(_hook_err)},
+            request=http_request,
+            status="failure",
+        )
+        # do NOT raise — hook failure is non-fatal per T-23.014
+
     return ModuleOperationResponse(
         success=True,
         message=f"Module '{request_data.module_name}' enabled for tenant",
