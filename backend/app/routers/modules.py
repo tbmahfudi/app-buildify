@@ -37,6 +37,10 @@ from app.schemas.module import (
     ModuleRegistrationResponse,
     ModuleHeartbeatRequest,
     ModuleHeartbeatResponse,
+    ActivationPreviewPermission,
+    ActivationPreviewMenuItem,
+    ActivationPreviewDependency,
+    ActivationPreviewResponse,
 )
 from pathlib import Path
 import logging
@@ -923,3 +927,111 @@ async def get_provisioning_status(
         "error_message": result[2],
     }
 
+
+
+@_modules_v1_router.get(
+    "/{module_id}/activation-preview",
+    response_model=ActivationPreviewResponse,
+    summary="Get activation preview for a module",
+    tags=["modules-v1"],
+)
+async def get_activation_preview(
+    module_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Return a preview of what will happen when a tenant activates a module:
+    the permissions it will gain, the menu items that will appear, and
+    the status of each dependency for the requesting tenant.
+
+    T-23.002 — Story 23.1.1 backend AC.
+    """
+    # 1. Look up the module by UUID
+    module = db.query(ModuleRegistry).filter(ModuleRegistry.id == module_id).first()
+    if module is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Module '{module_id}' not found",
+        )
+
+    manifest: dict = module.manifest or {}
+
+    # 2. Extract permissions
+    raw_permissions = manifest.get("permissions") or []
+    permissions = [
+        ActivationPreviewPermission(
+            name=str(p.get("code") or p.get("name") or ""),
+            description=p.get("description"),
+            resource=p.get("resource"),
+            action=p.get("action"),
+        )
+        for p in raw_permissions
+        if isinstance(p, dict)
+    ]
+
+    # 3. Extract menu items (try menu_items then routes)
+    raw_menu = manifest.get("menu_items") or manifest.get("routes") or []
+    menu_items = [
+        ActivationPreviewMenuItem(
+            label=str(m.get("label") or m.get("name") or m.get("title") or ""),
+            route=m.get("route") or m.get("path"),
+            icon=m.get("icon"),
+        )
+        for m in raw_menu
+        if isinstance(m, dict)
+    ]
+
+    # 4. Resolve dependency status against requesting tenant
+    raw_deps = manifest.get("dependencies") or []
+    # dependencies_json may be a dict {"required": [...], "optional": [...]}
+    # or a plain list — normalise to a flat list of strings/dicts
+    if isinstance(raw_deps, dict):
+        dep_list = raw_deps.get("required", []) + raw_deps.get("optional", [])
+    else:
+        dep_list = list(raw_deps)
+
+    dependencies = []
+    for dep in dep_list:
+        if isinstance(dep, dict):
+            dep_name = dep.get("name") or dep.get("module") or ""
+            required_version = dep.get("version")
+        else:
+            dep_name = str(dep)
+            required_version = None
+
+        if not dep_name:
+            continue
+
+        # Resolve the dependency's ModuleRegistry row (by name)
+        dep_module = db.query(ModuleRegistry).filter(ModuleRegistry.name == dep_name).first()
+
+        if dep_module is None:
+            dep_status = "not_installed"
+            dep_display = dep_name
+        else:
+            # Check if a TenantModule activation exists for this tenant
+            activation = db.query(TenantModule).filter(
+                TenantModule.module_id == dep_module.id,
+                TenantModule.tenant_id == current_user.tenant_id,
+                TenantModule.is_enabled == True,
+            ).first()
+            dep_status = "active" if activation is not None else "inactive"
+            dep_display = dep_module.display_name or dep_name
+
+        dependencies.append(
+            ActivationPreviewDependency(
+                name=dep_name,
+                display_name=dep_display,
+                status=dep_status,
+                required_version=required_version,
+            )
+        )
+
+    return ActivationPreviewResponse(
+        module_name=module.name,
+        display_name=module.display_name or module.name,
+        permissions=permissions,
+        menu_items=menu_items,
+        dependencies=dependencies,
+    )
