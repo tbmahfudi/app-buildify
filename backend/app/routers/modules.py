@@ -45,6 +45,7 @@ from app.schemas.module import (
     ModulesListResponse,
     ModuleEnableResponse,
     ModuleDisableResponse,
+    ModuleDeactivateAllResponse,
 )
 from pathlib import Path
 import logging
@@ -1721,4 +1722,132 @@ async def disable_module_v1(
         status="inactive",
         permissions_deactivated=permissions_deactivated,
         menu_items_deactivated=menu_items_deactivated,
+    )
+
+
+# ---------------------------------------------------------------------------
+# T-23.024 — POST /api/v1/modules/admin/{module_id}/deactivate-all
+# ---------------------------------------------------------------------------
+
+@_modules_v1_router.post(
+    "/admin/{module_id}/deactivate-all",
+    response_model=ModuleDeactivateAllResponse,
+    summary="Deactivate a module for every tenant (superadmin only)",
+    tags=["modules-v1"],
+    status_code=200,
+)
+async def deactivate_module_all_tenants(
+    module_id: str,
+    http_request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_superuser),
+):
+    """
+    Superadmin endpoint: disable a module across **all** tenants.
+
+    Steps:
+    1. 404 if module not found by UUID.
+    2. Superadmin guard (enforced by require_superuser dependency).
+    3. Query all ModuleActivation rows for this module where is_enabled=True.
+    4. For each: set is_enabled=False, disabled_at=now(),
+       write per-tenant audit_log(action="module.disabled",
+       context_info={"reason": "deactivate_all"}).
+    5. Set Module.install_status='deactivation_pending'.
+    6. Commit.
+    7. Write summary audit_log(action="module.deactivate_all",
+       context_info={"tenants_deactivated": N}).
+    8. Return {"status": "deactivation_pending", "tenants_deactivated": N}.
+
+    T-23.024 -- Story 23.5.1 backend AC phase 1.
+    """
+    from uuid import UUID
+    from datetime import datetime, timezone
+    from app.models.nocode_module import Module, ModuleActivation
+
+    # 1. Lookup module
+    try:
+        module_uuid = UUID(module_id)
+    except (ValueError, AttributeError):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={
+                "code": "not_found",
+                "message": f"Module '{module_id}' not found",
+                "detail": None,
+            },
+        )
+
+    module = db.query(Module).filter(Module.id == module_uuid).first()
+    if module is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={
+                "code": "not_found",
+                "message": f"Module '{module_id}' not found",
+                "detail": None,
+            },
+        )
+
+    # 2. Superadmin guard — already enforced by require_superuser dependency above.
+
+    # 3. Fetch all active activations across all tenants for this module
+    active_activations = (
+        db.query(ModuleActivation)
+        .filter(
+            ModuleActivation.module_id == module_uuid,
+            ModuleActivation.is_enabled == True,
+        )
+        .all()
+    )
+
+    now = datetime.now(timezone.utc)
+
+    # 4. Disable each activation + write per-tenant audit log
+    tenants_deactivated = 0
+    for activation in active_activations:
+        activation.is_enabled = False
+        activation.disabled_at = now
+        activation.disabled_by_user_id = current_user.id
+
+        create_audit_log(
+            db=db,
+            action="module.disabled",
+            user=current_user,
+            entity_type="module",
+            entity_id=str(module_uuid),
+            context_info={
+                "module_name": module.name,
+                "tenant_id": str(activation.tenant_id),
+                "reason": "deactivate_all",
+            },
+            request=http_request,
+            status="success",
+        )
+        tenants_deactivated += 1
+
+    # 5. Mark module as deactivation_pending
+    module.install_status = "deactivation_pending"
+
+    # 6. Commit all changes
+    db.commit()
+
+    # 7. Write summary audit log
+    create_audit_log(
+        db=db,
+        action="module.deactivate_all",
+        user=current_user,
+        entity_type="module",
+        entity_id=str(module_uuid),
+        context_info={
+            "module_name": module.name,
+            "tenants_deactivated": tenants_deactivated,
+        },
+        request=http_request,
+        status="success",
+    )
+
+    # 8. Return summary
+    return ModuleDeactivateAllResponse(
+        status="deactivation_pending",
+        tenants_deactivated=tenants_deactivated,
     )
