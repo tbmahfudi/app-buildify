@@ -999,61 +999,119 @@ db.close()" 2>/dev/null; then
 }
 
 # ── T-23.026: module uninstall ──────────────────────────────────────────────
+# ---------------------------------------------------------------------------
+# T-23.026  module uninstall <name> [--api-url <url>] [--token <token>]
+#   Phase 1: POST /api/v1/modules/admin/{id}/deactivate-all
+#   Phase 2: DELETE /api/v1/modules/admin/{id}  (X-Confirm-Uninstall: true)
+# Requires BUILDIFY_TOKEN env var or --token flag (superadmin operation).
+# ---------------------------------------------------------------------------
 module_uninstall() {
     local MODULE_NAME="${1:-}"
-    if [ -z "$MODULE_NAME" ]; then
-        echo "Usage: manage.sh module uninstall <module-name>"
+    local API_BASE="http://localhost:8000"
+    local TOKEN="${BUILDIFY_TOKEN:-}"
+    shift || true
+
+    # Parse optional --api-url / --token flags
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --api-url) API_BASE="${2:-$API_BASE}"; shift 2 ;;
+            --token)   TOKEN="${2:-}";             shift 2 ;;
+            *) echo "[ERROR] Unknown flag: $1" >&2; exit 1 ;;
+        esac
+    done
+
+    if [[ -z "$MODULE_NAME" ]]; then
+        echo "[ERROR] Usage: manage.sh module uninstall <module-name> [--api-url <url>] [--token <token>]" >&2
         exit 1
     fi
 
-    API_URL="${APP_URL:-http://localhost:8000}/api/v1"
-    TOKEN="${SUPERADMIN_TOKEN:-}"
-
-    if [ -z "$TOKEN" ]; then
-        echo "ERROR: SUPERADMIN_TOKEN env var is required for uninstall"
+    if [[ -z "$TOKEN" ]]; then
+        echo "[ERROR] BUILDIFY_TOKEN is required for uninstall (superadmin operation)." >&2
+        echo "        Set the env var or pass --token <token>." >&2
         exit 1
     fi
 
-    echo "==> Uninstalling module: $MODULE_NAME"
+    local API_BASE_V1="$API_BASE/api/v1"
 
-    # Step 1: resolve module ID
-    echo "  [1/4] Resolving module ID..."
-    MOD_JSON=$(curl -sf -H "Authorization: Bearer $TOKEN" "$API_URL/modules/$MODULE_NAME" 2>/dev/null || true)
-    if [ -z "$MOD_JSON" ]; then
-        echo "ERROR: module '$MODULE_NAME' not found via API"
-        exit 1
-    fi
-    MOD_ID=$(echo "$MOD_JSON" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('id',''))" 2>/dev/null || true)
-    if [ -z "$MOD_ID" ]; then
-        MOD_ID="$MODULE_NAME"  # fallback: use name as ID
-    fi
-
-    # Step 2: deactivate-all tenants
-    echo "  [2/4] Deactivating module for all tenants..."
-    DA_CODE=$(curl -sf -o /dev/null -w "%{http_code}" -X POST \
+    # Step 1: Resolve module UUID from module-registry
+    echo "Resolving module '$MODULE_NAME'..."
+    local REG_BODY REG_CODE
+    REG_BODY=$(curl -s -w "\n%{http_code}" \
         -H "Authorization: Bearer $TOKEN" \
-        "$API_URL/admin/modules/$MOD_ID/deactivate-all" 2>/dev/null || echo "000")
-    if [ "$DA_CODE" != "200" ]; then
-        echo "WARNING: deactivate-all returned HTTP $DA_CODE (may already be inactive)"
+        "$API_BASE_V1/module-registry/" 2>/dev/null)
+    REG_CODE=$(echo "$REG_BODY" | tail -1)
+    local REG_JSON
+    REG_JSON=$(echo "$REG_BODY" | sed '$d')
+
+    local MOD_ID
+    MOD_ID=$(echo "$REG_JSON" | python3 -c "
+import sys, json
+data = json.load(sys.stdin)
+items = data if isinstance(data, list) else data.get('items', data.get('results', []))
+for m in items:
+    if m.get('name') == '${MODULE_NAME}':
+        print(m.get('id', ''))
+        break
+" 2>/dev/null || true)
+
+    if [[ -z "$MOD_ID" ]]; then
+        echo "[ERROR] Module '$MODULE_NAME' not found in module-registry (HTTP $REG_CODE)." >&2
+        exit 1
+    fi
+    echo "  Module ID: $MOD_ID"
+
+    # Phase 1: deactivate-all tenants
+    echo "Deactivating for all tenants..."
+    local DA_BODY DA_CODE
+    DA_BODY=$(curl -s -w "\n%{http_code}" \
+        -X POST \
+        -H "Authorization: Bearer $TOKEN" \
+        "$API_BASE_V1/modules/admin/$MOD_ID/deactivate-all" 2>/dev/null)
+    DA_CODE=$(echo "$DA_BODY" | tail -1)
+    local DA_JSON
+    DA_JSON=$(echo "$DA_BODY" | sed '$d')
+
+    if [[ "$DA_CODE" != "200" ]]; then
+        echo "[ERROR] deactivate-all returned HTTP $DA_CODE:" >&2
+        echo "$DA_JSON" >&2
+        exit 1
     fi
 
-    # Step 3: remove module files from backend/frontend (best-effort)
-    echo "  [3/4] Removing module files..."
-    BACKEND_DIR="/home/mahfudi/app-buildify/backend/modules/$MODULE_NAME"
-    FRONTEND_DIR="/home/mahfudi/app-buildify/frontend/assets/js/modules/$MODULE_NAME"
-    [ -d "$BACKEND_DIR" ]  && rm -rf "$BACKEND_DIR"  && echo "    removed backend dir"  || true
-    [ -d "$FRONTEND_DIR" ] && rm -rf "$FRONTEND_DIR" && echo "    removed frontend dir" || true
+    local TENANT_COUNT
+    TENANT_COUNT=$(echo "$DA_JSON" | python3 -c "
+import sys, json
+d = json.load(sys.stdin)
+print(d.get('tenants_deactivated', 0))
+" 2>/dev/null || echo "0")
 
-    # Step 4: call DELETE /api/v1/admin/modules/{id}
-    echo "  [4/4] Calling uninstall API..."
-    DEL_CODE=$(curl -sf -o /dev/null -w "%{http_code}" -X DELETE \
+    echo "Module '$MODULE_NAME' deactivated from $TENANT_COUNT tenant(s). This will remove all module data."
+    echo ""
+
+    # Confirmation prompt — user must type the module name exactly
+    local CONFIRM
+    read -r -p "Type the module name to confirm uninstall: " CONFIRM
+    if [[ "$CONFIRM" != "$MODULE_NAME" ]]; then
+        echo "Aborted."
+        exit 0
+    fi
+
+    # Phase 2: DELETE with X-Confirm-Uninstall header
+    echo "Uninstalling..."
+    local DEL_BODY DEL_CODE
+    DEL_BODY=$(curl -s -w "\n%{http_code}" \
+        -X DELETE \
         -H "Authorization: Bearer $TOKEN" \
         -H "X-Confirm-Uninstall: true" \
-        "$API_URL/admin/modules/$MOD_ID" 2>/dev/null || echo "000")
-    if [ "$DEL_CODE" = "200" ]; then
-        echo "==> Module '$MODULE_NAME' uninstalled successfully."
+        "$API_BASE_V1/modules/admin/$MOD_ID" 2>/dev/null)
+    DEL_CODE=$(echo "$DEL_BODY" | tail -1)
+    local DEL_JSON
+    DEL_JSON=$(echo "$DEL_BODY" | sed '$d')
+
+    if [[ "$DEL_CODE" == "200" || "$DEL_CODE" == "204" ]]; then
+        echo "Module '$MODULE_NAME' uninstalled successfully."
     else
-        echo "ERROR: DELETE returned HTTP $DEL_CODE"
+        echo "[ERROR] Uninstall failed (HTTP $DEL_CODE):" >&2
+        echo "$DEL_JSON" >&2
         exit 1
     fi
 }
