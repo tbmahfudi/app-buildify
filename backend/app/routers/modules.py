@@ -1459,10 +1459,11 @@ async def enable_module_v1(
             else:
                 continue
 
-            existing_perm = db.query(Permission).filter(Permission.code == perm_code).first()
+            namespaced_code = f"{module.name}__{perm_code}__{str(tenant_id)[:8]}"
+            existing_perm = db.query(Permission).filter(Permission.code == namespaced_code).first()
             if existing_perm is None:
                 perm = Permission(
-                    code=perm_code,
+                    code=namespaced_code,
                     name=perm_name,
                     description=description,
                     resource=resource,
@@ -1475,7 +1476,7 @@ async def enable_module_v1(
                 db.add(perm)
             else:
                 existing_perm.is_active = True
-            permissions_added.append(perm_code)
+            permissions_added.append(namespaced_code)
     except Exception as _perm_err:
         logger.warning(f"[T-23.020] permission seed skipped for module '{module.name}': {_perm_err}")
 
@@ -1695,7 +1696,7 @@ async def disable_module_v1(
     except Exception as _mi_err:
         logger.warning(f"[T-23.022] menu_items deactivation skipped for module '{module.name}': {_mi_err}")
 
-    # 6. Deactivate RBAC permissions seeded by this module
+    # 6. Deactivate RBAC permissions seeded by this module (tenant-scoped)
     raw_perms = (module.manifest or {}).get("permissions") or module.permissions or []
     perm_codes = []
     for perm_def in raw_perms:
@@ -1706,12 +1707,15 @@ async def disable_module_v1(
             if code:
                 perm_codes.append(code)
 
+    # Build namespaced codes so only this tenant's permissions are deactivated
+    namespaced_codes = [f"{module.name}__{p}__{str(tenant_id)[:8]}" for p in perm_codes]
+
     permissions_deactivated: list = []
     try:
-        if perm_codes:
+        if namespaced_codes:
             perms_to_deactivate = (
                 db.query(Permission)
-                .filter(Permission.code.in_(perm_codes))
+                .filter(Permission.code.in_(namespaced_codes))
                 .all()
             )
             for p in perms_to_deactivate:
@@ -1977,27 +1981,17 @@ async def uninstall_module_v1(
     db.flush()
     logger.info(f"[T-23.025] Deleted {activation_count} ModuleActivation rows for module {module_name}")
 
-    # 6. Deactivate RBAC permissions seeded by this module
-    raw_perms = (module.manifest or {}).get("permissions") or module.permissions or []
-    perm_codes = []
-    for perm_def in raw_perms:
-        if isinstance(perm_def, str):
-            perm_codes.append(perm_def)
-        elif isinstance(perm_def, dict):
-            code = perm_def.get("code") or perm_def.get("name") or perm_def.get("id")
-            if code:
-                perm_codes.append(code)
-
+    # 6. Deactivate RBAC permissions seeded by this module (all tenants — full uninstall)
+    # Use LIKE filter on the namespaced pattern to scope to only this module's permissions
     permissions_removed: list = []
-    if perm_codes:
-        try:
-            perms = db.query(Permission).filter(Permission.code.in_(perm_codes)).all()
-            for p in perms:
-                p.is_active = False
-                permissions_removed.append(p.code)
-            db.flush()
-        except Exception as _perm_err:
-            logger.warning(f"[T-23.025] Permission deactivation skipped for module {module_name}: {_perm_err}")
+    try:
+        perms = db.query(Permission).filter(Permission.code.like(f"{module_name}__%")).all()
+        for p in perms:
+            p.is_active = False
+            permissions_removed.append(p.code)
+        db.flush()
+    except Exception as _perm_err:
+        logger.warning(f"[T-23.025] Permission deactivation skipped for module {module_name}: {_perm_err}")
 
     # 7. Delete MenuItem rows owned by this module (all tenants)
     menu_items_removed: list = []
