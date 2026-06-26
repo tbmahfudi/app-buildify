@@ -5,9 +5,9 @@ producer: A3 Product Owner
 consumers: [B1 Software Architect, B3 UX Designer, C1 Tech Lead, C3 Frontend Developer]
 upstream: [pm-review-frontend-screens-01]
 downstream: []
-status: design-review
+status: approved
 created: 2026-06-19
-updated: 2026-06-19
+updated: 2026-06-26
 shape: feature
 sprint_target: epic-24 sprint 1
 decisions:
@@ -499,3 +499,32 @@ open_questions:
 - Dashboard Share + Snapshot — deferred to dashboards v2 epic
 - Report export button — deferred (low backend risk; high design variation)
 - Subscription tier enforcement — separate epic (High effort, Low priority per backlog)
+
+
+---
+
+## A-to-B Gate Note (A3 to B-stage, 2026-06-26)
+
+**Approved by:** A3 Product Owner
+**Gate decision:** Proceed to B-stage (B1 Architecture + B3 UX Design in parallel)
+
+### What B1 (Software Architect) should focus on
+
+- No new backend endpoints are required. Confirm each story endpoint reference against the live API contract before C3 begins implementation.
+- The FlexSplitPane component used in Story 24.5.1 (Scheduler log viewer) is referenced but not confirmed in LAYOUT_CONVENTION.md. B1 should verify it exists or flag to B3 for resolution before C3 picks up that story.
+- Routing: Epic 24 uses hash-based routing (#reset-password, #report-designer) consistent with existing patterns. B1 should confirm no route conflicts with anything registered in Epic 23.
+
+### What B3 (UX Designer) should focus on
+
+Open questions requiring B3 decisions (carried over from frontmatter):
+
+1. Module dependency graph: D3.js vis or indented text list. Resolve before any dependent story; deferred to Epic 25 but B3 should record the decision now.
+2. Builder version history: Story 24.6.1 assumes a right drawer. B3 should confirm or flag a deviation to inline panel or full-page route.
+
+Password strength indicator (Story 24.2.1): component layout is specified. B3 should confirm the icon set (ph-check-circle / ph-x-circle / ph-circle) aligns with the global design token palette before C3 implements.
+
+Notification honesty banner (Story 24.1.2): static and persistent with no interactive states. B3 sign-off is lightweight here.
+
+### P0 gate reminder
+
+Features 24.2 through 24.7 (P1) are blocked until Stories 24.1.1, 24.1.2, and 24.1.3 are marked [DONE]. C1 Tech Lead must enforce this sequencing in the sprint backlog.
