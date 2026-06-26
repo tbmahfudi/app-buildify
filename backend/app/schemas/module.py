@@ -241,6 +241,8 @@ class ActivationPreviewResponse(BaseModel):
     permissions: List[ActivationPreviewPermission]
     menu_items: List[ActivationPreviewMenuItem]
     dependencies: List[ActivationPreviewDependency]
+    # T-22.016: tenant DB provisioning status ('not_provisioned' when no row exists)
+    tenant_db_status: Optional[str] = None
 
 
 class ModuleListItemV2(BaseModel):
@@ -276,6 +278,17 @@ class ModuleEnableResponse(BaseModel):
     status: str  # "active"
     permissions_added: List[str] = Field(default_factory=list)
     menu_items_added: List[str] = Field(default_factory=list)
+    # T-22.014: DB provisioning status when module requires_tenant_db
+    tenant_db_status: Optional[str] = None
+    connection_secret_ref: Optional[str] = None
+
+
+class TenantDBStatusResponse(BaseModel):
+    """Response for GET /api/v1/modules/{module_id}/tenant-db-status (T-22.017)."""
+    status: str
+    connection_secret_ref: Optional[str] = None
+    error_message: Optional[str] = None
+    created_at: Optional[datetime] = None
 
 
 class ModuleDisableResponse(BaseModel):
@@ -283,3 +296,9 @@ class ModuleDisableResponse(BaseModel):
     status: str  # "inactive"
     permissions_deactivated: List[str] = Field(default_factory=list)
     menu_items_deactivated: List[str] = Field(default_factory=list)
+
+
+class ModuleDeactivateAllResponse(BaseModel):
+    """Response for POST /api/v1/admin/modules/{module_id}/deactivate-all (T-23.024)."""
+    status: str  # "deactivation_pending"
+    tenants_deactivated: int

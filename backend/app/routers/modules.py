@@ -985,6 +985,58 @@ async def get_provisioning_status(
 
 
 @_modules_v1_router.get(
+    "/{module_id}/tenant-db-status",
+    response_model=TenantDBStatusResponse,
+    summary="Get per-tenant module DB status",
+    tags=["modules-v1"],
+)
+async def get_tenant_db_status(
+    module_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Return the TenantModuleDatabase row for the current tenant and module.
+
+    Fields: status, connection_secret_ref, error_message, created_at.
+    Returns 404 if no row exists (module not yet provisioned for this tenant).
+
+    T-22.017 -- Story 22.4.4 backend AC.
+    """
+    from app.models.tenant_module_database import TenantModuleDatabase as _TMD
+    from uuid import UUID as _UUID
+    try:
+        _mod_uuid = _UUID(module_id)
+    except (ValueError, AttributeError):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "not_found", "message": f"Module '{module_id}' not found", "detail": None},
+        )
+
+    row = (
+        db.query(_TMD)
+        .filter_by(tenant_id=current_user.tenant_id, module_id=_mod_uuid)
+        .one_or_none()
+    )
+    if row is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={
+                "code": "not_provisioned",
+                "message": f"No per-tenant DB found for module '{module_id}'",
+                "detail": None,
+            },
+        )
+
+    return TenantDBStatusResponse(
+        status=row.status,
+        connection_secret_ref=row.connection_secret_ref,
+        error_message=row.error_message,
+        created_at=row.created_at,
+    )
+
+
+@_modules_v1_router.get(
     "/{module_id}/activation-preview",
     response_model=ActivationPreviewResponse,
     summary="Get activation preview for a module",
@@ -1083,12 +1135,26 @@ async def get_activation_preview(
             )
         )
 
+    # T-22.016: Query TenantModuleDatabase for current tenant
+    _preview_db_status = None
+    try:
+        from app.models.tenant_module_database import TenantModuleDatabase as _TMD
+        _tmd_preview = (
+            db.query(_TMD)
+            .filter_by(tenant_id=current_user.tenant_id, module_id=module_id)
+            .one_or_none()
+        )
+        _preview_db_status = _tmd_preview.status if _tmd_preview is not None else "not_provisioned"
+    except Exception as _preview_err:
+        logger.warning(f"[T-22.016] tenant_db_status query failed: {_preview_err}")
+
     return ActivationPreviewResponse(
         module_name=module.name,
         display_name=module.display_name or module.name,
         permissions=permissions,
         menu_items=menu_items,
         dependencies=dependencies,
+        tenant_db_status=_preview_db_status,
     )
 
 
@@ -1482,6 +1548,30 @@ async def enable_module_v1(
 
     db.commit()
 
+    # T-22.014: Provision per-tenant module DB if manifest declares requires_tenant_db
+    _tenant_db_status = None
+    _connection_secret_ref = None
+    if manifest.get("requires_tenant_db"):
+        try:
+            from app.core.tenant.module_db_provisioner import ModuleDBProvisioner
+            from app.models.tenant_module_database import TenantModuleDatabase as _TMD
+            _existing = (
+                db.query(_TMD)
+                .filter_by(tenant_id=tenant_id, module_id=module_uuid)
+                .one_or_none()
+            )
+            if _existing is None or _existing.status == "failed":
+                _connection_secret_ref = await ModuleDBProvisioner().provision(tenant_id, module.name)
+                _tenant_db_status = "provisioning"
+            else:
+                _tenant_db_status = _existing.status
+                _connection_secret_ref = _existing.connection_secret_ref
+        except Exception as _prov_err:
+            logger.warning(
+                f"[T-22.014] provisioning failed for module='{module.name}' tenant='{tenant_id}': {_prov_err}"
+            )
+            _tenant_db_status = "failed"
+
     # 7. Audit log
     create_audit_log(
         db=db,
@@ -1528,6 +1618,8 @@ async def enable_module_v1(
         status="active",
         permissions_added=permissions_added,
         menu_items_added=menu_items_added,
+        tenant_db_status=_tenant_db_status,
+        connection_secret_ref=_connection_secret_ref,
     )
 
 
@@ -1727,6 +1819,22 @@ async def disable_module_v1(
     # 7. Commit
     db.commit()
 
+    # T-22.015: Deprovision per-tenant module DB if a ready row exists
+    try:
+        from app.core.tenant.module_db_provisioner import ModuleDBProvisioner
+        from app.models.tenant_module_database import TenantModuleDatabase as _TMD
+        _tmd_row = (
+            db.query(_TMD)
+            .filter_by(tenant_id=tenant_id, module_id=module_uuid)
+            .one_or_none()
+        )
+        if _tmd_row is not None and _tmd_row.status == "ready":
+            await ModuleDBProvisioner().deprovision(tenant_id, module.name)
+    except Exception as _deprov_err:
+        logger.warning(
+            f"[T-22.015] deprovision failed for module='{module.name}' tenant='{tenant_id}': {_deprov_err}"
+        )
+
     # 8. Audit log
     create_audit_log(
         db=db,
@@ -1907,7 +2015,7 @@ async def uninstall_module_v1(
     1. Header check: 400 if X-Confirm-Uninstall != 'true'.
     2. 404 if module not found.
     3. State check: 409 if install_status != 'deactivation_pending'.
-    4. Epic-22 cleanup stub (no-op — story 22.4.5 not yet merged).
+    4. Epic-22 cleanup: call cleanup_tenant_module_dbs for each tenant that had the module active.
     5. Delete all ModuleActivation rows for this module.
     6. Deactivate all RBAC permissions seeded by this module.
     7. Delete all MenuItem rows with module_code matching this module.
@@ -1965,9 +2073,47 @@ async def uninstall_module_v1(
 
     module_name = module.name
 
-    # 4. Epic-22 cleanup stub
-    # TODO: Epic-22 cleanup service (story 22.4.5) — call cleanup endpoint here once merged
-    logger.info(f"[T-23.025] Epic-22 cleanup service: no-op stub for module {module_name} (22.4.5 not yet merged)")
+    # 4. Epic-22 cleanup service (T-22.019 / Story 22.4.5)
+    # cleanup_tenant_module_dbs is imported at call time to avoid circular import
+    # and to keep the script runnable standalone outside the FastAPI stack.
+    try:
+        import sys as _sys
+        import os as _os
+        _scripts_dir = _os.path.join(
+            _os.path.dirname(__file__), "..", "..", "..", "..", "scripts"
+        )
+        _scripts_dir = _os.path.normpath(_scripts_dir)
+        if _scripts_dir not in _sys.path:
+            _sys.path.insert(0, _scripts_dir)
+        from cleanup_tenant_module_dbs import cleanup_tenant_module_dbs as _cleanup_fn
+
+        # Run cleanup for every tenant that had this module activated.
+        # activations_to_delete is populated in step 5 below; we derive the set
+        # of tenant IDs from the query here before the deletions happen.
+        _tenant_ids_to_clean = [
+            str(act.tenant_id)
+            for act in db.query(ModuleActivation)
+            .filter(ModuleActivation.module_id == module_uuid)
+            .all()
+        ]
+        _cleanup_errors = []
+        for _tid in _tenant_ids_to_clean:
+            try:
+                _count = _cleanup_fn(_tid)
+                logger.info(
+                    f"[T-23.025] cleanup_tenant_module_dbs: tenant={_tid} module={module_name} processed={_count}"
+                )
+            except Exception as _ce:
+                _cleanup_errors.append((_tid, _ce))
+                logger.error(
+                    f"[T-23.025] cleanup_tenant_module_dbs failed for tenant={_tid}: {_ce}"
+                )
+        if _cleanup_errors:
+            logger.warning(
+                f"[T-23.025] {len(_cleanup_errors)} tenant(s) had cleanup errors for module {module_name}; proceeding"
+            )
+    except ImportError as _imp_err:
+        logger.warning(f"[T-23.025] cleanup_tenant_module_dbs script not importable: {_imp_err}; skipping")
 
     # 5. Remove all ModuleActivation rows for this module (including disabled ones)
     activations_to_delete = (

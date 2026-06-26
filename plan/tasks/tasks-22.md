@@ -1,4 +1,4 @@
----
+﻿---
 artifact_id: tasks-22
 type: tasks
 producer: C1 Tech Lead
@@ -112,10 +112,10 @@ Status legend: `OPEN` = not started | `IN-PROGRESS` = picked up | `BLOCKED` = wa
 | id | title | owner | depends-on | hrs | AC link | status |
 |----|-------|-------|-----------:|----:|---------|--------|
 | T-22.013 | Implement provisioning prototype: backend/app/core/tenant/module_db_provisioner.py -- ModuleDBProvisioner with provision() + deprovision(); db_name mod_{module}_{tid[:8]}; CREATE DATABASE + Alembic migrations + tenant_module_databases row lifecycle; 60 s gate PASS at 978 ms (61x headroom); see impl-notes-T-22-013.md | C2 | T-22.010 | 5 | [epic-22 22.1.1](../epics/epic-22-tenant-isolation-hardening.md) | DONE |
-| T-22.014 | Wire provisioning into module enable flow: on `POST /modules/{id}/enable` for a new (tenant, module) pair kick `provision-tenant-module-db.py` async; poll or callback updates status in `tenant_module_databases`; on `status=failed` row re-enable retries provisioning; add `GET /modules/{id}/provisioning-status` endpoint returning `{status, error?}` | C2 | T-22.013 | 4 | [epic-22 §22.4.2 backend](../epics/epic-22-tenant-isolation-hardening.md) | OPEN |
-| T-22.015 | Provisioning status UI: add status badge to modules page in `frontend/assets/js/` — `Provisioning...` (in-flight), `Ready`, `Failed (retry)` states; poll `GET /modules/{id}/provisioning-status` every 2 s while in-flight; `Failed` state shows FlexAlert with error message and Retry provisioning FlexButton(secondary) | C2 | T-22.014 | 4 | [epic-22 §22.4.2 frontend](../epics/epic-22-tenant-isolation-hardening.md) | OPEN |
-| T-22.016 | Create `backend/app/core/module_scope_middleware.py` — implement `ModuleScopeMiddleware`: reads JWT `tenant_id` and URL prefix `/api/v1/modules/{module_id}/...`, looks up `tenant_module_databases` row, sets marker on request scope; LRU connection pool keyed by (tenant_id, module_id) bounded to `MODULE_DB_POOL_MAX` (default 50); return HTTP 501 when `DATABASE_STRATEGY=per_tenant` but full pool wiring not yet complete (L-1 guard per arch-22 §7.3) | C2 | T-22.014 | 5 | [epic-22 §22.4.3](../epics/epic-22-tenant-isolation-hardening.md) | OPEN |
-| T-22.017 | Implement `scripts/migrate-module.py {module_id}` — reads `tenant_module_databases` for all `status=ready` rows for the module; runs `alembic upgrade head` against each connection in parallel with bounded concurrency default 4; per-(tenant, module) success/failure logged; non-zero exit on partial failure; idempotent on re-run | C2 | T-22.014 | 4 | [epic-22 §22.4.4](../epics/epic-22-tenant-isolation-hardening.md) | OPEN |
+| T-22.014 | Wire provisioning into module enable flow: on `POST /modules/{id}/enable` for a new (tenant, module) pair kick `provision-tenant-module-db.py` async; poll or callback updates status in `tenant_module_databases`; on `status=failed` row re-enable retries provisioning; add `GET /modules/{id}/provisioning-status` endpoint returning `{status, error?}` | C2 | T-22.013 | 4 | [epic-22 §22.4.2 backend](../epics/epic-22-tenant-isolation-hardening.md) | DONE |
+| T-22.015 | Provisioning status UI: add status badge to modules page in `frontend/assets/js/` — `Provisioning...` (in-flight), `Ready`, `Failed (retry)` states; poll `GET /modules/{id}/provisioning-status` every 2 s while in-flight; `Failed` state shows FlexAlert with error message and Retry provisioning FlexButton(secondary) | C2 | T-22.014 | 4 | [epic-22 §22.4.2 frontend](../epics/epic-22-tenant-isolation-hardening.md) | DONE |
+| T-22.016 | Create `backend/app/core/module_scope_middleware.py` — implement `ModuleScopeMiddleware`: reads JWT `tenant_id` and URL prefix `/api/v1/modules/{module_id}/...`, looks up `tenant_module_databases` row, sets marker on request scope; LRU connection pool keyed by (tenant_id, module_id) bounded to `MODULE_DB_POOL_MAX` (default 50); return HTTP 501 when `DATABASE_STRATEGY=per_tenant` but full pool wiring not yet complete (L-1 guard per arch-22 §7.3) | C2 | T-22.014 | 5 | [epic-22 §22.4.3](../epics/epic-22-tenant-isolation-hardening.md) | DONE |
+| T-22.017 | Implement `scripts/migrate-module.py {module_id}` — reads `tenant_module_databases` for all `status=ready` rows for the module; runs `alembic upgrade head` against each connection in parallel with bounded concurrency default 4; per-(tenant, module) success/failure logged; non-zero exit on partial failure; idempotent on re-run | C2 | T-22.014 | 4 | [epic-22 §22.4.4](../epics/epic-22-tenant-isolation-hardening.md) | DONE |
 
 **Subtotal: 22 hrs**
 
@@ -163,7 +163,7 @@ Status legend: `OPEN` = not started | `IN-PROGRESS` = picked up | `BLOCKED` = wa
 | id | title | owner | depends-on | hrs | AC link | status |
 |----|-------|-------|-----------:|----:|---------|--------|
 | T-22.026 | Write `docs/platform/TENANT_ISOLATION.md` — covers: two-layer shared-core defense (helper + listener); per-tenant module-DB model; `with_admin_cross_tenant_scope` API and when to use it; documented bypass surfaces (raw `text()` SQL, `bulk_insert_mappings`); test scenarios summary; how-to-add-a-new-tenant-scoped-table runbook; link from `docs/SUMMARY.md` ToC | C2 | T-22.005, T-22.009 | 3 | [epic-22 §22.5.1](../epics/epic-22-tenant-isolation-hardening.md) | OPEN |
-| T-22.027 | Update `docs/modules/MODULE_DEVELOPMENT.md` with `BaseModule.tenant_scoped: bool = True` and `get_tenant_scoped_tables() -> List[str]` contract; add `tenant_scoped` optional manifest key; explain `tenant_scoped=False` behavior (retained on shared DB, no per-tenant provisioning); update `backend/app/core/module_system/base_module.py` with new attributes | C2 | T-22.016 | 2 | [epic-22 §22.5.2](../epics/epic-22-tenant-isolation-hardening.md) | OPEN |
+| T-22.027 | Update `docs/modules/MODULE_DEVELOPMENT.md` with `BaseModule.tenant_scoped: bool = True` and `get_tenant_scoped_tables() -> List[str]` contract; add `tenant_scoped` optional manifest key; explain `tenant_scoped=False` behavior (retained on shared DB, no per-tenant provisioning); update `backend/app/core/module_system/base_module.py` with new attributes | C2 | T-22.016 | 2 | [epic-22 §22.5.2](../epics/epic-22-tenant-isolation-hardening.md) | DONE |
 | T-22.028 | D3 Security Engineer review of `docs/platform/TENANT_ISOLATION.md`: verify compliance narrative quality; confirm bypass surfaces accurately documented; confirm audit event types match implementation; sign off with comment or raise blocking findings | D3 | T-22.026, T-22.025 | 3 | [epic-22 §22.5.1 AC](../epics/epic-22-tenant-isolation-hardening.md) | OPEN |
 
 **Subtotal: 8 hrs**
@@ -259,3 +259,4 @@ T-22.001 (scope.py gate -- starts all work)
 - `DATABASE_STRATEGY=separate` deprecation notice in release notes — E2 Technical Writer
 - D3 sec-review-22-followup.md confirming M-1 and M-2 sprint N+1 approach — post-sprint
 - E2 Technical Writer release-notes-epic-22.md — after D3 final sign-off
+
