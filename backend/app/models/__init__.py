@@ -94,6 +94,9 @@ from .module_extension import (
     ModuleMenuExtension,
 )
 
+# Per-tenant module database registry (Epic 22.4.1)
+from .tenant_module_database import TenantModuleDatabase
+
 # Security system
 from .password_history import PasswordHistory
 from .password_reset_token import PasswordResetToken
@@ -267,4 +270,7 @@ __all__ = [
     "ModuleEntityExtension",
     "ModuleScreenExtension",
     "ModuleMenuExtension",
+
+    # Per-tenant module database registry
+    "TenantModuleDatabase",
 ]
