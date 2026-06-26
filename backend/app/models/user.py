@@ -20,6 +20,7 @@ class User(Base):
     Users belong to ONE tenant but can access MULTIPLE companies within that tenant.
     """
     __tablename__ = "users"
+    __tenant_scoped__ = True
 
     # Primary key
     id = Column(GUID, primary_key=True, default=generate_uuid)

@@ -202,6 +202,7 @@ class ModuleActivation(Base):
     flexible activation model that supports any organizational scope.
     """
     __tablename__ = 'module_activations'
+    __tenant_scoped__ = True
 
     # Primary key
     id = Column(GUID, primary_key=True, default=generate_uuid)

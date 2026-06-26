@@ -1291,28 +1291,30 @@ pack) module_pack "$@" ;;
         esac
         ;;
     check-tenant-scope)
-        echo "==> Checking services/ for unguarded tenant_id literals..."
-        if grep -rn "\.tenant_id ==" /home/mahfudi/app-buildify/backend/app/services/ /home/mahfudi/app-buildify/backend/app/routers/ 2>/dev/null | grep -v "apply_tenant_scope\|tenant_scope\|== None"; then
-            echo "ERROR: Found raw tenant_id filter(s) — use apply_tenant_scope() instead"
+        # T-22.003 / T-22.021: CI gate that catches raw tenant_id == literals.
+        # Exits non-zero if any hits are found outside lines annotated with
+        # "# tenant-scope-ok".  Excludes scope.py itself to avoid self-matches.
+        SCOPE_DIRS=(
+            "/home/mahfudi/app-buildify/backend/app/services/"
+            "/home/mahfudi/app-buildify/backend/app/routers/"
+        )
+        echo "==> check-tenant-scope: scanning services/ and routers/ for raw tenant_id == literals..."
+        VIOLATIONS=$(
+            grep -rn "\.tenant_id ==" "${SCOPE_DIRS[@]}" 2>/dev/null \
+            | grep -v "tenant-scope-ok" \
+            | grep -v "scope\.py:" \
+            || true
+        )
+        if [ -n "$VIOLATIONS" ]; then
+            echo ""
+            echo "ERROR: Raw tenant_id == literals found — use apply_tenant_scope() instead."
+            echo "       Annotate intentional exceptions with:  # tenant-scope-ok"
+            echo ""
+            echo "$VIOLATIONS"
+            echo ""
             exit 1
         fi
-        echo "check-tenant-scope: PASS — no raw tenant_id filters found in services/"
-        ;;
-    check-tenant-scope)
-        echo "==> Checking services/ for unguarded tenant_id literals..."
-        if grep -rn "\.tenant_id ==" /home/mahfudi/app-buildify/backend/app/services/ /home/mahfudi/app-buildify/backend/app/routers/ 2>/dev/null | grep -v "apply_tenant_scope\|tenant_scope\|== None"; then
-            echo "ERROR: Found raw tenant_id filter(s) — use apply_tenant_scope() instead"
-            exit 1
-        fi
-        echo "check-tenant-scope: PASS — no raw tenant_id filters found in services/"
-        ;;
-    check-tenant-scope)
-        echo "==> Checking services/ for unguarded tenant_id literals..."
-        if grep -rn "\.tenant_id ==" /home/mahfudi/app-buildify/backend/app/services/ /home/mahfudi/app-buildify/backend/app/routers/ 2>/dev/null | grep -v "apply_tenant_scope\|tenant_scope\|== None"; then
-            echo "ERROR: Found raw tenant_id filter(s) — use apply_tenant_scope() instead"
-            exit 1
-        fi
-        echo "check-tenant-scope: PASS — no raw tenant_id filters found in services/"
+        echo "check-tenant-scope: PASS — no unguarded tenant_id literals in services/ or routers/"
         ;;
     help|--help|-h)
         show_help

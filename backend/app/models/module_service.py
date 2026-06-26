@@ -84,6 +84,7 @@ class ModuleServiceAccessLog(Base):
     and performance monitoring.
     """
     __tablename__ = 'module_service_access_log'
+    __tenant_scoped__ = True
 
     # Identity
     id = Column(GUID, primary_key=True, default=generate_uuid)

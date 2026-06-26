@@ -20,6 +20,7 @@ class Branch(Base):
     Branches belong to a company and can have departments.
     """
     __tablename__ = "branches"
+    __tenant_scoped__ = True
 
     # Primary key
     id = Column(GUID, primary_key=True, default=generate_uuid)

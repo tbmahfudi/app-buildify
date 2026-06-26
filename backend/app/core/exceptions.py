@@ -7,6 +7,7 @@ from pydantic import ValidationError
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 from .logging_config import get_logger
+from .tenant.scope import TenantScopeNotSetError  # noqa: F401 — re-exported for handler wiring
 
 logger = get_logger(__name__)
 
@@ -197,11 +198,34 @@ async def generic_exception_handler(request: Request, exc: Exception) -> JSONRes
     )
 
 
+async def tenant_scope_not_set_handler(request: Request, exc: TenantScopeNotSetError) -> JSONResponse:
+    """Handle missing-tenant-scope errors raised by the ORM listener or scope helpers.
+
+    Returns HTTP 500 with a sanitized body (no internal detail leaked to the client).
+    The full exception is logged at ERROR level with traceback so ops can diagnose it.
+    """
+    logger.error(
+        "TenantScopeNotSetError",
+        error=str(exc),
+        path=request.url.path,
+        method=request.method,
+        traceback=traceback.format_exc(),
+    )
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content={
+            "error": "Internal server error",
+            "details": {"message": "An unexpected error occurred. Please try again later."},
+        },
+    )
+
+
 def register_exception_handlers(app):
     """Register all exception handlers with the FastAPI app"""
     from fastapi.exceptions import RequestValidationError
     from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
+    app.add_exception_handler(TenantScopeNotSetError, tenant_scope_not_set_handler)
     app.add_exception_handler(AppException, app_exception_handler)
     app.add_exception_handler(RequestValidationError, validation_exception_handler)
     app.add_exception_handler(IntegrityError, integrity_error_handler)

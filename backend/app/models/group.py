@@ -25,6 +25,7 @@ class Group(Base):
     Groups simplify role assignment - assign roles to groups, add users to groups.
     """
     __tablename__ = "groups"
+    __tenant_scoped__ = True
 
     # Primary key
     id = Column(GUID, primary_key=True, default=generate_uuid)

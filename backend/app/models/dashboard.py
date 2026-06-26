@@ -62,6 +62,7 @@ class RefreshInterval(str, enum.Enum):
 class Dashboard(Base):
     """Dashboard model - container for multiple pages."""
     __tablename__ = "dashboards"
+    __tenant_scoped__ = True
 
     id = Column(GUID, primary_key=True, default=generate_uuid, index=True)
     tenant_id = Column(GUID, nullable=False, index=True)
@@ -108,6 +109,7 @@ class Dashboard(Base):
 class DashboardPage(Base):
     """Dashboard page - a single page within a dashboard."""
     __tablename__ = "dashboard_pages"
+    __tenant_scoped__ = True
 
     id = Column(GUID, primary_key=True, default=generate_uuid, index=True)
     dashboard_id = Column(GUID, ForeignKey("dashboards.id"), nullable=False)
@@ -138,6 +140,7 @@ class DashboardPage(Base):
 class DashboardWidget(Base):
     """Dashboard widget - individual visualization component."""
     __tablename__ = "dashboard_widgets"
+    __tenant_scoped__ = True
 
     id = Column(GUID, primary_key=True, default=generate_uuid, index=True)
     page_id = Column(GUID, ForeignKey("dashboard_pages.id"), nullable=False)
@@ -181,6 +184,7 @@ class DashboardWidget(Base):
 class DashboardShare(Base):
     """Dashboard sharing and collaboration."""
     __tablename__ = "dashboard_shares"
+    __tenant_scoped__ = True
 
     id = Column(GUID, primary_key=True, default=generate_uuid, index=True)
     dashboard_id = Column(GUID, ForeignKey("dashboards.id"), nullable=False)
@@ -210,6 +214,7 @@ class DashboardShare(Base):
 class DashboardSnapshot(Base):
     """Dashboard snapshot - saved state at a point in time."""
     __tablename__ = "dashboard_snapshots"
+    __tenant_scoped__ = True
 
     id = Column(GUID, primary_key=True, default=generate_uuid, index=True)
     dashboard_id = Column(GUID, ForeignKey("dashboards.id"), nullable=False)
@@ -231,6 +236,7 @@ class DashboardSnapshot(Base):
 class WidgetDataCache(Base):
     """Cache for widget data."""
     __tablename__ = "widget_data_cache"
+    __tenant_scoped__ = True
 
     id = Column(GUID, primary_key=True, default=generate_uuid, index=True)
     widget_id = Column(GUID, ForeignKey("dashboard_widgets.id"), nullable=False)

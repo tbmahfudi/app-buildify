@@ -21,6 +21,7 @@ class Company(Base):
     Companies contain branches, departments, and other organizational entities.
     """
     __tablename__ = "companies"
+    __tenant_scoped__ = True
 
     # Primary key
     id = Column(GUID, primary_key=True, default=generate_uuid)

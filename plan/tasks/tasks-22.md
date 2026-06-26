@@ -61,9 +61,9 @@ Status legend: `OPEN` = not started | `IN-PROGRESS` = picked up | `BLOCKED` = wa
 
 | id | title | owner | depends-on | hrs | AC link | status |
 |----|-------|-------|-----------:|----:|---------|--------|
-| T-22.001 | Create `backend/app/core/scope.py` — implement `apply_tenant_scope(query, model, user)`: adds `WHERE tenant_id = user.tenant_id`; no-op on non-tenant-scoped models; superuser short-circuit when `user.is_superuser` | C2 | — | 3 | [epic-22 §22.2.1](../epics/epic-22-tenant-isolation-hardening.md) | OPEN |
-| T-22.002 | Add `apply_tenant_scope_by_id(query, model, tenant_id)` variant and `TenantScopeMissingError` exception class to `scope.py`; wire `TenantScopeMissingError` into `backend/app/core/exceptions.py` generic_exception_handler returning HTTP 500 sanitized body | C2 | T-22.001 | 2 | [epic-22 §22.2.1](../epics/epic-22-tenant-isolation-hardening.md) | OPEN |
-| T-22.003 | Add `with_admin_cross_tenant_scope(user, admin_reason, audit_log_fn)` context manager to `scope.py`: sets session `_tenant_scope='__superuser__'`; writes `tenant.cross_scope.enter` and `tenant.cross_scope.exit` audit-log entries including calling stack frame; raises `PermissionError` if not superuser; raises `ValueError` if `admin_reason` missing | C2 | T-22.002 | 3 | [epic-22 §22.2.3](../epics/epic-22-tenant-isolation-hardening.md) | OPEN |
+| T-22.001 | Create `backend/app/core/scope.py` — implement `apply_tenant_scope(query, model, user)`: adds `WHERE tenant_id = user.tenant_id`; no-op on non-tenant-scoped models; superuser short-circuit when `user.is_superuser` | C2 | — | 3 | [epic-22 §22.2.1](../epics/epic-22-tenant-isolation-hardening.md) | DONE |
+| T-22.002 | Add `apply_tenant_scope_by_id(query, model, tenant_id)` variant and `TenantScopeMissingError` exception class to `scope.py`; wire `TenantScopeMissingError` into `backend/app/core/exceptions.py` generic_exception_handler returning HTTP 500 sanitized body | C2 | T-22.001 | 2 | [epic-22 §22.2.1](../epics/epic-22-tenant-isolation-hardening.md) | DONE |
+| T-22.003 | Add `with_admin_cross_tenant_scope(user, admin_reason, audit_log_fn)` context manager to `scope.py`: sets session `_tenant_scope='__superuser__'`; writes `tenant.cross_scope.enter` and `tenant.cross_scope.exit` audit-log entries including calling stack frame; raises `PermissionError` if not superuser; raises `ValueError` if `admin_reason` missing | C2 | T-22.002 | 3 | [epic-22 §22.2.3](../epics/epic-22-tenant-isolation-hardening.md) | DONE |
 
 **Subtotal: 8 hrs**
 
@@ -77,7 +77,7 @@ Status legend: `OPEN` = not started | `IN-PROGRESS` = picked up | `BLOCKED` = wa
 |----|-------|-------|-----------:|----:|---------|--------|
 | T-22.004 | Create `backend/app/core/tenant_listener.py` — implement `TenantScopeListener` class with `_on_orm_execute()` hook: intercepts SELECT, UPDATE, DELETE on `__tenant_scoped__ = True` models; reads `session._tenant_scope`; raises `TenantScopeMissingError` if not set; skips when `_tenant_scope == '__superuser__'` | C2 | T-22.003 | 4 | [epic-22 §22.3.1](../epics/epic-22-tenant-isolation-hardening.md) | OPEN |
 | T-22.005 | Add `set_tenant_scope(session, tenant_id)` and `clear_tenant_scope(session)` to `tenant_listener.py`; implement `TenantScopeListener.install(engine)` class method attaching to the SQLAlchemy engine; call `TenantScopeListener.install(engine)` in FastAPI lifespan startup in `backend/app/main.py` — this task depends on T-22.009 being merged first | C2 | T-22.004, T-22.009 | 2 | [epic-22 §22.3.1](../epics/epic-22-tenant-isolation-hardening.md) | OPEN |
-| T-22.006 | Add `__tenant_scoped__ = True` class attribute to all 18 models listed in schema-22 §5.1: User, Company, Branch, Department, Group, ReportDefinition, ReportExecution, ReportSchedule, ReportCache, Dashboard, DashboardPage, DashboardWidget, DashboardShare, DashboardSnapshot, WidgetDataCache, BuilderPage, ModuleServiceAccessLog, ModuleActivation; confirm excluded models in schema-22 §5.2 are NOT marked | C2 | T-22.004 | 3 | [schema-22 §5.1](../architecture/schema-22.md) | OPEN |
+| T-22.006 | Add `__tenant_scoped__ = True` class attribute to all 18 models listed in schema-22 §5.1: User, Company, Branch, Department, Group, ReportDefinition, ReportExecution, ReportSchedule, ReportCache, Dashboard, DashboardPage, DashboardWidget, DashboardShare, DashboardSnapshot, WidgetDataCache, BuilderPage, ModuleServiceAccessLog, ModuleActivation; confirm excluded models in schema-22 §5.2 are NOT marked | C2 | T-22.004 | 3 | [schema-22 §5.1](../architecture/schema-22.md) | DONE |
 
 **Subtotal: 9 hrs**
 
@@ -139,7 +139,7 @@ Status legend: `OPEN` = not started | `IN-PROGRESS` = picked up | `BLOCKED` = wa
 
 | id | title | owner | depends-on | hrs | AC link | status |
 |----|-------|-------|-----------:|----:|---------|--------|
-| T-22.021 | Add `manage.sh check-tenant-scope` subcommand: greps `backend/app/services/` and `backend/app/routers/` for raw `.tenant_id ==` patterns; exits non-zero if any hits found outside lines annotated `# tenant-scope-ok`; outputs file:line for each violation | E1 | T-22.003 | 3 | [epic-22 §22.2.2](../epics/epic-22-tenant-isolation-hardening.md) | OPEN |
+| T-22.021 | Add `manage.sh check-tenant-scope` subcommand: greps `backend/app/services/` and `backend/app/routers/` for raw `.tenant_id ==` patterns; exits non-zero if any hits found outside lines annotated `# tenant-scope-ok`; outputs file:line for each violation | E1 | T-22.003 | 3 | [epic-22 §22.2.2](../epics/epic-22-tenant-isolation-hardening.md) | DONE |
 | T-22.022 | Wire `check-tenant-scope` into CI pipeline: run as pre-merge gate step after lint; fail build on non-zero exit; document the `# tenant-scope-ok` annotation convention in `docs/backend/TENANT_SCOPE_MIGRATION.md` | E1 | T-22.021 | 2 | [epic-22 §22.2.2](../epics/epic-22-tenant-isolation-hardening.md) | OPEN |
 
 **Subtotal: 5 hrs**

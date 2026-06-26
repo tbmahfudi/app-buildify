@@ -22,6 +22,7 @@ class Department(Base):
     - Branch-specific (branch_id is set)
     """
     __tablename__ = "departments"
+    __tenant_scoped__ = True
 
     # Primary key
     id = Column(GUID, primary_key=True, default=generate_uuid)

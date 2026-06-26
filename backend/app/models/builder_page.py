@@ -13,6 +13,7 @@ class BuilderPage(Base):
     """Model for builder pages."""
 
     __tablename__ = 'builder_pages'
+    __tenant_scoped__ = True
 
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     tenant_id = Column(String(36), nullable=False, index=True)

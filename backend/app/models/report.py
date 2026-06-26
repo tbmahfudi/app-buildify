@@ -57,6 +57,7 @@ class AggregationType(str, enum.Enum):
 class ReportDefinition(Base):
     """Report definition model."""
     __tablename__ = "report_definitions"
+    __tenant_scoped__ = True
 
     id = Column(GUID, primary_key=True, index=True)
     tenant_id = Column(GUID, nullable=False, index=True)
@@ -109,6 +110,7 @@ class ReportDefinition(Base):
 class ReportExecution(Base):
     """Report execution history."""
     __tablename__ = "report_executions"
+    __tenant_scoped__ = True
 
     id = Column(GUID, primary_key=True, index=True)
     tenant_id = Column(GUID, nullable=False, index=True)
@@ -137,6 +139,7 @@ class ReportExecution(Base):
 class ReportSchedule(Base):
     """Report scheduling configuration."""
     __tablename__ = "report_schedules"
+    __tenant_scoped__ = True
 
     id = Column(GUID, primary_key=True, index=True)
     tenant_id = Column(GUID, nullable=False, index=True)
@@ -198,6 +201,7 @@ class ReportTemplate(Base):
 class ReportCache(Base):
     """Cache for report results."""
     __tablename__ = "report_cache"
+    __tenant_scoped__ = True
 
     id = Column(GUID, primary_key=True, index=True)
     tenant_id = Column(GUID, nullable=False, index=True)
