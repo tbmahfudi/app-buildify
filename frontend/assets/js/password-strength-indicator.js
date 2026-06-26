@@ -143,3 +143,84 @@ export default class PasswordStrengthIndicator {
     this._container?.remove();
   }
 }
+
+
+// =============================================================================
+// Standalone strength classification (T-24.004 / Story 24.2.1)
+// Exported alongside the class so password-reset-page.js can use it without
+// needing a DOM input element or a live API call.
+// =============================================================================
+
+/**
+ * Classify a password string into one of four strength levels.
+ *
+ * Weak   : < 8 chars
+ * Fair   : >= 8 chars
+ * Good   : >= 8 chars + mixed case + digit
+ * Strong : >= 12 chars + mixed case + digit + special character
+ *
+ * @param {string} password
+ * @returns {{ level: string, score: number }}
+ */
+export function getStrength(password) {
+  const len = password.length;
+  const hasUpper   = /[A-Z]/.test(password);
+  const hasLower   = /[a-z]/.test(password);
+  const hasDigit   = /[0-9]/.test(password);
+  const hasSpecial = /[^A-Za-z0-9]/.test(password);
+
+  if (len < 8)                                                      return { level: 'weak',   score: 1 };
+  if (len >= 12 && hasUpper && hasLower && hasDigit && hasSpecial)  return { level: 'strong', score: 4 };
+  if (len >= 8  && hasUpper && hasLower && hasDigit)                return { level: 'good',   score: 3 };
+  return                                                                   { level: 'fair',   score: 2 };
+}
+
+// Label and colour config for the 4-segment progress bar
+const STRENGTH_CONFIG = {
+  weak:   { label: 'Weak',   colour: 'bg-red-500',    segments: 1 },
+  fair:   { label: 'Fair',   colour: 'bg-orange-400', segments: 2 },
+  good:   { label: 'Good',   colour: 'bg-yellow-400', segments: 3 },
+  strong: { label: 'Strong', colour: 'bg-green-500',  segments: 4 },
+};
+
+/**
+ * Render (or update) a 4-segment strength bar inside a container element.
+ *
+ * @param {HTMLElement} containerEl  - will be populated / updated in-place
+ * @param {string}      password     - current password value
+ */
+export function renderStrengthBar(containerEl, password) {
+  if (!containerEl) return;
+
+  const { level, score } = (password && password.length)
+    ? getStrength(password)
+    : { level: null, score: 0 };
+  const cfg = level ? STRENGTH_CONFIG[level] : null;
+
+  let bar = containerEl.querySelector('.psi-standalone-bar');
+  if (!bar) {
+    containerEl.innerHTML =
+      '<div class="psi-standalone-bar mt-2">' +
+      '<div class="flex gap-1 mb-1">' +
+      '<div class="psi-seg flex-1 h-1.5 rounded-full bg-gray-200 transition-colors duration-300"></div>' +
+      '<div class="psi-seg flex-1 h-1.5 rounded-full bg-gray-200 transition-colors duration-300"></div>' +
+      '<div class="psi-seg flex-1 h-1.5 rounded-full bg-gray-200 transition-colors duration-300"></div>' +
+      '<div class="psi-seg flex-1 h-1.5 rounded-full bg-gray-200 transition-colors duration-300"></div>' +
+      '</div>' +
+      '<p class="psi-strength-label text-xs text-gray-400"></p>' +
+      '</div>';
+    bar = containerEl.querySelector('.psi-standalone-bar');
+  }
+
+  const segs = bar.querySelectorAll('.psi-seg');
+  segs.forEach((seg, i) => {
+    seg.className = 'psi-seg flex-1 h-1.5 rounded-full transition-colors duration-300 '
+      + (cfg && i < score ? cfg.colour : 'bg-gray-200');
+  });
+
+  const labelEl = bar.querySelector('.psi-strength-label');
+  if (labelEl) {
+    labelEl.textContent = cfg ? cfg.label : '';
+    labelEl.className = 'psi-strength-label text-xs ' + (cfg ? 'text-gray-600 font-medium' : 'text-gray-400');
+  }
+}

@@ -1842,6 +1842,23 @@ async function loadRoute(route) {
       return;
     }
 
+    // ── Password Reset page (Story 24.1.1 / T-24.003) ─────────────────────────
+    if (route === 'reset-password' || route === 'reset-password-confirm') {
+      console.log('Loading password reset page');
+      content.innerHTML = '';
+      try {
+        const { render } = await import('./password-reset-page.js');
+        await render(content);
+      } catch (error) {
+        console.warn('password-reset-page loading failed:', error);
+        content.innerHTML = '<div class="p-6 text-red-500">Failed to load password reset page.</div>';
+      }
+      document.dispatchEvent(new CustomEvent('route:loaded', {
+        detail: { route: 'reset-password', isModule: false }
+      }));
+      return;
+    }
+
     // ── Reports list ──────────────────────────────────────────────────────────
     if (route === 'reports' || route === 'reports-list') {
       console.log('Loading reports list page');
