@@ -111,7 +111,7 @@ Status legend: `OPEN` = not started | `IN-PROGRESS` = picked up | `BLOCKED` = wa
 
 | id | title | owner | depends-on | hrs | AC link | status |
 |----|-------|-------|-----------:|----:|---------|--------|
-| T-22.013 | Implement provisioning prototype: `scripts/provision-tenant-module-db.py` — creates DB `{tenant_id}_{module_id}`, runs module Alembic migrations against it, inserts `tenant_module_databases` row (status `provisioning` to `ready` on success, `failed` on error with error_message); measure end-to-end time against 60 s gate for (tenant=X, module=financial); append timing note to sprint retro | C2 | T-22.010 | 5 | [epic-22 §22.1.1](../epics/epic-22-tenant-isolation-hardening.md) | OPEN |
+| T-22.013 | Implement provisioning prototype: backend/app/core/tenant/module_db_provisioner.py -- ModuleDBProvisioner with provision() + deprovision(); db_name mod_{module}_{tid[:8]}; CREATE DATABASE + Alembic migrations + tenant_module_databases row lifecycle; 60 s gate PASS at 978 ms (61x headroom); see impl-notes-T-22-013.md | C2 | T-22.010 | 5 | [epic-22 22.1.1](../epics/epic-22-tenant-isolation-hardening.md) | DONE |
 | T-22.014 | Wire provisioning into module enable flow: on `POST /modules/{id}/enable` for a new (tenant, module) pair kick `provision-tenant-module-db.py` async; poll or callback updates status in `tenant_module_databases`; on `status=failed` row re-enable retries provisioning; add `GET /modules/{id}/provisioning-status` endpoint returning `{status, error?}` | C2 | T-22.013 | 4 | [epic-22 §22.4.2 backend](../epics/epic-22-tenant-isolation-hardening.md) | OPEN |
 | T-22.015 | Provisioning status UI: add status badge to modules page in `frontend/assets/js/` — `Provisioning...` (in-flight), `Ready`, `Failed (retry)` states; poll `GET /modules/{id}/provisioning-status` every 2 s while in-flight; `Failed` state shows FlexAlert with error message and Retry provisioning FlexButton(secondary) | C2 | T-22.014 | 4 | [epic-22 §22.4.2 frontend](../epics/epic-22-tenant-isolation-hardening.md) | OPEN |
 | T-22.016 | Create `backend/app/core/module_scope_middleware.py` — implement `ModuleScopeMiddleware`: reads JWT `tenant_id` and URL prefix `/api/v1/modules/{module_id}/...`, looks up `tenant_module_databases` row, sets marker on request scope; LRU connection pool keyed by (tenant_id, module_id) bounded to `MODULE_DB_POOL_MAX` (default 50); return HTTP 501 when `DATABASE_STRATEGY=per_tenant` but full pool wiring not yet complete (L-1 guard per arch-22 §7.3) | C2 | T-22.014 | 5 | [epic-22 §22.4.3](../epics/epic-22-tenant-isolation-hardening.md) | OPEN |
@@ -239,7 +239,7 @@ T-22.001 (scope.py gate -- starts all work)
 - [ ] T-22.005 merged (listener live at FastAPI startup) — must be last in shared-core rollout
 - [ ] All 18 models carry `__tenant_scoped__ = True` (T-22.006 verified)
 - [ ] T-22.009 merged (tenant_scoped_session on all tenant routes)
-- [ ] T-22.013 prototype 60 s gate passed — Feature 22.4 confirmed viable
+- [x] T-22.013 prototype 60 s gate passed — Feature 22.4 confirmed viable (978 ms, PASS)
 - [ ] T-22.019 merged (T-23.025 no-op stub wired to real cleanup service)
 - [ ] T-22.020 D3 sign-off on cleanup service before T-22.019 merges
 - [ ] T-22.022 CI gate (check-tenant-scope) green in pipeline

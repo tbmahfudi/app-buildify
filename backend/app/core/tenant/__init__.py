@@ -47,3 +47,8 @@ __all__ = [
     "with_tenant_scope",
     "tenant_scoped_session",
 ]
+
+# Per-tenant module DB provisioner (T-22.013)
+from .module_db_provisioner import ModuleDBProvisioner
+
+__all__ += [ModuleDBProvisioner]
