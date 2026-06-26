@@ -1589,6 +1589,35 @@ function updateActiveMenuItem() {
   });
 }
 
+
+// ── T-24.030: Dev-tool routes removed from production nav ────────────────────
+// These five routes are no longer in any menu or nav config arrays.
+// Direct URL navigation shows an informational banner.
+const _DEV_ROUTES = new Set([
+  'flex-layout-sandbox',
+  'builder-showcase',
+  'components-showcase',
+  'datatable',
+  'debug-financial-module',
+]);
+
+function _showDevBanner(container, route) {
+  container.innerHTML = `
+    <div class="max-w-lg mx-auto mt-24 text-center px-6">
+      <i class="ph ph-wrench text-4xl text-blue-400 mb-4 block"></i>
+      <h2 class="text-xl font-semibold text-gray-800 mb-2">Developer Tool</h2>
+      <p class="text-sm text-gray-500">
+        <code class="font-mono text-blue-700 bg-blue-50 px-1 py-0.5 rounded">#${route}</code>
+        is a developer-only page and has been removed from the production navigation.
+      </p>
+      <a href="#dashboard"
+         class="inline-flex items-center gap-2 mt-6 px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition">
+        <i class="ph ph-house"></i> Go to Dashboard
+      </a>
+    </div>`;
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 async function loadRoute(route) {
   // Normalize route - remove leading slashes
   route = route.replace(/^\/+/, '');
@@ -1663,50 +1692,11 @@ async function loadRoute(route) {
       return;
     }
 
-    if (route === 'flex-layout-sandbox') {
-      // Dev-only sandbox for the 9 layout primitives (story 15.1.1 / T-21.1.7).
-      // Not in the menu — reachable via direct hash navigation
-      // (#/flex-layout-sandbox) so the page is dev-discoverable but doesn't
-      // surface in production navigation.
-      console.log('Loading flex layout sandbox');
-      const bodyContent = await window.resourceLoader.loadTemplate('flex-layout-sandbox');
-      content.innerHTML = bodyContent;
-      try {
-        await window.resourceLoader.loadScript('flex-layout-sandbox.js');
-      } catch (error) {
-        console.warn('Flex layout sandbox script loading failed:', error);
-      }
+    // ── T-24.030: Dev-tool banner guard ─────────────────────────────────────────
+    if (_DEV_ROUTES.has(route)) {
+      _showDevBanner(content, route);
       document.dispatchEvent(new CustomEvent('route:loaded', {
-        detail: { route: 'flex-layout-sandbox', isModule: false }
-      }));
-      return;
-    }
-
-    if (route === 'builder-showcase') {
-      // Dev-only route guard (Story 24.7.1)
-      const isDevEnv = (
-        window.location.hostname === 'localhost' ||
-        window.location.hostname === '127.0.0.1' ||
-        window.location.hostname.endsWith('.local') ||
-        window.__APP_ENV__ === 'development'
-      );
-      if (!isDevEnv) {
-        window.location.hash = 'dashboard';
-        return;
-      }
-      console.log('Loading builder showcase page (dev only)');
-      const bodyContent = await window.resourceLoader.loadTemplate('builder-showcase');
-      content.innerHTML = bodyContent;
-
-      // Load the JavaScript file
-      try {
-        await window.resourceLoader.loadScript('builder-showcase.js');
-      } catch (error) {
-        console.warn('Builder showcase script loading failed:', error);
-      }
-
-      document.dispatchEvent(new CustomEvent('route:loaded', {
-        detail: { route: 'builder-showcase', isModule: false }
+        detail: { route, isModule: false }
       }));
       return;
     }
@@ -1842,9 +1832,28 @@ async function loadRoute(route) {
       return;
     }
 
-    // ── Password Reset page (Story 24.1.1 / T-24.003) ─────────────────────────
-    if (route === 'reset-password' || route === 'reset-password-confirm') {
-      console.log('Loading password reset page');
+    // ── Password Reset -- request view (Story 24.1.1 / T-24.005 T-24.006) ──────
+    // #reset-password → request-reset form (email entry)
+    if (route === 'reset-password') {
+      console.log('Loading password-reset request view');
+      content.innerHTML = '';
+      try {
+        const { renderRequestReset } = await import('./login-page.js');
+        await renderRequestReset(content);
+      } catch (error) {
+        console.warn('login-page renderRequestReset failed:', error);
+        content.innerHTML = '<div class="p-6 text-red-500">Failed to load password reset page.</div>';
+      }
+      document.dispatchEvent(new CustomEvent('route:loaded', {
+        detail: { route: 'reset-password', isModule: false }
+      }));
+      return;
+    }
+
+    // ── Password Reset -- confirm view (Story 24.1.1 / T-24.005 T-24.007) ─────
+    // #reset-password-confirm?token=xxx → set-new-password form
+    if (route === 'reset-password-confirm' || route.startsWith('reset-password-confirm?')) {
+      console.log('Loading password-reset confirm view');
       content.innerHTML = '';
       try {
         const { render } = await import('./password-reset-page.js');
@@ -1854,7 +1863,7 @@ async function loadRoute(route) {
         content.innerHTML = '<div class="p-6 text-red-500">Failed to load password reset page.</div>';
       }
       document.dispatchEvent(new CustomEvent('route:loaded', {
-        detail: { route: 'reset-password', isModule: false }
+        detail: { route: 'reset-password-confirm', isModule: false }
       }));
       return;
     }
