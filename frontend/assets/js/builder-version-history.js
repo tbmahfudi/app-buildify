@@ -35,11 +35,13 @@ function buildDrawer() {
       <div id="vh-loading" class="flex items-center justify-center h-32 text-gray-400 text-sm gap-2">
         <i class="ph ph-spinner animate-spin"></i> Loading versions…
       </div>
-      <div id="vh-empty" class="hidden flex items-center justify-center h-32 text-sm text-gray-400 px-4 text-center">
-        No versions saved yet. Save the page to create the first version.
+      <div id="vh-empty" class="hidden text-center py-10">
+        <i class="ph ph-files text-3xl text-gray-300 block mb-2"></i>
+        <p class="text-sm text-gray-400">No versions saved yet</p>
+        <p class="text-xs text-gray-300 mt-1">Save the page to create the first version.</p>
       </div>
       <div id="vh-error" class="hidden px-4 py-3 text-sm text-red-600 bg-red-50 m-4 rounded-lg"></div>
-      <ul id="vh-items" class="divide-y divide-gray-100"></ul>
+      <ul id="vh-items" class="divide-y divide-gray-100" role="list"></ul>
     </div>
 
     <div class="px-5 py-3 border-t border-gray-200 flex-shrink-0">
@@ -51,7 +53,12 @@ function buildDrawer() {
 
 function versionItem(v, isLive, onPreview, onRestore) {
   const li = document.createElement('li');
-  li.className = 'px-4 py-3 hover:bg-gray-50 transition';
+  const vNum = v.version_number ?? v.version ?? "?"
+  const vAuthor = v.created_by_email ?? v.author ?? "unknown"
+  const vTime = relTime(v.created_at)
+  li.className = "px-4 py-3 hover:bg-gray-50 transition"
+  li.setAttribute("role", "listitem")
+  li.setAttribute("aria-label", `Version ${vNum}, saved ${vTime} by ${vAuthor}`)
   li.innerHTML = `
     <div class="flex items-center gap-2 mb-1">
       ${isLive ? '<span class="px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs font-medium">Live</span>' : ''}
@@ -79,13 +86,18 @@ function versionItem(v, isLive, onPreview, onRestore) {
     </div>`;
 
   li.querySelector('.preview-btn').onclick = () => onPreview(v);
-  li.querySelector('.restore-btn').onclick = () => {
+  const restoreBtn = li.querySelector('.restore-btn');
+  restoreBtn.onclick = () => {
+    document.querySelectorAll('#vh-items .restore-btn').forEach(b => { if (b !== restoreBtn) { b.disabled = true; b.classList.add('opacity-50'); } });
     li.querySelector('.action-row').classList.add('hidden');
     li.querySelector('.confirm-row').classList.remove('hidden');
+    setTimeout(() => li.querySelector('.confirm-yes')?.focus(), 30);
   };
   li.querySelector('.confirm-no').onclick = () => {
     li.querySelector('.confirm-row').classList.add('hidden');
     li.querySelector('.action-row').classList.remove('hidden');
+    document.querySelectorAll('#vh-items .restore-btn').forEach(b => { b.disabled = false; b.classList.remove('opacity-50'); });
+    restoreBtn.focus();
   };
   li.querySelector('.confirm-yes').onclick = () => onRestore(v, li);
   return li;
@@ -114,8 +126,18 @@ export function initBuilderVersionHistory() {
     return drawer;
   }
 
+  let _escDrawer = null; let _lastFocus = null;
   function close() {
     document.getElementById('version-history-drawer')?.classList.add('translate-x-full');
+    document.removeEventListener('keydown', _escDrawer);
+    _lastFocus?.focus();
+  }
+  function _openEsc(btn) {
+    _lastFocus = btn;
+    document.removeEventListener('keydown', _escDrawer);
+    _escDrawer = (e) => { if (e.key === 'Escape') close(); };
+    document.addEventListener('keydown', _escDrawer);
+    setTimeout(() => document.getElementById('vh-close')?.focus(), 80);
   }
 
   async function open(pageId, pageName) {
@@ -126,6 +148,7 @@ export function initBuilderVersionHistory() {
     d.querySelector('#vh-loading').classList.remove('hidden');
     d.querySelector('#vh-items').innerHTML = '';
     d.classList.remove('translate-x-full');
+    _openEsc(null);
 
     try {
       const res = await apiFetch(`/builder-pages/${pageId}/versions`);
@@ -149,12 +172,13 @@ export function initBuilderVersionHistory() {
 
   async function previewVersion(v) {
     const modal = document.createElement('div');
+    modal.setAttribute('role','dialog'); modal.setAttribute('aria-modal','true'); modal.setAttribute('aria-labelledby','vh-preview-title');
     modal.className = 'fixed inset-0 z-50 flex items-center justify-center bg-black/60';
     modal.innerHTML = `
       <div class="bg-white rounded-2xl shadow-2xl w-4/5 max-w-5xl flex flex-col max-h-[90vh]">
         <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
           <div>
-            <h3 class="font-semibold text-gray-900">Version #${esc(v.version_number ?? v.version)} — preview</h3>
+            <h2 id="vh-preview-title" class="font-semibold text-gray-900">Version #${esc(v.version_number ?? v.version)} — preview</h2>
             <p class="text-xs text-gray-500">${relTime(v.created_at)}</p>
           </div>
           <button class="close-modal text-gray-400 hover:text-gray-600"><i class="ph ph-x text-xl"></i></button>
@@ -163,7 +187,9 @@ export function initBuilderVersionHistory() {
           <i class="ph ph-info"></i> This is a read-only preview. No changes have been made.
         </div>
         <div class="flex-1 overflow-auto p-6 bg-gray-50 rounded-b-2xl">
-          <pre class="text-xs bg-white p-4 rounded-lg border border-gray-200 overflow-auto max-h-[60vh]">${esc(JSON.stringify(v.page_data ?? v.content ?? v, null, 2))}</pre>
+          <div style="pointer-events:none" class="bg-white rounded-lg border border-gray-200 overflow-auto max-h-[55vh] p-4">
+            <pre class="text-xs overflow-auto">${esc(JSON.stringify(v.page_data ?? v.content ?? v, null, 2))}</pre>
+          </div>
         </div>
         <div class="flex justify-end gap-3 px-6 py-4 border-t border-gray-200">
           <button class="close-modal inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition text-sm font-medium">Close</button>
@@ -173,10 +199,15 @@ export function initBuilderVersionHistory() {
         </div>
       </div>`;
     document.body.appendChild(modal);
-    modal.querySelectorAll('.close-modal').forEach(b => b.onclick = () => modal.remove());
+    let _escM = null;
+    const closeM = () => { modal.remove(); document.removeEventListener('keydown', _escM); };
+    _escM = (e) => { if (e.key === 'Escape') closeM(); };
+    document.addEventListener('keydown', _escM);
+    setTimeout(() => modal.querySelector('.close-modal')?.focus(), 50);
+    modal.querySelectorAll('.close-modal').forEach(b => b.onclick = closeM);
     modal.querySelector('.restore-from-modal').onclick = async () => {
       if (!confirm('Unsaved changes will be lost. Restore this version?')) return;
-      modal.remove();
+      closeM();
       await doRestore(v.id ?? v.version_id);
     };
   }
@@ -191,6 +222,7 @@ export function initBuilderVersionHistory() {
     try {
       const res = await apiFetch(`/builder-pages/${currentPageId}/restore/${versionId}`, { method: 'POST' });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      document.querySelectorAll('#vh-items .restore-btn').forEach(b => { b.disabled = false; b.classList.remove('opacity-50'); });
       close();
       showNotification(`Restored to version #${versionId}.`);
       // Signal the builder to reload its canvas
