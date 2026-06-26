@@ -28,7 +28,7 @@ function relTime(iso) {
 function statusBadge(s) {
   const map = { success:'bg-green-100 text-green-700', failed:'bg-red-100 text-red-700', running:'bg-amber-100 text-amber-700' };
   const cls = map[s?.toLowerCase()] ?? 'bg-gray-100 text-gray-600';
-  return `<span class="px-2 py-0.5 rounded-full text-xs font-medium ${cls}">${escHtml(s ?? 'unknown')}</span>`;
+  return `<span class="px-2 py-0.5 rounded-full text-xs font-medium ${cls}" aria-label="Status: ${escHtml(s ?? 'unknown')}">${escHtml(s ?? 'unknown')}</span>`;
 }
 
 function buildDrawer() {
@@ -61,7 +61,10 @@ function buildDrawer() {
           </thead>
           <tbody id="exec-rows" class="divide-y divide-gray-100"></tbody>
         </table>
-        <div id="exec-empty" class="hidden flex items-center justify-center h-32 text-gray-400 text-sm">No runs recorded yet.</div>
+        <div id="exec-empty" class="hidden text-center py-8">
+          <i class="ph ph-clock text-3xl text-gray-300 block mb-2"></i>
+          <p class="text-sm text-gray-400">No runs yet</p>
+        </div>
         <div id="exec-error" class="hidden px-4 py-3 text-sm text-red-600 bg-red-50 border-b border-red-200"></div>
       </div>
 
@@ -69,7 +72,12 @@ function buildDrawer() {
       <div class="flex-1 bg-gray-950 flex flex-col overflow-hidden">
         <div id="log-prompt" class="flex items-center justify-center flex-1 text-gray-500 text-xs">Select a run above to view its log output.</div>
         <div id="log-loading" class="hidden flex items-center justify-center flex-1 text-gray-400 text-xs gap-2"><i class="ph ph-spinner animate-spin"></i> Loading log…</div>
-        <pre id="log-output" class="hidden text-xs font-mono p-4 overflow-auto flex-1 leading-relaxed"></pre>
+        <pre id="log-output"
+             class="hidden text-xs font-mono p-4 overflow-auto leading-relaxed"
+             style="flex: 1 1 0; min-height: 120px; resize: vertical;"
+             role="log"
+             aria-label="Job execution log"
+             aria-live="polite"></pre>
         <div id="log-empty" class="hidden flex items-center justify-center flex-1 text-gray-500 text-xs">No log output captured for this run.</div>
         <div id="log-error" class="hidden px-4 py-2 text-xs text-red-400 bg-red-900/30"></div>
       </div>
@@ -98,6 +106,21 @@ export function initSchedulerLogViewer() {
   function close() {
     const d = document.getElementById('job-history-drawer');
     if (d) { d.classList.add('translate-x-full'); currentJobId = null; }
+    document.removeEventListener('keydown', _escHandler);
+    // Return focus to the triggering History button
+    _lastFocusTrigger?.focus();
+  }
+
+  let _escHandler = null;
+  let _lastFocusTrigger = null;
+
+  function _setupEscapeAndFocus(triggerBtn) {
+    _lastFocusTrigger = triggerBtn;
+    document.removeEventListener('keydown', _escHandler);
+    _escHandler = (e) => { if (e.key === 'Escape') close(); };
+    document.addEventListener('keydown', _escHandler);
+    // Focus close button when drawer opens
+    setTimeout(() => document.getElementById('drawer-close')?.focus(), 80);
   }
 
   async function openForJob(jobId, jobName) {
@@ -114,6 +137,7 @@ export function initSchedulerLogViewer() {
     });
     d.querySelector('#log-prompt').classList.remove('hidden');
     d.classList.remove('translate-x-full');
+    _setupEscapeAndFocus(null);
 
     try {
       const res = await apiFetch(`/scheduler/jobs/${jobId}/executions`);
@@ -134,7 +158,13 @@ export function initSchedulerLogViewer() {
       d.querySelector('#exec-table').classList.remove('hidden');
 
       tbody.querySelectorAll('.exec-row').forEach(row => {
+        row.setAttribute('tabindex', '0');
         row.onclick = () => loadLog(row.dataset.execId, tbody);
+        row.onkeydown = (e) => {
+          if (e.key === 'Enter') loadLog(row.dataset.execId, tbody);
+          if (e.key === 'ArrowDown') { e.preventDefault(); row.nextElementSibling?.focus(); }
+          if (e.key === 'ArrowUp')   { e.preventDefault(); row.previousElementSibling?.focus(); }
+        };
       });
     } catch (e) {
       d.querySelector('#exec-loading').classList.add('hidden');
@@ -179,7 +209,7 @@ export function initSchedulerLogViewer() {
       const btn = document.createElement('button');
       btn.className = 'btn-view-history inline-flex items-center gap-1 px-3 py-1.5 bg-white border border-gray-300 text-gray-600 rounded-lg hover:bg-gray-50 transition text-xs font-medium ml-2';
       btn.innerHTML = '<i class="ph ph-clock-clockwise"></i> History';
-      btn.onclick = (e) => { e.stopPropagation(); openForJob(jobId, jobName); };
+      btn.onclick = (e) => { e.stopPropagation(); _lastFocusTrigger = btn; openForJob(jobId, jobName); };
       const actionsCell = row.querySelector('td:last-child') ?? row;
       actionsCell.appendChild(btn);
     });
