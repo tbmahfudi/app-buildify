@@ -31,7 +31,7 @@ function buildHistoryTab() {
   panel.id = 'exec-history-panel';
   panel.className = 'hidden space-y-4';
   panel.innerHTML = `
-    <!-- Filter bar -->
+    <!-- Filter bar (T-24.019: date filters added; client-side fallback for date range per T-24.017) -->
     <div class="bg-white rounded-lg shadow-sm p-4 flex flex-wrap gap-3 items-end">
       <div>
         <label class="block text-xs text-gray-500 mb-1">Rule</label>
@@ -48,7 +48,20 @@ function buildHistoryTab() {
           <option value="partial">Partial</option>
         </select>
       </div>
-      <button id="eh-refresh" class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium transition">
+      <div>
+        <label for="eh-date-from" class="block text-xs text-gray-500 mb-1">From</label>
+        <input type="date" id="eh-date-from"
+               class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400
+                      focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none" />
+      </div>
+      <div>
+        <label for="eh-date-to" class="block text-xs text-gray-500 mb-1">To</label>
+        <input type="date" id="eh-date-to"
+               class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400
+                      focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none" />
+      </div>
+      <button id="eh-refresh" class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium transition
+                                     focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none">
         <i class="ph ph-arrow-clockwise"></i> Refresh
       </button>
     </div>
@@ -70,60 +83,143 @@ function buildHistoryTab() {
         </thead>
         <tbody id="eh-rows" class="divide-y divide-gray-100"></tbody>
       </table>
-      <div id="eh-empty" class="hidden flex items-center justify-center h-32 text-gray-400 text-sm">
-        No executions recorded yet. Rules will appear here after they fire.
+      <div id="eh-empty" class="hidden text-center py-12">
+        <i class="ph ph-clock text-3xl text-gray-300 block mb-2"></i>
+        <p class="text-sm text-gray-500">No executions yet</p>
+        <p class="text-xs text-gray-400 mt-1">Executions will appear here after a rule fires.</p>
+      </div>
+      <!-- Pagination (page size 25) -->
+      <div id="eh-pagination" class="hidden flex items-center justify-between px-4 py-3 border-t border-gray-200 text-sm text-gray-600">
+        <span id="eh-page-info"></span>
+        <div class="flex gap-2">
+          <button id="eh-prev" disabled
+                  class="px-3 py-1 rounded border border-gray-300 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed
+                         focus-visible:ring-2 focus-visible:ring-blue-500">
+            <i class="ph ph-caret-left"></i>
+          </button>
+          <button id="eh-next" disabled
+                  class="px-3 py-1 rounded border border-gray-300 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed
+                         focus-visible:ring-2 focus-visible:ring-blue-500">
+            <i class="ph ph-caret-right"></i>
+          </button>
+        </div>
       </div>
       <div id="eh-error" class="hidden px-4 py-3 text-sm text-red-600 bg-red-50"></div>
     </div>
 
-    <!-- Detail drawer -->
-    <div id="eh-detail-drawer" class="hidden fixed inset-y-0 right-0 w-96 bg-white shadow-2xl flex flex-col z-50 border-l border-gray-200">
+    <!-- Detail drawer (T-24.020: aria-modal, focus trap, Escape key) -->
+    <div id="eh-detail-drawer"
+         class="hidden fixed inset-y-0 right-0 w-96 bg-white shadow-2xl flex flex-col z-50 border-l border-gray-200"
+         role="dialog"
+         aria-modal="true"
+         aria-labelledby="eh-drawer-title">
       <div class="flex items-center justify-between px-5 py-4 border-b border-gray-200">
-        <h3 class="font-semibold text-gray-900" id="eh-drawer-title">Execution detail</h3>
-        <button id="eh-drawer-close" class="text-gray-400 hover:text-gray-600"><i class="ph ph-x text-xl"></i></button>
+        <h2 class="font-semibold text-gray-900 text-base" id="eh-drawer-title">Execution detail</h2>
+        <button id="eh-drawer-close"
+                class="text-gray-400 hover:text-gray-600 focus-visible:ring-2 focus-visible:ring-blue-500 rounded"
+                aria-label="Close execution detail">
+          <i class="ph ph-x text-xl"></i>
+        </button>
       </div>
       <div id="eh-drawer-body" class="flex-1 overflow-y-auto p-5 text-sm text-gray-700 space-y-4"></div>
     </div>`;
   return panel;
 }
 
-async function loadHistory(ruleId, status) {
-  const loading = document.getElementById('eh-loading');
-  const table   = document.getElementById('eh-table');
-  const empty   = document.getElementById('eh-empty');
-  const error   = document.getElementById('eh-error');
-  const rows    = document.getElementById('eh-rows');
+const PAGE_SIZE = 25;
+let _allItems = [];
+let _currentPage = 0;
 
-  [table, empty, error].forEach(el => el?.classList.add('hidden'));
+async function loadHistory(ruleId, status) {
+  const loading  = document.getElementById('eh-loading');
+  const table    = document.getElementById('eh-table');
+  const empty    = document.getElementById('eh-empty');
+  const error    = document.getElementById('eh-error');
+  const rows     = document.getElementById('eh-rows');
+  const pagEl    = document.getElementById('eh-pagination');
+
+  [table, empty, error, pagEl].forEach(el => el?.classList.add('hidden'));
   loading?.classList.remove('hidden');
 
   try {
     const params = new URLSearchParams();
-    if (ruleId)  params.set('rule_id', ruleId);
-    if (status)  params.set('status', status);
+    if (ruleId) params.set('rule_id', ruleId);
+    if (status) params.set('status', status);
     const res = await apiFetch(`/automations/executions?${params}`);
     loading?.classList.add('hidden');
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
-    const items = Array.isArray(data) ? data : (data.items ?? data.executions ?? []);
-    if (!items.length) { empty?.classList.remove('hidden'); return; }
+    let items = Array.isArray(data) ? data : (data.items ?? data.executions ?? []);
 
-    rows.innerHTML = items.map(r => `
-      <tr class="eh-row hover:bg-blue-50 cursor-pointer transition" data-exec-id="${esc(r.id)}">
-        <td class="px-4 py-3 text-gray-700">${relTime(r.triggered_at ?? r.created_at)}</td>
-        <td class="px-4 py-3 text-gray-800 font-medium">${esc(r.rule_name ?? r.rule_id)}</td>
-        <td class="px-4 py-3">${badge(r.status, STATUS_MAP)}</td>
-        <td class="px-4 py-3 text-gray-600">${r.duration_ms != null ? (r.duration_ms < 1000 ? r.duration_ms+'ms' : (r.duration_ms/1000).toFixed(1)+'s') : '—'}</td>
-        <td class="px-4 py-3 text-gray-600">${r.records_affected ?? '—'}</td>
-      </tr>`).join('');
-    table?.classList.remove('hidden');
+    // T-24.019: client-side date filter (from/to) — fallback because backend lacks date params
+    const fromVal = document.getElementById('eh-date-from')?.value;
+    const toVal   = document.getElementById('eh-date-to')?.value;
+    if (fromVal) { const d = new Date(fromVal); items = items.filter(r => new Date(r.triggered_at ?? r.created_at) >= d); }
+    if (toVal)   { const d = new Date(toVal + 'T23:59:59'); items = items.filter(r => new Date(r.triggered_at ?? r.created_at) <= d); }
 
-    rows.querySelectorAll('.eh-row').forEach(row => {
-      row.onclick = () => openDetail(row.dataset.execId, row.querySelector('td:nth-child(2)')?.textContent);
-    });
+    _allItems   = items;
+    _currentPage = 0;
+    renderPage();
   } catch (e) {
     loading?.classList.add('hidden');
     if (error) { error.textContent = 'Failed to load executions: ' + e.message; error.classList.remove('hidden'); }
+  }
+}
+
+function renderPage() {
+  const table  = document.getElementById('eh-table');
+  const empty  = document.getElementById('eh-empty');
+  const rows   = document.getElementById('eh-rows');
+  const pagEl  = document.getElementById('eh-pagination');
+  const info   = document.getElementById('eh-page-info');
+  const prevBtn = document.getElementById('eh-prev');
+  const nextBtn = document.getElementById('eh-next');
+
+  if (!_allItems.length) { empty?.classList.remove('hidden'); return; }
+
+  const start  = _currentPage * PAGE_SIZE;
+  const page   = _allItems.slice(start, start + PAGE_SIZE);
+  const total  = _allItems.length;
+  const pages  = Math.ceil(total / PAGE_SIZE);
+
+  rows.innerHTML = page.map((r, i) => `
+    <tr class="eh-row hover:bg-blue-50 cursor-pointer transition"
+        data-exec-id="${esc(r.id)}"
+        tabindex="0"
+        role="row"
+        aria-label="Execution ${start + i + 1} of ${total}">
+      <td class="px-4 py-3 text-gray-700">${relTime(r.triggered_at ?? r.created_at)}</td>
+      <td class="px-4 py-3 text-gray-800 font-medium">${esc(r.rule_name ?? r.rule_id)}</td>
+      <td class="px-4 py-3">
+        <span class="px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_MAP[r.status?.toLowerCase()] ?? 'bg-gray-100 text-gray-600'}"
+              aria-label="Status: ${esc(r.status)}">
+          ${esc(r.status)}
+        </span>
+      </td>
+      <td class="px-4 py-3 text-gray-600">${r.duration_ms != null ? (r.duration_ms < 1000 ? r.duration_ms+'ms' : (r.duration_ms/1000).toFixed(1)+'s') : '—'}</td>
+      <td class="px-4 py-3 text-gray-600">${r.records_affected ?? '—'}</td>
+    </tr>`).join('');
+
+  table?.classList.remove('hidden');
+
+  // Keyboard row navigation (T-24.018: Enter opens drawer, ArrowUp/Down navigates)
+  rows.querySelectorAll('.eh-row').forEach(row => {
+    row.onclick = () => openDetail(row.dataset.execId, row.querySelector('td:nth-child(2)')?.textContent);
+    row.onkeydown = (e) => {
+      if (e.key === 'Enter') { openDetail(row.dataset.execId, row.querySelector('td:nth-child(2)')?.textContent); }
+      if (e.key === 'ArrowDown') { e.preventDefault(); row.nextElementSibling?.focus(); }
+      if (e.key === 'ArrowUp')   { e.preventDefault(); row.previousElementSibling?.focus(); }
+    };
+  });
+
+  // Pagination
+  if (pages > 1) {
+    pagEl?.classList.remove('hidden');
+    if (info) info.textContent = `Showing ${start + 1}–${Math.min(start + PAGE_SIZE, total)} of ${total}`;
+    if (prevBtn) prevBtn.disabled = _currentPage === 0;
+    if (nextBtn) nextBtn.disabled = _currentPage >= pages - 1;
+    prevBtn?.addEventListener('click', () => { if (_currentPage > 0) { _currentPage--; renderPage(); } }, { once: true });
+    nextBtn?.addEventListener('click', () => { if (_currentPage < pages - 1) { _currentPage++; renderPage(); } }, { once: true });
   }
 }
 
@@ -133,6 +229,18 @@ async function openDetail(execId, ruleName) {
   document.getElementById('eh-drawer-title').textContent = ruleName ?? 'Execution detail';
   body.innerHTML = '<div class="flex items-center gap-2 text-gray-400"><i class="ph ph-spinner animate-spin"></i> Loading…</div>';
   drawer?.classList.remove('hidden');
+
+  // Focus the close button when drawer opens (T-24.020 focus trap requirement)
+  setTimeout(() => document.getElementById('eh-drawer-close')?.focus(), 50);
+
+  // Escape key closes drawer (T-24.020)
+  const escHandler = (e) => {
+    if (e.key === 'Escape') {
+      drawer?.classList.add('hidden');
+      document.removeEventListener('keydown', escHandler);
+    }
+  };
+  document.addEventListener('keydown', escHandler);
 
   try {
     const res = await apiFetch(`/automations/executions/${execId}`);
@@ -223,9 +331,20 @@ function attachTestPanels() {
           <i class="ph ph-caret-right toggle-icon transition-transform"></i>
         </span>
       </button>
-      <div class="test-body hidden px-4 py-3 bg-white text-sm text-gray-500">
-        Run the test to see which records match and which actions would fire.
-      </div>`;
+      <div class="test-body hidden px-4 py-3 bg-white text-sm text-gray-500 space-y-2">
+        <!-- Stale banner (shown when rule is edited after a test run) -->
+        <div class="stale-banner hidden" role="alert">
+          <div class="flex items-center gap-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg text-amber-700 text-xs">
+            <i class="ph ph-warning"></i>
+            <span>Results may be stale — rule was modified after the last test run.</span>
+          </div>
+        </div>
+        <!-- Initial empty state: ph-funnel "No test run yet" (T-24.016) -->
+        <div class="test-empty-state flex items-center gap-2 text-gray-400">
+          <i class="ph ph-funnel text-lg"></i>
+          <span>No test run yet. Click "Run test" to simulate this rule.</span>
+        </div>
+      </div>\`;
 
     const toggle = panel.querySelector('.test-toggle');
     const body   = panel.querySelector('.test-body');
@@ -244,6 +363,9 @@ function attachTestPanels() {
       icon.classList.add('rotate-90');
       runBtn.disabled = true;
       runBtn.innerHTML = '<i class="ph ph-spinner animate-spin"></i> Running…';
+      // Hide the initial empty state, show loading
+      panel.querySelector('.test-empty-state')?.classList.add('hidden');
+      panel.querySelector('.stale-banner')?.classList.add('hidden');
       body.innerHTML = '<div class="flex items-center gap-2 text-gray-400"><i class="ph ph-spinner animate-spin"></i> Running test…</div>';
 
       try {
@@ -267,6 +389,7 @@ function attachTestPanels() {
               </div>
             </div>`;
         panel.querySelector('.last-run').textContent = 'Just now';
+        panel.dataset.lastRun = Date.now();
       } catch (e) {
         body.innerHTML = `<div class="text-red-600 bg-red-50 px-3 py-2 rounded-lg text-sm">Test failed: ${esc(e.message)}</div>`;
       } finally {
