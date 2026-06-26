@@ -16,6 +16,10 @@
 
 const API_PATH = '/api/v1/auth/password-policy';
 
+// Session-scope policy cache -- shared across all PasswordStrengthIndicator instances.
+// Avoids redundant network requests when multiple password fields are present.
+let _policyCache = null;
+
 const RULE_PATTERNS = [
   { key: 'uppercase',    pattern: /uppercase/i,      test: v => /[A-Z]/.test(v),          label: 'One uppercase letter (A–Z)' },
   { key: 'lowercase',    pattern: /lowercase/i,      test: v => /[a-z]/.test(v),          label: 'One lowercase letter (a–z)' },
@@ -61,12 +65,14 @@ export default class PasswordStrengthIndicator {
 
   async _fetchPolicy() {
     try {
-      const res = await fetch(`${this._apiBase}${API_PATH}`);
-      if (!res.ok) throw new Error('policy fetch failed');
-      const data = await res.json();
-      this._buildRules(data);
+      if (!_policyCache) {
+        const res = await fetch(`${this._apiBase}${API_PATH}`);
+        if (!res.ok) throw new Error('policy fetch failed');
+        _policyCache = await res.json();
+      }
+      this._buildRules(_policyCache);
     } catch {
-      // Fail-open: remove loading indicator, enable submit
+      // Fail-open: remove loading indicator, enable submit (arch-24 section 3.2)
       this._container.innerHTML = '';
       if (this._submit) this._submit.disabled = false;
     }
@@ -94,7 +100,8 @@ export default class PasswordStrengthIndicator {
 
   _renderRules() {
     const items = this._rules.map(r => `
-      <li class="psi-rule flex items-center gap-2 text-xs" data-key="${r.key}">
+      <li class="psi-rule flex items-center gap-2 text-xs" data-key="${r.key}"
+          aria-label="${r.label}: not met">
         <i class="ph ph-circle text-gray-300 flex-shrink-0"></i>
         <span>${r.label}</span>
       </li>`).join('');
@@ -117,8 +124,10 @@ export default class PasswordStrengthIndicator {
       const li = this._container.querySelector(`[data-key="${rule.key}"]`);
       if (!li) continue;
       const icon = li.querySelector('i');
+      li.setAttribute('aria-label', `${rule.label}: ${ok ? 'passed' : 'not met'}`);
       if (val.length === 0) {
         icon.className = 'ph ph-circle text-gray-300 flex-shrink-0';
+        li.setAttribute('aria-label', `${rule.label}: not met`);
       } else if (ok) {
         icon.className = 'ph ph-check-circle text-green-500 flex-shrink-0';
       } else {
@@ -137,6 +146,17 @@ export default class PasswordStrengthIndicator {
   }
 
   // ── Public ────────────────────────────────────────────────────────────────
+
+  /**
+   * Static convenience factory.
+   * @param {HTMLInputElement} inputEl
+   * @param {HTMLButtonElement} submitBtn
+   * @param {string} [apiBase='']
+   * @returns {PasswordStrengthIndicator}
+   */
+  static attach(inputEl, submitBtn, apiBase = '') {
+    return new PasswordStrengthIndicator(inputEl, submitBtn, apiBase);
+  }
 
   destroy() {
     this._input.removeEventListener('input', this._handler);

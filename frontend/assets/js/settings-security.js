@@ -1,3 +1,6 @@
+// T-24.010 note: The user "Change Password" form lives in profile-page.js (profile.html).
+// PasswordStrengthIndicator is attached there. The settings-security route renders
+// SecurityAdmin (auth policy management), which does not contain a user password form.
 /**
  * Settings Security Page Route Handler
  * Initializes the SecurityAdmin component for the settings-security route

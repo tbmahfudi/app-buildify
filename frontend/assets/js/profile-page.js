@@ -1,4 +1,5 @@
 import { apiFetch } from './api.js';
+import PasswordStrengthIndicator from './password-strength-indicator.js';
 
 // Listen for route changes to profile page
 document.addEventListener('route:loaded', (event) => {
@@ -49,6 +50,14 @@ async function initProfilePageWithForms(profileForm, passwordForm) {
     profileForm.dataset.initialized = 'true';
     passwordForm.dataset.initialized = 'true';
     console.log('Profile: Forms initialized and event listeners attached');
+
+    // T-24.010: Attach PasswordStrengthIndicator to the new-password field.
+    // The submit button for the password form is the last button inside #password-form.
+    const newPwdEl  = passwordForm.querySelector('#new-password');
+    const submitBtn = passwordForm.querySelector('button[type="submit"]');
+    if (newPwdEl && submitBtn) {
+      PasswordStrengthIndicator.attach(newPwdEl, submitBtn);
+    }
   } else {
     console.log('Profile: Forms already initialized, data refreshed');
   }
