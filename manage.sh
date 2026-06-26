@@ -1265,6 +1265,19 @@ case $COMMAND in
 pack) module_pack "$@" ;;
             install) module_install "$@" ;;
             uninstall) shift; module_uninstall "$@" ;;
+            migrate-tenant)
+                # T-22.019 / arch-22 section 4.2 placeholder
+                # Full implementation deferred to sprint N+1 (L-1)
+                TENANT_ID=""
+                MODULE_ID=""
+                if [ -z "" ] || [ -z "" ]; then
+                    echo "Usage: manage.sh module migrate-tenant <tenant_id> <module_id>"
+                    exit 1
+                fi
+                echo "[T-22.019] module migrate-tenant: placeholder -- full wiring deferred to sprint N+1"
+                echo "  tenant_id= module_id="
+                exit 0
+                ;;
             *) echo "Unknown module subcommand: $SUBCOMMAND"; echo "  new <name>  pack  <dir> [--out <dir>]  install <pkg>  uninstall <name>"; exit 1 ;;
         esac
         ;;

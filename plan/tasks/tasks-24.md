@@ -171,7 +171,7 @@ Status legend: `OPEN` = not started | `IN-PROGRESS` = picked up | `BLOCKED` = wa
 | Task ID | Description | Owner | Depends on | Est (h) | Reference | Status |
 |---------|-------------|-------|-----------|---------|-----------|--------|
 | T-24.030 | Remove routes `flex-layout-sandbox`, `builder-showcase`, `components-showcase`, `datatable`, `debug-financial-module` from all menu/nav config arrays in `app.js` and any static nav arrays; add a dev-banner guard in `app.js loadRoute()` for the same five routes so direct-URL navigation in developer environments shows an informational banner rather than a broken page (arch-24 section 3.7) | C3 | T-24.008 | 2 | epic-24 section 24.7.1 | DONE |
-| T-24.031 | QA: verify removed routes are absent from production nav; verify direct-URL navigation to each of the five removed routes hits the dev-banner guard and not a broken page; verify no JS console errors on initial page load after deletions | D1 | T-24.030 | 1 | epic-24 section 24.7.1 AC | OPEN |
+| T-24.031 | QA: verify removed routes are absent from production nav; verify direct-URL navigation to each of the five removed routes hits the dev-banner guard and not a broken page; verify no JS console errors on initial page load after deletions | D1 | T-24.030 | 1 | epic-24 section 24.7.1 AC | DONE |
 
 **Subtotal: 3 hrs**
 
