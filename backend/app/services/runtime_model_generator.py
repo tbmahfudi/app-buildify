@@ -159,7 +159,7 @@ class RuntimeModelGenerator:
         if tenant_id:
             query = query.filter(
                 or_(
-                    EntityDefinition.tenant_id == tenant_id,  # tenant_scope
+                    EntityDefinition.tenant_id == tenant_id,  # tenant-scope-ok (or_() tenant branch)
                     EntityDefinition.tenant_id.is_(None)
                 )
             )

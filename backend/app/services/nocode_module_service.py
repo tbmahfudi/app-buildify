@@ -84,11 +84,11 @@ class NocodeModuleService:
 
         # Check if name already exists (scope: tenant or platform)
         if is_platform_level:
-            existing_filter = NocodeModule.tenant_id == None  # tenant_scope
+            existing_filter = NocodeModule.tenant_id == None  # tenant-scope-ok (or_() platform None includes platform templates)
         else:
             existing_filter = or_(
-                NocodeModule.tenant_id == self.tenant_id,  # tenant_scope
-                NocodeModule.tenant_id == None  # tenant_scope
+                NocodeModule.tenant_id == self.tenant_id,  # tenant-scope-ok (or_() tenant branch)
+                NocodeModule.tenant_id == None  # tenant-scope-ok (or_() platform None includes platform templates)
             )
 
         existing_name = self.db.query(NocodeModule).filter(
@@ -166,8 +166,8 @@ class NocodeModuleService:
         if include_platform:
             query = query.filter(
                 or_(
-                    NocodeModule.tenant_id == self.tenant_id,  # tenant_scope
-                    NocodeModule.tenant_id == None  # tenant_scope
+                    NocodeModule.tenant_id == self.tenant_id,  # tenant-scope-ok (or_() tenant branch)
+                    NocodeModule.tenant_id == None  # tenant-scope-ok (or_() platform None includes platform templates)
                 )
             )
         else:
@@ -734,11 +734,11 @@ class NocodeModuleService:
         """Validate module name availability"""
 
         if is_platform_level:
-            existing_filter = NocodeModule.tenant_id == None  # tenant_scope
+            existing_filter = NocodeModule.tenant_id == None  # tenant-scope-ok (or_() platform None includes platform templates)
         else:
             existing_filter = or_(
-                NocodeModule.tenant_id == self.tenant_id,  # tenant_scope
-                NocodeModule.tenant_id == None  # tenant_scope
+                NocodeModule.tenant_id == self.tenant_id,  # tenant-scope-ok (or_() tenant branch)
+                NocodeModule.tenant_id == None  # tenant-scope-ok (or_() platform None includes platform templates)
             )
 
         existing = self.db.query(NocodeModule).filter(

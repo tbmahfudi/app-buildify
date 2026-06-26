@@ -93,8 +93,8 @@ class MenuService:
             MenuItem.is_active == True,
             MenuItem.is_visible == True,
             or_(
-                MenuItem.tenant_id == None,  # System menus  # tenant_scope
-                MenuItem.tenant_id == user.tenant_id  # Tenant menus  # tenant_scope
+                MenuItem.tenant_id == None,  # System menus  # tenant-scope-ok (or_() system menu branch)
+                MenuItem.tenant_id == user.tenant_id  # Tenant menus  # tenant-scope-ok (or_() tenant branch)
             )
         )
 
@@ -477,16 +477,16 @@ class MenuService:
             # Filter by tenant
             query = query.filter(
                 or_(
-                    MenuItem.tenant_id == user.tenant_id,  # tenant_scope
-                    MenuItem.tenant_id == None  # System menus  # tenant_scope
+                    MenuItem.tenant_id == user.tenant_id,  # tenant-scope-ok (or_() tenant branch)
+                    MenuItem.tenant_id == None  # System menus  # tenant-scope-ok (or_() system menu branch)
                 )
             )
         elif tenant_id:
             # Superuser with specific tenant filter
             query = query.filter(
                 or_(
-                    MenuItem.tenant_id == tenant_id,  # tenant_scope
-                    MenuItem.tenant_id == None  # tenant_scope
+                    MenuItem.tenant_id == tenant_id,  # tenant-scope-ok (or_() tenant branch)
+                    MenuItem.tenant_id == None  # tenant-scope-ok (or_() system menu branch)
                 )
             )
 
@@ -664,8 +664,8 @@ class MenuService:
         parent = db.query(MenuItem).filter(
             MenuItem.code == 'nocode_entities',
             or_(
-                MenuItem.tenant_id == tenant_id,  # tenant_scope
-                MenuItem.tenant_id == None  # System menu  # tenant_scope
+                MenuItem.tenant_id == tenant_id,  # tenant-scope-ok (or_() tenant branch)
+                MenuItem.tenant_id == None  # System menu  # tenant-scope-ok (or_() system menu branch)
             )
         ).first()
 
