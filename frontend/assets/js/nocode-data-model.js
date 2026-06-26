@@ -1146,6 +1146,41 @@ export class DataModelPage {
 
         <!-- Body -->
         <div class="flex-1 overflow-y-auto p-4 sm:p-6">
+
+          <!-- T-24.012: FlexToolbar row — entity status + Preview/Publish -->
+          <div class="flex flex-wrap items-center justify-between gap-3 px-4 py-3 mb-4
+                      bg-gray-50 border border-gray-200 rounded-lg" id="entity-publish-toolbar">
+            <div class="flex items-center gap-2">
+              <span class="text-sm font-medium text-gray-700">Status:</span>
+              <span id="entity-status-badge"
+                    class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold
+                           \${entity.status === 'published'
+                              ? 'bg-green-100 text-green-700'
+                              : entity.status === 'draft'
+                                ? 'bg-amber-100 text-amber-700'
+                                : 'bg-gray-100 text-gray-700'}">
+                \${entity.status ? entity.status.charAt(0).toUpperCase() + entity.status.slice(1) : 'Draft'}
+              </span>
+            </div>
+            <div class="flex items-center gap-2">
+              <button onclick="DataModelApp.previewMigration('${entity.id}')"
+                      class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium
+                             bg-white border border-gray-300 rounded-lg text-gray-700
+                             hover:bg-gray-50 transition focus-visible:ring-2 focus-visible:ring-blue-500">
+                <i class="ph ph-eye"></i> Preview changes
+              </button>
+              <button id="entity-publish-btn"
+                      onclick="DataModelApp.publishEntity('${entity.id}')"
+                      \${entity.status === 'published' ? 'disabled' : ''}
+                      class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium
+                             bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition
+                             disabled:opacity-50 disabled:cursor-not-allowed
+                             focus-visible:ring-2 focus-visible:ring-emerald-500">
+                <i class="ph ph-rocket-launch"></i> Publish
+              </button>
+            </div>
+          </div>
+
           <div class="mb-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
             <div class="text-sm text-gray-600">
               ${fields.length} fields defined
@@ -1160,14 +1195,24 @@ export class DataModelPage {
             </div>
           </div>
 
-          <div class="space-y-2" id="fieldsList">
+          <!-- aria-live region for keyboard reorder announcements (T-24.014) -->
+          <div id="field-reorder-announce" aria-live="polite" class="sr-only"></div>
+
+          <!-- T-24.014: Field list as <ul> for drag-reorder -->
+          <ul id="entity-fields-list" class="space-y-2">
             ${fields.length === 0 ? `
-              <div class="text-center py-12 text-gray-500">
-                <i class="ph-duotone ph-list-bullets text-5xl"></i>
-                <p class="mt-2">No fields yet. Click "Add Field" to create one.</p>
-              </div>
-            ` : fields.map(field => this.renderFieldItem(field, entity.id)).join('')}
-          </div>
+              <!-- T-24.014 / uildc-24 section 2.3.1: empty state -->
+              <li class="text-center py-12">
+                <i class="ph ph-table text-4xl text-gray-300 block mb-2"></i>
+                <p class="text-sm font-medium text-gray-500">No fields yet</p>
+                <p class="text-xs text-gray-400 mb-4">Add your first field to define this entity&rsquo;s data structure.</p>
+                <button onclick="DataModelApp.showAddFieldModal('${entity.id}')"
+                        class="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition">
+                  <i class="ph ph-plus"></i> Add first field
+                </button>
+              </li>
+            ` : fields.map((field, idx) => this.renderFieldItemDraggable(field, entity.id, idx, fields.length)).join('')}
+          </ul>
         </div>
 
         <!-- Footer -->
@@ -1184,6 +1229,9 @@ export class DataModelPage {
     // Store current state
     this.currentEntity = entity;
     this.currentFields = fields;
+
+    // T-24.014: Wire up drag-reorder after DOM insertion
+    this.initFieldDragReorder(entity.id);
   }
 
   async showDeletedFieldsModal(entityId) {
@@ -1371,6 +1419,146 @@ export class DataModelPage {
         </div>
       </div>
     `;
+  }
+
+  /**
+   * T-24.014 — Draggable field list item (wraps renderFieldItem with a drag handle).
+   */
+  renderFieldItemDraggable(field, entityId, index, total) {
+    const isSystem = field.is_system || false;
+    const inner = this.renderFieldItem(field, entityId);
+    return `
+      <li class="field-list-item group flex items-center gap-2"
+          data-field-id="${field.id}"
+          data-index="${index}"
+          draggable="${!isSystem}"
+          tabindex="0"
+          aria-label="Field ${this.escapeHtml(field.label)}, position ${index + 1} of ${total}">
+        <button class="drag-handle p-1 cursor-grab active:cursor-grabbing text-gray-300
+                       hover:text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity
+                       focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-blue-500 rounded"
+                aria-label="Drag to reorder ${this.escapeHtml(field.label)}"
+                ${isSystem ? 'disabled title="System fields cannot be reordered"' : ''}>
+          <i class="ph ph-dots-six-vertical text-lg"></i>
+        </button>
+        <div class="flex-1">${inner}</div>
+      </li>`;
+  }
+
+  /**
+   * T-24.014 — Wire up HTML5 DnD and Alt+ArrowUp/Down keyboard reorder
+   * on #entity-fields-list inside the field manager modal.
+   */
+  initFieldDragReorder(entityId) {
+    const list = document.getElementById('entity-fields-list');
+    if (!list) return;
+
+    let dragSrcEl = null;
+
+    const getItems = () => [...list.querySelectorAll('li.field-list-item')];
+
+    const announce = (msg) => {
+      const region = document.getElementById('field-reorder-announce');
+      if (region) region.textContent = msg;
+    };
+
+    const markDirty = () => {
+      // Enable publish button when fields are reordered (entity is now dirty)
+      const publishBtn = document.getElementById('entity-publish-btn');
+      if (publishBtn) publishBtn.disabled = false;
+      const badge = document.getElementById('entity-status-badge');
+      if (badge) {
+        badge.textContent = 'Draft';
+        badge.className = badge.className.replace(/bg-\w+-\d+\s+text-\w+-\d+/,
+          'bg-amber-100 text-amber-700');
+      }
+    };
+
+    // ── HTML5 DnD ──
+    list.addEventListener('dragstart', (e) => {
+      const li = e.target.closest('li.field-list-item');
+      if (!li) return;
+      dragSrcEl = li;
+      li.classList.add('opacity-50', 'ring-2', 'ring-blue-400');
+      e.dataTransfer.effectAllowed = 'move';
+    });
+
+    list.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      const li = e.target.closest('li.field-list-item');
+      if (!li || li === dragSrcEl) return;
+      // Show drop indicator
+      getItems().forEach(i => i.classList.remove('border-t-2', 'border-blue-500'));
+      li.classList.add('border-t-2', 'border-blue-500');
+    });
+
+    list.addEventListener('dragleave', (e) => {
+      const li = e.target.closest('li.field-list-item');
+      if (li) li.classList.remove('border-t-2', 'border-blue-500');
+    });
+
+    list.addEventListener('drop', (e) => {
+      e.preventDefault();
+      const targetLi = e.target.closest('li.field-list-item');
+      if (!targetLi || targetLi === dragSrcEl || !dragSrcEl) return;
+
+      getItems().forEach(i => i.classList.remove('border-t-2', 'border-blue-500'));
+      dragSrcEl.classList.remove('opacity-50', 'ring-2', 'ring-blue-400');
+
+      list.insertBefore(dragSrcEl, targetLi);
+      this._updateFieldIndices(list);
+      markDirty();
+      announce(\`Field \${dragSrcEl.querySelector('[aria-label^="Drag"]')?.getAttribute('aria-label')?.replace('Drag to reorder ', '') ?? ''} moved\`);
+      dragSrcEl = null;
+    });
+
+    list.addEventListener('dragend', (e) => {
+      if (dragSrcEl) {
+        dragSrcEl.classList.remove('opacity-50', 'ring-2', 'ring-blue-400');
+        dragSrcEl = null;
+      }
+      getItems().forEach(i => i.classList.remove('border-t-2', 'border-blue-500'));
+    });
+
+    // ── Keyboard: Alt+ArrowUp / Alt+ArrowDown ──
+    list.addEventListener('keydown', (e) => {
+      if (!e.altKey) return;
+      if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+      e.preventDefault();
+
+      const focused = document.activeElement?.closest('li.field-list-item');
+      if (!focused) return;
+
+      const items = getItems();
+      const idx   = items.indexOf(focused);
+
+      if (e.key === 'ArrowUp' && idx > 0) {
+        list.insertBefore(focused, items[idx - 1]);
+      } else if (e.key === 'ArrowDown' && idx < items.length - 1) {
+        list.insertBefore(items[idx + 1], focused);
+      } else {
+        return;
+      }
+
+      focused.focus();
+      this._updateFieldIndices(list);
+      markDirty();
+
+      const newItems = getItems();
+      const newIdx   = newItems.indexOf(focused);
+      const name = focused.querySelector('.drag-handle')?.getAttribute('aria-label')?.replace('Drag to reorder ', '') ?? 'Field';
+      announce(\`Field \${name} moved to position \${newIdx + 1} of \${newItems.length}\`);
+    });
+  }
+
+  _updateFieldIndices(list) {
+    const items = [...list.querySelectorAll('li.field-list-item')];
+    items.forEach((li, i) => {
+      li.dataset.index = i;
+      const label = li.querySelector('.drag-handle')?.getAttribute('aria-label')?.replace('Drag to reorder ', '') ?? '';
+      li.setAttribute('aria-label', \`Field \${label}, position \${i + 1} of \${items.length}\`);
+    });
   }
 
   closeFieldManager() {
@@ -3045,13 +3233,17 @@ export class DataModelPage {
     const riskColor = riskColors[preview.estimated_impact.risk_level] || riskColors['low'];
 
     const modalHTML = `
-      <div id="migrationPreviewModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+      <div id="migrationPreviewModal"
+           role="dialog"
+           aria-modal="true"
+           aria-labelledby="migration-modal-title"
+           class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-lg shadow-xl w-full max-w-5xl max-h-[90vh] flex flex-col">
           <!-- Header -->
           <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-            <h3 class="text-lg font-semibold text-gray-900">
+            <h2 id="migration-modal-title" class="text-lg font-semibold text-gray-900">
               <i class="ph ph-eye"></i> Migration Preview: ${preview.entity_name}
-            </h3>
+            </h2>
             <button onclick="DataModelApp.closeMigrationPreviewModal()" class="text-gray-400 hover:text-gray-600">
               <i class="ph ph-x text-xl"></i>
             </button>
@@ -3156,6 +3348,77 @@ export class DataModelPage {
     `;
 
     document.body.insertAdjacentHTML('beforeend', modalHTML);
+
+    // T-24.013: Escape key closes modal (unless publish in-flight)
+    const escHandler = (e) => {
+      if (e.key !== 'Escape') return;
+      const modal = document.getElementById('migrationPreviewModal');
+      if (!modal) { document.removeEventListener('keydown', escHandler); return; }
+      // Don't close if publish in-flight (overlay present)
+      if (modal.querySelector('.absolute.inset-0')) return;
+      DataModelApp.closeMigrationPreviewModal();
+      document.removeEventListener('keydown', escHandler);
+    };
+    document.addEventListener('keydown', escHandler);
+
+    // Focus first focusable element
+    const firstBtn = document.querySelector('#migrationPreviewModal button');
+    if (firstBtn) firstBtn.focus();
+
+    // T-24.013: Inject fields-to-add / fields-to-remove tables inside content area
+    const contentArea = document.querySelector('#migrationPreviewModal .flex-1.overflow-y-auto');
+    if (contentArea && preview.changes) {
+      const addedCols   = preview.changes.added_columns   || [];
+      const removedCols = preview.changes.removed_columns || [];
+
+      if (addedCols.length || removedCols.length) {
+        const diffSection = document.createElement('div');
+        diffSection.className = 'space-y-4';
+        diffSection.innerHTML = \`
+          \${addedCols.length ? \`
+            <div>
+              <h3 class="text-sm font-semibold text-gray-700 mb-2">Fields to add (\${addedCols.length})</h3>
+              <table class="w-full text-sm">
+                <thead><tr class="text-left text-xs text-gray-500 border-b">
+                  <th class="pb-1 pr-3">Column</th><th class="pb-1 pr-3">Type</th><th class="pb-1">Nullable</th>
+                </tr></thead>
+                <tbody>
+                  \${addedCols.map(c => \`
+                    <tr class="text-green-600 border-b border-gray-100">
+                      <td class="py-1 pr-3 font-mono">\${c.name || c.column_name || JSON.stringify(c)}</td>
+                      <td class="py-1 pr-3">\${c.type || c.data_type || ''}</td>
+                      <td class="py-1">\${c.nullable !== false ? 'Yes' : 'No'}</td>
+                    </tr>\`).join('')}
+                </tbody>
+              </table>
+            </div>
+          \` : ''}
+          \${removedCols.length ? \`
+            <div>
+              <h3 class="text-sm font-semibold text-gray-700 mb-2">Fields to remove (\${removedCols.length})</h3>
+              <table class="w-full text-sm">
+                <thead><tr class="text-left text-xs text-gray-500 border-b">
+                  <th class="pb-1 pr-3">Column</th><th class="pb-1 pr-3">Type</th><th class="pb-1">Note</th>
+                </tr></thead>
+                <tbody>
+                  \${removedCols.map(c => \`
+                    <tr class="text-red-600 border-l-4 border-red-500 border-b border-gray-100">
+                      <td class="py-1 pr-3 font-mono pl-2">
+                        <i class="ph ph-warning text-red-500 mr-1" aria-hidden="true"></i>
+                        \${c.name || c.column_name || JSON.stringify(c)}
+                      </td>
+                      <td class="py-1 pr-3">\${c.type || c.data_type || ''}</td>
+                      <td class="py-1 text-red-400 text-xs">Destructive</td>
+                    </tr>\`).join('')}
+                </tbody>
+              </table>
+            </div>
+          \` : ''}
+        \`;
+        // Prepend diff tables before existing content
+        contentArea.prepend(diffSection);
+      }
+    }
   }
 
   closeMigrationPreviewModal() {
@@ -3176,29 +3439,59 @@ export class DataModelPage {
   }
 
   async executePublish(entityId) {
-    try {
-      const commitMessage = prompt('Enter a commit message (optional):');
+    // T-24.013: Show in-progress overlay inside migration modal if it is open
+    const previewModal = document.getElementById('migrationPreviewModal');
+    let overlayEl = null;
+    if (previewModal) {
+      overlayEl = document.createElement('div');
+      overlayEl.className = 'absolute inset-0 bg-white bg-opacity-80 flex items-center justify-center z-10 rounded-lg';
+      overlayEl.innerHTML = `
+        <div class="flex flex-col items-center gap-3">
+          <i class="ph ph-spinner animate-spin text-3xl text-blue-600"></i>
+          <p class="text-sm font-medium text-gray-700" aria-live="assertive">Applying migration&hellip;</p>
+        </div>`;
+      const inner = previewModal.querySelector('.bg-white');
+      if (inner) { inner.style.position = 'relative'; inner.appendChild(overlayEl); }
+    }
 
-      const response = await apiFetch(`/data-model/entities/${entityId}/publish`, {
+    try {
+      const response = await apiFetch(\`/data-model/entities/\${entityId}/publish\`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ commit_message: commitMessage })
+        body: JSON.stringify({})
       });
 
       if (!response.ok) {
         const error = await response.json();
+        overlayEl?.remove();
         this.showError(error.detail || 'Failed to publish entity');
         return;
       }
 
       const migration = await response.json();
-      this.showSuccess(`Entity published successfully! Migration completed in ${migration.execution_time_ms}ms`);
 
-      // Reload entity list and close modals
-      await this.loadEntities();
-      this.closeViewModal();
+      // T-24.013: Update entity.status in local page state without full reload
+      if (this.currentEntity && this.currentEntity.id === entityId) {
+        this.currentEntity.status = 'published';
+      }
+      // Update the status badge in the field manager toolbar if visible
+      const badge = document.getElementById('entity-status-badge');
+      if (badge) {
+        badge.textContent = 'Published';
+        badge.className = badge.className.replace(/bg-\w+-\d+\s+text-\w+-\d+/, 'bg-green-100 text-green-700');
+      }
+      const publishBtn = document.getElementById('entity-publish-btn');
+      if (publishBtn) publishBtn.disabled = true;
+
+      overlayEl?.remove();
+      this.closeMigrationPreviewModal();
+      this.showSuccess(\`Entity published successfully! Migration completed in \${migration.execution_time_ms || 0}ms\`);
+
+      // Refresh entity list in background
+      this.loadEntities().catch(() => {});
     } catch (error) {
       console.error('Error publishing entity:', error);
+      overlayEl?.remove();
       this.showError('Error publishing entity');
     }
   }
