@@ -1,103 +1,176 @@
 """
-SQLAlchemy session-event listener for automatic tenant_id injection.
-Story 22.3.1
+backend/app/core/tenant_listener.py
+SQLAlchemy ORM event listener for tenant-scope enforcement.
+Story 22.3.1 / T-22.004 + T-22.005
+
+Design
+------
+Scope is stored in a ContextVar (_current_tenant_id) defined in
+app.core.tenant.scope and set per-request by the tenant_scoped_session
+FastAPI dependency.  The listener reads that ContextVar -- it does NOT rely
+on session-level attributes, so it is safe across async and threaded contexts.
+
+Fail-loud guarantee (arch-22 section 3.2)
+------------------------------------------
+Any ORM SELECT / UPDATE / DELETE against a __tenant_scoped__ = True model
+that executes without scope raises TenantScopeMissingError immediately.
+There is no silent pass.
+
+Superuser bypass
+----------------
+When the ContextVar holds the sentinel string '__superuser__' (set by
+with_admin_cross_tenant_scope() or the superuser path of
+tenant_scoped_session), the listener skips filtering and lets the query
+proceed unmodified.
+
+Install
+-------
+Call TenantScopeListener.install(engine) once at FastAPI lifespan startup,
+AFTER tenant_scoped_session is deployed to all tenant routes (T-22.009)
+to avoid HTTP 500 storms on existing requests that do not yet set scope.
 """
 from __future__ import annotations
+
 import logging
+
 from sqlalchemy import event
 from sqlalchemy.orm import Session
 
-from app.core.scope import TenantScopeMissingError
+from app.core.tenant.scope import (
+    TenantScopeNotSetError as TenantScopeMissingError,
+    _current_tenant_id,
+)
 
 logger = logging.getLogger(__name__)
 
 _SCOPE_ATTR = '_tenant_scope'
 
+# ---------------------------------------------------------------------------
+# Session-attribute helpers (T-22.005 API)
+# ---------------------------------------------------------------------------
+# Provided for background tasks that create a plain SessionLocal and must set
+# scope manually.  They write both the ContextVar AND the session attribute so
+# that either lookup path works.
+
 
 def set_tenant_scope(session: Session, tenant_id) -> None:
-    """Bind a tenant_id to this session. Called once per request from the dependency."""
+    """Bind tenant_id to session and to the current ContextVar context."""
+    _current_tenant_id.set(str(tenant_id))  # type: ignore[arg-type]
     setattr(session, _SCOPE_ATTR, str(tenant_id))
+    logger.debug('tenant_scope.set (session) tenant_id=%s', tenant_id)
 
 
 def clear_tenant_scope(session: Session) -> None:
-    """Remove tenant binding (called on session cleanup)."""
+    """Remove the tenant binding from session and reset the ContextVar."""
+    _current_tenant_id.set(None)
     if hasattr(session, _SCOPE_ATTR):
         delattr(session, _SCOPE_ATTR)
+    logger.debug('tenant_scope.clear (session)')
+
+
+# ---------------------------------------------------------------------------
+# TenantScopeListener
+# ---------------------------------------------------------------------------
 
 
 class TenantScopeListener:
-    """
-    Attaches a SQLAlchemy before_compile event to all queries on an engine.
+    """Intercepts all ORM SELECT / UPDATE / DELETE on __tenant_scoped__ models.
 
-    For models that declare ``__tenant_scoped__ = True``, the listener:
-      - Injects a ``tenant_id`` WHERE clause when ``session._tenant_scope`` is set.
-      - Raises ``TenantScopeMissingError`` when scope is unset (non-superuser path).
+    Raises TenantScopeMissingError (-> HTTP 500) when ContextVar scope is not set.
+    Skips filtering when the superuser sentinel '__superuser__' is present.
 
     Usage::
 
-        engine = create_engine(...)
+        from app.core.db import engine
+        from app.core.tenant_listener import TenantScopeListener
+
         TenantScopeListener.install(engine)
     """
 
     @classmethod
     def install(cls, engine) -> None:
-        """Register the before_compile listener on the given engine."""
-        event.listen(engine, 'before_cursor_execute', cls._noop)  # ensure engine-level hook exists
-        # The real guard runs at ORM query-compile time via the mapper events
+        """Register the do_orm_execute hook on the Session class.
+
+        The event is registered on the Session class (not the engine) so it
+        fires for every session bound to this engine.
+
+        Must be called AFTER all routes use tenant_scoped_session (T-22.009
+        merged) to prevent HTTP 500 storms on unscoped requests.
+        """
         event.listen(Session, 'do_orm_execute', cls._on_orm_execute)
-        logger.info("TenantScopeListener installed")
+        logger.info('TenantScopeListener installed on Session')
 
     @staticmethod
-    def _noop(conn, cursor, statement, parameters, context, executemany):
-        """Placeholder engine-level hook (no-op)."""
+    def _on_orm_execute(orm_execute_state) -> None:
+        """Called by SQLAlchemy before every ORM statement execution.
 
-    @staticmethod
-    def _on_orm_execute(orm_execute_state):
+        For each mapped entity that declares __tenant_scoped__ = True:
+          1. Read scope from the ContextVar; fall back to session attribute for
+             background tasks that use set_tenant_scope(session, tenant_id).
+          2. '__superuser__' sentinel -> skip filtering, return immediately.
+          3. None (scope not set) -> raise TenantScopeMissingError (fail-loud).
+          4. Valid tenant UUID -> inject WHERE tenant_id = :scope.
         """
-        Called by SQLAlchemy before every ORM SELECT/UPDATE/DELETE.
-
-        If the top-level mapped entity has ``__tenant_scoped__ = True``:
-          - Adds ``WHERE tenant_id = :scope`` when session has ``_tenant_scope``.
-          - Raises ``TenantScopeMissingError`` if the session has no scope set.
-
-        Superuser bypass: if the session carries ``_tenant_scope = '__superuser__'``
-        the filter is skipped entirely.
-        """
-        # Guard both SELECT and mutation statements (UPDATE/DELETE).
-        # is_select=False means an ORM UPDATE/DELETE — we still need the tenant filter
-        # so cross-tenant mutations are blocked, not just reads.
-
-        statement = orm_execute_state.statement
-        # Inspect the first mapper entity in the query
+        # Resolve the set of mappers in this statement.
+        # all_mappers covers joins; bind_mapper covers simple single-entity queries.
         try:
-            entities = orm_execute_state.all_mappers
-        except Exception:
+            mappers = list(orm_execute_state.all_mappers)
+        except AttributeError:
+            bm = getattr(orm_execute_state, 'bind_mapper', None)
+            mappers = [bm] if bm is not None else []
+
+        if not mappers:
             return
 
-        for mapper in entities:
+        # Read scope: ContextVar is authoritative; fall back to session attr.
+        scope = _current_tenant_id.get()
+        if scope is None:
+            scope = getattr(orm_execute_state.session, _SCOPE_ATTR, None)
+
+        for mapper in mappers:
+            if mapper is None:
+                continue
             model = mapper.class_
             if not getattr(model, '__tenant_scoped__', False):
                 continue
 
-            session = orm_execute_state.session
-            scope = getattr(session, _SCOPE_ATTR, None)
+            # A scoped model is involved -- enforce scope.
 
             if scope == '__superuser__':
-                # Explicitly granted cross-tenant access
-                return
+                logger.debug(
+                    'tenant_scope.listener superuser bypass model=%s', model.__name__
+                )
+                return  # Bypass applies to all entities in this query
 
             if scope is None:
+                logger.error(
+                    'tenant_scope.missing model=%s statement=%s',
+                    model.__name__,
+                    type(orm_execute_state.statement).__name__,
+                )
                 raise TenantScopeMissingError(
-                    f"Query on tenant-scoped model {model.__name__!r} without tenant scope set. "
-                    "Use tenant_scoped_session() dependency or set_tenant_scope()."
+                    f'Query on tenant-scoped model {model.__name__!r} executed without '
+                    'tenant scope set. Use tenant_scoped_session() dependency or '
+                    'set_tenant_scope(session, tenant_id) for background tasks.'
                 )
 
-            # The filter injection happens via the with_loader_criteria mechanism
-            from sqlalchemy import inspect as sa_inspect
-            try:
-                tenant_col = getattr(model, 'tenant_id')
-                # Add WHERE tenant_id = scope to the statement
-                orm_execute_state.statement = statement.where(tenant_col == scope)
-            except AttributeError:
-                logger.warning(f"Model {model.__name__} has __tenant_scoped__=True but no tenant_id column")
-            return  # only apply once per query
+            # Inject WHERE tenant_id = :scope.
+            tenant_col = getattr(model, 'tenant_id', None)
+            if tenant_col is None:
+                logger.warning(
+                    'tenant_scope.listener model %s has __tenant_scoped__=True '
+                    'but no tenant_id column; skipping filter injection',
+                    model.__name__,
+                )
+                return
+
+            orm_execute_state.statement = orm_execute_state.statement.where(
+                tenant_col == scope
+            )
+            logger.debug(
+                'tenant_scope.listener injected tenant_id filter model=%s scope=%s',
+                model.__name__,
+                scope,
+            )
+            # Inject once per query even when multiple scoped models appear in a join.
+            return

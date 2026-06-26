@@ -11,6 +11,7 @@ from app.core.logging_config import setup_logging, get_logger
 from app.core.exceptions import register_exception_handlers
 from app.core.rate_limiter import setup_rate_limiting
 from app.core.db import SessionLocal
+from app.core.tenant_listener import TenantScopeListener
 from app.core.security_middleware import SecurityMiddleware
 from app.core.module_scope_middleware import ModuleScopeMiddleware
 from app.core.startup import ensure_default_security_policy
@@ -148,6 +149,14 @@ async def lifespan(app: FastAPI):
             logger.error(f"Failed to start in-process notification worker: {e}", exc_info=True)
             notification_worker = None
             notification_worker_thread = None
+
+    # Install ORM tenant-scope listener (T-22.005).
+    # Installed LAST in startup — after tenant_scoped_session is live on all
+    # tenant routes (T-22.009) — to prevent HTTP 500 storms on unscoped requests.
+    # arch-22 section 3.2 and tasks-22 rollout order.
+    from app.core.db import engine as _db_engine
+    _tenant_listener = TenantScopeListener()
+    TenantScopeListener.install(_db_engine)
 
     yield
 
