@@ -140,7 +140,7 @@ show_help() {
     echo "Database Management:"
     echo "  migrate        - Run database migrations"
     echo "  seed           - Seed database with test data"
-    echo "  quick-seed     - Quick seed with minimal data (users only)"
+    echo "  quick-seed     - Minimal seed: superadmin only (no sample tenants/users)"
     echo "  db-reset       - Reset database (drops all data)"
     echo "  backup         - Backup database to SQL file"
     echo "  restore        - Restore database from backup file"
@@ -488,14 +488,12 @@ reset_database() {
     print_info "Database reset completed successfully"
 }
 
-# Function to quick seed (minimal data)
+# Function to quick seed (minimal data — superadmin only)
 quick_seed_database() {
-    print_info "Quick seeding database with minimal data..."
+    print_info "Quick seeding database with minimal data (superadmin only)..."
 
-    print_info "Seeding complete organizational data..."
-    print_info "Note: Using seed_complete_org (no minimal seed available)"
-    if docker compose -f "$COMPOSE_FULL_PATH" exec -T backend python -m app.seeds.seed_complete_org; then
-        print_info "Quick seed completed successfully"
+    if docker compose -f "$COMPOSE_FULL_PATH" exec -T backend python -m app.seeds.seed_minimal; then
+        print_info "Minimal seed completed successfully"
     else
         print_warning "Seeding failed or was skipped"
     fi
