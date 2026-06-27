@@ -1,5 +1,5 @@
 ---
-status: draft
+status: approved
 author: B1 (Architect)
 date: 2026-06-28
 title: Dynamic module frontend integration (static-deployable micro-frontends)
