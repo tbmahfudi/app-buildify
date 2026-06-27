@@ -1356,22 +1356,17 @@ async def enable_module_v1(
             detail={"code": "not_found", "message": f"Module '{module_id}' not found", "detail": None},
         )
 
-    # 2. Permission check
+    # 2. Permission check.
+    # Permissions resolve only through the User -> Group -> Role -> Permission
+    # chain (get_permissions); direct current_user.roles is deprecated/empty, so
+    # iterating it would always 403 a group-assigned tenant admin.
     if not current_user.is_superuser:
-        has_enable_perm = False
-        # Shortcut: tenant admin flag
-        if getattr(current_user, "is_tenant_admin", False):
-            has_enable_perm = True
-        # Check via role permissions
-        if not has_enable_perm:
-            for role in getattr(current_user, "roles", []) or []:
-                for rp in getattr(role, "permissions", []) or []:
-                    perm = getattr(rp, "permission", rp)
-                    if getattr(perm, "code", None) == "modules:enable:tenant":
-                        has_enable_perm = True
-                        break
-                if has_enable_perm:
-                    break
+        _perms = current_user.get_permissions() if hasattr(current_user, "get_permissions") else set()
+        has_enable_perm = (
+            getattr(current_user, "is_tenant_admin", False)
+            or "modules:enable:tenant" in _perms
+            or "modules:manage:tenant" in _perms
+        )
         if not has_enable_perm:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -1686,20 +1681,14 @@ async def disable_module_v1(
             detail={"code": "not_found", "message": f"Module '{module_id}' not found", "detail": None},
         )
 
-    # 2. Permission check
+    # 2. Permission check (see enable handler — group-chain resolution).
     if not current_user.is_superuser:
-        has_disable_perm = False
-        if getattr(current_user, "is_tenant_admin", False):
-            has_disable_perm = True
-        if not has_disable_perm:
-            for role in getattr(current_user, "roles", []) or []:
-                for rp in getattr(role, "permissions", []) or []:
-                    perm = getattr(rp, "permission", rp)
-                    if getattr(perm, "code", None) == "modules:disable:tenant":
-                        has_disable_perm = True
-                        break
-                if has_disable_perm:
-                    break
+        _perms = current_user.get_permissions() if hasattr(current_user, "get_permissions") else set()
+        has_disable_perm = (
+            getattr(current_user, "is_tenant_admin", False)
+            or "modules:disable:tenant" in _perms
+            or "modules:manage:tenant" in _perms
+        )
         if not has_disable_perm:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,

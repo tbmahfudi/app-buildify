@@ -185,9 +185,13 @@ DEFAULT_ROLES = [
             "permissions:read:tenant",
             "companies:read:tenant", "companies:create:tenant", "companies:update:tenant",
             "organization:view:tenant",
-            # Module & menu management (required for the Settings → Modules and
-            # Menu Management pages; menu items gate on these codes).
-            "modules:manage:tenant", "menu:manage:tenant"
+            # Module & menu management. The menu items gate on modules:manage /
+            # menu:manage, but the lifecycle endpoints check the GRANULAR action
+            # codes (enable/disable/configure), so a tenant admin needs both the
+            # umbrella and the granular module permissions.
+            "modules:manage:tenant", "menu:manage:tenant",
+            "modules:enable:tenant", "modules:disable:tenant",
+            "modules:configure:tenant", "modules:view:tenant", "modules:list:tenant"
         ]
     },
     {
