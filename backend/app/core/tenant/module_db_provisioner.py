@@ -33,13 +33,38 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Module registry: path to each module Alembic root.
 # Extend when adding new tenant-scoped modules.
+#
+# The repo layout differs between environments (repo root is the project dir on
+# a dev host but `/app` inside the backend container), so we discover the root
+# by walking up from this file until we find a directory that contains a
+# `modules/` subdirectory rather than counting `.parents[N]`, which is brittle
+# and previously raised IndexError at import time (DEF-24-A).
 # ---------------------------------------------------------------------------
-_REPO_ROOT = Path(__file__).resolve().parents[5]  # app-buildify/
+def _find_repo_root() -> Path:
+    """Walk upward until a directory containing `modules/` is found.
 
-MODULE_ALEMBIC_DIRS: dict[str, Path] = {
-    "financial": _REPO_ROOT / "modules" / "financial" / "backend",
-    "healthcare": _REPO_ROOT / "modules" / "healthcare" / "backend",
-}
+    Falls back to MODULE_ROOT env var, then to the 4th parent, so import never
+    fails even when the marker is absent.
+    """
+    env_root = os.environ.get("MODULE_ROOT")
+    if env_root:
+        return Path(env_root)
+    here = Path(__file__).resolve()
+    for parent in here.parents:
+        if (parent / "modules").is_dir():
+            return parent
+    # Last-resort fallback: never raise at import time.
+    parents = here.parents
+    return parents[4] if len(parents) > 4 else parents[-1]
+
+
+def get_module_alembic_dirs() -> dict[str, Path]:
+    """Lazily resolve per-module Alembic roots (see _find_repo_root)."""
+    root = _find_repo_root()
+    return {
+        "financial": root / "modules" / "financial" / "backend",
+        "healthcare": root / "modules" / "healthcare" / "backend",
+    }
 
 
 def _get_postgres_admin_url() -> str:
@@ -352,10 +377,11 @@ class ModuleDBProvisioner:
         DATABASE_URL env var is overridden to point at the new DB.
         Timeout is 55 s to stay within the 60 s NFR (arch-22 section 9).
         """
-        module_dir = MODULE_ALEMBIC_DIRS.get(module_name)
+        module_alembic_dirs = get_module_alembic_dirs()
+        module_dir = module_alembic_dirs.get(module_name)
         if module_dir is None:
             raise ValueError(
-                f"Unknown module {module_name!r}. Known: {sorted(MODULE_ALEMBIC_DIRS)}"
+                f"Unknown module {module_name!r}. Known: {sorted(module_alembic_dirs)}"
             )
         if not module_dir.exists():
             raise ValueError(
