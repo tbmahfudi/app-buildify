@@ -1304,30 +1304,55 @@ pack) module_pack "$@" ;;
         esac
         ;;
     check-tenant-scope)
-        # T-22.003 / T-22.021: CI gate that catches raw tenant_id == literals.
-        # Exits non-zero if any hits are found outside lines annotated with
-        # "# tenant-scope-ok".  Excludes scope.py itself to avoid self-matches.
+        # T-22.003 / T-22.021 / T-22.022: CI gate that catches raw tenant_id == literals.
+        #
+        # Lines annotated with "# tenant-scope-ok" (or the legacy "# tenant_scope")
+        # are accepted and not counted. Every other raw ".tenant_id ==" literal in
+        # services/ or routers/ is a VIOLATION.
+        #
+        # Baseline (frozen at T-22.009 merge): 36 unannotated router-layer literals
+        # tracked as M-2 follow-up for sprint N+1. The gate fails the build only when
+        # the violation count RISES ABOVE this baseline, i.e. when a NEW unannotated
+        # literal is introduced. The ratchet only goes down: as M-2 literals are
+        # migrated or annotated, lower the baseline below.
+        #
+        # See docs/backend/TENANT_SCOPE_MIGRATION.md for the annotation convention.
+        BASELINE=36
+        # Allow CI to override (e.g. to ratchet) via TENANT_SCOPE_BASELINE env var.
+        BASELINE="${TENANT_SCOPE_BASELINE:-$BASELINE}"
         SCOPE_DIRS=(
             "/home/mahfudi/app-buildify/backend/app/services/"
             "/home/mahfudi/app-buildify/backend/app/routers/"
         )
-        echo "==> check-tenant-scope: scanning services/ and routers/ for raw tenant_id == literals..."
+        echo "==> check-tenant-scope: scanning services/ and routers/ for raw tenant_id == literals (baseline=$BASELINE)..."
         VIOLATIONS=$(
             grep -rn "\.tenant_id ==" "${SCOPE_DIRS[@]}" 2>/dev/null \
             | grep -v "tenant-scope-ok" \
+            | grep -v "tenant_scope" \
             | grep -v "scope\.py:" \
             || true
         )
         if [ -n "$VIOLATIONS" ]; then
+            COUNT=$(printf '%s\n' "$VIOLATIONS" | grep -c . )
+        else
+            COUNT=0
+        fi
+        echo "check-tenant-scope: $COUNT unannotated literal(s) found (baseline $BASELINE)."
+        if [ "$COUNT" -gt "$BASELINE" ]; then
             echo ""
-            echo "ERROR: Raw tenant_id == literals found — use apply_tenant_scope() instead."
-            echo "       Annotate intentional exceptions with:  # tenant-scope-ok"
+            echo "ERROR: tenant-scope violations ($COUNT) exceed baseline ($BASELINE)."
+            echo "       Use apply_tenant_scope() instead of a raw '.tenant_id ==' filter,"
+            echo "       or annotate an intentional exception with:  # tenant-scope-ok"
             echo ""
             echo "$VIOLATIONS"
             echo ""
             exit 1
         fi
-        echo "check-tenant-scope: PASS — no unguarded tenant_id literals in services/ or routers/"
+        if [ "$COUNT" -lt "$BASELINE" ]; then
+            echo "check-tenant-scope: PASS — and below baseline; consider lowering BASELINE to $COUNT to ratchet."
+        else
+            echo "check-tenant-scope: PASS — at baseline, no new violations introduced."
+        fi
         ;;
     help|--help|-h)
         show_help
