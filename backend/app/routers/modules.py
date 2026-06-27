@@ -894,8 +894,16 @@ async def module_heartbeat(
             logger.info(f"Module '{module_name}' version changed: {module.version} -> {request_data.version}")
             module.version = request_data.version
 
-        # Update status if provided
-        if request_data.status:
+        # Update lifecycle status only if a valid lifecycle value was sent.
+        # The heartbeat `status` field is typically a *health* value (e.g.
+        # "healthy"/"degraded") which is NOT a module lifecycle status — writing
+        # it into module.status would violate the ck_modules_status CHECK
+        # constraint (draft/active/deprecated/archived/available/stable/beta).
+        _VALID_MODULE_STATUSES = {
+            "draft", "active", "deprecated", "archived",
+            "available", "stable", "beta",
+        }
+        if request_data.status and request_data.status in _VALID_MODULE_STATUSES:
             module.status = request_data.status
 
         db.commit()

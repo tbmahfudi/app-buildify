@@ -23,6 +23,15 @@ pytestmark = pytest.mark.e2e
 UNAUTH = (401, 403)
 
 
+def _err_msg(resp) -> str:
+    """Human error text from either a structured ({"detail": {"message": ...}})
+    or a legacy ({"detail": "..."}) error body (Epic-23 introduced the former)."""
+    detail = resp.json().get("detail")
+    if isinstance(detail, dict):
+        return detail.get("message") or detail.get("detail") or ""
+    return str(detail or "")
+
+
 @pytest.fixture
 def nocode_module(su, unique):
     sfx = unique("mod").replace("_", "")[:8]
@@ -120,7 +129,7 @@ class TestModuleRegistryInstall:
     def test_install_already_installed_400(self, su):
         r = su.post("/module-registry/install", json={"module_name": "financial"})
         assert r.status_code == 400
-        assert "not found" in r.json()["detail"]
+        assert "not found" in _err_msg(r)
 
     def test_install_not_loadable_400(self, su):
         r = su.post("/module-registry/install", json={"module_name": "support_management"})
@@ -154,7 +163,7 @@ class TestModuleRegistryEnable:
     def test_enable_unloadable_module_400(self, user):
         en = user.post("/module-registry/enable", json={"module_name": "financial"})
         assert en.status_code == 400
-        assert "not found" in en.json()["detail"]
+        assert "not found" in _err_msg(en)
 
     def test_enable_unknown_module_400(self, user):
         r = user.post("/module-registry/enable", json={"module_name": uuid.uuid4().hex})
@@ -213,6 +222,10 @@ class TestModuleRegistryLifecycle:
                     "name": "financial",
                     "display_name": before["display_name"],
                     "version": before["version"],
+                    # Epic-23 manifest schema requires these fields.
+                    "module_type": "code",
+                    "category": "vertical",
+                    "api_prefix": "/api/v1/financial",
                 },
                 "backend_service_url": "http://financial-module:8000",
             },
