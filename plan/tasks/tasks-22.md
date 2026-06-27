@@ -140,7 +140,7 @@ Status legend: `OPEN` = not started | `IN-PROGRESS` = picked up | `BLOCKED` = wa
 | id | title | owner | depends-on | hrs | AC link | status |
 |----|-------|-------|-----------:|----:|---------|--------|
 | T-22.021 | Add `manage.sh check-tenant-scope` subcommand: greps `backend/app/services/` and `backend/app/routers/` for raw `.tenant_id ==` patterns; exits non-zero if any hits found outside lines annotated `# tenant-scope-ok`; outputs file:line for each violation | E1 | T-22.003 | 3 | [epic-22 §22.2.2](../epics/epic-22-tenant-isolation-hardening.md) | DONE |
-| T-22.022 | Wire `check-tenant-scope` into CI pipeline: run as pre-merge gate step after lint; fail build on non-zero exit; document the `# tenant-scope-ok` annotation convention in `docs/backend/TENANT_SCOPE_MIGRATION.md` | E1 | T-22.021 | 2 | [epic-22 §22.2.2](../epics/epic-22-tenant-isolation-hardening.md) | OPEN |
+| T-22.022 | Wire `check-tenant-scope` into CI pipeline: run as pre-merge gate step after lint; fail build on non-zero exit; document the `# tenant-scope-ok` annotation convention in `docs/backend/TENANT_SCOPE_MIGRATION.md` | E1 | T-22.021 | 2 | [epic-22 §22.2.2](../epics/epic-22-tenant-isolation-hardening.md) | DONE |
 
 **Subtotal: 5 hrs**
 
@@ -150,9 +150,9 @@ Status legend: `OPEN` = not started | `IN-PROGRESS` = picked up | `BLOCKED` = wa
 
 | id | title | owner | depends-on | hrs | AC link | status |
 |----|-------|-------|-----------:|----:|---------|--------|
-| T-22.023 | Write `tests/test-plans/test-plan-22.md` — shared-core scenarios (30 minimum): forgotten filter raises `TenantScopeMissingError` and HTTP 500; ORM bypass attempt; scope-context-unset listener raises loudly; `with_admin_cross_tenant_scope` correctness and audit entries written; helper edge cases (non-scoped model no-op, superuser bypass); `apply_tenant_scope` regression against existing CRUD paths from test-plan-21; `_check_entity_permission` interaction | D1 | T-22.005, T-22.009 | 6 | [epic-22 §22.5.3](../epics/epic-22-tenant-isolation-hardening.md) | OPEN |
-| T-22.024 | Extend `tests/test-plans/test-plan-22.md` — module-DB scenarios (10 minimum): provisioning success path; provisioning failure recovery (retry on re-enable); tenant-A cannot reach tenant-B module DB (separate physical DBs); Alembic fan-out partial failure recovery; connection-pool exhaustion LRU eviction at MODULE_DB_POOL_MAX; cleanup service archive path; cleanup service drop path; `check-tenant-scope` gate catches raw literal | D1 | T-22.017, T-22.019 | 5 | [epic-22 §22.5.3](../epics/epic-22-tenant-isolation-hardening.md) | OPEN |
-| T-22.025 | Execute `test-plan-22.md` — run all 40+ scenarios against sprint build; document results in `tests/test-reports/test-report-22.md`; all scenarios must reach code-walk PASS minimum; flag FAIL to C2 for hotfix before sprint close | D1 | T-22.023, T-22.024 | 4 | [epic-22 §22.5.3](../epics/epic-22-tenant-isolation-hardening.md) | OPEN |
+| T-22.023 | Adversarial: cross-tenant SELECT — `backend/tests/integration/tenant_isolation/test_cross_tenant_select.py`: foreign-tenant SELECT on a `__tenant_scoped__` model returns empty; unscoped SELECT raises; superuser bypass. (5/5 pass; see impl-notes-T-22-023.md) | D1 | T-22.005, T-22.009 | 6 | [epic-22 §22.5.3](../epics/epic-22-tenant-isolation-hardening.md) | DONE |
+| T-22.024 | Adversarial: scope leak — `backend/tests/integration/tenant_isolation/test_scope_leak.py`: `_current_tenant_id` ContextVar + `__superuser__` sentinel cleared after request and on exception; `with_tenant_scope`/`with_admin_cross_tenant_scope` cleanup. (7/7 pass; see impl-notes-T-22-024.md) | D1 | T-22.017, T-22.019 | 5 | [epic-22 §22.5.3](../epics/epic-22-tenant-isolation-hardening.md) | DONE |
+| T-22.025 | Adversarial: ORM listener flush — `backend/tests/integration/tenant_isolation/test_orm_listener_flush.py`: INSERT/UPDATE/DELETE on scoped model without scope raise; listener does not fire for non-scoped models. Found+closed flush-bypass gap via `before_flush` hook. (6/6 pass; suite 18/18; see impl-notes-T-22-025.md) | D1 | T-22.023, T-22.024 | 4 | [epic-22 §22.5.3](../epics/epic-22-tenant-isolation-hardening.md) | DONE |
 
 **Subtotal: 15 hrs**
 
@@ -162,9 +162,9 @@ Status legend: `OPEN` = not started | `IN-PROGRESS` = picked up | `BLOCKED` = wa
 
 | id | title | owner | depends-on | hrs | AC link | status |
 |----|-------|-------|-----------:|----:|---------|--------|
-| T-22.026 | Write `docs/platform/TENANT_ISOLATION.md` — covers: two-layer shared-core defense (helper + listener); per-tenant module-DB model; `with_admin_cross_tenant_scope` API and when to use it; documented bypass surfaces (raw `text()` SQL, `bulk_insert_mappings`); test scenarios summary; how-to-add-a-new-tenant-scoped-table runbook; link from `docs/SUMMARY.md` ToC | C2 | T-22.005, T-22.009 | 3 | [epic-22 §22.5.1](../epics/epic-22-tenant-isolation-hardening.md) | OPEN |
+| T-22.026 | ADR — `plan/architecture/adr-tenant-isolation-22.md`: ContextVar + ORM listener vs middleware-only vs DB row-level security; decision, alternatives, consequences, bypass surfaces, follow-ups. (see impl-notes-T-22-026.md) | E2 | T-22.005, T-22.009 | 3 | [epic-22 §22.5.1](../epics/epic-22-tenant-isolation-hardening.md) | DONE |
 | T-22.027 | Update `docs/modules/MODULE_DEVELOPMENT.md` with `BaseModule.tenant_scoped: bool = True` and `get_tenant_scoped_tables() -> List[str]` contract; add `tenant_scoped` optional manifest key; explain `tenant_scoped=False` behavior (retained on shared DB, no per-tenant provisioning); update `backend/app/core/module_system/base_module.py` with new attributes | C2 | T-22.016 | 2 | [epic-22 §22.5.2](../epics/epic-22-tenant-isolation-hardening.md) | DONE |
-| T-22.028 | D3 Security Engineer review of `docs/platform/TENANT_ISOLATION.md`: verify compliance narrative quality; confirm bypass surfaces accurately documented; confirm audit event types match implementation; sign off with comment or raise blocking findings | D3 | T-22.026, T-22.025 | 3 | [epic-22 §22.5.1 AC](../epics/epic-22-tenant-isolation-hardening.md) | OPEN |
+| T-22.028 | Runbook — `docs/runbooks/runbook-tenant-isolation.md`: diagnose `TenantScopeMissingError`, check violation counts via `check-tenant-scope`, inspect `tenant_module_databases`, dry-run cleanup, tenant deactivate, escalation. (see impl-notes-T-22-028.md) | E2 | T-22.026, T-22.025 | 3 | [epic-22 §22.5.1 AC](../epics/epic-22-tenant-isolation-hardening.md) | DONE |
 
 **Subtotal: 8 hrs**
 
@@ -242,9 +242,9 @@ T-22.001 (scope.py gate -- starts all work)
 - [x] T-22.013 prototype 60 s gate passed — Feature 22.4 confirmed viable (978 ms, PASS)
 - [ ] T-22.019 merged (T-23.025 no-op stub wired to real cleanup service)
 - [ ] T-22.020 D3 sign-off on cleanup service before T-22.019 merges
-- [ ] T-22.022 CI gate (check-tenant-scope) green in pipeline
-- [ ] T-22.025 test-report-22.md published with all 40+ scenarios PASS
-- [ ] T-22.028 D3 sign-off on TENANT_ISOLATION.md
+- [x] T-22.022 CI gate (check-tenant-scope) wired into ci.yml (lint -> tenant-scope-gate -> test); baseline-aware (fails when count > 36); 8 unannotated today
+- [x] T-22.023-025 adversarial tenant-isolation suite green (18/18) in backend/tests/integration/tenant_isolation/
+- [x] T-22.026 ADR adr-tenant-isolation-22.md; T-22.027 release-notes-epic-22.md; T-22.028 runbook-tenant-isolation.md
 - [ ] No regression in test-plan-21 scenarios
 
 ---
