@@ -76,6 +76,12 @@ class UserResponse(BaseModel):
     default_company_id: Optional[str] = Field(None, description="Default company ID")
     branch_id: Optional[str] = Field(None, description="Branch ID")
     department_id: Optional[str] = Field(None, description="Department ID")
+    # Resolved human-readable org context (for the frontend header / profile).
+    is_system: bool = Field(False, description="True for the platform superadmin (no tenant) — show as 'System'")
+    tenant_name: Optional[str] = Field(None, description="Tenant display name ('System' for superadmin)")
+    company_name: Optional[str] = Field(None, description="Default company display name")
+    branch_name: Optional[str] = Field(None, description="Branch display name")
+    department_name: Optional[str] = Field(None, description="Department display name")
     roles: List[str] = Field(default_factory=list, description="User role names")
     permissions: List[str] = Field(default_factory=list, description="User permission codes")
     created_at: datetime = Field(..., description="Creation timestamp")

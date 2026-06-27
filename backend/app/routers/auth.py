@@ -31,6 +31,10 @@ from app.models.password_reset_token import PasswordResetToken
 from app.models.token_blacklist import TokenBlacklist
 from app.models.user import User
 from app.models.user_session import UserSession
+from app.models.tenant import Tenant
+from app.models.company import Company
+from app.models.branch import Branch
+from app.models.department import Department
 from app.schemas.auth import (
     LoginRequest,
     PasswordChangeRequest,
@@ -413,11 +417,30 @@ def refresh(refresh_req: RefreshRequest, db: Session = Depends(get_db)):
     )
 
 @router.get("/me", response_model=UserResponse)
-def get_me(current_user: User = Depends(get_current_user)):
-    """Get current user profile"""
+def get_me(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Get current user profile (incl. resolved tenant/company/branch names)."""
     # Get user roles and permissions from RBAC system
     roles = list(current_user.get_roles()) if hasattr(current_user, 'get_roles') else []
     permissions = list(current_user.get_permissions()) if hasattr(current_user, 'get_permissions') else []
+
+    # Resolve human-readable org context. The platform superadmin has no tenant
+    # and is shown as "System"; all other levels are null-safe lookups.
+    is_system = bool(current_user.is_superuser and not current_user.tenant_id)
+    tenant_name = "System" if is_system else None
+    company_name = branch_name = department_name = None
+
+    def _name(model, pk):
+        if not pk:
+            return None
+        obj = db.query(model).filter(model.id == pk).first()
+        return obj.name if obj else None
+
+    if not is_system:
+        if current_user.tenant_id:
+            tenant_name = _name(Tenant, current_user.tenant_id)
+        company_name = _name(Company, current_user.default_company_id)
+        branch_name = _name(Branch, current_user.branch_id)
+        department_name = _name(Department, current_user.department_id)
 
     return UserResponse(
         id=str(current_user.id),
@@ -431,6 +454,11 @@ def get_me(current_user: User = Depends(get_current_user)):
         default_company_id=str(current_user.default_company_id) if current_user.default_company_id else None,
         branch_id=str(current_user.branch_id) if current_user.branch_id else None,
         department_id=str(current_user.department_id) if current_user.department_id else None,
+        is_system=is_system,
+        tenant_name=tenant_name,
+        company_name=company_name,
+        branch_name=branch_name,
+        department_name=department_name,
         roles=roles,
         permissions=permissions,
         created_at=current_user.created_at,

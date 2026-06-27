@@ -224,9 +224,62 @@ function updateUserInfo() {
       userEmailDropdown.textContent = appState.user.email;
     }
 
+    // Org context (tenant / company / branch); "System" for the superadmin.
+    updateOrgContext();
+
     // Store user in localStorage for quick access across the app
     localStorage.setItem('user', JSON.stringify(appState.user));
   }
+}
+
+/**
+ * Render the logged-in user's organization context (tenant › company › branch)
+ * in the header badge and the profile dropdown. The platform superadmin has no
+ * tenant and is shown as "System".
+ */
+function updateOrgContext() {
+  const u = appState.user || {};
+  const headerWrap  = document.getElementById('org-context-header');
+  const headerLabel = document.getElementById('org-context-header-label');
+  const dropdown    = document.getElementById('org-context-dropdown');
+
+  if (u.is_system) {
+    if (headerLabel) headerLabel.textContent = 'System';
+    if (headerWrap)  headerWrap.title = 'System (platform superadmin)';
+    if (dropdown) {
+      dropdown.innerHTML =
+        '<div class="flex items-center gap-1.5 text-gray-700">' +
+        '<i class="ph-duotone ph-globe-hemisphere-west" aria-hidden="true"></i>' +
+        '<span class="font-medium">System</span></div>';
+    }
+    return;
+  }
+
+  // Ordered, non-empty levels for the compact header label.
+  const levels = [
+    ['Tenant', u.tenant_name],
+    ['Company', u.company_name],
+    ['Branch', u.branch_name],
+    ['Department', u.department_name],
+  ].filter(([, v]) => v);
+
+  const compact = levels.map(([, v]) => v).join(' › ') || '—';
+  if (headerLabel) headerLabel.textContent = compact;
+  if (headerWrap)  headerWrap.title = levels.map(([k, v]) => `${k}: ${v}`).join('\n');
+
+  if (dropdown) {
+    dropdown.innerHTML = levels.length
+      ? levels.map(([k, v]) =>
+          `<div class="flex justify-between gap-3"><span class="text-gray-400">${k}</span>` +
+          `<span class="text-gray-700 font-medium truncate text-right">${escapeOrgHtml(v)}</span></div>`
+        ).join('')
+      : '<div class="text-gray-400">No organization assigned</div>';
+  }
+}
+
+function escapeOrgHtml(s) {
+  return String(s).replace(/[&<>"']/g, c =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
 function setupEventListeners() {

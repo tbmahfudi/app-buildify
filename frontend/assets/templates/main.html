@@ -95,6 +95,14 @@
             </div>
           </div>
 
+          <!-- Org context (tenant / company / branch); "System" for superadmin -->
+          <div id="org-context-header"
+               class="hidden md:flex items-center gap-1.5 px-2.5 py-1 mr-1 rounded-lg bg-gray-700/60 text-xs text-gray-200 max-w-[18rem]"
+               title="">
+            <i class="ph-duotone ph-buildings text-sm text-gray-300 flex-shrink-0" aria-hidden="true"></i>
+            <span id="org-context-header-label" class="truncate">—</span>
+          </div>
+
           <!-- User Dropdown -->
           <div class="relative group">
             <button class="flex items-center gap-1.5 px-2 py-1 rounded-lg hover:bg-gray-700 transition"
@@ -118,6 +126,7 @@
               <div class="p-3 border-b border-gray-200 bg-gray-100">
                 <p class="text-xs text-gray-500">Signed in as</p>
                 <p class="text-sm font-medium truncate text-gray-900" id="user-email-dropdown">user@example.com</p>
+                <div id="org-context-dropdown" class="mt-2 space-y-0.5 text-xs text-gray-600"></div>
               </div>
 
               <a href="#settings"
