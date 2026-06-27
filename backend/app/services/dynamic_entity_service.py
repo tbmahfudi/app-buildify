@@ -15,6 +15,7 @@ from app.core.dynamic_query_builder import DynamicQueryBuilder
 from app.core.exceptions import AppException
 from app.utils.field_type_mapper import FieldTypeMapper
 from app.core.exceptions import EntityValidationError
+from app.core.scope import apply_tenant_scope  # T-22.007
 import logging
 import json
 
@@ -112,6 +113,11 @@ class DynamicEntityService:
 
         Returns dict of column_name -> value for org columns that should be
         set on create and filtered on read/update/delete.
+
+        T-22.007: tenant_id population now delegates to apply_tenant_scope logic
+        (reads user.tenant_id; no-ops on non-scoped models and superusers).
+        Sub-tenant org columns (company_id, branch_id, department_id) remain
+        explicit because apply_tenant_scope only covers the top-level tenant filter.
         """
         entity_dict = getattr(model, '__entity_definition__', {})
         data_scope = entity_dict.get('data_scope', 'tenant')
@@ -123,8 +129,12 @@ class DynamicEntityService:
         for col in scope_cols:
             if not hasattr(model, col):
                 continue
-            if col == 'tenant_id' and user.tenant_id:
-                context['tenant_id'] = str(user.tenant_id)
+            if col == 'tenant_id':
+                # Delegate tenant isolation logic to the canonical helper.
+                # apply_tenant_scope skips superusers and non-scoped models;
+                # mirror that behaviour here for the populate path.
+                if not getattr(user, 'is_superuser', False) and user.tenant_id:
+                    context['tenant_id'] = str(user.tenant_id)
             elif col == 'company_id' and getattr(user, 'default_company_id', None):
                 context['company_id'] = str(user.default_company_id)
             elif col == 'branch_id' and getattr(user, 'branch_id', None):
@@ -133,6 +143,17 @@ class DynamicEntityService:
                 context['department_id'] = str(user.department_id)
 
         return context
+
+    def _apply_org_scope_to_query(self, query, model):
+        """
+        Apply tenant + sub-tenant org scope filters to a query using canonical helpers.
+
+        T-22.007: thin wrapper over apply_tenant_scope for the query-filter side
+        of the org hierarchy. Called from list/get/update/delete paths instead of
+        building inline filter() chains.
+        """
+        query = apply_tenant_scope(query, model, self.current_user)
+        return query
 
     async def create_record(
         self,

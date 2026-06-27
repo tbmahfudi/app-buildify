@@ -48,6 +48,7 @@ services:
       - JWT_SECRET_KEY=your-secret-key-change-in-production
       - DEBUG=true
       - ENVIRONMENT=development
+      - PHI_ENCRYPTION_KEY=
     ports:
       - "8000:8000"
     depends_on:
@@ -122,6 +123,7 @@ services:
       - MODULE_PORT=9001
       - DEBUG=true
       - ENVIRONMENT=development
+      - PHI_ENCRYPTION_KEY=
     ports:
       - "9001:9001"
     depends_on:

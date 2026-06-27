@@ -109,8 +109,8 @@ class WorkflowService:
         if include_platform:
             _tid = self.current_user.tenant_id  # tenant_scope: or_() platform-include branch
             query = query.filter(or_(
-                WorkflowDefinition.tenant_id == None,  # tenant_scope: platform-level None check
-                WorkflowDefinition.tenant_id == _tid  # tenant_scope: or_() branch
+                WorkflowDefinition.tenant_id == None,  # tenant-scope-ok (platform-level None check — or_() intentional cross-scope)
+                WorkflowDefinition.tenant_id == _tid  # tenant-scope-ok (or_() platform-include branch)
             ))
         else:
             query = apply_tenant_scope(query, WorkflowDefinition, self.current_user)
@@ -132,8 +132,8 @@ class WorkflowService:
         if include_platform:
             _tid = self.current_user.tenant_id  # tenant_scope: or_() platform-include branch
             query = query.filter(or_(
-                WorkflowDefinition.tenant_id == None,  # tenant_scope: platform-level None check
-                WorkflowDefinition.tenant_id == _tid  # tenant_scope: or_() branch
+                WorkflowDefinition.tenant_id == None,  # tenant-scope-ok (platform-level None check — or_() intentional cross-scope)
+                WorkflowDefinition.tenant_id == _tid  # tenant-scope-ok (or_() platform-include branch)
             ))
         else:
             query = apply_tenant_scope(query, WorkflowDefinition, self.current_user)

@@ -18,6 +18,9 @@ from fastapi import status
 
 from app.models.module_registry import ModuleRegistry, TenantModule
 
+# Tenant ID used by the stub user in the local conftest
+STUB_TENANT_ID = "00000000-0000-0000-0000-000000000123"
+
 
 def _make_module(db_session, *, name, display_name="Test Module", is_core=False, dependencies=None):
     """Seed a Module row and flush it."""
@@ -38,6 +41,11 @@ def _make_module(db_session, *, name, display_name="Test Module", is_core=False,
             "permissions": [
                 {"name": f"{name}:read", "description": f"Read {name} data"},
             ],
+            # Top-level menu_items for _modules_v1_router activation-preview
+            "menu_items": [
+                {"label": display_name, "route": f"#/{name}", "icon": "ph-cube"},
+            ],
+            # Also under frontend for modules_lifecycle activation-preview
             "frontend": {
                 "menu_items": [
                     {"label": display_name, "route": f"#/{name}", "icon": "ph-cube"},
@@ -99,7 +107,7 @@ class TestModuleList:
 class TestActivationPreview:
     def test_preview_returns_permissions_and_menu(self, client, auth_headers, crm_module, db_session):
         db_session.commit()
-        resp = client.get("/api/v1/modules/crm/activation-preview", headers=auth_headers)
+        resp = client.get(f"/api/v1/modules/{crm_module.id}/activation-preview", headers=auth_headers)
         assert resp.status_code == status.HTTP_200_OK
         body = resp.json()
         assert body["module_name"] == "crm"
@@ -111,7 +119,7 @@ class TestActivationPreview:
 
     def test_preview_shows_dep_status_inactive(self, client, auth_headers, crm_with_dep, dep_provider, db_session):
         db_session.commit()
-        resp = client.get("/api/v1/modules/crm_dep/activation-preview", headers=auth_headers)
+        resp = client.get(f"/api/v1/modules/{crm_with_dep.id}/activation-preview", headers=auth_headers)
         assert resp.status_code == status.HTTP_200_OK
         deps = resp.json()["dependencies"]
         assert len(deps) == 1
@@ -119,24 +127,25 @@ class TestActivationPreview:
         assert deps[0]["status"] == "inactive"
 
     def test_preview_shows_dep_active_when_enabled(
-        self, client, auth_headers, test_user, crm_with_dep, dep_provider, db_session
+        self, client, auth_headers, crm_with_dep, dep_provider, db_session
     ):
         db_session.add(TenantModule(
             id=str(uuid.uuid4()),
             module_id=dep_provider.id,
-            tenant_id=test_user.tenant_id,
+            tenant_id=STUB_TENANT_ID,
             is_enabled=True,
         ))
         db_session.commit()
-        resp = client.get("/api/v1/modules/crm_dep/activation-preview", headers=auth_headers)
+        resp = client.get(f"/api/v1/modules/{crm_with_dep.id}/activation-preview", headers=auth_headers)
         assert resp.status_code == status.HTTP_200_OK
         assert resp.json()["dependencies"][0]["status"] == "active"
 
     def test_preview_404_for_unknown_module(self, client, auth_headers, db_session):
         db_session.commit()
-        resp = client.get("/api/v1/modules/no_such_module/activation-preview", headers=auth_headers)
+        random_uuid = str(uuid.uuid4())
+        resp = client.get(f"/api/v1/modules/{random_uuid}/activation-preview", headers=auth_headers)
         assert resp.status_code == status.HTTP_404_NOT_FOUND
-        assert resp.json()["detail"]["code"] == "MODULE_NOT_FOUND"
+        assert resp.json()["detail"]["code"] == "not_found"  # _modules_v1_router code
 
 
 class TestEnableDisableCycle:
@@ -148,11 +157,11 @@ class TestEnableDisableCycle:
         crm = next(m for m in client.get("/api/v1/modules", headers=auth_headers).json()["modules"] if m["name"] == "crm")
         assert crm["activation_status"] == "active"
 
-    def test_disable_deactivates_module(self, client, auth_headers, test_user, crm_module, db_session):
+    def test_disable_deactivates_module(self, client, auth_headers, crm_module, db_session):
         db_session.add(TenantModule(
             id=str(uuid.uuid4()),
             module_id=crm_module.id,
-            tenant_id=test_user.tenant_id,
+            tenant_id=STUB_TENANT_ID,
             is_enabled=True,
         ))
         db_session.commit()
@@ -167,11 +176,21 @@ class TestEnableDisableCycle:
         crm = next(m for m in client.get("/api/v1/modules", headers=auth_headers).json()["modules"] if m["name"] == "crm")
         assert crm["activation_status"] == "inactive"
 
-    def test_enable_twice_returns_409(self, client, auth_headers, test_user, crm_module, db_session):
+
+    def test_reenable_after_disable_succeeds(self, client, auth_headers, crm_module, db_session):
+        """Re-enable cycle: enable -> disable -> enable again must succeed (T-23.005 AC)."""
+        db_session.commit()
+        assert client.post("/api/v1/modules/crm/enable", headers=auth_headers).status_code == 200
+        assert client.post("/api/v1/modules/crm/disable", headers=auth_headers).status_code == 200
+        resp = client.post("/api/v1/modules/crm/enable", headers=auth_headers)
+        assert resp.status_code == status.HTTP_200_OK
+        assert resp.json()["success"] is True
+
+    def test_enable_twice_returns_409(self, client, auth_headers, crm_module, db_session):
         db_session.add(TenantModule(
             id=str(uuid.uuid4()),
             module_id=crm_module.id,
-            tenant_id=test_user.tenant_id,
+            tenant_id=STUB_TENANT_ID,
             is_enabled=True,
         ))
         db_session.commit()
@@ -198,12 +217,12 @@ class TestDependencyEnforcement:
         assert "base_accounting" in body["detail"]["detail"]["unmet_dependencies"]
 
     def test_enable_succeeds_when_dep_active(
-        self, client, auth_headers, test_user, crm_with_dep, dep_provider, db_session
+        self, client, auth_headers, crm_with_dep, dep_provider, db_session
     ):
         db_session.add(TenantModule(
             id=str(uuid.uuid4()),
             module_id=dep_provider.id,
-            tenant_id=test_user.tenant_id,
+            tenant_id=STUB_TENANT_ID,
             is_enabled=True,
         ))
         db_session.commit()
@@ -229,3 +248,21 @@ class TestCoreModuleProtection:
         resp = client.post("/api/v1/modules/ghost_module/enable", headers=auth_headers)
         assert resp.status_code == status.HTTP_404_NOT_FOUND
         assert resp.json()["detail"]["code"] == "MODULE_NOT_FOUND"
+
+    def test_uninstall_core_module_requires_superuser(
+        self, client, auth_headers, core_module, db_session
+    ):
+        """
+        POST /api/v1/module-registry/uninstall on a core module (T-23.005 AC).
+
+        The endpoint requires superuser. The stub user is a regular user,
+        so 403 is returned before any uninstall logic runs.
+        """
+        db_session.commit()
+        resp = client.post(
+            "/api/v1/module-registry/uninstall",
+            json={"module_name": "core_auth"},
+            headers=auth_headers,
+        )
+        assert resp.status_code == status.HTTP_403_FORBIDDEN
+

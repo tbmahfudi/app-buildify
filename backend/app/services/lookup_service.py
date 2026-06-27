@@ -84,8 +84,8 @@ class LookupService:
         if include_platform:
             _tid = self.current_user.tenant_id  # tenant_scope: or_() platform-include
             query = query.filter(or_(
-                LookupConfiguration.tenant_id == None,  # tenant_scope: platform-level None check
-                LookupConfiguration.tenant_id == _tid  # tenant_scope: or_() branch
+                LookupConfiguration.tenant_id == None,  # tenant-scope-ok (platform-level None check — or_() intentional cross-scope)
+                LookupConfiguration.tenant_id == _tid  # tenant-scope-ok (or_() platform-include branch)
             ))
         else:
             query = apply_tenant_scope(query, LookupConfiguration, self.current_user)
@@ -109,8 +109,8 @@ class LookupService:
         if include_platform:
             _tid = self.current_user.tenant_id  # tenant_scope: or_() platform-include
             cfg_q = cfg_q.filter(or_(
-                LookupConfiguration.tenant_id == None,  # tenant_scope: platform-level None check
-                LookupConfiguration.tenant_id == _tid  # tenant_scope: or_() branch
+                LookupConfiguration.tenant_id == None,  # tenant-scope-ok (platform-level None check — or_() intentional cross-scope)
+                LookupConfiguration.tenant_id == _tid  # tenant-scope-ok (or_() platform-include branch)
             ))
         else:
             cfg_q = apply_tenant_scope(cfg_q, LookupConfiguration, self.current_user)

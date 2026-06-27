@@ -30,7 +30,9 @@ def _stub_user():
     user.full_name = 'Integration Test User'
     user.is_active = True
     user.is_superuser = False
+    user.is_tenant_admin = True  # grants modules:enable/disable:tenant
     user.tenant_id = INTEGRATION_TENANT_ID
+    user.roles = []  # no RBAC roles needed; is_tenant_admin covers it
     return user
 
 
@@ -69,3 +71,12 @@ def client(db_session):
         yield test_client
 
     app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def auth_headers():
+    """Minimal bearer-token headers that satisfy auth-header-aware stub.
+    Token content is irrelevant; the stub only checks header presence.
+    """
+    return {"Authorization": "Bearer integration-test-token"}
+

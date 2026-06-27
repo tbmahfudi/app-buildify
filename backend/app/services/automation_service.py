@@ -85,8 +85,8 @@ class AutomationService:
         if include_platform:
             _tid = self.current_user.tenant_id  # tenant_scope: or_() platform-include
             query = query.filter(or_(
-                AutomationRule.tenant_id == None,  # tenant_scope: platform-level None check
-                AutomationRule.tenant_id == _tid  # tenant_scope: or_() branch
+                AutomationRule.tenant_id == None,  # tenant-scope-ok (platform-level None check — or_() intentional cross-scope)
+                AutomationRule.tenant_id == _tid  # tenant-scope-ok (or_() platform-include branch)
             ))
         else:
             query = apply_tenant_scope(query, AutomationRule, self.current_user)
@@ -114,8 +114,8 @@ class AutomationService:
         if include_platform:
             _tid = self.current_user.tenant_id  # tenant_scope: or_() platform-include
             rule_q = rule_q.filter(or_(
-                AutomationRule.tenant_id == None,  # tenant_scope: platform-level None check
-                AutomationRule.tenant_id == _tid  # tenant_scope: or_() branch
+                AutomationRule.tenant_id == None,  # tenant-scope-ok (platform-level None check — or_() intentional cross-scope)
+                AutomationRule.tenant_id == _tid  # tenant-scope-ok (or_() platform-include branch)
             ))
         else:
             rule_q = apply_tenant_scope(rule_q, AutomationRule, self.current_user)
@@ -310,7 +310,7 @@ class AutomationService:
         """List all available action templates"""
         _tid = self.current_user.tenant_id  # tenant_scope: or_() system template branch
         return self.db.query(ActionTemplate).filter(
-            (ActionTemplate.tenant_id == _tid) |  # tenant_scope: or_() branch
+            (ActionTemplate.tenant_id == _tid) |  # tenant-scope-ok (or_() platform-include branch)
             (ActionTemplate.is_system == True),
             ActionTemplate.is_deleted == False,
             ActionTemplate.is_active == True

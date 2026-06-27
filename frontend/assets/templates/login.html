@@ -519,6 +519,7 @@
     const confirmView  = document.getElementById('reset-confirm-view');
 
     let _psi = null;
+    let _resetToken = null; // T-24.007: cleared from URL via history.replaceState
 
     function showView(hash) {
       const isRequest = hash === 'reset-password';
@@ -528,6 +529,11 @@
       confirmView.classList.toggle('hidden', !isConfirm);
       if (isConfirm) {
         const token = new URLSearchParams(window.location.search).get('token');
+        // Security (T-24.007, arch-24 section 3.1): clear reset token from browser history immediately
+        if (token) {
+          _resetToken = token;
+          history.replaceState(null, '', window.location.pathname + window.location.hash);
+        }
         document.getElementById('reset-no-token').classList.toggle('hidden', !!token);
         document.getElementById('reset-confirm-form').classList.toggle('hidden', !token);
         if (token && !_psi) {
@@ -596,7 +602,7 @@
       e.preventDefault();
       const errDiv = document.getElementById('reset-confirm-error');
       const errMsg = document.getElementById('reset-confirm-error-msg');
-      const token  = new URLSearchParams(window.location.search).get('token');
+      const token  = _resetToken; // T-24.007: token cleared from URL on page load via history.replaceState
 
       confirmBtn.disabled = true;
       newPwInput.disabled = true;

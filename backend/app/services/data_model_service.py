@@ -57,13 +57,13 @@ class DataModelService:
         # Check if entity name already exists at the target scope
         if is_platform_level:
             # Check platform-level entities only
-            existing_filter = EntityDefinition.tenant_id == None  # tenant_scope: platform-level None check
+            existing_filter = EntityDefinition.tenant_id == None  # tenant-scope-ok (platform-level None check — or_() intentional cross-scope)
         else:
             # Check both tenant-level and platform-level (to avoid conflicts)
-            _tid = self.current_user.tenant_id  # tenant_scope: or_() platform-include
+            _tid = self.current_user.tenant_id  # tenant-scope-ok (or_() platform-include setup)
             existing_filter = or_(
-                EntityDefinition.tenant_id == None,  # tenant_scope: platform-level None check
-                EntityDefinition.tenant_id == _tid  # tenant_scope: or_() branch
+                EntityDefinition.tenant_id == None,  # tenant-scope-ok (platform-level None check — or_() intentional cross-scope)
+                EntityDefinition.tenant_id == _tid  # tenant-scope-ok (or_() platform-include branch)
             )
 
         existing = self.db.query(EntityDefinition).filter(
@@ -251,10 +251,10 @@ class DataModelService:
             EntityDefinition.is_deleted == False
         )
         if include_platform:
-            _tid = self.current_user.tenant_id  # tenant_scope: or_() platform-include
+            _tid = self.current_user.tenant_id  # tenant-scope-ok (or_() platform-include setup)
             query = query.filter(or_(
-                EntityDefinition.tenant_id == None,  # tenant_scope: platform-level None check
-                EntityDefinition.tenant_id == _tid  # tenant_scope: or_() branch
+                EntityDefinition.tenant_id == None,  # tenant-scope-ok (platform-level None check — or_() intentional cross-scope)
+                EntityDefinition.tenant_id == _tid  # tenant-scope-ok (or_() platform-include branch)
             ))
         else:
             query = apply_tenant_scope(query, EntityDefinition, self.current_user)
@@ -278,10 +278,10 @@ class DataModelService:
             EntityDefinition.is_deleted == False
         )
         if include_platform:
-            _tid = self.current_user.tenant_id  # tenant_scope: or_() platform-include
+            _tid = self.current_user.tenant_id  # tenant-scope-ok (or_() platform-include setup)
             entity_q = entity_q.filter(or_(
-                EntityDefinition.tenant_id == None,  # tenant_scope: platform-level None check
-                EntityDefinition.tenant_id == _tid  # tenant_scope: or_() branch
+                EntityDefinition.tenant_id == None,  # tenant-scope-ok (platform-level None check — or_() intentional cross-scope)
+                EntityDefinition.tenant_id == _tid  # tenant-scope-ok (or_() platform-include branch)
             ))
         else:
             entity_q = apply_tenant_scope(entity_q, EntityDefinition, self.current_user)
@@ -513,11 +513,11 @@ class DataModelService:
 
         # Check if name already exists in tenant
         from sqlalchemy import or_
-        _tid = self.current_user.tenant_id  # tenant_scope: or_() platform-include
+        _tid = self.current_user.tenant_id  # tenant-scope-ok (or_() platform-include setup)
         existing = self.db.query(EntityDefinition).filter(
             or_(
-                EntityDefinition.tenant_id == None,  # tenant_scope: platform-level None check
-                EntityDefinition.tenant_id == _tid  # tenant_scope: or_() branch
+                EntityDefinition.tenant_id == None,  # tenant-scope-ok (platform-level None check — or_() intentional cross-scope)
+                EntityDefinition.tenant_id == _tid  # tenant-scope-ok (or_() platform-include branch)
             ),
             EntityDefinition.name == new_name,
             EntityDefinition.is_deleted == False
