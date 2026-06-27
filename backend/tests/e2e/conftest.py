@@ -232,6 +232,69 @@ def drop_table_best_effort(table_name: str) -> None:
         pass
 
 
+def cleanup_e2e_modules_best_effort() -> int:
+    """
+    Best-effort removal of any modules left behind by the e2e suite.
+
+    Module tests create no-code modules named ``e2e_*`` (incl. the circular- and
+    dependency-test modules ``e2e_circ_*`` / ``e2e_dep_*``). Their per-test
+    cleanup can fail to fully remove them — a module that is the *target* of a
+    dependency row cannot be deleted via the API because the FK on
+    ``module_dependencies.depends_on_module_id`` is RESTRICT — so leaks
+    accumulate across runs. This clears the dependency edges first, then deletes
+    the modules directly (CASCADE handles activations/versions/extensions).
+
+    DB-level (mirrors ``drop_table_best_effort``) so it is reliable regardless of
+    API ordering. Silently no-ops if the DB is unreachable. Returns the number of
+    modules removed.
+    """
+    url = os.environ.get("SQLALCHEMY_DATABASE_URL") or os.environ.get("DATABASE_URL")
+    if not url:
+        return 0
+    try:
+        import psycopg2
+
+        dsn = (
+            url.replace("postgresql+psycopg2://", "postgresql://")
+            .replace("postgresql+psycopg://", "postgresql://")
+        )
+        conn = psycopg2.connect(dsn)
+        try:
+            conn.autocommit = True
+            with conn.cursor() as cur:
+                # Clear dependency edges (both directions) for e2e modules so the
+                # RESTRICT FK does not block deletion.
+                cur.execute(
+                    """
+                    DELETE FROM module_dependencies
+                    WHERE module_id IN (SELECT id FROM modules WHERE name LIKE 'e2e_%%')
+                       OR depends_on_module_id IN (SELECT id FROM modules WHERE name LIKE 'e2e_%%')
+                    """
+                )
+                cur.execute("DELETE FROM modules WHERE name LIKE 'e2e_%%'")
+                return cur.rowcount or 0
+        finally:
+            conn.close()
+    except Exception:  # noqa: BLE001 — cleanup must never fail the suite
+        return 0
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _sweep_e2e_artifacts():
+    """
+    Session-end safety net: leave the database as the suite found it.
+
+    Individual fixtures already clean up their own modules, but a failed test or
+    a dependency-RESTRICT can leave ``e2e_*`` modules behind. This guarantees the
+    suite is self-cleaning regardless. Published-entity tables are handled
+    separately by ``drop_table_best_effort`` in their own fixtures.
+    """
+    yield
+    removed = cleanup_e2e_modules_best_effort()
+    if removed:
+        print(f"\n[e2e cleanup] removed {removed} leftover e2e_* module(s)")
+
+
 def pytest_configure(config):
     config.addinivalue_line(
         "markers", "e2e: Black-box API tests against a live running container"
