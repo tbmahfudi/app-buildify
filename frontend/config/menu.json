@@ -17,8 +17,7 @@
           "iconColor": "text-blue-600",
           "submenu": [
             { "title": "Tenants & Organizations", "route": "tenants", "icon": "ph-duotone ph-globe", "iconColor": "text-blue-600", "roles": ["superuser"] },
-            { "title": "Users & Access Control", "route": "rbac", "icon": "ph-duotone ph-shield-check", "iconColor": "text-purple-600", "roles": ["admin"] },
-            { "title": "Module Installation", "route": "admin/modules", "icon": "ph-duotone ph-package", "iconColor": "text-teal-600", "roles": ["superuser"] }
+            { "title": "Users & Access Control", "route": "rbac", "icon": "ph-duotone ph-shield-check", "iconColor": "text-purple-600", "roles": ["admin"] }
           ]
         },
         {
@@ -171,13 +170,34 @@
               "permission": "menu:manage:tenant"
             },
             {
-              "title": "Module Management",
-              "route": "modules",
+              "title": "Modules",
               "icon": "ph-duotone ph-package",
               "iconColor": "text-indigo-600",
-              "permission": "modules:read:tenant",
-              "badge": "PHASE 4",
-              "badgeColor": "bg-indigo-500"
+              "permission": "modules:manage:tenant",
+              "submenu": [
+                {
+                  "title": "Module Activation",
+                  "route": "settings/modules",
+                  "icon": "ph-duotone ph-toggle-right",
+                  "iconColor": "text-indigo-600",
+                  "permission": "modules:manage:tenant"
+                },
+                {
+                  "title": "Module Builder",
+                  "route": "modules",
+                  "icon": "ph-duotone ph-cube",
+                  "iconColor": "text-indigo-500",
+                  "permission": "modules:manage:tenant"
+                },
+                {
+                  "title": "Module Installation",
+                  "route": "admin/modules",
+                  "icon": "ph-duotone ph-download-simple",
+                  "iconColor": "text-teal-600",
+                  "permission": "modules:install:all",
+                  "roles": ["superuser"]
+                }
+              ]
             }
           ]
         }
