@@ -64,11 +64,32 @@ async function loadModules() {
 function displayModules(modules) {
     const moduleList = document.getElementById('moduleList');
     const emptyState = document.getElementById('emptyState');
+    const count = document.getElementById('modules-count');
 
     if (!moduleList || !emptyState) return;
 
+    const total = allModules.length;
+    const isFiltered = modules.length !== total;
+    if (count) {
+        count.textContent = total === 0
+            ? ''
+            : (isFiltered
+                ? `${modules.length} of ${total} modules`
+                : `${total} module${total === 1 ? '' : 's'}`);
+    }
+
     if (modules.length === 0) {
         moduleList.innerHTML = '';
+        // Tailor the empty state to "no matches" vs "no modules at all"
+        const title = emptyState.querySelector('h3');
+        const sub = emptyState.querySelector('p');
+        if (total > 0) {
+            if (title) title.textContent = 'No modules found';
+            if (sub) sub.textContent = 'Try a different search term or filter.';
+        } else {
+            if (title) title.textContent = 'No modules found';
+            if (sub) sub.textContent = 'Create your first module to get started.';
+        }
         emptyState.style.display = 'block';
         return;
     }

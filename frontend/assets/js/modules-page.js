@@ -502,48 +502,100 @@ export class DeactivateModal {
 // ── Page init ────────────────────────────────────────────────────────────────
 
 async function render(container) {
+  let allModules = [];
+
   container.innerHTML = `
-    <div class="px-6 py-8 max-w-7xl mx-auto">
-      <div class="mb-8">
-        <h1 class="text-2xl font-bold text-gray-900 flex items-center gap-3">
-          <i class="ph-duotone ph-puzzle-piece text-blue-600"></i>
-          Modules
-        </h1>
-        <p class="text-gray-500 mt-1 text-sm">Activate or deactivate modules for your organisation.</p>
+    <div id="modules-page">
+      <!-- Header -->
+      <div class="bg-white border-b border-gray-200 px-6 py-4">
+        <div class="flex items-center justify-between flex-wrap gap-4">
+          <div>
+            <h1 class="text-2xl font-bold text-gray-900 flex items-center gap-3">
+              <i class="ph-duotone ph-puzzle-piece text-blue-600"></i>
+              Modules
+            </h1>
+            <p class="text-sm text-gray-600 mt-1">Activate or deactivate modules for your organisation.</p>
+          </div>
+        </div>
       </div>
-      <div id="modules-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        ${Array.from({length: 4}).map(() => `
-          <div class="bg-white rounded-xl border border-gray-200 p-5 animate-pulse">
-            <div class="flex items-center gap-3 mb-3">
-              <div class="w-10 h-10 rounded-lg bg-gray-100"></div>
-              <div class="flex-1 space-y-2">
-                <div class="h-3 bg-gray-100 rounded w-3/4"></div>
-                <div class="h-2 bg-gray-100 rounded w-1/2"></div>
+
+      <!-- Search bar -->
+      <div class="px-6 py-4 bg-gray-50 border-b border-gray-200">
+        <div class="flex gap-3 items-center">
+          <input id="modules-search" type="text" placeholder="Search modules…"
+            class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
+          <span id="modules-count" class="text-sm text-gray-500 whitespace-nowrap"></span>
+        </div>
+      </div>
+
+      <!-- Modules grid -->
+      <div class="px-6 py-6">
+        <div id="modules-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          ${Array.from({length: 3}).map(() => `
+            <div class="bg-white rounded-xl border border-gray-200 p-5 animate-pulse">
+              <div class="flex items-center gap-3 mb-3">
+                <div class="w-10 h-10 rounded-lg bg-gray-100"></div>
+                <div class="flex-1 space-y-2">
+                  <div class="h-3 bg-gray-100 rounded w-3/4"></div>
+                  <div class="h-2 bg-gray-100 rounded w-1/2"></div>
+                </div>
               </div>
-            </div>
-            <div class="h-2 bg-gray-100 rounded w-full mb-1"></div>
-            <div class="h-2 bg-gray-100 rounded w-5/6 mb-4"></div>
-            <div class="h-8 bg-gray-100 rounded w-full"></div>
-          </div>`).join('')}
+              <div class="h-2 bg-gray-100 rounded w-full mb-1"></div>
+              <div class="h-2 bg-gray-100 rounded w-5/6 mb-4"></div>
+              <div class="h-8 bg-gray-100 rounded w-full"></div>
+            </div>`).join('')}
+        </div>
       </div>
     </div>`;
 
+  function applyFilter() {
+    const grid  = container.querySelector('#modules-grid');
+    const count = container.querySelector('#modules-count');
+    if (!grid) return;
+    const q = (container.querySelector('#modules-search')?.value || '').toLowerCase().trim();
+    const filtered = !q ? allModules : allModules.filter(m =>
+      (m.name || '').toLowerCase().includes(q) ||
+      (m.display_name || '').toLowerCase().includes(q) ||
+      (m.description || '').toLowerCase().includes(q)
+    );
+
+    if (count) {
+      count.textContent = q
+        ? `${filtered.length} of ${allModules.length} modules`
+        : `${allModules.length} module${allModules.length === 1 ? '' : 's'}`;
+    }
+
+    if (!filtered.length) {
+      grid.innerHTML = `
+        <div class="col-span-full text-center py-16">
+          <i class="ph-duotone ph-magnifying-glass text-6xl text-gray-300 mb-4"></i>
+          <h3 class="text-lg font-semibold text-gray-600 mb-1">No modules match “${q}”</h3>
+          <p class="text-sm text-gray-400">Try a different search term.</p>
+        </div>`;
+      return;
+    }
+    grid.innerHTML = filtered.map(renderModuleCard).join('');
+  }
+
   async function loadModules() {
-    const grid = container.querySelector('#modules-grid');
+    const grid  = container.querySelector('#modules-grid');
+    const count = container.querySelector('#modules-count');
     try {
       const data = await listModules();
-      const modules = data.modules || data;
-      if (!modules.length) {
+      allModules = data.modules || data || [];
+      if (!allModules.length) {
+        if (count) count.textContent = '';
         grid.innerHTML = `
-          <div class="col-span-full flex flex-col items-center justify-center py-16 text-gray-400">
-            <i class="ph ph-package text-5xl mb-3"></i>
-            <p class="font-medium">No modules are installed on this platform yet.</p>
-            <p class="text-sm mt-1">Ask your platform administrator to install modules.</p>
+          <div class="col-span-full text-center py-16">
+            <i class="ph-duotone ph-package text-6xl text-gray-300 mb-4"></i>
+            <h3 class="text-lg font-semibold text-gray-600 mb-1">No modules installed</h3>
+            <p class="text-sm text-gray-400">Ask your platform administrator to install modules.</p>
           </div>`;
         return;
       }
-      grid.innerHTML = modules.map(renderModuleCard).join('');
+      applyFilter();
     } catch (err) {
+      if (count) count.textContent = '';
       grid.innerHTML = `
         <div class="col-span-full p-4 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
           <i class="ph ph-warning-circle mr-2"></i>Could not load modules.
@@ -554,6 +606,8 @@ async function render(container) {
       if (retryLink) retryLink.onclick = (e) => { e.preventDefault(); loadModules(); };
     }
   }
+
+  container.querySelector('#modules-search')?.addEventListener('input', applyFilter);
 
   container.addEventListener('click', e => {
     const activateBtn   = e.target.closest('.module-activate-btn');
