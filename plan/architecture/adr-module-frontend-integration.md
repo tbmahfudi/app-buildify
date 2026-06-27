@@ -9,6 +9,22 @@ related: [adr-005-module-packaging-format.md, adr-010-public-portal-framework.md
 
 # ADR: Dynamic Module Frontend Integration
 
+## Changelog / Revisions
+
+- **rev2 (2026-06-28, B1)** — **Build step is now ACCEPTABLE.** The hard constraint relaxed from
+  "no build" to "the *built output* must be static and deployable on any web server (nginx / Apache
+  / S3 / CDN) with no SSR and no Node/server runtime at request time." A bundler like Vite that
+  emits plain `.html/.js/.css` now fully satisfies the constraint. Consequently: re-evaluated and
+  **re-ranked** all options (§3); **Web Components + Lit (build-optional)** is now the primary
+  recommendation, replacing rev1's "standardized no-build ES module" pick; added §3.x updated
+  comparison table; added a new **§7 Stakeholder Questions** answering, each in its own subsection,
+  (Q1) *can a module use the platform CSS by default?*, (Q2) *can each module's frontend be
+  developed independently?*, (Q3) *can it support the no-code functionality?*. Sections §1
+  (current-state), §2 (requirements) and §6 (risks) are largely unchanged from rev1; §4/§5 updated
+  to match the new recommendation. `status` remains `draft`.
+- **rev1 (2026-06-28, B1)** — initial draft; recommended a standardized no-build manifest-driven ES
+  module contract (Option 1) because a build step was then disallowed.
+
 ## Context
 
 App-Buildify is a multi-tenant no-code platform. The platform shell is a **Vanilla-JS SPA**
@@ -120,6 +136,15 @@ declared dashboard/portal page is vaporware.
 
 ## 3. Options Analysis
 
+> **rev2 note on the relaxed constraint.** The constraint is now *static-deployable **output***, not
+> *no-build*. So "needs a build" is no longer disqualifying — it is just one cost line among several.
+> Vite `build` emits a directory of plain `index-*.js` / `*.css` / `*.html` assets that nginx (or the
+> existing `/modules/{name}/...` alias) serves verbatim — no SSR, no Node at request time. Options 3,
+> 4 and 5 are therefore re-scored *in scope*, and the ranking changes. The decisive differentiators
+> become **isolation strength**, **no-code coexistence** (the existing `dynamic-route-registry` /
+> `dynamic-form` pipeline must keep working), and **independent dev**, with build/operational cost as
+> the main counterweight.
+
 ### Option 1 — Keep Vanilla-JS, **standardize the ES-module dynamic-import contract** (manifest-driven, drop the hand-written class)
 Make the manifest the single source of truth. The generic `BaseModule` (already present) builds
 routes/menus from `manifest.routes`; a module's `module.js` becomes **optional** (only for custom
@@ -135,50 +160,83 @@ Add an import map so modules can resolve shared deps (`@platform/api`) by bare s
 - **Cons:** import maps are **document-level**, not composable at runtime per-module; doesn't itself
   solve menu/route/component wiring. Useful as a **complement**, not a primary answer.
 
-### Option 3 — **Web Components / Custom Elements** as the page contract
-Page = a custom element `<healthcare-dashboard>`; SPA mounts it into `#app-content`.
-- **Pros:** framework-agnostic; native; static-deployable; real **style/DOM isolation** via Shadow
-  DOM; clean lifecycle; works with any inner framework (Lit/Preact/vanilla).
-- **Cons:** Shadow DOM **breaks Tailwind-via-CDN and Phosphor** (global stylesheet/icon font don't
-  pierce shadow boundaries) unless per-component styling is reworked; bigger rewrite of existing
-  pages; current pages reach into `#app-content` directly. **Strong long-term target, costly now.**
+### Option 3 — **Web Components / Custom Elements (+ optional Lit, build-optional)** as the page contract  ⭐ rev2 PRIMARY
+Page = a custom element `<healthcare-dashboard>`; SPA mounts it into `#app-content`. A page may be
+authored as **plain vanilla** (no build) or with **Lit** (tiny ~5 KB base, compiled with Vite to a
+static bundle). Shadow DOM is **opt-in per page**, not mandatory.
+- **Pros:** framework-agnostic, native, static-deployable; **strongest isolation available** (opt-in
+  Shadow DOM for CSS/DOM encapsulation); clean, standard lifecycle (`connectedCallback` /
+  `disconnectedCallback` — solves the rev1 "no `destroy()`" gap); the element-mount contract is a
+  *superset* of today's `new PageClass(); render()` call, so it **unifies hand-coded and no-code
+  pages under one contract** (see §7.3); build is *optional* per module, so low-complexity modules
+  stay no-build while complex ones may opt into Lit+Vite.
+- **Cons (now manageable, not blocking):** Shadow DOM, when used, **does block Tailwind-via-CDN and
+  the Phosphor icon font** (global stylesheets/`@font-face` don't pierce shadow boundaries). The
+  practical answer (§7.1) is **light-DOM-by-default** (full platform Tailwind styling, zero ceremony)
+  with shadow isolation as an explicit opt-out — so this con only applies to modules that *choose*
+  isolation. Migrating existing pages to custom elements is mechanical but non-trivial.
 
-### Option 4 — **Module Federation** (Vite/Webpack remotes)
+### Option 4 — **Module Federation** (Vite remotes)
 Runtime-loaded remote bundles with shared-dependency negotiation.
-- **Pros:** mature micro-frontend isolation/versioning; independent deploys.
-- **Cons:** **introduces a mandatory bundler/build per module** and a host build; heavy conceptual
-  load; the remoteEntry contract is static-host-able but the **authoring** workflow is the opposite
-  of the current no-build ethos. Overkill for a hash-routed vanilla SPA. **Rejected for now.**
+- **Pros:** mature micro-frontend isolation/versioning; **first-class independent deploys** and
+  shared-dep dedup; remoteEntry is static-hostable (satisfies the relaxed constraint).
+- **Cons:** introduces a **mandatory bundler/build per module AND a host build** (the platform shell
+  itself must become a Federation host — a large change to a hash-routed vanilla SPA); heaviest
+  conceptual + operational load; couples module and host build toolchains/versions; the no-code
+  pipeline (plain runtime innerHTML rendering, no bundle) does **not** map onto a remoteEntry, so
+  no-code pages would need a parallel path. **Power exceeds the need; rejected as primary.**
 
-### Option 5 — **Lightweight framework** (Preact/Vue/Lit) outputting static assets
-Adopt e.g. Preact + a Vite build that emits static JS/CSS.
-- **Pros:** better DX; Lit pairs naturally with Web Components; **can** be fully static (no SSR).
-- **Cons:** introduces a **build step** the platform currently doesn't have (Tailwind is CDN, no
-  Vite); two rendering paradigms during migration; learning curve. Static constraint is satisfiable
-  but the cost is not justified **as a frontend-integration mechanism**.
+### Option 5 — **Single shared framework (Preact/Vue) + Vite** for all module pages
+Adopt one app framework and a Vite build that emits static JS/CSS.
+- **Pros:** good DX; fully static (no SSR) output.
+- **Cons:** forces **one framework on every module team** (the opposite of framework-agnostic
+  independent dev); a mandatory build for *every* module including trivial ones; two rendering
+  paradigms during migration; does not itself provide isolation. Lit (Option 3) gives the framework
+  ergonomics *without* mandating it platform-wide, so Option 5 is dominated by Option 3.
 
-### Comparison
+### Comparison (rev2 — build now allowed)
 
-| Criteria | 1. Std ES-module | 2. Import maps | 3. Web Components | 4. Module Federation | 5. Framework+Vite |
+| Criteria | 1. Std ES-module | 2. Import maps | **3. Web Components (+Lit)** | 4. Module Federation | 5. Framework+Vite |
 |---|---|---|---|---|---|
-| Static-deployable (no SSR) | Yes | Yes | Yes | Yes (remotes) | Yes (if no SSR) |
-| No-build vs build | **No build** | No build | No build | **Build req.** | **Build req.** |
-| Learning curve | Lowest | Low | Medium | High | Medium-High |
-| Isolation (CSS/JS) | Weak | Weak | **Strong (Shadow)** | Strong | Medium |
-| Versioning | URL-based | URL-based | URL-based | **First-class** | Bundle-based |
-| RBAC fit (server menu/route) | **Native (unchanged)** | Native | Native | Needs glue | Needs glue |
-| Migration cost (this repo) | **Lowest** | Low | High | Very High | High |
-| Ecosystem | N/A | Native | Growing | Mature | Mature |
+| Static-deployable output (no SSR) | Yes | Yes | **Yes** | Yes (remotes) | Yes |
+| Build required | No build | No build | **Optional** (per module) | **Mandatory** (module + host) | **Mandatory** (all modules) |
+| Isolation (CSS/JS) | Weak | Weak | **Strong (opt-in Shadow), light DOM default** | Strong | Medium |
+| Q1 — platform CSS by default | Yes (light DOM, but no isolation option) | Yes | **Yes by default (light DOM); opt-out to shadow** | Awkward | Yes |
+| Q2 — independent dev | Partial (URL contract) | Partial | **Yes (own repo/Vite, custom-element contract)** | **Yes (remotes)** | Partial |
+| Q3 — no-code coexistence | Coexists (separate path) | Coexists | **Unifies (no-code wraps as element)** | Parallel path needed | Coexists |
+| Lifecycle / teardown | Manual | Manual | **Native (`disconnectedCallback`)** | Framework | Framework |
+| Versioning | URL-based | URL-based | URL-based (+ bundle hash if built) | **First-class** | Bundle-based |
+| RBAC fit (server menu/route) | **Native (unchanged)** | Native | **Native (unchanged)** | Needs glue | Native |
+| Migration cost (this repo) | **Lowest** | Low | **Medium** (incremental, opt-in) | Very High | High |
+| Operational / build cost | None | None | Low (build optional) | **High** | Medium-High |
 
 ---
 
 ## 4. Recommendation
 
-**Adopt Option 1: a standardized, manifest-driven ES-module micro-frontend contract**, with
-**Option 2 (import maps)** as an optional convenience and **Option 3 (Web Components)** named as the
-**future isolation target** (non-blocking). This is the only option that satisfies *all* hard
-constraints — static-deployable, no-build, low migration — while preserving the existing
-server-side RBAC menu pipeline verbatim.
+**rev2: Adopt Option 3 — a Web-Components / custom-element page contract, build-optional, with Lit
+as the recommended (but not mandated) authoring helper.** Keep **Option 1's manifest-driven loader
+and the unchanged server-side RBAC menu pipeline** as the *delivery substrate* (the custom-element
+contract rides on top of the existing manifest + `/modules/{name}/...` loading), and keep **Option 2
+(import maps)** as an optional convenience for sharing `@platform/*` code.
+
+Rationale under the relaxed constraint: the element-mount contract is a **superset** of today's
+`new PageClass(); await page.render()` call — `loadRoute()` can `customElements`-mount instead — so
+migration is *incremental and opt-in* rather than a rewrite; it gives the **strongest available
+isolation** (opt-in Shadow DOM) while defaulting to **light DOM so platform Tailwind styling Just
+Works** (§7.1); it provides a **native lifecycle** (`disconnectedCallback`) that fixes rev1's
+teardown gap; and crucially it **unifies hand-coded module pages and no-code-generated pages under
+one route/menu/component contract** (§7.3) instead of leaving them on divergent code paths. Module
+Federation (Option 4) was rejected as primary because its mandatory host+module build and its poor
+fit with the runtime no-code pipeline cost far more than the problem warrants; a single shared
+framework (Option 5) was rejected because it forbids the framework-agnostic independent dev that
+Option 3 preserves.
+
+**Honest trade-off:** Option 3 introduces an *optional* Vite build for modules that opt into Lit or
+Shadow-DOM-bundled CSS. That adds real operational surface — a per-module `package.json`, a build to
+run in CI, and lockfile/dependency upkeep — that the platform does **not** have today. We mitigate
+by making build strictly opt-in: a module can remain a no-build vanilla custom element and pay none
+of that cost. Teams only adopt Vite when they want Lit ergonomics or shipped-in-shadow CSS.
 
 ### 4.1 The Module Frontend Contract (normative)
 
@@ -314,3 +372,135 @@ the generic-loader path is additive (triggered only when `entry_point` is null/a
    bundles (currently ad hoc).
 6. **Validation gate at install.** Decide where the manifest JSON Schema is enforced (CI, install
    API, or admin module-install UI) so a broken module is rejected before it reaches a tenant.
+
+---
+
+## 7. Stakeholder Questions (rev2)
+
+### 7.1 Q1 — "Can a module use the platform CSS by default?"
+
+**Yes — by default, fully, with zero ceremony, because the recommended default is *light DOM*, not
+Shadow DOM.**
+
+The platform styles everything with **Tailwind utility classes delivered via CDN**
+(`<script src="https://cdn.tailwindcss.com">` in `index.html`) plus the **Phosphor icon font**.
+These are *global* stylesheets and an `@font-face` font. The well-known constraint with Web
+Components is that **Shadow DOM blocks both**: Tailwind utility classes applied inside a shadow root
+don't match (the global stylesheet doesn't cross the boundary), and the Phosphor `@font-face` isn't
+visible inside the shadow tree. So if every module page were a *shadow* custom element, the answer
+would be "no, not by default" — and that would be a regression from today.
+
+The recommendation avoids that trap by making **light DOM the default**:
+
+- **Default: light-DOM custom element (no `attachShadow`).** The element renders its markup into its
+  own light children, so it lives in the *same* DOM/CSS scope as the shell. Every platform Tailwind
+  class (`flex`, `text-gray-900`, `rounded-lg`, …) and every `ph-duotone ph-…` icon works exactly as
+  it does in the existing `dynamic-route-registry` pages — which already render Tailwind-class
+  `innerHTML` strings into a plain container. A module page gets the platform design system for
+  free, identical to a current `AccountsPage`. **This is the default, opt-out story the stakeholder
+  asked for.**
+
+- **Opt-out: shadow isolation, with three ways to still inherit the design system** for a module that
+  *deliberately* wants DOM/CSS encapsulation:
+  1. **Shared design tokens via CSS custom properties.** CSS custom properties **do** inherit across
+     shadow boundaries. We expose platform tokens (`--color-primary`, `--radius`, `--space-*`, font
+     family, etc.) on `:root`; a shadowed module reads them with `var(--color-primary)` and stays
+     on-brand without needing the global stylesheet.
+  2. **`adoptedStyleSheets` (constructable stylesheets) — the recommended mechanism.** Ship a single
+     shared, parsed `CSSStyleSheet` (a compiled platform/Tailwind base) and *adopt* it into each
+     shadow root: `shadowRoot.adoptedStyleSheets = [platformSheet]`. One parsed sheet is shared by
+     all shadow roots (no duplication), giving shadowed modules the platform utilities **inside** the
+     boundary. This is the practical answer to "Tailwind won't pierce shadow" — you don't pierce it,
+     you *adopt* a built Tailwind sheet into each root.
+  3. **`::part` / exposed parts** for cases where the *shell* needs to theme into a module element.
+- **Icons inside shadow:** because the Phosphor `@font-face` is global, shadowed modules either keep
+  icons in light-DOM slots, adopt the Phosphor stylesheet via `adoptedStyleSheets`, or use inline SVG
+  icons. Light-DOM modules need none of this.
+
+**Net default + opt-out:** *By default a module uses the platform CSS (light DOM, Tailwind-CDN
+classes work verbatim, like the no-code pages do today). A module may opt into Shadow-DOM isolation;
+when it does, it opts into the platform design system via shared design tokens + an adopted Tailwind
+base stylesheet (`adoptedStyleSheets`), not via the global CDN sheet.* Because Tailwind is still CDN
+today, the immediate practical posture is **light-DOM-by-default**; the adopted-stylesheet path
+becomes relevant only once a module ships a built Tailwind sheet for its shadow root.
+
+### 7.2 Q2 — "Can each module's frontend be developed independently?"
+
+**Yes.** The contract is a thin, stable boundary that a module team can build, test, version and
+deploy without touching the platform repo or any other module.
+
+- **Repo layout — both supported.** The runtime contract is "static files served under
+  `/modules/{name}/frontend/...`", so the *source* can live either (a) **in-repo** at
+  `modules/<name>/frontend/` (today's layout; simplest), or (b) in a **separate repo** whose CI
+  produces a `frontend/dist/` that is dropped into the same on-disk location at install/upgrade. The
+  platform doesn't care which — it only loads URLs.
+- **Independent build.** A module owns its own (optional) `package.json` + `vite.config`. `vite build`
+  emits hashed static assets (`pages/dashboard-*.js`, `*.css`) under the module's `frontend/` tree.
+  No platform build is involved; no shared lockfile. A no-build module skips this entirely.
+- **The runtime contract the platform loads them by** (the actual boundary):
+  1. The module ships a `manifest.json` declaring `navigation.menu_items` (parents+icons) and
+     `routes[]` (path, `component` path relative to `frontend/`, `menu.parent`, `permission`).
+  2. Each declared `component` exports either today's `{ constructor(); async render() }` page class
+     **or** a **custom element** (`customElements.define('mod-foo-dashboard', …)` with a tag named in
+     the route). The shell mounts whichever it finds — both are honored, so adoption is per-page.
+  3. The platform discovers enabled modules at runtime via `GET /module-registry/enabled/names` and
+     loads each one's manifest + components on demand (`module-loader.js`). Nothing is hard-wired in
+     `app.js`.
+- **Versioning.** Per-module: the manifest carries `version`; built assets are content-hashed; the
+  module record in the DB tracks the installed version. Modules version and deploy on their own
+  cadence; the platform only requires manifest-schema compatibility.
+- **Boundary discipline.** A module team must NOT reach into platform internals beyond the published
+  `@platform/*` import-map specifiers (`@platform/api`, `@platform/ui`) and the documented page/
+  element interface. That keeps platform refactors from breaking modules and vice-versa.
+
+So a module team can: clone only their module, `vite build` (or not), run it against any deployed
+platform, bump their manifest `version`, and ship `frontend/` — no platform-repo PR, no coordination
+with other module teams.
+
+### 7.3 Q3 — "Can it support the no-code functionality?" (most important)
+
+**Yes — and the recommended model *unifies* hand-coded and no-code-generated pages rather than
+bolting a second pipeline alongside them. The no-code pipeline is preserved unchanged and is, in
+fact, the template for how module pages should register.**
+
+How no-code works today (verified): `dynamic-route-registry.js` registers all published entities at
+startup (`registerAllPublishedEntities()` → `GET /data-model/entities?status=published`), and at
+route time `loadRoute()` calls `dynamicRouteRegistry.handleRoute(route, content)` **first** (app.js
+line ~1687) for any `#/dynamic/{entity}/{list|create|{id}|{id}/edit}` URL. It fetches entity
+metadata (`/metadata/entities/{entity}`) and renders CRUD UI by composing `DynamicTable` and
+`DynamicForm` — which build their UI from metadata produced by `runtime_model_generator.py` /
+`dynamic_entity_service.py`. The whole thing renders **Tailwind-class innerHTML into a plain
+container — i.e. light DOM, no build, no Shadow DOM.** That is exactly the recommended *default* mode
+for module pages (§7.1), so the two are natively compatible.
+
+Concretely, the chosen approach supports no-code three ways:
+
+1. **No-code pages surfaced as module frontends.** A no-code-generated CRUD page is just a renderer
+   that writes Tailwind markup into a container. Wrapping it as the standard contract is mechanical:
+   a generic `<nocode-entity-page entity="customers" action="list">` light-DOM custom element whose
+   `connectedCallback()` delegates to the existing `dynamicRouteRegistry.handleRoute(...)`/
+   `DynamicTable`/`DynamicForm` code. No-code thus emits **the same kind of artifact** module pages
+   emit, under the same route/menu/component contract — `loadRoute()`'s existing "try dynamic first"
+   branch becomes one registered route family instead of a special-case `if`.
+
+2. **A module can be PARTLY no-code and PARTLY hand-coded.** Because the contract is per-route, a
+   single module's `manifest.routes[]` can mix: some routes point at **auto-generated** entity CRUD
+   (`component` = the generic no-code element, parameterized by entity name from metadata), while
+   others point at **hand-coded** custom-element pages (e.g. a bespoke `<healthcare-clinic-board>`).
+   They share one menu tree, one RBAC gate, and one mount mechanism. A team scaffolds CRUD for free
+   and hand-writes only the screens that need bespoke logic.
+
+3. **The no-code builder emits/registers module pages the same way.** The no-code Data-Model designer
+   (`nocode-data-model.js`) already has "create page / add entity to menu" quick actions. Under this
+   model those actions emit a route entry in the **same** shape (`path` + `component` +
+   `menu.parent` + `permission`) that a hand-coded module route uses — so a generated page flows
+   through the identical menu (`menu_service._get_module_menu_items`, RBAC-filtered) and routing
+   path. One contract, one renderer interface, two producers (human and builder).
+
+**Non-breakage guarantee.** The recommendation does **not** require touching
+`dynamic-route-registry.js`, `dynamic-form.js`, or any backend metadata/`data-model` router. The
+"try dynamic route first" branch in `loadRoute()` stays; the custom-element mount is *added* as an
+alternative to `new PageClass(); render()` at the module-route branch (line ~1994), which is a
+superset of the current call. Light-DOM default means no-code's Tailwind output keeps rendering
+verbatim. The unification is an *additive* convergence onto one component contract — it cannot
+bypass or regress the no-code pipeline because it literally reuses it.
