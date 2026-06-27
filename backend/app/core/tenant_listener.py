@@ -98,7 +98,53 @@ class TenantScopeListener:
         merged) to prevent HTTP 500 storms on unscoped requests.
         """
         event.listen(Session, 'do_orm_execute', cls._on_orm_execute)
+        # do_orm_execute does NOT fire for unit-of-work flushes (session.add /
+        # session.delete + flush), so INSERT/UPDATE/DELETE on a scoped model
+        # would otherwise bypass enforcement. before_flush closes that gap.
+        event.listen(Session, 'before_flush', cls._on_before_flush)
         logger.info('TenantScopeListener installed on Session')
+
+    @staticmethod
+    def _on_before_flush(session, flush_context, instances) -> None:
+        """Enforce tenant scope on unit-of-work INSERT / UPDATE / DELETE.
+
+        Fires for every pending write before it is flushed to the database.
+        For any ``__tenant_scoped__`` instance in ``session.new`` / ``dirty`` /
+        ``deleted``:
+          * '__superuser__' sentinel -> allow (cross-tenant admin path).
+          * scope unset -> raise TenantScopeMissingError (fail-loud).
+          * scope set, but the instance carries a DIFFERENT tenant_id -> raise
+            (a write must not target a foreign tenant's row).
+        """
+        scope = _current_tenant_id.get()
+        if scope == '__superuser__':
+            return
+
+        for state_set in (session.new, session.dirty, session.deleted):
+            for obj in state_set:
+                if not getattr(type(obj), '__tenant_scoped__', False):
+                    continue
+                if scope is None:
+                    logger.error(
+                        'tenant_scope.flush.missing model=%s', type(obj).__name__
+                    )
+                    raise TenantScopeMissingError(
+                        f'Write on tenant-scoped model {type(obj).__name__!r} '
+                        'flushed without tenant scope set. Use '
+                        'tenant_scoped_session() or set_tenant_scope(session, '
+                        'tenant_id) for background tasks.'
+                    )
+                row_tenant = getattr(obj, 'tenant_id', None)
+                if row_tenant is not None and str(row_tenant) != str(scope):
+                    logger.error(
+                        'tenant_scope.flush.cross_tenant model=%s row_tenant=%s scope=%s',
+                        type(obj).__name__, row_tenant, scope,
+                    )
+                    raise TenantScopeMissingError(
+                        f'Write on tenant-scoped model {type(obj).__name__!r} '
+                        f'targets tenant {row_tenant} but the active scope is '
+                        f'{scope}. Cross-tenant writes are not permitted.'
+                    )
 
     @staticmethod
     def _on_orm_execute(orm_execute_state) -> None:

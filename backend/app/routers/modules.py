@@ -46,6 +46,7 @@ from app.schemas.module import (
     ModuleEnableResponse,
     ModuleDisableResponse,
     ModuleDeactivateAllResponse,
+    TenantDBStatusResponse,
 )
 from pathlib import Path
 import logging
