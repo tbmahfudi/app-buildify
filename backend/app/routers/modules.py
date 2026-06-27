@@ -1501,54 +1501,78 @@ async def enable_module_v1(
     except Exception as _mi_err:
         logger.warning(f"[T-23.020] menu_items merge skipped for module '{module.name}': {_mi_err}")
 
-    # 6. Seed RBAC permissions
-    raw_perms = manifest.get("permissions") or module.permissions or []
+    # 6. Seed the module's RBAC permissions and GRANT them to the tenant's
+    #    admin role, so the enabling tenant can actually access the module.
+    #
+    #    Codes are kept RAW (e.g. "healthcare:dashboard:read") because the module
+    #    routes and the menu RBAC filter (menu_service) match on the raw code; a
+    #    namespaced code would never satisfy them. Roles are tenant-scoped, so a
+    #    raw grant only affects this tenant. Permissions are collected from both
+    #    manifest.permissions and the per-route `permission` fields (the latter is
+    #    how vertical modules like healthcare declare them).
+    from app.models.role import Role
+    from app.models.rbac_junctions import RolePermission
+    from app.models.base import generate_uuid
+
+    raw_perms = list(manifest.get("permissions") or module.permissions or [])
+    for _route in manifest.get("routes", []) or []:
+        if isinstance(_route, dict) and _route.get("permission"):
+            raw_perms.append(_route["permission"])
+
     permissions_added: list = []
     try:
+        admin_role = (
+            db.query(Role)
+            .filter(Role.code == "tenant_admin", Role.tenant_id == tenant_id)
+            .first()
+        )
+        seen_codes: set = set()
         for perm_def in raw_perms:
             if isinstance(perm_def, str):
-                perm_code = perm_def
-                parts = perm_code.split(":")
-                resource = parts[0] if len(parts) > 0 else perm_code
-                action = parts[1] if len(parts) > 1 else "access"
-                scope = parts[2] if len(parts) > 2 else "tenant"
-                perm_name = perm_code.replace(":", " ").title()
-                description = None
-                category = module.category
+                perm_code, meta = perm_def, {}
             elif isinstance(perm_def, dict):
                 perm_code = perm_def.get("code") or perm_def.get("name") or perm_def.get("id")
-                if not perm_code:
-                    continue
-                parts = perm_code.split(":")
-                resource = perm_def.get("resource", parts[0] if parts else perm_code)
-                action = perm_def.get("action", parts[1] if len(parts) > 1 else "access")
-                scope = perm_def.get("scope", parts[2] if len(parts) > 2 else "tenant")
-                perm_name = perm_def.get("name") or perm_code
-                description = perm_def.get("description")
-                category = perm_def.get("category") or module.category
+                meta = perm_def
             else:
                 continue
+            if not perm_code or perm_code in seen_codes:
+                continue
+            seen_codes.add(perm_code)
+            parts = perm_code.split(":")
 
-            namespaced_code = f"{module.name}__{perm_code}__{str(tenant_id)[:8]}"
-            existing_perm = db.query(Permission).filter(Permission.code == namespaced_code).first()
-            if existing_perm is None:
+            perm = db.query(Permission).filter(Permission.code == perm_code).first()
+            if perm is None:
                 perm = Permission(
-                    code=namespaced_code,
-                    name=perm_name,
-                    description=description,
-                    resource=resource,
-                    action=action,
-                    scope=scope,
-                    category=category,
+                    code=perm_code,
+                    name=meta.get("name") or perm_code.replace(":", " ").title(),
+                    description=meta.get("description"),
+                    resource=meta.get("resource", parts[0] if parts else perm_code),
+                    action=meta.get("action", parts[1] if len(parts) > 1 else "access"),
+                    scope=meta.get("scope", parts[2] if len(parts) > 2 else "tenant"),
+                    category=meta.get("category") or module.category,
                     is_active=True,
                     is_system=False,
                 )
                 db.add(perm)
+                db.flush()
             else:
-                existing_perm.is_active = True
-            permissions_added.append(namespaced_code)
+                perm.is_active = True
+
+            # Grant to the tenant's admin role (group-chain resolution picks it up).
+            if admin_role is not None:
+                has_rp = db.query(RolePermission).filter(
+                    RolePermission.role_id == admin_role.id,
+                    RolePermission.permission_id == perm.id,
+                ).first()
+                if has_rp is None:
+                    db.add(RolePermission(
+                        id=generate_uuid(),
+                        role_id=admin_role.id,
+                        permission_id=perm.id,
+                    ))
+            permissions_added.append(perm_code)
     except Exception as _perm_err:
-        logger.warning(f"[T-23.020] permission seed skipped for module '{module.name}': {_perm_err}")
+        logger.warning(f"permission seed/grant skipped for module '{module.name}': {_perm_err}")
 
     db.commit()
 
@@ -1786,8 +1810,17 @@ async def disable_module_v1(
     except Exception as _mi_err:
         logger.warning(f"[T-23.022] menu_items deactivation skipped for module '{module.name}': {_mi_err}")
 
-    # 6. Deactivate RBAC permissions seeded by this module (tenant-scoped)
-    raw_perms = (module.manifest or {}).get("permissions") or module.permissions or []
+    # 6. Revoke the module's permissions from this tenant's admin role.
+    #    Mirror of the enable grant: collect raw codes from manifest.permissions
+    #    AND per-route `permission` fields, then delete the role_permission grants
+    #    for THIS tenant's tenant_admin role only. The shared Permission rows are
+    #    left intact (other tenants may still have the module enabled).
+    _manifest = module.manifest or {}
+    raw_perms = list(_manifest.get("permissions") or module.permissions or [])
+    for _route in _manifest.get("routes", []) or []:
+        if isinstance(_route, dict) and _route.get("permission"):
+            raw_perms.append(_route["permission"])
+
     perm_codes = []
     for perm_def in raw_perms:
         if isinstance(perm_def, str):
@@ -1796,23 +1829,36 @@ async def disable_module_v1(
             code = perm_def.get("code") or perm_def.get("name") or perm_def.get("id")
             if code:
                 perm_codes.append(code)
-
-    # Build namespaced codes so only this tenant's permissions are deactivated
-    namespaced_codes = [f"{module.name}__{p}__{str(tenant_id)[:8]}" for p in perm_codes]
+    perm_codes = sorted(set(perm_codes))
 
     permissions_deactivated: list = []
     try:
-        if namespaced_codes:
-            perms_to_deactivate = (
-                db.query(Permission)
-                .filter(Permission.code.in_(namespaced_codes))
-                .all()
+        if perm_codes:
+            from app.models.role import Role
+            from app.models.rbac_junctions import RolePermission
+            admin_role = (
+                db.query(Role)
+                .filter(Role.code == "tenant_admin", Role.tenant_id == tenant_id)
+                .first()
             )
-            for p in perms_to_deactivate:
-                p.is_active = False
-                permissions_deactivated.append(p.code)
+            if admin_role is not None:
+                perm_ids = [
+                    p.id for p in db.query(Permission)
+                    .filter(Permission.code.in_(perm_codes)).all()
+                ]
+                if perm_ids:
+                    revoked = (
+                        db.query(RolePermission)
+                        .filter(
+                            RolePermission.role_id == admin_role.id,
+                            RolePermission.permission_id.in_(perm_ids),
+                        )
+                        .delete(synchronize_session=False)
+                    )
+                    if revoked:
+                        permissions_deactivated = perm_codes
     except Exception as _perm_err:
-        logger.warning(f"[T-23.022] permission deactivation skipped for module '{module.name}': {_perm_err}")
+        logger.warning(f"permission revoke skipped for module '{module.name}': {_perm_err}")
 
     # 7. Commit
     db.commit()
