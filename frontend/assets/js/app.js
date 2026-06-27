@@ -996,6 +996,48 @@ function createSubmenuItem(item, level = 1) {
   return container;
 }
 
+/**
+ * Bind robust hover behavior for a sidebar flyout (collapsed-mode popup).
+ *
+ * Shows `flyout` while either `trigger` or `flyout` is hovered, and hides it
+ * after a short grace period once both are left. A single cancelable timer
+ * (cleared on every re-enter) prevents the stacked-setTimeout race that made
+ * the flyout vanish when the pointer crossed from the trigger into it.
+ */
+function bindFlyoutHover(trigger, flyout, parentPopup, siblings, position) {
+  let closeTimer = null;
+
+  const open = () => {
+    if (closeTimer) { clearTimeout(closeTimer); closeTimer = null; }
+    (siblings || []).forEach(p => {
+      if (p !== flyout) { p.classList.add('hidden'); p.isActive = false; }
+    });
+    if (typeof position === 'function') position();
+    flyout.classList.remove('hidden');
+    flyout.isActive = true;
+    if (parentPopup) parentPopup.hasActiveChild = true;
+  };
+
+  const scheduleClose = () => {
+    if (closeTimer) clearTimeout(closeTimer);
+    closeTimer = setTimeout(() => {
+      closeTimer = null;
+      if (!trigger.matches(':hover') && !flyout.matches(':hover')) {
+        flyout.classList.add('hidden');
+        flyout.isActive = false;
+        if (parentPopup) {
+          parentPopup.hasActiveChild = (siblings || []).some(p => p.isActive);
+        }
+      }
+    }, 240);
+  };
+
+  trigger.addEventListener('mouseenter', open);
+  trigger.addEventListener('mouseleave', scheduleClose);
+  flyout.addEventListener('mouseenter', open);
+  flyout.addEventListener('mouseleave', scheduleClose);
+}
+
 // Helper function to create collapsed popup menu (supports nested submenus)
 function createCollapsedSubmenuPopup(item) {
   const popup = document.createElement('div');
@@ -1154,48 +1196,13 @@ function createCollapsedSubmenuPopup(item) {
         childPopups.push(nestedPopup);
         document.body.appendChild(nestedPopup);
 
-        // Show nested popup on hover - overlap by 2px to eliminate gap
-        nestedTrigger.addEventListener('mouseenter', () => {
-          // Hide other child popups
-          childPopups.forEach(p => {
-            if (p !== nestedPopup) {
-              p.classList.add('hidden');
-              p.isActive = false;
-            }
-          });
-
+        // Show nested popup on hover, with a generous overlap and a shared
+        // cancelable close-timer so crossing from the trigger into the flyout
+        // (or moving between its items) never hides it mid-transition.
+        bindFlyoutHover(nestedTrigger, nestedPopup, popup, childPopups, () => {
           const rect = nestedTrigger.getBoundingClientRect();
-          nestedPopup.style.left = `${rect.right - 2}px`;
+          nestedPopup.style.left = `${rect.right - 6}px`;
           nestedPopup.style.top = `${rect.top}px`;
-          nestedPopup.classList.remove('hidden');
-          nestedPopup.isActive = true;
-          popup.hasActiveChild = true;
-        });
-
-        nestedTrigger.addEventListener('mouseleave', () => {
-          setTimeout(() => {
-            if (!nestedPopup.matches(':hover')) {
-              nestedPopup.classList.add('hidden');
-              nestedPopup.isActive = false;
-              popup.hasActiveChild = childPopups.some(p => p.isActive);
-            }
-          }, 100);
-        });
-
-        // Keep parent visible when nested popup is hovered
-        nestedPopup.addEventListener('mouseenter', () => {
-          popup.hasActiveChild = true;
-          nestedPopup.isActive = true;
-        });
-
-        nestedPopup.addEventListener('mouseleave', () => {
-          setTimeout(() => {
-            if (!nestedPopup.matches(':hover') && !nestedTrigger.matches(':hover')) {
-              nestedPopup.classList.add('hidden');
-              nestedPopup.isActive = false;
-              popup.hasActiveChild = childPopups.some(p => p.isActive);
-            }
-          }, 100);
         });
 
         nestedContainer.appendChild(nestedTrigger);
@@ -1464,48 +1471,12 @@ function createNestedPopup(item, parentPopup, level = 2) {
         childPopups.push(deeperNestedPopup);
         document.body.appendChild(deeperNestedPopup);
 
-        // Show deeper nested popup on hover
-        nestedTrigger.addEventListener('mouseenter', () => {
-          // Hide other child popups
-          childPopups.forEach(p => {
-            if (p !== deeperNestedPopup) {
-              p.classList.add('hidden');
-              p.isActive = false;
-            }
-          });
-
+        // Shared cancelable hover handling (see bindFlyoutHover) — keeps the
+        // deeper flyout open while moving into it or across its items.
+        bindFlyoutHover(nestedTrigger, deeperNestedPopup, nestedPopup, childPopups, () => {
           const rect = nestedTrigger.getBoundingClientRect();
-          deeperNestedPopup.style.left = `${rect.right - 2}px`;
+          deeperNestedPopup.style.left = `${rect.right - 6}px`;
           deeperNestedPopup.style.top = `${rect.top}px`;
-          deeperNestedPopup.classList.remove('hidden');
-          deeperNestedPopup.isActive = true;
-          nestedPopup.hasActiveChild = true;
-        });
-
-        nestedTrigger.addEventListener('mouseleave', () => {
-          setTimeout(() => {
-            if (!deeperNestedPopup.matches(':hover')) {
-              deeperNestedPopup.classList.add('hidden');
-              deeperNestedPopup.isActive = false;
-              nestedPopup.hasActiveChild = childPopups.some(p => p.isActive);
-            }
-          }, 100);
-        });
-
-        // Keep parent visible when deeper nested popup is hovered
-        deeperNestedPopup.addEventListener('mouseenter', () => {
-          nestedPopup.hasActiveChild = true;
-          deeperNestedPopup.isActive = true;
-        });
-
-        deeperNestedPopup.addEventListener('mouseleave', () => {
-          setTimeout(() => {
-            if (!deeperNestedPopup.matches(':hover') && !nestedTrigger.matches(':hover')) {
-              deeperNestedPopup.classList.add('hidden');
-              deeperNestedPopup.isActive = false;
-              nestedPopup.hasActiveChild = childPopups.some(p => p.isActive);
-            }
-          }, 100);
         });
 
         nestedContainer.appendChild(nestedTrigger);
