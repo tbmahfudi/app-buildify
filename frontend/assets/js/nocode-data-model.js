@@ -1154,12 +1154,12 @@ export class DataModelPage {
               <span class="text-sm font-medium text-gray-700">Status:</span>
               <span id="entity-status-badge"
                     class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold
-                           \${entity.status === 'published'
+                           ${entity.status === 'published'
                               ? 'bg-green-100 text-green-700'
                               : entity.status === 'draft'
                                 ? 'bg-amber-100 text-amber-700'
                                 : 'bg-gray-100 text-gray-700'}">
-                \${entity.status ? entity.status.charAt(0).toUpperCase() + entity.status.slice(1) : 'Draft'}
+                ${entity.status ? entity.status.charAt(0).toUpperCase() + entity.status.slice(1) : 'Draft'}
               </span>
             </div>
             <div class="flex items-center gap-2">
@@ -1171,7 +1171,7 @@ export class DataModelPage {
               </button>
               <button id="entity-publish-btn"
                       onclick="DataModelApp.publishEntity('${entity.id}')"
-                      \${entity.status === 'published' ? 'disabled' : ''}
+                      ${entity.status === 'published' ? 'disabled' : ''}
                       class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium
                              bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition
                              disabled:opacity-50 disabled:cursor-not-allowed
@@ -1509,7 +1509,7 @@ export class DataModelPage {
       list.insertBefore(dragSrcEl, targetLi);
       this._updateFieldIndices(list);
       markDirty();
-      announce(\`Field \${dragSrcEl.querySelector('[aria-label^="Drag"]')?.getAttribute('aria-label')?.replace('Drag to reorder ', '') ?? ''} moved\`);
+      announce(`Field ${dragSrcEl.querySelector('[aria-label^="Drag"]')?.getAttribute('aria-label')?.replace('Drag to reorder ', '') ?? ''} moved`);
       dragSrcEl = null;
     });
 
@@ -1548,7 +1548,7 @@ export class DataModelPage {
       const newItems = getItems();
       const newIdx   = newItems.indexOf(focused);
       const name = focused.querySelector('.drag-handle')?.getAttribute('aria-label')?.replace('Drag to reorder ', '') ?? 'Field';
-      announce(\`Field \${name} moved to position \${newIdx + 1} of \${newItems.length}\`);
+      announce(`Field ${name} moved to position ${newIdx + 1} of ${newItems.length}`);
     });
   }
 
@@ -1557,7 +1557,7 @@ export class DataModelPage {
     items.forEach((li, i) => {
       li.dataset.index = i;
       const label = li.querySelector('.drag-handle')?.getAttribute('aria-label')?.replace('Drag to reorder ', '') ?? '';
-      li.setAttribute('aria-label', \`Field \${label}, position \${i + 1} of \${items.length}\`);
+      li.setAttribute('aria-label', `Field ${label}, position ${i + 1} of ${items.length}`);
     });
   }
 
@@ -3374,47 +3374,47 @@ export class DataModelPage {
       if (addedCols.length || removedCols.length) {
         const diffSection = document.createElement('div');
         diffSection.className = 'space-y-4';
-        diffSection.innerHTML = \`
-          \${addedCols.length ? \`
+        diffSection.innerHTML = `
+          ${addedCols.length ? `
             <div>
-              <h3 class="text-sm font-semibold text-gray-700 mb-2">Fields to add (\${addedCols.length})</h3>
+              <h3 class="text-sm font-semibold text-gray-700 mb-2">Fields to add (${addedCols.length})</h3>
               <table class="w-full text-sm">
                 <thead><tr class="text-left text-xs text-gray-500 border-b">
                   <th class="pb-1 pr-3">Column</th><th class="pb-1 pr-3">Type</th><th class="pb-1">Nullable</th>
                 </tr></thead>
                 <tbody>
-                  \${addedCols.map(c => \`
+                  ${addedCols.map(c => `
                     <tr class="text-green-600 border-b border-gray-100">
-                      <td class="py-1 pr-3 font-mono">\${c.name || c.column_name || JSON.stringify(c)}</td>
-                      <td class="py-1 pr-3">\${c.type || c.data_type || ''}</td>
-                      <td class="py-1">\${c.nullable !== false ? 'Yes' : 'No'}</td>
-                    </tr>\`).join('')}
+                      <td class="py-1 pr-3 font-mono">${c.name || c.column_name || JSON.stringify(c)}</td>
+                      <td class="py-1 pr-3">${c.type || c.data_type || ''}</td>
+                      <td class="py-1">${c.nullable !== false ? 'Yes' : 'No'}</td>
+                    </tr>`).join('')}
                 </tbody>
               </table>
             </div>
-          \` : ''}
-          \${removedCols.length ? \`
+          ` : ''}
+          ${removedCols.length ? `
             <div>
-              <h3 class="text-sm font-semibold text-gray-700 mb-2">Fields to remove (\${removedCols.length})</h3>
+              <h3 class="text-sm font-semibold text-gray-700 mb-2">Fields to remove (${removedCols.length})</h3>
               <table class="w-full text-sm">
                 <thead><tr class="text-left text-xs text-gray-500 border-b">
                   <th class="pb-1 pr-3">Column</th><th class="pb-1 pr-3">Type</th><th class="pb-1">Note</th>
                 </tr></thead>
                 <tbody>
-                  \${removedCols.map(c => \`
+                  ${removedCols.map(c => `
                     <tr class="text-red-600 border-l-4 border-red-500 border-b border-gray-100">
                       <td class="py-1 pr-3 font-mono pl-2">
                         <i class="ph ph-warning text-red-500 mr-1" aria-hidden="true"></i>
-                        \${c.name || c.column_name || JSON.stringify(c)}
+                        ${c.name || c.column_name || JSON.stringify(c)}
                       </td>
-                      <td class="py-1 pr-3">\${c.type || c.data_type || ''}</td>
+                      <td class="py-1 pr-3">${c.type || c.data_type || ''}</td>
                       <td class="py-1 text-red-400 text-xs">Destructive</td>
-                    </tr>\`).join('')}
+                    </tr>`).join('')}
                 </tbody>
               </table>
             </div>
-          \` : ''}
-        \`;
+          ` : ''}
+        `;
         // Prepend diff tables before existing content
         contentArea.prepend(diffSection);
       }
@@ -3455,7 +3455,7 @@ export class DataModelPage {
     }
 
     try {
-      const response = await apiFetch(\`/data-model/entities/\${entityId}/publish\`, {
+      const response = await apiFetch(`/data-model/entities/${entityId}/publish`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({})
@@ -3485,7 +3485,7 @@ export class DataModelPage {
 
       overlayEl?.remove();
       this.closeMigrationPreviewModal();
-      this.showSuccess(\`Entity published successfully! Migration completed in \${migration.execution_time_ms || 0}ms\`);
+      this.showSuccess(`Entity published successfully! Migration completed in ${migration.execution_time_ms || 0}ms`);
 
       // Refresh entity list in background
       this.loadEntities().catch(() => {});

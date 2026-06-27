@@ -344,7 +344,7 @@ function attachTestPanels() {
           <i class="ph ph-funnel text-lg"></i>
           <span>No test run yet. Click "Run test" to simulate this rule.</span>
         </div>
-      </div>\`;
+      </div>`;
 
     const toggle = panel.querySelector('.test-toggle');
     const body   = panel.querySelector('.test-body');
