@@ -154,9 +154,21 @@ async def lifespan(app: FastAPI):
     # Installed LAST in startup — after tenant_scoped_session is live on all
     # tenant routes (T-22.009) — to prevent HTTP 500 storms on unscoped requests.
     # arch-22 section 3.2 and tasks-22 rollout order.
-    from app.core.db import engine as _db_engine
-    _tenant_listener = TenantScopeListener()
-    TenantScopeListener.install(_db_engine)
+    #
+    # GATED (default OFF): the fail-loud listener is only safe once *every*
+    # tenant route sets scope via tenant_scoped_session. Only 3 services are
+    # migrated so far (36 router violations remain), and pre-auth routes such as
+    # /auth/login query tenant-scoped models (User) with no tenant context by
+    # design — enabling globally now causes a 500 storm. Enable per-environment
+    # with ENABLE_TENANT_SCOPE_LISTENER=true once the migration is complete.
+    import os as _os
+    if _os.environ.get("ENABLE_TENANT_SCOPE_LISTENER", "false").lower() in ("1", "true", "yes"):
+        from app.core.db import engine as _db_engine
+        _tenant_listener = TenantScopeListener()
+        TenantScopeListener.install(_db_engine)
+        logger.info("TenantScopeListener ENABLED (ENABLE_TENANT_SCOPE_LISTENER set)")
+    else:
+        logger.info("TenantScopeListener disabled (set ENABLE_TENANT_SCOPE_LISTENER=true to enable)")
 
     yield
 

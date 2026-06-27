@@ -162,10 +162,13 @@ class MenuService:
         import logging
         logger = logging.getLogger(__name__)
 
-        # Get enabled modules for tenant
-        tenant_modules = apply_tenant_scope_by_id(
-            db.query(TenantModule), TenantModule, user.tenant_id
-        ).filter(
+        # Get enabled modules for tenant. Superusers have no tenant_id and are
+        # not tenant-scoped, so skip the (fail-loud) scope filter for them and
+        # return modules across all tenants. (DEF: menu 500 for superadmin.)
+        module_q = db.query(TenantModule)
+        if not getattr(user, "is_superuser", False):
+            module_q = apply_tenant_scope_by_id(module_q, TenantModule, user.tenant_id)
+        tenant_modules = module_q.filter(
             TenantModule.is_enabled == True
         ).all()
 
@@ -287,9 +290,14 @@ class MenuService:
         # Get builder pages with show_in_menu=True for this tenant.
         # BuilderPage.tenant_id is String(36) (VARCHAR), not GUID, so cast to str
         # to avoid "operator does not exist: character varying = uuid" in Postgres.
-        builder_pages = apply_tenant_scope_by_id(
-            db.query(BuilderPage), BuilderPage, str(user.tenant_id)
-        ).filter(
+        # Superusers are not tenant-scoped (tenant_id is None); skip the
+        # fail-loud scope filter so they see all published builder pages.
+        builder_q = db.query(BuilderPage)
+        if not getattr(user, "is_superuser", False):
+            builder_q = apply_tenant_scope_by_id(
+                builder_q, BuilderPage, str(user.tenant_id)
+            )
+        builder_pages = builder_q.filter(
             BuilderPage.show_in_menu == True,
             BuilderPage.published == True  # Only show published pages
         ).order_by(BuilderPage.menu_order, BuilderPage.name).all()
