@@ -87,8 +87,13 @@ async def lifespan(app: FastAPI):
         modules_path = Path(__file__).parent.parent / "modules"
         module_registry = ModuleRegistryService(db, modules_path)
 
-        # Sync modules from filesystem
+        # Sync modules from filesystem (Python-loadable modules)
         module_registry.sync_modules()
+
+        # Refresh DB manifests from on-disk manifest.json for ALL modules whose
+        # files are mounted (e.g. /modules), so manifest edits propagate on
+        # restart without a version bump. No-op if the mount is absent.
+        module_registry.sync_manifests_from_disk()
 
         # Include routers from installed modules
         for router in module_registry.get_all_routers():

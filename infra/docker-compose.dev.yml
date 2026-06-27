@@ -80,6 +80,10 @@ services:
       - ../backend:/app
       - ../frontend:/frontend:ro
       - ../modules/sdk:/app/modules/sdk:ro
+      # Read-only module tree at a separate path so the backend can refresh
+      # module manifests from disk (sync_manifests_from_disk) without disturbing
+      # the Python loader's /app/modules.
+      - ../modules:/modules:ro
       - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
       postgres:

@@ -95,13 +95,17 @@ class ModuleRegistryService:
                     self.db.add(registry_entry)
                     logger.info(f"Registered new module: {name}")
                 else:
-                    # Update manifest if version changed
-                    if registry_entry.version != module_instance.version:
+                    # Update when version OR manifest CONTENT changed, so disk
+                    # manifest edits propagate even without a version bump.
+                    import json as _json
+                    content_changed = _json.dumps(registry_entry.manifest or {}, sort_keys=True) \
+                        != _json.dumps(module_instance.manifest, sort_keys=True)
+                    if registry_entry.version != module_instance.version or content_changed:
                         registry_entry.version = module_instance.version
                         registry_entry.manifest = module_instance.manifest
                         registry_entry.display_name = module_instance.display_name
                         registry_entry.description = module_instance.manifest.get("description")
-                        logger.info(f"Updated module {name} to version {module_instance.version}")
+                        logger.info(f"Updated module {name} manifest (version/content change)")
 
                 self.modules[name] = module_instance
 
@@ -110,6 +114,68 @@ class ModuleRegistryService:
 
         self.db.commit()
         logger.info(f"Synced {len(self.modules)} modules")
+
+    def sync_manifests_from_disk(self, root: Optional[str] = None) -> int:
+        """Refresh each REGISTERED module's DB manifest from its on-disk
+        ``manifest.json`` when the content changed (hash compare).
+
+        The DB row is the runtime source of truth for a module's manifest (the
+        backend does not load most modules' Python, and the in-process loader is
+        vestigial). Without this, editing a module's manifest on disk only takes
+        effect on a version bump. This lets edits propagate on restart for ANY
+        module that has a manifest on disk — not just Python-loadable ones.
+
+        Only updates modules that already exist in the registry (install /
+        registration is a separate flow). No-op when ``root`` is absent. Returns
+        the number of modules refreshed.
+        """
+        import os
+        import json as _json
+
+        root = root or os.environ.get("MODULES_MANIFEST_ROOT") or "/modules"
+        if not os.path.isdir(root):
+            logger.info(f"Module manifest root '{root}' not present; skipping disk manifest sync")
+            return 0
+
+        updated = 0
+        for name in sorted(os.listdir(root)):
+            manifest_file = os.path.join(root, name, "manifest.json")
+            if not os.path.isfile(manifest_file):
+                continue
+            try:
+                with open(manifest_file, "r", encoding="utf-8") as f:
+                    disk_manifest = _json.load(f)
+            except Exception as e:  # noqa: BLE001
+                logger.warning(f"Skipping unreadable manifest {manifest_file}: {e}")
+                continue
+
+            mod_name = disk_manifest.get("name") or name
+            row = self.db.query(ModuleRegistry).filter(ModuleRegistry.name == mod_name).first()
+            if row is None:
+                continue  # not registered — leave registration to install flow
+
+            try:
+                unchanged = _json.dumps(row.manifest or {}, sort_keys=True) \
+                    == _json.dumps(disk_manifest, sort_keys=True)
+            except Exception:  # noqa: BLE001
+                unchanged = False
+            if unchanged:
+                continue
+
+            row.manifest = disk_manifest
+            row.display_name = disk_manifest.get("display_name", row.display_name)
+            row.version = disk_manifest.get("version", row.version)
+            row.description = disk_manifest.get("description", row.description)
+            row.category = disk_manifest.get("category", row.category)
+            if disk_manifest.get("api_prefix"):
+                row.api_prefix = disk_manifest.get("api_prefix")
+            updated += 1
+            logger.info(f"Refreshed manifest for module '{mod_name}' from disk")
+
+        if updated:
+            self.db.commit()
+        logger.info(f"Disk manifest sync: {updated} module(s) refreshed from '{root}'")
+        return updated
 
     def install_module(self, module_name: str, user_id: str) -> tuple[bool, Optional[str]]:
         """
