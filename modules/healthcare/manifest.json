@@ -3,11 +3,12 @@
   "display_name": "Healthcare",
   "version": "1.0.0",
   "description": "Two-sided healthcare platform: clinic staff portal + patient portal. Includes scheduling, billing, pharmacy, and laboratory sub-modules.",
+  "entry_point": "module.js",
   "routes": [
     {
       "path": "#/healthcare/dashboard",
       "name": "Healthcare Dashboard",
-      "component": "frontend/clinic/portal.js",
+      "component": "pages/dashboard.js",
       "permission": "healthcare:dashboard:read",
       "menu": {
         "label": "Dashboard",
@@ -19,7 +20,7 @@
     {
       "path": "#/healthcare/appointments",
       "name": "Appointments",
-      "component": "frontend/clinic/appointment-queue.js",
+      "component": "pages/appointments.js",
       "permission": "healthcare:appointments:read",
       "menu": {
         "label": "Appointments",
@@ -31,7 +32,7 @@
     {
       "path": "#/healthcare/schedules",
       "name": "Schedules",
-      "component": "frontend/clinic/schedule-editor.js",
+      "component": "pages/schedules.js",
       "permission": "healthcare:schedules:read",
       "menu": {
         "label": "Schedules",
@@ -43,7 +44,7 @@
     {
       "path": "#/healthcare/invoices",
       "name": "Invoices",
-      "component": "frontend/clinic/invoices.js",
+      "component": "pages/invoices.js",
       "permission": "healthcare:billing:read",
       "menu": {
         "label": "Invoices",
@@ -55,7 +56,7 @@
     {
       "path": "#/healthcare/prescriptions",
       "name": "Prescriptions",
-      "component": "frontend/clinic/prescriptions.js",
+      "component": "pages/prescriptions.js",
       "permission": "healthcare:pharmacy:read",
       "menu": {
         "label": "Prescriptions",
@@ -67,7 +68,7 @@
     {
       "path": "#/healthcare/lab-orders",
       "name": "Lab Orders",
-      "component": "frontend/clinic/lab-orders.js",
+      "component": "pages/lab-orders.js",
       "permission": "healthcare:lab:read",
       "menu": {
         "label": "Lab Orders",
@@ -77,6 +78,20 @@
       }
     }
   ],
+  "navigation": {
+    "primary_menu": true,
+    "menu_items": [
+      {
+        "code": "healthcare",
+        "label": "Healthcare",
+        "icon": "ph-duotone ph-first-aid-kit",
+        "icon_color": "text-rose-600",
+        "order": 20,
+        "is_parent": true,
+        "permission": null
+      }
+    ]
+  },
   "dependencies": [],
   "module_type": "code",
   "category": "vertical",
