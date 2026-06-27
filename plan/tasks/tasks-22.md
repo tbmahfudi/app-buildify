@@ -170,6 +170,28 @@ Status legend: `OPEN` = not started | `IN-PROGRESS` = picked up | `BLOCKED` = wa
 
 ---
 
+### Item 22.10 — Post-merge Rollout Defect (DEF-22-A)
+
+> **DEF-22-A** *(found 2026-06-27, post-merge):* Restarting the backend activated the
+> fail-loud `TenantScopeListener` (T-22.005) and the T-22.008 service migration on a
+> codebase where only 3 of ~39 routes set scope via `tenant_scoped_session`. Result:
+> `/auth/login` (pre-auth, queries `User` with no tenant context **by design**) and most
+> endpoints returned HTTP 500 — a full boot-blocking 500 storm; the SPA hung on its loader.
+> A second instance: `menu_service` passed a superadmin's `None` tenant_id into
+> `apply_tenant_scope_by_id`, 500-ing `GET /menu` for superusers.
+> **Mitigation shipped** (`[HOTFIX] 31aa9db`): listener gated behind
+> `ENABLE_TENANT_SCOPE_LISTENER` (default OFF); menu service skips scoping for superusers.
+> The tasks below are required before the listener can be safely re-enabled in any env.
+
+| ID | Task | Owner | Depends | Est (h) | Ref | Status |
+|----|------|-------|---------|---------|-----|--------|
+| T-22.029 | Complete the router-layer `tenant_scoped_session` migration (the other ~36 routes flagged by `check-tenant-scope`) **and** add an explicit listener exemption / no-scope path for pre-auth and platform routes (`/auth/*`, health, registration, superuser-only). Acceptance: with `ENABLE_TENANT_SCOPE_LISTENER=true`, full smoke (superadmin + tenant login, `/auth/me`, `/menu`, `/modules`, dashboard route) passes with zero 500s. Supersedes follow-up M-2. | C2 | T-22.005, T-22.008 | 12 | DEF-22-A; [arch-22 §3.2](../architecture/arch-22.md) | TODO |
+| T-22.030 | Once T-22.029 passes, flip `ENABLE_TENANT_SCOPE_LISTENER=true` per-environment (dev → staging → prod), update `docker-compose`/`infra` env, the runbook, and the DoD note; verify adversarial suite still 18/18 and add a boot-smoke CI step that fails on any login/menu 500. | E1 | T-22.029 | 3 | DEF-22-A; [runbook-tenant-isolation.md](../../docs/runbooks/runbook-tenant-isolation.md) | TODO |
+
+**Subtotal: 15 hrs** *(out of original sprint scope — carried to N+1)*
+
+---
+
 ## Dependency Graph (critical path)
 
 ```
@@ -236,7 +258,7 @@ T-22.001 (scope.py gate -- starts all work)
 ## Sprint DoD Checklist
 
 - [ ] T-22.001 through T-22.003 DONE (scope.py gate passed)
-- [ ] T-22.005 merged (listener live at FastAPI startup) — must be last in shared-core rollout
+- [x] T-22.005 merged (listener code live) — **but GATED OFF** behind `ENABLE_TENANT_SCOPE_LISTENER` per DEF-22-A; do NOT enable until T-22.029 lands (router migration + pre-auth exemption)
 - [ ] All 18 models carry `__tenant_scoped__ = True` (T-22.006 verified)
 - [ ] T-22.009 merged (tenant_scoped_session on all tenant routes)
 - [x] T-22.013 prototype 60 s gate passed — Feature 22.4 confirmed viable (978 ms, PASS)
@@ -252,7 +274,7 @@ T-22.001 (scope.py gate -- starts all work)
 ## Follow-up Backlog (out of sprint scope)
 
 - M-1 automated model introspection for `__tenant_scoped__` — sprint N+1
-- M-2 full router-layer `tenant_id ==` literal migration — sprint N+1 (gate catches new occurrences)
+- M-2 full router-layer `tenant_id ==` literal migration — **promoted to T-22.029 (DEF-22-A)**, now blocking re-enable of the tenant-scope listener
 - L-1 ModuleScopeMiddleware full connection-pool wiring for `DATABASE_STRATEGY=per_tenant` production-safe operation — sprint N+1
 - L-2 make `audit_log_fn` required in `with_admin_cross_tenant_scope` — before next caller is added
 - Story 22.4.6 financial module migration from shared to per_tenant for new tenants — may need ADR amendment; B1 call
