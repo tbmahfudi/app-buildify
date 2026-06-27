@@ -1000,9 +1000,13 @@ function createSubmenuItem(item, level = 1) {
  * Bind robust hover behavior for a sidebar flyout (collapsed-mode popup).
  *
  * Shows `flyout` while either `trigger` or `flyout` is hovered, and hides it
- * after a short grace period once both are left. A single cancelable timer
- * (cleared on every re-enter) prevents the stacked-setTimeout race that made
- * the flyout vanish when the pointer crossed from the trigger into it.
+ * after a short grace period once both are left. Two things make multi-level
+ * nesting robust:
+ *   1. a single cancelable timer (cleared on every re-enter) avoids the
+ *      stacked-setTimeout race that hid the flyout mid-transition; and
+ *   2. a flyout is NOT closed while it has an active child flyout open
+ *      (`flyout.hasActiveChild`) — so moving from a parent flyout into its
+ *      child (positioned outside the parent) never collapses the parent.
  */
 function bindFlyoutHover(trigger, flyout, parentPopup, siblings, position) {
   let closeTimer = null;
@@ -1015,22 +1019,31 @@ function bindFlyoutHover(trigger, flyout, parentPopup, siblings, position) {
     if (typeof position === 'function') position();
     flyout.classList.remove('hidden');
     flyout.isActive = true;
-    if (parentPopup) parentPopup.hasActiveChild = true;
+    // Cancel any pending close on the parent and mark it as having an active
+    // child, so the parent stays open while we're in this flyout.
+    if (parentPopup) {
+      parentPopup.hasActiveChild = true;
+      if (typeof parentPopup._cancelClose === 'function') parentPopup._cancelClose();
+    }
   };
 
   const scheduleClose = () => {
     if (closeTimer) clearTimeout(closeTimer);
     closeTimer = setTimeout(() => {
       closeTimer = null;
-      if (!trigger.matches(':hover') && !flyout.matches(':hover')) {
-        flyout.classList.add('hidden');
-        flyout.isActive = false;
-        if (parentPopup) {
-          parentPopup.hasActiveChild = (siblings || []).some(p => p.isActive);
-        }
+      if (trigger.matches(':hover') || flyout.matches(':hover') || flyout.hasActiveChild) {
+        return;  // still in use (incl. a child flyout open) — keep it open
+      }
+      flyout.classList.add('hidden');
+      flyout.isActive = false;
+      if (parentPopup) {
+        parentPopup.hasActiveChild = (siblings || []).some(p => p.isActive);
       }
     }, 240);
   };
+
+  // Let a child's open() cancel this flyout's pending close.
+  flyout._cancelClose = () => { if (closeTimer) { clearTimeout(closeTimer); closeTimer = null; } };
 
   trigger.addEventListener('mouseenter', open);
   trigger.addEventListener('mouseleave', scheduleClose);
