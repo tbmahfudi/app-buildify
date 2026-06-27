@@ -488,6 +488,58 @@ def print_test_credentials():
     print(f"{'='*70}\n")
 
 
+def seed_healthcare_patient_users(db: Session):
+    """Create 3 healthcare patient-portal users in the HealthPoint tenant.
+
+    Patients are tenant members of the clinic they belong to, but carry only the
+    minimal 'patient' role (wired via the Patients group in seed_rbac_with_groups).
+    Idempotent: skips users that already exist. No-op if the healthcare tenant
+    (identified by existing @healthpoint.com users) has not been seeded yet.
+    """
+    print(f"\n{'='*70}")
+    print("Seeding Healthcare Patient-Portal Users")
+    print(f"{'='*70}")
+
+    anchor = db.query(User).filter(User.email.like('%@healthpoint.com')).first()
+    if not anchor:
+        print("  ⚠ No HealthPoint tenant found (no @healthpoint.com users); skipping.")
+        return
+
+    patients = [
+        {"email": "patient1@healthpoint.com", "name": "Pat Rivera"},
+        {"email": "patient2@healthpoint.com", "name": "Sam Okafor"},
+        {"email": "patient3@healthpoint.com", "name": "Lee Nakamura"},
+    ]
+
+    created = 0
+    for p in patients:
+        if db.query(User).filter(User.email == p['email']).first():
+            print(f"  ✓ Patient exists: {p['email']}")
+            continue
+        uid = create_id()
+        db.add(User(
+            id=uid,
+            email=p['email'],
+            hashed_password=hash_password("password123"),
+            full_name=p['name'],
+            is_active=True,
+            is_superuser=False,
+            is_verified=True,
+            tenant_id=anchor.tenant_id,
+            default_company_id=anchor.default_company_id,
+            created_at=datetime.utcnow(),
+        ))
+        db.add(UserSettings(
+            id=create_id(), user_id=uid, theme="light", language="en",
+            timezone="UTC", density="normal", created_at=datetime.utcnow(),
+        ))
+        created += 1
+        print(f"  ✓ Patient: {p['name']} ({p['email']})")
+
+    db.commit()
+    print(f"  → {created} patient user(s) created.")
+
+
 # ============================================================================
 # MAIN EXECUTION
 # ============================================================================
@@ -527,6 +579,28 @@ def main():
                 traceback.print_exc()
                 db.rollback()
                 continue
+
+        # Seed healthcare patient-portal users (no-op if no healthcare tenant)
+        try:
+            seed_healthcare_patient_users(db)
+        except Exception as e:
+            print(f"\n❌ Error seeding patient users: {str(e)}")
+            db.rollback()
+
+        # Wire group-based RBAC (User → Group → Role → Permission) for ALL tenants.
+        # This is what gives users their effective permissions; without it,
+        # users have no group membership and therefore zero permissions.
+        try:
+            from app.seeds.seed_rbac_with_groups import seed_all_tenants as seed_rbac_all
+            print(f"\n{'='*70}")
+            print("Wiring group-based RBAC for all tenants")
+            print(f"{'='*70}")
+            seed_rbac_all(db)
+        except Exception as e:
+            print(f"\n❌ Error wiring RBAC groups: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            db.rollback()
 
         # Print summary
         print_summary(db)

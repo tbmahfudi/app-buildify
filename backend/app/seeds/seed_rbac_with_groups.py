@@ -153,6 +153,14 @@ DEFAULT_GROUPS = [
         "description": "Marketing and communications",
         "group_type": "department",
         "roles": ["marketer"]
+    },
+    {
+        # Public / patient-portal members. NOT an admin-level group.
+        "code": "patients",
+        "name": "Patients",
+        "description": "Healthcare patient-portal users (self-service, own data only)",
+        "group_type": "team",
+        "roles": ["patient"]
     }
 ]
 
@@ -176,7 +184,10 @@ DEFAULT_ROLES = [
             "groups:assign_roles:tenant", "groups:revoke_roles:tenant",
             "permissions:read:tenant",
             "companies:read:tenant", "companies:create:tenant", "companies:update:tenant",
-            "organization:view:tenant"
+            "organization:view:tenant",
+            # Module & menu management (required for the Settings → Modules and
+            # Menu Management pages; menu items gate on these codes).
+            "modules:manage:tenant", "menu:manage:tenant"
         ]
     },
     {
@@ -281,6 +292,19 @@ DEFAULT_ROLES = [
             "users:read:own",
             "roles:read:own"
         ]
+    },
+    {
+        # Public / patient-portal self-service role. Deliberately minimal:
+        # patients can only see and manage their own account. They must NOT
+        # receive any admin/module/menu/tenant-wide permissions.
+        "code": "patient",
+        "name": "Patient (Portal)",
+        "description": "Healthcare patient-portal self-service access (own data only)",
+        "role_type": "default",
+        "permissions": [
+            "users:read:own",
+            "users:change_password:own"
+        ]
     }
 ]
 
@@ -313,7 +337,31 @@ def create_roles_for_tenant(db: Session, tenant_id: str):
         ).first()
 
         if existing:
-            print(f"    ✓ Role exists: {role_data['name']}")
+            # Role already present — ensure it carries every permission in the
+            # current definition (adds newly-introduced perms on re-run, e.g.
+            # modules:manage:tenant / menu:manage:tenant for tenant_admin).
+            added = 0
+            for perm_code in role_data['permissions']:
+                permission = get_or_create_permission(db, perm_code)
+                if not permission:
+                    continue
+                has = db.query(RolePermission).filter(
+                    RolePermission.role_id == existing.id,
+                    RolePermission.permission_id == permission.id
+                ).first()
+                if not has:
+                    db.add(RolePermission(
+                        id=create_id(),
+                        role_id=existing.id,
+                        permission_id=permission.id,
+                        created_at=datetime.utcnow()
+                    ))
+                    added += 1
+            if added:
+                db.flush()
+                print(f"    ✓ Role exists: {role_data['name']} (+{added} new permission(s))")
+            else:
+                print(f"    ✓ Role exists: {role_data['name']}")
             created_roles[role_data['code']] = existing
             continue
 
@@ -442,8 +490,11 @@ def assign_users_to_groups(db: Session, tenant_id: str, groups: dict):
         email = user.email.lower()
         assigned_groups = []
 
-        # Smart group assignment based on email patterns
-        if any(keyword in email for keyword in ['admin', 'ceo', 'cto', 'cfo']):
+        # Smart group assignment based on email patterns.
+        # Patients first so portal accounts never land in a staff/admin group.
+        if 'patient' in email:
+            assigned_groups.append('patients')
+        elif any(keyword in email for keyword in ['admin', 'ceo', 'cto', 'cfo']):
             assigned_groups.append('administrators')
         elif any(keyword in email for keyword in ['manager', 'director', 'head', 'lead']):
             assigned_groups.append('managers')
