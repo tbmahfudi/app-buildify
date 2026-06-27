@@ -181,6 +181,9 @@ export class ActivationModal {
   }
 
   _renderPreview(data) {
+    // The preview fetch can resolve before the modal's onShown fires, so make
+    // sure the footer buttons are wired before we try to enable Confirm.
+    this._bindFooterButtons();
     const deps      = data.dependencies || [];
     const perms     = data.permissions  || [];
     const items     = data.menu_items   || [];
@@ -262,6 +265,7 @@ export class ActivationModal {
   }
 
   _renderPreviewError(message) {
+    this._bindFooterButtons();
     const body = this._modal.getBodyElement();
     if (body) {
       body.innerHTML = `
@@ -607,9 +611,21 @@ async function render(container) {
     }
   }
 
-  container.querySelector('#modules-search')?.addEventListener('input', applyFilter);
+  // Re-mount safety: render() can run more than once against the persistent
+  // #content element (route revisits), which would stack duplicate listeners
+  // and open multiple modals per click. Remove the previous mount's listeners
+  // before binding new ones.
+  if (container._modulesCleanup) container._modulesCleanup();
+  const _cleanups = [];
+  const _on = (target, type, handler) => {
+    target.addEventListener(type, handler);
+    _cleanups.push(() => target.removeEventListener(type, handler));
+  };
 
-  container.addEventListener('click', e => {
+  const searchEl = container.querySelector('#modules-search');
+  if (searchEl) _on(searchEl, 'input', applyFilter);
+
+  _on(container, 'click', e => {
     const activateBtn   = e.target.closest('.module-activate-btn');
     const deactivateBtn = e.target.closest('.module-deactivate-btn');
     if (activateBtn) {
@@ -623,7 +639,7 @@ async function render(container) {
     }
   });
 
-  document.addEventListener('module:activated', (e) => {
+  _on(document, 'module:activated', (e) => {
     const moduleId = e.detail && e.detail.moduleId;
     if (!moduleId) return;
     const card = container.querySelector(`[data-module-id="${moduleId}"]`);
@@ -640,7 +656,7 @@ async function render(container) {
     }
   });
 
-  document.addEventListener('module:deactivated', (e) => {
+  _on(document, 'module:deactivated', (e) => {
     const moduleId = e.detail && e.detail.moduleId;
     if (!moduleId) return;
     const card = container.querySelector(`[data-module-id="${moduleId}"]`);
@@ -657,13 +673,14 @@ async function render(container) {
     }
   });
 
-  document.addEventListener('modules:refresh', loadModules);
+  _on(document, 'modules:refresh', loadModules);
+
+  container._modulesCleanup = () => {
+    _cleanups.forEach(fn => fn());
+    container._modulesCleanup = null;
+  };
+
   await loadModules();
 }
-
-(async () => {
-  const content = document.getElementById('content');
-  if (content) await render(content);
-})();
 
 export { render };
