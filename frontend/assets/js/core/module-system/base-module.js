@@ -65,11 +65,25 @@ export class BaseModule {
       // Optional custom-element tag (ADR: route.element). When present the SPA
       // mounts the element by tag instead of instantiating a page class.
       element: route.element,
+      // Optional no-code entity binding (ADR Step 3). When present, the route
+      // mounts the no-code CRUD page for this published entity instead of a
+      // hand-coded component — letting ONE module mix auto-generated CRUD and
+      // hand-coded pages under one menu/RBAC/route contract.
+      nocode_entity: route.nocode_entity,
+      nocode_action: route.nocode_action,
       permission: route.permission,
       menu: route.menu,
       handler: async () => {
         // Returns a mount descriptor consumed by app.js loadRoute():
+        //   { kind: "nocode", entity, action }
         //   { kind: "element", tag } | { kind: "class", PageClass } | null
+        if (route.nocode_entity) {
+          return {
+            kind: "nocode",
+            entity: route.nocode_entity,
+            action: route.nocode_action || "list",
+          };
+        }
         return await this.loadPage(route.component, route.export, route.element);
       }
     }));

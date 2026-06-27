@@ -1,7 +1,8 @@
 # Module Frontend Contract
 
-> Status: implemented (STEP 1 of ADR `plan/architecture/adr-module-frontend-integration.md`).
-> This document is the normative contract that module authors and ADR Steps 2/3 follow.
+> Status: implemented (STEP 1 + STEP 3 of ADR `plan/architecture/adr-module-frontend-integration.md`).
+> Step 3 (§6b) converges no-code pages onto this same contract.
+> This document is the normative contract that module authors follow.
 
 App-Buildify is a Vanilla-JS SPA (hash routing, Tailwind-via-CDN, native ES modules, no
 mandatory build) served as static files by nginx. Each enabled module injects its **menus,
@@ -152,6 +153,63 @@ Console-warn only — never throws, never blocks loading. Flags:
 - `routes[].menu.parent` with no matching `navigation.menu_items[].code` (orphan menu);
 - a manifest with neither `entry_point` nor `routes` (registers nothing).
 
+## 6b. No-code-backed pages (ADR Step 3 — one contract for both producers)
+
+> Status: implemented (STEP 3 of the ADR — no-code convergence).
+
+No-code-generated CRUD pages and hand-coded module pages now share **one** route/menu/component
+mount contract. A no-code entity page is just another contract-conformant page-element that the
+shell mounts into `#app-content` and tears down on route change — the same lifecycle as §4. It
+**reuses** the existing no-code runtime (`dynamic-route-registry.js` + `DynamicTable` +
+`DynamicForm`) verbatim; nothing in the no-code rendering logic or backend metadata changed.
+
+### The no-code page element / class
+
+`frontend/assets/js/nocode-entity-page.js` exports both shapes:
+
+- **Custom element** `<nocode-entity-page entity="customers" action="list" record-id="...">` —
+  registered globally (idempotently) when the file is imported by the shell. `connectedCallback()`
+  renders the entity's CRUD into the element's light DOM; `disconnectedCallback()` is the native
+  teardown.
+- **Light-DOM page class** `NocodeEntityPage` — `new NocodeEntityPage({ entity, action, id })`,
+  then `await render(container)` / `await destroy()`. This is the exact §4a interface.
+
+`action` is one of `list` (default) | `create` | `detail` | `edit`. Both shapes delegate to
+`dynamicRouteRegistry.handleRoute('dynamic/{entity}/{action…}', container)` — the identical code
+path the legacy `#/dynamic/{entity}/*` routes already use. Failures render a clean inline error
+card, never a raw 404.
+
+### Legacy `#/dynamic/{entity}/*` routes
+
+The published-entity routes that work today are unchanged in behavior, but now mount **through the
+unified contract**: `loadRoute()` parses the `dynamic/{entity}/...` URL into a `NocodeEntityPage`,
+mounts it into `#app-content`, and tracks it as `currentModulePage` so it tears down exactly like a
+module page on the next route change. `dynamicRouteRegistry.registerAllPublishedEntities()` discovery
+is untouched.
+
+### Declaring a no-code-backed route in a module manifest
+
+A module route can point at a no-code entity instead of a hand-coded component, so **one module can
+mix auto-generated CRUD and hand-coded pages** under one menu / RBAC / route contract:
+
+```jsonc
+{
+  "path": "#/sales/customers",
+  "name": "Customers",
+  "nocode_entity": "customers",        // published no-code entity name
+  "nocode_action": "list",             // OPTIONAL: list (default) | create | detail | edit
+  "permission": "sales:customers:read",
+  "menu": { "label": "Customers", "icon": "ph-duotone ph-users",
+            "order": 31, "parent": "sales" }
+}
+```
+
+When `nocode_entity` is present, `BaseModule` produces a `{ kind: "nocode", entity, action }` mount
+descriptor (instead of loading a `component`), which `loadRoute()` mounts via `NocodeEntityPage`.
+`component` is not required for such a route. The route's `permission` and `menu` work exactly as
+for any other route (server-enforced RBAC, server-driven menu tree — both unchanged). A sibling
+route in the same manifest can still declare a hand-coded `component`/`element`; they coexist.
+
 ## 7. What stays unchanged (backward compat)
 
 - **Backend & `menu_service` untouched.** Server-driven, RBAC-filtered menus remain authoritative.
@@ -159,3 +217,8 @@ Console-warn only — never throws, never blocks loading. Flags:
   generic-loader path is additive, triggered only when `entry_point` is null/absent or fails.
 - `loadRoute()` still accepts a legacy handler that returns a bare page class (normalized
   internally to the `{ kind: 'class', PageClass }` descriptor).
+- **No-code flow unchanged.** Creating an entity, publishing it, and having it appear in the menu
+  and render CRUD still works exactly as before. The no-code runtime
+  (`dynamic-route-registry.js`, `dynamic-form.js`, `dynamic-table.js`) and all backend
+  metadata/`data-model` routers are untouched — Step 3 only *wraps* and *wires* them under the
+  shared page contract (§6b).

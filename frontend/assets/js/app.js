@@ -3,6 +3,9 @@ import { showToast, showLoading, hideLoading } from './ui-utils.js';
 import { filterMenuByRole, applyRBACToElements } from './rbac.js';
 import { moduleLoader, moduleRegistry } from './core/module-system/index.js';
 import { dynamicRouteRegistry } from './dynamic-route-registry.js';
+// No-code entity page wrapper (ADR Step 3): registers <nocode-entity-page> and
+// exposes NocodeEntityPage so no-code pages mount via the Step-1 contract.
+import { NocodeEntityPage } from './nocode-entity-page.js';
 import { upgradeAllSelects } from './utils/upgrade-select.js';
 
 // Module-level state (not polluting global namespace)
@@ -1702,9 +1705,22 @@ async function loadRoute(route) {
   `;
 
   try {
-    // Check if this is a dynamic entity route (nocode auto-generated UI)
-    const handled = await dynamicRouteRegistry.handleRoute(route, content);
-    if (handled) {
+    // Check if this is a dynamic entity route (nocode auto-generated UI).
+    // ADR Step 3: route it through the SAME unified page contract as a module
+    // page. We parse the legacy `dynamic/{entity}/...` URL into a
+    // NocodeEntityPage and mount it into #app-content, tracking it as
+    // appState.currentModulePage so it tears down identically on route change.
+    const nocodeParsed = dynamicRouteRegistry.parseRoute(route);
+    if (nocodeParsed) {
+      content.innerHTML = '<div id="app-content"></div>';
+      const appContent = document.getElementById('app-content');
+      const page = new NocodeEntityPage({
+        entity: nocodeParsed.entity,
+        action: nocodeParsed.action,
+        id: nocodeParsed.id,
+      });
+      await page.render(appContent);
+      appState.currentModulePage = page;
       document.dispatchEvent(new CustomEvent('route:loaded', {
         detail: { route, isDynamic: true }
       }));
@@ -2037,7 +2053,17 @@ async function loadRoute(route) {
           ? { kind: 'class', PageClass: result }
           : result;
 
-        if (descriptor.kind === 'element') {
+        if (descriptor.kind === 'nocode') {
+          // No-code-backed module route (ADR Step 3): mount the no-code CRUD
+          // page for the declared entity via the SAME page contract. A single
+          // module can thus mix auto-generated CRUD and hand-coded pages.
+          const page = new NocodeEntityPage({
+            entity: descriptor.entity,
+            action: descriptor.action,
+          });
+          await page.render(appContent);
+          appState.currentModulePage = page;
+        } else if (descriptor.kind === 'element') {
           // Custom-element page: create the tag and append into #app-content.
           // The element's connectedCallback() does the rendering.
           const el = document.createElement(descriptor.tag);
