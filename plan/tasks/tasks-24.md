@@ -181,7 +181,7 @@ Status legend: `OPEN` = not started | `IN-PROGRESS` = picked up | `BLOCKED` = wa
 
 | Task ID | Description | Owner | Depends on | Est (h) | Reference | Status |
 |---------|-------------|-------|-----------|---------|-----------|--------|
-| T-24.032 | Run `scripts/regen-pipeline.py`; verify `plan/PIPELINE.md` reflects tasks-24 status approved and all upstream artifact statuses are accurate; commit updated pipeline file alongside any final status updates | E1 | T-24.029, T-24.031 | 1 | AGENT_STANDARD section 6 rule 4 | OPEN |
+| T-24.032 | Run ; verify  reflects tasks-24 status approved and all upstream artifact statuses are accurate; commit updated pipeline file alongside any final status updates | E1 | T-24.029, T-24.031 | 1 | AGENT_STANDARD section 6 rule 4 | DONE |
 
 **Subtotal: 1 hr**
 
