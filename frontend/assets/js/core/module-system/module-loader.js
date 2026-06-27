@@ -57,8 +57,11 @@ class ModuleLoader {
     }
 
     try {
-      // Fetch manifest from API endpoint instead of static file
-      const response = await apiFetch(`/modules/${moduleName}/manifest`);
+      // Fetch the full manifest from the module-registry API. NOTE: the
+      // endpoint lives under /module-registry/{name}/manifest (returns the
+      // complete manifest incl. entry_point + routes); /modules/{name}/manifest
+      // does NOT exist (404) — using it left modules with zero registered routes.
+      const response = await apiFetch(`/module-registry/${moduleName}/manifest`);
 
       if (!response.ok) {
         throw new Error(`Failed to load manifest: ${response.statusText}`);
