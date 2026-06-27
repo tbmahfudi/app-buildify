@@ -60,11 +60,17 @@ export class BaseModule {
       path: route.path,
       name: route.name,
       component: route.component,
+      // Optional named export for the page class (ADR: route.export; default if omitted)
+      export: route.export,
+      // Optional custom-element tag (ADR: route.element). When present the SPA
+      // mounts the element by tag instead of instantiating a page class.
+      element: route.element,
       permission: route.permission,
       menu: route.menu,
       handler: async () => {
-        // Load page component dynamically
-        return await this.loadPage(route.component);
+        // Returns a mount descriptor consumed by app.js loadRoute():
+        //   { kind: "element", tag } | { kind: "class", PageClass } | null
+        return await this.loadPage(route.component, route.export, route.element);
       }
     }));
 
@@ -94,7 +100,7 @@ export class BaseModule {
    */
   async loadCSS(cssPath) {
     return new Promise((resolve, reject) => {
-      const fullPath = `/modules/${this.name}/${cssPath}`;
+      const fullPath = this._resolveComponentUrl(cssPath);
       const link = document.createElement('link');
       link.rel = 'stylesheet';
       link.href = fullPath;
@@ -114,28 +120,79 @@ export class BaseModule {
   }
 
   /**
-   * Load a page component dynamically
+   * Resolve a manifest component path to a loader URL.
    *
-   * @param {string} componentPath - Relative path to component
-   * @returns {Promise<Object|null>} Page component
+   * URL convention (ADR "Module Frontend Contract"): the nginx
+   * `/modules/{name}/(.+)` alias is rooted at the module's `frontend/`
+   * directory, so manifest paths are relative to `frontend/` and MUST NOT
+   * start with `frontend/`. We defensively strip a leading `frontend/` (and
+   * any leading slash) so a non-conformant manifest still resolves instead of
+   * hitting the double-`frontend` 404. The dev-mode validator warns about it.
+   *
+   * @param {string} componentPath - Manifest-declared component path
+   * @returns {string} Absolute loader URL
+   * @private
    */
-  async loadPage(componentPath) {
+  _resolveComponentUrl(componentPath) {
+    let p = String(componentPath || "").replace(/^\/+/, "");
+    // Strip a leading `frontend/` segment (the double-frontend trap).
+    p = p.replace(/^frontend\//, "");
+    return `/modules/${this.name}/${p}`;
+  }
+
+  /**
+   * Load a page component dynamically and return a mount descriptor.
+   *
+   * Honors the ADR page-component contract: a component module may export
+   *   (a) a light-DOM page class (default export, or the name in `exportName`),
+   *       i.e. `{ constructor(); async render(); async destroy()? }`, or
+   *   (b) a custom element registered via `customElements.define(tag, ...)`,
+   *       named by `elementTag`; the SPA mounts it by tag.
+   *
+   * @param {string} componentPath - Path relative to frontend/
+   * @param {string} [exportName]  - Optional named export for the page class
+   * @param {string} [elementTag]  - Optional custom-element tag name
+   * @returns {Promise<Object|null>} Mount descriptor or null on failure:
+   *   { kind: "element", tag } | { kind: "class", PageClass }
+   */
+  async loadPage(componentPath, exportName, elementTag) {
+    const fullPath = this._resolveComponentUrl(componentPath);
     try {
-      const fullPath = `/modules/${this.name}/${componentPath}`;
       console.log(`Loading page: ${fullPath}`);
-
       const module = await import(fullPath);
-      const PageClass = module.default || module;
 
-      if (!PageClass) {
-        throw new Error(`No default export found in ${fullPath}`);
+      // (b) Custom element: importing the module is expected to register the
+      // tag. If a tag was declared and is now defined, mount it by tag.
+      if (elementTag) {
+        if (customElements.get(elementTag)) {
+          return { kind: "element", tag: elementTag };
+        }
+        console.warn(
+          `[${this.name}] route declared element "${elementTag}" but it was ` +
+          `not registered by ${fullPath}; falling back to page-class contract.`
+        );
       }
 
-      // Return the class itself, not an instance
-      // The caller (app.js) will instantiate it
-      return PageClass;
+      // (a) Page class: prefer the explicit named export, then default, then a
+      // single class-like named export (back-compat with `export class Foo`).
+      let PageClass = null;
+      if (exportName && module[exportName]) {
+        PageClass = module[exportName];
+      } else if (module.default) {
+        PageClass = module.default;
+      } else {
+        const named = Object.keys(module).filter(k => typeof module[k] === "function");
+        if (named.length === 1) PageClass = module[named[0]];
+      }
+
+      if (!PageClass) {
+        throw new Error(`No page class or custom element found in ${fullPath}`);
+      }
+
+      // Return the class itself; app.js instantiates and renders it.
+      return { kind: "class", PageClass };
     } catch (error) {
-      console.error(`Error loading page ${componentPath}:`, error);
+      console.error(`Error loading page ${componentPath} (${fullPath}):`, error);
       return null;
     }
   }
@@ -153,7 +210,7 @@ export class BaseModule {
     }
 
     try {
-      const fullPath = `/modules/${this.name}/${componentPath}`;
+      const fullPath = this._resolveComponentUrl(componentPath);
       const module = await import(fullPath);
       const Component = module.default || module;
 

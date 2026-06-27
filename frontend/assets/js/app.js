@@ -1665,6 +1665,25 @@ async function loadRoute(route) {
     return;
   }
 
+  // Tear down a previously-mounted module page (optional lifecycle).
+  if (appState.currentModulePage) {
+    try {
+      const prev = appState.currentModulePage;
+      // Light-DOM page class: optional async destroy().
+      if (typeof prev.destroy === 'function') {
+        await prev.destroy();
+      }
+      // Custom element: remove from DOM -> disconnectedCallback() fires.
+      if (prev instanceof HTMLElement && prev.parentNode) {
+        prev.remove();
+      }
+    } catch (teardownError) {
+      console.warn('Module page teardown failed:', teardownError);
+    } finally {
+      appState.currentModulePage = null;
+    }
+  }
+
   appState.currentRoute = route;
   updateActiveMenuItem();
 
@@ -1994,30 +2013,68 @@ async function loadRoute(route) {
     const moduleRoute = moduleRegistry.findRoute(`#/${route}`);
 
     if (moduleRoute && moduleRoute.handler) {
-      // This is a module route - load the module page
+      // This is a module route - load and mount the module page.
       console.log(`Loading module route: ${route}`);
 
-      // Create app-content div if it doesn't exist
+      // The shell always provides a clean light-DOM mount point.
       content.innerHTML = '<div id="app-content"></div>';
+      const appContent = document.getElementById('app-content');
 
-      // Call the module route handler
-      const PageClass = await moduleRoute.handler();
+      try {
+        // The handler returns a mount descriptor (ADR page-element contract):
+        //   { kind: 'element', tag }  -> custom element, mounted by tag
+        //   { kind: 'class', PageClass } -> light-DOM page class
+        // For backward-compatibility we also accept a bare class/function
+        // (older module.js handlers that return the PageClass directly).
+        const result = await moduleRoute.handler();
 
-      if (PageClass) {
-        const page = new PageClass();
-        if (typeof page.render === 'function') {
-          await page.render();
-        } else {
-          throw new Error('Module page does not have a render method');
+        if (!result) {
+          throw new Error('Module page failed to load');
         }
-      } else {
-        throw new Error('Module page not found');
-      }
 
-      // Dispatch event for route-specific JS
-      document.dispatchEvent(new CustomEvent('route:loaded', {
-        detail: { route, isModule: true }
-      }));
+        // Normalize legacy return (bare class) into a descriptor.
+        const descriptor = (typeof result === 'function')
+          ? { kind: 'class', PageClass: result }
+          : result;
+
+        if (descriptor.kind === 'element') {
+          // Custom-element page: create the tag and append into #app-content.
+          // The element's connectedCallback() does the rendering.
+          const el = document.createElement(descriptor.tag);
+          appContent.appendChild(el);
+          // Track for teardown on next route change (optional lifecycle).
+          appState.currentModulePage = el;
+        } else if (descriptor.kind === 'class' && descriptor.PageClass) {
+          const page = new descriptor.PageClass();
+          if (typeof page.render !== 'function') {
+            throw new Error('Module page class does not have a render() method');
+          }
+          await page.render();
+          appState.currentModulePage = page;
+        } else {
+          throw new Error('Module route returned an unrecognized page descriptor');
+        }
+
+        // Dispatch event for route-specific JS
+        document.dispatchEvent(new CustomEvent('route:loaded', {
+          detail: { route, isModule: true }
+        }));
+      } catch (pageError) {
+        // Clean error state (NOT a raw 404) when a module page fails to load.
+        console.error(`Module page error for route "${route}":`, pageError);
+        appContent.innerHTML = `
+          <div class="max-w-xl mx-auto mt-12 p-6 bg-white border border-red-200 rounded-lg text-center">
+            <i class="ph-duotone ph-warning-circle text-4xl text-red-500"></i>
+            <h2 class="mt-3 text-lg font-semibold text-gray-900">This page could not be loaded</h2>
+            <p class="mt-2 text-sm text-gray-600">
+              The module page for <code class="px-1 bg-gray-100 rounded">${route}</code>
+              failed to load. Please try again or contact your administrator.
+            </p>
+          </div>`;
+        document.dispatchEvent(new CustomEvent('route:loaded', {
+          detail: { route, isModule: true, error: true }
+        }));
+      }
 
       return;
     }

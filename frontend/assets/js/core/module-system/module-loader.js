@@ -6,6 +6,7 @@
  */
 
 import { getAuthToken, apiFetch } from '../../api.js';
+import { BaseModule } from './base-module.js';
 
 class ModuleLoader {
   constructor() {
@@ -102,29 +103,18 @@ class ModuleLoader {
         throw new Error('Failed to load manifest');
       }
 
-      // Determine entry point
-      const entryPoint = manifest.entry_point || 'module.js';
-      const modulePath = `/modules/${moduleName}/${entryPoint}`;
+      // Dev-mode contract validation (console-warn only; never blocks loading).
+      this._validateManifest(moduleName, manifest);
 
-      console.log(`Loading module from: ${modulePath}`);
+      // Resolve the module instance. Per the ADR "Generic loader" rule:
+      //   - If `entry_point` is null/absent, OR
+      //   - If importing the declared entry point 404s / fails,
+      // we fall back to a generic BaseModule built straight from the manifest,
+      // so a manifest-only module (no module.js) still registers its routes
+      // instead of failing the whole loader.
+      const moduleInstance = await this._resolveModuleInstance(moduleName, manifest);
 
-      // Dynamic import of module entry point
-      const moduleExports = await import(modulePath);
-
-      // Try to find the module class
-      // Convention: module.js should export default or have a named export like FinancialModule
-      const ModuleClass = moduleExports.default ||
-                          moduleExports[`${this._capitalize(moduleName)}Module`] ||
-                          moduleExports[this._toPascalCase(moduleName) + 'Module'];
-
-      if (!ModuleClass) {
-        throw new Error(`Module class not found in ${modulePath}`);
-      }
-
-      // Instantiate module
-      const moduleInstance = new ModuleClass(manifest);
-
-      // Initialize module
+      // Initialize module (BaseModule.init() registers routes from the manifest).
       if (typeof moduleInstance.init === 'function') {
         await moduleInstance.init();
       }
@@ -345,6 +335,116 @@ class ModuleLoader {
    */
   getLoadErrors() {
     return new Map(this.loadErrors);
+  }
+
+  /**
+   * Resolve a module instance for a manifest, with graceful degradation.
+   *
+   * Strategy (ADR):
+   *   1. If the manifest declares an `entry_point`, try to dynamic-import it
+   *      and instantiate the exported module class (custom init path, e.g.
+   *      financial). If that import 404s or the class is missing, fall through.
+   *   2. Otherwise (no entry_point, or entry import failed), build a generic
+   *      `BaseModule` directly from the manifest. BaseModule.registerRoutes()
+   *      maps manifest.routes[] to route handlers, so the module still works.
+   *
+   * @param {string} moduleName
+   * @param {Object} manifest
+   * @returns {Promise<Object>} A module instance (custom or generic BaseModule)
+   * @private
+   */
+  async _resolveModuleInstance(moduleName, manifest) {
+    const entryPoint = manifest.entry_point;
+
+    if (entryPoint) {
+      const modulePath = `/modules/${moduleName}/${entryPoint}`;
+      try {
+        console.log(`Loading module from: ${modulePath}`);
+        const moduleExports = await import(modulePath);
+
+        const ModuleClass = moduleExports.default ||
+                            moduleExports[`${this._capitalize(moduleName)}Module`] ||
+                            moduleExports[this._toPascalCase(moduleName) + 'Module'];
+
+        if (!ModuleClass) {
+          throw new Error(`Module class not found in ${modulePath}`);
+        }
+        return new ModuleClass(manifest);
+      } catch (error) {
+        console.warn(
+          `Entry point for module "${moduleName}" failed to load (${modulePath}): ` +
+          `${error.message}. Falling back to generic BaseModule from manifest.`
+        );
+        // fall through to generic loader
+      }
+    } else {
+      console.log(
+        `Module "${moduleName}" has no entry_point; using generic BaseModule from manifest.`
+      );
+    }
+
+    // Generic, manifest-driven module.
+    return new BaseModule(manifest);
+  }
+
+  /**
+   * Dev-mode manifest validator. Emits actionable console warnings for
+   * non-conformant manifests so authors get feedback instead of silent 404s.
+   * Never throws and never blocks loading.
+   *
+   * Checks (per the Module Frontend Contract):
+   *   - missing navigation.menu_items (no top-level menu parent will render)
+   *   - menu parent items missing an icon
+   *   - routes[].component paths that start with `frontend/` (double-frontend bug)
+   *   - routes[].menu.parent that does not match any navigation.menu_items[].code
+   *   - no entry_point AND no routes (module would register nothing)
+   *
+   * @param {string} moduleName
+   * @param {Object} manifest
+   * @private
+   */
+  _validateManifest(moduleName, manifest) {
+    // Only run in dev mode; silent in production.
+    const cfg = (typeof window !== 'undefined' && window.APP_CONFIG) || {};
+    const devMode = cfg.devMode === true ||
+      (typeof window !== 'undefined' && /^(localhost|127\.0\.0\.1)$/.test(window.location.hostname));
+    if (!devMode) return;
+
+    const warn = (msg) => console.warn(`[module-validator:${moduleName}] ${msg}`);
+    const nav = manifest.navigation || {};
+    const menuItems = Array.isArray(nav.menu_items) ? nav.menu_items : [];
+    const routes = Array.isArray(manifest.routes) ? manifest.routes : [];
+
+    if (!menuItems.length) {
+      warn('manifest has no navigation.menu_items: no top-level menu parent ' +
+           'will render and route menus may orphan.');
+    }
+
+    const parentCodes = new Set(menuItems.map(m => m.code));
+
+    for (const item of menuItems) {
+      if (!item.icon) {
+        warn(`menu_items[code="${item.code}"] is missing an "icon".`);
+      }
+    }
+
+    if (!manifest.entry_point && !routes.length) {
+      warn('manifest has no entry_point and no routes: this module registers nothing.');
+    }
+
+    for (const route of routes) {
+      const comp = route.component;
+      if (typeof comp === 'string' && /^frontend\//.test(comp)) {
+        warn(`route "${route.path}" component "${comp}" starts with ` +
+             '"frontend/". Paths are relative to frontend/ and MUST NOT include ' +
+             'it (causes a double-frontend 404). The loader strips it defensively.');
+      }
+      const parent = route.menu && route.menu.parent;
+      if (parent && !parentCodes.has(parent)) {
+        warn(`route "${route.path}" menu.parent "${parent}" does not match ` +
+             'any navigation.menu_items[].code (menu item will orphan).');
+      }
+    }
   }
 
   /**
