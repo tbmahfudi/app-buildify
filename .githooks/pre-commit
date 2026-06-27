@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+#
+# pre-commit hook: syntax-check staged JavaScript before allowing a commit.
+#
+# Enable once per clone:
+#   git config core.hooksPath .githooks
+#
+# Skip a single commit if ever needed:  git commit --no-verify
+
+set -u
+
+# Staged (Added/Copied/Modified) *.js files only.
+mapfile -t staged < <(git diff --cached --name-only --diff-filter=ACM -- '*.js')
+
+if [ "${#staged[@]}" -eq 0 ]; then
+  exit 0
+fi
+
+repo_root="$(git rev-parse --show-toplevel)"
+"$repo_root/scripts/check-js-syntax.sh" "${staged[@]}"
+rc=$?
+
+if [ "$rc" -ne 0 ]; then
+  echo
+  echo "pre-commit: JavaScript syntax check failed -- commit aborted." >&2
+  echo "Fix the file(s) above, or bypass with 'git commit --no-verify'." >&2
+fi
+
+exit "$rc"
