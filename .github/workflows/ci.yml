@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: pip install flake8 black isort
+      - name: Run flake8
+        run: flake8 backend/app --max-line-length=120 --extend-ignore=E203,W503
+      - name: Run black (check)
+        run: black --check backend/app
+      - name: Run isort (check)
+        run: isort --check-only backend/app
+
+  tenant-scope-gate:
+    name: Tenant Scope Gate
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check for raw tenant_id == literals (T-22.022)
+        # Counts unannotated raw '.tenant_id ==' literals in services/ and
+        # routers/ and fails the build when the count exceeds the frozen
+        # baseline of 36 (router-layer M-2 follow-up, tracked for sprint N+1).
+        # Lines annotated with '# tenant-scope-ok' are accepted. Any NEW
+        # unannotated literal pushes the count above baseline and breaks the
+        # build. See docs/backend/TENANT_SCOPE_MIGRATION.md for the convention.
+        run: bash manage.sh check-tenant-scope
+
+  js-syntax:
+    name: JS Syntax
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Parse-check all frontend JavaScript
+        # node --check on every frontend JS file. Catches heredoc-escaping
+        # artifacts (\` / \${ in template literals), truncated/duplicated
+        # blocks, and other invalid JS that only fails at module load.
+        run: bash scripts/check-js-syntax.sh
+
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+    needs: tenant-scope-gate
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: pip install -r backend/requirements.txt
+      - name: Run tests
+        working-directory: backend
+        run: pytest tests/ -v --tb=short
