@@ -49,9 +49,10 @@ class PatientTokenData:
     patient_id: str
     phone: str
     roles: list
+    tenant_id: Optional[str] = None
 
 
-def create_patient_access_token(patient_id: str, phone: str) -> str:
+def create_patient_access_token(patient_id: str, phone: str, tenant_id: Optional[str] = None) -> str:
     """
     Create a signed HS256 access JWT for a patient.
 
@@ -71,10 +72,12 @@ def create_patient_access_token(patient_id: str, phone: str) -> str:
         "iat": now,
         "exp": now + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
     }
+    if tenant_id:
+        payload["tenant_id"] = tenant_id
     return _jwt.encode(payload, _secret(), algorithm=ALGORITHM)
 
 
-def create_patient_refresh_token(patient_id: str) -> str:
+def create_patient_refresh_token(patient_id: str, tenant_id: Optional[str] = None) -> str:
     """
     Create a signed HS256 refresh JWT for a patient.
 
@@ -92,6 +95,8 @@ def create_patient_refresh_token(patient_id: str) -> str:
         "iat": now,
         "exp": now + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS),
     }
+    if tenant_id:
+        payload["tenant_id"] = tenant_id
     return _jwt.encode(payload, _secret(), algorithm=ALGORITHM)
 
 
@@ -118,8 +123,9 @@ def decode_patient_token(token: str) -> PatientTokenData:
         raise ValueError("Token missing sub claim")
 
     phone: str = payload.get("phone", "")
+    tenant_id: Optional[str] = payload.get("tenant_id")
 
-    return PatientTokenData(patient_id=patient_id, phone=phone, roles=roles)
+    return PatientTokenData(patient_id=patient_id, phone=phone, roles=roles, tenant_id=tenant_id)
 
 
 __all__ = [

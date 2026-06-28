@@ -193,8 +193,8 @@ async def patient_register(
     db.commit()
 
     # Step 7 — Issue tokens
-    access_token = create_patient_access_token(patient_id=patient_id, phone=payload.phone)
-    refresh_token = create_patient_refresh_token(patient_id=patient_id)
+    access_token = create_patient_access_token(patient_id=patient_id, phone=payload.phone, tenant_id=tenant_id)
+    refresh_token = create_patient_refresh_token(patient_id=patient_id, tenant_id=tenant_id)
 
     response.set_cookie(
         key="patient_refresh_token",
@@ -315,7 +315,7 @@ async def patient_token(
     # Lookup patient by phone hash
     row = db.execute(
         text(
-            "SELECT id FROM hc_patients "
+            "SELECT id, tenant_id FROM hc_patients "
             "WHERE phone_hash = :ph AND status = 'active' AND deleted_at IS NULL "
             "LIMIT 1"
         ),
@@ -329,8 +329,9 @@ async def patient_token(
         )
 
     patient_id = str(row[0])
-    access_token = create_patient_access_token(patient_id=patient_id, phone=payload.phone)
-    refresh_token = create_patient_refresh_token(patient_id=patient_id)
+    tenant_id = str(row[1]) if row[1] else None
+    access_token = create_patient_access_token(patient_id=patient_id, phone=payload.phone, tenant_id=tenant_id)
+    refresh_token = create_patient_refresh_token(patient_id=patient_id, tenant_id=tenant_id)
 
     response.set_cookie(
         key="patient_refresh_token",
@@ -380,8 +381,12 @@ async def patient_refresh(
     access_token = create_patient_access_token(
         patient_id=token_data.patient_id,
         phone=token_data.phone,
+        tenant_id=token_data.tenant_id,
     )
-    new_refresh = create_patient_refresh_token(patient_id=token_data.patient_id)
+    new_refresh = create_patient_refresh_token(
+        patient_id=token_data.patient_id,
+        tenant_id=token_data.tenant_id,
+    )
 
     response.set_cookie(
         key="patient_refresh_token",

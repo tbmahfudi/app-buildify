@@ -345,8 +345,63 @@
         },
         "title": {
           "type": "string"
+        },
+        "routing": {
+          "type": "string",
+          "enum": [
+            "hash",
+            "path"
+          ],
+          "default": "hash",
+          "description": "Client-side routing mode for the portal SPA. hash (default, SEO-weak) or path (opt-in, needs SPA fallback)."
+        },
+        "tenant_resolution": {
+          "type": "string",
+          "enum": [
+            "slug_in_path",
+            "none"
+          ],
+          "default": "slug_in_path",
+          "description": "How the portal resolves the tenant for clinic-scoped pages."
+        },
+        "routes": {
+          "type": "array",
+          "default": [],
+          "description": "Client-side portal routes, distinct from staff/admin routes[].",
+          "items": {
+            "type": "object",
+            "required": [
+              "path"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "path": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Client-side portal route (hash or path)."
+              },
+              "audience": {
+                "type": "string",
+                "default": "public",
+                "description": "public = anonymous; any other value (e.g. patient) requires an end-user token client-side. Trust is enforced server-side at the API, not here."
+              },
+              "title": {
+                "type": "string"
+              }
+            }
+          }
         }
-      }
+      },
+      "description": "Public/patient-facing static portal app served at /portal/{module}/ (ADR module-public-pages)."
+    },
+    "entry_point": {
+      "type": "string",
+      "description": "Module admin-SPA JS entry (e.g. module.js)."
+    },
+    "navigation": {
+      "type": "object",
+      "description": "Primary-menu navigation hints for the admin SPA.",
+      "additionalProperties": true
     }
   }
 }

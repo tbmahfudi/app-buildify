@@ -222,3 +222,64 @@ route in the same manifest can still declare a hand-coded `component`/`element`;
   (`dynamic-route-registry.js`, `dynamic-form.js`, `dynamic-table.js`) and all backend
   metadata/`data-model` routers are untouched — Step 3 only *wraps* and *wires* them under the
   shared page contract (§6b).
+
+## 8. Public / patient portal pages (ADR module-public-pages)
+
+Modules can ship **public + end-user-authenticated** surfaces that are **separate from the
+authenticated admin SPA**. They live in `frontend/public/` and are served by nginx at the
+platform-owned `/portal/{module_slug}/` namespace. This is a *different app on a different path*
+from the admin SPA at `/` — the trust separation is structural.
+
+- **One static portal app per module, two audiences.** A single `frontend/public/` SPA hosts both
+  anonymous **public** pages and token-authenticated **patient** (end-user) pages. They share one
+  deployable bundle; the trust boundary is **at the API** (anonymous vs end-user JWT), not at the
+  file-serving layer.
+- **Static / no-SSR.** Plain `.html/.js/.css`, hash-routed by default. Identical posture to the
+  admin SPA.
+
+### Manifest `public_portal` block
+
+```jsonc
+"public_portal": {
+  "enabled": true,
+  "entry_point": "frontend/public/index.html",  // portal SPA shell, relative to module root
+  "title": "Find a Clinic",
+  "routing": "hash",                             // "hash" (default) | "path" (SEO, opt-in)
+  "tenant_resolution": "slug_in_path",           // how the portal picks the tenant
+  "routes": [
+    { "path": "#search",       "audience": "public",  "title": "Find a clinic" },
+    { "path": "#clinic/:slug", "audience": "public",  "title": "Clinic profile" },
+    { "path": "#register",     "audience": "public",  "title": "Register" },
+    { "path": "#login",        "audience": "public",  "title": "Patient login" },
+    { "path": "#portal",       "audience": "patient", "title": "My portal" },
+    { "path": "#appointments", "audience": "patient" }
+  ]
+}
+```
+
+Rules:
+
+- **`audience` is descriptive, not the security boundary.** Trust is enforced **server-side at the
+  API** (anonymous vs end-user JWT). `audience: patient` (or any non-`public` value) tells the portal
+  shell to require an end-user token client-side (redirect to login if absent) — a UX guard only.
+- `public_portal.routes[].path` are **client-side** portal routes (hash by default), distinct from
+  the admin SPA's `#/{module}/...` routes and from manifest top-level `routes[]` (which remain
+  staff/admin, RBAC-gated).
+- A module with **no** `public_portal` block has no public surface (nginx returns 404 for its slug).
+- The dev validator warns when: `enabled` is true but `entry_point` is missing; a route `audience`
+  is outside `{public, patient}`; `routing: "path"` without a server SPA-fallback alias.
+
+### Serving
+
+nginx serves `/portal/{slug}/...` from the module's `frontend/public/` tree (root-based mapping with
+an `index.html` SPA fallback for hash/path client routing). In dev the modules tree is bind-mounted,
+so **no install-time file copy is needed**; production install copies `frontend/public/` to the
+served path.
+
+### End-user identity (patients)
+
+Non-`public` audiences use a **dedicated end-user token plane**, never the staff RBAC group chain.
+Healthcare's patient JWT (`roles:["patient"]`, HS256, 15-min access / 7-day refresh) is the reference
+model. The access/refresh tokens now carry a **`tenant_id` claim** (defence-in-depth tenant scoping);
+the claim is optional and backward-compatible — older tokens without it remain valid. Tenant is
+resolved from the **URL slug** for public clinic-scoped pages and from the **token** for patient pages.

@@ -47,7 +47,7 @@
   // ── Clinic info ──────────────────────────────────────────────────────────────
   async function loadClinicInfo() {
     try {
-      const res = await fetch(`${API_BASE}/api/v1/public/clinics/${tenantCode}`);
+      const res = await fetch(`${API_BASE}/api/v1/clinics/${tenantCode}`);
       if (!res.ok) throw new Error('Clinic not found');
       const data = await res.json();
       document.getElementById('clinic-name').textContent = data.name;
@@ -80,7 +80,7 @@
 
   window.showBranch = async function (branchCode) {
     try {
-      const res = await fetch(`${API_BASE}/api/v1/public/clinics/${tenantCode}/branches/${branchCode}`);
+      const res = await fetch(`${API_BASE}/api/v1/clinics/${tenantCode}/branches/${branchCode}`);
       if (!res.ok) throw new Error('Branch not found');
       const b = await res.json();
       document.getElementById('branch-detail').innerHTML = `
@@ -105,10 +105,10 @@
     const phone = phoneEl.value.trim();
     if (!phone) { toast('Please enter your phone number', 'error'); return; }
     try {
-      const res = await fetch(`${API_BASE}/api/v1/otp/send`, {
+      const res = await fetch(`${API_BASE}/api/v1/patients/auth/otp/send`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone, purpose: flow === 'register' ? 'patient_registration' : 'patient_login', tenant_code: tenantCode }),
+        body: JSON.stringify({ phone }),
       });
       const data = await res.json();
       if (!res.ok) { toast(data.detail || 'Failed to send OTP', 'error'); return; }
@@ -134,14 +134,14 @@
     const code = otpEl.value.trim();
     if (code.length !== 6) { toast('Enter the 6-digit code', 'error'); return; }
     try {
-      const res = await fetch(`${API_BASE}/api/v1/otp/verify`, {
+      const res = await fetch(`${API_BASE}/api/v1/patients/auth/otp/verify`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone, purpose: flow === 'register' ? 'patient_registration' : 'patient_login', tenant_code: tenantCode, code }),
+        body: JSON.stringify({ phone, code }),
       });
       const data = await res.json();
       if (!res.ok) { toast(data.detail || 'Invalid OTP', 'error'); return; }
-      otpTokenCache[flow] = data.otp_token;
+      otpTokenCache[flow] = true;
       toast('Phone verified!', 'success');
       if (flow === 'register') {
         document.getElementById('register-step-details').style.display = 'block';
@@ -154,25 +154,23 @@
 
   // ── Registration ─────────────────────────────────────────────────────────────
   window.submitRegister = async function () {
-    const otp_token = otpTokenCache['register'];
-    if (!otp_token) { toast('Please verify your OTP first', 'error'); return; }
+    if (!otpTokenCache['register']) { toast('Please verify your OTP first', 'error'); return; }
+    const phone = document.getElementById('reg-phone').value.trim();
     const full_name = document.getElementById('reg-name').value.trim();
     if (!full_name) { toast('Please enter your full name', 'error'); return; }
     if (!document.getElementById('reg-consent').checked) { toast('Please accept the consent terms', 'error'); return; }
 
-    const consent_text_hash = await sha256(CONSENT_TEXT);
     const body = {
-      otp_token,
+      phone,
       full_name,
+      date_of_birth: document.getElementById('reg-dob').value || '',
+      gender: document.getElementById('reg-gender').value || '',
+      consent_accepted: true,
       consent_version: CONSENT_VERSION,
-      consent_text_hash,
-      locale: navigator.language || 'id-ID',
-      date_of_birth: document.getElementById('reg-dob').value || null,
-      gender: document.getElementById('reg-gender').value || null,
     };
 
     try {
-      const res = await fetch(`${API_BASE}/api/v1/public/clinics/${tenantCode}/patients/register`, {
+      const res = await fetch(`${API_BASE}/api/v1/patients/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
@@ -195,20 +193,12 @@
     const code = document.getElementById('login-otp').value.trim();
     if (code.length !== 6) { toast('Enter the 6-digit code', 'error'); return; }
 
-    // Verify OTP first to get token
+    // Phone + OTP -> patient access token in one call
     try {
-      const verifyRes = await fetch(`${API_BASE}/api/v1/otp/verify`, {
+      const res = await fetch(`${API_BASE}/api/v1/patients/auth/token`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone, purpose: 'patient_login', tenant_code: tenantCode, code }),
-      });
-      const verifyData = await verifyRes.json();
-      if (!verifyRes.ok) { toast(verifyData.detail || 'Invalid OTP', 'error'); return; }
-
-      const res = await fetch(`${API_BASE}/api/v1/public/clinics/${tenantCode}/patients/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ otp_token: verifyData.otp_token }),
+        body: JSON.stringify({ phone, code }),
       });
       const data = await res.json();
       if (!res.ok) { toast(data.detail || 'Login failed', 'error'); return; }
@@ -282,7 +272,7 @@
 
   async function populateBranchDropdown() {
     try {
-      const res = await fetch(`${API_BASE}/api/v1/public/clinics/${tenantCode}`);
+      const res = await fetch(`${API_BASE}/api/v1/clinics/${tenantCode}`);
       const data = await res.json();
       const sel = document.getElementById('book-branch');
       sel.innerHTML = (data.branches || []).map(b =>

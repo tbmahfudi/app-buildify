@@ -344,6 +344,30 @@ class ModuleLoader:
             with open(schema_file) as _f:
                 schema = _json.load(_f)
             jsonschema.validate(instance=manifest, schema=schema)
+            # Non-fatal contract warnings for the public_portal block
+            # (ADR module-public-pages). These never block load; they surface
+            # likely misconfigurations to module authors.
+            pp = manifest.get("public_portal") or {}
+            if pp.get("enabled"):
+                if not pp.get("entry_point"):
+                    logger.warning(
+                        "public_portal.enabled is true but entry_point is missing "
+                        "(module=%s)", manifest.get("name"),
+                    )
+                for rt in pp.get("routes", []) or []:
+                    aud = rt.get("audience", "public")
+                    if aud not in ("public", "patient"):
+                        logger.warning(
+                            "public_portal route %s has non-standard audience %r "
+                            "(expected public|patient) (module=%s)",
+                            rt.get("path"), aud, manifest.get("name"),
+                        )
+                if pp.get("routing") == "path":
+                    logger.warning(
+                        "public_portal.routing=path requires a server SPA-fallback "
+                        "alias for /portal/%s/ (module=%s)",
+                        manifest.get("name"), manifest.get("name"),
+                    )
             return True, None
         except jsonschema.ValidationError as exc:
             # Build a readable error: include JSON path when available

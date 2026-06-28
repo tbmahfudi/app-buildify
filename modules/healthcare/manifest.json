@@ -1,7 +1,7 @@
 {
   "name": "healthcare",
   "display_name": "Healthcare",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Two-sided healthcare platform: clinic staff portal + patient portal. Includes scheduling, billing, pharmacy, and laboratory sub-modules.",
   "entry_point": "module.js",
   "routes": [
@@ -95,5 +95,54 @@
   "dependencies": [],
   "module_type": "code",
   "category": "vertical",
-  "api_prefix": "/api/v1/healthcare"
+  "api_prefix": "/api/v1/healthcare",
+  "public_portal": {
+    "enabled": true,
+    "entry_point": "frontend/public/index.html",
+    "title": "Find a Clinic",
+    "routing": "hash",
+    "tenant_resolution": "slug_in_path",
+    "routes": [
+      {
+        "path": "#search",
+        "audience": "public",
+        "title": "Find a clinic"
+      },
+      {
+        "path": "#clinic/:slug",
+        "audience": "public",
+        "title": "Clinic profile"
+      },
+      {
+        "path": "#book",
+        "audience": "public",
+        "title": "Book an appointment"
+      },
+      {
+        "path": "#register",
+        "audience": "public",
+        "title": "Register"
+      },
+      {
+        "path": "#login",
+        "audience": "public",
+        "title": "Patient login"
+      },
+      {
+        "path": "#portal",
+        "audience": "patient",
+        "title": "My portal"
+      },
+      {
+        "path": "#appointments",
+        "audience": "patient",
+        "title": "My appointments"
+      },
+      {
+        "path": "#profile",
+        "audience": "patient",
+        "title": "My profile"
+      }
+    ]
+  }
 }
