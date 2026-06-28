@@ -1,0 +1,18 @@
+# Healthcare module backend dependencies.
+#
+# In the dev image these are already satisfied by the core backend base image
+# (app_buildify-backend), which this Dockerfile builds FROM. They are pinned
+# here so the service is reproducible / can be built against a clean python base
+# for a production (standalone) image if the platform `app` package is vendored.
+fastapi>=0.104,<0.116
+uvicorn[standard]>=0.24
+sqlalchemy>=2.0,<2.1
+psycopg2-binary>=2.9
+PyJWT>=2.8
+python-jose[cryptography]>=3.3
+httpx>=0.25
+redis>=5.0
+cryptography>=41.0
+pydantic>=2.5
+python-multipart>=0.0.6
+email-validator>=2.1

@@ -29,6 +29,7 @@ from sqlalchemy.orm import Session
 from modules.healthcare.sdk.branch_scope import healthcare_branch_session
 from modules.healthcare.sdk.hc_permissions import HCRole, has_hc_permission
 from modules.healthcare.sdk.patient_auth import get_current_patient
+from modules.sdk.dependencies import tenant_scoped_session
 from modules.healthcare.sdk.phi_audit import write_phi_read_audit, write_event_audit
 from modules.healthcare.schemas.pharmacy import (
     DispenseRequest,
