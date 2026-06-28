@@ -1,5 +1,5 @@
 ---
-status: draft
+status: approved
 author: B1 (Architect), with A2 (Business Analyst) feature research
 date: 2026-06-28
 title: Module public pages — unauthenticated + patient-authenticated surfaces (static portal apps)
