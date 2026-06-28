@@ -1521,10 +1521,16 @@ async def enable_module_v1(
 
     permissions_added: list = []
     try:
-        admin_role = (
+        # Grant the module's permissions to the tenant's admin + staff roles
+        # (not patients — they get a separate patient/public surface). A module
+        # is enabled tenant-wide, so its staff should see it without manual RBAC.
+        grant_roles = (
             db.query(Role)
-            .filter(Role.code == "tenant_admin", Role.tenant_id == tenant_id)
-            .first()
+            .filter(
+                Role.code.in_(("tenant_admin", "manager", "employee")),
+                Role.tenant_id == tenant_id,
+            )
+            .all()
         )
         seen_codes: set = set()
         for perm_def in raw_perms:
@@ -1558,16 +1564,16 @@ async def enable_module_v1(
             else:
                 perm.is_active = True
 
-            # Grant to the tenant's admin role (group-chain resolution picks it up).
-            if admin_role is not None:
+            # Grant to each admin/staff role (group-chain resolution picks it up).
+            for _role in grant_roles:
                 has_rp = db.query(RolePermission).filter(
-                    RolePermission.role_id == admin_role.id,
+                    RolePermission.role_id == _role.id,
                     RolePermission.permission_id == perm.id,
                 ).first()
                 if has_rp is None:
                     db.add(RolePermission(
                         id=generate_uuid(),
-                        role_id=admin_role.id,
+                        role_id=_role.id,
                         permission_id=perm.id,
                     ))
             permissions_added.append(perm_code)
@@ -1836,12 +1842,16 @@ async def disable_module_v1(
         if perm_codes:
             from app.models.role import Role
             from app.models.rbac_junctions import RolePermission
-            admin_role = (
-                db.query(Role)
-                .filter(Role.code == "tenant_admin", Role.tenant_id == tenant_id)
-                .first()
-            )
-            if admin_role is not None:
+            # Revoke from the same admin/staff roles the enable grant targets.
+            grant_role_ids = [
+                r.id for r in db.query(Role)
+                .filter(
+                    Role.code.in_(("tenant_admin", "manager", "employee")),
+                    Role.tenant_id == tenant_id,
+                )
+                .all()
+            ]
+            if grant_role_ids:
                 perm_ids = [
                     p.id for p in db.query(Permission)
                     .filter(Permission.code.in_(perm_codes)).all()
@@ -1850,7 +1860,7 @@ async def disable_module_v1(
                     revoked = (
                         db.query(RolePermission)
                         .filter(
-                            RolePermission.role_id == admin_role.id,
+                            RolePermission.role_id.in_(grant_role_ids),
                             RolePermission.permission_id.in_(perm_ids),
                         )
                         .delete(synchronize_session=False)
