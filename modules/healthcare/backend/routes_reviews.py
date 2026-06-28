@@ -63,13 +63,15 @@ async def create_review(
 ):
     """Submit a review for a completed encounter (one per encounter)."""
     pid = patient.patient_id
+    tid = patient.require_tenant()
 
-    # Verify completed encounter ownership
+    # Verify completed encounter ownership (scoped to the patient's tenant)
     enc = (
         db.query(HCEncounter)
         .filter(
             HCEncounter.id == payload.encounter_id,
             HCEncounter.patient_id == pid,
+            HCEncounter.tenant_id == tid,
             HCEncounter.status == "completed",
         )
         .first()

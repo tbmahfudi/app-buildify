@@ -33,6 +33,7 @@ async def join_waitlist(
     db: Session = Depends(tenant_scoped_session),
     patient_token=Depends(get_current_patient),
 ):
+    patient_tenant = patient_token.require_tenant()
     branch_row = db.execute(
         text("SELECT tenant_id FROM hc_branches WHERE id=:bid LIMIT 1"),
         {"bid": str(payload.branch_id)},
@@ -40,6 +41,9 @@ async def join_waitlist(
     if not branch_row:
         raise HTTPException(status_code=404, detail="Branch not found")
     tenant_id = branch_row[0]
+    # Tenant enforcement: a patient may only join a waitlist within their own tenant.
+    if str(tenant_id) != str(patient_tenant):
+        raise HTTPException(status_code=404, detail="Branch not found")
     entry_id = str(generate_uuid())
     db.execute(
         text(
@@ -73,9 +77,10 @@ async def list_waitlist(
     db: Session = Depends(tenant_scoped_session),
     patient_token=Depends(get_current_patient),
 ):
+    tenant_id = patient_token.require_tenant()
     rows = db.execute(
-        text("SELECT * FROM hcs_waitlist WHERE patient_id=:pid ORDER BY created_at DESC"),
-        {"pid": patient_token.patient_id},
+        text("SELECT * FROM hcs_waitlist WHERE patient_id=:pid AND tenant_id=:tid ORDER BY created_at DESC"),
+        {"pid": patient_token.patient_id, "tid": tenant_id},
     ).mappings().all()
     items = [WaitlistResponse(**dict(r)) for r in rows]
     return WaitlistListResponse(entries=items, total=len(items))
@@ -92,9 +97,10 @@ async def leave_waitlist(
     patient_token=Depends(get_current_patient),
 ):
     eid = str(entry_id)
+    tenant_id = patient_token.require_tenant()
     row = db.execute(
-        text("SELECT * FROM hcs_waitlist WHERE id=:id AND patient_id=:pid"),
-        dict(id=eid, pid=patient_token.patient_id),
+        text("SELECT * FROM hcs_waitlist WHERE id=:id AND patient_id=:pid AND tenant_id=:tid"),
+        dict(id=eid, pid=patient_token.patient_id, tid=tenant_id),
     ).mappings().one_or_none()
     if not row:
         raise HTTPException(status_code=404, detail="Waitlist entry not found")

@@ -74,6 +74,11 @@ def require_captcha(
         ):
             ...
     """
+    # Dev/CI bypass: when HCAPTCHA_SECRET_KEY == "test" the captcha is disabled
+    # entirely so the OTP register/login flow works end-to-end without a widget.
+    if os.environ.get("HCAPTCHA_SECRET_KEY", "") == _BYPASS_VALUE:
+        return
+
     if not x_captcha_token:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,

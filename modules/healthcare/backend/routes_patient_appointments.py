@@ -60,6 +60,7 @@ async def list_my_appointments(
     No diagnosis / encounter notes returned.
     """
     pid = patient.patient_id
+    tid = patient.require_tenant()
 
     if filter_status == "upcoming":
         status_clause = "AND a.status IN ('confirmed','checked_in','in_progress')"
@@ -73,9 +74,9 @@ async def list_my_appointments(
 
     count_sql = text(
         f"SELECT COUNT(*) FROM hcs_appointments a "
-        f"WHERE a.patient_id = :pid {status_clause}"
+        f"WHERE a.patient_id = :pid AND a.tenant_id = :tid {status_clause}"
     )
-    total = db.execute(count_sql, {"pid": pid}).scalar() or 0
+    total = db.execute(count_sql, {"pid": pid, "tid": tid}).scalar() or 0
 
     rows_sql = text(
         f"""
@@ -91,7 +92,7 @@ async def list_my_appointments(
         FROM hcs_appointments a
         JOIN hc_branches  b ON b.id = a.branch_id
         JOIN hc_providers p ON p.id = a.provider_id
-        WHERE a.patient_id = :pid
+        WHERE a.patient_id = :pid AND a.tenant_id = :tid
         {status_clause}
         {order_clause}
         LIMIT :limit OFFSET :offset
@@ -99,7 +100,7 @@ async def list_my_appointments(
     )
     rows = db.execute(
         rows_sql,
-        {"pid": pid, "limit": page_size, "offset": (page - 1) * page_size},
+        {"pid": pid, "tid": tid, "limit": page_size, "offset": (page - 1) * page_size},
     ).fetchall()
 
     items: List[PatientAppointmentSummary] = []
@@ -124,7 +125,7 @@ async def list_my_appointments(
         actor_type="patient",
         entity_type="appointment_list",
         entity_id=pid,
-        tenant_id="cross_tenant",
+        tenant_id=tid,
         ip=_get_ip(request),
         ua=_get_ua(request),
         metadata={"filter_status": filter_status, "count": len(items)},
@@ -145,8 +146,9 @@ async def get_my_appointment(
     patient: PatientTokenData = Depends(get_current_patient),
     db: Session = Depends(tenant_scoped_session),
 ):
-    """Return full appointment detail — ownership enforced via patient_id filter."""
+    """Return full appointment detail — ownership enforced via patient_id + tenant_id filter."""
     pid = patient.patient_id
+    tid = patient.require_tenant()
 
     row = db.execute(
         text(
@@ -166,11 +168,11 @@ async def get_my_appointment(
             FROM hcs_appointments a
             JOIN hc_branches  b ON b.id = a.branch_id
             JOIN hc_providers p ON p.id = a.provider_id
-            WHERE a.id = :aid AND a.patient_id = :pid
+            WHERE a.id = :aid AND a.patient_id = :pid AND a.tenant_id = :tid
             LIMIT 1
             """
         ),
-        {"aid": appointment_id, "pid": pid},
+        {"aid": appointment_id, "pid": pid, "tid": tid},
     ).fetchone()
 
     if row is None:
@@ -182,7 +184,7 @@ async def get_my_appointment(
         actor_type="patient",
         entity_type="appointment",
         entity_id=appointment_id,
-        tenant_id="cross_tenant",
+        tenant_id=tid,
         ip=_get_ip(request),
         ua=_get_ua(request),
     )

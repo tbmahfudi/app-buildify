@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <script src="/portal/healthcare/patient/_portal.js"></script>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title data-i18n="records.title"></title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:system-ui,sans-serif;background:var(--color-bg,#f5f5f5);color:var(--color-text,#1a1a1a);max-width:480px;margin:0 auto;min-height:100vh;padding-bottom:64px}
+    :root{--color-primary:#007bff;--color-primary-light:#e8f0fe;--color-bg:#f5f5f5;--color-surface:#fff;--color-text:#1a1a1a;--color-muted:#6b7280;--color-border:#e5e7eb;--color-success:#16a34a;--color-error:#dc2626;--color-warning:#f59e0b;--color-badge-upcoming:#dbeafe;--color-badge-past:#f3f4f6;--color-badge-completed:#dcfce7;--color-badge-cancelled:#fee2e2}
+    .flex-alert{display:flex;align-items:center;gap:8px;padding:12px 16px;border-radius:8px;font-size:14px;margin:8px 16px}
+    .flex-alert.success{background:var(--color-badge-completed);color:var(--color-success)}
+    .flex-alert.error{background:var(--color-badge-cancelled);color:var(--color-error)}
+    .skeleton{background:linear-gradient(90deg,var(--color-border) 25%,#f0f0f0 50%,var(--color-border) 75%);background-size:200% 100%;animation:shimmer 1.2s infinite;border-radius:6px}
+    @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+    .bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;background:var(--color-surface);border-top:1px solid var(--color-border);display:flex;z-index:100}
+    .bottom-nav a{flex:1;display:flex;flex-direction:column;align-items:center;padding:8px 4px;font-size:11px;color:var(--color-muted);text-decoration:none;gap:2px}
+    .bottom-nav a.active{color:var(--color-primary)}
+    .bottom-nav a svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8}
+    
+    .page-header{padding:16px;background:var(--color-surface);border-bottom:1px solid var(--color-border);display:flex;align-items:center;gap:12px}
+    .back-btn{background:none;border:none;cursor:pointer;padding:4px;color:var(--color-primary);display:flex;align-items:center}
+    .back-btn svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:2}
+    .detail-card{background:var(--color-surface);margin:12px;border-radius:12px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+    .detail-section{margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--color-border)}
+    .detail-section:last-child{border-bottom:none;margin-bottom:0;padding-bottom:0}
+    .detail-label{font-size:12px;color:var(--color-muted);margin-bottom:4px}
+    .detail-value{font-size:15px}
+    .badge{font-size:12px;padding:3px 10px;border-radius:20px;background:var(--color-primary-light);color:var(--color-primary);display:inline-block}
+    .btn-review{width:calc(100% - 24px);margin:0 12px;background:var(--color-primary);color:#fff;border:none;border-radius:10px;padding:14px;font-size:16px;font-weight:600;cursor:pointer}
+    .error-state{padding:48px 24px;text-align:center;color:var(--color-muted)}
+
+  </style>
+</head>
+<body>
+<div class="page-header">
+  <button class="back-btn" onclick="history.back()">
+    <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
+  </button>
+  <h1 style="font-size:18px;font-weight:700" data-i18n="records.title"></h1>
+</div>
+<div id="content"></div>
+<script src="encounter-detail.js"></script>
+</body>
+</html>

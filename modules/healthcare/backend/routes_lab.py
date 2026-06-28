@@ -993,6 +993,7 @@ def patient_list_lab_orders(
 ):
     """Patient: list own lab orders where any result has been shared."""
     patient_id = current_patient.patient_id
+    tenant_id = current_patient.require_tenant()
 
     rows = db.execute(
         text(
@@ -1003,11 +1004,11 @@ def patient_list_lab_orders(
             "JOIN hc_encounters e ON e.id = o.encounter_id "
             "JOIN hc_branches b ON b.id = o.branch_id "
             "JOIN hcl_results r ON r.order_id = o.id "
-            "WHERE o.patient_id = :pid AND r.shared_with_patient = true "
+            "WHERE o.patient_id = :pid AND o.tenant_id = :tid AND r.shared_with_patient = true "
             "GROUP BY o.id, e.created_at, b.branch_name, o.status "
             "ORDER BY e.created_at DESC"
         ),
-        {"pid": patient_id},
+        {"pid": patient_id, "tid": tenant_id},
     ).mappings().all()
 
     result_list = []
@@ -1040,7 +1041,7 @@ def patient_list_lab_orders(
         actor_type="patient",
         entity_type="patient_lab_orders",
         entity_id=patient_id,
-        tenant_id="",
+        tenant_id=tenant_id,
         source_module="healthcare_lab",
     )
 
@@ -1058,13 +1059,14 @@ def patient_get_lab_results(
 ):
     """Patient: get released results for own order. No clinical notes exposed."""
     patient_id = current_patient.patient_id
+    tenant_id = current_patient.require_tenant()
 
-    # Verify order belongs to this patient
+    # Verify order belongs to this patient AND tenant
     order = db.execute(
         text(
-            "SELECT id FROM hcl_lab_orders WHERE id = :oid AND patient_id = :pid LIMIT 1"
+            "SELECT id FROM hcl_lab_orders WHERE id = :oid AND patient_id = :pid AND tenant_id = :tid LIMIT 1"
         ),
-        {"oid": order_id, "pid": patient_id},
+        {"oid": order_id, "pid": patient_id, "tid": tenant_id},
     ).fetchone()
     if not order:
         raise HTTPException(
@@ -1091,7 +1093,7 @@ def patient_get_lab_results(
         actor_type="patient",
         entity_type="lab_results",
         entity_id=order_id,
-        tenant_id="",
+        tenant_id=tenant_id,
         source_module="healthcare_lab",
     )
 

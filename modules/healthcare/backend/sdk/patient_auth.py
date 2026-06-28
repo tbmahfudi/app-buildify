@@ -1,13 +1,20 @@
 """
 Healthcare SDK — Patient role namespace and authentication dependency.
 
-T-HC-001
+T-HC-001 / Phase 2 (public-portal) — tenant enforcement
 
 Patient JWT claims shape:
-    { sub: patient_id, roles: ["patient"], tenant_id: null, phone: str }
+    { sub: patient_id, roles: ["patient"], tenant_id: <uuid|null>, phone: str }
 
 `get_current_patient` raises HTTP 401 if a staff JWT is presented.
 `get_current_user` (staff) rejects patient JWTs — enforced in modules/sdk/dependencies.py.
+
+SECURITY (Phase 2): the patient access token carries an optional `tenant_id`
+claim (minted at register / login / refresh — see routes_patient_auth.py). Every
+`/api/v1/patients/me/*` query MUST be scoped to BOTH the patient_id (token `sub`)
+AND this tenant_id so a patient can never read another tenant's data. The helper
+`PatientTokenData.require_tenant()` returns the tenant_id and rejects (HTTP 401)
+any token minted without the claim — the secure default per the ADR.
 """
 from __future__ import annotations
 
@@ -21,7 +28,9 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 # Import via SDK wrapper to respect the module sandbox boundary (FIX-BE-002)
 from modules.sdk.dependencies import decode_token
 
+# auto_error=False on the optional scheme so we can treat "no header" as anon
 _security = HTTPBearer()
+_security_optional = HTTPBearer(auto_error=False)
 
 
 @dataclass
@@ -29,21 +38,27 @@ class PatientTokenData:
     patient_id: str
     phone: str
     roles: list[str]
+    tenant_id: Optional[str] = None
+
+    def require_tenant(self) -> str:
+        """
+        Return the token's tenant_id, or raise HTTP 401 if absent.
+
+        Secure default (ADR): a patient token minted without a tenant_id claim
+        cannot be scoped safely, so cross-tenant data access is DENIED rather
+        than silently widened. All `/patients/me/*` data queries call this.
+        """
+        if not self.tenant_id:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Patient token is missing tenant scope. Please log in again.",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        return self.tenant_id
 
 
-def get_current_patient(
-    credentials: HTTPAuthorizationCredentials = Depends(_security),
-) -> PatientTokenData:
-    """
-    FastAPI dependency — validates JWT and asserts caller is a patient.
-
-    Raises HTTP 401 if:
-    - Token is invalid or expired
-    - Token type is not "access"
-    - roles does not equal ["patient"]
-    - patient_id claim is absent
-    """
-    token = credentials.credentials
+def _decode_patient_payload(token: str) -> PatientTokenData:
+    """Decode + validate a patient access JWT into PatientTokenData (or raise 401)."""
     payload = decode_token(token)
 
     if not payload or payload.get("type") != "access":
@@ -72,8 +87,47 @@ def get_current_patient(
         )
 
     phone: str = payload.get("phone", "")
+    tenant_id: Optional[str] = payload.get("tenant_id")
 
-    return PatientTokenData(patient_id=patient_id, phone=phone, roles=roles)
+    return PatientTokenData(
+        patient_id=patient_id,
+        phone=phone,
+        roles=roles,
+        tenant_id=tenant_id,
+    )
+
+
+def get_current_patient(
+    credentials: HTTPAuthorizationCredentials = Depends(_security),
+) -> PatientTokenData:
+    """
+    FastAPI dependency — validates JWT and asserts caller is a patient.
+
+    Raises HTTP 401 if:
+    - Token is invalid or expired
+    - Token type is not "access"
+    - roles does not equal ["patient"]
+    - patient_id claim is absent
+
+    NOTE: this returns the token data including `tenant_id`. Data routes must
+    call `patient.require_tenant()` and add `AND tenant_id = :tid` to every query.
+    """
+    return _decode_patient_payload(credentials.credentials)
+
+
+def get_current_patient_optional(
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(_security_optional),
+) -> Optional[PatientTokenData]:
+    """
+    FastAPI dependency for mixed (public + patient) endpoints.
+
+    Returns PatientTokenData when a valid patient access token is presented, or
+    None when no Authorization header is present. A present-but-invalid token
+    still raises 401 (a malformed credential is never silently treated as anon).
+    """
+    if credentials is None:
+        return None
+    return _decode_patient_payload(credentials.credentials)
 
 
 def has_patient_permission(resource: str, action: str):
@@ -111,5 +165,6 @@ def has_patient_permission(resource: str, action: str):
 __all__ = [
     "PatientTokenData",
     "get_current_patient",
+    "get_current_patient_optional",
     "has_patient_permission",
 ]

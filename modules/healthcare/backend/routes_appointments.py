@@ -117,11 +117,16 @@ async def book_appointment(
     if slot["status"] != "available":
         raise HTTPException(status_code=409, detail="Slot is no longer available")
 
+    patient_tenant = patient_token.require_tenant()
     branch = db.execute(
         text("SELECT tenant_id FROM hc_branches WHERE id=:bid LIMIT 1"),
         {"bid": slot["branch_id"]},
     ).fetchone()
     tenant_id = branch[0] if branch else slot.get("tenant_id", "")
+
+    # Tenant enforcement: a patient may only book slots within their own tenant.
+    if str(tenant_id) != str(patient_tenant):
+        raise HTTPException(status_code=404, detail="Slot not found")
 
     appt_id = str(generate_uuid())
     db.execute(
@@ -178,9 +183,10 @@ async def list_patient_appointments(
     db: Session = Depends(tenant_scoped_session),
     patient_token=Depends(get_current_patient),
 ):
+    tenant_id = patient_token.require_tenant()
     rows = db.execute(
-        text("SELECT * FROM hcs_appointments WHERE patient_id=:pid ORDER BY scheduled_at DESC"),
-        {"pid": patient_token.patient_id},
+        text("SELECT * FROM hcs_appointments WHERE patient_id=:pid AND tenant_id=:tid ORDER BY scheduled_at DESC"),
+        {"pid": patient_token.patient_id, "tid": tenant_id},
     ).mappings().all()
     items = [AppointmentResponse(**dict(r)) for r in rows]
 
@@ -218,10 +224,11 @@ async def reschedule_appointment(
 ):
     appt_id = str(appointment_id)
     new_slot_id = str(payload.new_slot_id)
+    tenant_id = patient_token.require_tenant()
 
     appt = db.execute(
-        text("SELECT * FROM hcs_appointments WHERE id=:id AND patient_id=:pid FOR UPDATE"),
-        dict(id=appt_id, pid=patient_token.patient_id),
+        text("SELECT * FROM hcs_appointments WHERE id=:id AND patient_id=:pid AND tenant_id=:tid FOR UPDATE"),
+        dict(id=appt_id, pid=patient_token.patient_id, tid=tenant_id),
     ).mappings().one_or_none()
     if not appt:
         raise HTTPException(status_code=404, detail="Appointment not found")
@@ -236,6 +243,9 @@ async def reschedule_appointment(
         raise HTTPException(status_code=404, detail="New slot not found")
     if new_slot["status"] != "available":
         raise HTTPException(status_code=409, detail="New slot is not available")
+    # Tenant enforcement: new slot must be in the same tenant as the appointment.
+    if str(new_slot.get("tenant_id", appt["tenant_id"])) != str(tenant_id):
+        raise HTTPException(status_code=404, detail="New slot not found")
 
     # Release old slot
     db.execute(
@@ -303,9 +313,10 @@ async def cancel_appointment(
     patient_token=Depends(get_current_patient),
 ):
     appt_id = str(appointment_id)
+    tenant_id = patient_token.require_tenant()
     appt = db.execute(
-        text("SELECT * FROM hcs_appointments WHERE id=:id AND patient_id=:pid FOR UPDATE"),
-        dict(id=appt_id, pid=patient_token.patient_id),
+        text("SELECT * FROM hcs_appointments WHERE id=:id AND patient_id=:pid AND tenant_id=:tid FOR UPDATE"),
+        dict(id=appt_id, pid=patient_token.patient_id, tid=tenant_id),
     ).mappings().one_or_none()
     if not appt:
         raise HTTPException(status_code=404, detail="Appointment not found")

@@ -54,10 +54,12 @@ async def get_my_profile(
     db: Session = Depends(tenant_scoped_session),
 ):
     """Return decrypted PHI profile for the authenticated patient."""
+    tid = patient.require_tenant()
     row = (
         db.query(HCPatient)
         .filter(
             HCPatient.id == patient.patient_id,
+            HCPatient.tenant_id == tid,
             HCPatient.deleted_at.is_(None),
         )
         .first()
@@ -97,10 +99,12 @@ async def update_my_profile(
     db: Session = Depends(tenant_scoped_session),
 ):
     """Update allowed profile fields (email, address, locale) — NOT name/dob/phone."""
+    tid = patient.require_tenant()
     row = (
         db.query(HCPatient)
         .filter(
             HCPatient.id == patient.patient_id,
+            HCPatient.tenant_id == tid,
             HCPatient.deleted_at.is_(None),
         )
         .first()
@@ -162,12 +166,14 @@ async def get_my_summary(
 ):
     """Return aggregate counts — no PHI fields, just statistics."""
     pid = patient.patient_id
+    tid = patient.require_tenant()
 
     # Total completed visits
     total_visits = (
         db.query(func.count(HCEncounter.id))
         .filter(
             HCEncounter.patient_id == pid,
+            HCEncounter.tenant_id == tid,
             HCEncounter.status == "completed",
         )
         .scalar()
@@ -178,16 +184,19 @@ async def get_my_summary(
     upcoming_count = db.execute(
         text(
             "SELECT COUNT(*) FROM hcs_appointments "
-            "WHERE patient_id = :pid "
+            "WHERE patient_id = :pid AND tenant_id = :tid "
             "AND status IN ('confirmed','checked_in','in_progress')"
         ),
-        {"pid": pid},
+        {"pid": pid, "tid": tid},
     ).scalar() or 0
 
-    # Distinct clinics (tenant_ids) with at least one encounter
+    # Distinct clinics (branches) with at least one encounter in this tenant
     active_clinics = (
-        db.query(func.count(func.distinct(HCEncounter.tenant_id)))
-        .filter(HCEncounter.patient_id == pid)
+        db.query(func.count(func.distinct(HCEncounter.branch_id)))
+        .filter(
+            HCEncounter.patient_id == pid,
+            HCEncounter.tenant_id == tid,
+        )
         .scalar()
         or 0
     )
@@ -197,14 +206,19 @@ async def get_my_summary(
         db.query(func.max(HCEncounter.completed_at))
         .filter(
             HCEncounter.patient_id == pid,
+            HCEncounter.tenant_id == tid,
             HCEncounter.status == "completed",
         )
         .scalar()
     )
 
     # Audit once for summary (even though no PHI returned, it IS patient-scoped access)
-    row = db.query(HCPatient).filter(HCPatient.id == pid).first()
-    tenant_id = row.tenant_id if row else ""
+    row = (
+        db.query(HCPatient)
+        .filter(HCPatient.id == pid, HCPatient.tenant_id == tid)
+        .first()
+    )
+    tenant_id = row.tenant_id if row else tid
     write_phi_read_audit(
         db=db,
         actor_id=pid,

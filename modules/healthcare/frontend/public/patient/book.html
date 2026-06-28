@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="id-ID">
+<head>
+  <script>window.__PATIENT_PUBLIC=true;</script>
+  <script src="/portal/healthcare/patient/_portal.js"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title data-i18n="booking.confirm">Buat Janji</title>
+  <link rel="stylesheet" href="/frontend/assets/css/app.css" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; background: var(--color-bg-main); color: var(--color-text-primary); min-height: 100vh; display: flex; flex-direction: column; align-items: center; }
+
+    .hc-wizard { width: 100%; max-width: 480px; min-height: 100vh; background: var(--color-bg-card); display: flex; flex-direction: column; padding: var(--spacing-xl); }
+    @media (min-width: 520px) {
+      body { background: var(--color-bg-main); justify-content: center; }
+      .hc-wizard { min-height: auto; border: 1px solid var(--color-border); border-radius: var(--radius-lg); margin: var(--spacing-2xl) 0; box-shadow: 0 4px 24px rgba(0,0,0,0.08); }
+    }
+
+    /* Progress bar */
+    .hc-progress { display: flex; gap: var(--spacing-xs); margin-bottom: var(--spacing-xl); }
+    .hc-progress__seg { flex: 1; height: 4px; border-radius: 2px; background: var(--color-border); transition: background 0.2s; }
+    .hc-progress__seg.done { background: var(--color-primary); }
+
+    .hc-step { display: none; flex-direction: column; flex: 1; }
+    .hc-step.active { display: flex; }
+    .hc-step__title { font-size: var(--font-lg); font-weight: 800; margin-bottom: var(--spacing-lg); }
+
+    /* Type cards */
+    .hc-type-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-md); margin-bottom: var(--spacing-lg); }
+    .hc-type-card { border: 2px solid var(--color-border); border-radius: var(--radius-md); padding: var(--spacing-md); cursor: pointer; transition: border-color 0.15s; }
+    .hc-type-card:hover { border-color: var(--color-primary); }
+    .hc-type-card.selected { border-color: var(--color-primary); background: rgba(37,99,235,0.06); }
+    .hc-type-card__name { font-weight: 700; font-size: var(--font-sm); margin-bottom: var(--spacing-xs); }
+    .hc-type-card__desc { font-size: var(--font-xs); color: var(--color-text-secondary); }
+
+    /* Calendar */
+    .hc-cal { margin-bottom: var(--spacing-md); }
+    .hc-cal__header { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--spacing-sm); }
+    .hc-cal__nav { background: none; border: none; cursor: pointer; font-size: var(--font-lg); color: var(--color-text-secondary); padding: var(--spacing-xs); }
+    .hc-cal__nav:hover { color: var(--color-primary); }
+    .hc-cal__month { font-weight: 700; }
+    .hc-cal__grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+    .hc-cal__dow { text-align: center; font-size: var(--font-xs); color: var(--color-text-secondary); font-weight: 600; padding-bottom: var(--spacing-xs); }
+    .hc-cal__day { text-align: center; padding: var(--spacing-sm) 0; font-size: var(--font-sm); border-radius: var(--radius-sm); cursor: pointer; }
+    .hc-cal__day:hover:not(.disabled):not(.other) { background: rgba(37,99,235,0.1); }
+    .hc-cal__day.selected { background: var(--color-primary); color: var(--color-text-inverse); }
+    .hc-cal__day.disabled { color: var(--color-text-tertiary); cursor: not-allowed; }
+    .hc-cal__day.other { color: var(--color-text-tertiary); cursor: default; }
+
+    .hc-tz-note { font-size: var(--font-xs); color: var(--color-text-secondary); padding: var(--spacing-xs) var(--spacing-sm); background: var(--color-bg-main); border-radius: var(--radius-sm); margin-bottom: var(--spacing-md); }
+
+    /* Slot grid */
+    .hc-slot-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-sm); margin-bottom: var(--spacing-md); }
+    .hc-slot-card { border: 1.5px solid var(--color-border); border-radius: var(--radius-md); padding: var(--spacing-sm) var(--spacing-md); cursor: pointer; transition: border-color 0.15s; }
+    .hc-slot-card:hover { border-color: var(--color-primary); }
+    .hc-slot-card.selected { border-color: var(--color-primary); background: rgba(37,99,235,0.06); }
+    .hc-slot-card__time { font-weight: 700; font-size: var(--font-sm); }
+    .hc-slot-card__provider { font-size: var(--font-xs); color: var(--color-text-secondary); }
+
+    .hc-empty-state { text-align: center; padding: var(--spacing-2xl) 0; color: var(--color-text-secondary); }
+    .hc-empty-state__icon { font-size: 2rem; margin-bottom: var(--spacing-sm); }
+
+    /* Confirmation card */
+    .hc-confirm-card { border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: var(--spacing-lg); background: var(--color-bg-main); margin-bottom: var(--spacing-lg); }
+    .hc-confirm-card__row { display: flex; justify-content: space-between; padding: var(--spacing-xs) 0; border-bottom: 1px solid var(--color-border); font-size: var(--font-sm); }
+    .hc-confirm-card__row:last-child { border: none; }
+    .hc-confirm-card__label { color: var(--color-text-secondary); }
+    .hc-confirm-card__value { font-weight: 600; }
+
+    .hc-btn { width: 100%; padding: var(--spacing-md); border: none; border-radius: var(--radius-md); font-size: var(--font-base); font-weight: 700; cursor: pointer; margin-top: var(--spacing-sm); }
+    .hc-btn--primary { background: var(--color-primary); color: var(--color-text-inverse); }
+    .hc-btn--primary:hover { background: var(--color-primary-hover); }
+    .hc-btn--ghost { background: transparent; border: 1.5px solid var(--color-border); color: var(--color-text-secondary); }
+    .hc-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .hc-btn-spacer { margin-top: auto; padding-top: var(--spacing-lg); }
+
+    .hc-back { background: none; border: none; color: var(--color-text-secondary); cursor: pointer; font-size: var(--font-sm); margin-bottom: var(--spacing-md); display: flex; align-items: center; gap: var(--spacing-xs); }
+    .hc-back:hover { color: var(--color-primary); }
+
+    .hc-loading { text-align: center; padding: var(--spacing-xl); color: var(--color-text-secondary); }
+  </style>
+</head>
+<body>
+  <div class="hc-wizard" role="main">
+    <!-- Progress bar -->
+    <div class="hc-progress" id="progress-bar">
+      <div class="hc-progress__seg done" id="prog-1"></div>
+      <div class="hc-progress__seg" id="prog-2"></div>
+      <div class="hc-progress__seg" id="prog-3"></div>
+      <div class="hc-progress__seg" id="prog-4"></div>
+    </div>
+
+    <div id="alert-container" style="margin-bottom:var(--spacing-md);"></div>
+
+    <!-- Step 1: Appointment Type -->
+    <div class="hc-step active" id="step-1">
+      <h2 class="hc-step__title" data-i18n="booking.select_type"></h2>
+      <div class="hc-type-grid" id="type-grid"></div>
+      <div class="hc-btn-spacer">
+        <button class="hc-btn hc-btn--primary" id="btn-next-1" data-i18n="common.next" disabled></button>
+      </div>
+    </div>
+
+    <!-- Step 2: Date -->
+    <div class="hc-step" id="step-2">
+      <button class="hc-back" id="back-2">&#8592; <span data-i18n="common.back"></span></button>
+      <h2 class="hc-step__title" data-i18n="booking.select_date"></h2>
+      <div class="hc-cal" id="booking-cal">
+        <div class="hc-cal__header">
+          <button class="hc-cal__nav" id="cal-prev">&lsaquo;</button>
+          <span class="hc-cal__month" id="cal-month"></span>
+          <button class="hc-cal__nav" id="cal-next">&rsaquo;</button>
+        </div>
+        <div class="hc-cal__grid" id="cal-dow">
+          <div class="hc-cal__dow">Sen</div><div class="hc-cal__dow">Sel</div>
+          <div class="hc-cal__dow">Rab</div><div class="hc-cal__dow">Kam</div>
+          <div class="hc-cal__dow">Jum</div><div class="hc-cal__dow">Sab</div>
+          <div class="hc-cal__dow">Min</div>
+        </div>
+        <div class="hc-cal__grid" id="cal-days"></div>
+      </div>
+      <div class="hc-tz-note" id="tz-note"></div>
+      <div class="hc-btn-spacer">
+        <button class="hc-btn hc-btn--primary" id="btn-next-2" data-i18n="common.next" disabled></button>
+      </div>
+    </div>
+
+    <!-- Step 3: Slot -->
+    <div class="hc-step" id="step-3">
+      <button class="hc-back" id="back-3">&#8592; <span data-i18n="common.back"></span></button>
+      <h2 class="hc-step__title" data-i18n="booking.select_slot"></h2>
+      <div id="slot-loading" class="hc-loading" data-i18n="common.loading"></div>
+      <div class="hc-slot-grid" id="slot-grid" style="display:none;"></div>
+      <div id="slot-empty" class="hc-empty-state" style="display:none;">
+        <div class="hc-empty-state__icon">📅</div>
+        <p data-i18n="booking.no_slots"></p>
+        <button class="hc-btn hc-btn--ghost" id="btn-try-another" data-i18n="booking.try_another_date" style="width:auto;margin-top:var(--spacing-md);"></button>
+      </div>
+      <div class="hc-btn-spacer" id="slot-btn-wrap" style="display:none;">
+        <button class="hc-btn hc-btn--primary" id="btn-next-3" data-i18n="common.next" disabled></button>
+      </div>
+    </div>
+
+    <!-- Step 4: Confirmation -->
+    <div class="hc-step" id="step-4">
+      <button class="hc-back" id="back-4">&#8592; <span data-i18n="common.back"></span></button>
+      <h2 class="hc-step__title" data-i18n="booking.confirm"></h2>
+      <div class="hc-confirm-card" id="confirm-card"></div>
+      <a id="ics-link" style="display:block;text-align:center;font-size:var(--font-sm);color:var(--color-primary);margin-bottom:var(--spacing-sm);" data-i18n="booking.add_to_calendar"></a>
+      <div class="hc-btn-spacer">
+        <button class="hc-btn hc-btn--primary" id="btn-confirm" data-i18n="booking.confirm_btn"></button>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="./book.js"></script>
+</body>
+</html>

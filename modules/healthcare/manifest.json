@@ -142,6 +142,86 @@
         "path": "#profile",
         "audience": "patient",
         "title": "My profile"
+      },
+      {
+        "path": "patient/portal.html",
+        "audience": "patient",
+        "title": "Patient home"
+      },
+      {
+        "path": "patient/appointments.html",
+        "audience": "patient",
+        "title": "My appointments"
+      },
+      {
+        "path": "patient/appointment-detail.html",
+        "audience": "patient",
+        "title": "Appointment detail"
+      },
+      {
+        "path": "patient/prescriptions.html",
+        "audience": "patient",
+        "title": "My prescriptions"
+      },
+      {
+        "path": "patient/prescription-detail.html",
+        "audience": "patient",
+        "title": "Prescription detail"
+      },
+      {
+        "path": "patient/lab-results.html",
+        "audience": "patient",
+        "title": "Lab results"
+      },
+      {
+        "path": "patient/lab-result-detail.html",
+        "audience": "patient",
+        "title": "Lab result detail"
+      },
+      {
+        "path": "patient/invoices.html",
+        "audience": "patient",
+        "title": "My invoices"
+      },
+      {
+        "path": "patient/invoice-detail.html",
+        "audience": "patient",
+        "title": "Invoice detail"
+      },
+      {
+        "path": "patient/records.html",
+        "audience": "patient",
+        "title": "Medical records"
+      },
+      {
+        "path": "patient/encounter-detail.html",
+        "audience": "patient",
+        "title": "Encounter detail"
+      },
+      {
+        "path": "patient/profile.html",
+        "audience": "patient",
+        "title": "My profile page"
+      },
+      {
+        "path": "patient/waitlist.html",
+        "audience": "patient",
+        "title": "Waitlist"
+      },
+      {
+        "path": "patient/review-new.html",
+        "audience": "patient",
+        "title": "Write a review"
+      },
+      {
+        "path": "patient/book.html",
+        "audience": "public",
+        "title": "Book an appointment"
+      },
+      {
+        "path": "patient/register.html",
+        "audience": "public",
+        "title": "Register"
       }
     ]
   }

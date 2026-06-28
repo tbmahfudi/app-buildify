@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <script src="/portal/healthcare/patient/_portal.js"></script>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Hasil Lab Saya</title>
+  <link rel="stylesheet" href="/static/css/main.css"/>
+  <style>
+    .badge{display:inline-block;padding:2px 10px;border-radius:12px;font-size:.75rem;font-weight:700}
+    .badge-critical{background:var(--color-danger);color:#fff}
+    .badge-status{background:var(--color-success-light);color:var(--color-success)}
+    .card{background:var(--color-surface);border:1px solid var(--color-border);border-radius:10px;padding:16px;margin-bottom:14px}
+    .card-title{font-weight:700;margin-bottom:6px}
+    .card-meta{font-size:.85rem;color:var(--color-text-muted);margin-bottom:10px}
+    .btn{padding:7px 16px;border:none;border-radius:6px;cursor:pointer;font-size:.88rem;font-weight:600}
+    .btn-primary{background:var(--color-primary);color:#fff}
+    .critical-notice{font-size:.8rem;color:var(--color-danger);font-weight:600;margin-top:4px}
+    .bottom-nav{position:fixed;bottom:0;left:0;right:0;background:var(--color-surface);border-top:1px solid var(--color-border);display:flex;justify-content:space-around;padding:10px 0}
+    .bottom-nav a{display:flex;flex-direction:column;align-items:center;font-size:.72rem;color:var(--color-text-muted);text-decoration:none}
+    .bottom-nav a.active{color:var(--color-primary)}
+    .content{padding-bottom:70px}
+  </style>
+</head>
+<body>
+<div class="container" style="max-width:600px;margin:0 auto;padding:20px" class="content">
+  <h1 style="font-size:1.3rem;font-weight:700;margin-bottom:20px">Hasil Lab Saya</h1>
+  <div id="orders-list"></div>
+  <div id="empty-state" class="hidden" style="text-align:center;padding:40px;color:var(--color-text-muted)">
+    Belum ada hasil laboratorium
+  </div>
+</div>
+<nav class="bottom-nav">
+  <a href="/patient/portal"><span>🏠</span><span>Beranda</span></a>
+  <a href="/patient/appointments"><span>📅</span><span>Janji</span></a>
+  <a href="/patient/lab-results" class="active"><span>🧪</span><span>Lab</span></a>
+  <a href="/patient/profile"><span>👤</span><span>Profil</span></a>
+</nav>
+<script src="lab-results.js"></script>
+</body>
+</html>

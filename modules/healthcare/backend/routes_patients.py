@@ -111,9 +111,13 @@ async def list_my_consents(
     Calls write_phi_read_audit() before returning data — consent records
     contain consent_type, consent_version, ip, user_agent, accepted_at (PHI).
     """
+    tid = current_patient.require_tenant()
     patient = (
         db.query(HCPatient)
-        .filter(HCPatient.id == current_patient.patient_id)
+        .filter(
+            HCPatient.id == current_patient.patient_id,
+            HCPatient.tenant_id == tid,
+        )
         .first()
     )
     if not patient:
@@ -121,7 +125,10 @@ async def list_my_consents(
 
     consents = (
         db.query(HCPatientConsent)
-        .filter(HCPatientConsent.patient_id == str(current_patient.patient_id))
+        .filter(
+            HCPatientConsent.patient_id == str(current_patient.patient_id),
+            HCPatientConsent.tenant_id == tid,
+        )
         .order_by(HCPatientConsent.created_at.desc())
         .all()
     )

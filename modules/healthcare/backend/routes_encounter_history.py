@@ -50,12 +50,16 @@ async def list_my_encounters(
 ):
     """Return paginated encounter list for the authenticated patient."""
     pid = patient.patient_id
+    tid = patient.require_tenant()
 
     q = (
         db.query(HCEncounter, HCBranch, HCProvider)
         .join(HCBranch, HCEncounter.branch_id == HCBranch.id)
         .join(HCProvider, HCEncounter.provider_id == HCProvider.id)
-        .filter(HCEncounter.patient_id == pid)
+        .filter(
+            HCEncounter.patient_id == pid,
+            HCEncounter.tenant_id == tid,
+        )
     )
 
     if clinic_name:
@@ -122,8 +126,9 @@ async def get_my_encounter(
     patient: PatientTokenData = Depends(get_current_patient),
     db: Session = Depends(tenant_scoped_session),
 ):
-    """Return full encounter detail; enforces patient_id ownership."""
+    """Return full encounter detail; enforces patient_id + tenant ownership."""
     pid = patient.patient_id
+    tid = patient.require_tenant()
 
     row = (
         db.query(HCEncounter, HCBranch, HCProvider)
@@ -132,6 +137,7 @@ async def get_my_encounter(
         .filter(
             HCEncounter.id == encounter_id,
             HCEncounter.patient_id == pid,  # ownership check
+            HCEncounter.tenant_id == tid,   # tenant scope
         )
         .first()
     )

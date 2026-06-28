@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="id-ID">
+<head>
+  <script>window.__PATIENT_PUBLIC=true;</script>
+  <script src="/portal/healthcare/patient/_portal.js"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title data-i18n="patientReg.pageTitle">Daftar Pasien</title>
+  <link rel="stylesheet" href="/frontend/assets/css/app.css" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: system-ui, sans-serif;
+      background: var(--color-bg-main);
+      color: var(--color-text-primary);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* ── full-screen card ─────────────────────────────────────────── */
+    .hc-wizard {
+      width: 100%;
+      max-width: 420px;
+      min-height: 100vh;
+      background: var(--color-bg-card);
+      display: flex;
+      flex-direction: column;
+      padding: var(--spacing-2xl) var(--spacing-xl) var(--spacing-xl);
+      position: relative;
+    }
+
+    @media (min-width: 480px) {
+      body { background: var(--color-bg-main); }
+      .hc-wizard {
+        min-height: auto;
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-lg);
+        margin: var(--spacing-2xl) 0;
+        box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+      }
+    }
+
+    .hc-wizard__title {
+      font-size: var(--font-xl);
+      font-weight: 800;
+      margin-bottom: var(--spacing-xl);
+      color: var(--color-text-primary);
+    }
+
+    /* ── steps ────────────────────────────────────────────────────── */
+    .hc-step { display: none; flex-direction: column; flex: 1; }
+    .hc-step.active { display: flex; }
+
+    /* ── fields ───────────────────────────────────────────────────── */
+    .hc-field { margin-bottom: var(--spacing-lg); }
+
+    .hc-field label {
+      display: block;
+      font-size: var(--font-sm);
+      font-weight: 600;
+      color: var(--color-text-secondary);
+      margin-bottom: var(--spacing-xs);
+    }
+
+    .hc-field input,
+    .hc-field select {
+      width: 100%;
+      padding: var(--spacing-md) var(--spacing-lg);
+      border: 1.5px solid var(--color-border);
+      border-radius: var(--radius-md);
+      background: var(--color-bg-main);
+      color: var(--color-text-primary);
+      font-size: var(--font-base);
+    }
+
+    /* phone large */
+    #phone-input {
+      font-size: var(--font-xl);
+      font-weight: 700;
+      padding: var(--spacing-lg);
+      letter-spacing: 2px;
+    }
+
+    .hc-field input:focus,
+    .hc-field select:focus {
+      outline: 2px solid var(--color-primary);
+      outline-offset: 1px;
+    }
+
+    .hc-field__error {
+      color: #dc2626;
+      font-size: var(--font-xs);
+      margin-top: var(--spacing-xs);
+      display: none;
+    }
+
+    .hc-field.has-error .hc-field__error { display: block; }
+    .hc-field.has-error input,
+    .hc-field.has-error select { border-color: #dc2626; }
+
+    /* ── OTP boxes ────────────────────────────────────────────────── */
+    .hc-otp-row {
+      display: flex;
+      gap: var(--spacing-sm);
+      justify-content: center;
+      margin-bottom: var(--spacing-lg);
+    }
+
+    .hc-otp-box {
+      width: 44px;
+      height: 52px;
+      text-align: center;
+      font-size: var(--font-xl);
+      font-weight: 700;
+      border: 2px solid var(--color-border);
+      border-radius: var(--radius-md);
+      background: var(--color-bg-main);
+      color: var(--color-text-primary);
+    }
+
+    .hc-otp-box:focus { outline: 2px solid var(--color-primary); }
+
+    .hc-otp-hint {
+      font-size: var(--font-sm);
+      color: var(--color-text-secondary);
+      text-align: center;
+      margin-bottom: var(--spacing-md);
+    }
+
+    /* ── gender radios ────────────────────────────────────────────── */
+    .hc-radio-group { display: flex; flex-direction: column; gap: var(--spacing-sm); }
+
+    .hc-radio-row {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-sm);
+      padding: var(--spacing-sm) var(--spacing-md);
+      border: 1.5px solid var(--color-border);
+      border-radius: var(--radius-md);
+      cursor: pointer;
+    }
+
+    .hc-radio-row:has(input:checked) {
+      border-color: var(--color-primary);
+      background: rgba(37,99,235,0.06);
+    }
+
+    .hc-radio-row label { cursor: pointer; font-size: var(--font-base); }
+
+    /* ── DPA ──────────────────────────────────────────────────────── */
+    .hc-dpa-scroll {
+      flex: 1;
+      overflow-y: auto;
+      padding: var(--spacing-md);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      background: var(--color-bg-main);
+      font-size: var(--font-sm);
+      color: var(--color-text-secondary);
+      margin-bottom: var(--spacing-md);
+      line-height: 1.6;
+      min-height: 140px;
+      max-height: 240px;
+    }
+
+    .hc-check-row {
+      display: flex;
+      align-items: flex-start;
+      gap: var(--spacing-sm);
+      margin-bottom: var(--spacing-sm);
+    }
+
+    .hc-check-row input[type="checkbox"] { margin-top: 3px; flex-shrink: 0; }
+    .hc-check-row label { font-size: var(--font-sm); }
+
+    /* ── success card ─────────────────────────────────────────────── */
+    .hc-success {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      background: var(--color-bg-card);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      padding: var(--spacing-2xl) var(--spacing-xl);
+      gap: var(--spacing-md);
+    }
+
+    .hc-success__avatar {
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      background: var(--color-primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2rem;
+      color: var(--color-text-inverse);
+    }
+
+    .hc-success__greeting {
+      font-size: var(--font-xl);
+      font-weight: 800;
+      color: var(--color-primary);
+    }
+
+    .hc-success__sub { font-size: var(--font-sm); color: var(--color-text-secondary); }
+
+    /* ── buttons ──────────────────────────────────────────────────── */
+    .hc-btn {
+      width: 100%;
+      padding: var(--spacing-md);
+      border: none;
+      border-radius: var(--radius-md);
+      font-size: var(--font-base);
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .hc-btn--primary {
+      background: var(--color-primary);
+      color: var(--color-text-inverse);
+    }
+
+    .hc-btn--primary:hover { background: var(--color-primary-hover); }
+    .hc-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .hc-btn--ghost {
+      background: transparent;
+      color: var(--color-primary);
+      border: 1.5px solid var(--color-primary);
+    }
+
+    /* ── resend ───────────────────────────────────────────────────── */
+    .hc-resend {
+      text-align: center;
+      font-size: var(--font-sm);
+      color: var(--color-text-secondary);
+      margin-top: var(--spacing-sm);
+    }
+
+    .hc-resend button {
+      background: none;
+      border: none;
+      color: var(--color-primary);
+      cursor: pointer;
+      font-size: var(--font-sm);
+      font-weight: 600;
+    }
+
+    .hc-resend button:disabled { color: var(--color-text-tertiary); cursor: default; }
+
+    /* ── dot nav ──────────────────────────────────────────────────── */
+    .hc-dot-nav {
+      display: flex;
+      justify-content: center;
+      gap: var(--spacing-sm);
+      margin-top: var(--spacing-xl);
+    }
+
+    .hc-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--color-border);
+      transition: background 0.2s, transform 0.2s;
+    }
+
+    .hc-dot.active {
+      background: var(--color-primary);
+      transform: scale(1.3);
+    }
+
+    .hc-btn-spacer { margin-top: auto; padding-top: var(--spacing-lg); }
+  </style>
+</head>
+<body>
+  <div class="hc-wizard" role="main">
+    <h1 class="hc-wizard__title" data-i18n="patientReg.title"></h1>
+
+    <!-- Step 1: Phone + hCaptcha -->
+    <div class="hc-step active" id="step-1">
+      <div class="hc-field" id="field-phone">
+        <label for="phone-input" data-i18n="patientReg.step1.phoneLabel"></label>
+        <input id="phone-input" type="tel" inputmode="tel" autocomplete="tel" />
+        <span class="hc-field__error" data-i18n="error.phoneInvalid"></span>
+      </div>
+
+      <div id="hcaptcha-patient" class="h-captcha"></div>
+
+      <div class="hc-btn-spacer">
+        <button class="hc-btn hc-btn--primary" id="btn-send-otp" data-i18n="patientReg.step1.sendOtp"></button>
+      </div>
+    </div>
+
+    <!-- Step 2: OTP verify -->
+    <div class="hc-step" id="step-2">
+      <p class="hc-otp-hint" id="otp-hint"></p>
+
+      <div class="hc-otp-row" id="otp-boxes" aria-label="OTP input"></div>
+
+      <div class="hc-resend">
+        <span id="otp-countdown"></span>
+        <button id="btn-resend" disabled data-i18n="patientReg.otp.resend"></button>
+      </div>
+
+      <div class="hc-btn-spacer">
+        <button class="hc-btn hc-btn--primary" id="btn-verify-otp" data-i18n="patientReg.step2.verify"></button>
+      </div>
+    </div>
+
+    <!-- Step 3: Personal info -->
+    <div class="hc-step" id="step-3">
+      <div class="hc-field" id="field-full-name">
+        <label for="full-name" data-i18n="patientReg.step3.fullName"></label>
+        <input id="full-name" type="text" autocomplete="name" />
+        <span class="hc-field__error" data-i18n="error.required"></span>
+      </div>
+
+      <div class="hc-field" id="field-dob">
+        <label for="dob" data-i18n="patientReg.step3.dob"></label>
+        <input id="dob" type="date" />
+        <span class="hc-field__error" data-i18n="error.required"></span>
+      </div>
+
+      <div class="hc-field">
+        <label data-i18n="patientReg.step3.gender"></label>
+        <div class="hc-radio-group">
+          <div class="hc-radio-row">
+            <input type="radio" name="gender" id="gender-m" value="male" />
+            <label for="gender-m" data-i18n="patientReg.step3.genderMale"></label>
+          </div>
+          <div class="hc-radio-row">
+            <input type="radio" name="gender" id="gender-f" value="female" />
+            <label for="gender-f" data-i18n="patientReg.step3.genderFemale"></label>
+          </div>
+          <div class="hc-radio-row">
+            <input type="radio" name="gender" id="gender-o" value="other" />
+            <label for="gender-o" data-i18n="patientReg.step3.genderOther"></label>
+          </div>
+        </div>
+      </div>
+
+      <div class="hc-field">
+        <label for="nik" data-i18n="patientReg.step3.nik"></label>
+        <input id="nik" type="text" inputmode="numeric" maxlength="16" />
+      </div>
+
+      <div class="hc-btn-spacer">
+        <button class="hc-btn hc-btn--primary" id="btn-next-3" data-i18n="common.next"></button>
+      </div>
+    </div>
+
+    <!-- Step 4: DPA consent -->
+    <div class="hc-step" id="step-4">
+      <div class="hc-dpa-scroll" data-i18n="onboarding.step3.dpaText"></div>
+
+      <div class="hc-check-row">
+        <input type="checkbox" id="patient-consent" />
+        <label for="patient-consent" data-i18n="onboarding.step3.consentLabel"></label>
+      </div>
+      <div id="consent-error" class="hc-field__error" style="display:none" data-i18n="error.consentRequired"></div>
+
+      <div class="hc-btn-spacer">
+        <button class="hc-btn hc-btn--primary" id="btn-register" data-i18n="patientReg.step4.register"></button>
+      </div>
+    </div>
+
+    <!-- Step 5: Success -->
+    <div class="hc-step" id="step-5">
+      <div class="hc-success">
+        <div class="hc-success__avatar">👤</div>
+        <div class="hc-success__greeting" id="success-greeting"></div>
+        <div class="hc-success__sub" data-i18n="patientReg.step5.sub"></div>
+        <a class="hc-btn hc-btn--ghost" href="/" data-i18n="patientReg.step5.home" style="margin-top:var(--spacing-md);display:inline-block;text-align:center;text-decoration:none;padding:var(--spacing-sm) var(--spacing-xl);"></a>
+      </div>
+    </div>
+
+    <!-- Bottom dot navigation -->
+    <div class="hc-dot-nav" id="dot-nav">
+      <div class="hc-dot active"></div>
+      <div class="hc-dot"></div>
+      <div class="hc-dot"></div>
+      <div class="hc-dot"></div>
+      <div class="hc-dot"></div>
+    </div>
+  </div>
+
+  <script type="module" src="./register.js"></script>
+</body>
+</html>

@@ -915,8 +915,7 @@ def patient_list_prescriptions(
     patient=Depends(get_current_patient),
 ):
     patient_id = str(patient.patient_id)
-    # Patient JWT has no tenant_id claim in v1; phi audit uses empty string
-    tenant_id = getattr(patient, "tenant_id", "") or ""
+    tenant_id = patient.require_tenant()
 
     rows = db.execute(
         text(
@@ -924,10 +923,10 @@ def patient_list_prescriptions(
             "FROM hcp_prescriptions p "
             "JOIN hc_encounters e ON e.id = p.encounter_id "
             "JOIN hc_branches b ON b.id = p.branch_id "
-            "WHERE p.patient_id = :pat AND p.status != 'cancelled' "
+            "WHERE p.patient_id = :pat AND p.tenant_id = :tid AND p.status != 'cancelled' "
             "ORDER BY p.created_at DESC"
         ),
-        {"pat": patient_id},
+        {"pat": patient_id, "tid": tenant_id},
     ).fetchall()
 
     result = []
@@ -969,7 +968,7 @@ def patient_get_prescription(
     patient=Depends(get_current_patient),
 ):
     patient_id = str(patient.patient_id)
-    tenant_id = getattr(patient, "tenant_id", "") or ""
+    tenant_id = patient.require_tenant()
 
     row = db.execute(
         text(
@@ -977,9 +976,9 @@ def patient_get_prescription(
             "FROM hcp_prescriptions p "
             "JOIN hc_encounters e ON e.id = p.encounter_id "
             "JOIN hc_branches b ON b.id = p.branch_id "
-            "WHERE p.id = :pid AND p.patient_id = :pat AND p.status != 'cancelled'"
+            "WHERE p.id = :pid AND p.patient_id = :pat AND p.tenant_id = :tid AND p.status != 'cancelled'"
         ),
-        {"pid": prescription_id, "pat": patient_id},
+        {"pid": prescription_id, "pat": patient_id, "tid": tenant_id},
     ).fetchone()
 
     if not row:

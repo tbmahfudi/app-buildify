@@ -623,7 +623,7 @@ async def patient_list_invoices(
     db: Session = Depends(tenant_scoped_session),
 ):
     """Patient: list own finalized invoices. Calls write_phi_read_audit."""
-    tenant_id = patient.tenant_id
+    tenant_id = patient.require_tenant()
 
     total = db.execute(
         text(
@@ -679,7 +679,7 @@ async def patient_get_invoice(
     db: Session = Depends(tenant_scoped_session),
 ):
     """Patient: get own invoice detail. Calls write_phi_read_audit."""
-    tenant_id = patient.tenant_id
+    tenant_id = patient.require_tenant()
     row = db.execute(
         text(
             "SELECT id, tenant_id, branch_id, patient_id, encounter_id, invoice_number, "
@@ -718,7 +718,7 @@ async def patient_invoice_pdf(
     NOTE: Actual PDF generation is a future phase. Returns structured JSON
     with format='invoice_v1' for frontend PDF rendering.
     """
-    tenant_id = patient.tenant_id
+    tenant_id = patient.require_tenant()
     row = db.execute(
         text(
             "SELECT id, tenant_id, branch_id, patient_id, encounter_id, invoice_number, "
@@ -780,7 +780,7 @@ async def patient_create_insurance(
     db: Session = Depends(tenant_scoped_session),
 ):
     """Patient: create own insurance profile. insurance_number encrypted at rest."""
-    tenant_id = patient.tenant_id
+    tenant_id = patient.require_tenant()
     profile_id = _new_id()
     now = _now()
 
@@ -826,7 +826,7 @@ async def patient_list_insurance(
     db: Session = Depends(tenant_scoped_session),
 ):
     """Patient: list own insurance profiles. Decrypts insurance_number. Calls write_phi_read_audit."""
-    tenant_id = patient.tenant_id
+    tenant_id = patient.require_tenant()
     rows = db.execute(
         text(
             "SELECT id, tenant_id, patient_id, insurance_type, insurance_number, "
@@ -872,7 +872,7 @@ async def patient_update_insurance(
     db: Session = Depends(tenant_scoped_session),
 ):
     """Patient: update own insurance profile."""
-    tenant_id = patient.tenant_id
+    tenant_id = patient.require_tenant()
     row = db.execute(
         text(
             "SELECT * FROM hcb_insurance_profiles "
