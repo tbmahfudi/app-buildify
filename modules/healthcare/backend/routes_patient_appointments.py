@@ -21,7 +21,7 @@ from sqlalchemy.orm import Session
 
 from modules.sdk.dependencies import tenant_scoped_session
 from modules.healthcare.models import HCBranch, HCProvider
-from modules.healthcare.sdk.patient_auth import PatientTokenData, get_current_patient
+from modules.healthcare.sdk.patient_auth import PatientTokenData, get_current_patient, get_patient_db
 from modules.healthcare.sdk.phi_audit import write_phi_read_audit
 from modules.healthcare.schemas.patient_appointments import (
     PatientAppointmentDetail,
@@ -51,7 +51,7 @@ async def list_my_appointments(
     page: int = Query(1, ge=1),
     page_size: int = Query(10, ge=1, le=100),
     patient: PatientTokenData = Depends(get_current_patient),
-    db: Session = Depends(tenant_scoped_session),
+    db: Session = Depends(get_patient_db),
 ):
     """
     Return cross-tenant appointment list for the authenticated patient.
@@ -144,7 +144,7 @@ async def get_my_appointment(
     appointment_id: str,
     request: Request,
     patient: PatientTokenData = Depends(get_current_patient),
-    db: Session = Depends(tenant_scoped_session),
+    db: Session = Depends(get_patient_db),
 ):
     """Return full appointment detail — ownership enforced via patient_id + tenant_id filter."""
     pid = patient.patient_id

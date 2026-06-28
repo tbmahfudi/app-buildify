@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 
 from modules.sdk.dependencies import tenant_scoped_session
-from modules.healthcare.sdk.patient_auth import get_current_patient
+from modules.healthcare.sdk.patient_auth import get_current_patient, get_patient_db
 from modules.healthcare.sdk.phi_audit import write_event_audit
 from modules.healthcare.schemas.waitlist import WaitlistCreate, WaitlistResponse, WaitlistListResponse
 from modules.sdk.db import generate_uuid
@@ -30,7 +30,7 @@ _OFFER_WINDOW_MINUTES = 15
 async def join_waitlist(
     payload: WaitlistCreate,
     request: Request,
-    db: Session = Depends(tenant_scoped_session),
+    db: Session = Depends(get_patient_db),
     patient_token=Depends(get_current_patient),
 ):
     patient_tenant = patient_token.require_tenant()
@@ -74,7 +74,7 @@ async def join_waitlist(
     summary="List patient waitlist entries",
 )
 async def list_waitlist(
-    db: Session = Depends(tenant_scoped_session),
+    db: Session = Depends(get_patient_db),
     patient_token=Depends(get_current_patient),
 ):
     tenant_id = patient_token.require_tenant()
@@ -93,7 +93,7 @@ async def list_waitlist(
 )
 async def leave_waitlist(
     entry_id: uuid.UUID,
-    db: Session = Depends(tenant_scoped_session),
+    db: Session = Depends(get_patient_db),
     patient_token=Depends(get_current_patient),
 ):
     eid = str(entry_id)

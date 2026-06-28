@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session
 
 from modules.sdk.dependencies import tenant_scoped_session
 from modules.healthcare.models import HCEncounter, HCBranch, HCProvider
-from modules.healthcare.sdk.patient_auth import PatientTokenData, get_current_patient
+from modules.healthcare.sdk.patient_auth import PatientTokenData, get_current_patient, get_patient_db
 from modules.healthcare.sdk.phi_audit import write_phi_read_audit
 from modules.healthcare.schemas.encounter_history import (
     EncounterDetailResponse,
@@ -46,7 +46,7 @@ async def list_my_encounters(
     date_from: Optional[date] = Query(None),
     date_to: Optional[date] = Query(None),
     patient: PatientTokenData = Depends(get_current_patient),
-    db: Session = Depends(tenant_scoped_session),
+    db: Session = Depends(get_patient_db),
 ):
     """Return paginated encounter list for the authenticated patient."""
     pid = patient.patient_id
@@ -124,7 +124,7 @@ async def get_my_encounter(
     encounter_id: str,
     request: Request,
     patient: PatientTokenData = Depends(get_current_patient),
-    db: Session = Depends(tenant_scoped_session),
+    db: Session = Depends(get_patient_db),
 ):
     """Return full encounter detail; enforces patient_id + tenant ownership."""
     pid = patient.patient_id

@@ -32,7 +32,7 @@ from modules.sdk.dependencies import tenant_scoped_session
 from modules.healthcare.sdk.branch_scope import healthcare_branch_session
 from modules.healthcare.sdk.dpa_gate import require_dpa
 from modules.healthcare.sdk.hc_permissions import HCRole, has_hc_permission
-from modules.healthcare.sdk.patient_auth import PatientTokenData, get_current_patient
+from modules.healthcare.sdk.patient_auth import PatientTokenData, get_current_patient, get_patient_db
 from modules.healthcare.sdk.phi_audit import write_event_audit, write_phi_read_audit
 from modules.healthcare.sdk.phi_crypto import decrypt_phi, encrypt_phi
 from modules.healthcare.schemas.billing import (
@@ -620,7 +620,7 @@ async def patient_list_invoices(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     patient: PatientTokenData = Depends(get_current_patient),
-    db: Session = Depends(tenant_scoped_session),
+    db: Session = Depends(get_patient_db),
 ):
     """Patient: list own finalized invoices. Calls write_phi_read_audit."""
     tenant_id = patient.require_tenant()
@@ -676,7 +676,7 @@ async def patient_get_invoice(
     invoice_id: str,
     request: Request,
     patient: PatientTokenData = Depends(get_current_patient),
-    db: Session = Depends(tenant_scoped_session),
+    db: Session = Depends(get_patient_db),
 ):
     """Patient: get own invoice detail. Calls write_phi_read_audit."""
     tenant_id = patient.require_tenant()
@@ -710,7 +710,7 @@ async def patient_invoice_pdf(
     invoice_id: str,
     request: Request,
     patient: PatientTokenData = Depends(get_current_patient),
-    db: Session = Depends(tenant_scoped_session),
+    db: Session = Depends(get_patient_db),
 ):
     """
     Patient: invoice PDF-ready data (application/json).
@@ -777,7 +777,7 @@ async def patient_create_insurance(
     payload: InsuranceProfileCreate,
     request: Request,
     patient: PatientTokenData = Depends(get_current_patient),
-    db: Session = Depends(tenant_scoped_session),
+    db: Session = Depends(get_patient_db),
 ):
     """Patient: create own insurance profile. insurance_number encrypted at rest."""
     tenant_id = patient.require_tenant()
@@ -823,7 +823,7 @@ async def patient_create_insurance(
 async def patient_list_insurance(
     request: Request,
     patient: PatientTokenData = Depends(get_current_patient),
-    db: Session = Depends(tenant_scoped_session),
+    db: Session = Depends(get_patient_db),
 ):
     """Patient: list own insurance profiles. Decrypts insurance_number. Calls write_phi_read_audit."""
     tenant_id = patient.require_tenant()
@@ -869,7 +869,7 @@ async def patient_update_insurance(
     payload: InsuranceProfileUpdate,
     request: Request,
     patient: PatientTokenData = Depends(get_current_patient),
-    db: Session = Depends(tenant_scoped_session),
+    db: Session = Depends(get_patient_db),
 ):
     """Patient: update own insurance profile."""
     tenant_id = patient.require_tenant()

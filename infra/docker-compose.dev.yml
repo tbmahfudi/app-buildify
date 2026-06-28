@@ -129,6 +129,9 @@ services:
       - "9002:9002"
     environment:
       PYTHONPATH: /app
+      # Don't write .pyc into the --reload-watched source tree, otherwise
+      # watchfiles detects the bytecode writes and reload-loops forever.
+      PYTHONDONTWRITEBYTECODE: "1"
       # Shared platform DB — same instance/db the core backend uses, so
       # tenant_scoped_session, decode_token and the hc_* tables all align.
       SQLALCHEMY_DATABASE_URL: postgresql+psycopg2://appuser:apppass@postgres:5432/appdb
@@ -163,7 +166,10 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    command: uvicorn modules.healthcare.app.main:app --host 0.0.0.0 --port 9002 --reload
+    # NOTE: --reload removed — a startup task rewrites files in the watched tree
+    # causing a watchfiles reload-loop that never finishes booting. Restart the
+    # container manually after code changes (docker restart app_buildify_healthcare).
+    command: uvicorn modules.healthcare.app.main:app --host 0.0.0.0 --port 9002
 
   frontend:
     container_name: app_buildify_frontend

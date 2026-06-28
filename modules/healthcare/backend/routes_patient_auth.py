@@ -295,7 +295,7 @@ async def otp_verify(
 async def patient_token(
     payload: PatientTokenRequest,
     response: Response,
-    db: Session = Depends(tenant_scoped_session),
+    db: Session = Depends(_get_public_db),
 ) -> PatientTokenResponse:
     """Authenticate returning patient via phone + OTP, return access token + refresh cookie."""
     try:

@@ -28,7 +28,7 @@ from sqlalchemy.orm import Session
 
 from modules.healthcare.sdk.branch_scope import healthcare_branch_session
 from modules.healthcare.sdk.hc_permissions import HCRole, has_hc_permission
-from modules.healthcare.sdk.patient_auth import get_current_patient
+from modules.healthcare.sdk.patient_auth import get_current_patient, get_patient_db
 from modules.sdk.dependencies import tenant_scoped_session
 from modules.healthcare.sdk.phi_audit import write_phi_read_audit, write_event_audit
 from modules.healthcare.schemas.pharmacy import (
@@ -912,7 +912,7 @@ def cancel_prescription(
     "/api/v1/patients/me/prescriptions",
 )
 def patient_list_prescriptions(
-    db: Session = Depends(tenant_scoped_session),
+    db: Session = Depends(get_patient_db),
     patient=Depends(get_current_patient),
 ):
     patient_id = str(patient.patient_id)
@@ -920,7 +920,7 @@ def patient_list_prescriptions(
 
     rows = db.execute(
         text(
-            "SELECT p.id, p.status, e.created_at AS encounter_date, b.name AS clinic_name "
+            "SELECT p.id, p.status, e.created_at AS encounter_date, b.branch_name AS clinic_name "
             "FROM hcp_prescriptions p "
             "JOIN hc_encounters e ON e.id = p.encounter_id "
             "JOIN hc_branches b ON b.id = p.branch_id "
@@ -965,7 +965,7 @@ def patient_list_prescriptions(
 )
 def patient_get_prescription(
     prescription_id: str,
-    db: Session = Depends(tenant_scoped_session),
+    db: Session = Depends(get_patient_db),
     patient=Depends(get_current_patient),
 ):
     patient_id = str(patient.patient_id)
@@ -973,7 +973,7 @@ def patient_get_prescription(
 
     row = db.execute(
         text(
-            "SELECT p.id, p.status, e.created_at AS encounter_date, b.name AS clinic_name "
+            "SELECT p.id, p.status, e.created_at AS encounter_date, b.branch_name AS clinic_name "
             "FROM hcp_prescriptions p "
             "JOIN hc_encounters e ON e.id = p.encounter_id "
             "JOIN hc_branches b ON b.id = p.branch_id "

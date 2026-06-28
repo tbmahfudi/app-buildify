@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session
 
 from modules.sdk.dependencies import tenant_scoped_session
 from modules.healthcare.models import HCClinicReview, HCEncounter
-from modules.healthcare.sdk.patient_auth import PatientTokenData, get_current_patient
+from modules.healthcare.sdk.patient_auth import PatientTokenData, get_current_patient, get_patient_db
 from modules.healthcare.sdk.hc_permissions import HCRole, has_hc_permission
 from modules.healthcare.sdk.phi_audit import write_event_audit
 from modules.healthcare.schemas.review import (
@@ -59,7 +59,7 @@ async def create_review(
     payload: ReviewCreate,
     request: Request,
     patient: PatientTokenData = Depends(get_current_patient),
-    db: Session = Depends(tenant_scoped_session),
+    db: Session = Depends(get_patient_db),
 ):
     """Submit a review for a completed encounter (one per encounter)."""
     pid = patient.patient_id

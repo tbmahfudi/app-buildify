@@ -11,7 +11,7 @@ from sqlalchemy import text
 from modules.sdk.dependencies import tenant_scoped_session, get_current_user
 from modules.healthcare.sdk.hc_permissions import HCRole, has_hc_permission
 from modules.healthcare.sdk.branch_scope import healthcare_branch_session
-from modules.healthcare.sdk.patient_auth import get_current_patient
+from modules.healthcare.sdk.patient_auth import get_current_patient, get_patient_db
 from modules.healthcare.sdk.phi_audit import write_event_audit, write_phi_read_audit
 from modules.healthcare.schemas.appointment import (
     SlotResponse, AppointmentCreate, AppointmentReschedule,
@@ -49,7 +49,7 @@ async def list_available_slots(
     branch_id: uuid.UUID,
     date: str = Query(..., description="YYYY-MM-DD"),
     appointment_type: Optional[str] = Query(None),
-    db: Session = Depends(tenant_scoped_session),
+    db: Session = Depends(get_patient_db),
     patient_token=Depends(get_current_patient),
 ):
     branch_row = db.execute(
@@ -104,7 +104,7 @@ async def list_available_slots(
 async def book_appointment(
     payload: AppointmentCreate,
     request: Request,
-    db: Session = Depends(tenant_scoped_session),
+    db: Session = Depends(get_patient_db),
     patient_token=Depends(get_current_patient),
 ):
     slot_id = str(payload.slot_id)
@@ -180,7 +180,7 @@ async def book_appointment(
     summary="List patient appointments",
 )
 async def list_patient_appointments(
-    db: Session = Depends(tenant_scoped_session),
+    db: Session = Depends(get_patient_db),
     patient_token=Depends(get_current_patient),
 ):
     tenant_id = patient_token.require_tenant()
@@ -191,9 +191,8 @@ async def list_patient_appointments(
     items = [AppointmentResponse(**dict(r)) for r in rows]
 
     # FIX-BE-003: PHI audit — appointment rows include 'notes' (clinical notes, PHI).
-    # Derive tenant_id from the first appointment row; fall back to empty string
-    # (audit failure is swallowed inside write_phi_read_audit — it must not crash the request).
-    tenant_id_str = str(items[0].tenant_id) if items else ""
+    # Use the token's tenant (AppointmentResponse has no tenant_id field).
+    tenant_id_str = str(tenant_id)
     write_phi_read_audit(
         db=db,
         actor_type="patient",
@@ -219,7 +218,7 @@ async def reschedule_appointment(
     appointment_id: uuid.UUID,
     payload: AppointmentReschedule,
     request: Request,
-    db: Session = Depends(tenant_scoped_session),
+    db: Session = Depends(get_patient_db),
     patient_token=Depends(get_current_patient),
 ):
     appt_id = str(appointment_id)
@@ -309,7 +308,7 @@ async def reschedule_appointment(
 async def cancel_appointment(
     appointment_id: uuid.UUID,
     request: Request,
-    db: Session = Depends(tenant_scoped_session),
+    db: Session = Depends(get_patient_db),
     patient_token=Depends(get_current_patient),
 ):
     appt_id = str(appointment_id)

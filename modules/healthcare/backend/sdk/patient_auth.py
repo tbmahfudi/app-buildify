@@ -162,9 +162,25 @@ def has_patient_permission(resource: str, action: str):
     return _checker
 
 
+def get_patient_db():
+    """
+    Plain DB session for patient / public routes.
+
+    Patient endpoints must NOT use the staff `tenant_scoped_session` dependency:
+    that one re-authenticates a platform staff `User` from the bearer and rejects
+    patient JWTs, so every patient route 401'd ("User not found"). Patient routes
+    already scope themselves explicitly via `patient.require_tenant()` + an
+    `AND tenant_id = :tid` filter (and `appuser` bypasses RLS), so a plain session
+    is correct and sufficient here.
+    """
+    from app.core.dependencies import get_db as _platform_get_db
+    yield from _platform_get_db()
+
+
 __all__ = [
     "PatientTokenData",
     "get_current_patient",
     "get_current_patient_optional",
     "has_patient_permission",
+    "get_patient_db",
 ]

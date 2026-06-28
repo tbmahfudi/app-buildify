@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session
 
 from modules.sdk.dependencies import tenant_scoped_session
 from modules.healthcare.models import HCEncounter, HCPatient
-from modules.healthcare.sdk.patient_auth import PatientTokenData, get_current_patient
+from modules.healthcare.sdk.patient_auth import PatientTokenData, get_current_patient, get_patient_db
 from modules.healthcare.sdk.phi_audit import write_event_audit, write_phi_read_audit
 from modules.healthcare.schemas.patient_profile import (
     PatientProfileResponse,
@@ -51,7 +51,7 @@ def _mask_phone(phone: str) -> str:
 async def get_my_profile(
     request: Request,
     patient: PatientTokenData = Depends(get_current_patient),
-    db: Session = Depends(tenant_scoped_session),
+    db: Session = Depends(get_patient_db),
 ):
     """Return decrypted PHI profile for the authenticated patient."""
     tid = patient.require_tenant()
@@ -96,7 +96,7 @@ async def update_my_profile(
     payload: PatientProfileUpdate,
     request: Request,
     patient: PatientTokenData = Depends(get_current_patient),
-    db: Session = Depends(tenant_scoped_session),
+    db: Session = Depends(get_patient_db),
 ):
     """Update allowed profile fields (email, address, locale) — NOT name/dob/phone."""
     tid = patient.require_tenant()
@@ -162,7 +162,7 @@ async def update_my_profile(
 async def get_my_summary(
     request: Request,
     patient: PatientTokenData = Depends(get_current_patient),
-    db: Session = Depends(tenant_scoped_session),
+    db: Session = Depends(get_patient_db),
 ):
     """Return aggregate counts — no PHI fields, just statistics."""
     pid = patient.patient_id

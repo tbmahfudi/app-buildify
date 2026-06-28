@@ -23,7 +23,7 @@ from modules.sdk.dependencies import tenant_scoped_session, get_current_user
 from modules.healthcare.models import HCPatient, HCPatientConsent
 from modules.healthcare.schemas.patient import ConsentCreate, ConsentResponse
 from modules.healthcare.sdk.hc_permissions import HCRole, get_caller_hc_role, has_hc_permission
-from modules.healthcare.sdk.patient_auth import get_current_patient
+from modules.healthcare.sdk.patient_auth import get_current_patient, get_patient_db
 from modules.healthcare.sdk.phi_audit import write_event_audit, write_phi_read_audit
 
 router = APIRouter(
@@ -42,7 +42,7 @@ async def create_patient_consent(
     patient_id: uuid.UUID,
     payload: ConsentCreate,
     request: Request,
-    db: Session = Depends(tenant_scoped_session),
+    db: Session = Depends(get_patient_db),
     patient_token=Depends(get_current_patient),
 ):
     # Patient can only record consent for their own record
@@ -102,7 +102,7 @@ async def create_patient_consent(
     summary="List own consents (patient auth only)",
 )
 async def list_my_consents(
-    db: Session = Depends(tenant_scoped_session),
+    db: Session = Depends(get_patient_db),
     current_patient=Depends(get_current_patient),
 ):
     """

@@ -30,7 +30,7 @@ from sqlalchemy.orm import Session
 from modules.healthcare.sdk.branch_scope import healthcare_branch_session
 from modules.sdk.dependencies import tenant_scoped_session
 from modules.healthcare.sdk.hc_permissions import HCRole, has_hc_permission
-from modules.healthcare.sdk.patient_auth import get_current_patient
+from modules.healthcare.sdk.patient_auth import get_current_patient, get_patient_db
 from modules.healthcare.sdk.phi_audit import write_phi_read_audit, write_event_audit
 from modules.healthcare.sdk.notification_service import NotificationService
 from modules.healthcare.schemas.lab import (
@@ -988,7 +988,7 @@ def get_results(
     response_model=list,
 )
 def patient_list_lab_orders(
-    db: Session = Depends(tenant_scoped_session),
+    db: Session = Depends(get_patient_db),
     current_patient=Depends(get_current_patient),
 ):
     """Patient: list own lab orders where any result has been shared."""
@@ -1054,7 +1054,7 @@ def patient_list_lab_orders(
 )
 def patient_get_lab_results(
     order_id: str,
-    db: Session = Depends(tenant_scoped_session),
+    db: Session = Depends(get_patient_db),
     current_patient=Depends(get_current_patient),
 ):
     """Patient: get released results for own order. No clinical notes exposed."""
