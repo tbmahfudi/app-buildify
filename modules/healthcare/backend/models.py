@@ -49,6 +49,9 @@ class HCBranch(Base):
     operating_hours = Column(JSONB, nullable=False, default=dict)
     status = Column(String(20), nullable=False, default="active")
     online_booking = Column(Boolean, nullable=False, default=True)
+    # Per-branch public visibility in the clinic directory (epic-20 20.4); only meaningful when
+    # the owning Company opts in (companies.public_listing). Default visible.
+    public_visible = Column(Boolean, nullable=False, default=True)
     default_locale = Column(String(10), nullable=False, default="id-ID")
     appointment_types = Column(JSONB, nullable=False, default=list)
     # Platform-org linkage (ADR-HC-005) — read-only FKs to the platform org
