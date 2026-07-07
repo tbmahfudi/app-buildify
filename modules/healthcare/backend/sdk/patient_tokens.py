@@ -50,15 +50,28 @@ class PatientTokenData:
     phone: str
     roles: list
     tenant_id: Optional[str] = None
+    company_id: Optional[str] = None       # `cid` — active patient's Company (ADR-HC-010 D5 isolation key)
+    account_user_id: Optional[str] = None  # `acct` — the account holder (platform users.id)
+    on_behalf_of: bool = False             # `obo` — active patient is a managed dependent, not self
 
 
-def create_patient_access_token(patient_id: str, phone: str, tenant_id: Optional[str] = None) -> str:
+def create_patient_access_token(
+    patient_id: str,
+    phone: str,
+    tenant_id: Optional[str] = None,
+    company_id: Optional[str] = None,
+    account_user_id: Optional[str] = None,
+    on_behalf_of: bool = False,
+) -> str:
     """
-    Create a signed HS256 access JWT for a patient.
+    Create a signed HS256 access JWT for a patient, scoped to an active patient.
 
     Args:
-        patient_id: UUID string of the patient record.
-        phone:      Patient phone number (non-PHI claim — used for identity binding).
+        patient_id:      UUID of the ACTIVE patient this session acts as.
+        phone:           Active patient phone (non-PHI identity binding).
+        tenant_id:       Active patient's tenant.
+        account_user_id: Household account holder (platform users.id) — `acct` claim.
+        on_behalf_of:    True when the active patient is a managed dependent (≠ self) — `obo` claim.
 
     Returns:
         Encoded JWT string (15-minute expiry).
@@ -74,10 +87,17 @@ def create_patient_access_token(patient_id: str, phone: str, tenant_id: Optional
     }
     if tenant_id:
         payload["tenant_id"] = tenant_id
+    if company_id:
+        payload["cid"] = company_id
+    if account_user_id:
+        payload["acct"] = account_user_id
+    if on_behalf_of:
+        payload["obo"] = True
     return _jwt.encode(payload, _secret(), algorithm=ALGORITHM)
 
 
-def create_patient_refresh_token(patient_id: str, tenant_id: Optional[str] = None) -> str:
+def create_patient_refresh_token(patient_id: str, tenant_id: Optional[str] = None,
+                                 company_id: Optional[str] = None) -> str:
     """
     Create a signed HS256 refresh JWT for a patient.
 
@@ -97,6 +117,8 @@ def create_patient_refresh_token(patient_id: str, tenant_id: Optional[str] = Non
     }
     if tenant_id:
         payload["tenant_id"] = tenant_id
+    if company_id:
+        payload["cid"] = company_id
     return _jwt.encode(payload, _secret(), algorithm=ALGORITHM)
 
 
@@ -125,7 +147,15 @@ def decode_patient_token(token: str) -> PatientTokenData:
     phone: str = payload.get("phone", "")
     tenant_id: Optional[str] = payload.get("tenant_id")
 
-    return PatientTokenData(patient_id=patient_id, phone=phone, roles=roles, tenant_id=tenant_id)
+    return PatientTokenData(
+        patient_id=patient_id,
+        phone=phone,
+        roles=roles,
+        tenant_id=tenant_id,
+        company_id=payload.get("cid"),
+        account_user_id=payload.get("acct"),
+        on_behalf_of=bool(payload.get("obo", False)),
+    )
 
 
 __all__ = [

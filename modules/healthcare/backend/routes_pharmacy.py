@@ -17,6 +17,7 @@ Sandbox rules:
   - No backend.app imports (patient_auth.py already wraps decode_token)
 """
 from __future__ import annotations
+from modules.healthcare.sdk.hc_tenant import hc_shared_tenant_id
 
 import uuid
 from datetime import datetime
@@ -69,7 +70,7 @@ def _now() -> datetime:
 
 
 def _tenant_id(current_user) -> str:
-    return str(current_user.tenant_id) if hasattr(current_user, "tenant_id") else ""
+    return hc_shared_tenant_id() if hasattr(current_user, "tenant_id") else ""
 
 
 def _get_medication_or_404(

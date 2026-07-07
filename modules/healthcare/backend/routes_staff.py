@@ -9,6 +9,7 @@ DELETE /api/v1/modules/healthcare/branches/{branch_id}/staff/{user_id}
 POST   /api/v1/modules/healthcare/staff/accept-invitation/{token}
 """
 from __future__ import annotations
+from modules.healthcare.sdk.hc_tenant import hc_shared_tenant_id
 
 import secrets
 import uuid
@@ -54,7 +55,7 @@ async def invite_staff(
     from sqlalchemy import text
     user_row = db.execute(
         text("SELECT id FROM users WHERE email = :email AND tenant_id = :tid LIMIT 1"),
-        {"email": payload.email, "tid": str(current_user.tenant_id)},
+        {"email": payload.email, "tid": hc_shared_tenant_id()},
     ).fetchone()
 
     if user_row is None:
@@ -68,7 +69,7 @@ async def invite_staff(
     existing = (
         db.query(HCBranchStaff)
         .filter(
-            HCBranchStaff.tenant_id == str(current_user.tenant_id),
+            HCBranchStaff.tenant_id == hc_shared_tenant_id(),
             HCBranchStaff.branch_id == str(branch_id),
             HCBranchStaff.user_id == target_user_id,
             HCBranchStaff.role == payload.role,
@@ -83,7 +84,7 @@ async def invite_staff(
 
     invitation_token = secrets.token_urlsafe(32)
     staff = HCBranchStaff(
-        tenant_id=str(current_user.tenant_id),
+        tenant_id=hc_shared_tenant_id(),
         branch_id=str(branch_id),
         user_id=target_user_id,
         role=payload.role,
@@ -101,7 +102,7 @@ async def invite_staff(
         event_type="staff.invited",
         entity_type="branch_staff",
         entity_id=str(staff.id),
-        tenant_id=str(current_user.tenant_id),
+        tenant_id=hc_shared_tenant_id(),
         branch_id=str(branch_id),
         ip=request.client.host if request.client else None,
         ua=request.headers.get("user-agent"),
@@ -126,7 +127,7 @@ async def list_branch_staff(
     staff = (
         db.query(HCBranchStaff)
         .filter(
-            HCBranchStaff.tenant_id == str(current_user.tenant_id),
+            HCBranchStaff.tenant_id == hc_shared_tenant_id(),
             HCBranchStaff.branch_id == str(branch_id),
         )
         .all()
@@ -150,7 +151,7 @@ async def remove_staff(
     staff = (
         db.query(HCBranchStaff)
         .filter(
-            HCBranchStaff.tenant_id == str(current_user.tenant_id),
+            HCBranchStaff.tenant_id == hc_shared_tenant_id(),
             HCBranchStaff.branch_id == str(branch_id),
             HCBranchStaff.user_id == user_id,
         )
@@ -169,7 +170,7 @@ async def remove_staff(
         event_type="staff.removed",
         entity_type="branch_staff",
         entity_id=str(staff.id),
-        tenant_id=str(current_user.tenant_id),
+        tenant_id=hc_shared_tenant_id(),
         branch_id=str(branch_id),
         ip=request.client.host if request.client else None,
         ua=request.headers.get("user-agent"),

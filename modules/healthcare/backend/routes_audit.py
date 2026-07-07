@@ -7,6 +7,7 @@ GET /api/v1/modules/healthcare/audit-log — Clinic Owner only; paginated.
 No UPDATE or DELETE endpoints (append-only log).
 """
 from __future__ import annotations
+from modules.healthcare.sdk.hc_tenant import hc_shared_tenant_id
 
 from datetime import datetime
 from typing import Optional
@@ -42,7 +43,7 @@ async def list_audit_log(
 ):
     offset = (page - 1) * page_size
     query = db.query(HCAuditLog).filter(
-        HCAuditLog.tenant_id == str(current_user.tenant_id)
+        HCAuditLog.tenant_id == hc_shared_tenant_id()
     )
 
     if from_dt:

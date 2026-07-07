@@ -101,8 +101,14 @@ def _register_routers() -> None:
     from modules.healthcare.routes_providers import router as providers_router
     from modules.healthcare.routes_audit import router as audit_router
     from modules.healthcare.routes_patients import router as patients_router
+    from modules.healthcare.routes_departments import router as departments_router
+    from modules.healthcare.routes_visits import router as visits_router
+    from modules.healthcare.routes_coding import router as coding_router
+    from modules.healthcare.routes_hr import router as hr_router
+    from modules.healthcare.routes_reports import router as reports_router
     from modules.healthcare.routes_clinic_signup import router as clinic_signup_router
     from modules.healthcare.routes_patient_auth import router as patient_auth_router
+    from modules.healthcare.routes_household import router as household_router
     from modules.healthcare.routes_public import router as public_router
     from modules.healthcare.routes_i18n import router as i18n_router
     from modules.healthcare.routes_i18n_admin import router as i18n_admin_router
@@ -123,8 +129,14 @@ def _register_routers() -> None:
         ("providers", providers_router),
         ("audit", audit_router),
         ("patients", patients_router),
+        ("departments", departments_router),
+        ("visits", visits_router),
+        ("coding", coding_router),
+        ("hr", hr_router),
+        ("reports", reports_router),
         ("clinic_signup", clinic_signup_router),
         ("patient_auth", patient_auth_router),
+        ("household", household_router),
         ("public", public_router),
         ("i18n", i18n_router),
         ("i18n_admin", i18n_admin_router),
@@ -175,7 +187,24 @@ async def _on_startup() -> None:
     logger.info("Starting %s v%s on port %s", MODULE_NAME, MODULE_VERSION, MODULE_PORT)
     _create_healthcare_tables()
     _register_routers()
+    _prime_shared_tenant()
     logger.info("%s started — %d total routes", MODULE_NAME, len(app.routes))
+
+
+def _prime_shared_tenant() -> None:
+    """Resolve + cache the shared SAAS hc tenant id (ADR-HC-010) so every hc query
+    scopes to the migrated data tenant rather than the staff user's platform tenant."""
+    try:
+        from app.core.db import SessionLocal
+        from modules.healthcare.sdk.hc_tenant import resolve_shared_tenant_id
+        db = SessionLocal()
+        try:
+            tid = resolve_shared_tenant_id(db)
+            logger.info("hc shared tenant primed: %s", tid)
+        finally:
+            db.close()
+    except Exception as exc:  # pragma: no cover — defensive; helper falls back lazily
+        logger.warning("Could not prime hc shared tenant id at startup: %s", exc)
 
 
 if __name__ == "__main__":

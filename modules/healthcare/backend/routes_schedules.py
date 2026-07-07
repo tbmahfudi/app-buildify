@@ -1,11 +1,12 @@
 from __future__ import annotations
+from modules.healthcare.sdk.hc_tenant import hc_shared_tenant_id
 import json
 import uuid
 import logging
-from datetime import time as dtime
+from datetime import time as dtime, date as ddate
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 
@@ -16,6 +17,7 @@ from modules.healthcare.sdk.phi_audit import write_event_audit
 from modules.healthcare.schemas.schedule import (
     ScheduleCreate, ScheduleUpdate, ScheduleResponse, ScheduleListResponse,
     DateTimeBlockCreate, DateTimeBlockResponse,
+    ScheduleOverrideCreate, ScheduleOverrideResponse, ScheduleOverrideListResponse,
 )
 from modules.sdk.db import generate_uuid
 
@@ -27,6 +29,63 @@ router = APIRouter(
 )
 
 _MANAGERS = [HCRole.clinic_owner, HCRole.branch_manager]
+_VIEWERS = [HCRole.clinic_owner, HCRole.branch_manager, HCRole.doctor]
+
+# Schedule rows always carry the assigned room's code/name for display.
+_SCHED_SELECT = (
+    "SELECT ps.*, r.code AS room_code, r.name AS room_name "
+    "FROM hcs_provider_schedules ps "
+    "LEFT JOIN hc_rooms r ON r.id = ps.room_id"
+)
+# Overrides carry the substitute provider's name for display.
+_OVR_SELECT = (
+    "SELECT o.*, sp.display_name AS substitute_provider_name "
+    "FROM hcs_schedule_overrides o "
+    "LEFT JOIN hc_providers sp ON sp.id = o.substitute_provider_id"
+)
+
+
+def _check_room_conflict(
+    db: Session, tenant_id: str, branch_id: str, room_id: Optional[str],
+    day_of_week: int, start_t: dtime, end_t: dtime,
+    exclude_id: Optional[str] = None,
+) -> None:
+    """A room can host only one provider for a given weekday/time window."""
+    if not room_id:
+        return
+    base = (
+        "SELECT ps.id FROM hcs_provider_schedules ps "
+        "WHERE ps.tenant_id=:tid AND ps.branch_id=:bid AND ps.room_id=:room "
+        "AND ps.day_of_week=:dow AND ps.is_active=true "
+        "AND NOT (ps.end_time <= :st OR ps.start_time >= :et)"
+    )
+    params = dict(tid=tenant_id, bid=branch_id, room=room_id, dow=day_of_week, st=start_t, et=end_t)
+    if exclude_id:
+        base += " AND ps.id != :excl"
+        params["excl"] = exclude_id
+    if db.execute(text(base), params).fetchone():
+        raise HTTPException(
+            status_code=409,
+            detail="Room is already assigned to another provider for an overlapping time on this day",
+        )
+
+
+def _room_in_branch(db: Session, tenant_id: str, branch_id: str, room_id: str) -> None:
+    ok = db.execute(
+        text("SELECT id FROM hc_rooms WHERE id=:rid AND tenant_id=:tid AND branch_id=:bid AND is_active=true"),
+        dict(rid=room_id, tid=tenant_id, bid=branch_id),
+    ).fetchone()
+    if not ok:
+        raise HTTPException(status_code=422, detail="Room not found or not active in this branch")
+
+
+def _provider_in_tenant(db: Session, tenant_id: str, provider_id: str) -> None:
+    ok = db.execute(
+        text("SELECT id FROM hc_providers WHERE id=:pid AND tenant_id=:tid"),
+        dict(pid=provider_id, tid=tenant_id),
+    ).fetchone()
+    if not ok:
+        raise HTTPException(status_code=422, detail="Provider not found")
 
 
 def _parse_time(t_str: str) -> dtime:
@@ -70,7 +129,7 @@ async def create_schedule(
     current_user=Depends(get_current_user),
     _role=Depends(has_hc_permission(_MANAGERS)),
 ):
-    tid = str(current_user.tenant_id)
+    tid = hc_shared_tenant_id()
     bid = str(branch_id)
     pid = str(payload.provider_id)
     st = _parse_time(payload.start_time)
@@ -78,23 +137,28 @@ async def create_schedule(
     if st >= et:
         raise HTTPException(status_code=422, detail="start_time must be before end_time")
     _check_overlap(db, tid, bid, pid, payload.day_of_week, st, et)
+    room_id = str(payload.room_id) if payload.room_id else None
+    if room_id:
+        _room_in_branch(db, tid, bid, room_id)
+        _check_room_conflict(db, tid, bid, room_id, payload.day_of_week, st, et)
     sid = str(generate_uuid())
     db.execute(
         text(
             "INSERT INTO hcs_provider_schedules "
             "(id, tenant_id, branch_id, provider_id, day_of_week, start_time, end_time, "
-            "slot_duration_minutes, appointment_types, is_active, created_at, updated_at) "
-            "VALUES (:id,:tid,:bid,:pid,:dow,:st,:et,:dur,:types::jsonb,true,NOW(),NOW())"
+            "slot_duration_minutes, appointment_types, room_id, is_active, created_at, updated_at) "
+            "VALUES (:id,:tid,:bid,:pid,:dow,:st,:et,:dur,CAST(:types AS jsonb),:room,true,NOW(),NOW())"
         ),
         dict(id=sid, tid=tid, bid=bid, pid=pid, dow=payload.day_of_week, st=st, et=et,
-             dur=payload.slot_duration_minutes, types=json.dumps(payload.appointment_types)),
+             dur=payload.slot_duration_minutes, types=json.dumps(payload.appointment_types),
+             room=room_id),
     )
     write_event_audit(db=db, actor_id=str(current_user.id), actor_type="staff",
                       event_type="schedule.created", entity_type="provider_schedule",
                       entity_id=sid, tenant_id=tid, branch_id=bid,
                       source_module="healthcare_scheduling")
     db.commit()
-    row = db.execute(text("SELECT * FROM hcs_provider_schedules WHERE id = :id"), {"id": sid}).mappings().one()
+    row = db.execute(text(_SCHED_SELECT + " WHERE ps.id = :id"), {"id": sid}).mappings().one()
     return ScheduleResponse(**dict(row))
 
 
@@ -109,20 +173,20 @@ async def list_schedules(
     current_user=Depends(get_current_user),
     _role=Depends(has_hc_permission([HCRole.clinic_owner, HCRole.branch_manager, HCRole.doctor])),
 ):
-    tid = str(current_user.tenant_id)
+    tid = hc_shared_tenant_id()
     bid = str(branch_id)
     if _role == HCRole.doctor:
         rows = db.execute(text(
-            "SELECT ps.* FROM hcs_provider_schedules ps "
-            "JOIN hc_providers p ON p.id = ps.provider_id "
+            _SCHED_SELECT +
+            " JOIN hc_providers p ON p.id = ps.provider_id "
             "WHERE ps.tenant_id=:tid AND ps.branch_id=:bid AND ps.is_active=true "
             "AND p.user_id=:uid ORDER BY ps.day_of_week, ps.start_time"
         ), dict(tid=tid, bid=bid, uid=str(current_user.id))).mappings().all()
     else:
         rows = db.execute(text(
-            "SELECT * FROM hcs_provider_schedules "
-            "WHERE tenant_id=:tid AND branch_id=:bid AND is_active=true "
-            "ORDER BY day_of_week, start_time"
+            _SCHED_SELECT +
+            " WHERE ps.tenant_id=:tid AND ps.branch_id=:bid AND ps.is_active=true "
+            "ORDER BY ps.day_of_week, ps.start_time"
         ), dict(tid=tid, bid=bid)).mappings().all()
     items = [ScheduleResponse(**dict(r)) for r in rows]
     return ScheduleListResponse(schedules=items, total=len(items))
@@ -141,10 +205,10 @@ async def get_provider_schedule(
     _role=Depends(has_hc_permission([HCRole.clinic_owner, HCRole.branch_manager, HCRole.doctor])),
 ):
     rows = db.execute(text(
-        "SELECT * FROM hcs_provider_schedules "
-        "WHERE tenant_id=:tid AND branch_id=:bid AND provider_id=:pid AND is_active=true "
-        "ORDER BY day_of_week, start_time"
-    ), dict(tid=str(current_user.tenant_id), bid=str(branch_id), pid=str(provider_id))).mappings().all()
+        _SCHED_SELECT +
+        " WHERE ps.tenant_id=:tid AND ps.branch_id=:bid AND ps.provider_id=:pid AND ps.is_active=true "
+        "ORDER BY ps.day_of_week, ps.start_time"
+    ), dict(tid=hc_shared_tenant_id(), bid=str(branch_id), pid=str(provider_id))).mappings().all()
     items = [ScheduleResponse(**dict(r)) for r in rows]
     return ScheduleListResponse(schedules=items, total=len(items))
 
@@ -162,7 +226,7 @@ async def update_schedule(
     current_user=Depends(get_current_user),
     _role=Depends(has_hc_permission(_MANAGERS)),
 ):
-    tid = str(current_user.tenant_id)
+    tid = hc_shared_tenant_id()
     sid = str(schedule_id)
     existing = db.execute(
         text("SELECT * FROM hcs_provider_schedules WHERE id=:id AND tenant_id=:tid"),
@@ -182,13 +246,26 @@ async def update_schedule(
         upd["appointment_types"] = json.dumps(payload.appointment_types)
     if payload.is_active is not None:
         upd["is_active"] = payload.is_active
+    # room_id is tri-state: clear_room wins, else a provided uuid assigns.
+    if payload.clear_room:
+        upd["room_id"] = None
+    elif payload.room_id is not None:
+        rid = str(payload.room_id)
+        _room_in_branch(db, tid, str(branch_id), rid)
+        upd["room_id"] = rid
 
     if upd:
         new_st = upd.get("start_time", existing["start_time"])
         new_et = upd.get("end_time", existing["end_time"])
         _check_overlap(db, tid, str(branch_id), existing["provider_id"],
                        existing["day_of_week"], new_st, new_et, exclude_id=sid)
-        set_clause = ", ".join(f"{k}=:{k}" for k in upd)
+        new_room = upd.get("room_id", existing["room_id"])
+        _check_room_conflict(db, tid, str(branch_id), new_room,
+                             existing["day_of_week"], new_st, new_et, exclude_id=sid)
+        set_clause = ", ".join(
+            (f"{k}=CAST(:{k} AS jsonb)" if k == "appointment_types" else f"{k}=:{k}")
+            for k in upd
+        )
         upd["id"] = sid
         db.execute(text(f"UPDATE hcs_provider_schedules SET {set_clause}, updated_at=NOW() WHERE id=:id"), upd)
         write_event_audit(db=db, actor_id=str(current_user.id), actor_type="staff",
@@ -197,7 +274,7 @@ async def update_schedule(
                           source_module="healthcare_scheduling")
         db.commit()
 
-    row = db.execute(text("SELECT * FROM hcs_provider_schedules WHERE id=:id"), {"id": sid}).mappings().one()
+    row = db.execute(text(_SCHED_SELECT + " WHERE ps.id=:id"), {"id": sid}).mappings().one()
     return ScheduleResponse(**dict(row))
 
 
@@ -213,7 +290,7 @@ async def deactivate_schedule(
     current_user=Depends(get_current_user),
     _role=Depends(has_hc_permission(_MANAGERS)),
 ):
-    tid = str(current_user.tenant_id)
+    tid = hc_shared_tenant_id()
     sid = str(schedule_id)
     result = db.execute(
         text("UPDATE hcs_provider_schedules SET is_active=false, updated_at=NOW() WHERE id=:id AND tenant_id=:tid"),
@@ -247,7 +324,7 @@ async def block_datetime_range(
     current_user=Depends(get_current_user),
     _role=Depends(has_hc_permission([HCRole.clinic_owner, HCRole.branch_manager, HCRole.doctor])),
 ):
-    tid = str(current_user.tenant_id)
+    tid = hc_shared_tenant_id()
     bid = str(branch_id)
     pid = str(provider_id)
 
@@ -301,3 +378,163 @@ async def block_datetime_range(
         reason=payload.reason, recurrence=payload.recurrence,
         flagged_appointment_ids=flagged_ids,
     )
+
+
+# ---------------------------------------------------------------------------
+# Per-date schedule overrides — substitution / unavailability
+# A weekly schedule recurs every week; an override replaces (or cancels) the
+# scheduled provider for ONE specific future date. day_of_week 0=Sunday..6=Sat.
+# ---------------------------------------------------------------------------
+
+def _dow_of(d: ddate) -> int:
+    """Sunday=0..Saturday=6 (matches JS Date.getDay() and the seed convention)."""
+    return (d.weekday() + 1) % 7
+
+
+def _load_schedule(db: Session, tid: str, bid: str, sid: str) -> dict:
+    row = db.execute(
+        text("SELECT * FROM hcs_provider_schedules WHERE id=:id AND tenant_id=:tid AND branch_id=:bid"),
+        dict(id=sid, tid=tid, bid=bid),
+    ).mappings().one_or_none()
+    if not row:
+        raise HTTPException(status_code=404, detail="Schedule not found")
+    return dict(row)
+
+
+@router.post(
+    "/branches/{branch_id}/schedules/{schedule_id}/overrides",
+    response_model=ScheduleOverrideResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Add a per-date override (unavailable / substitute doctor)",
+)
+async def create_override(
+    branch_id: uuid.UUID,
+    schedule_id: uuid.UUID,
+    payload: ScheduleOverrideCreate,
+    db: Session = Depends(healthcare_branch_session),
+    current_user=Depends(get_current_user),
+    _role=Depends(has_hc_permission(_MANAGERS)),
+):
+    tid = hc_shared_tenant_id()
+    bid = str(branch_id)
+    sid = str(schedule_id)
+    sched = _load_schedule(db, tid, bid, sid)
+
+    if payload.override_date < ddate.today():
+        raise HTTPException(status_code=422, detail="override_date must be today or in the future")
+    if _dow_of(payload.override_date) != sched["day_of_week"]:
+        raise HTTPException(
+            status_code=422,
+            detail="override_date must fall on the schedule's weekday",
+        )
+
+    sub_id = None
+    if payload.status == "substituted":
+        sub_id = str(payload.substitute_provider_id)
+        if sub_id == str(sched["provider_id"]):
+            raise HTTPException(status_code=422, detail="Substitute must differ from the scheduled provider")
+        _provider_in_tenant(db, tid, sub_id)
+
+    dup = db.execute(
+        text("SELECT id FROM hcs_schedule_overrides WHERE schedule_id=:sid AND override_date=:d"),
+        dict(sid=sid, d=payload.override_date),
+    ).fetchone()
+    if dup:
+        raise HTTPException(status_code=409, detail="An override already exists for this schedule on that date")
+
+    oid = str(generate_uuid())
+    db.execute(
+        text(
+            "INSERT INTO hcs_schedule_overrides "
+            "(id, tenant_id, branch_id, schedule_id, override_date, status, "
+            " substitute_provider_id, reason, created_by, created_at, updated_at) "
+            "VALUES (:id,:tid,:bid,:sid,:d,:st,:sub,:reason,:by,NOW(),NOW())"
+        ),
+        dict(id=oid, tid=tid, bid=bid, sid=sid, d=payload.override_date, st=payload.status,
+             sub=sub_id, reason=payload.reason, by=str(current_user.id)),
+    )
+    write_event_audit(db=db, actor_id=str(current_user.id), actor_type="staff",
+                      event_type="schedule.override.created", entity_type="schedule_override",
+                      entity_id=oid, tenant_id=tid, branch_id=bid,
+                      source_module="healthcare_scheduling")
+    db.commit()
+    row = db.execute(text(_OVR_SELECT + " WHERE o.id=:id"), {"id": oid}).mappings().one()
+    return ScheduleOverrideResponse(**dict(row))
+
+
+@router.get(
+    "/branches/{branch_id}/schedules/{schedule_id}/overrides",
+    response_model=ScheduleOverrideListResponse,
+    summary="List overrides for a schedule (upcoming first)",
+)
+async def list_schedule_overrides(
+    branch_id: uuid.UUID,
+    schedule_id: uuid.UUID,
+    db: Session = Depends(healthcare_branch_session),
+    current_user=Depends(get_current_user),
+    _role=Depends(has_hc_permission(_VIEWERS)),
+):
+    rows = db.execute(
+        text(
+            _OVR_SELECT +
+            " WHERE o.tenant_id=:tid AND o.branch_id=:bid AND o.schedule_id=:sid "
+            "ORDER BY o.override_date"
+        ),
+        dict(tid=hc_shared_tenant_id(), bid=str(branch_id), sid=str(schedule_id)),
+    ).mappings().all()
+    items = [ScheduleOverrideResponse(**dict(r)) for r in rows]
+    return ScheduleOverrideListResponse(overrides=items, total=len(items))
+
+
+@router.get(
+    "/branches/{branch_id}/schedule-overrides",
+    response_model=ScheduleOverrideListResponse,
+    summary="List all branch overrides in a date range",
+)
+async def list_branch_overrides(
+    branch_id: uuid.UUID,
+    date_from: Optional[ddate] = Query(None),
+    date_to: Optional[ddate] = Query(None),
+    db: Session = Depends(healthcare_branch_session),
+    current_user=Depends(get_current_user),
+    _role=Depends(has_hc_permission(_VIEWERS)),
+):
+    clauses = ["o.tenant_id=:tid", "o.branch_id=:bid"]
+    params = dict(tid=hc_shared_tenant_id(), bid=str(branch_id))
+    if date_from:
+        clauses.append("o.override_date >= :df"); params["df"] = date_from
+    if date_to:
+        clauses.append("o.override_date <= :dt"); params["dt"] = date_to
+    rows = db.execute(
+        text(_OVR_SELECT + " WHERE " + " AND ".join(clauses) + " ORDER BY o.override_date"),
+        params,
+    ).mappings().all()
+    items = [ScheduleOverrideResponse(**dict(r)) for r in rows]
+    return ScheduleOverrideListResponse(overrides=items, total=len(items))
+
+
+@router.delete(
+    "/branches/{branch_id}/schedule-overrides/{override_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Remove an override (revert to the normal weekly schedule)",
+)
+async def delete_override(
+    branch_id: uuid.UUID,
+    override_id: uuid.UUID,
+    db: Session = Depends(healthcare_branch_session),
+    current_user=Depends(get_current_user),
+    _role=Depends(has_hc_permission(_MANAGERS)),
+):
+    tid = hc_shared_tenant_id()
+    oid = str(override_id)
+    result = db.execute(
+        text("DELETE FROM hcs_schedule_overrides WHERE id=:id AND tenant_id=:tid AND branch_id=:bid"),
+        dict(id=oid, tid=tid, bid=str(branch_id)),
+    )
+    if result.rowcount == 0:
+        raise HTTPException(status_code=404, detail="Override not found")
+    write_event_audit(db=db, actor_id=str(current_user.id), actor_type="staff",
+                      event_type="schedule.override.deleted", entity_type="schedule_override",
+                      entity_id=oid, tenant_id=tid, branch_id=str(branch_id),
+                      source_module="healthcare_scheduling")
+    db.commit()

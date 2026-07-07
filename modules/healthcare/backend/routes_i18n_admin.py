@@ -14,6 +14,7 @@ PUT /api/v1/modules/healthcare/i18n-overrides/{locale}/{key}
     Auth: Clinic Owner; upsert override
 """
 from __future__ import annotations
+from modules.healthcare.sdk.hc_tenant import hc_shared_tenant_id
 
 import json
 import os
@@ -86,7 +87,7 @@ async def get_i18n_overrides(
     overrides = (
         db.query(HCI18nOverride)
         .filter(
-            HCI18nOverride.tenant_id == str(current_user.tenant_id),
+            HCI18nOverride.tenant_id == hc_shared_tenant_id(),
             HCI18nOverride.locale == locale,
         )
         .all()
@@ -117,7 +118,7 @@ async def upsert_i18n_override(
     existing = (
         db.query(HCI18nOverride)
         .filter(
-            HCI18nOverride.tenant_id == str(current_user.tenant_id),
+            HCI18nOverride.tenant_id == hc_shared_tenant_id(),
             HCI18nOverride.locale == locale,
             HCI18nOverride.translation_key == key,
         )
@@ -129,7 +130,7 @@ async def upsert_i18n_override(
         existing.updated_at = datetime.utcnow()
     else:
         override = HCI18nOverride(
-            tenant_id=str(current_user.tenant_id),
+            tenant_id=hc_shared_tenant_id(),
             locale=locale,
             translation_key=key,
             translation_value=payload.value,

@@ -125,6 +125,12 @@ def healthcare_branch_session(
     Clinic owner bypass: X-Branch-ID: ALL skips per-branch verification.
     """
     from modules.healthcare.sdk._branch_access import verify_branch_access
+    from modules.healthcare.sdk.hc_tenant import resolve_shared_tenant_id
+
+    # SaaS tenancy (ADR-HC-010): all hc data now lives on the shared SAAS tenant, which
+    # no longer matches the staff user's platform tenant. Scope every hc access to the
+    # SAAS tenant and let the Company GUC isolate clinics.
+    hc_tenant_id = resolve_shared_tenant_id(db)
 
     # Determine effective branch_id
     is_clinic_owner = _is_clinic_owner(current_user)
@@ -146,11 +152,12 @@ def healthcare_branch_session(
             )
         effective_branch_id = "ALL"
     else:
-        # Verify the user has access to this specific branch
+        # Verify the user has access to this specific branch (hc_branch_staff is on
+        # the SAAS tenant post-migration, so check against the SAAS tenant).
         has_access = verify_branch_access(
             db=db,
             user_id=str(current_user.id),
-            tenant_id=str(current_user.tenant_id),
+            tenant_id=hc_tenant_id,
             branch_id=x_branch_id,
         )
         if not has_access:
@@ -160,11 +167,25 @@ def healthcare_branch_session(
             )
         effective_branch_id = x_branch_id
 
-    # Set PostgreSQL session-level variables for RLS enforcement
-    tenant_id = str(current_user.tenant_id) if current_user.tenant_id else ""
+    # Resolve the caller's Company (ADR-HC-010 D2/D4a): for a specific branch it is the
+    # branch's platform_company_id; for the owner 'ALL' rollup it is the clinic_owner
+    # sentinel's company_id (hc_branch_staff, branch_id IS NULL). This is the outer fence
+    # — the owner sees all branches OF THEIR Company, never another Company.
+    company_id = _resolve_company_id(db, current_user, effective_branch_id, hc_tenant_id)
+
+    # Override the ORM tenant scope to the SAAS tenant so __tenant_scoped__ hc reads hit
+    # the migrated data (the platform dependency set it to the staff user's old tenant).
     try:
-        db.execute(text("SELECT set_config('app.tenant_id', :val, true)"), {"val": str(tenant_id)})
+        from app.core.tenant.scope import set_tenant_scope
+        set_tenant_scope(hc_tenant_id)
+    except Exception as exc:
+        logger.warning("Could not override hc tenant scope: %s", exc)
+
+    # Set PostgreSQL session-level variables for RLS enforcement (tenant + branch + Company).
+    try:
+        db.execute(text("SELECT set_config('app.tenant_id', :val, true)"), {"val": hc_tenant_id})
         db.execute(text("SELECT set_config('app.branch_id', :val, true)"), {"val": str(effective_branch_id)})
+        db.execute(text("SELECT set_config('app.company_id', :val, true)"), {"val": company_id or ""})
     except Exception as exc:
         logger.warning("Could not set PostgreSQL session vars: %s", exc)
 
@@ -175,6 +196,68 @@ def healthcare_branch_session(
         yield db
     finally:
         clear_branch_scope(db)
+
+
+def _resolve_company_id(db, current_user, effective_branch_id: str, hc_tenant_id: str) -> Optional[str]:
+    """Resolve the caller's single Company id (companies.id) for the RLS app.company_id GUC.
+
+    - specific branch  -> hc_branches.platform_company_id for that branch.
+    - owner 'ALL' scope -> the clinic_owner sentinel's company_id (branch_id IS NULL).
+    Raw SQL (no ORM dependency), mirroring _branch_access.
+    """
+    try:
+        if effective_branch_id == "ALL":
+            row = db.execute(
+                text(
+                    "SELECT company_id FROM hc_branch_staff "
+                    "WHERE user_id = :uid AND branch_id IS NULL AND company_id IS NOT NULL "
+                    "LIMIT 1"
+                ),
+                {"uid": str(current_user.id)},
+            ).fetchone()
+            return str(row[0]) if row and row[0] else None
+        row = db.execute(
+            text("SELECT platform_company_id FROM hc_branches WHERE id = :bid LIMIT 1"),
+            {"bid": str(effective_branch_id)},
+        ).fetchone()
+        return str(row[0]) if row and row[0] else None
+    except Exception as exc:
+        logger.warning("Could not resolve hc company_id: %s", exc)
+        return None
+
+
+def resolve_caller_company_id(db, user_id: str) -> Optional[str]:
+    """Resolve a staff caller's single Company id (companies.id) from hc_branch_staff.
+
+    Company-scoped registry routes that use the plain tenant session (not
+    healthcare_branch_session, so no app.company_id GUC) call this to fence
+    enumeration by Company explicitly — necessary because the dev DB role bypasses
+    RLS, and correct as defence-in-depth in production. A staff user belongs to one
+    clinic business: prefer the clinic_owner sentinel's company_id, else the
+    platform_company_id of any branch they staff.
+    """
+    try:
+        row = db.execute(
+            text(
+                "SELECT company_id FROM hc_branch_staff "
+                "WHERE user_id = :uid AND branch_id IS NULL AND company_id IS NOT NULL LIMIT 1"
+            ),
+            {"uid": str(user_id)},
+        ).fetchone()
+        if row and row[0]:
+            return str(row[0])
+        row = db.execute(
+            text(
+                "SELECT b.platform_company_id FROM hc_branch_staff s "
+                "JOIN hc_branches b ON b.id = s.branch_id "
+                "WHERE s.user_id = :uid AND b.platform_company_id IS NOT NULL LIMIT 1"
+            ),
+            {"uid": str(user_id)},
+        ).fetchone()
+        return str(row[0]) if row and row[0] else None
+    except Exception as exc:
+        logger.warning("Could not resolve caller company_id: %s", exc)
+        return None
 
 
 def _is_clinic_owner(user) -> bool:
@@ -192,4 +275,5 @@ __all__ = [
     "healthcare_branch_session",
     "set_branch_scope",
     "clear_branch_scope",
+    "resolve_caller_company_id",
 ]

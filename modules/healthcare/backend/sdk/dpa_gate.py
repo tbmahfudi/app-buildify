@@ -8,6 +8,7 @@ consent_type="clinic_dpa" scoped to the calling tenant.  Raises HTTP 403
 with a localised message if the DPA record is missing.
 """
 from __future__ import annotations
+from modules.healthcare.sdk.hc_tenant import hc_shared_tenant_id
 
 from typing import Optional
 
@@ -33,7 +34,7 @@ def require_dpa(
 
     Raises HTTP 403 with a localised message if missing.
     """
-    tenant_id: str = str(current_user.tenant_id)
+    tenant_id: str = hc_shared_tenant_id()
     locale: str = getattr(current_user, "locale", "id-ID") or "id-ID"
 
     row = db.execute(

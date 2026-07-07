@@ -39,6 +39,9 @@ class PatientTokenData:
     phone: str
     roles: list[str]
     tenant_id: Optional[str] = None
+    company_id: Optional[str] = None       # `cid` — active patient's Company (ADR-HC-010 D5)
+    account_user_id: Optional[str] = None  # `acct` — household account holder (platform users.id)
+    on_behalf_of: bool = False             # `obo` — active patient is a managed dependent, not self
 
     def require_tenant(self) -> str:
         """
@@ -55,6 +58,22 @@ class PatientTokenData:
                 headers={"WWW-Authenticate": "Bearer"},
             )
         return self.tenant_id
+
+    def require_company(self) -> str:
+        """
+        Return the token's company_id (ADR-HC-010 D5), or raise HTTP 401 if absent.
+
+        Under the shared SaaS tenant, Company is the patient isolation key, so any
+        cross-patient path (household link/switch) must fence on Company. A token
+        minted without `cid` cannot be Company-scoped safely → DENY (re-login mints it).
+        """
+        if not self.company_id:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Patient token is missing company scope. Please log in again.",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        return self.company_id
 
 
 def _decode_patient_payload(token: str) -> PatientTokenData:
@@ -94,6 +113,9 @@ def _decode_patient_payload(token: str) -> PatientTokenData:
         phone=phone,
         roles=roles,
         tenant_id=tenant_id,
+        company_id=payload.get("cid"),
+        account_user_id=payload.get("acct"),
+        on_behalf_of=bool(payload.get("obo", False)),
     )
 
 
