@@ -25,7 +25,7 @@ def _get_public_db():
     """Plain unauthenticated DB session for public endpoints."""
     yield from _platform_get_db()
 
-from modules.healthcare.models import HCPatient, HCPatientConsent
+from modules.healthcare.models import HCPatient, HCPatientConsent, HCPatientRelationship
 from modules.healthcare.schemas.patient_auth import (
     OTPSendRequest,
     OTPSendResponse,
@@ -48,6 +48,36 @@ from modules.healthcare.sdk.phi_audit import write_event_audit
 router = APIRouter(tags=["healthcare-patient-auth"])
 
 _OTP_VERIFIED_TTL = 900  # 15 minutes
+
+
+def _resolve_registration_scope(db: Session, reg_tenant: str) -> tuple[str, Optional[str]]:
+    """Resolve (tenant_id, company_id) for a NEW patient under the SaaS model (ADR-HC-010).
+
+    Order of preference:
+      1. explicit app.company_id GUC (future portal, schema-hc-04 §C) -> (company.tenant_id, company_id)
+      2. migration map (reg_tenant is a legacy per-clinic tenant) -> (saas_tenant, new_company_id)
+      3. fallback: (reg_tenant, None) — leaves company_id NULL so the NOT NULL constraint surfaces a
+         clear error rather than silently mis-scoping (full slug->Company onboarding is Phase 5).
+    """
+    try:
+        guc = db.execute(text("SELECT current_setting('app.company_id', true)")).fetchone()
+        cid = guc[0] if guc and guc[0] else None
+        if cid:
+            trow = db.execute(
+                text("SELECT tenant_id FROM companies WHERE id = :cid LIMIT 1"), {"cid": cid}
+            ).fetchone()
+            if trow and trow[0]:
+                return str(trow[0]), str(cid)
+        mrow = db.execute(
+            text("SELECT saas_tenant_id, new_company_id FROM saas_migration_map WHERE old_tenant_id = :t LIMIT 1"),
+            {"t": reg_tenant},
+        ).fetchone()
+        if mrow:
+            return str(mrow[0]), str(mrow[1])
+    except Exception as exc:  # pragma: no cover — defensive
+        import logging
+        logging.getLogger(__name__).warning("registration scope resolution failed: %s", exc)
+    return reg_tenant, None
 
 
 def _get_redis():
@@ -140,12 +170,18 @@ async def patient_register(
         )
 
     # Step 4 — Create patient (PHI columns transparently encrypted by EncryptedPHIType)
-    # tenant_id is resolved from the OTP token payload (tenant_code field)
+    # Resolve the registration Company + hc tenant (ADR-HC-010): under the shared SaaS
+    # tenant, company_id is the NOT NULL isolation key. Prefer an explicit app.company_id
+    # GUC (future portal, schema-hc-04 §C); otherwise map the registration tenant → SAAS
+    # Company via the migration map so existing per-clinic portal contexts keep working.
+    # (Full slug→Company onboarding is Phase 5 / epic-20.)
     tenant_row = db.execute(text("SELECT current_setting('app.tenant_id', true)")).fetchone()
-    tenant_id: str = tenant_row[0] if tenant_row and tenant_row[0] else "global"
+    reg_tenant: str = tenant_row[0] if tenant_row and tenant_row[0] else "global"
+    tenant_id, company_id = _resolve_registration_scope(db, reg_tenant)
 
     patient = HCPatient(
         tenant_id=tenant_id,
+        company_id=company_id,
         full_name=payload.full_name,
         date_of_birth=payload.date_of_birth,
         phone=payload.phone,
@@ -165,6 +201,7 @@ async def patient_register(
     # Step 5 — Consent record
     consent = HCPatientConsent(
         tenant_id=tenant_id,
+        company_id=company_id,
         patient_id=patient_id,
         consent_type="data_processing",
         consent_version=payload.consent_version,
@@ -193,8 +230,10 @@ async def patient_register(
     db.commit()
 
     # Step 7 — Issue tokens
-    access_token = create_patient_access_token(patient_id=patient_id, phone=payload.phone, tenant_id=tenant_id)
-    refresh_token = create_patient_refresh_token(patient_id=patient_id, tenant_id=tenant_id)
+    access_token = create_patient_access_token(
+        patient_id=patient_id, phone=payload.phone, tenant_id=tenant_id, company_id=company_id)
+    refresh_token = create_patient_refresh_token(
+        patient_id=patient_id, tenant_id=tenant_id, company_id=company_id)
 
     response.set_cookie(
         key="patient_refresh_token",
@@ -315,7 +354,7 @@ async def patient_token(
     # Lookup patient by phone hash
     row = db.execute(
         text(
-            "SELECT id, tenant_id FROM hc_patients "
+            "SELECT id, tenant_id, company_id FROM hc_patients "
             "WHERE phone_hash = :ph AND status = 'active' AND deleted_at IS NULL "
             "LIMIT 1"
         ),
@@ -330,8 +369,11 @@ async def patient_token(
 
     patient_id = str(row[0])
     tenant_id = str(row[1]) if row[1] else None
-    access_token = create_patient_access_token(patient_id=patient_id, phone=payload.phone, tenant_id=tenant_id)
-    refresh_token = create_patient_refresh_token(patient_id=patient_id, tenant_id=tenant_id)
+    company_id = str(row[2]) if row[2] else None  # ADR-HC-010 D5 Company claim
+    access_token = create_patient_access_token(
+        patient_id=patient_id, phone=payload.phone, tenant_id=tenant_id, company_id=company_id)
+    refresh_token = create_patient_refresh_token(
+        patient_id=patient_id, tenant_id=tenant_id, company_id=company_id)
 
     response.set_cookie(
         key="patient_refresh_token",
@@ -347,6 +389,163 @@ async def patient_token(
         access_token=access_token,
         patient_id=patient_id,
         message="Login successful.",
+    )
+
+
+# ---------------------------------------------------------------------------
+# Platform-user → patient session bridge
+#
+# A platform User carrying the 'patient' role logs in through the normal core
+# login (/api/v1/auth/login, served by the platform backend) and receives a
+# platform JWT. That JWT cannot authorize the patient portal (its sub is a
+# users.id, not an hc_patients.id, and the /patients/me/* routes expect a
+# patient token). This endpoint exchanges a valid platform JWT for a patient
+# access token, provided the platform user is linked to an hc_patients row
+# (hc_patients.user_id = users.id). Both services share SECRET_KEY, so the
+# platform token validates here.
+# ---------------------------------------------------------------------------
+
+def _resolve_active_patient(db: Session, account_user_id: str, requested_patient_id: Optional[str] = None):
+    """
+    Resolve the active patient for a household account holder (ADR-HC-009 V-D7).
+
+    Returns (HCPatient, is_self) or (None, False). Authority is the
+    hc_patient_relationships table (active rows for this account holder); the
+    active patient defaults to the caller's `self` patient, or a specifically
+    requested patient when they hold an active relationship to it.
+    """
+    rels = db.execute(
+        text(
+            "SELECT patient_id, relationship FROM hc_patient_relationships "
+            "WHERE account_user_id = :uid AND status = 'active'"
+        ),
+        {"uid": account_user_id},
+    ).fetchall()
+
+    if not rels:
+        # Defensive fallback for a pre-backfill direct link (hc_patients.user_id).
+        pat = (
+            db.query(HCPatient)
+            .filter(
+                HCPatient.user_id == account_user_id,
+                HCPatient.status == "active",
+                HCPatient.deleted_at.is_(None),
+            )
+            .first()
+        )
+        return (pat, True) if pat is not None else (None, False)
+
+    rel_map = {str(r[0]): r[1] for r in rels}
+    if requested_patient_id is not None:
+        if requested_patient_id not in rel_map:
+            return None, False  # caller is not authorized to act for this patient
+        target_id = requested_patient_id
+    else:
+        self_ids = [pid for pid, rel in rel_map.items() if rel == "self"]
+        target_id = self_ids[0] if self_ids else next(iter(rel_map))
+
+    pat = (
+        db.query(HCPatient)
+        .filter(
+            HCPatient.id == target_id,
+            HCPatient.status == "active",
+            HCPatient.deleted_at.is_(None),
+        )
+        .first()
+    )
+    if pat is None:
+        return None, False
+    return pat, (rel_map.get(str(pat.id)) == "self")
+
+
+@router.post(
+    "/api/v1/patients/auth/from-platform",
+    response_model=PatientTokenResponse,
+    summary="Exchange a platform patient-user JWT for a patient portal session",
+)
+async def patient_session_from_platform(
+    request: Request,
+    response: Response,
+    patient_id: Optional[str] = None,
+    db: Session = Depends(_get_public_db),
+) -> PatientTokenResponse:
+    """Mint a patient portal token for a platform user linked to an hc_patient."""
+    import jwt as _jwt
+
+    authz = request.headers.get("authorization", "")
+    if not authz.lower().startswith("bearer "):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Missing bearer token.",
+        )
+    platform_token = authz.split(" ", 1)[1].strip()
+
+    secret = os.environ.get("SECRET_KEY", "")
+    if not secret:
+        raise HTTPException(status_code=500, detail="Server auth misconfigured.")
+
+    try:
+        payload = _jwt.decode(platform_token, secret, algorithms=["HS256"])
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired token.",
+        )
+
+    # Reject patient tokens — this endpoint is for platform-user tokens only.
+    if payload.get("roles") == ["patient"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Already a patient session.",
+        )
+
+    user_id = payload.get("sub")
+    if not user_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token missing subject.",
+        )
+
+    # Household model (ADR-HC-009 v2): the account holder may act for a set of
+    # patients (self + managed dependents). Authority is hc_patient_relationships;
+    # the active patient defaults to `self` or a requested patient the caller is
+    # authorized for. The minted token carries the ACTIVE patient's tenant_id plus
+    # `acct` (account holder) and `obo` (acting on behalf of a dependent).
+    patient, is_self = _resolve_active_patient(db, user_id, requested_patient_id=patient_id)
+    if patient is None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No patient portal profile is linked to this account.",
+        )
+
+    active_patient_id = str(patient.id)
+    tenant_id = str(patient.tenant_id) if patient.tenant_id else None
+    company_id = str(patient.company_id) if patient.company_id else None  # ADR-HC-010 D5
+    access_token = create_patient_access_token(
+        patient_id=active_patient_id,
+        phone=patient.phone,
+        tenant_id=tenant_id,
+        company_id=company_id,
+        account_user_id=user_id,
+        on_behalf_of=not is_self,
+    )
+    refresh_token = create_patient_refresh_token(
+        patient_id=active_patient_id, tenant_id=tenant_id, company_id=company_id)
+
+    response.set_cookie(
+        key="patient_refresh_token",
+        value=refresh_token,
+        httponly=True,
+        secure=True,
+        samesite="strict",
+        max_age=7 * 24 * 3600,
+        path="/api/v1/patients/auth",
+    )
+
+    return PatientTokenResponse(
+        access_token=access_token,
+        patient_id=active_patient_id,
+        message="Portal session created.",
     )
 
 
@@ -382,10 +581,12 @@ async def patient_refresh(
         patient_id=token_data.patient_id,
         phone=token_data.phone,
         tenant_id=token_data.tenant_id,
+        company_id=token_data.company_id,
     )
     new_refresh = create_patient_refresh_token(
         patient_id=token_data.patient_id,
         tenant_id=token_data.tenant_id,
+        company_id=token_data.company_id,
     )
 
     response.set_cookie(

@@ -10,6 +10,7 @@ PUT    /api/v1/modules/healthcare/branches/{id}  — update; Clinic Owner, Branc
 DELETE /api/v1/modules/healthcare/branches/{id}  — soft delete; Clinic Owner
 """
 from __future__ import annotations
+from modules.healthcare.sdk.hc_tenant import hc_shared_tenant_id
 
 import uuid
 from datetime import datetime
@@ -49,7 +50,7 @@ async def create_branch(
     existing_count = (
         db.query(HCBranch)
         .filter(
-            HCBranch.tenant_id == str(current_user.tenant_id),
+            HCBranch.tenant_id == hc_shared_tenant_id(),
             HCBranch.deleted_at.is_(None),
         )
         .count()
@@ -61,7 +62,7 @@ async def create_branch(
         )
 
     branch = HCBranch(
-        tenant_id=str(current_user.tenant_id),
+        tenant_id=hc_shared_tenant_id(),
         **payload.model_dump(),
     )
     db.add(branch)
@@ -74,7 +75,7 @@ async def create_branch(
         event_type="branch.created",
         entity_type="branch",
         entity_id=str(branch.id),
-        tenant_id=str(current_user.tenant_id),
+        tenant_id=hc_shared_tenant_id(),
         ip=request.client.host if request.client else None,
         ua=request.headers.get("user-agent"),
     )
@@ -100,7 +101,7 @@ async def list_branches(
     branches = (
         db.query(HCBranch)
         .filter(
-            HCBranch.tenant_id == str(current_user.tenant_id),
+            HCBranch.tenant_id == hc_shared_tenant_id(),
             HCBranch.deleted_at.is_(None),
         )
         .offset(offset)
@@ -125,7 +126,7 @@ async def get_branch(
         db.query(HCBranch)
         .filter(
             HCBranch.id == branch_id,
-            HCBranch.tenant_id == str(current_user.tenant_id),
+            HCBranch.tenant_id == hc_shared_tenant_id(),
             HCBranch.deleted_at.is_(None),
         )
         .first()
@@ -152,7 +153,7 @@ async def update_branch(
         db.query(HCBranch)
         .filter(
             HCBranch.id == branch_id,
-            HCBranch.tenant_id == str(current_user.tenant_id),
+            HCBranch.tenant_id == hc_shared_tenant_id(),
             HCBranch.deleted_at.is_(None),
         )
         .first()
@@ -170,7 +171,7 @@ async def update_branch(
         event_type="branch.updated",
         entity_type="branch",
         entity_id=str(branch.id),
-        tenant_id=str(current_user.tenant_id),
+        tenant_id=hc_shared_tenant_id(),
         branch_id=str(branch_id),
         ip=request.client.host if request.client else None,
         ua=request.headers.get("user-agent"),
@@ -197,7 +198,7 @@ async def delete_branch(
         db.query(HCBranch)
         .filter(
             HCBranch.id == branch_id,
-            HCBranch.tenant_id == str(current_user.tenant_id),
+            HCBranch.tenant_id == hc_shared_tenant_id(),
             HCBranch.deleted_at.is_(None),
         )
         .first()
@@ -214,7 +215,7 @@ async def delete_branch(
         event_type="branch.deleted",
         entity_type="branch",
         entity_id=str(branch.id),
-        tenant_id=str(current_user.tenant_id),
+        tenant_id=hc_shared_tenant_id(),
         branch_id=str(branch_id),
         ip=request.client.host if request.client else None,
         ua=request.headers.get("user-agent"),

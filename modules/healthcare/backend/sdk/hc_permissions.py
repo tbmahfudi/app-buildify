@@ -118,10 +118,14 @@ def has_hc_permission(
                 detail="Staff credentials required for this endpoint",
             )
 
+        # hc_branch_staff is on the shared SAAS tenant (ADR-HC-010) — resolve the role
+        # against it, not the staff user's platform tenant.
+        from modules.healthcare.sdk.hc_tenant import resolve_shared_tenant_id
+
         caller_role = get_caller_hc_role(
             db=db,
             user_id=str(current_user.id),
-            tenant_id=str(current_user.tenant_id),
+            tenant_id=resolve_shared_tenant_id(db),
             branch_id=require_branch_id,
         )
 

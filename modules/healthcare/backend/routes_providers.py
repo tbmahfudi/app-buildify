@@ -9,6 +9,7 @@ PUT    /api/v1/modules/healthcare/branches/{branch_id}/providers/{provider_id}
 DELETE /api/v1/modules/healthcare/branches/{branch_id}/providers/{provider_id}
 """
 from __future__ import annotations
+from modules.healthcare.sdk.hc_tenant import hc_shared_tenant_id
 
 import uuid
 from datetime import datetime
@@ -44,7 +45,7 @@ async def create_provider(
     _=Depends(has_hc_permission([HCRole.clinic_owner, HCRole.branch_manager])),
 ):
     provider = HCProvider(
-        tenant_id=str(current_user.tenant_id),
+        tenant_id=hc_shared_tenant_id(),
         branch_id=str(branch_id),
         user_id=payload.user_id,
         provider_type=payload.provider_type,
@@ -64,7 +65,7 @@ async def create_provider(
         event_type="provider.created",
         entity_type="provider",
         entity_id=str(provider.id),
-        tenant_id=str(current_user.tenant_id),
+        tenant_id=hc_shared_tenant_id(),
         branch_id=str(branch_id),
         ip=request.client.host if request.client else None,
         ua=request.headers.get("user-agent"),
@@ -92,7 +93,7 @@ async def list_providers(
     providers = (
         db.query(HCProvider)
         .filter(
-            HCProvider.tenant_id == str(current_user.tenant_id),
+            HCProvider.tenant_id == hc_shared_tenant_id(),
             HCProvider.branch_id == str(branch_id),
         )
         .offset(offset)
@@ -120,7 +121,7 @@ async def update_provider(
         db.query(HCProvider)
         .filter(
             HCProvider.id == provider_id,
-            HCProvider.tenant_id == str(current_user.tenant_id),
+            HCProvider.tenant_id == hc_shared_tenant_id(),
             HCProvider.branch_id == str(branch_id),
         )
         .first()
@@ -138,7 +139,7 @@ async def update_provider(
         event_type="provider.updated",
         entity_type="provider",
         entity_id=str(provider.id),
-        tenant_id=str(current_user.tenant_id),
+        tenant_id=hc_shared_tenant_id(),
         branch_id=str(branch_id),
         ip=request.client.host if request.client else None,
         ua=request.headers.get("user-agent"),
@@ -166,7 +167,7 @@ async def delete_provider(
         db.query(HCProvider)
         .filter(
             HCProvider.id == provider_id,
-            HCProvider.tenant_id == str(current_user.tenant_id),
+            HCProvider.tenant_id == hc_shared_tenant_id(),
             HCProvider.branch_id == str(branch_id),
             HCProvider.is_active == True,
         )
@@ -184,7 +185,7 @@ async def delete_provider(
         event_type="provider.deleted",
         entity_type="provider",
         entity_id=str(provider.id),
-        tenant_id=str(current_user.tenant_id),
+        tenant_id=hc_shared_tenant_id(),
         branch_id=str(branch_id),
         ip=request.client.host if request.client else None,
         ua=request.headers.get("user-agent"),
