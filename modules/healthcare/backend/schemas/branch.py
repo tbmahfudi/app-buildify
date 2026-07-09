@@ -20,6 +20,7 @@ class BranchCreate(BaseModel):
     operating_hours: dict[str, Any] = Field(default_factory=dict)
     status: str = Field("active", pattern="^(active|inactive|suspended)$")
     online_booking: bool = True
+    public_visible: bool = True
     default_locale: str = Field("id-ID", pattern="^(id-ID|en-US)$")
     appointment_types: list[Any] = Field(default_factory=list)
 
@@ -35,6 +36,7 @@ class BranchUpdate(BaseModel):
     operating_hours: Optional[dict[str, Any]] = None
     status: Optional[str] = Field(None, pattern="^(active|inactive|suspended)$")
     online_booking: Optional[bool] = None
+    public_visible: Optional[bool] = None
     default_locale: Optional[str] = Field(None, pattern="^(id-ID|en-US)$")
     appointment_types: Optional[list[Any]] = None
 
@@ -55,8 +57,11 @@ class BranchResponse(BaseModel):
     operating_hours: dict[str, Any]
     status: str
     online_booking: bool
+    public_visible: bool
     default_locale: str
     appointment_types: list[Any]
+    platform_company_id: Optional[str] = None
+    platform_branch_id: Optional[str] = None
     created_at: datetime
     updated_at: datetime
     deleted_at: Optional[datetime]

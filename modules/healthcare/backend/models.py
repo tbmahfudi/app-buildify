@@ -18,6 +18,7 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    text,
 )
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 
@@ -66,7 +67,17 @@ class HCBranch(Base):
     deleted_at = Column(DateTime, nullable=True)
 
     __table_args__ = (
-        UniqueConstraint("tenant_id", "slug", name="uq_hc_branches_tenant_slug"),
+        # Company-scoped slug uniqueness (ADR-HC-010 / epic-20 20.2): all clinics share
+        # the SaaS tenant, so slugs are unique per Company, not per tenant. Partial on
+        # deleted_at IS NULL so a slug frees up after soft-delete. See
+        # migrations/saas_phase5_branch_slug_rekey.sql.
+        Index(
+            "uq_hc_branches_company_slug",
+            "platform_company_id",
+            "slug",
+            unique=True,
+            postgresql_where=text("deleted_at IS NULL"),
+        ),
         CheckConstraint("status IN ('active','inactive','suspended')", name="ck_hc_branches_status"),
         CheckConstraint("default_locale IN ('id-ID','en-US')", name="ck_hc_branches_locale"),
     )

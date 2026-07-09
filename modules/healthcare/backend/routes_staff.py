@@ -22,6 +22,7 @@ from sqlalchemy.orm import Session
 from modules.sdk.dependencies import tenant_scoped_session, get_current_user
 from modules.healthcare.models import HCBranchStaff
 from modules.healthcare.schemas.staff import StaffInvite, StaffResponse
+from modules.healthcare.sdk.branch_scope import resolve_caller_company_id
 from modules.healthcare.sdk.hc_permissions import HCRole, has_hc_permission
 from modules.healthcare.sdk.phi_audit import write_event_audit
 
@@ -29,6 +30,27 @@ router = APIRouter(
     prefix="/api/v1/modules/healthcare",
     tags=["healthcare-staff"],
 )
+
+
+def _branch_company_or_404(db: Session, current_user, branch_id) -> str:
+    """Ensure the target branch belongs to the caller's Company; else 404.
+
+    Staff endpoints are addressed by branch_id in the path — without this a caller
+    could enumerate or mutate another clinic's staff by guessing a branch id on the
+    shared SaaS tenant (ADR-HC-010). Returns the caller's Company id.
+    """
+    from sqlalchemy import text
+
+    caller_company = resolve_caller_company_id(db, str(current_user.id))
+    if not caller_company:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Branch not found")
+    row = db.execute(
+        text("SELECT platform_company_id FROM hc_branches WHERE id = :bid AND deleted_at IS NULL"),
+        {"bid": str(branch_id)},
+    ).fetchone()
+    if not row or not row[0] or str(row[0]) != str(caller_company):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Branch not found")
+    return caller_company
 
 
 @router.post(
@@ -51,6 +73,9 @@ async def invite_staff(
     The invitation token should be emailed to the user (email sending handled by a
     separate notification service, not in scope for this endpoint).
     """
+    # Fence to the caller's Company: the branch must belong to it (else 404).
+    caller_company = _branch_company_or_404(db, current_user, branch_id)
+
     # Resolve user_id from email via platform users table (simplified lookup)
     from sqlalchemy import text
     user_row = db.execute(
@@ -86,6 +111,7 @@ async def invite_staff(
     staff = HCBranchStaff(
         tenant_id=hc_shared_tenant_id(),
         branch_id=str(branch_id),
+        company_id=caller_company,  # Company-anchor invited staff (defence-in-depth)
         user_id=target_user_id,
         role=payload.role,
         status="pending",
@@ -124,6 +150,7 @@ async def list_branch_staff(
     current_user=Depends(get_current_user),
     _=Depends(has_hc_permission([HCRole.clinic_owner, HCRole.branch_manager])),
 ):
+    _branch_company_or_404(db, current_user, branch_id)
     staff = (
         db.query(HCBranchStaff)
         .filter(
@@ -148,6 +175,7 @@ async def remove_staff(
     current_user=Depends(get_current_user),
     _=Depends(has_hc_permission(HCRole.clinic_owner)),
 ):
+    _branch_company_or_404(db, current_user, branch_id)
     staff = (
         db.query(HCBranchStaff)
         .filter(
