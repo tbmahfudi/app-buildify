@@ -22,6 +22,7 @@ class HealthcareModule(BaseModule):
         from modules.healthcare.routes_patients import router as patients_router
         from modules.healthcare.routes_clinic_signup import router as clinic_signup_router
         from modules.healthcare.routes_patient_auth import router as patient_auth_router
+        from modules.healthcare.routes_household import router as household_router
         from modules.healthcare.routes_public import router as public_router
         from modules.healthcare.routes_i18n import router as i18n_router
         from modules.healthcare.routes_i18n_admin import router as i18n_admin_router
@@ -39,6 +40,7 @@ class HealthcareModule(BaseModule):
             patients_router,
             clinic_signup_router,
             patient_auth_router,
+            household_router,
             public_router,
             i18n_router,
             i18n_admin_router,

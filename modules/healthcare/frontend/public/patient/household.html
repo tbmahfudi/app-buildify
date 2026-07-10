@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <script src="/portal/healthcare/patient/_portal.js"></script>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Keluarga Saya</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:system-ui,sans-serif;background:var(--color-bg,#f5f5f5);color:var(--color-text,#1a1a1a);max-width:480px;margin:0 auto;min-height:100vh;padding-bottom:64px}
+    :root{--color-primary:#007bff;--color-primary-light:#e8f0fe;--color-bg:#f5f5f5;--color-surface:#fff;--color-text:#1a1a1a;--color-muted:#6b7280;--color-border:#e5e7eb;--color-success:#16a34a;--color-error:#dc2626;--color-warning:#f59e0b}
+    .flex-alert{display:flex;align-items:center;gap:8px;padding:12px 16px;border-radius:8px;font-size:14px;margin:8px 16px}
+    .flex-alert.success{background:#dcfce7;color:var(--color-success)}
+    .flex-alert.error{background:#fee2e2;color:var(--color-error)}
+    .flex-alert.info{background:var(--color-primary-light);color:var(--color-primary)}
+    .page-header{padding:16px;background:var(--color-surface);border-bottom:1px solid var(--color-border)}
+    .page-header h1{font-size:18px;font-weight:700}
+    .member{background:var(--color-surface);margin:10px 12px;border-radius:12px;padding:14px;display:flex;align-items:center;gap:12px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+    .member.active{outline:2px solid var(--color-primary)}
+    .avatar{width:44px;height:44px;border-radius:50%;background:var(--color-primary-light);display:flex;align-items:center;justify-content:center;color:var(--color-primary);font-weight:700;flex-shrink:0}
+    .member .name{font-weight:600;font-size:15px}
+    .member .rel{font-size:12px;color:var(--color-muted);text-transform:capitalize}
+    .chip{display:inline-block;font-size:11px;padding:2px 8px;border-radius:999px;background:var(--color-primary-light);color:var(--color-primary);margin-left:6px}
+    .btn{border:0;border-radius:8px;padding:9px 14px;font-size:13px;font-weight:600;cursor:pointer}
+    .btn-primary{background:var(--color-primary);color:#fff}
+    .btn-ghost{background:var(--color-primary-light);color:var(--color-primary)}
+    .btn-block{width:100%;padding:12px;font-size:14px}
+    .section{margin:16px 12px}
+    .section > .section-toggle{width:100%;text-align:left;background:var(--color-surface);border:1px solid var(--color-border);border-radius:10px;padding:12px 14px;font-size:14px;font-weight:600;cursor:pointer;display:flex;justify-content:space-between;align-items:center}
+    .form{background:var(--color-surface);border:1px solid var(--color-border);border-top:0;border-radius:0 0 10px 10px;padding:14px;display:none}
+    .form.open{display:block}
+    .form label{display:block;font-size:12px;color:var(--color-muted);margin:8px 0 4px}
+    .form input,.form select{width:100%;padding:10px;border:1px solid var(--color-border);border-radius:8px;font-size:14px}
+    .form .row{display:flex;gap:8px}.form .row > div{flex:1}
+    .consent{display:flex;gap:8px;align-items:flex-start;margin:12px 0;font-size:12px;color:var(--color-muted)}
+    .muted{color:var(--color-muted);font-size:13px;padding:0 14px}
+    .bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;background:var(--color-surface);border-top:1px solid var(--color-border);display:flex;z-index:100}
+    .bottom-nav a{flex:1;display:flex;flex-direction:column;align-items:center;padding:8px 4px;font-size:11px;color:var(--color-muted);text-decoration:none;gap:2px}
+    .bottom-nav a.active{color:var(--color-primary)}
+    .bottom-nav a svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8}
+  </style>
+</head>
+<body>
+<div id="alert-area"></div>
+
+<div class="page-header"><h1>Keluarga Saya</h1></div>
+
+<div id="members"><div class="muted" style="padding:16px">Memuat…</div></div>
+
+<div class="section">
+  <button class="section-toggle" data-toggle="add-form">Tambah Anggota Keluarga <span>＋</span></button>
+  <form class="form" id="add-form">
+    <label>Nama Lengkap</label>
+    <input name="full_name" required/>
+    <div class="row">
+      <div><label>Tanggal Lahir</label><input name="date_of_birth" type="date" required/></div>
+      <div><label>Jenis Kelamin</label>
+        <select name="gender"><option value="male">Laki-laki</option><option value="female">Perempuan</option><option value="other">Lainnya</option></select>
+      </div>
+    </div>
+    <label>Nomor Telepon</label>
+    <input name="phone" required/>
+    <label>Hubungan</label>
+    <select name="relationship">
+      <option value="child">Anak</option><option value="spouse">Pasangan</option>
+      <option value="parent">Orang Tua</option><option value="other">Lainnya</option>
+    </select>
+    <label class="consent"><input type="checkbox" name="consent" style="width:auto"/>
+      <span>Saya menyetujui pemrosesan data kesehatan atas nama anggota keluarga ini.</span></label>
+    <button type="submit" class="btn btn-primary btn-block">Daftarkan Anggota</button>
+  </form>
+</div>
+
+<div class="section">
+  <button class="section-toggle" data-toggle="link-form">Tautkan Pasien yang Sudah Ada <span>＋</span></button>
+  <form class="form" id="link-form">
+    <p class="muted" style="padding:0 0 8px">Permintaan tautan memerlukan persetujuan staf klinik.</p>
+    <label>ID Pasien</label><input name="patient_id" required/>
+    <label>ID Klinik (Cabang)</label><input name="branch_id" required/>
+    <label>Hubungan</label>
+    <select name="relationship">
+      <option value="spouse">Pasangan</option><option value="child">Anak</option>
+      <option value="parent">Orang Tua</option><option value="other">Lainnya</option>
+    </select>
+    <button type="submit" class="btn btn-ghost btn-block" style="margin-top:12px">Kirim Permintaan Tautan</button>
+  </form>
+</div>
+
+<nav class="bottom-nav">
+  <a href="/patient/portal"><svg viewBox="0 0 24 24"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1z"/><path d="M9 21V12h6v9"/></svg><span data-i18n="portal.title">Beranda</span></a>
+  <a href="/patient/appointments"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg><span data-i18n="appointments.title">Janji</span></a>
+  <a href="/patient/records"><svg viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/></svg><span data-i18n="records.title">Rekam Medis</span></a>
+  <a href="/patient/household" class="active"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M3 20c0-3 2.7-5 6-5s6 2 6 5M15 20c0-2 1.5-3.5 3.5-3.5S22 18 22 20"/></svg><span>Keluarga</span></a>
+</nav>
+
+<script src="household.js"></script>
+</body>
+</html>

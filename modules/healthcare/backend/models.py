@@ -18,6 +18,7 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    text,
 )
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 
@@ -49,6 +50,9 @@ class HCBranch(Base):
     operating_hours = Column(JSONB, nullable=False, default=dict)
     status = Column(String(20), nullable=False, default="active")
     online_booking = Column(Boolean, nullable=False, default=True)
+    # Per-branch public visibility in the clinic directory (epic-20 20.4); only meaningful when
+    # the owning Company opts in (companies.public_listing). Default visible.
+    public_visible = Column(Boolean, nullable=False, default=True)
     default_locale = Column(String(10), nullable=False, default="id-ID")
     appointment_types = Column(JSONB, nullable=False, default=list)
     # Platform-org linkage (ADR-HC-005) — read-only FKs to the platform org
@@ -63,7 +67,17 @@ class HCBranch(Base):
     deleted_at = Column(DateTime, nullable=True)
 
     __table_args__ = (
-        UniqueConstraint("tenant_id", "slug", name="uq_hc_branches_tenant_slug"),
+        # Company-scoped slug uniqueness (ADR-HC-010 / epic-20 20.2): all clinics share
+        # the SaaS tenant, so slugs are unique per Company, not per tenant. Partial on
+        # deleted_at IS NULL so a slug frees up after soft-delete. See
+        # migrations/saas_phase5_branch_slug_rekey.sql.
+        Index(
+            "uq_hc_branches_company_slug",
+            "platform_company_id",
+            "slug",
+            unique=True,
+            postgresql_where=text("deleted_at IS NULL"),
+        ),
         CheckConstraint("status IN ('active','inactive','suspended')", name="ck_hc_branches_status"),
         CheckConstraint("default_locale IN ('id-ID','en-US')", name="ck_hc_branches_locale"),
     )

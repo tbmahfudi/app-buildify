@@ -289,3 +289,108 @@ created: 2026-06-21
 - **Mobile:** Secondary; red banner full-width; acknowledge button large and prominent; log collapses to card.
 
 ## Story Count: Feature 5.1 (2) + 5.2 (1) + 5.3 (2) + 5.4 (1) = **6 stories**
+
+---
+
+## R2 Gap Addendum (v3)
+
+**Upstream:** BACKLOG v3 (2026-07-02). Closes two R2 laboratory gaps: a controlled result lifecycle with
+verification/approval before patients can see results, and specimen barcode / label printing for chain of
+custody. New stories continue Feature 5.3 (Result Management) and Feature 5.2 (Specimen Tracking)
+numbering. Existing content above is unchanged.
+
+### Story 5.3.3 [OPEN]
+**As a** Lab Tech, Lab Verifier, and Branch Manager,
+**I want to** move each result through an explicit lifecycle — input → verify → approve → publish —
+**so that** no result reaches the ordering doctor or the patient until a second qualified person has verified and approved it.
+
+**Backend AC:**
+- Result lifecycle state machine per result set: `entered → verified → approved → published` (plus `rejected_back` returning a result to `entered` for correction); each transition guarded; a published result is immutable except via a linked amendment.
+- `POST .../lab-orders/:order_id/results` (existing) — creates results in state `entered` (does NOT auto-publish; supersedes any prior implicit "submit makes visible" behavior).
+- `PUT .../results/:result_id/verify` — auth: Lab Tech / Lab Verifier **other than the entering user** (segregation of duties enforced; 403 if same actor); `entered → verified`; records `verified_by`, `verified_at`.
+- `PUT .../results/:result_id/approve` — auth: Lab Verifier or Branch Manager; `verified → approved`; records `approved_by`, `approved_at`.
+- `PUT .../results/:result_id/publish` — auth: Lab Verifier or Branch Manager; `approved → published`; sets `released_at`; this is the transition that makes the result visible in the patient portal (aligns with Story 5.3.2 `status: released`) and notifies the ordering doctor + patient (PHI-safe body).
+- `PUT .../results/:result_id/reject-back` — auth: verifier/approver; required `reason`; returns result to `entered`; original entering tech notified.
+- Critical-value alert (Feature 5.4) fires at the `verified` transition (so urgent action is not gated on final publish), while patient visibility remains gated on `published`.
+- Every transition emits a `lab.result_lifecycle_changed` PHI audit event `(result_id, from_state, to_state, actor_id, branch_id, tenant_id, at)`.
+
+**Frontend AC:**
+- Route: `/clinic/lab/orders/:order_id/results`
+- Lifecycle pipeline (Dimasukkan → Diverifikasi → Disetujui → Dipublikasikan) with current step highlighted; action buttons offer only valid next transitions and respect the caller's role.
+- Segregation-of-duties guard: the "Verify" action is disabled for the user who entered the result, with an explanatory tooltip.
+- "Reject Back" opens a reason modal and returns the result to input for correction.
+- Result visibility to patient explained inline: "Hasil menjadi terlihat oleh pasien setelah dipublikasikan." (Results become visible to the patient once published.)
+- All labels in active locale; timestamps in branch timezone.
+
+---
+
+#### Frontend (UILDC v1.0)
+
+- **Route:** `#/clinic/lab/orders/:order_id/results`
+- **Portal:** Clinic Portal
+- **Layout:** Sidebar nav (active: Laboratorium) + main content; order header (PHI masked); per-result lifecycle pipeline above the result values; role-aware action toolbar.
+- **Components:**
+  - `FlexSidebar` — nav; branch context badge
+  - `FlexCard` — order header: patient identifier (PHI masked), ordering doctor, reference
+  - `FlexProgress` — lifecycle pipeline: Dimasukkan (Entered) → Diverifikasi (Verified) → Disetujui (Approved) → Dipublikasikan (Published); current step highlighted
+  - `FlexForm` — result values (as Story 5.3.1); read-only once verified
+  - `FlexBadge` — lifecycle state badge; "KRITIS" badge; PHI mask toggle
+  - `FlexModal` — "Kembalikan untuk Koreksi" (Reject Back) reason modal
+  - `FlexButton` — role/state-aware: "Verifikasi" (Verify), "Setujui" (Approve), "Publikasikan" (Publish), "Kembalikan untuk Koreksi" (Reject Back); only valid actions enabled
+  - `FlexTooltip` — on disabled "Verifikasi" for the entering user: "Verifikasi harus dilakukan oleh petugas berbeda" (Verification must be done by a different staff member)
+  - `FlexAlert` — audit note "Hasil menjadi terlihat oleh pasien setelah dipublikasikan."; success/error
+- **Key interactions:**
+  - Pipeline reflects state; buttons offer only valid transitions for the caller's role.
+  - "Verifikasi" disabled (with tooltip) for the user who entered the result — segregation of duties.
+  - "Kembalikan untuk Koreksi" requires a reason and returns the result to "Dimasukkan"; the entering tech is notified.
+  - Critical results surface the acknowledgement path (Feature 5.4) from the "Diverifikasi" step onward; patient visibility only at "Dipublikasikan".
+  - Values become read-only once verified; further edits require reject-back.
+- **Empty state:** N/A (page scoped to an order with results).
+- **Error state:** Same-actor verify attempt: inline "Anda tidak dapat memverifikasi hasil yang Anda masukkan" (You cannot verify a result you entered); transition failure: `FlexAlert` at top.
+- **i18n:** Pipeline step labels, state badges, all action labels, segregation tooltip, reject-back reason modal, visibility note, error/success strings, timestamp format translated (ID / EN).
+- **Mobile:** Secondary; pipeline horizontally scrollable; actions stack below results; reject-back modal full-screen.
+
+### Story 5.2.2 [OPEN]
+**As a** Lab Tech,
+**I want to** generate a unique barcode per specimen and print a specimen label,
+**so that** every sample is uniquely identified, scannable through processing, and correctly matched to its order without transcription error.
+
+**Backend AC:**
+- On specimen creation, the system assigns a unique, tenant/branch-scoped `specimen_barcode` (deterministic, collision-free; format documented in schema-hc-02) if not supplied by an external analyzer; stored on the specimen record and unique per tenant.
+- `GET /api/v1/tenants/:tenant_id/branches/:branch_id/lab-orders/:order_id/specimens/:specimen_id/label` — auth: Lab Tech / Branch Manager; returns a print-ready label payload (barcode symbology + human-readable fields): specimen barcode, order reference, specimen type, collection time, and a minimal patient identifier (name initials + partial DOB — PHI-minimized per adr-hc-002); full name never on the label.
+- `POST .../specimens/:specimen_id/label/print` — records a `lab.label_printed` audit event `(specimen_id, actor_id, branch_id, tenant_id, at, copies)`; supports reprint with a reprint flag and audit.
+- Barcode is the lookup key for specimen status updates: scanning a barcode resolves to the specimen for the collect/process/result/reject transitions in Story 5.2.1.
+- `GET .../specimens/lookup?barcode=` — auth: Lab Tech; resolves a scanned barcode to its specimen/order (branch-scoped; 404 cross-branch).
+
+**Frontend AC:**
+- Route: `/clinic/lab/orders/:order_id`
+- Per-specimen "Print Label" action generates a print-ready label preview (barcode + human-readable order ref, specimen type, collection time, minimal patient identifier) and opens the browser print dialog; reprint available with a reprint indicator.
+- A barcode scan/search field at the top of the lab queue and order pages resolves a scanned barcode directly to the specimen for status updates.
+- Label deliberately omits full patient name (PHI-minimized); a note explains this.
+- All labels in active locale; label field labels localized; barcode value itself is locale-neutral.
+
+---
+
+#### Frontend (UILDC v1.0)
+
+- **Route:** `#/clinic/lab/orders/:order_id` (per-specimen label action) + barcode scan field on `#/clinic/lab/orders`
+- **Portal:** Clinic Portal
+- **Layout:** Sidebar nav (active: Laboratorium) + main content; per-test specimen block gains a "Cetak Label" (Print Label) action; a barcode scan `FlexInput` sits in the toolbar of the order and queue pages.
+- **Components:**
+  - `FlexSidebar` — nav; branch context badge
+  - `FlexInput` — barcode scan/search field (toolbar): placeholder "Pindai atau ketik barcode" (Scan or type barcode); auto-submits on scanner return
+  - `FlexButton` — "Cetak Label" (Print Label) per specimen; "Cetak Ulang" (Reprint) when already printed
+  - `FlexModal` — label preview: barcode graphic + human-readable Referensi Pesanan, Jenis Spesimen, Waktu Pengumpulan, initials + partial DOB; "Cetak" (Print) triggers browser print dialog
+  - `FlexBadge` — "Sudah dicetak" (Printed) / "Cetak ulang" (Reprint) indicator; PHI mask toggle on order header
+  - `FlexAlert` — note: "Label tidak memuat nama lengkap pasien demi privasi." (Label omits full patient name for privacy.); scan-not-found error
+- **Key interactions:**
+  - "Cetak Label" opens a label preview modal with a rendered barcode and the minimal human-readable fields; "Cetak" opens the browser print dialog; a print event is audited.
+  - Reprint shows a "Cetak ulang" indicator and is separately audited.
+  - Barcode scan field: scanning (or typing + enter) resolves to the matching specimen and jumps to it for a status update; unknown/cross-branch barcode shows a not-found alert.
+  - Label preview shows only initials + partial DOB, never the full name.
+- **Empty state:** N/A (per existing order); scan field shows placeholder until used.
+- **Error state:** Barcode not found / cross-branch: `FlexAlert` "Barcode tidak ditemukan di cabang ini" (Barcode not found in this branch); print/label fetch failure: inline `FlexAlert`.
+- **i18n:** "Cetak Label"/"Cetak Ulang", label field labels, scan placeholder, privacy note, printed/reprint badges, not-found/error strings translated (ID / EN); barcode value locale-neutral.
+- **Mobile:** Secondary; label preview modal full-screen; scan field supports device camera barcode input where available.
+
+## R2 Addendum Story Count: Feature 5.3 (1: 5.3.3) + Feature 5.2 (1: 5.2.2) = **2 stories** (epic total: 8)

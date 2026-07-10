@@ -76,6 +76,102 @@
         "order": 26,
         "parent": "healthcare"
       }
+    },
+    {
+      "path": "#/healthcare/departments",
+      "name": "Departments",
+      "component": "pages/departments.js",
+      "permission": "healthcare:schedules:read",
+      "menu": {
+        "label": "Departments",
+        "icon": "ph-duotone ph-buildings",
+        "order": 27,
+        "parent": "healthcare"
+      }
+    },
+    {
+      "path": "#/healthcare/registration",
+      "name": "Registration",
+      "component": "pages/registration.js",
+      "permission": "healthcare:appointments:read",
+      "menu": {
+        "label": "Registration",
+        "icon": "ph-duotone ph-user-plus",
+        "order": 28,
+        "parent": "healthcare"
+      }
+    },
+    {
+      "path": "#/healthcare/queue-board",
+      "name": "Queue Board",
+      "component": "pages/queue-board.js",
+      "permission": "healthcare:appointments:read",
+      "menu": {
+        "label": "Queue Board",
+        "icon": "ph-duotone ph-users-three",
+        "order": 29,
+        "parent": "healthcare"
+      }
+    },
+    {
+      "path": "#/healthcare/emr-coding",
+      "name": "EMR Coding",
+      "component": "pages/emr-coding.js",
+      "permission": "healthcare:dashboard:read",
+      "menu": {
+        "label": "EMR Coding",
+        "icon": "ph-duotone ph-notepad",
+        "order": 30,
+        "parent": "healthcare"
+      }
+    },
+    {
+      "path": "#/healthcare/doctors",
+      "name": "Doctors",
+      "component": "pages/doctors.js",
+      "permission": "healthcare:schedules:read",
+      "menu": {
+        "label": "Doctors",
+        "icon": "ph-duotone ph-stethoscope",
+        "order": 31,
+        "parent": "healthcare"
+      }
+    },
+    {
+      "path": "#/healthcare/rooms",
+      "name": "Rooms",
+      "component": "pages/rooms.js",
+      "permission": "healthcare:schedules:read",
+      "menu": {
+        "label": "Rooms",
+        "icon": "ph-duotone ph-door-open",
+        "order": 32,
+        "parent": "healthcare"
+      }
+    },
+    {
+      "path": "#/healthcare/family-approvals",
+      "name": "Family Approvals",
+      "component": "pages/family-approvals.js",
+      "permission": "healthcare:schedules:read",
+      "menu": {
+        "label": "Family Approvals",
+        "icon": "ph-duotone ph-users-three",
+        "order": 33,
+        "parent": "healthcare"
+      }
+    },
+    {
+      "path": "#/healthcare/reports",
+      "name": "Reports",
+      "component": "pages/reports.js",
+      "permission": "healthcare:dashboard:read",
+      "menu": {
+        "label": "Reports",
+        "icon": "ph-duotone ph-chart-line-up",
+        "order": 33,
+        "parent": "healthcare"
+      }
     }
   ],
   "navigation": {

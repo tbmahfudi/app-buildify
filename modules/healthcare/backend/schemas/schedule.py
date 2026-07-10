@@ -1,8 +1,8 @@
 from __future__ import annotations
 import uuid
-from datetime import datetime
+from datetime import datetime, date
 from typing import List, Optional
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
 
 class ScheduleCreate(BaseModel):
@@ -12,6 +12,7 @@ class ScheduleCreate(BaseModel):
     end_time: str     # HH:MM
     slot_duration_minutes: int
     appointment_types: List[str]
+    room_id: Optional[uuid.UUID] = None
 
     @field_validator("day_of_week")
     @classmethod
@@ -34,6 +35,9 @@ class ScheduleUpdate(BaseModel):
     slot_duration_minutes: Optional[int] = None
     appointment_types: Optional[List[str]] = None
     is_active: Optional[bool] = None
+    # room_id is tri-state: omitted = leave as-is; null = clear; uuid = assign.
+    room_id: Optional[uuid.UUID] = None
+    clear_room: bool = False
 
 
 class ScheduleResponse(BaseModel):
@@ -49,8 +53,17 @@ class ScheduleResponse(BaseModel):
     slot_duration_minutes: int
     appointment_types: List[str]
     is_active: bool
+    room_id: Optional[str] = None
+    room_code: Optional[str] = None
+    room_name: Optional[str] = None
     created_at: datetime
     updated_at: datetime
+
+    @field_validator("start_time", "end_time", mode="before")
+    @classmethod
+    def _fmt_time(cls, v):
+        # psycopg returns SQL TIME as datetime.time; render as HH:MM for the API.
+        return v.strftime("%H:%M") if hasattr(v, "strftime") else v
 
 
 class ScheduleListResponse(BaseModel):
@@ -82,3 +95,49 @@ class DateTimeBlockResponse(BaseModel):
     reason: str
     recurrence: str
     flagged_appointment_ids: List[str]
+
+
+# ---------------------------------------------------------------------------
+# Per-date schedule overrides (substitution / unavailability)
+# ---------------------------------------------------------------------------
+
+class ScheduleOverrideCreate(BaseModel):
+    override_date: date
+    status: str  # 'unavailable' | 'substituted'
+    substitute_provider_id: Optional[uuid.UUID] = None
+    reason: Optional[str] = None
+
+    @field_validator("status")
+    @classmethod
+    def validate_status(cls, v: str) -> str:
+        if v not in ("unavailable", "substituted"):
+            raise ValueError("status must be 'unavailable' or 'substituted'")
+        return v
+
+    @model_validator(mode="after")
+    def check_substitute(self) -> "ScheduleOverrideCreate":
+        if self.status == "substituted" and self.substitute_provider_id is None:
+            raise ValueError("substitute_provider_id is required when status is 'substituted'")
+        if self.status == "unavailable" and self.substitute_provider_id is not None:
+            raise ValueError("substitute_provider_id must be empty when status is 'unavailable'")
+        return self
+
+
+class ScheduleOverrideResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: str
+    tenant_id: str
+    branch_id: str
+    schedule_id: str
+    override_date: date
+    status: str
+    substitute_provider_id: Optional[str] = None
+    substitute_provider_name: Optional[str] = None
+    reason: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+
+
+class ScheduleOverrideListResponse(BaseModel):
+    overrides: List[ScheduleOverrideResponse]
+    total: int

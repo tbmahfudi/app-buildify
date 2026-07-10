@@ -28,6 +28,7 @@ from modules.healthcare.schemas.public import (
     PublicBranchDetail,
     PublicProviderSummary,
 )
+from modules.healthcare.sdk.hc_tenant import hc_shared_tenant_id
 
 
 # ---------------------------------------------------------------------------
@@ -114,9 +115,14 @@ async def clinic_search(
 
     offset = (page - 1) * page_size
 
-    # Build WHERE clauses — all filters on non-PHI columns only
-    where_parts = ["b.deleted_at IS NULL", "b.status = 'active'"]
-    params: dict = {"limit": page_size, "offset": offset}
+    # Build WHERE clauses — all filters on non-PHI columns only. Company directory is opt-in
+    # (companies.public_listing) and per-branch public_visible (ADR-HC-010 D6); scoped to the
+    # shared SaaS tenant so results are grouped by CLINIC (Company), not the shared tenant.
+    where_parts = [
+        "b.deleted_at IS NULL", "b.status = 'active'", "b.public_visible = true",
+        "c.public_listing = true", "c.is_active = true", "c.tenant_id = :saas",
+    ]
+    params: dict = {"limit": page_size, "offset": offset, "saas": hc_shared_tenant_id()}
 
     if specialty:
         where_parts.append("b.specialty_tags::text ILIKE :specialty")
@@ -125,27 +131,27 @@ async def clinic_search(
         where_parts.append("b.address_city ILIKE :city")
         params["city"] = f"%{city}%"
     if name:
-        where_parts.append("(t.name ILIKE :name OR b.branch_name ILIKE :name)")
+        where_parts.append("(c.name ILIKE :name OR b.branch_name ILIKE :name)")
         params["name"] = f"%{name}%"
 
     where_sql = " AND ".join(where_parts)
 
-    # Count query
+    # Count query — distinct Companies (clinics)
     count_sql = f"""
-        SELECT COUNT(DISTINCT t.id)
+        SELECT COUNT(DISTINCT c.id)
         FROM hc_branches b
-        JOIN tenants t ON t.id::text = b.tenant_id
+        JOIN companies c ON c.id = b.platform_company_id
         WHERE {where_sql}
     """
     total: int = db.execute(text(count_sql), params).scalar() or 0
 
-    # Main query — group by tenant to aggregate branch_count + avg_rating
+    # Main query — group by Company to aggregate branch_count + avg_rating; slug = companies.code
     rows_sql = f"""
         SELECT
-            t.id                                   AS tenant_id,
-            t.name                                 AS clinic_name,
-            MIN(b.slug)                            AS slug,
-            b.address_city                         AS city,
+            c.id                                   AS company_id,
+            c.name                                 AS clinic_name,
+            MIN(c.code)                            AS slug,
+            MIN(b.address_city)                    AS city,
             COALESCE(
                 AVG(cr.rating) FILTER (WHERE cr.status = 'approved'),
                 NULL
@@ -157,13 +163,13 @@ async def clinic_search(
                 ARRAY[]::text[]
             )                                      AS specialty_tags
         FROM hc_branches b
-        JOIN tenants t ON t.id::text = b.tenant_id
+        JOIN companies c ON c.id = b.platform_company_id
         LEFT JOIN hc_clinic_reviews cr ON cr.branch_id = b.id
         LEFT JOIN LATERAL jsonb_array_elements_text(
             COALESCE(b.appointment_types, '[]'::jsonb)
         ) AS elem ON true
         WHERE {where_sql}
-        GROUP BY t.id, t.name, b.address_city
+        GROUP BY c.id, c.name
         ORDER BY clinic_name ASC
         LIMIT :limit OFFSET :offset
     """
@@ -191,6 +197,57 @@ async def clinic_search(
 
     _search_cache[cache_key] = (now, result)
     return result
+
+
+# ---------------------------------------------------------------------------
+# epic-20 Feature 20.4 — PHI-free clinic directory (logged-out chooser feed)
+# The single cross-Company public read surface (ADR-HC-010 D6). Opt-in only.
+# ---------------------------------------------------------------------------
+
+@router.get(
+    "/api/v1/clinics",
+    summary="Public clinic directory — opt-in Companies + their public branches (no PHI)",
+    tags=["healthcare-public"],
+)
+async def clinic_directory(
+    request: Request,
+    db: Session = Depends(_get_public_db),
+    _rl: None = Depends(_public_rate_limit),
+):
+    """Return the PHI-free clinic chooser feed: every Company that opted into the public
+    directory (companies.public_listing), with its public-visible clinic sites. Under the shared
+    SaaS tenant this is the only place clinics are listed across Companies; it exposes no PHI."""
+    rows = db.execute(
+        text(
+            """
+            SELECT c.code AS slug, c.name AS clinic_name, c.city AS company_city,
+                   b.id AS branch_id, b.branch_name, b.address_city, b.online_booking
+            FROM companies c
+            LEFT JOIN hc_branches b
+                   ON b.platform_company_id = c.id
+                  AND b.public_visible = true AND b.deleted_at IS NULL AND b.status = 'active'
+            WHERE c.public_listing = true AND c.is_active = true AND c.tenant_id = :saas
+            ORDER BY c.name ASC, b.branch_name ASC
+            """
+        ),
+        {"saas": hc_shared_tenant_id()},
+    ).fetchall()
+
+    clinics: dict = {}
+    for r in rows:
+        c = clinics.setdefault(r.slug, {
+            "slug": r.slug, "clinic_name": r.clinic_name,
+            "city": r.company_city or "", "branches": [],
+        })
+        if r.branch_id:
+            c["branches"].append({
+                "branch_id": str(r.branch_id),
+                "branch_name": r.branch_name,
+                "city": r.address_city or "",
+                "online_booking": bool(r.online_booking),
+            })
+    items = list(clinics.values())
+    return {"clinics": items, "total": len(items)}
 
 
 # ---------------------------------------------------------------------------
@@ -260,29 +317,31 @@ def _get_profile(
     if cached and (now - cached[0]) < _PROFILE_CACHE_TTL and cached[1] is not None:
         return cached[1]
 
-    # Tenant lookup by code (slug = tenant code, case-insensitive)
-    tenant_row = db.execute(
+    # Company lookup by code (slug = Company code, ADR-HC-010 D6). Only Companies that opted
+    # into the public directory (public_listing) are publicly resolvable, under the shared tenant.
+    company_row = db.execute(
         text(
             "SELECT id, name "
-            "FROM tenants "
-            "WHERE UPPER(code) = UPPER(:slug) AND is_active = true "
+            "FROM companies "
+            "WHERE UPPER(code) = UPPER(:slug) AND tenant_id = :saas "
+            "AND public_listing = true AND is_active = true "
             "LIMIT 1"
         ),
-        {"slug": slug},
+        {"slug": slug, "saas": hc_shared_tenant_id()},
     ).fetchone()
 
-    if tenant_row is None:
+    if company_row is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Clinic not found.",
         )
 
-    tenant_id = str(tenant_row[0])
-    clinic_name = tenant_row[1]
+    company_id = str(company_row[0])
+    clinic_name = company_row[1]
 
-    # Branches query
+    # Branches query — the Company's clinic sites (hc_branches.platform_company_id), public-visible only.
     branch_filter = "AND b.id = :bid" if branch_id else ""
-    branch_params: dict = {"tid": tenant_id}
+    branch_params: dict = {"cid": company_id}
     if branch_id:
         branch_params["bid"] = branch_id
 
@@ -291,22 +350,23 @@ def _get_profile(
             f"SELECT b.id, b.branch_name, b.address_city, b.address_street, "
             f"       b.contact_phone, b.online_booking "
             f"FROM hc_branches b "
-            f"WHERE b.tenant_id = :tid AND b.deleted_at IS NULL AND b.status = 'active' "
+            f"WHERE b.platform_company_id = :cid AND b.public_visible = true "
+            f"AND b.deleted_at IS NULL AND b.status = 'active' "
             f"{branch_filter} "
             f"ORDER BY b.branch_name ASC"
         ),
         branch_params,
     ).fetchall()
 
-    # Average rating (non-PHI aggregation)
+    # Average rating (non-PHI aggregation) across the Company's branches
     rating_row = db.execute(
         text(
             "SELECT AVG(cr.rating) "
             "FROM hc_clinic_reviews cr "
             "JOIN hc_branches b ON cr.branch_id = b.id "
-            "WHERE b.tenant_id = :tid AND cr.status = 'approved'"
+            "WHERE b.platform_company_id = :cid AND cr.status = 'approved'"
         ),
-        {"tid": tenant_id},
+        {"cid": company_id},
     ).fetchone()
     avg_rating = float(rating_row[0]) if rating_row and rating_row[0] else None
 
@@ -316,9 +376,9 @@ def _get_profile(
             "SELECT DISTINCT elem "
             "FROM hc_branches b, "
             "     jsonb_array_elements_text(COALESCE(b.appointment_types, '[]'::jsonb)) AS elem "
-            "WHERE b.tenant_id = :tid AND b.deleted_at IS NULL"
+            "WHERE b.platform_company_id = :cid AND b.deleted_at IS NULL"
         ),
-        {"tid": tenant_id},
+        {"cid": company_id},
     ).fetchall()
     specialty_tags = [r[0] for r in tag_rows if r[0]]
 
@@ -333,8 +393,7 @@ def _get_profile(
                 "SELECT p.display_name, p.specialty "
                 "FROM hc_providers p "
                 "WHERE p.branch_id = :bid "
-                "AND p.status = 'active' "
-                "AND p.deleted_at IS NULL "
+                "AND p.is_active = true "
                 "ORDER BY p.display_name ASC"
             ),
             {"bid": br_id},
@@ -393,25 +452,30 @@ async def get_available_slots_public(
     No authentication required.
     Only returns slots with status='available'.
     """
-    # Resolve tenant by code (canonical uppercase)
-    tenant_row = db.execute(
-        text("SELECT id FROM tenants WHERE code = :code LIMIT 1"),
-        {"code": tenant_code.upper()},
+    # Resolve the clinic by Company code (ADR-HC-010 D6 — the {tenant_code} path segment is now
+    # the Company slug). Slots live on the shared SaaS tenant, isolated per clinic by the branch.
+    company_row = db.execute(
+        text(
+            "SELECT id, tenant_id FROM companies "
+            "WHERE UPPER(code) = UPPER(:code) AND tenant_id = :saas AND is_active = true LIMIT 1"
+        ),
+        {"code": tenant_code, "saas": hc_shared_tenant_id()},
     ).fetchone()
-    if tenant_row is None:
+    if company_row is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Clinic not found.",
         )
-    tenant_id = str(tenant_row[0])
+    company_id = str(company_row[0])
+    tenant_id = str(company_row[1])
 
-    # Verify branch belongs to tenant
+    # Verify the branch is one of that Company's clinic sites.
     branch_row = db.execute(
         text(
             "SELECT id FROM hc_branches "
-            "WHERE id = :bid AND tenant_id = :tid AND deleted_at IS NULL LIMIT 1"
+            "WHERE id = :bid AND platform_company_id = :cid AND deleted_at IS NULL LIMIT 1"
         ),
-        {"bid": branch_id, "tid": tenant_id},
+        {"bid": branch_id, "cid": company_id},
     ).fetchone()
     if branch_row is None:
         raise HTTPException(

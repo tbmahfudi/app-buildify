@@ -33,6 +33,18 @@
 
 <div class="container pb-5">
 
+  <!-- Clinic chooser (logged-out landing when no clinic is selected) -->
+  <div id="page-chooser" class="page">
+    <div class="row mb-4">
+      <div class="col">
+        <h2 class="mb-1">Choose a clinic</h2>
+        <p class="text-muted small">Select a clinic to enter its patient portal.</p>
+      </div>
+    </div>
+    <input id="chooser-search" class="form-control mb-3" placeholder="Search clinics…" oninput="filterChooser()" style="max-width:24rem">
+    <div id="chooser-list" class="row g-3"></div>
+  </div>
+
   <!-- Home: Clinic Info -->
   <div id="page-home" class="page active">
     <div class="row mb-4">
@@ -100,10 +112,22 @@
         <div class="card shadow-sm">
           <div class="card-body p-4">
             <h4 class="mb-3">Patient Login</h4>
+
+            <!-- Email / username + password -->
+            <div id="login-step-password">
+              <label class="form-label">Email or username</label>
+              <input type="text" id="login-identifier" class="form-control mb-2" placeholder="you@example.com" autocomplete="username">
+              <label class="form-label">Password</label>
+              <input type="password" id="login-password" class="form-control mb-3" placeholder="••••••••" autocomplete="current-password"
+                     onkeydown="if(event.key==='Enter')submitPasswordLogin()">
+              <button class="btn btn-primary w-100" onclick="submitPasswordLogin()">Login</button>
+              <div class="text-center text-muted small my-3">— or login with your phone —</div>
+            </div>
+
             <div id="login-step-phone">
               <label class="form-label">Phone number</label>
               <input type="tel" id="login-phone" class="form-control mb-3" placeholder="+62…">
-              <button class="btn btn-primary w-100" onclick="sendOtp('login')">Send OTP</button>
+              <button class="btn btn-outline-primary w-100" onclick="sendOtp('login')">Send OTP</button>
             </div>
             <div id="login-step-otp" style="display:none">
               <p class="text-muted small">Enter the code sent to <strong id="login-phone-display"></strong></p>
@@ -146,6 +170,67 @@
             <div id="patient-records"><p class="text-muted small">Loading…</p></div>
           </div>
         </div>
+      </div>
+      <div class="col-md-4">
+        <div class="card h-100 clinic-card">
+          <div class="card-body d-flex flex-column">
+            <h6>My Family</h6>
+            <div id="patient-household" class="flex-grow-1"><p class="text-muted small">Loading…</p></div>
+            <button class="btn btn-sm btn-outline-primary mt-2 align-self-start" onclick="showPage('household')">Manage family</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Household / Family management -->
+  <div id="page-household" class="page">
+    <button class="btn btn-link ps-0 mb-3" onclick="showPage('dashboard')">&larr; Back to Dashboard</button>
+    <h4 class="mb-3">My Family</h4>
+    <div id="household-members" class="row g-3 mb-4"><p class="text-muted small">Loading…</p></div>
+
+    <div class="card shadow-sm mb-3">
+      <div class="card-body">
+        <h6 class="mb-3">Add a family member</h6>
+        <div class="row g-2">
+          <div class="col-md-6"><input id="dep-name" class="form-control" placeholder="Full name"></div>
+          <div class="col-md-3"><input id="dep-dob" type="date" class="form-control"></div>
+          <div class="col-md-3">
+            <select id="dep-gender" class="form-select">
+              <option value="male">Male</option><option value="female">Female</option><option value="other">Other</option>
+            </select>
+          </div>
+          <div class="col-md-6"><input id="dep-phone" class="form-control" placeholder="Phone number"></div>
+          <div class="col-md-6">
+            <select id="dep-rel" class="form-select">
+              <option value="child">Child</option><option value="spouse">Spouse</option>
+              <option value="parent">Parent</option><option value="other">Other</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-check mt-3">
+          <input class="form-check-input" type="checkbox" id="dep-consent">
+          <label class="form-check-label small" for="dep-consent">I consent to processing this family member's health data on their behalf.</label>
+        </div>
+        <button class="btn btn-primary mt-3" onclick="addDependent()">Register family member</button>
+      </div>
+    </div>
+
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h6 class="mb-1">Link an existing patient</h6>
+        <p class="text-muted small">Requires clinic-staff approval.</p>
+        <div class="row g-2">
+          <div class="col-md-5"><input id="link-pid" class="form-control" placeholder="Patient ID"></div>
+          <div class="col-md-4"><input id="link-branch" class="form-control" placeholder="Clinic (branch) ID"></div>
+          <div class="col-md-3">
+            <select id="link-rel" class="form-select">
+              <option value="spouse">Spouse</option><option value="child">Child</option>
+              <option value="parent">Parent</option><option value="other">Other</option>
+            </select>
+          </div>
+        </div>
+        <button class="btn btn-outline-primary mt-3" onclick="requestLink()">Send link request</button>
       </div>
     </div>
   </div>

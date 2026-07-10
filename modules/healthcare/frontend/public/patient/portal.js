@@ -29,6 +29,25 @@
       '<div style="color:var(--color-error);font-size:13px">Gagal memuat profil</div>';
   }
 
+  // Household bar — shows the active patient + link to manage family; highlights
+  // when acting on behalf of a dependent.
+  try {
+    const h = await window.apiFetch('/api/v1/patients/me/household');
+    const members = h.members || [];
+    const active = members.find(m => m.is_active);
+    const bar = document.getElementById('household-bar');
+    if (bar && (members.length > 1 || active)) {
+      const onBehalf = active && active.relationship && active.relationship !== 'self';
+      const left = onBehalf
+        ? `<div><div style="font-size:11px;color:var(--color-warning)">Bertindak atas nama</div>
+             <div style="font-weight:600;font-size:14px">${escHtml(active.full_name || '')}</div></div>`
+        : `<div><div style="font-size:11px;color:var(--color-muted)">Keluarga</div>
+             <div style="font-weight:600;font-size:14px">${members.length} anggota</div></div>`;
+      bar.innerHTML = left + `<span style="color:var(--color-primary);font-size:13px;font-weight:600">Kelola →</span>`;
+      bar.style.display = 'flex';
+    }
+  } catch (e) { /* non-fatal */ }
+
   // Summary grid
   const WIDGETS = [
     { key: 'portal.total_visits',          field: 'total_visits',          href: '/patient/records' },

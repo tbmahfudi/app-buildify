@@ -43,6 +43,16 @@ Design questions:
 
 ### D1 — Same JWT Issuer, Separate Role Namespace
 
+> **⚠ PARTIALLY SUPERSEDED (2026-07-05) by `epic-18-patient-portal-authentication` +
+> `adr-hc-009-patient-identity-and-auth` (B1).** The **claim shape below is retained** (patient JWT: `roles: ["patient"]`,
+> `tenant_id: null`, minted via the `from-platform` bridge). What is **superseded is the OTP/phone-only
+> authentication flow** (register/token steps 1–2 below): patient auth now supports **three** methods —
+> email/username + password, Google OAuth, and OTP. **OTP is now optional** (a passwordless option and an
+> optional MFA second factor), no longer mandatory. Identity is a platform `User(role=patient)`; PHI stays
+> in `hc_patient` linked by `user_id`. See `epics/epic-18-patient-portal-authentication.md` and
+> `architecture/adr-hc-009-patient-identity-and-auth.md` (the superseding record for this §D1 flow;
+> schema deltas in `architecture/schema-hc-03.md`).
+
 Patient authentication uses the **same JWT issuer** (platform `JWT_SECRET_KEY`) but a
 **distinct role namespace**:
 
