@@ -5,6 +5,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.exc import StaleDataError
 
@@ -72,8 +73,13 @@ def login(
     lockout_manager = LockoutManager(db)
     session_manager = SessionManager(db)
 
-    # Find user by email
-    user = db.query(User).filter(User.email == credentials.email).first()
+    # Find user by identifier (ADR-HC-009 D1): an '@' means email, otherwise it is
+    # a username (case-insensitive). Patients may log in with either.
+    identifier = credentials.email
+    if "@" in identifier:
+        user = db.query(User).filter(User.email == identifier).first()
+    else:
+        user = db.query(User).filter(func.lower(User.username) == identifier.lower()).first()
 
     # Record failed login attempt if user not found or password incorrect
     if not user or not verify_password(credentials.password, user.hashed_password):

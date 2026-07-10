@@ -7,8 +7,8 @@
   <!-- Content Security Policy -->
   <meta http-equiv="Content-Security-Policy" content="
     default-src 'self';
-    script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://unpkg.com https://cdnjs.cloudflare.com;
-    style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://unpkg.com https://cdnjs.cloudflare.com;
+    script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com https://cdnjs.cloudflare.com;
+    style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com https://cdnjs.cloudflare.com;
     font-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com;
     img-src 'self' data: https:;
     connect-src 'self' http://localhost:8080 http://localhost:8000 https:;
@@ -21,8 +21,8 @@
   <!-- Favicon - Using data URI to prevent 404 errors -->
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%233B82F6'/><text x='50' y='65' text-anchor='middle' font-family='Arial' font-size='60' font-weight='bold' fill='white'>NP</text></svg>">
 
-  <!-- Security Note: Tailwind CDN doesn't support SRI. For production, use PostCSS build instead. -->
-  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Tailwind: built/purged static stylesheet (app.build.css) — replaces the Play CDN
+       (not for production). Rebuild with `npm run build:css` after changing markup/classes. -->
 
   <!-- Phosphor Icons (Multiple Weights) -->
   <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.2/src/regular/style.css">
@@ -37,7 +37,7 @@
   <script src="https://cdn.jsdelivr.net/npm/i18next-http-backend@2/i18nextHttpBackend.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/i18next-browser-languagedetector@7/i18nextBrowserLanguageDetector.min.js"></script>
 
-  <link href="assets/css/app.css" rel="stylesheet" />
+  <link href="assets/css/app.build.css" rel="stylesheet" />
 
   <style>
     /* Loading screen */

@@ -1,0 +1,138 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://app-buildify/schemas/module-manifest.schema.json",
+  "title": "App-Buildify Module Manifest",
+  "description": "Canonical contract for a module's manifest.json. Read by BOTH the client module loader (frontend/assets/js/core/module-system/module-loader.js) and the backend manifest sync/menu builder (backend/app/services/menu_service.py, sync_manifests_from_disk). Keep this file the single source of truth; see docs/modules/MODULE_FRONTEND_CONTRACT.md. Lenient by design (additionalProperties allowed) so modules can carry extra keys, but the shape below is required.",
+  "type": "object",
+  "required": ["name", "version", "routes", "navigation"],
+  "additionalProperties": true,
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Module id. Must match the on-disk modules/<name>/ dir and the URL namespace /modules/<name>/*.",
+      "minLength": 1
+    },
+    "display_name": { "type": "string" },
+    "version": {
+      "type": "string",
+      "description": "Semver-ish version string.",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+"
+    },
+    "description": { "type": "string" },
+    "author": { "type": "string" },
+    "parent_module": { "type": ["string", "null"] },
+    "backend_service_url": { "type": "string" },
+    "entry_point": {
+      "type": "string",
+      "description": "Module entry JS relative to the module frontend/ dir. Defaults to module.js when omitted.",
+      "default": "module.js"
+    },
+    "deployment": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": { "mode": { "type": "string", "enum": ["embedded", "standalone", "remote"] } }
+    },
+    "routes": {
+      "type": "array",
+      "description": "Page routes injected into the SPA. Each resolves a component relative to frontend/.",
+      "items": {
+        "type": "object",
+        "required": ["path"],
+        "additionalProperties": true,
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Hash route, e.g. '#/financial/accounts'.",
+            "pattern": "^#/"
+          },
+          "name": { "type": "string" },
+          "component": {
+            "type": "string",
+            "description": "Page module path RELATIVE to the module frontend/ dir (e.g. 'pages/accounts.js'). MUST NOT start with 'frontend/' — nginx already inserts it.",
+            "not": { "pattern": "^/?frontend/" }
+          },
+          "nocode_entity": {
+            "type": "string",
+            "description": "Alternative to component: mount an auto-CRUD no-code page for this entity."
+          },
+          "permission": { "type": ["string", "null"] },
+          "menu": {
+            "type": "object",
+            "additionalProperties": true,
+            "required": ["label"],
+            "properties": {
+              "label": { "type": "string" },
+              "icon": { "type": "string" },
+              "icon_color": { "type": "string" },
+              "order": { "type": "number" },
+              "parent": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "navigation": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "primary_menu": { "type": "boolean" },
+        "menu_items": {
+          "type": "array",
+          "description": "Top-level (parent) menu entries the module contributes.",
+          "items": {
+            "type": "object",
+            "required": ["code", "label"],
+            "additionalProperties": true,
+            "properties": {
+              "code": { "type": "string" },
+              "label": { "type": "string" },
+              "icon": { "type": "string" },
+              "icon_color": { "type": "string" },
+              "order": { "type": "number" },
+              "is_parent": { "type": "boolean" },
+              "permission": { "type": ["string", "null"] }
+            }
+          }
+        },
+        "dashboard_widgets": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id"],
+            "additionalProperties": true,
+            "properties": {
+              "id": { "type": "string" },
+              "name": { "type": "string" },
+              "component": { "type": "string" },
+              "size": { "type": "string" },
+              "permission": { "type": ["string", "null"] }
+            }
+          }
+        }
+      }
+    },
+    "dependencies": {
+      "description": "Either { required: [], optional: [] } or a bare list of module names.",
+      "type": ["object", "array"],
+      "additionalProperties": true,
+      "properties": {
+        "required": { "type": "array", "items": { "type": "string" } },
+        "optional": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "permissions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["code"],
+        "additionalProperties": true,
+        "properties": {
+          "code": { "type": "string" },
+          "name": { "type": "string" },
+          "description": { "type": "string" },
+          "category": { "type": "string" }
+        }
+      }
+    }
+  }
+}

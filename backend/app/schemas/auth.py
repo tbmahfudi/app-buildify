@@ -3,8 +3,10 @@ from typing import Optional, List
 from datetime import datetime
 
 class LoginRequest(BaseModel):
-    """Login request with email and password"""
-    email: EmailStr = Field(..., description="User email address")
+    """Login request. `email` accepts an email OR a username identifier
+    (ADR-HC-009 D1): a value containing '@' is treated as an email, otherwise
+    as a case-insensitive username. Kept as `email` for backward compatibility."""
+    email: str = Field(..., min_length=1, description="Email address or username")
     password: str = Field(..., min_length=8, description="User password")
 
     model_config = ConfigDict(

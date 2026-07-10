@@ -1,0 +1,17 @@
+{
+  "name": "@app-buildify/template-frontend",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Build-optional frontend toolchain for the TEMPLATE module. Builds Lit page sources in frontend-src/ into self-contained static bundles under frontend/pages/. Deploys as plain static files — the platform is NOT built or required at build time.",
+  "scripts": {
+    "build": "vite build",
+    "watch": "vite build --watch"
+  },
+  "dependencies": {
+    "lit": "^3.1.0"
+  },
+  "devDependencies": {
+    "vite": "^5.4.0"
+  }
+}

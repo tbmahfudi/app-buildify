@@ -149,6 +149,20 @@ class ModuleRegistryService:
                 logger.warning(f"Skipping unreadable manifest {manifest_file}: {e}")
                 continue
 
+            # Validate against the shared module-manifest contract. Non-fatal: a
+            # malformed manifest is surfaced loudly (was silent) but still synced so a
+            # minor schema drift doesn't take module loading down.
+            try:
+                from app.core.module_system.manifest_validation import validate_manifest
+                errs = validate_manifest(disk_manifest)
+                if errs:
+                    logger.warning(
+                        "Manifest %s has %d contract violation(s): %s",
+                        manifest_file, len(errs), "; ".join(errs[:8]),
+                    )
+            except Exception as e:  # noqa: BLE001
+                logger.debug(f"Manifest validation skipped for {manifest_file}: {e}")
+
             mod_name = disk_manifest.get("name") or name
             row = self.db.query(ModuleRegistry).filter(ModuleRegistry.name == mod_name).first()
             if row is None:

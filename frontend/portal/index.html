@@ -4,7 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>App-Buildify · Portal</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Tailwind: built/purged static stylesheet (shared with the SPA). -->
+  <link href="../assets/css/app.build.css" rel="stylesheet" />
   <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/duotone/style.css" />
   <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css" />
 </head>
@@ -65,5 +66,51 @@
   <footer class="border-t border-slate-200 py-6 text-center text-xs text-slate-400">
     &copy; App-Buildify · Public Portal
   </footer>
+
+  <script>
+    // Single-module portal landing.
+    // If a portal (patient) user has access to exactly ONE module portal, send
+    // them straight to that module's portal instead of the services list.
+    // Defensive: if we can't determine, we just show this platform portal.
+    (function () {
+      try {
+        // Skip the redirect if the user explicitly asked for the directory
+        // (e.g. followed a "?home=1" / "#services" link back here).
+        var params = new URLSearchParams(window.location.search);
+        if (params.get('home') === '1' || window.location.hash === '#services') {
+          return;
+        }
+
+        // The service directory is the source of truth for available module
+        // portals. Each service card links to "/portal/<slug>/".
+        var links = Array.prototype.slice.call(
+          document.querySelectorAll('#portal-grid a[href^="/portal/"]')
+        );
+        var slugs = {};
+        links.forEach(function (a) {
+          var m = (a.getAttribute('href') || '').match(/^\/portal\/([^\/]+)\/?/);
+          if (m && m[1]) slugs[m[1]] = '/portal/' + m[1] + '/';
+        });
+
+        // Which module portals is THIS user actually entitled to?
+        // Today the only patient auth we know about is healthcare's
+        // localStorage token; treat its presence as "has healthcare access".
+        var accessible = {};
+        if (localStorage.getItem('hc_patient_token') && slugs['healthcare']) {
+          accessible['healthcare'] = slugs['healthcare'];
+        }
+
+        var keys = Object.keys(accessible);
+        // Exactly one accessible module portal → go straight there.
+        if (keys.length === 1) {
+          window.location.replace(accessible[keys[0]]);
+        }
+        // 0 or 2+ → fall through and render the platform services list.
+      } catch (e) {
+        // On any error, do nothing and show the platform portal.
+        console.warn('portal single-module landing skipped:', e);
+      }
+    })();
+  </script>
 </body>
 </html>

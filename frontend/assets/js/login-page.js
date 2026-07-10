@@ -1,4 +1,40 @@
-import { login } from './api.js';
+import { login, getAuthToken } from './api.js';
+
+/**
+ * After a successful platform login, route patient-role users to the healthcare
+ * portal instead of the staff SPA. Patients authenticate against the platform
+ * (users table) but the portal runs on a separate patient-token auth; the
+ * bridge endpoint exchanges the platform JWT for a patient session. Returns
+ * true if it redirected to the portal, false to fall through to the staff SPA.
+ */
+async function routePatientToPortal() {
+  try {
+    const token = getAuthToken();
+    if (!token) return false;
+
+    const meRes = await fetch('/api/v1/auth/me', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!meRes.ok) return false;
+    const me = await meRes.json();
+    if (!(me.roles || []).includes('patient')) return false;
+
+    // Exchange the platform token for a patient portal session.
+    const brRes = await fetch('/api/v1/patients/auth/from-platform', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!brRes.ok) return false;
+    const data = await brRes.json();
+    if (!data.access_token) return false;
+
+    localStorage.setItem('hc_patient_token', data.access_token);
+    window.location.href = '/portal/healthcare/';
+    return true;
+  } catch (_e) {
+    return false;
+  }
+}
 
 const form = document.getElementById('login-form');
 const errorDiv = document.getElementById('login-error');
@@ -18,6 +54,8 @@ if (form) {
 
     try {
       await login(email, password, tenant);
+      // Patients go to the healthcare portal; everyone else to the staff SPA.
+      if (await routePatientToPortal()) return;
       window.location.href = '/index.html';
     } catch (error) {
       errorMessage.textContent = error.message;

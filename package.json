@@ -10,7 +10,9 @@
     "test:run": "vitest run",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
-    "test:e2e:headed": "playwright test --headed"
+    "test:e2e:headed": "playwright test --headed",
+    "build:css": "cd frontend && tailwindcss -i assets/css/app.css -o assets/css/app.build.css --minify",
+    "watch:css": "cd frontend && tailwindcss -i assets/css/app.css -o assets/css/app.build.css --watch"
   },
   "keywords": [
     "components",
@@ -29,6 +31,7 @@
     "@vitest/coverage-v8": "^1.0.0",
     "@vitest/ui": "^1.0.0",
     "jsdom": "^23.0.0",
+    "tailwindcss": "^3.4.19",
     "vitest": "^1.0.0"
   },
   "engines": {
