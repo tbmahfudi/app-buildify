@@ -91,5 +91,4 @@ def test_all_five_module_event_types_present(su):
     assert r.status_code == 200, r.text
     found = {entry["action"] for entry in r.json()["logs"]}
     missing = EXPECTED_ACTIONS - found
-    assert not missing, f"Missing module audit event types: {sorted(missing)}
-Found: {sorted(found)}"
+    assert not missing, f"Missing module audit event types: {sorted(missing)}\nFound: {sorted(found)}"
