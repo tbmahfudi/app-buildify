@@ -395,6 +395,10 @@ class ModuleLoader {
    * non-conformant manifests so authors get feedback instead of silent 404s.
    * Never throws and never blocks loading.
    *
+   * Contract source of truth: docs/modules/module-manifest.schema.json (the backend
+   * enforces the same rules in core/module_system/manifest_validation.py). Keep the
+   * three in sync when the manifest shape changes.
+   *
    * Checks (per the Module Frontend Contract):
    *   - missing navigation.menu_items (no top-level menu parent will render)
    *   - menu parent items missing an icon

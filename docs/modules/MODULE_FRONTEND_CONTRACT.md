@@ -46,6 +46,11 @@ No nginx change is required; the fix lives entirely in the loader path construct
 
 ## 3. Manifest schema (frontend-relevant fields)
 
+> **Canonical schema:** [`module-manifest.schema.json`](./module-manifest.schema.json) (JSON
+> Schema draft-07) is the single source of truth for the manifest shape. The backend validates
+> every manifest against it on sync (`backend/app/core/module_system/manifest_validation.py`,
+> logging violations) and the client loader warns in dev (§6). Keep all three in sync.
+
 ```jsonc
 {
   "name": "healthcare",
@@ -106,6 +111,13 @@ customElements.define('healthcare-dashboard', class extends HTMLElement {
   disconnectedCallback() { /* native teardown */ }
 });
 ```
+
+**Build-optional (Lit + Vite).** A custom element may be hand-written (no build, above) or authored
+in Lit and compiled to a self-contained static bundle — building a module never builds the
+platform. The `template` module ships a working starter: Lit sources in
+`modules/template/frontend-src/` (`ModulePage` base renders into the light DOM) build via
+`npm run build` into `frontend/pages/*.js` (Lit inlined). See
+[`modules/template/BUILD.md`](../../modules/template/BUILD.md).
 
 Declare the tag in the route as `"element": "healthcare-dashboard"`. The shell creates the tag
 and appends it into `#app-content`; `connectedCallback()` renders, `disconnectedCallback()` tears

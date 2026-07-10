@@ -1,0 +1,4 @@
+# Build-optional frontend toolchain (see BUILD.md)
+node_modules/
+# Vite build output — regenerate with `npm run build`
+frontend/pages/
