@@ -105,6 +105,22 @@ export async function initApp() {
       permissions: appState.user.permissions || []
     });
 
+    // Portal-only users (patients) belong in the healthcare portal, not the
+    // staff SPA. If a patient hits the root app URL directly, exchange their
+    // platform JWT for a patient session and redirect to the portal. They must
+    // never land on the staff application.
+    if ((appState.user.roles || []).includes('patient') && !appState.user.is_superuser) {
+      try {
+        const brRes = await apiFetch('/patients/auth/from-platform', { method: 'POST' });
+        if (brRes.ok) {
+          const data = await brRes.json();
+          if (data.access_token) localStorage.setItem('hc_patient_token', data.access_token);
+        }
+      } catch (_e) { /* portal will handle its own auth if the bridge fails */ }
+      window.location.href = '/portal/healthcare/';
+      return;
+    }
+
     // Update UI with user info
     updateUserInfo();
 
@@ -155,8 +171,21 @@ export async function initApp() {
     // Continue even if entity registration fails
   }
 
-  // Load initial route
-  const hash = window.location.hash.slice(1) || 'dashboard';
+  // Load initial route.
+  // Single-module landing: on a fresh landing (no explicit hash), if the user's
+  // accessible module menu items resolve to exactly ONE module and they are not
+  // a platform admin, send them straight to that module's dashboard instead of
+  // the platform #dashboard.
+  const explicitHash = window.location.hash.slice(1);
+  let hash = explicitHash || 'dashboard';
+  if (!explicitHash) {
+    try {
+      const landing = await resolveSingleModuleLanding();
+      if (landing) hash = landing;
+    } catch (e) {
+      console.warn('Single-module landing check failed, using dashboard:', e);
+    }
+  }
   await loadRoute(hash);
 
   // Handle hash changes
@@ -194,6 +223,60 @@ export async function initApp() {
       // Current page is already translated by i18n.changeLanguage()
     });
   }
+}
+
+/**
+ * Single-module landing resolver.
+ *
+ * Returns a module dashboard route (e.g. 'healthcare/dashboard') when the user's
+ * accessible MODULE routes all belong to exactly ONE module and the user is not
+ * a platform admin. Otherwise returns null (→ keep platform #dashboard).
+ *
+ * We use moduleRegistry.getAccessibleRoutes() (the module's registered routes,
+ * each with a `path` like '#/healthcare/dashboard') rather than the manifest
+ * navigation menu items — a module's nav often declares only a route-less parent
+ * ("Healthcare"), which carries no landing target. Routes are grouped by the
+ * first path segment (the module slug).
+ */
+async function resolveSingleModuleLanding() {
+  // Platform admins (superusers) always land on the platform dashboard.
+  if (appState.user && appState.user.is_superuser) {
+    return null;
+  }
+
+  let routes = [];
+  try {
+    routes = await moduleRegistry.getAccessibleRoutes();
+  } catch (e) {
+    return null;
+  }
+  if (!Array.isArray(routes) || routes.length === 0) {
+    return null;
+  }
+
+  // Group accessible module routes by module slug (first path segment).
+  const bySlug = new Map();
+  for (const route of routes) {
+    const rawPath = (route.path || route.route || '').replace(/^#?\/?/, '');
+    if (!rawPath) continue;
+    const slug = rawPath.split('/')[0];
+    if (!slug) continue;
+    if (!bySlug.has(slug)) bySlug.set(slug, []);
+    bySlug.get(slug).push(rawPath);
+  }
+
+  // Exactly one module → land there. 0 or 2+ → platform dashboard.
+  if (bySlug.size !== 1) {
+    return null;
+  }
+
+  const [slug, paths] = [...bySlug.entries()][0];
+
+  // Prefer an explicit "<slug>/dashboard" route; else the module's first route.
+  const landing = paths.find((p) => p === `${slug}/dashboard`) || paths[0];
+
+  console.log(`[Landing] Single accessible module "${slug}" → #${landing}`);
+  return landing;
 }
 
 function updateUserInfo() {
@@ -1804,6 +1887,43 @@ async function loadRoute(route) {
       }
       document.dispatchEvent(new CustomEvent('route:loaded', {
         detail: { route: 'admin/modules', isModule: false }
+      }));
+      return;
+    }
+
+    // ── Settings split: User Settings vs Admin Settings ──────────────────────
+    // Legacy 'settings' route → redirect to the new User Settings page.
+    if (route === 'settings') {
+      window.location.hash = 'settings/user';
+      return;
+    }
+
+    // User Settings (personal preferences) — visible to all authenticated users.
+    if (route === 'settings/user') {
+      const bodyContent = await window.resourceLoader.loadTemplate('settings-user');
+      content.innerHTML = bodyContent;
+      try {
+        await window.resourceLoader.loadScript('settings.js');
+      } catch (error) {
+        console.warn('settings.js loading failed:', error);
+      }
+      document.dispatchEvent(new CustomEvent('route:loaded', {
+        detail: { route: 'settings/user', isModule: false }
+      }));
+      return;
+    }
+
+    // Admin Settings (tenant / company configuration) — admin-gated.
+    if (route === 'settings/admin') {
+      const bodyContent = await window.resourceLoader.loadTemplate('settings-admin');
+      content.innerHTML = bodyContent;
+      try {
+        await window.resourceLoader.loadScript('settings-admin.js');
+      } catch (error) {
+        console.warn('settings-admin.js loading failed:', error);
+      }
+      document.dispatchEvent(new CustomEvent('route:loaded', {
+        detail: { route: 'settings/admin', isModule: false }
       }));
       return;
     }

@@ -1,0 +1,125 @@
+<div class="space-y-6">
+  <!-- Header -->
+  <div class="bg-white border-b border-gray-200 px-6 py-4">
+    <div class="flex items-center justify-between flex-wrap gap-3">
+      <div>
+        <h1 class="text-2xl font-bold text-gray-900 flex items-center gap-3">
+          <i class="ph-duotone ph-sliders text-orange-600"></i>
+          <span data-i18n="pages.adminSettings.title">Admin Settings</span>
+        </h1>
+        <p class="text-sm text-gray-600 mt-1" data-i18n="pages.adminSettings.description">Organization and company-level configuration</p>
+      </div>
+
+      <!-- Scope selector: tenant OR company -->
+      <div class="flex items-center gap-2">
+        <label class="text-sm font-medium text-gray-700" data-i18n="pages.adminSettings.scope">Scope</label>
+        <div id="admin-scope-container" style="min-width: 220px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Access-denied state (shown if the user lacks admin settings access) -->
+  <div id="admin-settings-denied" class="hidden max-w-xl mx-auto mt-8 p-6 bg-white border border-amber-200 rounded-lg text-center">
+    <i class="ph-duotone ph-lock-key text-4xl text-amber-500"></i>
+    <h2 class="mt-3 text-lg font-semibold text-gray-900">Admin access required</h2>
+    <p class="mt-2 text-sm text-gray-600">You do not have permission to manage administrative settings.</p>
+  </div>
+
+  <div id="admin-settings-body" class="hidden space-y-6">
+    <!-- Company-scope stub notice -->
+    <div id="admin-company-todo" class="hidden p-4 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700 flex items-start gap-2">
+      <i class="ph-duotone ph-info mt-0.5"></i>
+      <span>Company-level settings are a stub. Values are stored under the tenant settings <code class="bg-white/60 px-1 rounded">settings.companies.&lt;companyId&gt;</code> blob (TODO: dedicated company settings store).</span>
+    </div>
+
+    <!-- Organization Profile & Branding -->
+    <div class="bg-white rounded-lg shadow-sm p-6">
+      <h3 class="text-lg font-semibold text-gray-900 mb-6 flex items-center gap-2">
+        <i class="ph-duotone ph-buildings text-orange-600"></i>
+        <span data-i18n="pages.adminSettings.orgProfile">Organization Profile &amp; Branding</span>
+      </h3>
+
+      <form id="admin-settings-form" class="space-y-5">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Organization Name</label>
+            <input id="admin-tenant-name" type="text"
+                   class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Logo URL</label>
+            <input id="admin-logo-url" type="text" placeholder="https://…"
+                   class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Primary Color</label>
+            <input id="admin-primary-color" type="color" value="#1976d2"
+                   class="h-10 w-20 border border-gray-200 rounded-lg cursor-pointer">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Secondary Color</label>
+            <input id="admin-secondary-color" type="color" value="#424242"
+                   class="h-10 w-20 border border-gray-200 rounded-lg cursor-pointer">
+          </div>
+        </div>
+
+        <hr class="border-gray-100">
+
+        <h4 class="text-sm font-semibold text-gray-700 flex items-center gap-2">
+          <i class="ph-duotone ph-globe-hemisphere-west text-orange-500"></i>
+          Business Defaults
+        </h4>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Default Locale</label>
+            <div id="admin-default-locale-container"></div>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Default Timezone</label>
+            <div id="admin-default-timezone-container"></div>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Default Currency</label>
+            <input id="admin-default-currency" type="text" placeholder="USD" maxlength="8"
+                   class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm uppercase focus:outline-none focus:ring-2 focus:ring-orange-500">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Date Format</label>
+            <input id="admin-date-format" type="text" placeholder="YYYY-MM-DD"
+                   class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500">
+          </div>
+        </div>
+
+        <div class="text-sm text-gray-500" id="admin-settings-last-updated"></div>
+
+        <button type="submit" class="px-6 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition">
+          Save Settings
+        </button>
+      </form>
+    </div>
+
+    <!-- Email Templates (tenant-level) -->
+    <div class="bg-white rounded-lg shadow-sm p-6">
+      <div class="flex items-center justify-between mb-5">
+        <div>
+          <h3 class="text-lg font-semibold text-gray-900 flex items-center gap-2">
+            <i class="ph-duotone ph-envelope-simple text-orange-600 text-xl"></i>
+            Email Templates
+          </h3>
+          <p class="text-sm text-gray-500 mt-0.5">Customise transactional email templates sent to users (tenant-level)</p>
+        </div>
+      </div>
+
+      <div id="email-templates-loading" class="space-y-3">
+        <div class="animate-pulse flex items-center justify-between p-3 rounded-lg bg-gray-50 border border-gray-100">
+          <div class="h-3 bg-gray-200 rounded w-2/5"></div>
+          <div class="h-7 bg-gray-200 rounded w-16"></div>
+        </div>
+      </div>
+
+      <div id="email-templates-list" class="hidden divide-y divide-gray-100 border border-gray-200 rounded-xl overflow-hidden"></div>
+
+      <div id="email-templates-error" class="hidden mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700"></div>
+    </div>
+  </div>
+</div>

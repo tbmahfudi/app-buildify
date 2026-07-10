@@ -127,7 +127,8 @@ def create_menu_item_recursive(
     db: Session,
     item_data: dict,
     parent_id: str,
-    order: int
+    order: int,
+    synced_codes: set = None
 ) -> int:
     """
     Recursively create menu items and their children.
@@ -146,16 +147,40 @@ def create_menu_item_recursive(
         print(f"  • Skipping header item: {item_data['header']}")
         return 0
 
-    # Generate code from route or title
-    code = item_data.get('route', item_data.get('title', 'unknown').lower().replace(' ', '_').replace('&', 'and'))
+    # Use explicit code if provided, otherwise generate from route or title.
+    # Explicit codes keep the DB stable across restructures (e.g. moving a group
+    # to a new parent) so the upsert below matches the right row.
+    code = item_data.get('code') or item_data.get(
+        'route',
+        item_data.get('title', 'unknown').lower().replace(' ', '_').replace('&', 'and')
+    )
+
+    if synced_codes is not None:
+        synced_codes.add(code)
 
     # Check if item already exists (by code)
     existing = db.query(MenuItem).filter(MenuItem.code == code).first()
 
     if existing:
-        print(f"  • Skipping existing menu item: {code}")
+        # Upsert: update fields so re-syncing menu.json actually applies changes
+        # (new permissions, moved parent, renamed titles, split routes, …).
+        # Without this the sync would silently no-op on existing codes.
+        existing.title = item_data.get('title', item_data.get('header', existing.title))
+        existing.icon = item_data.get('icon')
+        existing.route = item_data.get('route')
+        existing.description = item_data.get('description')
+        existing.permission = item_data.get('permission')
+        existing.required_roles = item_data.get('roles')
+        existing.parent_id = parent_id
+        existing.order = order
+        existing.is_active = True
+        existing.is_visible = True
+        existing.is_system = True
+        existing.updated_at = datetime.utcnow()
+        db.flush()
         menu_item_id = str(existing.id)
         items_created = 0
+        print(f"  ↻ Updated menu item: {code} (ID: {menu_item_id})")
     else:
         # Create menu item
         menu_item = MenuItem(
@@ -193,7 +218,8 @@ def create_menu_item_recursive(
                 db=db,
                 item_data=child_data,
                 parent_id=menu_item_id,
-                order=child_idx * 10
+                order=child_idx * 10,
+                synced_codes=synced_codes
             )
             items_created += child_count
 
@@ -293,18 +319,35 @@ def seed_menu_items(clear_existing: bool = False, menu_json_path: str = None) ->
 
         # Process menu items
         items_created = 0
+        synced_codes = set()
         for idx, item in enumerate(menu_data['items']):
             created_count = create_menu_item_recursive(
                 db=db,
                 item_data=item,
                 parent_id=None,
-                order=idx * 10
+                order=idx * 10,
+                synced_codes=synced_codes
             )
             items_created += created_count
 
+        # Deactivate stale SYSTEM menu items that are no longer in menu.json.
+        # Only system items (is_system=True) are managed by this sync; virtual /
+        # dynamic items (module routes, builder pages, nocode entities) are
+        # is_system=False and regenerated at request time, so leave them alone.
+        stale = db.query(MenuItem).filter(
+            MenuItem.is_system == True,
+            MenuItem.is_active == True,
+            ~MenuItem.code.in_(synced_codes) if synced_codes else False,
+        ).all()
+        for item in stale:
+            item.is_active = False
+            item.is_visible = False
+            item.updated_at = datetime.utcnow()
+            print(f"  ⊘ Deactivated stale menu item: {item.code}")
+
         db.commit()
 
-        print(f"\n✓ Successfully seeded {items_created} menu items")
+        print(f"\n✓ Successfully seeded {items_created} menu items ({len(stale)} deactivated)")
         print("\n" + "="*80 + "\n")
 
         return items_created

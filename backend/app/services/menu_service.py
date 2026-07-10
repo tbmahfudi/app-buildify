@@ -455,9 +455,18 @@ class MenuService:
                 logger.debug(f"      -> MATCH! Adding child: {child.code}")
                 children.append(child)
 
-        # Sort children by order and convert to dict
+        # Sort children by order and convert to dict.
+        # Recursively prune parent-only children (no route) that end up with no
+        # accessible descendants — otherwise an admin-only group (e.g.
+        # Administration, System Settings) still renders as an empty shell for
+        # users who can't see any of its items. Depth-first order means
+        # grandchildren are pruned before their parent is evaluated.
         for child in sorted(children, key=lambda x: x.order):
-            result['children'].append(MenuService._item_to_dict(child, item_map))
+            child_dict = MenuService._item_to_dict(child, item_map)
+            if not child_dict.get('route') and len(child_dict.get('children', [])) == 0:
+                logger.debug(f"    -> Pruning empty child group {child.code}")
+                continue
+            result['children'].append(child_dict)
 
         logger.debug(f"    item has children")
         return result
@@ -689,7 +698,7 @@ class MenuService:
             icon='ph-duotone ph-squares-four',
             parent_id=None,
             order=90,  # Place near the end of the menu
-            permission=None,  # Accessible to all authenticated users
+            permission='nocode:access:tenant',  # No-code area — developers/admins only
             required_roles=[],
             is_system=False,
             is_active=True,

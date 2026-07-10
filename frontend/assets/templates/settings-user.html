@@ -1,0 +1,113 @@
+<div class="space-y-6">
+  <!-- Header -->
+  <div class="bg-white border-b border-gray-200 px-6 py-4">
+    <div class="flex items-center justify-between">
+      <div>
+        <h1 class="text-2xl font-bold text-gray-900 flex items-center gap-3">
+          <i class="ph-duotone ph-user-gear text-blue-600"></i>
+          <span data-i18n="pages.settings.userTitle">User Settings</span>
+        </h1>
+        <p class="text-sm text-gray-600 mt-1" data-i18n="pages.settings.description">Manage your personal preferences and account</p>
+      </div>
+      <a href="#profile"
+         class="inline-flex items-center gap-2 px-4 py-2 text-sm rounded-lg border border-gray-200 text-gray-700 hover:border-blue-300 hover:text-blue-600 transition">
+        <i class="ph-duotone ph-user-circle"></i>
+        <span data-i18n="pages.settings.profileLink">Profile &amp; Password</span>
+      </a>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <!-- User Preferences -->
+    <div class="lg:col-span-2">
+      <div class="bg-white rounded-lg shadow-sm p-6">
+        <h3 class="text-lg font-semibold text-gray-900 mb-6" data-i18n="pages.settings.userPreferences">User Preferences</h3>
+
+        <form id="user-settings-form" class="space-y-5">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2" data-i18n="pages.settings.theme">Theme</label>
+              <div id="setting-theme-container"></div>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2" data-i18n="pages.settings.density">Density</label>
+              <div id="setting-density-container"></div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">
+                <i class="ph-duotone ph-sidebar text-blue-600"></i>
+                <span data-i18n="pages.settings.sidebarState">Default Sidebar State</span>
+              </label>
+              <div id="setting-sidebar-state-container"></div>
+              <p class="text-xs text-gray-500 mt-1" data-i18n="pages.settings.sidebarStateDesc">The sidebar will open in this state when you login</p>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">
+                <i class="ph-duotone ph-layout text-blue-600"></i>
+                <span data-i18n="pages.settings.togglePosition">Sidebar Toggle Position</span>
+              </label>
+              <div id="setting-toggle-position-container"></div>
+              <p class="text-xs text-gray-500 mt-1" data-i18n="pages.settings.togglePositionDesc">Position of the sidebar collapse/expand button</p>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2" data-i18n="pages.settings.language">Language</label>
+              <div id="setting-language-container"></div>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2" data-i18n="pages.settings.timezone">Timezone</label>
+              <div id="setting-timezone-container"></div>
+            </div>
+          </div>
+
+          <div class="text-sm text-gray-500" id="settings-last-updated"></div>
+
+          <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition" data-i18n="pages.settings.savePreferences">
+            Save Preferences
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Preview Card -->
+    <div class="lg:col-span-1">
+      <div class="bg-white rounded-lg shadow-sm p-6 sticky top-20">
+        <h3 class="text-lg font-semibold text-gray-900 mb-4" data-i18n="pages.settings.preview.title">Preview</h3>
+        <div class="space-y-3 text-sm">
+          <div class="pb-3 border-b border-gray-200">
+            <p class="text-gray-600 font-medium" data-i18n="pages.settings.preview.theme">Theme</p>
+            <p id="preview-theme" class="text-gray-900 font-semibold">Light</p>
+          </div>
+          <div class="pb-3 border-b border-gray-200">
+            <p class="text-gray-600 font-medium" data-i18n="pages.settings.preview.density">Density</p>
+            <p id="preview-density" class="text-gray-900 font-semibold">Normal</p>
+          </div>
+          <div class="pb-3 border-b border-gray-200">
+            <p class="text-gray-600 font-medium" data-i18n="pages.settings.preview.sidebarState">Sidebar State</p>
+            <p id="preview-sidebar-state" class="text-gray-900 font-semibold">Expanded</p>
+          </div>
+          <div class="pb-3 border-b border-gray-200">
+            <p class="text-gray-600 font-medium" data-i18n="pages.settings.preview.togglePosition">Toggle Position</p>
+            <p id="preview-toggle-position" class="text-gray-900 font-semibold">After Platform Title</p>
+          </div>
+          <div class="pb-3 border-b border-gray-200">
+            <p class="text-gray-600 font-medium" data-i18n="pages.settings.preview.language">Language</p>
+            <p id="preview-language" class="text-gray-900 font-semibold">English</p>
+          </div>
+          <div>
+            <p class="text-gray-600 font-medium" data-i18n="pages.settings.preview.timezone">Timezone</p>
+            <p id="preview-timezone" class="text-gray-900 font-semibold">UTC</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

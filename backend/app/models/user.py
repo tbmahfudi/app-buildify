@@ -27,7 +27,13 @@ class User(Base):
 
     # Authentication
     email = Column(String(255), unique=True, nullable=False, index=True)
+    # Optional case-insensitive login identifier (ADR-HC-009 D1). Uniqueness is
+    # enforced by the partial index uq_users_username_lower.
+    username = Column(String(50), nullable=True)
     hashed_password = Column(String(255), nullable=False)
+    # Migration flag (ADR-HC-009 D7): a legacy patient must set a password before
+    # full access; NULL/False for normal accounts.
+    must_set_password = Column(Boolean, nullable=False, default=False)
 
     # Profile
     full_name = Column(String(255), nullable=True)
