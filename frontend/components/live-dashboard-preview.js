@@ -23,6 +23,7 @@
  */
 
 import { apiFetch } from '../assets/js/api.js';
+import { renderChart } from '../assets/js/core/chart-adapter.js';
 
 export class LiveDashboardPreview {
     constructor(container, options = {}) {
@@ -88,6 +89,9 @@ export class LiveDashboardPreview {
     }
 
     async render() {
+        // Dispose any chart instances from the previous render before we replace innerHTML.
+        this._disposeCharts();
+
         const devicePreset = this.devicePresets[this.currentDevice];
         const themePreset = this.themePresets[this.currentTheme];
 
@@ -298,14 +302,48 @@ export class LiveDashboardPreview {
     }
 
     renderChartWidget(widget) {
-        return `
-            <div class="chart-placeholder bg-gray-50 dark:bg-gray-700 rounded h-full min-h-[150px] flex items-center justify-center">
-                <div class="text-center">
-                    <i class="ph ph-chart-bar text-4xl text-gray-300 mb-2"></i>
-                    <div class="text-xs text-gray-500">${this.dataMode === 'live' ? 'Loading data...' : 'Mock chart data'}</div>
-                </div>
-            </div>
-        `;
+        // Real WYSIWYG chart preview via the single ECharts adapter. The widget type
+        // encodes the chart kind ('chart-bar' -> 'bar'); hydrated in _hydrateCharts().
+        const chartType = (widget.type || 'chart-bar').replace(/^chart-/, '') || 'bar';
+        const id = `lp-chart-${widget.id || Math.random().toString(36).slice(2)}`;
+        return `<div id="${id}" class="lp-chart-canvas" data-chart-type="${chartType}"
+                     style="width:100%;height:100%;min-height:150px;"></div>`;
+    }
+
+    /** Sample data for the design-time preview (mirrors the shape the runtime widget receives). */
+    _sampleChartData(type) {
+        if (type === 'pie' || type === 'donut' || type === 'funnel') {
+            return { labels: ['Alpha', 'Beta', 'Gamma', 'Delta'], datasets: [{ label: 'Value', data: [40, 30, 20, 10] }] };
+        }
+        if (type === 'gauge') return { labels: [''], datasets: [{ label: 'Score', data: [72] }] };
+        const labels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
+        const rnd = () => labels.map(() => Math.round(20 + Math.random() * 80));
+        const datasets = [{ label: 'Series A', data: rnd() }];
+        if (['combo', 'bar_grouped', 'bar_stacked', 'area_stacked', 'line'].includes(type)) {
+            datasets.push({ label: 'Series B', data: rnd() });
+        }
+        return { labels, datasets };
+    }
+
+    /** Render every chart canvas in the preview through the ECharts adapter. */
+    _hydrateCharts() {
+        const els = this.container.querySelectorAll('.lp-chart-canvas');
+        if (!els.length) return;
+        this._chartEls = Array.from(els);
+        const dark = this.currentTheme === 'dark' || document.documentElement.classList.contains('dark');
+        els.forEach((el) => {
+            const type = el.dataset.chartType || 'bar';
+            const cfg = { chart_type: type, x_axis: 'x', y_axis: ['Series A'] };
+            renderChart(el, cfg, this._sampleChartData(type), { dark }).catch(() => {});
+        });
+    }
+
+    /** Dispose preview chart instances before a re-render (render() rebuilds innerHTML). */
+    async _disposeCharts() {
+        if (!this._chartEls || !this._chartEls.length) return;
+        const { disposeChart } = await import('../assets/js/core/chart-adapter.js');
+        for (const el of this._chartEls) { disposeChart(el).catch(() => {}); }
+        this._chartEls = [];
     }
 
     renderMetricWidget(widget) {
@@ -418,6 +456,9 @@ export class LiveDashboardPreview {
         performanceBtn?.addEventListener('click', () => {
             this.togglePerformance();
         });
+
+        // Draw real sample charts into any chart canvases just rendered.
+        this._hydrateCharts();
     }
 
     switchDevice(device) {

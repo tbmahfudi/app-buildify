@@ -11,6 +11,7 @@
 
 import { dashboardService } from '../assets/js/dashboard-service.js';
 import { showNotification } from '../assets/js/notifications.js';
+import { renderChart, disposeChart } from '../assets/js/core/chart-adapter.js';
 
 export class DashboardWidget {
     constructor(container, widgetConfig, globalParameters = {}) {
@@ -97,7 +98,7 @@ export class DashboardWidget {
                 this._renderReportTable(container);
                 break;
             case 'chart':
-                this._renderChart(container);
+                await this._renderChart(container);
                 break;
             case 'kpi_card':
                 this._renderKpiCard(container);
@@ -160,7 +161,7 @@ export class DashboardWidget {
         container.innerHTML = html;
     }
 
-    _renderChart(container) {
+    async _renderChart(container) {
         const chartConfig = this.widgetConfig.chart_config;
 
         if (!chartConfig || !this.data) {
@@ -168,18 +169,23 @@ export class DashboardWidget {
             return;
         }
 
-        // For now, render a placeholder with chart info
-        // In production, you'd integrate with Chart.js or similar
-        container.innerHTML = `
-            <div class="text-center py-12">
-                <div class="text-6xl mb-4">📊</div>
-                <p class="font-bold text-gray-800">${chartConfig.chart_type.toUpperCase()} Chart</p>
-                <p class="text-sm text-gray-600 mt-2">X-Axis: ${chartConfig.x_axis}</p>
-                <p class="text-sm text-gray-600">Y-Axis: ${chartConfig.y_axis.join(', ')}</p>
-                <p class="text-xs text-gray-500 mt-4">${this.data.labels?.length || 0} data points</p>
-                <p class="text-xs text-gray-400 mt-2">Chart integration with Chart.js ready</p>
-            </div>
-        `;
+        const hasSeries = (this.data.datasets && this.data.datasets.length) || Array.isArray(this.data);
+        if (!hasSeries) {
+            container.innerHTML = '<p class="text-gray-500 text-center py-8">No data available</p>';
+            return;
+        }
+
+        // Single-engine rendering via the ECharts adapter (see core/chart-adapter.js).
+        container.innerHTML = '<div class="chart-canvas" style="width:100%;height:100%;min-height:220px;"></div>';
+        this._chartEl = container.querySelector('.chart-canvas');
+        try {
+            await renderChart(this._chartEl, chartConfig, this.data);
+        } catch (error) {
+            container.innerHTML = `
+                <div class="bg-red-50 border border-red-200 text-red-700 p-4 rounded text-sm">
+                    Chart failed to render: ${error.message}
+                </div>`;
+        }
     }
 
     _renderKpiCard(container) {
@@ -253,6 +259,10 @@ export class DashboardWidget {
     destroy() {
         if (this.refreshInterval) {
             clearInterval(this.refreshInterval);
+        }
+        if (this._chartEl) {
+            disposeChart(this._chartEl).catch(() => {});
+            this._chartEl = null;
         }
     }
 }
