@@ -81,6 +81,30 @@ def login(
     else:
         user = db.query(User).filter(func.lower(User.username) == identifier.lower()).first()
 
+    # ADR-HC-009 D7: a backfilled/legacy account carries a placeholder credential and
+    # must set a real password before it can sign in. Signal the claim flow with a
+    # distinct 403 code so the portal routes to "set your password" instead of a
+    # generic wrong-password error. Checked before the credential test because the
+    # placeholder hash can never verify anyway — this makes the state actionable.
+    if user and getattr(user, "must_set_password", False):
+        create_audit_log(
+            db=db,
+            action="login",
+            user=user,
+            entity_type="user",
+            entity_id=str(user.id),
+            request=request,
+            status="failure",
+            error_message="must_set_password",
+        )
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "code": "must_set_password",
+                "message": "You must set a password before signing in. Use 'Set your password' to claim your account.",
+            },
+        )
+
     # Record failed login attempt if user not found or password incorrect
     if not user or not verify_password(credentials.password, user.hashed_password):
         # Record failed login attempt
@@ -456,6 +480,7 @@ def get_me(current_user: User = Depends(get_current_user), db: Session = Depends
         phone=current_user.phone,
         is_active=current_user.is_active,
         is_superuser=current_user.is_superuser,
+        must_set_password=bool(getattr(current_user, "must_set_password", False)),
         tenant_id=str(current_user.tenant_id) if current_user.tenant_id else None,
         default_company_id=str(current_user.default_company_id) if current_user.default_company_id else None,
         branch_id=str(current_user.branch_id) if current_user.branch_id else None,
@@ -645,6 +670,8 @@ def change_password(
 
     # Reset password expiration flags
     current_user.require_password_change = False
+    # ADR-HC-009 D7: setting a real password lifts the must-set-password gate.
+    current_user.must_set_password = False
     grace_logins = security_config.get_config("password_grace_logins", current_user.tenant_id) or 0
     current_user.grace_logins_remaining = grace_logins
 
@@ -895,6 +922,9 @@ def reset_password_confirm(
 
     # Reset password expiration flags
     user.require_password_change = False
+    # ADR-HC-009 D7: a legacy/backfilled patient claims their account by setting a
+    # password via this reset flow — which lifts the must-set-password gate.
+    user.must_set_password = False
     grace_logins = security_config.get_config("password_grace_logins", user.tenant_id) or 0
     user.grace_logins_remaining = grace_logins
 
