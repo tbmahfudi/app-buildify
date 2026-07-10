@@ -12,7 +12,13 @@ created: 2026-06-21
 
 ## Status
 
-Accepted
+Accepted — **amended for shared-tenant SaaS by ADR-HC-010 (2026-07-06).** Under the shared-tenant SaaS
+model (ADR-HC-005 Amendment v2) the **patient-registry isolation key changes from `tenant_id` to
+`company_id`** (a new `app.company_id` GUC; ADR-HC-010 D1/D2, schema-hc-04 §S/§R), and the
+`clinic_owner` §D3 bypass is re-scoped from "all branches within their `tenant_id`" to **"all branches
+within their Company"** (ADR-HC-010 D4). The branch-scoped clinical RLS (§D4) is **unchanged** — a
+Branch belongs to exactly one Company, so branch-scoping already isolates by Company. See ADR-HC-010 for
+the amended invariants.
 
 ## Context
 

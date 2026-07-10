@@ -294,3 +294,108 @@ created: 2026-06-21
 - **Mobile:** Secondary; alerts full-width stacked; acknowledgement checkbox large tap target.
 
 ## Story Count: Feature 4.1 (2) + 4.2 (2) + 4.3 (1) + 4.4 (1) = **6 stories**
+
+---
+
+## R2 Gap Addendum (v3)
+
+**Upstream:** BACKLOG v3 (2026-07-02). Closes two R2 dispensing/stock gaps identified in the 20-module
+disposition map. New stories continue Feature 4.3 (Dispensing Workflow) and Feature 4.1 (Medication
+Catalog) numbering. Existing content above is unchanged. Reuses the platform notification transport
+(Reuse Register #7) and scheduler for stock alerts — this addendum specifies healthcare dispensing states
+and reorder-alert behavior, not a new notification engine.
+
+### Story 4.3.2 [OPEN]
+**As a** Pharmacist,
+**I want to** move each prescription through explicit dispensing states — prepare, dispense, reject, and partial-dispense —
+**so that** the fulfillment status is unambiguous, auditable, and visible to the doctor and patient at every step.
+
+**Backend AC:**
+- Dispensing state machine on the prescription/dispense record: `reviewed → preparing → dispensed | partially_dispensed | rejected`; each transition guarded (no skip-ahead; no transition out of a terminal state except a linked amendment).
+- `PUT /api/v1/tenants/:tenant_id/branches/:branch_id/prescriptions/:prescription_id/prepare` — auth: Pharmacist; `reviewed → preparing`; records `prepared_by`, `prepared_at`; optional `preparation_notes` (internal).
+- `POST .../prescriptions/:prescription_id/dispense` (existing, extended) — on submit, if every line's `quantity_dispensed == quantity_prescribed` → status `dispensed`; if at least one line is short but > 0 → status `partially_dispensed` with required `partial_reason` per short line; deducts stock atomically (422 `insufficient_stock` unchanged).
+- `PUT .../prescriptions/:prescription_id/reject` — auth: Pharmacist; `preparing | reviewed → rejected`; required `rejection_reason` (controlled vocabulary: out_of_stock, prescription_error, patient_declined, duplicate, other + free text); no stock deducted; emits `prescription.rejected` PHI audit event and notifies the prescribing doctor via the platform notification transport (PHI-safe body: reference code only).
+- `partially_dispensed` prescriptions expose a remaining-balance so a follow-up dispense can complete them; a follow-up dispense that clears the balance transitions `partially_dispensed → dispensed`.
+- Every transition emits a `prescription.dispense_state_changed` PHI audit event `(prescription_id, from_state, to_state, actor_id, branch_id, tenant_id, at)`; patient portal active-prescription list reflects the current state.
+
+**Frontend AC:**
+- Route: `/clinic/pharmacy/prescriptions/:prescription_id/dispense`
+- Explicit state control: state pipeline (Ditinjau → Menyiapkan → Dikeluarkan / Sebagian / Ditolak) with the current step highlighted; action buttons offer only the valid next transitions.
+- "Prepare" moves to preparing; "Reject" opens a reason modal (controlled vocabulary + free text); partial dispense auto-detected when any dispensed quantity < prescribed, requiring a per-line reason.
+- Partially dispensed prescriptions show a "Remaining" column and a "Complete Remaining" action.
+- Status badge and pipeline update live; all labels in active locale; timestamps in branch timezone.
+
+---
+
+#### Frontend (UILDC v1.0)
+
+- **Route:** `#/clinic/pharmacy/prescriptions/:prescription_id/dispense`
+- **Portal:** Clinic Portal
+- **Layout:** Sidebar nav (active: Farmasi > Pengeluaran Obat) + main content; prescription header (patient PHI masked); dispensing state pipeline below header; line-items table; action toolbar at bottom offering only valid transitions.
+- **Components:**
+  - `FlexSidebar` — nav; branch context badge
+  - `FlexCard` — prescription header: patient identifier (masked), prescribing doctor, date, reference
+  - `FlexProgress` — dispensing state pipeline: Ditinjau (Reviewed) → Menyiapkan (Preparing) → Dikeluarkan (Dispensed) / Sebagian (Partial) / Ditolak (Rejected); current step highlighted; terminal states colour-coded (Dikeluarkan green, Sebagian amber, Ditolak red)
+  - `FlexTable` — line items: Nama Obat, Dosis Resep, Stok Tersedia, Jumlah Dikeluarkan (editable), Sisa (Remaining — shown for partial)
+  - `FlexInput` — quantity dispensed per line (integer; pre-filled from prescription)
+  - `FlexTextarea` — per-line partial reason (appears when dispensed < prescribed)
+  - `FlexModal` — "Tolak Resep" (Reject Prescription) reason modal: `FlexSelect` controlled vocabulary (Stok habis / Kesalahan resep / Pasien menolak / Duplikat / Lainnya) + free-text `FlexTextarea`
+  - `FlexButton` — context-sensitive: "Siapkan" (Prepare), "Konfirmasi Pengeluaran" (Confirm Dispense), "Tolak" (Reject), "Selesaikan Sisa" (Complete Remaining); only valid next actions enabled
+  - `FlexBadge` — status badge; PHI mask toggle on header
+  - `FlexAlert` — 422 insufficient stock; reject/partial confirmation; success
+- **Key interactions:**
+  - Pipeline reflects current state; buttons offer only valid transitions (e.g. "Konfirmasi Pengeluaran" hidden until "Menyiapkan"; "Selesaikan Sisa" only for "Sebagian").
+  - "Siapkan": `reviewed → preparing`; optional preparation note.
+  - Editing a quantity below prescribed reveals a per-line reason field; submitting a short-but-nonzero set marks the prescription "Sebagian" (partially dispensed) and shows a Remaining balance.
+  - "Selesaikan Sisa" reopens the dispense form scoped to the remaining balance; clearing it flips status to "Dikeluarkan".
+  - "Tolak": reason modal (controlled vocabulary + free text) required; on confirm status → "Ditolak", no stock deducted, prescribing doctor notified (in-app + optional WhatsApp per clinic settings, PHI-safe reference only).
+- **Empty state:** N/A (page scoped to a specific prescription).
+- **Error state:** Insufficient stock (422): `FlexAlert` per affected item "Stok [Nama Obat] tidak mencukupi" (Insufficient stock for [Drug Name]); reject without reason: inline "Alasan penolakan wajib diisi" (Rejection reason is required); general failure: top-of-page `FlexAlert`.
+- **i18n:** Pipeline step labels, terminal-state labels, column headers (incl. Sisa/Remaining), reject reason vocabulary, partial reason placeholder, all button labels, status badges, error/success strings, timestamp format translated (ID / EN).
+- **Mobile:** Secondary; pipeline horizontally scrollable; line-items table collapses to card per drug; reject/partial reason modals full-screen.
+
+### Story 4.1.3 [OPEN]
+**As a** Pharmacist or Branch Manager,
+**I want to** define a reorder level per catalog item and receive stock alerts when stock falls to or below it,
+**so that** I can reorder in time and never dispense from empty stock.
+
+**Backend AC:**
+- Each catalog item carries `reorder_threshold` (exists) plus an optional `reorder_quantity` (suggested reorder amount) and `alert_enabled` flag (default true).
+- A scheduled job (reuse platform Scheduler — Reuse Register) evaluates each branch catalog once per configured interval (default daily) and also re-evaluates immediately after any stock-decrementing dispense; an item at or below its reorder level with `alert_enabled` raises a `pharmacy.reorder_alert` via the platform notification transport (Reuse Register #7) to Pharmacist + Branch Manager (in-app + email), body: drug name, current stock, reorder level, suggested reorder quantity — no PHI.
+- Alerts are de-duplicated: one open alert per catalog item until stock rises above the reorder level (then the alert auto-resolves and can re-fire).
+- `GET /api/v1/tenants/:tenant_id/branches/:branch_id/pharmacy/catalog/reorder-alerts?status=open` — auth: Pharmacist, Branch Manager; returns open reorder alerts with item, current stock, reorder level, first-raised-at.
+- `PUT .../reorder-alerts/:alert_id/acknowledge` — records `acknowledged_by`/`acknowledged_at` (suppresses re-notification but keeps the alert open until restocked); emits `pharmacy.reorder_alert_acknowledged` audit event.
+
+**Frontend AC:**
+- Route: `/clinic/pharmacy/catalog` — reorder alerts surfaced in a top banner and a dedicated "Reorder Alerts" panel/tab; each catalog item shows a reorder-level field and a low/at-level indicator.
+- Reorder-level editable inline per item; suggested reorder quantity shown; acknowledge action per alert.
+- Notification center shows reorder alerts with a direct link to the catalog item.
+- All labels in active locale; quantities as integer.
+
+---
+
+#### Frontend (UILDC v1.0)
+
+- **Route:** `#/clinic/pharmacy/catalog` (reorder-alerts panel/tab) + notification center
+- **Portal:** Clinic Portal
+- **Layout:** Reorder alerts as a dismissible top banner plus a "Peringatan Pemesanan Ulang" (Reorder Alerts) tab beside the catalog table; reorder-level column editable inline in the catalog table.
+- **Components:**
+  - `FlexAlert` — amber banner: "[N] obat berada di atau di bawah level pemesanan ulang." (N drugs at or below reorder level.) with "Lihat" (View) link opening the Reorder Alerts tab
+  - `FlexTabs` — Katalog / Peringatan Pemesanan Ulang (count badge)
+  - `FlexTable` (alerts tab) — columns: Nama Obat, Stok Saat Ini, Level Pemesanan Ulang, Saran Jumlah, Pertama Muncul, Tindakan
+  - `FlexInput` — inline reorder-level edit per catalog row (integer)
+  - `FlexBadge` — item indicator: "Di level" (at level, amber) / "Di bawah level" (below level, red)
+  - `FlexButton` — "Konfirmasi" (Acknowledge) per alert; "Abaikan" (Dismiss) banner per session
+  - `FlexNotification` — notification-center entry: drug name, current stock, reorder level; deep link to catalog item
+- **Key interactions:**
+  - "Lihat" opens the Reorder Alerts tab; each alert row deep-links to the catalog item.
+  - Inline reorder-level edit: click cell → integer input → enter/tab confirms; re-evaluates alert state immediately.
+  - "Konfirmasi" acknowledges an alert (stops repeat notifications, keeps it open until restocked); acknowledged rows show a muted state.
+  - Alert auto-resolves and disappears when stock rises above the reorder level.
+  - No PHI on this page.
+- **Empty state:** Banner and alerts tab hidden / "Tidak ada peringatan pemesanan ulang." (No reorder alerts.) when nothing is at or below level.
+- **Error state:** Reorder-level save failure: inline "Gagal menyimpan level" (Failed to save level); alert fetch failure: notification center shows last-known count with a stale indicator.
+- **i18n:** Banner text, tab labels, column headers, indicator badges, acknowledge/dismiss labels, notification entry text, empty/error strings translated (ID / EN).
+- **Mobile:** Secondary; banner full-width; alerts tab as card list; inline edit replaced by an "Edit Level" button → modal.
+
+## R2 Addendum Story Count: Feature 4.3 (1: 4.3.2) + Feature 4.1 (1: 4.1.3) = **2 stories** (epic total: 8)

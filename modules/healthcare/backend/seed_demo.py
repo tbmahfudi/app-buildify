@@ -67,6 +67,10 @@ from modules.healthcare.routes_patient_auth import _hash_phone  # exact login ha
 from app.core.dependencies import get_db
 
 
+# NOTE: TENANT_ID / BRANCH_SLUG are module globals so the existing low-level
+# helpers (which reference them directly in their INSERTs) keep working. run()
+# rebinds them from the chosen config before seeding, so the same helpers seed
+# either clinic without per-helper signature changes.
 TENANT_ID = "50f10a52-66ad-4c38-a0b2-6015db8dd42c"
 BRANCH_SLUG = "medcare-main"
 CONSENT_VERSION = "1.0"
@@ -80,11 +84,66 @@ DEMO_PATIENTS = [
      "dob": "1978-11-05", "email": "dewi.demo@example.com"},
 ]
 
+# ---------------------------------------------------------------------------
+# Clinic configurations
+#
+# "medcare"     — original phone+OTP demo; branch pre-exists, patients are not
+#                 linked to platform users (legacy default, backwards-compatible).
+# "healthpoint" — bridges the seeded platform patient users
+#                 (patient1/2/3@healthpoint.com) to real portal data. Each demo
+#                 patient is linked by `user_link_email` -> hc_patients.user_id,
+#                 so those users get a populated portal via the platform-login
+#                 bridge (POST /api/v1/patients/auth/from-platform). The branch
+#                 is created here (HealthPoint has no clinic otherwise).
+# ---------------------------------------------------------------------------
+CONFIGS = {
+    "medcare": {
+        "tenant_id": "50f10a52-66ad-4c38-a0b2-6015db8dd42c",
+        "branch": {
+            "slug": "medcare-main",
+            "branch_name": "MedCare Main Clinic",
+            "create_if_missing": False,  # expected to already exist
+        },
+        "patients": DEMO_PATIENTS,
+    },
+    "healthpoint": {
+        "tenant_id": "f9026af6-4951-44c5-a84f-fc9331848b12",
+        "branch": {
+            "slug": "healthpoint-main",
+            "branch_name": "HealthPoint Main Clinic",
+            "address_street": "100 Wellness Ave",
+            "address_city": "Jakarta",
+            "address_province": "DKI Jakarta",
+            "address_postal_code": "10110",
+            "contact_phone": "+622150000100",
+            "create_if_missing": True,
+        },
+        "patients": [
+            {"phone": "+6281190000001", "full_name": "Pat Rivera",    "gender": "other",
+             "dob": "1988-02-14", "email": "patient1@healthpoint.com",
+             "user_link_email": "patient1@healthpoint.com"},
+            {"phone": "+6281190000002", "full_name": "Sam Okafor",    "gender": "male",
+             "dob": "1992-09-03", "email": "patient2@healthpoint.com",
+             "user_link_email": "patient2@healthpoint.com"},
+            {"phone": "+6281190000003", "full_name": "Lee Nakamura",  "gender": "female",
+             "dob": "1975-12-19", "email": "patient3@healthpoint.com",
+             "user_link_email": "patient3@healthpoint.com"},
+        ],
+    },
+}
+
 
 def _det_id(*parts: str) -> str:
-    """Deterministic UUID5 so re-runs reuse the same row ids (idempotency)."""
+    """Deterministic UUID5 so re-runs reuse the same row ids (idempotency).
+
+    Namespaced by the current TENANT_ID so the same natural key (e.g. a provider
+    display_name shared across clinics) yields DISTINCT ids per tenant — without
+    this, seeding a second clinic collides on the providers/slots/etc. PK.
+    NOTE: the original MedCare rows were seeded before tenant-namespacing; re-run
+    MedCare only against a clean tenant to avoid duplicate clinical rows.
+    """
     import uuid
-    return str(uuid.uuid5(uuid.NAMESPACE_URL, "hc-seed:" + ":".join(parts)))
+    return str(uuid.uuid5(uuid.NAMESPACE_URL, "hc-seed:" + TENANT_ID + ":" + ":".join(parts)))
 
 
 def _exec(db, sql, **params):
@@ -99,16 +158,33 @@ def _scalar(db, sql, **params):
 # Branch & providers
 # ---------------------------------------------------------------------------
 
-def get_branch(db) -> str:
+def get_or_create_branch(db, branch_cfg) -> str:
     row = db.query(HCBranch).filter(
-        HCBranch.tenant_id == TENANT_ID, HCBranch.slug == BRANCH_SLUG
+        HCBranch.tenant_id == TENANT_ID, HCBranch.slug == branch_cfg["slug"]
     ).first()
-    if not row:
+    if row:
+        return row.id
+    if not branch_cfg.get("create_if_missing"):
         raise SystemExit(
-            f"MedCare branch (slug={BRANCH_SLUG}) not found in tenant {TENANT_ID}. "
+            f"Branch (slug={branch_cfg['slug']}) not found in tenant {TENANT_ID}. "
             "Expected it to already exist."
         )
-    return row.id
+    bid = _det_id("branch", TENANT_ID, branch_cfg["slug"])
+    branch = HCBranch(
+        id=bid, tenant_id=TENANT_ID,
+        branch_name=branch_cfg["branch_name"], slug=branch_cfg["slug"],
+        address_street=branch_cfg.get("address_street", "1 Clinic St"),
+        address_city=branch_cfg.get("address_city", "Jakarta"),
+        address_province=branch_cfg.get("address_province", "DKI Jakarta"),
+        address_postal_code=branch_cfg.get("address_postal_code", "10000"),
+        contact_phone=branch_cfg.get("contact_phone", "+622100000000"),
+        operating_hours={"mon_fri": "09:00-17:00"},
+        appointment_types=["general_consultation"],
+        status="active", online_booking=True,
+    )
+    db.add(branch)
+    db.flush()
+    return bid
 
 
 def get_or_create_provider(db, branch_id, display_name, specialty, license_no) -> str:
@@ -174,20 +250,37 @@ def get_or_create_slot(db, branch_id, provider_id, schedule_id, slot_date,
 # Patients
 # ---------------------------------------------------------------------------
 
+def _platform_user_id(db, email: str):
+    """Resolve a platform users.id by email so the hc_patient can link to it."""
+    return _scalar(db, "SELECT id FROM users WHERE email=:e LIMIT 1", e=email)
+
+
 def get_or_create_patient(db, spec) -> str:
     phone_hash = _hash_phone(spec["phone"])
+    # Resolve the optional platform-user link up front so we can also backfill
+    # user_id onto a patient that already exists from an earlier run.
+    user_id = None
+    if spec.get("user_link_email"):
+        user_id = _platform_user_id(db, spec["user_link_email"])
+        if not user_id:
+            print(f"  ⚠ No platform user for {spec['user_link_email']}; "
+                  f"patient will not be reachable via platform login.")
+
     existing = _scalar(
         db,
         "SELECT id FROM hc_patients WHERE phone_hash=:ph AND tenant_id=:tid LIMIT 1",
         ph=phone_hash, tid=TENANT_ID,
     )
     if existing:
+        if user_id:
+            _exec(db, "UPDATE hc_patients SET user_id=:uid WHERE id=:id",
+                  uid=user_id, id=existing)
         return existing
 
     pid = _det_id("patient", spec["phone"])
     now = datetime.utcnow()
     patient = HCPatient(
-        id=pid, tenant_id=TENANT_ID,
+        id=pid, tenant_id=TENANT_ID, user_id=user_id,
         full_name=spec["full_name"], date_of_birth=spec["dob"],
         phone=spec["phone"], email=spec["email"],
         gender=spec["gender"], locale="id-ID",
@@ -365,7 +458,10 @@ def seed_invoice(db, branch_id, patient_id, encounter_id, seq):
     inv_id = _det_id("invoice", patient_id)
     now = datetime.utcnow()
     if not _scalar(db, "SELECT id FROM hcb_invoices WHERE id=:id", id=inv_id):
-        inv_number = "INV-DEMO-%04d" % seq
+        # invoice_number is globally unique (not tenant-scoped) — derive a
+        # per-clinic prefix from the branch slug so clinics never collide.
+        prefix = BRANCH_SLUG.split("-")[0].upper()[:6]
+        inv_number = "INV-%s-%04d" % (prefix, seq)
         _exec(
             db,
             "INSERT INTO hcb_invoices "
@@ -397,7 +493,13 @@ def seed_invoice(db, branch_id, patient_id, encounter_id, seq):
 # Orchestration
 # ---------------------------------------------------------------------------
 
-def run() -> dict:
+def run(config_key: str = "medcare") -> dict:
+    global TENANT_ID, BRANCH_SLUG
+    cfg = CONFIGS[config_key]
+    TENANT_ID = cfg["tenant_id"]
+    BRANCH_SLUG = cfg["branch"]["slug"]
+    patients_cfg = cfg["patients"]
+
     db = next(get_db())
     try:
         # The patient auth route looks patients up by `phone_hash`, but the
@@ -408,9 +510,16 @@ def run() -> dict:
                   "phone_hash VARCHAR(64)")
         _exec(db, "CREATE INDEX IF NOT EXISTS idx_hc_patients_phone_hash "
                   "ON hc_patients (phone_hash)")
+        # user_id links an hc_patient to a platform users.id, enabling the
+        # platform-login -> patient-session bridge. Added idempotently here for
+        # the same reason as phone_hash (create_all never alters a live table).
+        _exec(db, "ALTER TABLE hc_patients ADD COLUMN IF NOT EXISTS "
+                  "user_id VARCHAR(36)")
+        _exec(db, "CREATE INDEX IF NOT EXISTS idx_hc_patients_user_id "
+                  "ON hc_patients (user_id)")
         db.commit()
 
-        branch_id = get_branch(db)
+        branch_id = get_or_create_branch(db, cfg["branch"])
 
         prov1 = get_or_create_provider(
             db, branch_id, "Dr. Andi Pratama", "General Practitioner", "SIP-001")
@@ -429,7 +538,7 @@ def run() -> dict:
         counts = {"patients": 0, "appointments": 0, "prescriptions": 0,
                   "lab_orders": 0, "invoices": 0}
 
-        for i, spec in enumerate(DEMO_PATIENTS):
+        for i, spec in enumerate(patients_cfg):
             provider_id = prov1 if i % 2 == 0 else prov2
             schedule_id = get_or_create_schedule(db, branch_id, provider_id, 1)
 
@@ -482,11 +591,24 @@ def verify():
     print("token:", token)
 
 
+def _parse_tenant() -> str:
+    """--tenant <key> selects the clinic config (default: medcare)."""
+    if "--tenant" in sys.argv:
+        i = sys.argv.index("--tenant")
+        if i + 1 < len(sys.argv):
+            key = sys.argv[i + 1]
+            if key not in CONFIGS:
+                raise SystemExit(f"Unknown --tenant '{key}'. Options: {list(CONFIGS)}")
+            return key
+    return "medcare"
+
+
 if __name__ == "__main__":
     if "--verify" in sys.argv:
         verify()
     else:
-        result = run()
-        print("Seed complete:")
+        config_key = _parse_tenant()
+        result = run(config_key)
+        print(f"Seed complete ({config_key}):")
         for k, v in result.items():
             print(f"  {k}: {v}")
