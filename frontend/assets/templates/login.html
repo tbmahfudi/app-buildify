@@ -7,8 +7,8 @@
   <!-- Content Security Policy -->
   <meta http-equiv="Content-Security-Policy" content="
     default-src 'self';
-    script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com;
-    style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdn.jsdelivr.net;
+    script-src 'self' 'unsafe-inline';
+    style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net;
     font-src 'self' https://cdn.jsdelivr.net;
     img-src 'self' data: https:;
     connect-src 'self' http://localhost:8080 http://localhost:8000 https:;
@@ -19,8 +19,8 @@
 
   <title>NoCode Platform - Login</title>
 
-  <!-- Security Note: Tailwind CDN doesn't support SRI. For production, use PostCSS build instead. -->
-  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Tailwind: built/purged static stylesheet (shared with the SPA). -->
+  <link href="../css/app.build.css" rel="stylesheet" />
 
   <!-- Phosphor Icons -->
   <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.2/src/regular/style.css">
@@ -430,8 +430,37 @@
   </div>
 
   <script type="module">
-    import { login, requestPasswordReset, confirmPasswordReset } from '../js/api.js';
+    import { login, requestPasswordReset, confirmPasswordReset, getAuthToken } from '../js/api.js';
     import PasswordStrengthIndicator from '../js/password-strength-indicator.js';
+
+    /**
+     * Patient-role users authenticate against the platform but belong in the
+     * healthcare portal (separate patient-token auth). Exchange the platform
+     * JWT for a patient session and redirect to the portal. Returns true if it
+     * redirected, false to fall through to the staff SPA.
+     */
+    async function routePatientToPortal() {
+      try {
+        const token = getAuthToken();
+        if (!token) return false;
+        const meRes = await fetch('/api/v1/auth/me', { headers: { Authorization: `Bearer ${token}` } });
+        if (!meRes.ok) return false;
+        const me = await meRes.json();
+        if (!(me.roles || []).includes('patient')) return false;
+        const brRes = await fetch('/api/v1/patients/auth/from-platform', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!brRes.ok) return false;
+        const data = await brRes.json();
+        if (!data.access_token) return false;
+        localStorage.setItem('hc_patient_token', data.access_token);
+        window.location.href = '/portal/healthcare/';
+        return true;
+      } catch (_e) {
+        return false;
+      }
+    }
 
     const form = document.getElementById('login-form');
     const errorDiv = document.getElementById('login-error');
@@ -476,8 +505,10 @@
         buttonIcon.className = 'ph ph-check';
         loginButton.className = loginButton.className.replace('from-blue-600 to-indigo-600', 'from-green-600 to-green-600');
         
-        // Redirect after brief delay
-        setTimeout(() => {
+        // Redirect after brief delay — patients go to the healthcare portal,
+        // everyone else to the staff SPA.
+        setTimeout(async () => {
+          if (await routePatientToPortal()) return;
           window.location.href = '/';
         }, 500);
         
