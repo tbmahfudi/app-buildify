@@ -7,6 +7,11 @@
   const CONSENT_VERSION = '1.0';
   const CONSENT_TEXT = 'I agree to allow this clinic to store and process my personal health information in accordance with applicable data protection laws.';
 
+  // Password is the primary patient login (ADR-HC-009). OTP is optional and OFF
+  // by default — mirror of the backend HC_PATIENT_OTP_ENABLED flag. The server
+  // enforces (OTP endpoints 403 when disabled); this only hides the OTP UI.
+  const OTP_LOGIN_ENABLED = false;
+
   // Derive the clinic (Company) slug from ?company=X (ADR-HC-010 D6) or legacy ?clinic=X.
   // No hardcoded default — a logged-out visitor with no selection gets the clinic chooser
   // (epic-20 20.4) instead of an arbitrary single clinic.
@@ -524,7 +529,16 @@
         body: JSON.stringify({ email: identifier, password }),
       });
       const data = await res.json();
-      if (!res.ok) { toast(data.detail || 'Login failed', 'error'); return; }
+      if (!res.ok) {
+        const d = data.detail;
+        // ADR-HC-009 D7: a legacy/backfilled account must set a password first.
+        if (d && typeof d === 'object' && d.code === 'must_set_password') {
+          await startPasswordClaim(identifier);
+          return;
+        }
+        toast((d && (d.message || (typeof d === 'string' ? d : null))) || 'Login failed', 'error');
+        return;
+      }
       const br = await fetch(`${API_BASE}/api/v1/patients/auth/from-platform`, {
         method: 'POST', headers: { 'Authorization': `Bearer ${data.access_token}` },
       });
@@ -653,7 +667,35 @@
     } catch (e) { toast('Network error', 'error'); }
   };
 
+  // ── Password claim (ADR-HC-009 D7) ────────────────────────────────────────────
+  // A legacy/backfilled patient has a placeholder credential and must set a real
+  // password before signing in. With OTP off, the claim runs through the platform
+  // email password-reset. Phone-only accounts (no email) are directed to staff.
+  async function startPasswordClaim(identifier) {
+    if (identifier.includes('@')) {
+      try {
+        await fetch(`${API_BASE}/api/v1/auth/reset-password-request`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: identifier }),
+        });
+      } catch (_e) { /* non-fatal: response is intentionally uniform to avoid enumeration */ }
+      toast('Set your password: check your email for a link to finish claiming your account.', 'info');
+    } else {
+      toast('This account still needs a password. Please claim it using your email address, or contact your clinic.', 'info');
+    }
+  }
+
+  // Hide the OTP login UI unless OTP is enabled (server enforces regardless).
+  function applyOtpVisibility() {
+    if (OTP_LOGIN_ENABLED) return;
+    ['login-step-phone', 'login-otp-divider'].forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = 'none';
+    });
+  }
+
   // ── Init ──────────────────────────────────────────────────────────────────────
+  applyOtpVisibility();
   updateNavAuth();
   if (patientToken) {
     showPage('dashboard');

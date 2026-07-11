@@ -20,3 +20,6 @@ backend/modules/
 
 # Local DB snapshots / scratch (pg_dumps, PR drafts) — not for VCS
 _migration_snapshots/
+
+# Session scratch scripts
+tmp/

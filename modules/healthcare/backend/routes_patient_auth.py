@@ -102,6 +102,24 @@ def _require_otp_verified(phone: str) -> None:
         )
 
 
+def _otp_enabled() -> bool:
+    """Whether phone/OTP auth is enabled. Password login is the primary mechanism
+    (ADR-HC-009); OTP is optional and OFF by default. Enable per deployment with
+    HC_PATIENT_OTP_ENABLED=true."""
+    return os.environ.get("HC_PATIENT_OTP_ENABLED", "false").strip().lower() in (
+        "1", "true", "yes", "on",
+    )
+
+
+def _require_otp_enabled() -> None:
+    """Raise 403 when OTP auth is disabled (the default)."""
+    if not _otp_enabled():
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Phone/OTP login is disabled. Please sign in with your email or username and password.",
+        )
+
+
 # ---------------------------------------------------------------------------
 # T-HC-020 — Patient registration
 # ---------------------------------------------------------------------------
@@ -270,6 +288,7 @@ async def otp_send(
     _captcha=Depends(require_captcha),
 ) -> OTPSendResponse:
     """Generate and send a 6-digit OTP to the given phone number."""
+    _require_otp_enabled()
     try:
         code = generate_otp(payload.phone)
     except ValueError as exc:
@@ -302,6 +321,7 @@ async def otp_verify(
     payload: OTPVerifyRequest,
 ) -> OTPVerifyResponse:
     """Verify the OTP; on success set Redis otp_verified:{phone} with 15-min TTL."""
+    _require_otp_enabled()
     try:
         ok = verify_otp(payload.phone, payload.code)
     except ValueError as exc:
@@ -337,6 +357,7 @@ async def patient_token(
     db: Session = Depends(_get_public_db),
 ) -> PatientTokenResponse:
     """Authenticate returning patient via phone + OTP, return access token + refresh cookie."""
+    _require_otp_enabled()
     try:
         ok = verify_otp(payload.phone, payload.code)
     except ValueError as exc:

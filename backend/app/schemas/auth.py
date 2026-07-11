@@ -74,6 +74,7 @@ class UserResponse(BaseModel):
     phone: Optional[str] = Field(None, description="User phone number")
     is_active: bool = Field(..., description="Active status")
     is_superuser: bool = Field(..., description="Superuser flag")
+    must_set_password: bool = Field(False, description="True if the account carries a placeholder credential and must set a password before login (ADR-HC-009 D7)")
     tenant_id: Optional[str] = Field(None, description="Tenant ID")
     default_company_id: Optional[str] = Field(None, description="Default company ID")
     branch_id: Optional[str] = Field(None, description="Branch ID")
