@@ -28,7 +28,10 @@ jobs:
   tenant-scope-gate:
     name: Tenant Scope Gate
     runs-on: ubuntu-latest
-    needs: lint
+    # Intentionally NOT gated on lint: the backend carries a large pre-existing
+    # flake8/black/isort debt (tracked separately) that kept lint red, which was
+    # silently skipping this security gate and the test suite. Decoupled so the
+    # gate and tests run on every PR while the lint debt is paid down.
     steps:
       - uses: actions/checkout@v4
       - name: Check for raw tenant_id == literals (T-22.022)
@@ -43,7 +46,7 @@ jobs:
   js-syntax:
     name: JS Syntax
     runs-on: ubuntu-latest
-    needs: lint
+    # Decoupled from lint (see tenant-scope-gate note above).
     steps:
       - uses: actions/checkout@v4
       - name: Set up Node
