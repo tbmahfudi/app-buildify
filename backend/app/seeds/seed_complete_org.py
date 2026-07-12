@@ -602,6 +602,31 @@ def main():
             traceback.print_exc()
             db.rollback()
 
+        # Seed the system-default security policy (tenant_id=NULL fallback).
+        # Without it, the admin/security policy endpoints have no default row.
+        try:
+            from app.seeds.seed_default_security_policy import seed_default_security_policy_sync
+            print(f"\n{'='*70}")
+            print("Seeding system-default security policy")
+            print(f"{'='*70}")
+            seed_default_security_policy_sync()
+        except Exception as e:
+            print(f"\n❌ Error seeding default security policy: {str(e)}")
+            import traceback
+            traceback.print_exc()
+
+        # Seed the "stable" metadata entities the e2e suite expects to exist.
+        try:
+            from app.seeds.seed_stable_metadata_entities import seed_stable_metadata_entities
+            print(f"\n{'='*70}")
+            print("Seeding stable metadata entities")
+            print(f"{'='*70}")
+            seed_stable_metadata_entities()
+        except Exception as e:
+            print(f"\n❌ Error seeding stable metadata entities: {str(e)}")
+            import traceback
+            traceback.print_exc()
+
         # Print summary
         print_summary(db)
         print_test_credentials()

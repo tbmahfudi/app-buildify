@@ -131,5 +131,66 @@ async def seed_default_security_policy():
         print(f"   Tenants can override these settings by creating tenant-specific policies.")
 
 
+def seed_default_security_policy_sync():
+    """Synchronous variant of the above.
+
+    The async version needs asyncpg, which isn't installed in the standard
+    (psycopg2/sync) image, so seeders that run under a sync engine call this.
+    Idempotent: no-op if a system-default policy already exists.
+    """
+    from app.core.db import SessionLocal
+    db = SessionLocal()
+    try:
+        existing = db.query(SecurityPolicy).filter(
+            SecurityPolicy.tenant_id.is_(None),
+            SecurityPolicy.is_active == True,
+        ).first()
+        if existing:
+            print(f"  ℹ️  System default security policy already exists: {existing.policy_name}")
+            return
+        db.add(SecurityPolicy(
+            tenant_id=None,
+            policy_name="Default System Security Policy",
+            policy_type="combined",
+            password_min_length=12,
+            password_max_length=128,
+            password_require_uppercase=True,
+            password_require_lowercase=True,
+            password_require_digit=True,
+            password_require_special_char=True,
+            password_min_unique_chars=8,
+            password_max_repeating_chars=2,
+            password_allow_common=False,
+            password_allow_username=False,
+            password_history_count=5,
+            password_expiration_days=90,
+            password_expiration_warning_days=14,
+            password_grace_logins=3,
+            login_max_attempts=5,
+            login_lockout_duration_min=30,
+            login_lockout_type="progressive",
+            login_reset_attempts_after_min=60,
+            login_notify_user_on_lockout=True,
+            session_timeout_minutes=60,
+            session_absolute_timeout_hours=12,
+            session_max_concurrent=3,
+            session_terminate_on_password_change=True,
+            password_reset_token_expire_hours=24,
+            password_reset_max_attempts=5,
+            password_reset_notify_user=True,
+            is_active=True,
+            created_by=None,
+            updated_by=None,
+        ))
+        db.commit()
+        print("  ✓ Seeded system-default security policy")
+    except Exception as exc:  # pragma: no cover - defensive
+        db.rollback()
+        print(f"  ⚠ default security policy seed failed: {exc}")
+        raise
+    finally:
+        db.close()
+
+
 if __name__ == "__main__":
     asyncio.run(seed_default_security_policy())
