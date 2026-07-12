@@ -66,22 +66,41 @@ jobs:
     # The suite in backend/tests/ is a black-box e2e harness (pytest + httpx, no
     # app imports) that runs against a LIVE stack — it aborts immediately if
     # http://localhost:8000 is unreachable. The old job just ran `pytest tests/`
-    # with nothing up, so it always failed at collection (GH#676). Stand up the
-    # dev stack the same way developers do, then run the suite inside the backend
-    # container (--confcutdir=tests/e2e is required; the in-process
+    # with nothing up, so it always failed at collection (GH#676).
+    #
+    # We bring up ONLY postgres + redis + backend (not the healthcare/financial/
+    # template module images — those are separate microservices that build
+    # `FROM app_buildify-backend:latest`, which a clean runner can't resolve, and
+    # the platform e2e suite doesn't need them). Then run the suite inside the
+    # backend container (--confcutdir=tests/e2e is required; the in-process
     # tests/conftest.py fails to import on the built image).
-    timeout-minutes: 35
+    timeout-minutes: 30
+    env:
+      COMPOSE: infra/docker-compose.dev.yml
     steps:
       - uses: actions/checkout@v4
-      - name: Stand up dev stack (build + start + migrate + seed)
-        run: bash manage.sh setup postgres
+      - name: Build backend image
+        run: docker compose -f "$COMPOSE" build backend
+      - name: Start core services (postgres, redis, backend)
+        run: docker compose -f "$COMPOSE" up -d postgres redis backend
+      - name: Wait for backend health
+        run: |
+          for i in $(seq 1 60); do
+            if curl -sf http://localhost:8000/api/healthz > /dev/null; then echo "backend healthy"; exit 0; fi
+            sleep 3
+          done
+          echo "backend did not become healthy in time"; docker logs app_buildify_backend --tail 200; exit 1
+      - name: Run migrations (loud — startup auto-migrate swallows failures)
+        run: docker compose -f "$COMPOSE" exec -T backend alembic upgrade heads
+      - name: Seed database
+        run: docker compose -f "$COMPOSE" exec -T backend python -m app.seeds.seed_complete_org
       - name: Run e2e suite (inside backend container)
         run: docker exec app_buildify_backend python -m pytest tests/e2e --confcutdir=tests/e2e -v --tb=short
       - name: Stack diagnostics (on failure)
         if: failure()
         run: |
-          docker compose -f infra/docker-compose.dev.yml ps || true
+          docker compose -f "$COMPOSE" ps || true
           docker logs app_buildify_backend --tail 300 || true
       - name: Tear down
         if: always()
-        run: docker compose -f infra/docker-compose.dev.yml down -v || true
+        run: docker compose -f "$COMPOSE" down -v || true
