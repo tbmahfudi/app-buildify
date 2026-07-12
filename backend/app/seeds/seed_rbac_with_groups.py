@@ -23,6 +23,28 @@ from app.models.group import Group
 from app.models.rbac_junctions import RolePermission, GroupRole, UserGroup
 from app.models.user import User
 from app.models.tenant import Tenant
+import json as _json
+import os as _os
+
+# Baked permission catalog: the exact set a tenant administrator is granted in a
+# working environment (exported from the reference DB). A fresh seed otherwise
+# creates ZERO permissions (get_or_create_permission below only queries), so
+# tenant_admin ends up with no effective permissions and every tenant-scoped
+# endpoint 403s. See GH#676 / the CI e2e job.
+_CATALOG_PATH = _os.path.join(_os.path.dirname(__file__), "data", "tenant_admin_permissions.json")
+
+
+def _load_tenant_admin_catalog():
+    try:
+        with open(_CATALOG_PATH) as fh:
+            return _json.load(fh) or []
+    except Exception as exc:  # pragma: no cover - defensive
+        print(f"  ⚠ Could not load permission catalog {_CATALOG_PATH}: {exc}")
+        return []
+
+
+TENANT_ADMIN_CATALOG = _load_tenant_admin_catalog()
+TENANT_ADMIN_PERM_CODES = [p["code"] for p in TENANT_ADMIN_CATALOG if p.get("code")]
 
 
 # ============================================================================
@@ -194,6 +216,9 @@ DEFAULT_ROLES = [
             "modules:configure:tenant", "modules:view:tenant", "modules:list:tenant"
         ]
     },
+    # NOTE: tenant_admin's permission list is expanded below to the full baked
+    # catalog (TENANT_ADMIN_PERM_CODES) so a fresh seed grants a tenant admin the
+    # complete tenant-scoped permission set, matching a real deployment.
     {
         "code": "manager",
         "name": "Manager",
@@ -313,6 +338,16 @@ DEFAULT_ROLES = [
 ]
 
 
+# Expand tenant_admin to the full baked catalog so a fresh seed grants a tenant
+# administrator every tenant-scoped permission (union with the curated list, in
+# case the catalog file is missing/partial).
+if TENANT_ADMIN_PERM_CODES:
+    for _role in DEFAULT_ROLES:
+        if _role["code"] == "tenant_admin":
+            _role["permissions"] = sorted(set(_role["permissions"]) | set(TENANT_ADMIN_PERM_CODES))
+            break
+
+
 # ============================================================================
 # HELPER FUNCTIONS
 # ============================================================================
@@ -325,6 +360,42 @@ def create_id():
 def get_or_create_permission(db: Session, code: str) -> Permission:
     """Get existing permission or return None if not found."""
     return db.query(Permission).filter(Permission.code == code).first()
+
+
+def ensure_permission_catalog(db: Session) -> int:
+    """Create any permission rows from the baked catalog that don't exist yet.
+
+    Idempotent: only inserts codes missing from the permissions table. Without
+    this a fresh database has no permissions, so role→permission grants below
+    silently no-op and tenant_admin gets zero effective access.
+    """
+    if not TENANT_ADMIN_CATALOG:
+        return 0
+    existing = {c for (c,) in db.query(Permission.code).all()}
+    created = 0
+    for p in TENANT_ADMIN_CATALOG:
+        code = p.get("code")
+        if not code or code in existing:
+            continue
+        parts = code.split(":")
+        db.add(Permission(
+            id=create_id(),
+            code=code,
+            name=p.get("name") or code,
+            description=p.get("description"),
+            resource=p.get("resource") or (parts[0] if parts else code),
+            action=p.get("action") or (parts[1] if len(parts) > 1 else "read"),
+            scope=p.get("scope") or (parts[-1] if len(parts) > 2 else "tenant"),
+            category=p.get("category"),
+            is_active=True,
+            is_system=bool(p.get("is_system")),
+            created_at=datetime.utcnow(),
+        ))
+        created += 1
+    if created:
+        db.flush()
+        print(f"  ✓ Created {created} catalog permission(s)")
+    return created
 
 
 def create_roles_for_tenant(db: Session, tenant_id: str):
@@ -556,6 +627,9 @@ def seed_rbac_for_tenant(db: Session, tenant_id: str, company_id: str = None):
     print(f"\n{'='*70}")
     print(f"Setting up RBAC for: {tenant.name}")
     print(f"{'='*70}")
+
+    # 0. Ensure the permission catalog exists (fresh DBs have none)
+    ensure_permission_catalog(db)
 
     # 1. Create roles
     roles = create_roles_for_tenant(db, tenant_id)
