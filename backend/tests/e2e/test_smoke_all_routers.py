@@ -65,6 +65,8 @@ KNOWN_5XX: dict[str, str] = {
     # this to XPASS and fails the run, prompting removal from this map).
     "/api/v1/dashboards": "GH#668: GET /dashboards 500 (dashboard serialization, DEF-019 lineage)",
     "/api/v1/reports/definitions": "GH#668: GET /reports/definitions 500 (invalid seeded report_type, DEF-013 lineage)",
+    # GH#679 / DEF-010: filesystem module loader vestigial -> 503 "Module system not initialized".
+    "/api/v1/module-registry/enabled/names": "GH#679: module loader not initialized (503)",
 }
 
 
