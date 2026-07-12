@@ -4,7 +4,7 @@ AUDIT_LIST = "/audit/list"
 MODULE_ENTITY_TYPE = "module"
 EXPECTED_ACTIONS = {"module.installed","module.enabled","module.disabled","module.deactivate_all","module.uninstalled"}
 
-def _fetch_module_audit_logs(client, action=None, page_size=200):
+def _fetch_module_audit_logs(client, action=None, page_size=100):
     body = {"entity_type": MODULE_ENTITY_TYPE, "page": 1, "page_size": page_size}
     if action:
         body["action"] = action
@@ -87,7 +87,7 @@ def test_module_uninstalled_event_present(su):
 
 @pytest.mark.xfail(strict=False, reason="T-23.028/DEF-032: all 5 event types require a loadable module; dev stack has none.")
 def test_all_five_module_event_types_present(su):
-    r = _fetch_module_audit_logs(su, page_size=500)
+    r = _fetch_module_audit_logs(su, page_size=100)
     assert r.status_code == 200, r.text
     found = {entry["action"] for entry in r.json()["logs"]}
     missing = EXPECTED_ACTIONS - found

@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from sqlalchemy import and_
+from sqlalchemy import and_, cast, String
 from typing import List
 from uuid import UUID
 import json
@@ -27,7 +27,11 @@ def list_audit_logs(
     
     # Non-superusers can only see their own tenant's logs
     if not current_user.is_superuser and current_user.tenant_id:
-        query = query.filter(AuditLog.tenant_id == current_user.tenant_id)  # tenant_scope
+        # AuditLog.tenant_id is Column(GUID) in the model but the live DB column is
+        # VARCHAR (drift). The GUID type coerces a str back to a uuid param, so a plain
+        # `== str(...)` still binds ::UUID and Postgres rejects "character varying = uuid".
+        # Cast the column to String so the comparison happens as text (DEF-020 pattern).
+        query = query.filter(cast(AuditLog.tenant_id, String) == str(current_user.tenant_id))  # tenant_scope
     
     # Apply filters
     if request.user_id:
@@ -102,9 +106,9 @@ def _get_audit_summary_impl(db: Session, current_user: User):
     """Implementation for audit statistics summary"""
     query = db.query(AuditLog)
 
-    # Filter by tenant for non-superusers
+    # Filter by tenant for non-superusers (cast: GUID model vs VARCHAR DB column, DEF-020)
     if not current_user.is_superuser and current_user.tenant_id:
-        query = query.filter(AuditLog.tenant_id == current_user.tenant_id)  # tenant_scope
+        query = query.filter(cast(AuditLog.tenant_id, String) == str(current_user.tenant_id))  # tenant_scope
 
     total = query.count()
     success = query.filter(AuditLog.status == "success").count()

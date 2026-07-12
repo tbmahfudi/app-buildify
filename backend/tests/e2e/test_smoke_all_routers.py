@@ -60,7 +60,12 @@ GET_ENDPOINTS = _discover_get_endpoints()
 # Each is a tracked defect (see tests/test-reports/test-report-e2e-api.md);
 # xfail keeps the run honest without masking the regression.
 # DEF-001 (GET /org/companies 500) fixed 2026-06-16 — removed from this map.
-KNOWN_5XX: dict[str, str] = {}
+KNOWN_5XX: dict[str, str] = {
+    # GH#668 — pre-existing, data-dependent 500s (strict xfail: fixing them flips
+    # this to XPASS and fails the run, prompting removal from this map).
+    "/api/v1/dashboards": "GH#668: GET /dashboards 500 (dashboard serialization, DEF-019 lineage)",
+    "/api/v1/reports/definitions": "GH#668: GET /reports/definitions 500 (invalid seeded report_type, DEF-013 lineage)",
+}
 
 
 def _relpath(full_path: str) -> str:
