@@ -5,10 +5,11 @@ This module provides utilities to construct dynamic queries based on runtime cri
 for nocode entities.
 """
 
-from typing import Type, List, Tuple, Dict, Any, Optional
-from sqlalchemy.orm import Query
-from sqlalchemy import and_, or_, not_, desc, asc, func
 import logging
+from typing import Any, Dict, List, Optional, Tuple, Type
+
+from sqlalchemy import and_, asc, desc, func, or_
+from sqlalchemy.orm import Query
 
 logger = logging.getLogger(__name__)
 
@@ -26,29 +27,24 @@ class DynamicQueryBuilder:
 
     # Operator mapping
     OPERATORS = {
-        'eq': lambda field, value: field == value,
-        'ne': lambda field, value: field != value,
-        'gt': lambda field, value: field > value,
-        'gte': lambda field, value: field >= value,
-        'lt': lambda field, value: field < value,
-        'lte': lambda field, value: field <= value,
-        'contains': lambda field, value: field.contains(value),
-        'starts_with': lambda field, value: field.startswith(value),
-        'ends_with': lambda field, value: field.endswith(value),
-        'in': lambda field, value: field.in_(value),
-        'not_in': lambda field, value: field.notin_(value),
-        'is_null': lambda field, value: field.is_(None),
-        'is_not_null': lambda field, value: field.isnot(None),
-        'like': lambda field, value: field.like(value),
-        'ilike': lambda field, value: field.ilike(value),  # Case-insensitive LIKE
+        "eq": lambda field, value: field == value,
+        "ne": lambda field, value: field != value,
+        "gt": lambda field, value: field > value,
+        "gte": lambda field, value: field >= value,
+        "lt": lambda field, value: field < value,
+        "lte": lambda field, value: field <= value,
+        "contains": lambda field, value: field.contains(value),
+        "starts_with": lambda field, value: field.startswith(value),
+        "ends_with": lambda field, value: field.endswith(value),
+        "in": lambda field, value: field.in_(value),
+        "not_in": lambda field, value: field.notin_(value),
+        "is_null": lambda field, value: field.is_(None),
+        "is_not_null": lambda field, value: field.isnot(None),
+        "like": lambda field, value: field.like(value),
+        "ilike": lambda field, value: field.ilike(value),  # Case-insensitive LIKE
     }
 
-    def apply_filters(
-        self,
-        query: Query,
-        model: Type,
-        filters: Dict[str, Any]
-    ) -> Query:
+    def apply_filters(self, query: Query, model: Type, filters: Dict[str, Any]) -> Query:
         """
         Apply filters to query
 
@@ -101,8 +97,8 @@ class DynamicQueryBuilder:
             SQLAlchemy filter expression
         """
         # Check if this is a condition group (AND/OR)
-        if 'operator' in filters and filters['operator'] in ('AND', 'OR'):
-            conditions = filters.get('conditions', [])
+        if "operator" in filters and filters["operator"] in ("AND", "OR"):
+            conditions = filters.get("conditions", [])
             if not conditions:
                 return None
 
@@ -117,16 +113,16 @@ class DynamicQueryBuilder:
                 return None
 
             # Combine with AND or OR
-            if filters['operator'] == 'AND':
+            if filters["operator"] == "AND":
                 return and_(*clauses)
             else:
                 return or_(*clauses)
 
         # This is a single condition
-        if 'field' in filters and 'operator' in filters:
-            field_name = filters['field']
-            operator = filters['operator']
-            value = filters.get('value')
+        if "field" in filters and "operator" in filters:
+            field_name = filters["field"]
+            operator = filters["operator"]
+            value = filters.get("value")
 
             # Get field from model
             if not hasattr(model, field_name):
@@ -142,7 +138,7 @@ class DynamicQueryBuilder:
 
             # Apply operator
             # Special handling for is_null and is_not_null (they don't need value)
-            if operator in ('is_null', 'is_not_null'):
+            if operator in ("is_null", "is_not_null"):
                 return operator_func(field, None)
             else:
                 return operator_func(field, value)
@@ -161,16 +157,11 @@ class DynamicQueryBuilder:
                 f"{{'operator': 'AND'|'OR', 'conditions': [...]}} "
                 f"or {{'field': '...', 'operator': '...', 'value': ...}}, "
                 f"but received keys {keys}. "
-                f"If you intended an AND group, add \"operator\": \"AND\" to the top-level dict."
+                f'If you intended an AND group, add "operator": "AND" to the top-level dict.'
             )
         return None
 
-    def apply_sort(
-        self,
-        query: Query,
-        model: Type,
-        sort: List[Tuple[str, str]]
-    ) -> Query:
+    def apply_sort(self, query: Query, model: Type, sort: List[Tuple[str, str]]) -> Query:
         """
         Apply sorting to query
 
@@ -193,7 +184,7 @@ class DynamicQueryBuilder:
 
             field = getattr(model, field_name)
 
-            if direction.lower() == 'desc':
+            if direction.lower() == "desc":
                 query = query.order_by(desc(field))
             else:
                 query = query.order_by(asc(field))
@@ -201,11 +192,7 @@ class DynamicQueryBuilder:
         return query
 
     def apply_search(
-        self,
-        query: Query,
-        model: Type,
-        search_term: str,
-        search_fields: Optional[List[str]] = None
+        self, query: Query, model: Type, search_term: str, search_fields: Optional[List[str]] = None
     ) -> Query:
         """
         Apply global text search across specified fields
@@ -263,17 +250,12 @@ class DynamicQueryBuilder:
         for column in model.__table__.columns:
             # Check if column is string type
             col_type = str(column.type).lower()
-            if any(t in col_type for t in ['string', 'text', 'varchar', 'char']):
+            if any(t in col_type for t in ["string", "text", "varchar", "char"]):
                 searchable_fields.append(column.name)
 
         return searchable_fields
 
-    def apply_pagination(
-        self,
-        query: Query,
-        page: int = 1,
-        page_size: int = 25
-    ) -> Tuple[Query, int, int]:
+    def apply_pagination(self, query: Query, page: int = 1, page_size: int = 25) -> Tuple[Query, int, int]:
         """
         Apply pagination to query
 
@@ -305,7 +287,7 @@ class DynamicQueryBuilder:
         search: Optional[str] = None,
         search_fields: Optional[List[str]] = None,
         page: int = 1,
-        page_size: int = 25
+        page_size: int = 25,
     ) -> Tuple[Query, Dict[str, Any]]:
         """
         Build complete query with filters, sort, search, and pagination
@@ -325,13 +307,11 @@ class DynamicQueryBuilder:
             Tuple of (query, metadata)
             metadata includes: {total, page, page_size, pages}
         """
-        from sqlalchemy.orm import Session
 
         # This method needs a session - it will be called from service layer
         # For now, just build the filter/sort criteria
         raise NotImplementedError(
-            "build_list_query requires a session. "
-            "Use individual apply_* methods from service layer."
+            "build_list_query requires a session. " "Use individual apply_* methods from service layer."
         )
 
     def parse_filter_string(self, filter_json: str) -> Dict[str, Any]:
@@ -360,12 +340,12 @@ class DynamicQueryBuilder:
 
     # Supported aggregation functions mapped to their SQLAlchemy equivalents.
     AGGREGATE_FUNCTIONS = {
-        'count':          lambda col: func.count(col),
-        'sum':            lambda col: func.sum(col),
-        'avg':            lambda col: func.avg(col),
-        'min':            lambda col: func.min(col),
-        'max':            lambda col: func.max(col),
-        'count_distinct': lambda col: func.count(col.distinct()),
+        "count": lambda col: func.count(col),
+        "sum": lambda col: func.sum(col),
+        "avg": lambda col: func.avg(col),
+        "min": lambda col: func.min(col),
+        "max": lambda col: func.max(col),
+        "count_distinct": lambda col: func.count(col.distinct()),
     }
 
     def build_aggregate_select(
@@ -374,7 +354,7 @@ class DynamicQueryBuilder:
         group_by: Optional[List[str]],
         metrics: List[dict],
         date_trunc: Optional[str] = None,
-        date_field: Optional[str] = None
+        date_field: Optional[str] = None,
     ):
         """
         Build the SELECT column list and GROUP BY clause for an aggregate query.
@@ -397,7 +377,7 @@ class DynamicQueryBuilder:
         output_keys = []
 
         # ---- group-by columns ----
-        for field_name in (group_by or []):
+        for field_name in group_by or []:
             if not hasattr(model, field_name):
                 raise ValueError(f"Group-by field '{field_name}' not found in entity")
 
@@ -415,25 +395,22 @@ class DynamicQueryBuilder:
 
         # ---- metric columns ----
         for m in metrics:
-            field_name = m['field']
-            fn_name = m['function']
-            alias = m.get('alias') or f"{fn_name}_{field_name}"
+            field_name = m["field"]
+            fn_name = m["function"]
+            alias = m.get("alias") or f"{fn_name}_{field_name}"
 
             if fn_name not in self.AGGREGATE_FUNCTIONS:
                 raise ValueError(
-                    f"Unknown aggregation function '{fn_name}'. "
-                    f"Supported: {', '.join(self.AGGREGATE_FUNCTIONS)}"
+                    f"Unknown aggregation function '{fn_name}'. " f"Supported: {', '.join(self.AGGREGATE_FUNCTIONS)}"
                 )
 
-            if field_name == '*':
+            if field_name == "*":
                 # COUNT(*) — field name is irrelevant
                 agg_col = func.count().label(alias)
             else:
                 if not hasattr(model, field_name):
                     raise ValueError(f"Metric field '{field_name}' not found in entity")
-                agg_col = self.AGGREGATE_FUNCTIONS[fn_name](
-                    getattr(model, field_name)
-                ).label(alias)
+                agg_col = self.AGGREGATE_FUNCTIONS[fn_name](getattr(model, field_name)).label(alias)
 
             select_columns.append(agg_col)
             output_keys.append(alias)
@@ -456,13 +433,13 @@ class DynamicQueryBuilder:
             return []
 
         sort_list = []
-        for item in sort_str.split(','):
+        for item in sort_str.split(","):
             item = item.strip()
-            if ':' in item:
-                field, direction = item.split(':', 1)
+            if ":" in item:
+                field, direction = item.split(":", 1)
                 sort_list.append((field.strip(), direction.strip()))
             else:
                 # Default to ascending
-                sort_list.append((item, 'asc'))
+                sort_list.append((item, "asc"))
 
         return sort_list

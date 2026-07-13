@@ -10,15 +10,14 @@ Key benefits:
 - Reduced boilerplate code
 - Easy to update error handling globally
 """
+
 from typing import Any, Dict, List, Optional
 
 from fastapi import HTTPException, status
 
 
 def not_found_exception(
-    entity_name: str,
-    entity_id: Optional[str] = None,
-    detail: Optional[str] = None
+    entity_name: str, entity_id: Optional[str] = None, detail: Optional[str] = None
 ) -> HTTPException:
     """
     Create a standardized 404 Not Found exception.
@@ -42,16 +41,10 @@ def not_found_exception(
     else:
         msg = f"{entity_name} not found"
 
-    return HTTPException(
-        status_code=status.HTTP_404_NOT_FOUND,
-        detail=msg
-    )
+    return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=msg)
 
 
-def bad_request_exception(
-    message: str,
-    errors: Optional[Dict[str, Any]] = None
-) -> HTTPException:
+def bad_request_exception(message: str, errors: Optional[Dict[str, Any]] = None) -> HTTPException:
     """
     Create a standardized 400 Bad Request exception.
 
@@ -70,17 +63,10 @@ def bad_request_exception(
     if errors:
         detail["errors"] = errors
 
-    return HTTPException(
-        status_code=status.HTTP_400_BAD_REQUEST,
-        detail=detail if errors else message
-    )
+    return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=detail if errors else message)
 
 
-def duplicate_exception(
-    entity_name: str,
-    field_name: str = "code",
-    field_value: Optional[str] = None
-) -> HTTPException:
+def duplicate_exception(entity_name: str, field_name: str = "code", field_value: Optional[str] = None) -> HTTPException:
     """
     Create a standardized exception for duplicate entries.
 
@@ -101,16 +87,11 @@ def duplicate_exception(
     else:
         msg = f"{entity_name} {field_name} already exists"
 
-    return HTTPException(
-        status_code=status.HTTP_400_BAD_REQUEST,
-        detail=msg
-    )
+    return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=msg)
 
 
 def permission_denied_exception(
-    action: Optional[str] = None,
-    resource: Optional[str] = None,
-    detail: Optional[str] = None
+    action: Optional[str] = None, resource: Optional[str] = None, detail: Optional[str] = None
 ) -> HTTPException:
     """
     Create a standardized 403 Forbidden exception.
@@ -134,15 +115,10 @@ def permission_denied_exception(
     else:
         msg = "Permission denied"
 
-    return HTTPException(
-        status_code=status.HTTP_403_FORBIDDEN,
-        detail=msg
-    )
+    return HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=msg)
 
 
-def unauthorized_exception(
-    detail: str = "Authentication required"
-) -> HTTPException:
+def unauthorized_exception(detail: str = "Authentication required") -> HTTPException:
     """
     Create a standardized 401 Unauthorized exception.
 
@@ -157,16 +133,11 @@ def unauthorized_exception(
         >>> raise unauthorized_exception("Invalid token")
     """
     return HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail=detail,
-        headers={"WWW-Authenticate": "Bearer"}
+        status_code=status.HTTP_401_UNAUTHORIZED, detail=detail, headers={"WWW-Authenticate": "Bearer"}
     )
 
 
-def conflict_exception(
-    message: str,
-    conflicts: Optional[List[str]] = None
-) -> HTTPException:
+def conflict_exception(message: str, conflicts: Optional[List[str]] = None) -> HTTPException:
     """
     Create a standardized 409 Conflict exception.
 
@@ -185,15 +156,10 @@ def conflict_exception(
     if conflicts:
         detail["conflicts"] = conflicts
 
-    return HTTPException(
-        status_code=status.HTTP_409_CONFLICT,
-        detail=detail if conflicts else message
-    )
+    return HTTPException(status_code=status.HTTP_409_CONFLICT, detail=detail if conflicts else message)
 
 
-def validation_error_exception(
-    errors: Dict[str, Any]
-) -> HTTPException:
+def validation_error_exception(errors: Dict[str, Any]) -> HTTPException:
     """
     Create a standardized validation error exception.
 
@@ -210,17 +176,12 @@ def validation_error_exception(
         ... })
     """
     return HTTPException(
-        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-        detail={
-            "message": "Validation failed",
-            "errors": errors
-        }
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail={"message": "Validation failed", "errors": errors}
     )
 
 
 def internal_server_error_exception(
-    detail: str = "Internal server error",
-    error_id: Optional[str] = None
+    detail: str = "Internal server error", error_id: Optional[str] = None
 ) -> HTTPException:
     """
     Create a standardized 500 Internal Server Error exception.
@@ -240,17 +201,10 @@ def internal_server_error_exception(
     if error_id:
         msg = f"{detail} (Error ID: {error_id})"
 
-    return HTTPException(
-        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        detail=msg
-    )
+    return HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=msg)
 
 
-def relationship_violation_exception(
-    parent: str,
-    child: str,
-    detail: Optional[str] = None
-) -> HTTPException:
+def relationship_violation_exception(parent: str, child: str, detail: Optional[str] = None) -> HTTPException:
     """
     Create an exception for invalid parent-child relationships.
 
@@ -268,15 +222,10 @@ def relationship_violation_exception(
     """
     msg = detail or f"{child} does not belong to the specified {parent}"
 
-    return HTTPException(
-        status_code=status.HTTP_400_BAD_REQUEST,
-        detail=msg
-    )
+    return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=msg)
 
 
-def rate_limit_exception(
-    retry_after: Optional[int] = None
-) -> HTTPException:
+def rate_limit_exception(retry_after: Optional[int] = None) -> HTTPException:
     """
     Create a standardized 429 Too Many Requests exception.
 
@@ -296,13 +245,11 @@ def rate_limit_exception(
     return HTTPException(
         status_code=status.HTTP_429_TOO_MANY_REQUESTS,
         detail="Rate limit exceeded. Please try again later.",
-        headers=headers if headers else None
+        headers=headers if headers else None,
     )
 
 
-def service_unavailable_exception(
-    service_name: Optional[str] = None
-) -> HTTPException:
+def service_unavailable_exception(service_name: Optional[str] = None) -> HTTPException:
     """
     Create a standardized 503 Service Unavailable exception.
 
@@ -320,16 +267,10 @@ def service_unavailable_exception(
     if service_name:
         msg = f"{service_name} service is temporarily unavailable"
 
-    return HTTPException(
-        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-        detail=msg
-    )
+    return HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=msg)
 
 
-def gone_exception(
-    entity_name: str,
-    reason: Optional[str] = None
-) -> HTTPException:
+def gone_exception(entity_name: str, reason: Optional[str] = None) -> HTTPException:
     """
     Create a standardized 410 Gone exception.
 
@@ -347,16 +288,10 @@ def gone_exception(
     if reason:
         msg = f"{msg}. {reason}"
 
-    return HTTPException(
-        status_code=status.HTTP_410_GONE,
-        detail=msg
-    )
+    return HTTPException(status_code=status.HTTP_410_GONE, detail=msg)
 
 
-def method_not_allowed_exception(
-    method: str,
-    allowed_methods: Optional[List[str]] = None
-) -> HTTPException:
+def method_not_allowed_exception(method: str, allowed_methods: Optional[List[str]] = None) -> HTTPException:
     """
     Create a standardized 405 Method Not Allowed exception.
 
@@ -377,9 +312,7 @@ def method_not_allowed_exception(
         headers["Allow"] = ", ".join(allowed_methods)
 
     return HTTPException(
-        status_code=status.HTTP_405_METHOD_NOT_ALLOWED,
-        detail=msg,
-        headers=headers if headers else None
+        status_code=status.HTTP_405_METHOD_NOT_ALLOWED, detail=msg, headers=headers if headers else None
     )
 
 

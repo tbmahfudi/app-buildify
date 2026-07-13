@@ -41,12 +41,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
 
     # Add JTI (JWT ID) for token revocation
     jti = str(uuid.uuid4())
-    to_encode.update({
-        "exp": expire,
-        "type": "access",
-        "jti": jti,
-        "iat": datetime.utcnow()
-    })
+    to_encode.update({"exp": expire, "type": "access", "jti": jti, "iat": datetime.utcnow()})
 
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
@@ -66,12 +61,7 @@ def create_refresh_token(data: dict) -> str:
 
     # Add JTI (JWT ID) for token revocation
     jti = str(uuid.uuid4())
-    to_encode.update({
-        "exp": expire,
-        "type": "refresh",
-        "jti": jti,
-        "iat": datetime.utcnow()
-    })
+    to_encode.update({"exp": expire, "type": "refresh", "jti": jti, "iat": datetime.utcnow()})
 
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 

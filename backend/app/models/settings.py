@@ -5,6 +5,7 @@ from .base import GUID, Base, generate_uuid
 
 class UserSettings(Base):
     """User-specific settings and preferences"""
+
     __tablename__ = "user_settings"
 
     # Primary key
@@ -26,9 +27,7 @@ class UserSettings(Base):
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, onupdate=func.now())
 
-    __table_args__ = (
-        UniqueConstraint('user_id', name='uq_user_settings'),
-    )
+    __table_args__ = (UniqueConstraint("user_id", name="uq_user_settings"),)
 
     def __repr__(self):
         return f"<UserSettings(user_id={self.user_id}, theme={self.theme})>"
@@ -36,6 +35,7 @@ class UserSettings(Base):
 
 class TenantSettings(Base):
     """Tenant-wide settings"""
+
     __tablename__ = "tenant_settings"
 
     # Primary key

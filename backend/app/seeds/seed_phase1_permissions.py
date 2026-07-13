@@ -11,13 +11,15 @@ Run: python -m app.seeds.seed_phase1_permissions
 """
 
 from datetime import datetime
-from sqlalchemy.orm import Session
+
 from sqlalchemy import and_
+from sqlalchemy.orm import Session
+
 from app.core.db import SessionLocal
-from app.models.permission import Permission
-from app.models.role import Role
-from app.models.rbac_junctions import RolePermission
 from app.models.base import generate_uuid
+from app.models.permission import Permission
+from app.models.rbac_junctions import RolePermission
+from app.models.role import Role
 
 
 def seed_phase1_permissions(db: Session) -> dict:
@@ -27,9 +29,9 @@ def seed_phase1_permissions(db: Session) -> dict:
     Returns:
         Dictionary with created and existing counts
     """
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     print("PHASE 1 NO-CODE PLATFORM PERMISSIONS SETUP")
-    print("="*80 + "\n")
+    print("=" * 80 + "\n")
 
     # Define all Phase 1 permissions
     permissions_data = [
@@ -42,7 +44,7 @@ def seed_phase1_permissions(db: Session) -> dict:
             "resource": "data_model",
             "action": "create",
             "category": "nocode_platform",
-            "is_system": True
+            "is_system": True,
         },
         {
             "code": "data_model:read:tenant",
@@ -52,7 +54,7 @@ def seed_phase1_permissions(db: Session) -> dict:
             "resource": "data_model",
             "action": "read",
             "category": "nocode_platform",
-            "is_system": True
+            "is_system": True,
         },
         {
             "code": "data_model:update:tenant",
@@ -62,7 +64,7 @@ def seed_phase1_permissions(db: Session) -> dict:
             "resource": "data_model",
             "action": "update",
             "category": "nocode_platform",
-            "is_system": True
+            "is_system": True,
         },
         {
             "code": "data_model:delete:tenant",
@@ -72,7 +74,7 @@ def seed_phase1_permissions(db: Session) -> dict:
             "resource": "data_model",
             "action": "delete",
             "category": "nocode_platform",
-            "is_system": True
+            "is_system": True,
         },
         {
             "code": "data_model:execute:tenant",
@@ -82,9 +84,8 @@ def seed_phase1_permissions(db: Session) -> dict:
             "resource": "data_model",
             "action": "execute",
             "category": "nocode_platform",
-            "is_system": True
+            "is_system": True,
         },
-
         # Priority 2: Workflow Designer
         {
             "code": "workflows:create:tenant",
@@ -94,7 +95,7 @@ def seed_phase1_permissions(db: Session) -> dict:
             "resource": "workflows",
             "action": "create",
             "category": "nocode_platform",
-            "is_system": True
+            "is_system": True,
         },
         {
             "code": "workflows:read:tenant",
@@ -104,7 +105,7 @@ def seed_phase1_permissions(db: Session) -> dict:
             "resource": "workflows",
             "action": "read",
             "category": "nocode_platform",
-            "is_system": True
+            "is_system": True,
         },
         {
             "code": "workflows:update:tenant",
@@ -114,7 +115,7 @@ def seed_phase1_permissions(db: Session) -> dict:
             "resource": "workflows",
             "action": "update",
             "category": "nocode_platform",
-            "is_system": True
+            "is_system": True,
         },
         {
             "code": "workflows:delete:tenant",
@@ -124,7 +125,7 @@ def seed_phase1_permissions(db: Session) -> dict:
             "resource": "workflows",
             "action": "delete",
             "category": "nocode_platform",
-            "is_system": True
+            "is_system": True,
         },
         {
             "code": "workflows:execute:tenant",
@@ -134,9 +135,8 @@ def seed_phase1_permissions(db: Session) -> dict:
             "resource": "workflows",
             "action": "execute",
             "category": "nocode_platform",
-            "is_system": True
+            "is_system": True,
         },
-
         # Priority 3: Automation System
         {
             "code": "automations:create:tenant",
@@ -146,7 +146,7 @@ def seed_phase1_permissions(db: Session) -> dict:
             "resource": "automations",
             "action": "create",
             "category": "nocode_platform",
-            "is_system": True
+            "is_system": True,
         },
         {
             "code": "automations:read:tenant",
@@ -156,7 +156,7 @@ def seed_phase1_permissions(db: Session) -> dict:
             "resource": "automations",
             "action": "read",
             "category": "nocode_platform",
-            "is_system": True
+            "is_system": True,
         },
         {
             "code": "automations:update:tenant",
@@ -166,7 +166,7 @@ def seed_phase1_permissions(db: Session) -> dict:
             "resource": "automations",
             "action": "update",
             "category": "nocode_platform",
-            "is_system": True
+            "is_system": True,
         },
         {
             "code": "automations:delete:tenant",
@@ -176,7 +176,7 @@ def seed_phase1_permissions(db: Session) -> dict:
             "resource": "automations",
             "action": "delete",
             "category": "nocode_platform",
-            "is_system": True
+            "is_system": True,
         },
         {
             "code": "automations:execute:tenant",
@@ -186,9 +186,8 @@ def seed_phase1_permissions(db: Session) -> dict:
             "resource": "automations",
             "action": "execute",
             "category": "nocode_platform",
-            "is_system": True
+            "is_system": True,
         },
-
         # Priority 4: Lookup Configuration
         {
             "code": "lookups:create:tenant",
@@ -198,7 +197,7 @@ def seed_phase1_permissions(db: Session) -> dict:
             "resource": "lookups",
             "action": "create",
             "category": "nocode_platform",
-            "is_system": True
+            "is_system": True,
         },
         {
             "code": "lookups:read:tenant",
@@ -208,7 +207,7 @@ def seed_phase1_permissions(db: Session) -> dict:
             "resource": "lookups",
             "action": "read",
             "category": "nocode_platform",
-            "is_system": True
+            "is_system": True,
         },
         {
             "code": "lookups:update:tenant",
@@ -218,7 +217,7 @@ def seed_phase1_permissions(db: Session) -> dict:
             "resource": "lookups",
             "action": "update",
             "category": "nocode_platform",
-            "is_system": True
+            "is_system": True,
         },
         {
             "code": "lookups:delete:tenant",
@@ -228,7 +227,7 @@ def seed_phase1_permissions(db: Session) -> dict:
             "resource": "lookups",
             "action": "delete",
             "category": "nocode_platform",
-            "is_system": True
+            "is_system": True,
         },
     ]
 
@@ -238,9 +237,7 @@ def seed_phase1_permissions(db: Session) -> dict:
     print("📋 Creating Phase 1 permissions...")
 
     for perm_data in permissions_data:
-        existing_perm = db.query(Permission).filter(
-            Permission.code == perm_data["code"]
-        ).first()
+        existing_perm = db.query(Permission).filter(Permission.code == perm_data["code"]).first()
 
         if not existing_perm:
             new_perm = Permission(
@@ -254,7 +251,7 @@ def seed_phase1_permissions(db: Session) -> dict:
                 category=perm_data.get("category"),
                 is_system=perm_data.get("is_system", False),
                 created_at=datetime.utcnow(),
-                updated_at=datetime.utcnow()
+                updated_at=datetime.utcnow(),
             )
             db.add(new_perm)
             created_count += 1
@@ -275,25 +272,19 @@ def seed_phase1_permissions(db: Session) -> dict:
 
     if admin_role:
         permission_codes = [p["code"] for p in permissions_data]
-        permissions = db.query(Permission).filter(
-            Permission.code.in_(permission_codes)
-        ).all()
+        permissions = db.query(Permission).filter(Permission.code.in_(permission_codes)).all()
 
         assigned_count = 0
         for permission in permissions:
             # Check if already assigned
-            existing = db.query(RolePermission).filter(
-                and_(
-                    RolePermission.role_id == admin_role.id,
-                    RolePermission.permission_id == permission.id
-                )
-            ).first()
+            existing = (
+                db.query(RolePermission)
+                .filter(and_(RolePermission.role_id == admin_role.id, RolePermission.permission_id == permission.id))
+                .first()
+            )
 
             if not existing:
-                role_perm = RolePermission(
-                    role_id=admin_role.id,
-                    permission_id=permission.id
-                )
+                role_perm = RolePermission(role_id=admin_role.id, permission_id=permission.id)
                 db.add(role_perm)
                 assigned_count += 1
                 print(f"  ✅ Assigned: {permission.code}")
@@ -310,25 +301,19 @@ def seed_phase1_permissions(db: Session) -> dict:
 
     if security_role:
         permission_codes = [p["code"] for p in permissions_data]
-        permissions = db.query(Permission).filter(
-            Permission.code.in_(permission_codes)
-        ).all()
+        permissions = db.query(Permission).filter(Permission.code.in_(permission_codes)).all()
 
         assigned_count = 0
         for permission in permissions:
             # Check if already assigned
-            existing = db.query(RolePermission).filter(
-                and_(
-                    RolePermission.role_id == security_role.id,
-                    RolePermission.permission_id == permission.id
-                )
-            ).first()
+            existing = (
+                db.query(RolePermission)
+                .filter(and_(RolePermission.role_id == security_role.id, RolePermission.permission_id == permission.id))
+                .first()
+            )
 
             if not existing:
-                role_perm = RolePermission(
-                    role_id=security_role.id,
-                    permission_id=permission.id
-                )
+                role_perm = RolePermission(role_id=security_role.id, permission_id=permission.id)
                 db.add(role_perm)
                 assigned_count += 1
                 print(f"  ✅ Assigned: {permission.code}")
@@ -338,15 +323,11 @@ def seed_phase1_permissions(db: Session) -> dict:
     else:
         print("  ⚠️  Note: security_admin role not found (optional)")
 
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     print("PHASE 1 PERMISSIONS SETUP COMPLETE")
-    print("="*80 + "\n")
+    print("=" * 80 + "\n")
 
-    return {
-        "created": created_count,
-        "existing": existing_count,
-        "total": len(permissions_data)
-    }
+    return {"created": created_count, "existing": existing_count, "total": len(permissions_data)}
 
 
 def main():

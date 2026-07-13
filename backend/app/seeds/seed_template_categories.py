@@ -6,18 +6,20 @@ Creates hierarchical categories for organizing no-code templates.
 Run: python -m app.seeds.seed_template_categories
 """
 
-from sqlalchemy.orm import Session
-from app.core.db import SessionLocal
-from app.models.template_category import TemplateCategory
-from app.models.base import generate_uuid
 from datetime import datetime
+
+from sqlalchemy.orm import Session
+
+from app.core.db import SessionLocal
+from app.models.base import generate_uuid
+from app.models.template_category import TemplateCategory
 
 
 def seed_template_categories(db: Session):
     """Seed template categories."""
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     print("TEMPLATE CATEGORIES")
-    print("="*80 + "\n")
+    print("=" * 80 + "\n")
 
     categories = [
         # ==================== Industry Categories ====================
@@ -41,7 +43,7 @@ def seed_template_categories(db: Session):
                     "color": "red",
                     "category_type": "industry",
                     "level": 1,
-                    "display_order": 1
+                    "display_order": 1,
                 },
                 {
                     "code": "finance",
@@ -51,7 +53,7 @@ def seed_template_categories(db: Session):
                     "color": "green",
                     "category_type": "industry",
                     "level": 1,
-                    "display_order": 2
+                    "display_order": 2,
                 },
                 {
                     "code": "retail",
@@ -61,7 +63,7 @@ def seed_template_categories(db: Session):
                     "color": "purple",
                     "category_type": "industry",
                     "level": 1,
-                    "display_order": 3
+                    "display_order": 3,
                 },
                 {
                     "code": "manufacturing",
@@ -71,7 +73,7 @@ def seed_template_categories(db: Session):
                     "color": "orange",
                     "category_type": "industry",
                     "level": 1,
-                    "display_order": 4
+                    "display_order": 4,
                 },
                 {
                     "code": "education",
@@ -81,7 +83,7 @@ def seed_template_categories(db: Session):
                     "color": "indigo",
                     "category_type": "industry",
                     "level": 1,
-                    "display_order": 5
+                    "display_order": 5,
                 },
                 {
                     "code": "real_estate",
@@ -91,11 +93,10 @@ def seed_template_categories(db: Session):
                     "color": "teal",
                     "category_type": "industry",
                     "level": 1,
-                    "display_order": 6
-                }
-            ]
+                    "display_order": 6,
+                },
+            ],
         },
-
         # ==================== Use Case Categories ====================
         {
             "code": "use_case",
@@ -118,7 +119,7 @@ def seed_template_categories(db: Session):
                     "category_type": "use_case",
                     "level": 1,
                     "display_order": 1,
-                    "is_featured": True
+                    "is_featured": True,
                 },
                 {
                     "code": "project_management",
@@ -129,7 +130,7 @@ def seed_template_categories(db: Session):
                     "category_type": "use_case",
                     "level": 1,
                     "display_order": 2,
-                    "is_featured": True
+                    "is_featured": True,
                 },
                 {
                     "code": "hr",
@@ -139,7 +140,7 @@ def seed_template_categories(db: Session):
                     "color": "pink",
                     "category_type": "use_case",
                     "level": 1,
-                    "display_order": 3
+                    "display_order": 3,
                 },
                 {
                     "code": "inventory",
@@ -149,7 +150,7 @@ def seed_template_categories(db: Session):
                     "color": "orange",
                     "category_type": "use_case",
                     "level": 1,
-                    "display_order": 4
+                    "display_order": 4,
                 },
                 {
                     "code": "document_management",
@@ -159,7 +160,7 @@ def seed_template_categories(db: Session):
                     "color": "gray",
                     "category_type": "use_case",
                     "level": 1,
-                    "display_order": 5
+                    "display_order": 5,
                 },
                 {
                     "code": "support",
@@ -169,11 +170,10 @@ def seed_template_categories(db: Session):
                     "color": "cyan",
                     "category_type": "use_case",
                     "level": 1,
-                    "display_order": 6
-                }
-            ]
+                    "display_order": 6,
+                },
+            ],
         },
-
         # ==================== Function Categories ====================
         {
             "code": "function",
@@ -194,7 +194,7 @@ def seed_template_categories(db: Session):
                     "color": "blue",
                     "category_type": "function",
                     "level": 1,
-                    "display_order": 1
+                    "display_order": 1,
                 },
                 {
                     "code": "reporting",
@@ -204,7 +204,7 @@ def seed_template_categories(db: Session):
                     "color": "green",
                     "category_type": "function",
                     "level": 1,
-                    "display_order": 2
+                    "display_order": 2,
                 },
                 {
                     "code": "workflow_automation",
@@ -214,7 +214,7 @@ def seed_template_categories(db: Session):
                     "color": "purple",
                     "category_type": "function",
                     "level": 1,
-                    "display_order": 3
+                    "display_order": 3,
                 },
                 {
                     "code": "communication",
@@ -224,11 +224,10 @@ def seed_template_categories(db: Session):
                     "color": "cyan",
                     "category_type": "function",
                     "level": 1,
-                    "display_order": 4
-                }
-            ]
+                    "display_order": 4,
+                },
+            ],
         },
-
         # ==================== General/Starter Templates ====================
         {
             "code": "general",
@@ -240,8 +239,8 @@ def seed_template_categories(db: Session):
             "level": 0,
             "path": "/general/",
             "display_order": 4,
-            "is_featured": True
-        }
+            "is_featured": True,
+        },
     ]
 
     created_count = 0
@@ -251,9 +250,7 @@ def seed_template_categories(db: Session):
         nonlocal created_count, skipped_count
 
         # Check if category already exists
-        existing = db.query(TemplateCategory).filter(
-            TemplateCategory.code == cat_data["code"]
-        ).first()
+        existing = db.query(TemplateCategory).filter(TemplateCategory.code == cat_data["code"]).first()
 
         if existing:
             print(f"  ⏭️  Category exists: {cat_data['name']}")
@@ -278,7 +275,7 @@ def seed_template_categories(db: Session):
             path=path,
             created_at=datetime.utcnow(),
             updated_at=datetime.utcnow(),
-            **cat_data
+            **cat_data,
         )
         db.add(category)
         db.flush()
@@ -298,7 +295,7 @@ def seed_template_categories(db: Session):
     db.commit()
 
     print(f"\n{'='*80}")
-    print(f"SUMMARY")
+    print("SUMMARY")
     print(f"{'='*80}")
     print(f"  ✅ Created: {created_count} categories")
     print(f"  ⏭️  Skipped: {skipped_count} categories (already exist)")
@@ -314,6 +311,7 @@ def main():
     except Exception as e:
         print(f"❌ Error: {e}")
         import traceback
+
         traceback.print_exc()
         db.rollback()
     finally:

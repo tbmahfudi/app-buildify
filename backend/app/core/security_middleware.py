@@ -1,10 +1,11 @@
 """
 Security middleware for enforcing session timeouts and password expiration.
 """
+
 import logging
 from datetime import datetime
 
-from fastapi import HTTPException, Request, status
+from fastapi import Request, status
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
@@ -39,7 +40,7 @@ class SecurityMiddleware:
             "/redoc",
             "/openapi.json",
             "/health",
-            "/favicon.ico"
+            "/favicon.ico",
         ]
 
     async def __call__(self, request: Request, call_next):
@@ -81,10 +82,7 @@ class SecurityMiddleware:
             security_config = SecurityConfigService(db)
 
             # Check if session exists and is valid
-            session = db.query(UserSession).filter(
-                UserSession.jti == jti,
-                UserSession.user_id == str(user_id)
-            ).first()
+            session = db.query(UserSession).filter(UserSession.jti == jti, UserSession.user_id == str(user_id)).first()
 
             if session:
                 # Check if session was revoked
@@ -94,8 +92,8 @@ class SecurityMiddleware:
                         status_code=status.HTTP_401_UNAUTHORIZED,
                         content={
                             "detail": "Session has been revoked. Please log in again.",
-                            "error_code": "SESSION_REVOKED"
-                        }
+                            "error_code": "SESSION_REVOKED",
+                        },
                     )
 
                 # Check session inactivity timeout
@@ -112,8 +110,8 @@ class SecurityMiddleware:
                             status_code=status.HTTP_401_UNAUTHORIZED,
                             content={
                                 "detail": f"Session timed out due to inactivity ({session_timeout_min} minutes). Please log in again.",
-                                "error_code": "SESSION_TIMEOUT"
-                            }
+                                "error_code": "SESSION_TIMEOUT",
+                            },
                         )
 
                 # Check absolute session timeout
@@ -130,8 +128,8 @@ class SecurityMiddleware:
                             status_code=status.HTTP_401_UNAUTHORIZED,
                             content={
                                 "detail": f"Session exceeded maximum duration ({absolute_timeout_hours} hours). Please log in again.",
-                                "error_code": "ABSOLUTE_TIMEOUT"
-                            }
+                                "error_code": "ABSOLUTE_TIMEOUT",
+                            },
                         )
 
                 # Update last activity timestamp
@@ -147,8 +145,8 @@ class SecurityMiddleware:
                         status_code=status.HTTP_403_FORBIDDEN,
                         content={
                             "detail": "Your password has expired. Please change your password.",
-                            "error_code": "PASSWORD_EXPIRED"
-                        }
+                            "error_code": "PASSWORD_EXPIRED",
+                        },
                     )
                 else:
                     # Allow access but add warning header
@@ -166,8 +164,8 @@ class SecurityMiddleware:
                         status_code=status.HTTP_403_FORBIDDEN,
                         content={
                             "detail": "You must change your password before continuing.",
-                            "error_code": "PASSWORD_CHANGE_REQUIRED"
-                        }
+                            "error_code": "PASSWORD_CHANGE_REQUIRED",
+                        },
                     )
 
             # All checks passed, continue with request

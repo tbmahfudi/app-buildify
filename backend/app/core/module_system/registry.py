@@ -4,15 +4,17 @@ Module Registry Service
 Manages module registration, installation, and lifecycle operations.
 """
 
-from typing import Dict, List, Optional, Any
-from sqlalchemy.orm import Session
+import logging
 from datetime import datetime
 from pathlib import Path
-import logging
+from typing import Any, Dict, List, Optional
+
+from sqlalchemy.orm import Session
 
 from app.models.module_registry import ModuleRegistry, TenantModule
 from app.models.permission import Permission
 from app.models.tenant import Tenant
+
 from .base_module import BaseModule
 from .loader import ModuleLoader
 
@@ -62,16 +64,14 @@ class ModuleRegistryService:
         for name, module_instance in discovered.items():
             try:
                 # Check if module exists in registry
-                registry_entry = self.db.query(ModuleRegistry).filter(
-                    ModuleRegistry.name == name
-                ).first()
+                registry_entry = self.db.query(ModuleRegistry).filter(ModuleRegistry.name == name).first()
 
                 if not registry_entry:
                     # Register new module
                     registry_entry = ModuleRegistry(
                         name=name,
                         display_name=module_instance.display_name,
-                        module_type='code',
+                        module_type="code",
                         version=module_instance.version,
                         description=module_instance.manifest.get("description"),
                         category=module_instance.manifest.get("category"),
@@ -98,8 +98,10 @@ class ModuleRegistryService:
                     # Update when version OR manifest CONTENT changed, so disk
                     # manifest edits propagate even without a version bump.
                     import json as _json
-                    content_changed = _json.dumps(registry_entry.manifest or {}, sort_keys=True) \
-                        != _json.dumps(module_instance.manifest, sort_keys=True)
+
+                    content_changed = _json.dumps(registry_entry.manifest or {}, sort_keys=True) != _json.dumps(
+                        module_instance.manifest, sort_keys=True
+                    )
                     if registry_entry.version != module_instance.version or content_changed:
                         registry_entry.version = module_instance.version
                         registry_entry.manifest = module_instance.manifest
@@ -129,8 +131,8 @@ class ModuleRegistryService:
         registration is a separate flow). No-op when ``root`` is absent. Returns
         the number of modules refreshed.
         """
-        import os
         import json as _json
+        import os
 
         root = root or os.environ.get("MODULES_MANIFEST_ROOT") or "/modules"
         if not os.path.isdir(root):
@@ -154,11 +156,14 @@ class ModuleRegistryService:
             # minor schema drift doesn't take module loading down.
             try:
                 from app.core.module_system.manifest_validation import validate_manifest
+
                 errs = validate_manifest(disk_manifest)
                 if errs:
                     logger.warning(
                         "Manifest %s has %d contract violation(s): %s",
-                        manifest_file, len(errs), "; ".join(errs[:8]),
+                        manifest_file,
+                        len(errs),
+                        "; ".join(errs[:8]),
                     )
             except Exception as e:  # noqa: BLE001
                 logger.debug(f"Manifest validation skipped for {manifest_file}: {e}")
@@ -169,8 +174,9 @@ class ModuleRegistryService:
                 continue  # not registered — leave registration to install flow
 
             try:
-                unchanged = _json.dumps(row.manifest or {}, sort_keys=True) \
-                    == _json.dumps(disk_manifest, sort_keys=True)
+                unchanged = _json.dumps(row.manifest or {}, sort_keys=True) == _json.dumps(
+                    disk_manifest, sort_keys=True
+                )
             except Exception:  # noqa: BLE001
                 unchanged = False
             if unchanged:
@@ -218,9 +224,7 @@ class ModuleRegistryService:
             return False, f"Module {module_name} not found"
 
         # Get registry entry
-        registry_entry = self.db.query(ModuleRegistry).filter(
-            ModuleRegistry.name == module_name
-        ).first()
+        registry_entry = self.db.query(ModuleRegistry).filter(ModuleRegistry.name == module_name).first()
 
         if not registry_entry:
             return False, f"Module {module_name} not registered in database"
@@ -230,9 +234,7 @@ class ModuleRegistryService:
 
         # Check dependencies
         installed_modules = [
-            m.name for m in self.db.query(ModuleRegistry)
-            .filter(ModuleRegistry.is_installed == True)
-            .all()
+            m.name for m in self.db.query(ModuleRegistry).filter(ModuleRegistry.is_installed == True).all()
         ]
 
         deps_ok, deps_error = module.check_dependencies(installed_modules)
@@ -289,9 +291,7 @@ class ModuleRegistryService:
         if not module:
             return False, f"Module {module_name} not found"
 
-        registry_entry = self.db.query(ModuleRegistry).filter(
-            ModuleRegistry.name == module_name
-        ).first()
+        registry_entry = self.db.query(ModuleRegistry).filter(ModuleRegistry.name == module_name).first()
 
         if not registry_entry:
             return False, f"Module {module_name} not registered"
@@ -322,11 +322,7 @@ class ModuleRegistryService:
         return True, None
 
     def enable_module_for_tenant(
-        self,
-        module_name: str,
-        tenant_id: str,
-        user_id: str,
-        configuration: Optional[Dict[str, Any]] = None
+        self, module_name: str, tenant_id: str, user_id: str, configuration: Optional[Dict[str, Any]] = None
     ) -> tuple[bool, Optional[str]]:
         """
         Enable a module for a specific tenant.
@@ -347,10 +343,11 @@ class ModuleRegistryService:
             return False, f"Module {module_name} not found"
 
         # Check if module is installed
-        registry_entry = self.db.query(ModuleRegistry).filter(
-            ModuleRegistry.name == module_name,
-            ModuleRegistry.is_installed == True
-        ).first()
+        registry_entry = (
+            self.db.query(ModuleRegistry)
+            .filter(ModuleRegistry.name == module_name, ModuleRegistry.is_installed == True)
+            .first()
+        )
 
         if not registry_entry:
             return False, f"Module {module_name} is not installed"
@@ -366,10 +363,11 @@ class ModuleRegistryService:
             return False, f"Module requires {required_tier} subscription tier"
 
         # Check if already enabled
-        tenant_module = self.db.query(TenantModule).filter(
-            TenantModule.tenant_id == tenant_id,
-            TenantModule.module_id == registry_entry.id
-        ).first()
+        tenant_module = (
+            self.db.query(TenantModule)
+            .filter(TenantModule.tenant_id == tenant_id, TenantModule.module_id == registry_entry.id)
+            .first()
+        )
 
         if tenant_module and tenant_module.is_enabled:
             return False, f"Module {module_name} is already enabled for this tenant"
@@ -400,7 +398,7 @@ class ModuleRegistryService:
                 is_configured=True,
                 configuration=configuration,
                 enabled_at=datetime.utcnow(),
-                enabled_by_user_id=user_id
+                enabled_by_user_id=user_id,
             )
             self.db.add(tenant_module)
         else:
@@ -422,12 +420,7 @@ class ModuleRegistryService:
         logger.info(f"Module {module_name} enabled for tenant {tenant_id}")
         return True, None
 
-    def disable_module_for_tenant(
-        self,
-        module_name: str,
-        tenant_id: str,
-        user_id: str
-    ) -> tuple[bool, Optional[str]]:
+    def disable_module_for_tenant(self, module_name: str, tenant_id: str, user_id: str) -> tuple[bool, Optional[str]]:
         """
         Disable a module for a specific tenant.
 
@@ -445,9 +438,7 @@ class ModuleRegistryService:
         if not module:
             return False, f"Module {module_name} not found"
 
-        registry_entry = self.db.query(ModuleRegistry).filter(
-            ModuleRegistry.name == module_name
-        ).first()
+        registry_entry = self.db.query(ModuleRegistry).filter(ModuleRegistry.name == module_name).first()
 
         if not registry_entry:
             return False, f"Module {module_name} not registered"
@@ -456,10 +447,11 @@ class ModuleRegistryService:
         if registry_entry.is_core:
             return False, "Cannot disable core modules"
 
-        tenant_module = self.db.query(TenantModule).filter(
-            TenantModule.tenant_id == tenant_id,
-            TenantModule.module_id == registry_entry.id
-        ).first()
+        tenant_module = (
+            self.db.query(TenantModule)
+            .filter(TenantModule.tenant_id == tenant_id, TenantModule.module_id == registry_entry.id)
+            .first()
+        )
 
         if not tenant_module or not tenant_module.is_enabled:
             return False, f"Module {module_name} is not enabled for this tenant"
@@ -513,9 +505,7 @@ class ModuleRegistryService:
                 continue
 
             # Check if permission already exists
-            existing = self.db.query(Permission).filter(
-                Permission.code == perm_data["code"]
-            ).first()
+            existing = self.db.query(Permission).filter(Permission.code == perm_data["code"]).first()
 
             if not existing:
                 perm = Permission(
@@ -526,7 +516,7 @@ class ModuleRegistryService:
                     action=action,
                     scope=scope,
                     category=perm_data.get("category", "module"),
-                    is_system=perm_data.get("is_system", False)
+                    is_system=perm_data.get("is_system", False),
                 )
                 self.db.add(perm)
                 self.db.flush()  # Flush to get the ID assigned
@@ -552,11 +542,16 @@ class ModuleRegistryService:
         Returns:
             List of module names
         """
-        tenant_modules = self.db.query(TenantModule).join(ModuleRegistry).filter(
-            TenantModule.tenant_id == tenant_id,
-            TenantModule.is_enabled == True,
-            ModuleRegistry.is_installed == True
-        ).all()
+        tenant_modules = (
+            self.db.query(TenantModule)
+            .join(ModuleRegistry)
+            .filter(
+                TenantModule.tenant_id == tenant_id,
+                TenantModule.is_enabled == True,
+                ModuleRegistry.is_installed == True,
+            )
+            .all()
+        )
 
         return [tm.module.name for tm in tenant_modules]
 
@@ -584,9 +579,7 @@ class ModuleRegistryService:
                         logger.error(f"Error getting router for {module_name}: {e}")
         else:
             # Get all installed module routers
-            installed = self.db.query(ModuleRegistry).filter(
-                ModuleRegistry.is_installed == True
-            ).all()
+            installed = self.db.query(ModuleRegistry).filter(ModuleRegistry.is_installed == True).all()
 
             for module_entry in installed:
                 if module_entry.name in self.modules:
@@ -632,9 +625,7 @@ class ModuleRegistryService:
         Returns:
             Module information dictionary, or None if not found
         """
-        registry_entry = self.db.query(ModuleRegistry).filter(
-            ModuleRegistry.name == module_name
-        ).first()
+        registry_entry = self.db.query(ModuleRegistry).filter(ModuleRegistry.name == module_name).first()
 
         if not registry_entry:
             return None

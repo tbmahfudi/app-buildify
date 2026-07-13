@@ -7,12 +7,12 @@ Usage: python -m app.seeds.check_user_permissions <email>
 """
 
 import sys
-from sqlalchemy.orm import Session
+
 from app.core.db import SessionLocal
-from app.models.user import User
 from app.models.permission import Permission
+from app.models.rbac_junctions import GroupRole, RolePermission, UserGroup, UserRole
 from app.models.role import Role
-from app.models.rbac_junctions import RolePermission, UserRole, GroupRole, UserGroup
+from app.models.user import User
 
 
 def check_user_permissions(email: str):
@@ -27,11 +27,11 @@ def check_user_permissions(email: str):
             print(f"\n❌ User not found: {email}")
             return
 
-        print("\n" + "="*80)
+        print("\n" + "=" * 80)
         print(f"USER: {user.email}")
-        print("="*80)
+        print("=" * 80)
 
-        print(f"\n👤 User Info:")
+        print("\n👤 User Info:")
         print(f"  - Name: {user.full_name}")
         print(f"  - Email: {user.email}")
         print(f"  - Is Superuser: {user.is_superuser}")
@@ -40,29 +40,25 @@ def check_user_permissions(email: str):
 
         # Check if superuser
         if user.is_superuser:
-            print(f"\n🌟 SUPERUSER STATUS")
-            print(f"  ✅ This user is a SUPERUSER and has ALL permissions automatically!")
-            print(f"  ✅ All menus should be visible without explicit permissions")
+            print("\n🌟 SUPERUSER STATUS")
+            print("  ✅ This user is a SUPERUSER and has ALL permissions automatically!")
+            print("  ✅ All menus should be visible without explicit permissions")
 
         # Check direct role assignments
-        print(f"\n📋 Direct Role Assignments:")
-        direct_roles = db.query(Role).join(UserRole).filter(
-            UserRole.user_id == user.id
-        ).all()
+        print("\n📋 Direct Role Assignments:")
+        direct_roles = db.query(Role).join(UserRole).filter(UserRole.user_id == user.id).all()
 
         if direct_roles:
             for role in direct_roles:
                 print(f"  ✅ {role.code} - {role.name}")
         else:
-            print(f"  ⚠️  No direct roles assigned")
+            print("  ⚠️  No direct roles assigned")
 
         # Check group memberships and roles through groups
-        print(f"\n👥 Group Memberships & Roles:")
+        print("\n👥 Group Memberships & Roles:")
         from app.models.group import Group
 
-        groups = db.query(Group).join(UserGroup).filter(
-            UserGroup.user_id == user.id
-        ).all()
+        groups = db.query(Group).join(UserGroup).filter(UserGroup.user_id == user.id).all()
 
         all_roles = []
         if groups:
@@ -70,30 +66,28 @@ def check_user_permissions(email: str):
                 print(f"  📁 Group: {group.name} ({group.code})")
 
                 # Get roles assigned to this group
-                group_roles = db.query(Role).join(GroupRole).filter(
-                    GroupRole.group_id == group.id
-                ).all()
+                group_roles = db.query(Role).join(GroupRole).filter(GroupRole.group_id == group.id).all()
 
                 if group_roles:
                     for role in group_roles:
                         print(f"     └─ Role: {role.code} - {role.name}")
                         all_roles.append(role)
                 else:
-                    print(f"     └─ No roles assigned to this group")
+                    print("     └─ No roles assigned to this group")
         else:
-            print(f"  ⚠️  Not a member of any groups")
+            print("  ⚠️  Not a member of any groups")
 
         # Combine all roles
         all_roles.extend(direct_roles)
         unique_roles = {role.id: role for role in all_roles}
 
         # Check Phase 1 permissions specifically
-        print(f"\n🔧 Phase 1 No-Code Platform Permissions:")
+        print("\n🔧 Phase 1 No-Code Platform Permissions:")
         phase1_permission_codes = [
-            'data_model:read:tenant',
-            'workflows:read:tenant',
-            'automations:read:tenant',
-            'lookups:read:tenant'
+            "data_model:read:tenant",
+            "workflows:read:tenant",
+            "automations:read:tenant",
+            "lookups:read:tenant",
         ]
 
         for perm_code in phase1_permission_codes:
@@ -106,10 +100,11 @@ def check_user_permissions(email: str):
             # Check if any of user's roles has this permission
             has_permission = False
             for role in unique_roles.values():
-                role_has_perm = db.query(RolePermission).filter(
-                    RolePermission.role_id == role.id,
-                    RolePermission.permission_id == perm.id
-                ).first()
+                role_has_perm = (
+                    db.query(RolePermission)
+                    .filter(RolePermission.role_id == role.id, RolePermission.permission_id == perm.id)
+                    .first()
+                )
 
                 if role_has_perm:
                     has_permission = True
@@ -120,25 +115,25 @@ def check_user_permissions(email: str):
                 print(f"  ❌ {perm_code} - NOT GRANTED")
 
         # Summary
-        print(f"\n" + "="*80)
-        print(f"SUMMARY")
-        print("="*80)
+        print("\n" + "=" * 80)
+        print("SUMMARY")
+        print("=" * 80)
 
         if user.is_superuser:
-            print(f"✅ User is SUPERUSER - has all permissions")
-            print(f"✅ All No-Code Platform menus should be visible")
+            print("✅ User is SUPERUSER - has all permissions")
+            print("✅ All No-Code Platform menus should be visible")
         elif unique_roles:
             print(f"✅ User has {len(unique_roles)} role(s)")
-            print(f"📋 To see No-Code Platform menus:")
-            print(f"   1. Run: docker exec -it app_buildify_backend python -m app.seeds.seed_phase1_permissions")
-            print(f"   2. Logout and login again to refresh permissions")
+            print("📋 To see No-Code Platform menus:")
+            print("   1. Run: docker exec -it app_buildify_backend python -m app.seeds.seed_phase1_permissions")
+            print("   2. Logout and login again to refresh permissions")
         else:
-            print(f"⚠️  User has NO roles assigned")
-            print(f"💡 To grant access:")
-            print(f"   1. Assign user to 'Administrators' group, OR")
-            print(f"   2. Assign 'tenant_admin' role to user")
-            print(f"   3. Run: docker exec -it app_buildify_backend python -m app.seeds.seed_phase1_permissions")
-            print(f"   4. Logout and login again")
+            print("⚠️  User has NO roles assigned")
+            print("💡 To grant access:")
+            print("   1. Assign user to 'Administrators' group, OR")
+            print("   2. Assign 'tenant_admin' role to user")
+            print("   3. Run: docker exec -it app_buildify_backend python -m app.seeds.seed_phase1_permissions")
+            print("   4. Logout and login again")
 
         print("")
 

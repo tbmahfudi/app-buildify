@@ -13,7 +13,7 @@ Run: python -m app.seeds.seed_minimal
 """
 
 from app.core.db import SessionLocal
-from app.seeds.seed_complete_org import seed_superuser, SUPERUSER
+from app.seeds.seed_complete_org import SUPERUSER, seed_superuser
 
 
 def main():
@@ -33,6 +33,7 @@ def main():
     except Exception as e:
         print(f"\n❌ Minimal seed failed: {e}")
         import traceback
+
         traceback.print_exc()
         db.rollback()
         raise

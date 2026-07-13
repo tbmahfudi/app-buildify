@@ -5,22 +5,21 @@ Central registry for cross-module service access with permission checking
 and audit logging (Phase 4 Priority 2).
 """
 
-from typing import Optional, List, Dict, Any
-from sqlalchemy.orm import Session
 import time
 from datetime import datetime
+from typing import Any, Dict, List, Optional
+
+from sqlalchemy.orm import Session
 
 from app.core.logging_config import get_logger
 from app.models.module_service import ModuleService, ModuleServiceAccessLog
 from app.models.nocode_module import NocodeModule
-
 
 logger = get_logger(__name__)
 
 
 class ServiceNotFoundError(Exception):
     """Raised when a requested service is not found"""
-    pass
 
 
 class ModuleServiceRegistry:
@@ -46,8 +45,8 @@ class ModuleServiceRegistry:
         service_name: str,
         service_class: type,
         methods: List[dict],
-        version: str = '1.0.0',
-        description: str = None
+        version: str = "1.0.0",
+        description: str = None,
     ):
         """
         Register a service for cross-module use.
@@ -80,29 +79,18 @@ class ModuleServiceRegistry:
             self._services[module_name] = {}
 
         self._services[module_name][service_name] = {
-            'class': service_class,
-            'methods': methods,
-            'version': version,
-            'description': description
+            "class": service_class,
+            "methods": methods,
+            "version": version,
+            "description": description,
         }
 
         logger.info(
             f"Registered service: {module_name}.{service_name} v{version}",
-            extra={
-                'module': module_name,
-                'service': service_name,
-                'version': version,
-                'method_count': len(methods)
-            }
+            extra={"module": module_name, "service": service_name, "version": version, "method_count": len(methods)},
         )
 
-    def get_service(
-        self,
-        module_name: str,
-        service_name: str,
-        db: Session,
-        current_user
-    ) -> Optional[object]:
+    def get_service(self, module_name: str, service_name: str, db: Session, current_user) -> Optional[object]:
         """
         Get service instance with permission checking.
 
@@ -128,24 +116,21 @@ class ModuleServiceRegistry:
             raise ServiceNotFoundError(f"Module '{module_name}' not found in registry")
 
         if service_name not in self._services[module_name]:
-            raise ServiceNotFoundError(
-                f"Service '{service_name}' not found in module '{module_name}'"
-            )
+            raise ServiceNotFoundError(f"Service '{service_name}' not found in module '{module_name}'")
 
         service_info = self._services[module_name][service_name]
-        service_class = service_info['class']
+        service_class = service_info["class"]
 
         # Instantiate service with user context
         service_instance = service_class(db, current_user)
 
         # Get service ID from database for logging
-        service_record = db.query(ModuleService).join(
-            NocodeModule,
-            ModuleService.module_id == NocodeModule.id
-        ).filter(
-            NocodeModule.name == module_name,
-            ModuleService.service_name == service_name
-        ).first()
+        service_record = (
+            db.query(ModuleService)
+            .join(NocodeModule, ModuleService.module_id == NocodeModule.id)
+            .filter(NocodeModule.name == module_name, ModuleService.service_name == service_name)
+            .first()
+        )
 
         # Wrap service to add permission checking and logging
         wrapped_service = ServiceProxy(
@@ -154,7 +139,7 @@ class ModuleServiceRegistry:
             service_name=service_name,
             service_id=str(service_record.id) if service_record else None,
             current_user=current_user,
-            db=db
+            db=db,
         )
 
         return wrapped_service
@@ -175,10 +160,7 @@ class ModuleServiceRegistry:
 
     def is_service_registered(self, module_name: str, service_name: str) -> bool:
         """Check if a service is registered"""
-        return (
-            module_name in self._services and
-            service_name in self._services[module_name]
-        )
+        return module_name in self._services and service_name in self._services[module_name]
 
     def unregister_service(self, module_name: str, service_name: str):
         """Unregister a service"""
@@ -209,7 +191,7 @@ class ServiceProxy:
         service_name: str,
         service_id: Optional[str],
         current_user,
-        db: Session
+        db: Session,
     ):
         """
         Initialize service proxy.
@@ -238,9 +220,7 @@ class ServiceProxy:
         """
         # Check if method exists on actual service
         if not hasattr(self._service, method_name):
-            raise AttributeError(
-                f"Service '{self._service_name}' has no method '{method_name}'"
-            )
+            raise AttributeError(f"Service '{self._service_name}' has no method '{method_name}'")
 
         original_method = getattr(self._service, method_name)
 
@@ -264,10 +244,7 @@ class ServiceProxy:
                 permission_checked = self._extract_permission_from_error(str(e))
                 logger.warning(
                     f"Permission denied for {self._module_name}.{self._service_name}.{method_name}",
-                    extra={
-                        'user_id': str(self._user.id),
-                        'permission': permission_checked
-                    }
+                    extra={"user_id": str(self._user.id), "permission": permission_checked},
                 )
                 raise
 
@@ -276,11 +253,8 @@ class ServiceProxy:
                 error_message = str(e)
                 logger.error(
                     f"Error in {self._module_name}.{self._service_name}.{method_name}: {str(e)}",
-                    extra={
-                        'user_id': str(self._user.id),
-                        'error_type': type(e).__name__
-                    },
-                    exc_info=True
+                    extra={"user_id": str(self._user.id), "error_type": type(e).__name__},
+                    exc_info=True,
                 )
                 raise
 
@@ -293,7 +267,7 @@ class ServiceProxy:
                     error_message=error_message,
                     execution_time_ms=execution_time_ms,
                     permission_checked=permission_checked,
-                    parameters=self._sanitize_parameters(args, kwargs)
+                    parameters=self._sanitize_parameters(args, kwargs),
                 )
 
         return wrapped_method
@@ -305,7 +279,7 @@ class ServiceProxy:
         error_message: Optional[str],
         execution_time_ms: int,
         permission_checked: Optional[str],
-        parameters: Optional[dict]
+        parameters: Optional[dict],
     ):
         """
         Log service access to database.
@@ -331,7 +305,7 @@ class ServiceProxy:
                 error_message=error_message,
                 execution_time_ms=execution_time_ms,
                 permission_checked=permission_checked,
-                accessed_at=datetime.utcnow()
+                accessed_at=datetime.utcnow(),
             )
 
             self._db.add(log_entry)
@@ -350,8 +324,8 @@ class ServiceProxy:
         """
         # Convert args to dict
         sanitized = {
-            'args': [self._sanitize_value(arg) for arg in args],
-            'kwargs': {k: self._sanitize_value(v) for k, v in kwargs.items()}
+            "args": [self._sanitize_value(arg) for arg in args],
+            "kwargs": {k: self._sanitize_value(v) for k, v in kwargs.items()},
         }
         return sanitized
 
@@ -362,7 +336,7 @@ class ServiceProxy:
         Redacts sensitive fields and truncates large objects.
         """
         # Sensitive field names to redact
-        sensitive_fields = ['password', 'token', 'secret', 'api_key', 'private_key']
+        sensitive_fields = ["password", "token", "secret", "api_key", "private_key"]
 
         # Handle strings
         if isinstance(value, str):
@@ -401,7 +375,8 @@ class ServiceProxy:
         """
         # Look for permission format like "hr:employee:read"
         import re
-        pattern = r'([a-z_]+:[a-z_]+:[a-z_]+)'
+
+        pattern = r"([a-z_]+:[a-z_]+:[a-z_]+)"
         match = re.search(pattern, error_message)
         if match:
             return match.group(1)

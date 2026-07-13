@@ -1,15 +1,18 @@
 """
 Scheduler schemas for request/response validation.
 """
-from pydantic import BaseModel, Field, validator
-from typing import Optional, List, Dict, Any
+
 from datetime import datetime
 from enum import Enum
+from typing import Any, Dict, List, Optional
 from uuid import UUID
+
+from pydantic import BaseModel, Field, validator
 
 
 class ConfigLevel(str, Enum):
     """Configuration hierarchy levels."""
+
     SYSTEM = "system"
     TENANT = "tenant"
     COMPANY = "company"
@@ -18,6 +21,7 @@ class ConfigLevel(str, Enum):
 
 class JobStatus(str, Enum):
     """Job execution status."""
+
     PENDING = "pending"
     RUNNING = "running"
     COMPLETED = "completed"
@@ -28,6 +32,7 @@ class JobStatus(str, Enum):
 
 class JobType(str, Enum):
     """Types of scheduled jobs."""
+
     REPORT_GENERATION = "report_generation"
     DATA_SYNC = "data_sync"
     NOTIFICATION_BATCH = "notification_batch"
@@ -40,8 +45,10 @@ class JobType(str, Enum):
 
 # ========== Scheduler Configuration Schemas ==========
 
+
 class SchedulerConfigBase(BaseModel):
     """Base schema for scheduler configuration."""
+
     name: str = Field(..., description="Configuration name")
     description: Optional[str] = Field(None, description="Configuration description")
     is_enabled: bool = Field(True, description="Is scheduler enabled")
@@ -58,34 +65,35 @@ class SchedulerConfigBase(BaseModel):
 
 class SchedulerConfigCreate(SchedulerConfigBase):
     """Schema for creating scheduler configuration."""
+
     config_level: ConfigLevel = Field(..., description="Configuration level")
     tenant_id: Optional[UUID] = Field(None, description="Tenant ID (required for tenant/company/branch level)")
     company_id: Optional[UUID] = Field(None, description="Company ID (required for company/branch level)")
     branch_id: Optional[UUID] = Field(None, description="Branch ID (required for branch level)")
 
-    @validator('tenant_id')
+    @validator("tenant_id")
     def validate_tenant_id(cls, v, values):
         """Validate tenant_id based on config_level."""
-        if 'config_level' in values:
-            level = values['config_level']
+        if "config_level" in values:
+            level = values["config_level"]
             if level in [ConfigLevel.TENANT, ConfigLevel.COMPANY, ConfigLevel.BRANCH] and not v:
                 raise ValueError(f"{level} level config requires tenant_id")
         return v
 
-    @validator('company_id')
+    @validator("company_id")
     def validate_company_id(cls, v, values):
         """Validate company_id based on config_level."""
-        if 'config_level' in values:
-            level = values['config_level']
+        if "config_level" in values:
+            level = values["config_level"]
             if level in [ConfigLevel.COMPANY, ConfigLevel.BRANCH] and not v:
                 raise ValueError(f"{level} level config requires company_id")
         return v
 
-    @validator('branch_id')
+    @validator("branch_id")
     def validate_branch_id(cls, v, values):
         """Validate branch_id based on config_level."""
-        if 'config_level' in values:
-            level = values['config_level']
+        if "config_level" in values:
+            level = values["config_level"]
             if level == ConfigLevel.BRANCH and not v:
                 raise ValueError("Branch level config requires branch_id")
         return v
@@ -93,6 +101,7 @@ class SchedulerConfigCreate(SchedulerConfigBase):
 
 class SchedulerConfigUpdate(BaseModel):
     """Schema for updating scheduler configuration."""
+
     name: Optional[str] = None
     description: Optional[str] = None
     is_enabled: Optional[bool] = None
@@ -110,6 +119,7 @@ class SchedulerConfigUpdate(BaseModel):
 
 class SchedulerConfigResponse(SchedulerConfigBase):
     """Schema for scheduler configuration response."""
+
     id: UUID
     config_level: ConfigLevel
     tenant_id: Optional[UUID] = None
@@ -126,8 +136,10 @@ class SchedulerConfigResponse(SchedulerConfigBase):
 
 # ========== Scheduler Job Schemas ==========
 
+
 class SchedulerJobBase(BaseModel):
     """Base schema for scheduler job."""
+
     name: str = Field(..., description="Job name")
     description: Optional[str] = Field(None, description="Job description")
     job_type: JobType = Field(..., description="Job type")
@@ -144,16 +156,17 @@ class SchedulerJobBase(BaseModel):
     max_retries: Optional[int] = Field(None, description="Maximum retry attempts", ge=0, le=10)
     retry_delay_seconds: Optional[int] = Field(None, description="Retry delay in seconds", ge=0)
 
-    @validator('start_time', always=True)
+    @validator("start_time", always=True)
     def validate_scheduling(cls, v, values):
         """Validate that either cron_expression, interval_seconds, or start_time is provided."""
-        if not v and not values.get('cron_expression') and not values.get('interval_seconds'):
+        if not v and not values.get("cron_expression") and not values.get("interval_seconds"):
             raise ValueError("Must provide either cron_expression, interval_seconds, or start_time")
         return v
 
 
 class SchedulerJobCreate(SchedulerJobBase):
     """Schema for creating scheduler job."""
+
     config_id: UUID = Field(..., description="Configuration ID to associate with")
     tenant_id: Optional[UUID] = Field(None, description="Tenant ID for scoping")
     company_id: Optional[UUID] = Field(None, description="Company ID for scoping")
@@ -162,6 +175,7 @@ class SchedulerJobCreate(SchedulerJobBase):
 
 class SchedulerJobUpdate(BaseModel):
     """Schema for updating scheduler job."""
+
     name: Optional[str] = None
     description: Optional[str] = None
     is_active: Optional[bool] = None
@@ -180,6 +194,7 @@ class SchedulerJobUpdate(BaseModel):
 
 class SchedulerJobResponse(SchedulerJobBase):
     """Schema for scheduler job response."""
+
     id: UUID
     config_id: UUID
     tenant_id: Optional[UUID] = None
@@ -201,8 +216,10 @@ class SchedulerJobResponse(SchedulerJobBase):
 
 # ========== Job Execution Schemas ==========
 
+
 class SchedulerJobExecutionResponse(BaseModel):
     """Schema for job execution response."""
+
     id: UUID
     job_id: UUID
     tenant_id: Optional[UUID] = None
@@ -227,6 +244,7 @@ class SchedulerJobExecutionResponse(BaseModel):
 
 class SchedulerJobLogResponse(BaseModel):
     """Schema for job log response."""
+
     id: UUID
     execution_id: UUID
     log_level: str
@@ -240,8 +258,10 @@ class SchedulerJobLogResponse(BaseModel):
 
 # ========== List Responses ==========
 
+
 class SchedulerConfigListResponse(BaseModel):
     """Schema for listing configurations."""
+
     items: List[SchedulerConfigResponse]
     total: int
     skip: int
@@ -250,6 +270,7 @@ class SchedulerConfigListResponse(BaseModel):
 
 class SchedulerJobListResponse(BaseModel):
     """Schema for listing jobs."""
+
     items: List[SchedulerJobResponse]
     total: int
     skip: int
@@ -258,6 +279,7 @@ class SchedulerJobListResponse(BaseModel):
 
 class SchedulerJobExecutionListResponse(BaseModel):
     """Schema for listing executions."""
+
     items: List[SchedulerJobExecutionResponse]
     total: int
     skip: int
@@ -266,6 +288,7 @@ class SchedulerJobExecutionListResponse(BaseModel):
 
 class SchedulerJobLogListResponse(BaseModel):
     """Schema for listing logs."""
+
     items: List[SchedulerJobLogResponse]
     total: int
     skip: int
@@ -274,12 +297,17 @@ class SchedulerJobLogListResponse(BaseModel):
 
 # ========== Action Schemas ==========
 
+
 class JobExecuteRequest(BaseModel):
     """Schema for manual job execution request."""
-    override_parameters: Optional[Dict[str, Any]] = Field(None, description="Override job parameters for this execution")
+
+    override_parameters: Optional[Dict[str, Any]] = Field(
+        None, description="Override job parameters for this execution"
+    )
 
 
 class JobExecuteResponse(BaseModel):
     """Schema for manual job execution response."""
+
     execution_id: UUID
     message: str

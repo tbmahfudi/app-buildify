@@ -10,14 +10,15 @@ Run: python -m app.seeds.seed_menu_items
 """
 
 import json
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
 
 from sqlalchemy.orm import Session
+
 from app.core.db import SessionLocal
+from app.models.base import generate_uuid
 from app.models.menu_item import MenuItem
 from app.models.permission import Permission
-from app.models.base import generate_uuid
 
 
 def seed_menu_permissions(db: Session) -> int:
@@ -27,9 +28,9 @@ def seed_menu_permissions(db: Session) -> int:
     Returns:
         Number of permissions created
     """
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     print("MENU MANAGEMENT PERMISSIONS SETUP")
-    print("="*80 + "\n")
+    print("=" * 80 + "\n")
 
     print("📋 Step 1: Registering Menu Management permissions...")
 
@@ -42,7 +43,7 @@ def seed_menu_permissions(db: Session) -> int:
             "action": "read",
             "scope": "tenant",
             "category": "menu_management",
-            "is_system": True
+            "is_system": True,
         },
         {
             "code": "menu:create:tenant",
@@ -52,7 +53,7 @@ def seed_menu_permissions(db: Session) -> int:
             "action": "create",
             "scope": "tenant",
             "category": "menu_management",
-            "is_system": True
+            "is_system": True,
         },
         {
             "code": "menu:update:tenant",
@@ -62,7 +63,7 @@ def seed_menu_permissions(db: Session) -> int:
             "action": "update",
             "scope": "tenant",
             "category": "menu_management",
-            "is_system": True
+            "is_system": True,
         },
         {
             "code": "menu:delete:tenant",
@@ -72,7 +73,7 @@ def seed_menu_permissions(db: Session) -> int:
             "action": "delete",
             "scope": "tenant",
             "category": "menu_management",
-            "is_system": True
+            "is_system": True,
         },
         {
             "code": "menu:manage:tenant",
@@ -82,7 +83,7 @@ def seed_menu_permissions(db: Session) -> int:
             "action": "manage",
             "scope": "tenant",
             "category": "menu_management",
-            "is_system": True
+            "is_system": True,
         },
     ]
 
@@ -90,9 +91,7 @@ def seed_menu_permissions(db: Session) -> int:
     existing_count = 0
 
     for perm_data in menu_permissions:
-        perm = db.query(Permission).filter(
-            Permission.code == perm_data["code"]
-        ).first()
+        perm = db.query(Permission).filter(Permission.code == perm_data["code"]).first()
 
         if not perm:
             perm = Permission(
@@ -103,7 +102,7 @@ def seed_menu_permissions(db: Session) -> int:
                 action=perm_data["action"],
                 scope=perm_data["scope"],
                 category=perm_data["category"],
-                is_system=perm_data["is_system"]
+                is_system=perm_data["is_system"],
             )
             db.add(perm)
             db.flush()
@@ -124,11 +123,7 @@ def seed_menu_permissions(db: Session) -> int:
 
 
 def create_menu_item_recursive(
-    db: Session,
-    item_data: dict,
-    parent_id: str,
-    order: int,
-    synced_codes: set = None
+    db: Session, item_data: dict, parent_id: str, order: int, synced_codes: set = None
 ) -> int:
     """
     Recursively create menu items and their children.
@@ -143,16 +138,15 @@ def create_menu_item_recursive(
         Number of items created (including children)
     """
     # Skip header items (they're visual separators in the menu)
-    if 'header' in item_data and 'title' not in item_data:
+    if "header" in item_data and "title" not in item_data:
         print(f"  • Skipping header item: {item_data['header']}")
         return 0
 
     # Use explicit code if provided, otherwise generate from route or title.
     # Explicit codes keep the DB stable across restructures (e.g. moving a group
     # to a new parent) so the upsert below matches the right row.
-    code = item_data.get('code') or item_data.get(
-        'route',
-        item_data.get('title', 'unknown').lower().replace(' ', '_').replace('&', 'and')
+    code = item_data.get("code") or item_data.get(
+        "route", item_data.get("title", "unknown").lower().replace(" ", "_").replace("&", "and")
     )
 
     if synced_codes is not None:
@@ -165,12 +159,12 @@ def create_menu_item_recursive(
         # Upsert: update fields so re-syncing menu.json actually applies changes
         # (new permissions, moved parent, renamed titles, split routes, …).
         # Without this the sync would silently no-op on existing codes.
-        existing.title = item_data.get('title', item_data.get('header', existing.title))
-        existing.icon = item_data.get('icon')
-        existing.route = item_data.get('route')
-        existing.description = item_data.get('description')
-        existing.permission = item_data.get('permission')
-        existing.required_roles = item_data.get('roles')
+        existing.title = item_data.get("title", item_data.get("header", existing.title))
+        existing.icon = item_data.get("icon")
+        existing.route = item_data.get("route")
+        existing.description = item_data.get("description")
+        existing.permission = item_data.get("permission")
+        existing.required_roles = item_data.get("roles")
         existing.parent_id = parent_id
         existing.order = order
         existing.is_active = True
@@ -186,21 +180,21 @@ def create_menu_item_recursive(
         menu_item = MenuItem(
             id=generate_uuid(),
             code=code,
-            title=item_data.get('title', item_data.get('header', 'Unknown')),
-            icon=item_data.get('icon'),
-            route=item_data.get('route'),
-            description=item_data.get('description'),
-            permission=item_data.get('permission'),
-            required_roles=item_data.get('roles'),  # JSON array
+            title=item_data.get("title", item_data.get("header", "Unknown")),
+            icon=item_data.get("icon"),
+            route=item_data.get("route"),
+            description=item_data.get("description"),
+            permission=item_data.get("permission"),
+            required_roles=item_data.get("roles"),  # JSON array
             parent_id=parent_id,
             order=order,
             is_system=True,  # All seeded menus are system menus
             tenant_id=None,  # System menus (visible to all tenants)
             is_active=True,
             is_visible=True,
-            target='_self',
+            target="_self",
             module_code=None,
-            created_at=datetime.utcnow()
+            created_at=datetime.utcnow(),
         )
 
         db.add(menu_item)
@@ -212,14 +206,10 @@ def create_menu_item_recursive(
         print(f"  ✓ Created menu item: {code} (ID: {menu_item_id})")
 
     # Process submenu
-    if 'submenu' in item_data and item_data['submenu']:
-        for child_idx, child_data in enumerate(item_data['submenu']):
+    if "submenu" in item_data and item_data["submenu"]:
+        for child_idx, child_data in enumerate(item_data["submenu"]):
             child_count = create_menu_item_recursive(
-                db=db,
-                item_data=child_data,
-                parent_id=menu_item_id,
-                order=child_idx * 10,
-                synced_codes=synced_codes
+                db=db, item_data=child_data, parent_id=menu_item_id, order=child_idx * 10, synced_codes=synced_codes
             )
             items_created += child_count
 
@@ -240,9 +230,9 @@ def seed_menu_items(clear_existing: bool = False, menu_json_path: str = None) ->
     db = SessionLocal()
 
     try:
-        print("\n" + "="*80)
+        print("\n" + "=" * 80)
         print("MENU ITEMS SEED")
-        print("="*80 + "\n")
+        print("=" * 80 + "\n")
 
         print("📋 Step 1: Loading menu.json...")
 
@@ -273,7 +263,7 @@ def seed_menu_items(clear_existing: bool = False, menu_json_path: str = None) ->
                     break
 
         if not menu_json_file or not menu_json_file.exists():
-            print(f"\n❌ ERROR: menu.json not found!")
+            print("\n❌ ERROR: menu.json not found!")
             print("\nSearched in:")
             for path in possible_paths if not menu_json_path else [Path(menu_json_path)]:
                 print(f"  - {path}")
@@ -290,13 +280,13 @@ def seed_menu_items(clear_existing: bool = False, menu_json_path: str = None) ->
             return 0
 
         try:
-            with open(menu_json_file, 'r', encoding='utf-8') as f:
+            with open(menu_json_file, "r", encoding="utf-8") as f:
                 menu_data = json.load(f)
         except Exception as e:
             print(f"❌ ERROR: Failed to load menu.json: {e}")
             return 0
 
-        if 'items' not in menu_data:
+        if "items" not in menu_data:
             print("❌ ERROR: menu.json does not have 'items' array")
             return 0
 
@@ -320,13 +310,9 @@ def seed_menu_items(clear_existing: bool = False, menu_json_path: str = None) ->
         # Process menu items
         items_created = 0
         synced_codes = set()
-        for idx, item in enumerate(menu_data['items']):
+        for idx, item in enumerate(menu_data["items"]):
             created_count = create_menu_item_recursive(
-                db=db,
-                item_data=item,
-                parent_id=None,
-                order=idx * 10,
-                synced_codes=synced_codes
+                db=db, item_data=item, parent_id=None, order=idx * 10, synced_codes=synced_codes
             )
             items_created += created_count
 
@@ -334,11 +320,15 @@ def seed_menu_items(clear_existing: bool = False, menu_json_path: str = None) ->
         # Only system items (is_system=True) are managed by this sync; virtual /
         # dynamic items (module routes, builder pages, nocode entities) are
         # is_system=False and regenerated at request time, so leave them alone.
-        stale = db.query(MenuItem).filter(
-            MenuItem.is_system == True,
-            MenuItem.is_active == True,
-            ~MenuItem.code.in_(synced_codes) if synced_codes else False,
-        ).all()
+        stale = (
+            db.query(MenuItem)
+            .filter(
+                MenuItem.is_system == True,
+                MenuItem.is_active == True,
+                ~MenuItem.code.in_(synced_codes) if synced_codes else False,
+            )
+            .all()
+        )
         for item in stale:
             item.is_active = False
             item.is_visible = False
@@ -348,7 +338,7 @@ def seed_menu_items(clear_existing: bool = False, menu_json_path: str = None) ->
         db.commit()
 
         print(f"\n✓ Successfully seeded {items_created} menu items ({len(stale)} deactivated)")
-        print("\n" + "="*80 + "\n")
+        print("\n" + "=" * 80 + "\n")
 
         return items_created
 
@@ -369,7 +359,7 @@ def main(clear_existing: bool = False, menu_json_path: str = None):
         menu_json_path: Optional path to menu.json file
     """
     print("\n🚀 Starting Menu System Seed...")
-    print("="*80)
+    print("=" * 80)
 
     db = SessionLocal()
     try:
@@ -379,10 +369,10 @@ def main(clear_existing: bool = False, menu_json_path: str = None):
         # Step 2: Seed menu items
         items_created = seed_menu_items(clear_existing=clear_existing, menu_json_path=menu_json_path)
 
-        print("\n" + "="*80)
+        print("\n" + "=" * 80)
         print("✅ MENU SYSTEM SEED COMPLETE!")
-        print("="*80)
-        print(f"\nSummary:")
+        print("=" * 80)
+        print("\nSummary:")
         print(f"  • Permissions created: {perms_created}")
         print(f"  • Menu items created: {items_created}")
         print("\nNext steps:")
@@ -392,7 +382,7 @@ def main(clear_existing: bool = False, menu_json_path: str = None):
         print("     python assign_menu_permissions.py [ROLE_CODE] [TENANT_CODE]")
         print("  3. Restart backend application (if needed)")
         print("  4. Test menu API: GET /api/v1/menu")
-        print("="*80 + "\n")
+        print("=" * 80 + "\n")
 
     finally:
         db.close()
@@ -402,19 +392,19 @@ if __name__ == "__main__":
     import sys
 
     # Check if --clear flag provided
-    clear_existing = '--clear' in sys.argv or '-c' in sys.argv
+    clear_existing = "--clear" in sys.argv or "-c" in sys.argv
 
     # Check if --path argument provided
     menu_json_path = None
     for i, arg in enumerate(sys.argv):
-        if arg in ['--path', '-p'] and i + 1 < len(sys.argv):
+        if arg in ["--path", "-p"] and i + 1 < len(sys.argv):
             menu_json_path = sys.argv[i + 1]
             break
 
     if clear_existing:
         print("\n⚠️  Running with --clear flag: Will delete existing menu items!")
         response = input("Are you sure you want to continue? (yes/no): ")
-        if response.lower() != 'yes':
+        if response.lower() != "yes":
             print("❌ Seeding cancelled")
             sys.exit(0)
 

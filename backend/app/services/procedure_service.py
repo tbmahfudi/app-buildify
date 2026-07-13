@@ -53,10 +53,10 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 PROCEDURE_REGISTRY: Dict[str, str] = {
     # Financial module
-    "fn_ar_aging":          "fn_ar_aging",
-    "fn_ap_aging":          "fn_ap_aging",
-    "fn_account_balance":   "fn_account_balance",
-    "fn_cash_flow":         "fn_cash_flow",
+    "fn_ar_aging": "fn_ar_aging",
+    "fn_ap_aging": "fn_ap_aging",
+    "fn_account_balance": "fn_account_balance",
+    "fn_cash_flow": "fn_cash_flow",
     # Add more as DB functions are created
 }
 

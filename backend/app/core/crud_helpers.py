@@ -9,6 +9,7 @@ This module provides reusable functions for common database operations:
 
 These helpers consolidate ~200+ lines of duplicate code across routers.
 """
+
 import uuid
 from typing import Any, Dict, List, Optional, Type, TypeVar
 
@@ -22,12 +23,7 @@ from app.models.base import Base
 ModelType = TypeVar("ModelType", bound=Base)
 
 
-def get_entity_by_id(
-    db: Session,
-    model: Type[ModelType],
-    entity_id: str,
-    error_msg: Optional[str] = None
-) -> ModelType:
+def get_entity_by_id(db: Session, model: Type[ModelType], entity_id: str, error_msg: Optional[str] = None) -> ModelType:
     """
     Get an entity by ID with automatic 404 handling.
 
@@ -56,10 +52,7 @@ def get_entity_by_id(
 
     if not entity:
         msg = error_msg or f"{model.__name__} not found"
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=msg
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=msg)
 
     return entity
 
@@ -71,7 +64,7 @@ def check_duplicate_code(
     parent_field: Optional[str] = None,
     parent_id: Optional[str] = None,
     exclude_id: Optional[str] = None,
-    error_msg: Optional[str] = None
+    error_msg: Optional[str] = None,
 ) -> None:
     """
     Check if a code already exists for an entity.
@@ -120,17 +113,11 @@ def check_duplicate_code(
         if parent_field:
             msg = f"{model.__name__} code already exists in this {parent_field.replace('_id', '')}"
 
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=msg
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=msg)
 
 
 def validate_parent_exists(
-    db: Session,
-    parent_model: Type[ModelType],
-    parent_id: str,
-    parent_name: Optional[str] = None
+    db: Session, parent_model: Type[ModelType], parent_id: str, parent_name: Optional[str] = None
 ) -> ModelType:
     """
     Validate that a parent entity exists before creating/updating child.
@@ -166,7 +153,7 @@ def validate_parent_relationship(
     parent_field: str,
     grandparent_field: str,
     parent_model: Type[ModelType],
-    error_msg: Optional[str] = None
+    error_msg: Optional[str] = None,
 ) -> None:
     """
     Validate that a parent entity belongs to the correct grandparent.
@@ -200,18 +187,15 @@ def validate_parent_relationship(
     actual_grandparent_id = getattr(parent, grandparent_field)
 
     if actual_grandparent_id != expected_grandparent_id:
-        msg = error_msg or f"{parent_model.__name__} does not belong to the specified {grandparent_field.replace('_id', '')}"
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=msg
+        msg = (
+            error_msg
+            or f"{parent_model.__name__} does not belong to the specified {grandparent_field.replace('_id', '')}"
         )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=msg)
 
 
 def create_entity_with_uuid(
-    db: Session,
-    model: Type[ModelType],
-    data: Dict[str, Any],
-    commit: bool = True
+    db: Session, model: Type[ModelType], data: Dict[str, Any], commit: bool = True
 ) -> ModelType:
     """
     Create an entity with automatic UUID generation.
@@ -238,8 +222,8 @@ def create_entity_with_uuid(
         ... })
     """
     # Generate UUID if not provided
-    if 'id' not in data:
-        data['id'] = str(uuid.uuid4())
+    if "id" not in data:
+        data["id"] = str(uuid.uuid4())
 
     entity = model(**data)
     db.add(entity)
@@ -250,19 +234,12 @@ def create_entity_with_uuid(
             db.refresh(entity)
         except IntegrityError as e:
             db.rollback()
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Database integrity error: {str(e)}"
-            )
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Database integrity error: {str(e)}")
 
     return entity
 
 
-def soft_delete_entity(
-    db: Session,
-    entity: ModelType,
-    commit: bool = True
-) -> ModelType:
+def soft_delete_entity(db: Session, entity: ModelType, commit: bool = True) -> ModelType:
     """
     Soft delete an entity by setting is_active to False.
 
@@ -278,7 +255,7 @@ def soft_delete_entity(
         >>> company = get_entity_by_id(db, Company, company_id)
         >>> soft_delete_entity(db, company)
     """
-    if hasattr(entity, 'is_active'):
+    if hasattr(entity, "is_active"):
         entity.is_active = False
 
         if commit:
@@ -290,11 +267,7 @@ def soft_delete_entity(
     return entity
 
 
-def hard_delete_entity(
-    db: Session,
-    entity: ModelType,
-    commit: bool = True
-) -> None:
+def hard_delete_entity(db: Session, entity: ModelType, commit: bool = True) -> None:
     """
     Hard delete an entity from the database.
 
@@ -314,16 +287,11 @@ def hard_delete_entity(
             db.commit()
         except IntegrityError as e:
             db.rollback()
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Cannot delete entity: {str(e)}"
-            )
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Cannot delete entity: {str(e)}")
 
 
 def update_entity_fields(
-    entity: ModelType,
-    data: Dict[str, Any],
-    exclude_fields: Optional[List[str]] = None
+    entity: ModelType, data: Dict[str, Any], exclude_fields: Optional[List[str]] = None
 ) -> ModelType:
     """
     Update entity fields from a dictionary.
@@ -355,10 +323,7 @@ def update_entity_fields(
 
 
 def bulk_create_entities(
-    db: Session,
-    model: Type[ModelType],
-    data_list: List[Dict[str, Any]],
-    commit: bool = True
+    db: Session, model: Type[ModelType], data_list: List[Dict[str, Any]], commit: bool = True
 ) -> List[ModelType]:
     """
     Bulk create multiple entities with UUID generation.
@@ -381,8 +346,8 @@ def bulk_create_entities(
     entities = []
 
     for data in data_list:
-        if 'id' not in data:
-            data['id'] = str(uuid.uuid4())
+        if "id" not in data:
+            data["id"] = str(uuid.uuid4())
         entities.append(model(**data))
 
     db.add_all(entities)
@@ -394,9 +359,6 @@ def bulk_create_entities(
                 db.refresh(entity)
         except IntegrityError as e:
             db.rollback()
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Bulk create failed: {str(e)}"
-            )
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Bulk create failed: {str(e)}")
 
     return entities

@@ -8,9 +8,10 @@ to other modules like Payroll, Benefits, etc.
 Phase 4 Priority 2 - Cross-Module Access Example
 """
 
-from typing import Optional, List
-from sqlalchemy.orm import Session
+from typing import List, Optional
+
 from sqlalchemy import text
+from sqlalchemy.orm import Session
 
 from app.services.module_service_registry import ModuleServiceRegistry
 
@@ -56,10 +57,8 @@ class EmployeeService:
             PermissionError: If user lacks hr:employee:read permission
         """
         # Check permission
-        if not self._has_permission('hr:employee:read'):
-            raise PermissionError(
-                "No permission to read employee data. Required: hr:employee:read"
-            )
+        if not self._has_permission("hr:employee:read"):
+            raise PermissionError("No permission to read employee data. Required: hr:employee:read")
 
         # Query with tenant isolation
         # Note: This assumes hr_employees table exists (would be created by HR module)
@@ -79,11 +78,7 @@ class EmployeeService:
         """)
 
         result = self.db.execute(
-            query,
-            {
-                'employee_id': employee_id,
-                'tenant_id': str(self.current_user.tenant_id)
-            }
+            query, {"employee_id": employee_id, "tenant_id": str(self.current_user.tenant_id)}
         ).first()
 
         if not result:
@@ -91,21 +86,18 @@ class EmployeeService:
 
         # Convert to dict
         return {
-            'id': str(result.id),
-            'name': result.name,
-            'email': result.email,
-            'department_id': str(result.department_id) if result.department_id else None,
-            'hire_date': result.hire_date.isoformat() if result.hire_date else None,
-            'status': result.status,
-            'position': result.position,
-            'phone': result.phone
+            "id": str(result.id),
+            "name": result.name,
+            "email": result.email,
+            "department_id": str(result.department_id) if result.department_id else None,
+            "hire_date": result.hire_date.isoformat() if result.hire_date else None,
+            "status": result.status,
+            "position": result.position,
+            "phone": result.phone,
         }
 
     def list_employees(
-        self,
-        department_id: Optional[str] = None,
-        status: Optional[str] = None,
-        limit: int = 100
+        self, department_id: Optional[str] = None, status: Optional[str] = None, limit: int = 100
     ) -> List[dict]:
         """
         List employees with filters.
@@ -124,10 +116,8 @@ class EmployeeService:
             PermissionError: If user lacks hr:employee:read permission
         """
         # Check permission
-        if not self._has_permission('hr:employee:read'):
-            raise PermissionError(
-                "No permission to read employee data. Required: hr:employee:read"
-            )
+        if not self._has_permission("hr:employee:read"):
+            raise PermissionError("No permission to read employee data. Required: hr:employee:read")
 
         # Enforce limit
         limit = min(limit, 1000)
@@ -145,19 +135,19 @@ class EmployeeService:
             WHERE tenant_id = :tenant_id
         """]
 
-        params = {'tenant_id': str(self.current_user.tenant_id)}
+        params = {"tenant_id": str(self.current_user.tenant_id)}
 
         if department_id:
             query_parts.append("AND department_id = :department_id")
-            params['department_id'] = department_id
+            params["department_id"] = department_id
 
         if status:
             query_parts.append("AND status = :status")
-            params['status'] = status
+            params["status"] = status
 
         query_parts.append("ORDER BY name")
         query_parts.append("LIMIT :limit")
-        params['limit'] = limit
+        params["limit"] = limit
 
         query = text(" ".join(query_parts))
 
@@ -166,12 +156,12 @@ class EmployeeService:
         # Convert to list of dicts
         return [
             {
-                'id': str(row.id),
-                'name': row.name,
-                'email': row.email,
-                'department_id': str(row.department_id) if row.department_id else None,
-                'status': row.status,
-                'position': row.position
+                "id": str(row.id),
+                "name": row.name,
+                "email": row.email,
+                "department_id": str(row.department_id) if row.department_id else None,
+                "status": row.status,
+                "position": row.position,
             }
             for row in results
         ]
@@ -192,10 +182,8 @@ class EmployeeService:
             PermissionError: If user lacks hr:employee:read permission
         """
         # Check permission
-        if not self._has_permission('hr:employee:read'):
-            raise PermissionError(
-                "No permission to read employee data. Required: hr:employee:read"
-            )
+        if not self._has_permission("hr:employee:read"):
+            raise PermissionError("No permission to read employee data. Required: hr:employee:read")
 
         query = text("""
             SELECT
@@ -209,21 +197,13 @@ class EmployeeService:
         """)
 
         result = self.db.execute(
-            query,
-            {
-                'employee_id': employee_id,
-                'tenant_id': str(self.current_user.tenant_id)
-            }
+            query, {"employee_id": employee_id, "tenant_id": str(self.current_user.tenant_id)}
         ).first()
 
         if not result:
             return None
 
-        return {
-            'id': str(result.id),
-            'name': result.name,
-            'code': result.code
-        }
+        return {"id": str(result.id), "name": result.name, "code": result.code}
 
     def is_employee_active(self, employee_id: str) -> bool:
         """
@@ -241,10 +221,8 @@ class EmployeeService:
             PermissionError: If user lacks hr:employee:read permission
         """
         # Check permission
-        if not self._has_permission('hr:employee:read'):
-            raise PermissionError(
-                "No permission to read employee data. Required: hr:employee:read"
-            )
+        if not self._has_permission("hr:employee:read"):
+            raise PermissionError("No permission to read employee data. Required: hr:employee:read")
 
         query = text("""
             SELECT status
@@ -254,14 +232,10 @@ class EmployeeService:
         """)
 
         result = self.db.execute(
-            query,
-            {
-                'employee_id': employee_id,
-                'tenant_id': str(self.current_user.tenant_id)
-            }
+            query, {"employee_id": employee_id, "tenant_id": str(self.current_user.tenant_id)}
         ).scalar()
 
-        return result == 'active' if result else False
+        return result == "active" if result else False
 
     def _has_permission(self, permission: str) -> bool:
         """
@@ -294,45 +268,39 @@ def register_hr_services(db: Session):
     registry = ModuleServiceRegistry()
 
     registry.register_service(
-        module_name='hr',
-        service_name='EmployeeService',
+        module_name="hr",
+        service_name="EmployeeService",
         service_class=EmployeeService,
         methods=[
             {
-                'name': 'get_employee',
-                'params': [
-                    {'name': 'employee_id', 'type': 'str', 'required': True}
-                ],
-                'returns': 'Optional[dict]',
-                'description': 'Get employee by ID with full details'
+                "name": "get_employee",
+                "params": [{"name": "employee_id", "type": "str", "required": True}],
+                "returns": "Optional[dict]",
+                "description": "Get employee by ID with full details",
             },
             {
-                'name': 'list_employees',
-                'params': [
-                    {'name': 'department_id', 'type': 'str', 'optional': True},
-                    {'name': 'status', 'type': 'str', 'optional': True},
-                    {'name': 'limit', 'type': 'int', 'default': 100}
+                "name": "list_employees",
+                "params": [
+                    {"name": "department_id", "type": "str", "optional": True},
+                    {"name": "status", "type": "str", "optional": True},
+                    {"name": "limit", "type": "int", "default": 100},
                 ],
-                'returns': 'List[dict]',
-                'description': 'List employees with optional filters'
+                "returns": "List[dict]",
+                "description": "List employees with optional filters",
             },
             {
-                'name': 'get_employee_department',
-                'params': [
-                    {'name': 'employee_id', 'type': 'str', 'required': True}
-                ],
-                'returns': 'Optional[dict]',
-                'description': 'Get employee\'s department information'
+                "name": "get_employee_department",
+                "params": [{"name": "employee_id", "type": "str", "required": True}],
+                "returns": "Optional[dict]",
+                "description": "Get employee's department information",
             },
             {
-                'name': 'is_employee_active',
-                'params': [
-                    {'name': 'employee_id', 'type': 'str', 'required': True}
-                ],
-                'returns': 'bool',
-                'description': 'Check if employee is active'
-            }
+                "name": "is_employee_active",
+                "params": [{"name": "employee_id", "type": "str", "required": True}],
+                "returns": "bool",
+                "description": "Check if employee is active",
+            },
         ],
-        version='1.0.0',
-        description='Employee data access service for cross-module communication'
+        version="1.0.0",
+        description="Employee data access service for cross-module communication",
     )

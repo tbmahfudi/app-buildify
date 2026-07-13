@@ -10,11 +10,12 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-
 # ==================== Workflow State Schemas ====================
+
 
 class WorkflowStateBase(BaseModel):
     """Base schema for workflow states"""
+
     name: str = Field(..., max_length=100)
     label: str = Field(..., max_length=200)
     description: Optional[str] = None
@@ -36,11 +37,11 @@ class WorkflowStateBase(BaseModel):
 
 class WorkflowStateCreate(WorkflowStateBase):
     """Schema for creating a workflow state"""
-    pass
 
 
 class WorkflowStateUpdate(BaseModel):
     """Schema for updating a workflow state"""
+
     label: Optional[str] = None
     description: Optional[str] = None
     color: Optional[str] = None
@@ -59,6 +60,7 @@ class WorkflowStateUpdate(BaseModel):
 
 class WorkflowStateResponse(WorkflowStateBase):
     """Schema for workflow state response"""
+
     id: UUID
     workflow_id: UUID
     tenant_id: Optional[UUID]  # NULL for platform-level workflow states
@@ -72,8 +74,10 @@ class WorkflowStateResponse(WorkflowStateBase):
 
 # ==================== Workflow Transition Schemas ====================
 
+
 class WorkflowTransitionBase(BaseModel):
     """Base schema for workflow transitions"""
+
     name: str = Field(..., max_length=100)
     label: str = Field(..., max_length=200)
     description: Optional[str] = None
@@ -94,11 +98,11 @@ class WorkflowTransitionBase(BaseModel):
 
 class WorkflowTransitionCreate(WorkflowTransitionBase):
     """Schema for creating a workflow transition"""
-    pass
 
 
 class WorkflowTransitionUpdate(BaseModel):
     """Schema for updating a workflow transition"""
+
     label: Optional[str] = None
     description: Optional[str] = None
     conditions: Optional[Dict[str, Any]] = None
@@ -115,6 +119,7 @@ class WorkflowTransitionUpdate(BaseModel):
 
 class WorkflowTransitionResponse(WorkflowTransitionBase):
     """Schema for workflow transition response"""
+
     id: UUID
     workflow_id: UUID
     tenant_id: Optional[UUID]  # NULL for platform-level workflow transitions
@@ -128,8 +133,10 @@ class WorkflowTransitionResponse(WorkflowTransitionBase):
 
 # ==================== Workflow Definition Schemas ====================
 
+
 class WorkflowDefinitionBase(BaseModel):
     """Base schema for workflow definitions"""
+
     name: str = Field(..., max_length=100)
     label: str = Field(..., max_length=200)
     description: Optional[str] = None
@@ -143,6 +150,7 @@ class WorkflowDefinitionBase(BaseModel):
 
 class WorkflowDefinitionCreate(WorkflowDefinitionBase):
     """Schema for creating a workflow definition"""
+
     module_id: Optional[UUID] = None
     states: Optional[List[WorkflowStateCreate]] = Field(default_factory=list)
     transitions: Optional[List[WorkflowTransitionCreate]] = Field(default_factory=list)
@@ -150,6 +158,7 @@ class WorkflowDefinitionCreate(WorkflowDefinitionBase):
 
 class WorkflowDefinitionUpdate(BaseModel):
     """Schema for updating a workflow definition"""
+
     module_id: Optional[UUID] = None
     label: Optional[str] = None
     description: Optional[str] = None
@@ -163,6 +172,7 @@ class WorkflowDefinitionUpdate(BaseModel):
 
 class WorkflowDefinitionResponse(WorkflowDefinitionBase):
     """Schema for workflow definition response"""
+
     id: UUID
     tenant_id: Optional[UUID]  # NULL for platform-level workflows
     module_id: Optional[UUID] = None
@@ -185,8 +195,10 @@ class WorkflowDefinitionResponse(WorkflowDefinitionBase):
 
 # ==================== Workflow Instance Schemas ====================
 
+
 class WorkflowInstanceBase(BaseModel):
     """Base schema for workflow instances"""
+
     workflow_id: UUID
     entity_id: UUID
     record_id: UUID
@@ -195,11 +207,11 @@ class WorkflowInstanceBase(BaseModel):
 
 class WorkflowInstanceCreate(WorkflowInstanceBase):
     """Schema for creating a workflow instance"""
-    pass
 
 
 class WorkflowInstanceResponse(WorkflowInstanceBase):
     """Schema for workflow instance response"""
+
     id: UUID
     tenant_id: Optional[UUID]  # NULL for platform-level workflow instances
     current_state_id: Optional[UUID]
@@ -219,6 +231,7 @@ class WorkflowInstanceResponse(WorkflowInstanceBase):
 
 class WorkflowTransitionExecuteRequest(BaseModel):
     """Schema for executing a workflow transition"""
+
     transition_id: UUID
     comment: Optional[str] = None
     data: Dict[str, Any] = Field(default_factory=dict)
@@ -226,8 +239,10 @@ class WorkflowTransitionExecuteRequest(BaseModel):
 
 # ==================== Workflow History Schemas ====================
 
+
 class WorkflowHistoryResponse(BaseModel):
     """Schema for workflow history response"""
+
     id: UUID
     instance_id: UUID
     tenant_id: Optional[UUID]  # NULL for platform-level workflow history
@@ -248,14 +263,17 @@ class WorkflowHistoryResponse(BaseModel):
 
 # ==================== Workflow Simulation Schemas ====================
 
+
 class WorkflowSimulationRequest(BaseModel):
     """Schema for workflow simulation request"""
+
     initial_state_id: Optional[UUID] = None
     test_data: Dict[str, Any] = Field(default_factory=dict)
 
 
 class WorkflowSimulationStep(BaseModel):
     """Schema for a simulation step"""
+
     state: str
     timestamp: datetime
     action: str
@@ -263,6 +281,7 @@ class WorkflowSimulationStep(BaseModel):
 
 class WorkflowSimulationResponse(BaseModel):
     """Schema for workflow simulation response"""
+
     success: bool
     steps: List[WorkflowSimulationStep] = Field(default_factory=list)
     message: str

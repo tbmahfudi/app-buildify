@@ -9,6 +9,7 @@ class UserSession(Base):
     Tracks active user sessions for concurrent session management.
     Each session corresponds to a JWT access token.
     """
+
     __tablename__ = "user_sessions"
 
     # Primary key
@@ -44,6 +45,7 @@ class UserSession(Base):
     def is_active(self) -> bool:
         """Check if session is still active."""
         from datetime import datetime, timezone
+
         if self.revoked_at:
             return False
         return datetime.now(timezone.utc) < self.expires_at
@@ -52,4 +54,5 @@ class UserSession(Base):
     def is_expired(self) -> bool:
         """Check if session has expired."""
         from datetime import datetime, timezone
+
         return datetime.now(timezone.utc) >= self.expires_at

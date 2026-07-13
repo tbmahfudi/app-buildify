@@ -15,6 +15,7 @@ Enforcement is layered:
 Returns a list of human-readable error strings (empty == valid). Callers log these; a
 bad manifest is surfaced loudly rather than crashing module loading.
 """
+
 from __future__ import annotations
 
 import json
@@ -68,7 +69,9 @@ def _minimal_checks(manifest: Any) -> List[str]:
             # nginx serves /modules/<name>/<path> from the module frontend/ dir, so a
             # component MUST be relative to frontend/ — a leading 'frontend/' double-nests.
             if isinstance(comp, str) and (comp.startswith("frontend/") or comp.startswith("/frontend/")):
-                errors.append(f"routes[{i}].component '{comp}' must not start with 'frontend/' (paths are relative to the module frontend/ dir)")
+                errors.append(
+                    f"routes[{i}].component '{comp}' must not start with 'frontend/' (paths are relative to the module frontend/ dir)"
+                )
 
     nav = manifest.get("navigation")
     if nav is not None and not isinstance(nav, dict):
@@ -85,6 +88,7 @@ def validate_manifest(manifest: Any) -> List[str]:
     if schema is not None:
         try:
             import jsonschema  # type: ignore
+
             validator = jsonschema.Draft7Validator(schema)
             for err in sorted(validator.iter_errors(manifest), key=lambda e: list(e.path)):
                 loc = "/".join(str(p) for p in err.path) or "<root>"

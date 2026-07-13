@@ -12,10 +12,8 @@ from pathlib import Path
 
 sys.path.append(str(Path(__file__).parent.parent.parent))
 
-from sqlalchemy.orm import Session
 from app.core.db import SessionLocal
 from app.models.data_model import EntityDefinition
-
 
 # ---------------------------------------------------------------------------
 # Per-entity config payloads
@@ -178,9 +176,7 @@ def seed_entity_metadata():
         print("Seeding entity UI config...")
 
         entity_names = list(_ENTITY_CONFIGS.keys())
-        entities = db.query(EntityDefinition).filter(
-            EntityDefinition.name.in_(entity_names)
-        ).all()
+        entities = db.query(EntityDefinition).filter(EntityDefinition.name.in_(entity_names)).all()
         entity_map = {e.name: e for e in entities}
 
         for name, config in _ENTITY_CONFIGS.items():

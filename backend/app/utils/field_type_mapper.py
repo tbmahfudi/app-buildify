@@ -5,15 +5,27 @@ This module provides utilities to convert nocode field type definitions
 into SQLAlchemy column types and Python native types.
 """
 
-from typing import Any, Type, Optional
+import uuid
+from datetime import date, datetime, time
+from decimal import Decimal
+from typing import Any, Optional, Type
+
 from sqlalchemy import (
-    Column, String, Integer, BigInteger, Float, Boolean,
-    DateTime, Date, Time, Text, JSON, ARRAY, Numeric, UUID
+    ARRAY,
+    JSON,
+    BigInteger,
+    Boolean,
+    Column,
+    Date,
+    DateTime,
+    Float,
+    Integer,
+    Numeric,
+    String,
+    Text,
+    Time,
 )
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
-from decimal import Decimal
-from datetime import datetime, date, time
-import uuid
 
 
 class FieldTypeMapper:
@@ -22,109 +34,96 @@ class FieldTypeMapper:
     # Map EntityDefinition field_type to SQLAlchemy column type
     SQLALCHEMY_TYPE_MAP = {
         # String types
-        'string': lambda field: String(field.get('max_length', 255)),
-        'email': lambda field: String(255),
-        'url': lambda field: String(512),
-        'phone': lambda field: String(20),
-        'text': lambda field: Text,
-        'textarea': lambda field: Text,
-
+        "string": lambda field: String(field.get("max_length", 255)),
+        "email": lambda field: String(255),
+        "url": lambda field: String(512),
+        "phone": lambda field: String(20),
+        "text": lambda field: Text,
+        "textarea": lambda field: Text,
         # Numeric types
-        'integer': lambda field: Integer,
-        'bigint': lambda field: BigInteger,
-        'decimal': lambda field: Numeric(
-            precision=field.get('precision', 10),
-            scale=field.get('scale', 2)
-        ),
-        'float': lambda field: Float,
-        'money': lambda field: Numeric(precision=19, scale=4),
-
+        "integer": lambda field: Integer,
+        "bigint": lambda field: BigInteger,
+        "decimal": lambda field: Numeric(precision=field.get("precision", 10), scale=field.get("scale", 2)),
+        "float": lambda field: Float,
+        "money": lambda field: Numeric(precision=19, scale=4),
         # Boolean
-        'boolean': lambda field: Boolean,
-        'checkbox': lambda field: Boolean,
-
+        "boolean": lambda field: Boolean,
+        "checkbox": lambda field: Boolean,
         # Date/Time types
-        'date': lambda field: Date,
-        'datetime': lambda field: DateTime,
-        'time': lambda field: Time,
-        'timestamp': lambda field: DateTime,
-
+        "date": lambda field: Date,
+        "datetime": lambda field: DateTime,
+        "time": lambda field: Time,
+        "timestamp": lambda field: DateTime,
         # UUID
-        'uuid': lambda field: PG_UUID(as_uuid=True),
-
+        "uuid": lambda field: PG_UUID(as_uuid=True),
         # JSON
-        'json': lambda field: JSON,
-        'jsonb': lambda field: JSON,
-
+        "json": lambda field: JSON,
+        "jsonb": lambda field: JSON,
         # Special types
-        'array': lambda field: ARRAY(String),
-        'enum': lambda field: String(255),  # Stored as string, validated in app
-        'lookup': lambda field: String(36),  # FK as UUID string
-        'reference': lambda field: String(36),  # FK as UUID string
+        "array": lambda field: ARRAY(String),
+        "enum": lambda field: String(255),  # Stored as string, validated in app
+        "lookup": lambda field: String(36),  # FK as UUID string
+        "reference": lambda field: String(36),  # FK as UUID string
     }
 
     # Map EntityDefinition field_type to Python native type
     PYTHON_TYPE_MAP = {
-        'string': str,
-        'email': str,
-        'url': str,
-        'phone': str,
-        'text': str,
-        'textarea': str,
-        'integer': int,
-        'bigint': int,
-        'decimal': Decimal,
-        'float': float,
-        'money': Decimal,
-        'boolean': bool,
-        'checkbox': bool,
-        'date': date,
-        'datetime': datetime,
-        'time': time,
-        'timestamp': datetime,
-        'uuid': uuid.UUID,
-        'json': dict,
-        'jsonb': dict,
-        'array': list,
-        'enum': str,
-        'lookup': str,
-        'reference': str,
+        "string": str,
+        "email": str,
+        "url": str,
+        "phone": str,
+        "text": str,
+        "textarea": str,
+        "integer": int,
+        "bigint": int,
+        "decimal": Decimal,
+        "float": float,
+        "money": Decimal,
+        "boolean": bool,
+        "checkbox": bool,
+        "date": date,
+        "datetime": datetime,
+        "time": time,
+        "timestamp": datetime,
+        "uuid": uuid.UUID,
+        "json": dict,
+        "jsonb": dict,
+        "array": list,
+        "enum": str,
+        "lookup": str,
+        "reference": str,
     }
 
     # Map EntityDefinition field_type to JSON schema type (for Pydantic)
     JSON_SCHEMA_TYPE_MAP = {
-        'string': 'string',
-        'email': 'string',
-        'url': 'string',
-        'phone': 'string',
-        'text': 'string',
-        'textarea': 'string',
-        'integer': 'integer',
-        'bigint': 'integer',
-        'decimal': 'number',
-        'float': 'number',
-        'money': 'number',
-        'boolean': 'boolean',
-        'checkbox': 'boolean',
-        'date': 'string',  # ISO format
-        'datetime': 'string',  # ISO format
-        'time': 'string',  # ISO format
-        'timestamp': 'string',  # ISO format
-        'uuid': 'string',  # UUID format
-        'json': 'object',
-        'jsonb': 'object',
-        'array': 'array',
-        'enum': 'string',
-        'lookup': 'string',
-        'reference': 'string',
+        "string": "string",
+        "email": "string",
+        "url": "string",
+        "phone": "string",
+        "text": "string",
+        "textarea": "string",
+        "integer": "integer",
+        "bigint": "integer",
+        "decimal": "number",
+        "float": "number",
+        "money": "number",
+        "boolean": "boolean",
+        "checkbox": "boolean",
+        "date": "string",  # ISO format
+        "datetime": "string",  # ISO format
+        "time": "string",  # ISO format
+        "timestamp": "string",  # ISO format
+        "uuid": "string",  # UUID format
+        "json": "object",
+        "jsonb": "object",
+        "array": "array",
+        "enum": "string",
+        "lookup": "string",
+        "reference": "string",
     }
 
     @classmethod
-    def to_sqlalchemy_column(
-        cls,
-        field_definition: dict,
-        include_foreign_key: bool = True
-    ) -> Column:
+    def to_sqlalchemy_column(cls, field_definition: dict, include_foreign_key: bool = True) -> Column:
         """
         Convert FieldDefinition to SQLAlchemy Column
 
@@ -135,8 +134,8 @@ class FieldTypeMapper:
         Returns:
             SQLAlchemy Column object
         """
-        field_type = field_definition.get('field_type', 'string')
-        field_name = field_definition.get('db_column_name') or field_definition.get('name')
+        field_type = field_definition.get("field_type", "string")
+        field_name = field_definition.get("db_column_name") or field_definition.get("name")
 
         # Get SQLAlchemy type
         type_func = cls.SQLALCHEMY_TYPE_MAP.get(field_type)
@@ -149,30 +148,31 @@ class FieldTypeMapper:
         # Build column arguments
         col_args = []
         col_kwargs = {
-            'nullable': not field_definition.get('is_required', False),
-            'primary_key': field_definition.get('is_primary_key', False),
-            'unique': field_definition.get('is_unique', False),
-            'index': field_definition.get('is_indexed', False),
+            "nullable": not field_definition.get("is_required", False),
+            "primary_key": field_definition.get("is_primary_key", False),
+            "unique": field_definition.get("is_unique", False),
+            "index": field_definition.get("is_indexed", False),
         }
 
         # Add default value if specified, coercing it to the correct Python type
         # (e.g. DB-imported defaults arrive as SQL strings like 'false' / 'true')
-        if 'default_value' in field_definition and field_definition['default_value'] is not None:
-            col_kwargs['default'] = cls.deserialize_value(field_type, field_definition['default_value'])
-        elif field_type == 'uuid' and col_kwargs.get('primary_key'):
+        if "default_value" in field_definition and field_definition["default_value"] is not None:
+            col_kwargs["default"] = cls.deserialize_value(field_type, field_definition["default_value"])
+        elif field_type == "uuid" and col_kwargs.get("primary_key"):
             # UUID primary keys always need a Python-side default so SQLAlchemy can
             # generate the value when no explicit id is supplied (e.g. user-defined id
             # fields imported from an existing database schema).
-            col_kwargs['default'] = uuid.uuid4
+            col_kwargs["default"] = uuid.uuid4
 
         # Handle foreign keys for lookup/reference fields
-        if include_foreign_key and field_type in ('lookup', 'reference'):
-            lookup_config = field_definition.get('lookup_config', {})
-            if lookup_config and 'entity' in lookup_config:
-                target_entity = lookup_config['entity']
+        if include_foreign_key and field_type in ("lookup", "reference"):
+            lookup_config = field_definition.get("lookup_config", {})
+            if lookup_config and "entity" in lookup_config:
+                target_entity = lookup_config["entity"]
                 # ForeignKey format: schema.table.column
                 fk_target = f"public.{target_entity}.id"  # Assuming 'id' is the target column
                 from sqlalchemy import ForeignKey
+
                 col_args.append(ForeignKey(fk_target))
 
         return Column(field_name, col_type, *col_args, **col_kwargs)
@@ -185,7 +185,7 @@ class FieldTypeMapper:
     @classmethod
     def to_json_schema_type(cls, field_type: str) -> str:
         """Get JSON schema type for field type (used in Pydantic)"""
-        return cls.JSON_SCHEMA_TYPE_MAP.get(field_type, 'string')
+        return cls.JSON_SCHEMA_TYPE_MAP.get(field_type, "string")
 
     @classmethod
     def validate_value(cls, field_definition: dict, value: Any) -> tuple[bool, Optional[str]]:
@@ -199,11 +199,11 @@ class FieldTypeMapper:
         Returns:
             Tuple of (is_valid: bool, error_message: Optional[str])
         """
-        field_type = field_definition.get('field_type', 'string')
-        field_label = field_definition.get('label', field_definition.get('name'))
+        field_type = field_definition.get("field_type", "string")
+        field_label = field_definition.get("label", field_definition.get("name"))
 
         # Required check
-        if field_definition.get('is_required', False) and value is None:
+        if field_definition.get("is_required", False) and value is None:
             return False, f"{field_label} is required"
 
         # Skip further validation if value is None and field is not required
@@ -214,11 +214,11 @@ class FieldTypeMapper:
         expected_type = cls.to_python_type(field_type)
 
         # Handle special cases
-        if field_type in ('date', 'datetime', 'time', 'timestamp'):
+        if field_type in ("date", "datetime", "time", "timestamp"):
             # Accept both datetime objects and ISO strings
             if not isinstance(value, (str, datetime, date, time)):
                 return False, f"{field_label} must be a valid date/time"
-        elif field_type == 'uuid':
+        elif field_type == "uuid":
             # Accept UUID objects or valid UUID strings
             if isinstance(value, str):
                 try:
@@ -227,11 +227,11 @@ class FieldTypeMapper:
                     return False, f"{field_label} must be a valid UUID"
             elif not isinstance(value, uuid.UUID):
                 return False, f"{field_label} must be a valid UUID"
-        elif field_type in ('json', 'jsonb'):
+        elif field_type in ("json", "jsonb"):
             # Accept dict or list
             if not isinstance(value, (dict, list)):
                 return False, f"{field_label} must be a valid JSON object or array"
-        elif field_type == 'array':
+        elif field_type == "array":
             if not isinstance(value, list):
                 return False, f"{field_label} must be an array"
         else:
@@ -244,9 +244,9 @@ class FieldTypeMapper:
                     return False, f"{field_label} must be of type {expected_type.__name__}"
 
         # Min/Max value validation (for numeric types)
-        if field_type in ('integer', 'bigint', 'decimal', 'float', 'money'):
-            min_val = field_definition.get('min_value')
-            max_val = field_definition.get('max_value')
+        if field_type in ("integer", "bigint", "decimal", "float", "money"):
+            min_val = field_definition.get("min_value")
+            max_val = field_definition.get("max_value")
 
             if min_val is not None and value < min_val:
                 return False, f"{field_label} must be >= {min_val}"
@@ -255,48 +255,50 @@ class FieldTypeMapper:
                 return False, f"{field_label} must be <= {max_val}"
 
         # Length validation (for string types)
-        if field_type in ('string', 'email', 'url', 'phone'):
+        if field_type in ("string", "email", "url", "phone"):
             if isinstance(value, str):
-                max_length = field_definition.get('max_length') or 255
+                max_length = field_definition.get("max_length") or 255
                 if len(value) > max_length:
                     return False, f"{field_label} must be <= {max_length} characters"
 
-                min_length = field_definition.get('min_length')
+                min_length = field_definition.get("min_length")
                 if min_length is not None and len(value) < min_length:
                     return False, f"{field_label} must be >= {min_length} characters"
 
         # Email format validation
-        if field_type == 'email' and isinstance(value, str):
+        if field_type == "email" and isinstance(value, str):
             import re
-            email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+
+            email_pattern = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
             if not re.match(email_pattern, value):
                 return False, f"{field_label} must be a valid email address"
 
         # URL format validation
-        if field_type == 'url' and isinstance(value, str):
+        if field_type == "url" and isinstance(value, str):
             import re
-            url_pattern = r'^https?://'
+
+            url_pattern = r"^https?://"
             if not re.match(url_pattern, value):
                 return False, f"{field_label} must be a valid URL starting with http:// or https://"
 
         # Enum / Select allowed-values validation (Story 5.2.2)
-        if field_type in ('enum', 'select', 'multi_select'):
-            raw_av = field_definition.get('allowed_values', [])
+        if field_type in ("enum", "select", "multi_select"):
+            raw_av = field_definition.get("allowed_values", [])
             # Normalise: allowed_values may be a list of strings,
             # a list of {"value": ..., "label": ...} dicts, or a plain dict
             if isinstance(raw_av, dict):
                 allowed_values = list(raw_av.keys())
             else:
-                allowed_values = [
-                    (item['value'] if isinstance(item, dict) else item)
-                    for item in raw_av
-                ]
+                allowed_values = [(item["value"] if isinstance(item, dict) else item) for item in raw_av]
             if allowed_values:
-                if field_type == 'multi_select':
+                if field_type == "multi_select":
                     submitted = value if isinstance(value, list) else [value]
                     bad = [v for v in submitted if v not in allowed_values]
                     if bad:
-                        return False, f"{field_label} contains invalid values: {', '.join(map(str, bad))}. Allowed: {', '.join(map(str, allowed_values))}"
+                        return (
+                            False,
+                            f"{field_label} contains invalid values: {', '.join(map(str, bad))}. Allowed: {', '.join(map(str, allowed_values))}",
+                        )
                 else:
                     if value not in allowed_values:
                         return False, f"{field_label} must be one of: {', '.join(map(str, allowed_values))}"
@@ -304,17 +306,22 @@ class FieldTypeMapper:
         # Custom validation rules — full list-of-rules support (Story 5.2.4)
         # Schema: [{"type": "regex|min_length|max_length|min_value|max_value", "value": ..., "pattern": ..., "message": ...}]
         # Legacy single-dict {"pattern": "...", "message": "..."} also accepted.
-        validation_rules = field_definition.get('validation_rules')
+        validation_rules = field_definition.get("validation_rules")
         if validation_rules:
             import re as _re
 
             # Normalise to list
             if isinstance(validation_rules, dict):
-                if 'type' in validation_rules:
+                if "type" in validation_rules:
                     rules_list = [validation_rules]
-                elif 'pattern' in validation_rules:
-                    rules_list = [{'type': 'regex', 'pattern': validation_rules['pattern'],
-                                   'message': validation_rules.get('message')}]
+                elif "pattern" in validation_rules:
+                    rules_list = [
+                        {
+                            "type": "regex",
+                            "pattern": validation_rules["pattern"],
+                            "message": validation_rules.get("message"),
+                        }
+                    ]
                 else:
                     rules_list = []
             elif isinstance(validation_rules, list):
@@ -325,26 +332,26 @@ class FieldTypeMapper:
             for rule in rules_list:
                 if not isinstance(rule, dict):
                     continue
-                rule_type = rule.get('type', 'regex')
-                err_msg = rule.get('message')
+                rule_type = rule.get("type", "regex")
+                err_msg = rule.get("message")
 
-                if rule_type == 'regex':
-                    pattern = rule.get('pattern')
+                if rule_type == "regex":
+                    pattern = rule.get("pattern")
                     if pattern and isinstance(value, str) and not _re.search(pattern, value):
                         return False, err_msg or f"{field_label} format is invalid (expected pattern: {pattern})"
 
-                elif rule_type == 'min_length':
-                    min_len = int(rule.get('value', rule.get('min', 0)))
+                elif rule_type == "min_length":
+                    min_len = int(rule.get("value", rule.get("min", 0)))
                     if isinstance(value, str) and len(value) < min_len:
                         return False, err_msg or f"{field_label} must be at least {min_len} characters"
 
-                elif rule_type == 'max_length':
-                    max_len = int(rule.get('value', rule.get('max', 0)))
+                elif rule_type == "max_length":
+                    max_len = int(rule.get("value", rule.get("max", 0)))
                     if isinstance(value, str) and len(value) > max_len:
                         return False, err_msg or f"{field_label} must be at most {max_len} characters"
 
-                elif rule_type == 'min_value':
-                    min_val = rule.get('value', rule.get('min'))
+                elif rule_type == "min_value":
+                    min_val = rule.get("value", rule.get("min"))
                     if min_val is not None:
                         try:
                             if float(value) < float(min_val):
@@ -352,8 +359,8 @@ class FieldTypeMapper:
                         except (TypeError, ValueError):
                             pass
 
-                elif rule_type == 'max_value':
-                    max_val = rule.get('value', rule.get('max'))
+                elif rule_type == "max_value":
+                    max_val = rule.get("value", rule.get("max"))
                     if max_val is not None:
                         try:
                             if float(value) > float(max_val):
@@ -373,15 +380,15 @@ class FieldTypeMapper:
         if value is None:
             return None
 
-        if field_type in ('date', 'datetime', 'time', 'timestamp'):
+        if field_type in ("date", "datetime", "time", "timestamp"):
             if isinstance(value, (datetime, date, time)):
                 return value.isoformat()
 
-        if field_type == 'uuid':
+        if field_type == "uuid":
             if isinstance(value, uuid.UUID):
                 return str(value)
 
-        if field_type in ('decimal', 'money'):
+        if field_type in ("decimal", "money"):
             if isinstance(value, Decimal):
                 return float(value)
 
@@ -398,26 +405,26 @@ class FieldTypeMapper:
         if value is None:
             return None
 
-        if field_type in ('boolean', 'checkbox'):
+        if field_type in ("boolean", "checkbox"):
             if isinstance(value, bool):
                 return value
             if isinstance(value, str):
-                return value.lower() in ('true', '1', 'yes', 'on')
+                return value.lower() in ("true", "1", "yes", "on")
             return bool(value)
 
-        if field_type == 'date' and isinstance(value, str):
+        if field_type == "date" and isinstance(value, str):
             return datetime.fromisoformat(value).date()
 
-        if field_type in ('datetime', 'timestamp') and isinstance(value, str):
+        if field_type in ("datetime", "timestamp") and isinstance(value, str):
             return datetime.fromisoformat(value)
 
-        if field_type == 'time' and isinstance(value, str):
+        if field_type == "time" and isinstance(value, str):
             return datetime.fromisoformat(f"2000-01-01T{value}").time()
 
-        if field_type == 'uuid' and isinstance(value, str):
+        if field_type == "uuid" and isinstance(value, str):
             return uuid.UUID(value)
 
-        if field_type in ('decimal', 'money'):
+        if field_type in ("decimal", "money"):
             return Decimal(str(value))
 
         # All other types remain as-is

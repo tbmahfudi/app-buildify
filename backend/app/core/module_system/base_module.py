@@ -5,12 +5,13 @@ All pluggable modules must inherit from this base class and implement
 the required abstract methods.
 """
 
-from abc import ABC, abstractmethod
-from typing import List, Dict, Optional, Any
-from fastapi import APIRouter
 import json
-from pathlib import Path
 import logging
+from abc import ABC, abstractmethod
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
+from fastapi import APIRouter
 
 logger = logging.getLogger(__name__)
 
@@ -62,7 +63,7 @@ class BaseModule(ABC):
         return []
 
         if not self.name or not self.version:
-            raise ValueError(f"Module manifest must contain 'name' and 'version' fields")
+            raise ValueError("Module manifest must contain 'name' and 'version' fields")
 
     def _load_manifest(self) -> Dict[str, Any]:
         """
@@ -81,7 +82,7 @@ class BaseModule(ABC):
             raise FileNotFoundError(f"Manifest not found at {manifest_path}")
 
         try:
-            with open(manifest_path, 'r') as f:
+            with open(manifest_path, "r") as f:
                 manifest = json.load(f)
             logger.info(f"Loaded manifest for module: {manifest.get('name')}")
             return manifest
@@ -100,7 +101,6 @@ class BaseModule(ABC):
         Returns:
             APIRouter instance with module endpoints
         """
-        pass
 
     @abstractmethod
     def get_permissions(self) -> List[Dict[str, Any]]:
@@ -117,7 +117,6 @@ class BaseModule(ABC):
         Returns:
             List of permission dictionaries
         """
-        pass
 
     def get_models(self) -> List[Any]:
         """
@@ -209,12 +208,7 @@ class BaseModule(ABC):
             return True
 
         # Define tier hierarchy
-        tier_hierarchy = {
-            "free": 0,
-            "basic": 1,
-            "premium": 2,
-            "enterprise": 3
-        }
+        tier_hierarchy = {"free": 0, "basic": 1, "premium": 2, "enterprise": 3}
 
         tenant_level = tier_hierarchy.get(tenant_subscription_tier, 0)
         required_level = tier_hierarchy.get(required_tier, 0)
@@ -248,7 +242,6 @@ class BaseModule(ABC):
             db_session: SQLAlchemy database session
         """
         logger.info(f"Running post-install tasks for {self.name}")
-        pass
 
     def pre_enable(self, db_session: Any, tenant_id: str) -> tuple[bool, Optional[str]]:
         """
@@ -277,7 +270,6 @@ class BaseModule(ABC):
             tenant_id: ID of the tenant
         """
         logger.info(f"Running post-enable tasks for {self.name} on tenant {tenant_id}")
-        pass
 
     def pre_disable(self, db_session: Any, tenant_id: str) -> tuple[bool, Optional[str]]:
         """
@@ -307,7 +299,6 @@ class BaseModule(ABC):
             tenant_id: ID of the tenant
         """
         logger.info(f"Running post-disable tasks for {self.name} on tenant {tenant_id}")
-        pass
 
     def pre_uninstall(self, db_session: Any) -> tuple[bool, Optional[str]]:
         """
@@ -324,17 +315,17 @@ class BaseModule(ABC):
         logger.info(f"Running pre-uninstall checks for {self.name}")
 
         # Check if module is enabled for any tenants
-        from app.models.nocode_module import Module as ModuleRegistry, ModuleActivation as TenantModule
+        from app.models.nocode_module import Module as ModuleRegistry
+        from app.models.nocode_module import ModuleActivation as TenantModule
 
-        module = db_session.query(ModuleRegistry).filter(
-            ModuleRegistry.name == self.name
-        ).first()
+        module = db_session.query(ModuleRegistry).filter(ModuleRegistry.name == self.name).first()
 
         if module:
-            enabled_tenants = db_session.query(TenantModule).filter(
-                TenantModule.module_id == module.id,
-                TenantModule.is_enabled == True
-            ).count()
+            enabled_tenants = (
+                db_session.query(TenantModule)
+                .filter(TenantModule.module_id == module.id, TenantModule.is_enabled == True)
+                .count()
+            )
 
             if enabled_tenants > 0:
                 return False, f"Module is enabled for {enabled_tenants} tenant(s). Disable for all tenants first."
@@ -351,7 +342,6 @@ class BaseModule(ABC):
             db_session: SQLAlchemy database session
         """
         logger.info(f"Running post-uninstall tasks for {self.name}")
-        pass
 
     def get_menu_items(self) -> List[Dict[str, Any]]:
         """
@@ -367,12 +357,14 @@ class BaseModule(ABC):
         routes = self.manifest.get("routes", [])
         for route in routes:
             if "menu" in route:
-                menu_items.append({
-                    "path": route.get("path"),
-                    "name": route.get("name"),
-                    "permission": route.get("permission"),
-                    "menu": route.get("menu")
-                })
+                menu_items.append(
+                    {
+                        "path": route.get("path"),
+                        "name": route.get("name"),
+                        "permission": route.get("permission"),
+                        "menu": route.get("menu"),
+                    }
+                )
 
         return menu_items
 

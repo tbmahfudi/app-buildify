@@ -6,6 +6,7 @@ FK and CHECK constraints added by pg_tenant_module_db_constraints.py (TD-1/TD-2)
 NOT marked __tenant_scoped__ -- provisioning and cleanup scripts need
 cross-tenant visibility via with_admin_cross_tenant_scope().
 """
+
 from sqlalchemy import Column, DateTime, Index, String, Text, UniqueConstraint
 from sqlalchemy.sql import func
 
@@ -21,6 +22,7 @@ class TenantModuleDatabase(Base):
     the provisioning service (T-22.013/T-22.014) and cleanup service
     (T-22.018/T-22.019).
     """
+
     __tablename__ = "tenant_module_databases"
 
     # Primary key

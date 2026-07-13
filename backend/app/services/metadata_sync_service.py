@@ -8,7 +8,8 @@ entity_metadata table has been removed; all config now lives on entity_definitio
 
 import json
 import logging
-from typing import Optional, Dict, Any, List
+from typing import Any, Dict, Optional
+
 from sqlalchemy.orm import Session
 
 from app.models.data_model import EntityDefinition, FieldDefinition
@@ -23,9 +24,7 @@ class MetadataSyncService:
         self.db = db
 
     def auto_generate_metadata(
-        self,
-        entity_definition: EntityDefinition,
-        created_by: Optional[str] = None
+        self, entity_definition: EntityDefinition, created_by: Optional[str] = None
     ) -> EntityDefinition:
         """
         Auto-generate UI config on EntityDefinition.
@@ -58,11 +57,7 @@ class MetadataSyncService:
         logger.info(f"Generated UI config for {entity_definition.name}")
         return entity_definition
 
-    def sync_metadata(
-        self,
-        entity_definition: EntityDefinition,
-        updated_by: Optional[str] = None
-    ) -> EntityDefinition:
+    def sync_metadata(self, entity_definition: EntityDefinition, updated_by: Optional[str] = None) -> EntityDefinition:
         """
         Sync existing UI config on EntityDefinition with field changes.
 
@@ -108,41 +103,43 @@ class MetadataSyncService:
             if field.is_system:
                 continue
             # Skip large text fields in table view
-            if field.field_type in ['text', 'json']:
+            if field.field_type in ["text", "json"]:
                 continue
 
             column = {
-                'field': field.name,
-                'title': field.label or field.name.replace('_', ' ').title(),
-                'type': field.field_type,
-                'sortable': True,
-                'filterable': True,
-                'visible': True,
-                'width': self._get_column_width(field)
+                "field": field.name,
+                "title": field.label or field.name.replace("_", " ").title(),
+                "type": field.field_type,
+                "sortable": True,
+                "filterable": True,
+                "visible": True,
+                "width": self._get_column_width(field),
             }
             columns.append(column)
 
         # Fallback: include first few fields if everything was filtered out
         if not columns:
             for field in entity_def.fields[:5]:
-                columns.append({
-                    'field': field.name,
-                    'title': field.label or field.name.replace('_', ' ').title(),
-                    'type': field.field_type,
-                    'sortable': True,
-                    'filterable': True,
-                    'visible': True,
-                    'width': 150
-                })
+                columns.append(
+                    {
+                        "field": field.name,
+                        "title": field.label or field.name.replace("_", " ").title(),
+                        "type": field.field_type,
+                        "sortable": True,
+                        "filterable": True,
+                        "visible": True,
+                        "width": 150,
+                    }
+                )
 
         return {
-            'columns': columns,
-            'default_sort': [[entity_def.default_sort_field or 'created_at', 'desc']],
-            'default_page_size': 25,
-            'enable_search': True,
-            'enable_filters': True,
-            'enable_export': True,
-            'actions': ['view', 'edit', 'delete']
+            "columns": columns,
+            "default_sort": [[entity_def.default_sort_field or "created_at", "desc"]],
+            "default_page_size": 25,
+            "enable_search": True,
+            "enable_filters": True,
+            "enable_export": True,
+            "actions": ["view", "edit", "delete"],
         }
 
     def _generate_form_config(self, entity_def: EntityDefinition) -> Dict[str, Any]:
@@ -154,24 +151,24 @@ class MetadataSyncService:
                 continue
             if field.is_system:
                 continue
-            if field.name in ['id', 'created_at', 'updated_at', 'created_by', 'updated_by']:
+            if field.name in ["id", "created_at", "updated_at", "created_by", "updated_by"]:
                 continue
 
             form_field = {
-                'name': field.name,
-                'label': field.label or field.name.replace('_', ' ').title(),
-                'type': self._map_field_type_to_form_type(field.field_type),
-                'required': field.is_required,
-                'help_text': field.help_text or '',
-                'placeholder': f"Enter {field.label or field.name}",
-                'validation': self._get_validation_rules(field),
-                'visible': True,
-                'editable': not field.is_readonly,
-                'order': len(fields) + 1
+                "name": field.name,
+                "label": field.label or field.name.replace("_", " ").title(),
+                "type": self._map_field_type_to_form_type(field.field_type),
+                "required": field.is_required,
+                "help_text": field.help_text or "",
+                "placeholder": f"Enter {field.label or field.name}",
+                "validation": self._get_validation_rules(field),
+                "visible": True,
+                "editable": not field.is_readonly,
+                "order": len(fields) + 1,
             }
 
             # Field-specific configuration
-            if field.field_type in ('choice', 'select'):
+            if field.field_type in ("choice", "select"):
                 options = []
                 if field.allowed_values:
                     raw = field.allowed_values
@@ -183,120 +180,122 @@ class MetadataSyncService:
                     if isinstance(raw, list):
                         for opt in raw:
                             if isinstance(opt, dict):
-                                options.append({'value': opt.get('value', opt), 'label': opt.get('label', opt.get('value', opt))})
+                                options.append(
+                                    {"value": opt.get("value", opt), "label": opt.get("label", opt.get("value", opt))}
+                                )
                             else:
-                                options.append({'value': str(opt), 'label': str(opt)})
-                form_field['options'] = options
-            elif field.field_type in ('lookup', 'reference'):
+                                options.append({"value": str(opt), "label": str(opt)})
+                form_field["options"] = options
+            elif field.field_type in ("lookup", "reference"):
                 if field.reference_entity_id:
-                    form_field['reference_entity_id'] = str(field.reference_entity_id)
+                    form_field["reference_entity_id"] = str(field.reference_entity_id)
                     try:
                         if field.reference_entity:
-                            form_field['reference_entity_name'] = field.reference_entity.name
+                            form_field["reference_entity_name"] = field.reference_entity.name
                     except Exception:
                         pass
                 if field.reference_table_name:
-                    form_field['reference_table_name'] = field.reference_table_name
-                form_field['reference_field'] = field.reference_field or 'id'
-                form_field['display_field'] = field.display_field or 'name'
+                    form_field["reference_table_name"] = field.reference_table_name
+                form_field["reference_field"] = field.reference_field or "id"
+                form_field["display_field"] = field.display_field or "name"
                 if field.lookup_search_fields:
-                    form_field['lookup_search_fields'] = field.lookup_search_fields
+                    form_field["lookup_search_fields"] = field.lookup_search_fields
                 if field.lookup_allow_create:
-                    form_field['lookup_allow_create'] = field.lookup_allow_create
+                    form_field["lookup_allow_create"] = field.lookup_allow_create
                 if field.lookup_display_template:
-                    form_field['lookup_display_template'] = field.lookup_display_template
+                    form_field["lookup_display_template"] = field.lookup_display_template
                 if field.depends_on_field:
-                    form_field['depends_on_field'] = field.depends_on_field
+                    form_field["depends_on_field"] = field.depends_on_field
                 if field.filter_expression:
-                    form_field['filter_expression'] = field.filter_expression
-            elif field.field_type in ['string', 'email', 'url']:
-                form_field['max_length'] = field.max_length or 255
-            elif field.field_type in ['integer', 'decimal']:
+                    form_field["filter_expression"] = field.filter_expression
+            elif field.field_type in ["string", "email", "url"]:
+                form_field["max_length"] = field.max_length or 255
+            elif field.field_type in ["integer", "decimal"]:
                 if field.min_value is not None:
-                    form_field['min'] = field.min_value
+                    form_field["min"] = field.min_value
                 if field.max_value is not None:
-                    form_field['max'] = field.max_value
+                    form_field["max"] = field.max_value
 
             fields.append(form_field)
 
         return {
-            'fields': fields,
-            'layout': 'single_column',
-            'groups': [],
-            'submit_button_text': 'Save',
-            'cancel_button_text': 'Cancel',
-            'show_required_indicator': True
+            "fields": fields,
+            "layout": "single_column",
+            "groups": [],
+            "submit_button_text": "Save",
+            "cancel_button_text": "Cancel",
+            "show_required_indicator": True,
         }
 
     def _get_column_width(self, field: FieldDefinition) -> int:
         """Get appropriate column width based on field type"""
         width_map = {
-            'boolean': 80,
-            'date': 120,
-            'datetime': 160,
-            'email': 200,
-            'string': 150,
-            'text': 300,
-            'integer': 100,
-            'decimal': 120,
-            'uuid': 280,
-            'choice': 150,
-            'lookup': 150,
-            'reference': 150
+            "boolean": 80,
+            "date": 120,
+            "datetime": 160,
+            "email": 200,
+            "string": 150,
+            "text": 300,
+            "integer": 100,
+            "decimal": 120,
+            "uuid": 280,
+            "choice": 150,
+            "lookup": 150,
+            "reference": 150,
         }
         return width_map.get(field.field_type, 150)
 
     def _map_field_type_to_form_type(self, field_type: str) -> str:
         """Map database field type to form field type"""
         type_map = {
-            'string': 'text',
-            'email': 'email',
-            'text': 'textarea',
-            'integer': 'number',
-            'decimal': 'number',
-            'boolean': 'checkbox',
-            'date': 'date',
-            'datetime': 'datetime',
-            'uuid': 'text',
-            'select': 'select',
-            'choice': 'select',
-            'lookup': 'select',
-            'reference': 'select',
-            'json': 'json',
-            'file': 'file',
-            'url': 'url',
-            'phone': 'text',
+            "string": "text",
+            "email": "email",
+            "text": "textarea",
+            "integer": "number",
+            "decimal": "number",
+            "boolean": "checkbox",
+            "date": "date",
+            "datetime": "datetime",
+            "uuid": "text",
+            "select": "select",
+            "choice": "select",
+            "lookup": "select",
+            "reference": "select",
+            "json": "json",
+            "file": "file",
+            "url": "url",
+            "phone": "text",
         }
-        return type_map.get(field_type, 'text')
+        return type_map.get(field_type, "text")
 
     def _get_validation_rules(self, field: FieldDefinition) -> Dict[str, Any]:
         """Get validation rules for field"""
         rules = {}
 
         if field.is_required:
-            rules['required'] = True
+            rules["required"] = True
         if field.is_unique:
-            rules['unique'] = True
+            rules["unique"] = True
         if field.min_value is not None:
-            rules['min'] = field.min_value
+            rules["min"] = field.min_value
         if field.max_value is not None:
-            rules['max'] = field.max_value
+            rules["max"] = field.max_value
         if field.max_length:
-            rules['max_length'] = field.max_length
+            rules["max_length"] = field.max_length
         if field.validation_rules:
             try:
-                custom_rules = json.loads(field.validation_rules) if isinstance(field.validation_rules, str) else field.validation_rules
+                custom_rules = (
+                    json.loads(field.validation_rules)
+                    if isinstance(field.validation_rules, str)
+                    else field.validation_rules
+                )
                 rules.update(custom_rules)
             except (json.JSONDecodeError, TypeError):
                 pass
 
         return rules
 
-    def _merge_table_config(
-        self,
-        existing: Dict[str, Any],
-        new: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    def _merge_table_config(self, existing: Dict[str, Any], new: Dict[str, Any]) -> Dict[str, Any]:
         """
         Merge table configurations, preserving user customisations.
 
@@ -308,14 +307,14 @@ class MetadataSyncService:
         if not existing:
             return new
 
-        existing_columns = {col['field']: col for col in existing.get('columns', [])}
-        new_columns = {col['field']: col for col in new.get('columns', [])}
+        existing_columns = {col["field"]: col for col in existing.get("columns", [])}
+        new_columns = {col["field"]: col for col in new.get("columns", [])}
 
         merged_columns = []
 
         # Keep existing columns that still exist, preserving user customisations
-        for col in existing.get('columns', []):
-            field_name = col['field']
+        for col in existing.get("columns", []):
+            field_name = col["field"]
             if field_name in new_columns:
                 merged_col = {**new_columns[field_name], **col}
                 merged_columns.append(merged_col)
@@ -326,37 +325,42 @@ class MetadataSyncService:
                 merged_columns.append(col)
 
         merged = {**new}
-        merged['columns'] = merged_columns
+        merged["columns"] = merged_columns
 
-        if 'default_sort' in existing:
-            merged['default_sort'] = existing['default_sort']
-        if 'default_page_size' in existing:
-            merged['default_page_size'] = existing['default_page_size']
-        if 'actions' in existing:
-            merged['actions'] = existing['actions']
+        if "default_sort" in existing:
+            merged["default_sort"] = existing["default_sort"]
+        if "default_page_size" in existing:
+            merged["default_page_size"] = existing["default_page_size"]
+        if "actions" in existing:
+            merged["actions"] = existing["actions"]
 
         return merged
 
     # Field properties that are always derived from the entity definition.
     # These must never be overridden by stale stored values when re-syncing.
-    _SCHEMA_DRIVEN_FIELD_KEYS = frozenset({
-        'type', 'required',
-        'options',
-        'reference_entity_id', 'reference_entity_name',
-        'reference_table_name', 'reference_field', 'display_field',
-        'lookup_search_fields', 'lookup_allow_create', 'lookup_display_template',
-        'depends_on_field', 'filter_expression',
-    })
+    _SCHEMA_DRIVEN_FIELD_KEYS = frozenset(
+        {
+            "type",
+            "required",
+            "options",
+            "reference_entity_id",
+            "reference_entity_name",
+            "reference_table_name",
+            "reference_field",
+            "display_field",
+            "lookup_search_fields",
+            "lookup_allow_create",
+            "lookup_display_template",
+            "depends_on_field",
+            "filter_expression",
+        }
+    )
 
     def _get_field_name(self, field: Dict[str, Any]) -> str:
         """Get field name from a field dict, supporting both 'name' and 'field' keys"""
-        return field.get('name') or field.get('field') or ''
+        return field.get("name") or field.get("field") or ""
 
-    def _merge_form_config(
-        self,
-        existing: Dict[str, Any],
-        new: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    def _merge_form_config(self, existing: Dict[str, Any], new: Dict[str, Any]) -> Dict[str, Any]:
         """
         Merge form configurations, preserving user customisations.
 
@@ -369,12 +373,12 @@ class MetadataSyncService:
         if not existing:
             return new
 
-        existing_fields = {self._get_field_name(f): f for f in existing.get('fields', [])}
-        new_fields = {self._get_field_name(f): f for f in new.get('fields', [])}
+        existing_fields = {self._get_field_name(f): f for f in existing.get("fields", [])}
+        new_fields = {self._get_field_name(f): f for f in new.get("fields", [])}
 
         merged_fields = []
 
-        for field in existing.get('fields', []):
+        for field in existing.get("fields", []):
             field_name = self._get_field_name(field)
             if field_name and field_name in new_fields:
                 new_field = new_fields[field_name]
@@ -393,13 +397,13 @@ class MetadataSyncService:
                 merged_fields.append(field)
 
         merged = {**new}
-        merged['fields'] = merged_fields
+        merged["fields"] = merged_fields
 
-        if 'layout' in existing:
-            merged['layout'] = existing['layout']
-        if 'groups' in existing:
-            merged['groups'] = existing['groups']
-        if 'submit_button_text' in existing:
-            merged['submit_button_text'] = existing['submit_button_text']
+        if "layout" in existing:
+            merged["layout"] = existing["layout"]
+        if "groups" in existing:
+            merged["groups"] = existing["groups"]
+        if "submit_button_text" in existing:
+            merged["submit_button_text"] = existing["submit_button_text"]
 
         return merged

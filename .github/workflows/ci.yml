@@ -18,12 +18,18 @@ jobs:
           python-version: "3.11"
       - name: Install dependencies
         run: pip install flake8 black isort
+      # Run from backend/ so all three tools pick up backend/setup.cfg +
+      # backend/pyproject.toml (line length, ignores, isort black profile,
+      # alembic exclusion). Keep them in sync there, not as inline flags.
       - name: Run flake8
-        run: flake8 backend/app --max-line-length=120 --extend-ignore=E203,W503
+        working-directory: backend
+        run: flake8 app
       - name: Run black (check)
-        run: black --check backend/app
+        working-directory: backend
+        run: black --check app
       - name: Run isort (check)
-        run: isort --check-only backend/app
+        working-directory: backend
+        run: isort --check-only app
 
   tenant-scope-gate:
     name: Tenant Scope Gate
@@ -60,17 +66,68 @@ jobs:
         run: bash scripts/check-js-syntax.sh
 
   test:
-    name: Tests
+    name: Tests (e2e)
     runs-on: ubuntu-latest
     needs: tenant-scope-gate
+    # The suite in backend/tests/ is a black-box e2e harness (pytest + httpx, no
+    # app imports) that runs against a LIVE stack — it aborts immediately if
+    # http://localhost:8000 is unreachable. The old job just ran `pytest tests/`
+    # with nothing up, so it always failed at collection (GH#676).
+    #
+    # We bring up ONLY postgres + redis + backend (not the healthcare/financial/
+    # template module images — those are separate microservices that build
+    # `FROM app_buildify-backend:latest`, which a clean runner can't resolve, and
+    # the platform e2e suite doesn't need them). Then run the suite inside the
+    # backend container (--confcutdir=tests/e2e is required; the in-process
+    # tests/conftest.py fails to import on the built image).
+    timeout-minutes: 30
+    env:
+      COMPOSE: infra/docker-compose.dev.yml
     steps:
       - uses: actions/checkout@v4
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-      - name: Install dependencies
-        run: pip install -r backend/requirements.txt
-      - name: Run tests
-        working-directory: backend
-        run: pytest tests/ -v --tb=short
+      - name: Build backend image
+        run: docker compose -f "$COMPOSE" build backend
+      - name: Start core services (postgres, redis, backend)
+        run: docker compose -f "$COMPOSE" up -d postgres redis backend
+      - name: Wait for backend health
+        run: |
+          for i in $(seq 1 60); do
+            if curl -sf http://localhost:8000/api/healthz > /dev/null; then echo "backend healthy"; exit 0; fi
+            sleep 3
+          done
+          echo "backend did not become healthy in time"; docker logs app_buildify_backend --tail 200; exit 1
+      - name: Provision DB roles the migrations GRANT/REVOKE against
+        # The migration tree grants/revokes to `app_user` and `app_readonly_role`
+        # (RLS/least-privilege roles that exist in real deployments but not on a
+        # fresh CI database). Without them `alembic upgrade` fails on the first
+        # REVOKE; in dev this is masked because startup auto-migrate swallows the
+        # error. Create them idempotently so migrations apply cleanly.
+        run: |
+          docker compose -f "$COMPOSE" exec -T postgres psql -U appuser -d appdb -c "CREATE ROLE app_user" || true
+          docker compose -f "$COMPOSE" exec -T postgres psql -U appuser -d appdb -c "CREATE ROLE app_readonly_role" || true
+      - name: Widen alembic_version so a long revision id fits
+        # One revision id in the tree (pg_merge_username_and_tmd_constraints, 37 chars)
+        # exceeds alembic's default version_num varchar(32); on a fresh DB the upgrade
+        # aborts with StringDataRightTruncation. (Masked in dev by an older volume +
+        # the startup auto-migrate swallowing the error.) Pre-size the table so alembic
+        # uses it instead of creating a 32-char one. Permanent fix (shorten the id)
+        # tracked separately.
+        run: |
+          docker compose -f "$COMPOSE" exec -T postgres psql -U appuser -d appdb -c "CREATE TABLE IF NOT EXISTS alembic_version (version_num varchar(255) NOT NULL, CONSTRAINT alembic_version_pkc PRIMARY KEY (version_num))"
+          docker compose -f "$COMPOSE" exec -T postgres psql -U appuser -d appdb -c "ALTER TABLE alembic_version ALTER COLUMN version_num TYPE varchar(255)"
+      - name: Run migrations (loud — startup auto-migrate swallows failures)
+        run: docker compose -f "$COMPOSE" exec -T backend alembic upgrade heads
+      - name: Seed database
+        # seed_complete_org prompts "clear existing data? (yes/no)" via input();
+        # feed "yes" over stdin (-T forwards the pipe) for non-interactive CI.
+        run: echo yes | docker compose -f "$COMPOSE" exec -T backend python -m app.seeds.seed_complete_org
+      - name: Run e2e suite (inside backend container)
+        run: docker exec app_buildify_backend python -m pytest tests/e2e --confcutdir=tests/e2e -v --tb=short
+      - name: Stack diagnostics (on failure)
+        if: failure()
+        run: |
+          docker compose -f "$COMPOSE" ps || true
+          docker logs app_buildify_backend --tail 300 || true
+      - name: Tear down
+        if: always()
+        run: docker compose -f "$COMPOSE" down -v || true

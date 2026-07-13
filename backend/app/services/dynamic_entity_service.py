@@ -5,19 +5,18 @@ This service provides complete CRUD functionality for nocode entities,
 including validation, audit logging, and RBAC enforcement.
 """
 
-from typing import List, Dict, Any, Optional
-from uuid import UUID
-from sqlalchemy.orm import Session
-from sqlalchemy.exc import IntegrityError
-from datetime import datetime
-from app.services.runtime_model_generator import RuntimeModelGenerator
-from app.core.dynamic_query_builder import DynamicQueryBuilder
-from app.core.exceptions import AppException
-from app.utils.field_type_mapper import FieldTypeMapper
-from app.core.exceptions import EntityValidationError
-from app.core.scope import apply_tenant_scope  # T-22.007
 import logging
-import json
+from datetime import datetime
+from typing import Any, Dict, List, Optional
+
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
+
+from app.core.dynamic_query_builder import DynamicQueryBuilder
+from app.core.exceptions import AppException, EntityValidationError
+from app.core.scope import apply_tenant_scope  # T-22.007
+from app.services.runtime_model_generator import RuntimeModelGenerator
+from app.utils.field_type_mapper import FieldTypeMapper
 
 logger = logging.getLogger(__name__)
 
@@ -38,11 +37,11 @@ class DynamicEntityService:
     # Maps data_scope levels to the org columns they require, in hierarchical order.
     # Each level includes all columns from the levels above it.
     SCOPE_HIERARCHY = {
-        'platform': [],
-        'tenant': ['tenant_id'],
-        'company': ['tenant_id', 'company_id'],
-        'branch': ['tenant_id', 'company_id', 'branch_id'],
-        'department': ['tenant_id', 'company_id', 'branch_id', 'department_id'],
+        "platform": [],
+        "tenant": ["tenant_id"],
+        "company": ["tenant_id", "company_id"],
+        "branch": ["tenant_id", "company_id", "branch_id"],
+        "department": ["tenant_id", "company_id", "branch_id", "department_id"],
     }
 
     def __init__(self, db: Session, current_user):
@@ -76,7 +75,7 @@ class DynamicEntityService:
         generation path that runs immediately after this check.
         """
         # Superusers bypass per-entity perms (consistent with global RBAC bypass)
-        if getattr(self.current_user, 'is_superuser', False):
+        if getattr(self.current_user, "is_superuser", False):
             return
 
         tenant_id = str(self.current_user.tenant_id) if self.current_user.tenant_id else None
@@ -89,8 +88,7 @@ class DynamicEntityService:
             return  # Null or malformed -> global RBAC owns
 
         allowed_roles = {
-            role for role, actions in permissions_map.items()
-            if isinstance(actions, list) and action in actions
+            role for role, actions in permissions_map.items() if isinstance(actions, list) and action in actions
         }
         if not allowed_roles:
             raise AppException(
@@ -98,7 +96,7 @@ class DynamicEntityService:
                 status_code=403,
             )
 
-        user_roles = self.current_user.get_roles() if hasattr(self.current_user, 'get_roles') else set()
+        user_roles = self.current_user.get_roles() if hasattr(self.current_user, "get_roles") else set()
         if not user_roles & allowed_roles:
             raise AppException(
                 f"Per-entity permission denied: action '{action}' on entity '{entity_name}'",
@@ -119,9 +117,9 @@ class DynamicEntityService:
         Sub-tenant org columns (company_id, branch_id, department_id) remain
         explicit because apply_tenant_scope only covers the top-level tenant filter.
         """
-        entity_dict = getattr(model, '__entity_definition__', {})
-        data_scope = entity_dict.get('data_scope', 'tenant')
-        scope_cols = self.SCOPE_HIERARCHY.get(data_scope, self.SCOPE_HIERARCHY['tenant'])
+        entity_dict = getattr(model, "__entity_definition__", {})
+        data_scope = entity_dict.get("data_scope", "tenant")
+        scope_cols = self.SCOPE_HIERARCHY.get(data_scope, self.SCOPE_HIERARCHY["tenant"])
 
         context = {}
         user = self.current_user
@@ -129,18 +127,18 @@ class DynamicEntityService:
         for col in scope_cols:
             if not hasattr(model, col):
                 continue
-            if col == 'tenant_id':
+            if col == "tenant_id":
                 # Delegate tenant isolation logic to the canonical helper.
                 # apply_tenant_scope skips superusers and non-scoped models;
                 # mirror that behaviour here for the populate path.
-                if not getattr(user, 'is_superuser', False) and user.tenant_id:
-                    context['tenant_id'] = str(user.tenant_id)
-            elif col == 'company_id' and getattr(user, 'default_company_id', None):
-                context['company_id'] = str(user.default_company_id)
-            elif col == 'branch_id' and getattr(user, 'branch_id', None):
-                context['branch_id'] = str(user.branch_id)
-            elif col == 'department_id' and getattr(user, 'department_id', None):
-                context['department_id'] = str(user.department_id)
+                if not getattr(user, "is_superuser", False) and user.tenant_id:
+                    context["tenant_id"] = str(user.tenant_id)
+            elif col == "company_id" and getattr(user, "default_company_id", None):
+                context["company_id"] = str(user.default_company_id)
+            elif col == "branch_id" and getattr(user, "branch_id", None):
+                context["branch_id"] = str(user.branch_id)
+            elif col == "department_id" and getattr(user, "department_id", None):
+                context["department_id"] = str(user.department_id)
 
         return context
 
@@ -155,11 +153,7 @@ class DynamicEntityService:
         query = apply_tenant_scope(query, model, self.current_user)
         return query
 
-    async def create_record(
-        self,
-        entity_name: str,
-        data: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    async def create_record(self, entity_name: str, data: Dict[str, Any]) -> Dict[str, Any]:
         """
         Create a new record in dynamic entity
 
@@ -176,7 +170,7 @@ class DynamicEntityService:
         """
         # Get model and field definitions
         tenant_id = str(self.current_user.tenant_id) if self.current_user.tenant_id else None
-        self._check_entity_permission(entity_name, 'create')
+        self._check_entity_permission(entity_name, "create")
         model = self.model_generator.get_model(entity_name, tenant_id)
         field_defs = self.model_generator.get_field_definitions(entity_name, tenant_id)
 
@@ -187,14 +181,14 @@ class DynamicEntityService:
         org_context = self._get_org_context(model)
         validated_data.update(org_context)
 
-        if hasattr(model, 'created_by'):
-            validated_data['created_by'] = str(self.current_user.id)
+        if hasattr(model, "created_by"):
+            validated_data["created_by"] = str(self.current_user.id)
 
-        if hasattr(model, 'created_at'):
-            validated_data['created_at'] = datetime.utcnow()
+        if hasattr(model, "created_at"):
+            validated_data["created_at"] = datetime.utcnow()
 
-        if hasattr(model, 'updated_at'):
-            validated_data['updated_at'] = datetime.utcnow()
+        if hasattr(model, "updated_at"):
+            validated_data["updated_at"] = datetime.utcnow()
 
         try:
             # Create instance
@@ -207,19 +201,10 @@ class DynamicEntityService:
             record_dict = self._model_to_dict(record, field_defs)
 
             # Audit log
-            await self._create_audit_log(
-                'CREATE',
-                entity_name,
-                record_dict.get('id'),
-                {'created': record_dict}
-            )
+            await self._create_audit_log("CREATE", entity_name, record_dict.get("id"), {"created": record_dict})
 
             # Trigger automations
-            await self._trigger_automations(
-                entity_name,
-                'onCreate',
-                record_dict
-            )
+            await self._trigger_automations(entity_name, "onCreate", record_dict)
 
             logger.info(f"Created {entity_name} record: {record_dict.get('id')}")
 
@@ -243,7 +228,7 @@ class DynamicEntityService:
         page_size: int = 25,
         search: Optional[str] = None,
         expand: Optional[List[str]] = None,
-        include_deleted: bool = False
+        include_deleted: bool = False,
     ) -> Dict[str, Any]:
         """
         List records with filtering, sorting, and pagination
@@ -261,7 +246,7 @@ class DynamicEntityService:
         """
         # Get model and field definitions
         tenant_id = str(self.current_user.tenant_id) if self.current_user.tenant_id else None
-        self._check_entity_permission(entity_name, 'read')
+        self._check_entity_permission(entity_name, "read")
         model = self.model_generator.get_model(entity_name, tenant_id)
         field_defs = self.model_generator.get_field_definitions(entity_name, tenant_id)
 
@@ -274,7 +259,7 @@ class DynamicEntityService:
             query = query.filter(getattr(model, col_name) == col_value)
 
         # Exclude soft-deleted records unless include_deleted requested (Story 5.4.1)
-        if hasattr(model, 'deleted_at') and not include_deleted:
+        if hasattr(model, "deleted_at") and not include_deleted:
             query = query.filter(model.deleted_at.is_(None))
 
         # Apply filters
@@ -293,7 +278,7 @@ class DynamicEntityService:
             query = self.query_builder.apply_sort(query, model, sort)
         else:
             # Default sort by created_at desc if exists
-            if hasattr(model, 'created_at'):
+            if hasattr(model, "created_at"):
                 query = query.order_by(model.created_at.desc())
 
         # Apply pagination
@@ -308,19 +293,9 @@ class DynamicEntityService:
         if expand:
             items = self._apply_expand(items, field_defs, expand)
 
-        return {
-            'items': items,
-            'total': total,
-            'page': page,
-            'page_size': page_size,
-            'pages': total_pages
-        }
+        return {"items": items, "total": total, "page": page, "page_size": page_size, "pages": total_pages}
 
-    async def get_record(
-        self,
-        entity_name: str,
-        record_id: str
-    ) -> Dict[str, Any]:
+    async def get_record(self, entity_name: str, record_id: str) -> Dict[str, Any]:
         """
         Get single record by ID
 
@@ -346,7 +321,7 @@ class DynamicEntityService:
             query = query.filter(getattr(model, col_name) == col_value)
 
         # Exclude soft-deleted records (Gap 4.1)
-        if hasattr(model, 'deleted_at'):
+        if hasattr(model, "deleted_at"):
             query = query.filter(model.deleted_at.is_(None))
 
         record = query.first()
@@ -356,12 +331,7 @@ class DynamicEntityService:
 
         return self._model_to_dict(record, field_defs)
 
-    async def update_record(
-        self,
-        entity_name: str,
-        record_id: str,
-        data: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    async def update_record(self, entity_name: str, record_id: str, data: Dict[str, Any]) -> Dict[str, Any]:
         """
         Update record
 
@@ -377,7 +347,7 @@ class DynamicEntityService:
             ValueError: If record not found or validation fails
         """
         tenant_id = str(self.current_user.tenant_id) if self.current_user.tenant_id else None
-        self._check_entity_permission(entity_name, 'update')
+        self._check_entity_permission(entity_name, "update")
         model = self.model_generator.get_model(entity_name, tenant_id)
         field_defs = self.model_generator.get_field_definitions(entity_name, tenant_id)
 
@@ -400,17 +370,16 @@ class DynamicEntityService:
         validated_data = self._validate_and_prepare_data(field_defs, data, is_create=False)
 
         # Update fields (exclude system fields and org hierarchy columns)
-        protected_fields = ['id', 'created_at', 'created_by',
-                            'tenant_id', 'company_id', 'branch_id', 'department_id']
+        protected_fields = ["id", "created_at", "created_by", "tenant_id", "company_id", "branch_id", "department_id"]
         for key, value in validated_data.items():
             if key not in protected_fields and hasattr(record, key):
                 setattr(record, key, value)
 
         # Update system fields
-        if hasattr(record, 'updated_by'):
+        if hasattr(record, "updated_by"):
             record.updated_by = str(self.current_user.id)
 
-        if hasattr(record, 'updated_at'):
+        if hasattr(record, "updated_at"):
             record.updated_at = datetime.utcnow()
 
         try:
@@ -422,12 +391,16 @@ class DynamicEntityService:
             # Write to shadow versions table if entity is versioned (Story 5.1.5)
             try:
                 entity_def = self.model_generator._load_entity_definition(entity_name, tenant_id)
-                if entity_def and getattr(entity_def, 'is_versioned', False):
+                if entity_def and getattr(entity_def, "is_versioned", False):
                     table_prefix = f"t_{str(tenant_id).replace('-', '_')}_" if tenant_id else ""
                     version_table = f"{table_prefix}{entity_name}_versions"
-                    changed_fields = {k: v for k, v in after.items() if before.get(k) != v and k not in ('updated_at', 'updated_by')}
+                    changed_fields = {
+                        k: v for k, v in after.items() if before.get(k) != v and k not in ("updated_at", "updated_by")
+                    }
                     import json as _json
+
                     from sqlalchemy import text as _text
+
                     self.db.execute(
                         _text(f"""
                             INSERT INTO {version_table}
@@ -436,30 +409,21 @@ class DynamicEntityService:
                                 (:record_id, :before::jsonb, :changed::jsonb, :changed_by, NOW())
                         """),
                         {
-                            'record_id': str(record_id),
-                            'before': _json.dumps(before),
-                            'changed': _json.dumps(changed_fields),
-                            'changed_by': str(self.current_user.id),
-                        }
+                            "record_id": str(record_id),
+                            "before": _json.dumps(before),
+                            "changed": _json.dumps(changed_fields),
+                            "changed_by": str(self.current_user.id),
+                        },
                     )
                     self.db.commit()
             except Exception as _ve:
                 logger.debug(f"Version insert skipped: {_ve}")
 
             # Audit log
-            await self._create_audit_log(
-                'UPDATE',
-                entity_name,
-                record_id,
-                {'before': before, 'after': after}
-            )
+            await self._create_audit_log("UPDATE", entity_name, record_id, {"before": before, "after": after})
 
             # Trigger automations
-            await self._trigger_automations(
-                entity_name,
-                'onUpdate',
-                after
-            )
+            await self._trigger_automations(entity_name, "onUpdate", after)
 
             logger.info(f"Updated {entity_name} record: {record_id}")
 
@@ -474,11 +438,7 @@ class DynamicEntityService:
             logger.error(f"Error updating {entity_name}: {e}")
             raise
 
-    async def delete_record(
-        self,
-        entity_name: str,
-        record_id: str
-    ):
+    async def delete_record(self, entity_name: str, record_id: str):
         """
         Delete record (soft delete if supported, hard delete otherwise)
 
@@ -490,7 +450,7 @@ class DynamicEntityService:
             ValueError: If record not found
         """
         tenant_id = str(self.current_user.tenant_id) if self.current_user.tenant_id else None
-        self._check_entity_permission(entity_name, 'delete')
+        self._check_entity_permission(entity_name, "delete")
         model = self.model_generator.get_model(entity_name, tenant_id)
         field_defs = self.model_generator.get_field_definitions(entity_name, tenant_id)
 
@@ -510,47 +470,36 @@ class DynamicEntityService:
         before = self._model_to_dict(record, field_defs)
 
         # Soft delete if supported
-        if hasattr(record, 'deleted_at'):
+        if hasattr(record, "deleted_at"):
             record.deleted_at = datetime.utcnow()
-            if hasattr(record, 'deleted_by'):
+            if hasattr(record, "deleted_by"):
                 record.deleted_by = str(self.current_user.id)
             self.db.commit()
-            deletion_type = 'soft'
+            deletion_type = "soft"
         else:
             # Hard delete
             self.db.delete(record)
             self.db.commit()
-            deletion_type = 'hard'
+            deletion_type = "hard"
 
         # Audit log
         await self._create_audit_log(
-            'DELETE',
-            entity_name,
-            record_id,
-            {'deleted': before, 'deletion_type': deletion_type}
+            "DELETE", entity_name, record_id, {"deleted": before, "deletion_type": deletion_type}
         )
 
         # Trigger automations
-        await self._trigger_automations(
-            entity_name,
-            'onDelete',
-            before
-        )
+        await self._trigger_automations(entity_name, "onDelete", before)
 
         logger.info(f"Deleted {entity_name} record: {record_id} ({deletion_type})")
 
-    async def restore_soft_deleted_record(
-        self,
-        entity_name: str,
-        record_id: str
-    ) -> dict:
+    async def restore_soft_deleted_record(self, entity_name: str, record_id: str) -> dict:
         """Restore a soft-deleted record (Story 5.4.1)."""
         tenant_id = str(self.current_user.tenant_id) if self.current_user.tenant_id else None
-        self._check_entity_permission(entity_name, 'delete')
+        self._check_entity_permission(entity_name, "delete")
         model = self.model_generator.get_model(entity_name, tenant_id)
         field_defs = self.model_generator.get_field_definitions(entity_name, tenant_id)
 
-        if not hasattr(model, 'deleted_at'):
+        if not hasattr(model, "deleted_at"):
             raise ValueError(f"Entity '{entity_name}' does not support soft delete")
 
         record = self.db.query(model).filter(model.id == record_id).first()
@@ -560,33 +509,31 @@ class DynamicEntityService:
             raise ValueError(f"Record is not deleted: {record_id}")
 
         record.deleted_at = None
-        if hasattr(record, 'deleted_by'):
+        if hasattr(record, "deleted_by"):
             record.deleted_by = None
-        if hasattr(record, 'is_deleted'):
+        if hasattr(record, "is_deleted"):
             record.is_deleted = False
         self.db.commit()
 
-        await self._create_audit_log('RESTORE', entity_name, str(record_id))
+        await self._create_audit_log("RESTORE", entity_name, str(record_id))
         return self._model_to_dict(record, field_defs)
 
-    async def get_record_versions(
-        self,
-        entity_name: str,
-        record_id: str
-    ):
+    async def get_record_versions(self, entity_name: str, record_id: str):
         """Return change history for a versioned entity record (Story 5.1.5)."""
         tenant_id = str(self.current_user.tenant_id) if self.current_user.tenant_id else None
-        self._check_entity_permission(entity_name, 'read')
+        self._check_entity_permission(entity_name, "read")
 
         entity_def = self.model_generator._load_entity_definition(entity_name, tenant_id)
-        if not entity_def or not getattr(entity_def, 'is_versioned', False):
+        if not entity_def or not getattr(entity_def, "is_versioned", False):
             raise ValueError(f"Entity '{entity_name}' does not support versioning")
 
         table_prefix = f"t_{str(tenant_id).replace('-', '_')}_" if tenant_id else ""
         version_table = f"{table_prefix}{entity_name}_versions"
 
-        from sqlalchemy import text as _text
         import json as _json
+
+        from sqlalchemy import text as _text
+
         try:
             result = self.db.execute(
                 _text(f"""
@@ -596,7 +543,7 @@ class DynamicEntityService:
                     ORDER BY changed_at DESC
                     LIMIT 100
                 """),
-                {'record_id': str(record_id)}
+                {"record_id": str(record_id)},
             )
             rows = result.mappings().all()
         except Exception as e:
@@ -604,16 +551,21 @@ class DynamicEntityService:
 
         return [
             {
-                'id': str(r['id']),
-                'record_id': str(r['record_id']),
-                'record_data': r['record_data'] if isinstance(r['record_data'], dict) else _json.loads(r['record_data'] or '{}'),
-                'changed_fields': r['changed_fields'] if isinstance(r['changed_fields'], dict) else _json.loads(r['changed_fields'] or '{}'),
-                'changed_by': str(r['changed_by']),
-                'changed_at': r['changed_at'].isoformat() if r['changed_at'] else None,
+                "id": str(r["id"]),
+                "record_id": str(r["record_id"]),
+                "record_data": (
+                    r["record_data"] if isinstance(r["record_data"], dict) else _json.loads(r["record_data"] or "{}")
+                ),
+                "changed_fields": (
+                    r["changed_fields"]
+                    if isinstance(r["changed_fields"], dict)
+                    else _json.loads(r["changed_fields"] or "{}")
+                ),
+                "changed_by": str(r["changed_by"]),
+                "changed_at": r["changed_at"].isoformat() if r["changed_at"] else None,
             }
             for r in rows
         ]
-
 
     async def get_related_records(
         self,
@@ -633,20 +585,24 @@ class DynamicEntityService:
         reverse FK (one-to-many). (Story 5.3.2)
         """
         tenant_id = str(self.current_user.tenant_id) if self.current_user.tenant_id else None
-        self._check_entity_permission(entity_name, 'read')
+        self._check_entity_permission(entity_name, "read")
 
         # Load the source entity's field definitions to find the relationship
         field_defs = self.model_generator.get_field_definitions(entity_name, tenant_id)
         rel_field = next(
-            (f for f in field_defs if f.get('name') == relationship_name and
-             f.get('field_type') in ('relationship', 'lookup')),
-            None
+            (
+                f
+                for f in field_defs
+                if f.get("name") == relationship_name and f.get("field_type") in ("relationship", "lookup")
+            ),
+            None,
         )
 
         if not rel_field:
             # Try as a reverse relationship: another entity has a FK pointing here
             # Scan all entity fields for ref_entity_name == entity_name
             from app.models.data_model import EntityDefinition, FieldDefinition
+
             ref_fields = (
                 self.db.query(FieldDefinition)
                 .join(FieldDefinition.entity)
@@ -659,7 +615,7 @@ class DynamicEntityService:
             )
             if not ref_fields:
                 # Try matching by entity name (e.g. "orders" → entity named "order")
-                target_entity_name = relationship_name.rstrip('s')  # naive depluralize
+                target_entity_name = relationship_name.rstrip("s")  # naive depluralize
                 ref_fields = (
                     self.db.query(FieldDefinition)
                     .join(FieldDefinition.entity)
@@ -675,14 +631,12 @@ class DynamicEntityService:
                 # Reverse FK: find all records in the related entity where FK == record_id
                 target_entity = ref_fields.entity.name
                 fk_field_name = ref_fields.name
-                self._check_entity_permission(target_entity, 'read')
+                self._check_entity_permission(target_entity, "read")
                 target_model = self.model_generator.get_model(target_entity, tenant_id)
                 target_field_defs = self.model_generator.get_field_definitions(target_entity, tenant_id)
 
-                query = self.db.query(target_model).filter(
-                    getattr(target_model, fk_field_name) == record_id
-                )
-                if hasattr(target_model, 'deleted_at') and not include_deleted:
+                query = self.db.query(target_model).filter(getattr(target_model, fk_field_name) == record_id)
+                if hasattr(target_model, "deleted_at") and not include_deleted:
                     query = query.filter(target_model.deleted_at.is_(None))
                 if filters:
                     query = self.query_builder.apply_filters(query, target_model, filters)
@@ -694,20 +648,20 @@ class DynamicEntityService:
                     for field_name, direction in sort:
                         col = getattr(target_model, field_name, None)
                         if col is not None:
-                            query = query.order_by(col.desc() if direction == 'desc' else col.asc())
+                            query = query.order_by(col.desc() if direction == "desc" else col.asc())
                 else:
-                    if hasattr(target_model, 'created_at'):
+                    if hasattr(target_model, "created_at"):
                         query = query.order_by(target_model.created_at.desc())
 
                 offset = (page - 1) * page_size
                 records = query.offset(offset).limit(page_size).all()
                 items = [self._model_to_dict(r, target_field_defs) for r in records]
                 return {
-                    'items': items,
-                    'total': total,
-                    'page': page,
-                    'page_size': page_size,
-                    'pages': max(1, -(-total // page_size)),
+                    "items": items,
+                    "total": total,
+                    "page": page,
+                    "page_size": page_size,
+                    "pages": max(1, -(-total // page_size)),
                 }
 
             raise ValueError(
@@ -717,14 +671,12 @@ class DynamicEntityService:
 
         # Forward FK/lookup: the relationship field is on the source entity
         ref_entity = (
-            rel_field.get('reference_entity_name') or
-            rel_field.get('ref_entity_name') or
-            rel_field.get('lookup_entity')
+            rel_field.get("reference_entity_name") or rel_field.get("ref_entity_name") or rel_field.get("lookup_entity")
         )
         if not ref_entity:
             raise ValueError(f"Relationship field '{relationship_name}' has no target entity configured")
 
-        self._check_entity_permission(ref_entity, 'read')
+        self._check_entity_permission(ref_entity, "read")
 
         # Fetch the source record to get the FK value
         source_model = self.model_generator.get_model(entity_name, tenant_id)
@@ -734,16 +686,14 @@ class DynamicEntityService:
 
         fk_value = getattr(source_record, relationship_name, None)
         if fk_value is None:
-            return {'items': [], 'total': 0, 'page': page, 'page_size': page_size, 'pages': 0}
+            return {"items": [], "total": 0, "page": page, "page_size": page_size, "pages": 0}
 
         target_model = self.model_generator.get_model(ref_entity, tenant_id)
         target_field_defs = self.model_generator.get_field_definitions(ref_entity, tenant_id)
-        ref_field_col = rel_field.get('ref_field') or 'id'
+        ref_field_col = rel_field.get("ref_field") or "id"
 
-        query = self.db.query(target_model).filter(
-            getattr(target_model, ref_field_col) == fk_value
-        )
-        if hasattr(target_model, 'deleted_at') and not include_deleted:
+        query = self.db.query(target_model).filter(getattr(target_model, ref_field_col) == fk_value)
+        if hasattr(target_model, "deleted_at") and not include_deleted:
             query = query.filter(target_model.deleted_at.is_(None))
         if filters:
             query = self.query_builder.apply_filters(query, target_model, filters)
@@ -755,24 +705,20 @@ class DynamicEntityService:
             for field_name, direction in sort:
                 col = getattr(target_model, field_name, None)
                 if col is not None:
-                    query = query.order_by(col.desc() if direction == 'desc' else col.asc())
+                    query = query.order_by(col.desc() if direction == "desc" else col.asc())
 
         offset = (page - 1) * page_size
         records = query.offset(offset).limit(page_size).all()
         items = [self._model_to_dict(r, target_field_defs) for r in records]
         return {
-            'items': items,
-            'total': total,
-            'page': page,
-            'page_size': page_size,
-            'pages': max(1, -(-total // page_size)),
+            "items": items,
+            "total": total,
+            "page": page,
+            "page_size": page_size,
+            "pages": max(1, -(-total // page_size)),
         }
 
-    async def bulk_create(
-        self,
-        entity_name: str,
-        records: List[Dict[str, Any]]
-    ) -> Dict[str, Any]:
+    async def bulk_create(self, entity_name: str, records: List[Dict[str, Any]]) -> Dict[str, Any]:
         """
         Bulk create records
 
@@ -792,28 +738,15 @@ class DynamicEntityService:
             try:
                 result = await self.create_record(entity_name, record_data)
                 created += 1
-                ids.append(result.get('id'))
+                ids.append(result.get("id"))
             except Exception as e:
                 failed += 1
-                errors.append({
-                    'index': idx,
-                    'data': record_data,
-                    'error': str(e)
-                })
+                errors.append({"index": idx, "data": record_data, "error": str(e)})
                 logger.error(f"Bulk create error at index {idx}: {e}")
 
-        return {
-            'created': created,
-            'failed': failed,
-            'errors': errors,
-            'ids': ids
-        }
+        return {"created": created, "failed": failed, "errors": errors, "ids": ids}
 
-    async def bulk_update(
-        self,
-        entity_name: str,
-        records: List[Dict[str, Any]]
-    ) -> Dict[str, Any]:
+    async def bulk_update(self, entity_name: str, records: List[Dict[str, Any]]) -> Dict[str, Any]:
         """
         Bulk update records
 
@@ -831,42 +764,26 @@ class DynamicEntityService:
         errors = []
 
         for idx, record_data in enumerate(records):
-            record_id = record_data.get('id')
+            record_id = record_data.get("id")
             if not record_id:
                 failed += 1
-                errors.append({
-                    'index': idx,
-                    'data': record_data,
-                    'error': 'Missing id field'
-                })
+                errors.append({"index": idx, "data": record_data, "error": "Missing id field"})
                 continue
 
             # Remove id from update data
-            update_data = {k: v for k, v in record_data.items() if k != 'id'}
+            update_data = {k: v for k, v in record_data.items() if k != "id"}
 
             try:
                 await self.update_record(entity_name, record_id, update_data)
                 updated += 1
             except Exception as e:
                 failed += 1
-                errors.append({
-                    'index': idx,
-                    'id': record_id,
-                    'error': str(e)
-                })
+                errors.append({"index": idx, "id": record_id, "error": str(e)})
                 logger.error(f"Bulk update error at index {idx}: {e}")
 
-        return {
-            'updated': updated,
-            'failed': failed,
-            'errors': errors
-        }
+        return {"updated": updated, "failed": failed, "errors": errors}
 
-    async def bulk_delete(
-        self,
-        entity_name: str,
-        ids: List[str]
-    ) -> Dict[str, Any]:
+    async def bulk_delete(self, entity_name: str, ids: List[str]) -> Dict[str, Any]:
         """
         Bulk delete records
 
@@ -887,24 +804,13 @@ class DynamicEntityService:
                 deleted += 1
             except Exception as e:
                 failed += 1
-                errors.append({
-                    'index': idx,
-                    'id': record_id,
-                    'error': str(e)
-                })
+                errors.append({"index": idx, "id": record_id, "error": str(e)})
                 logger.error(f"Bulk delete error at index {idx}: {e}")
 
-        return {
-            'deleted': deleted,
-            'failed': failed,
-            'errors': errors
-        }
+        return {"deleted": deleted, "failed": failed, "errors": errors}
 
     def _apply_expand(
-        self,
-        items: List[Dict[str, Any]],
-        field_defs: List[Dict],
-        expand: List[str]
+        self, items: List[Dict[str, Any]], field_defs: List[Dict], expand: List[str]
     ) -> List[Dict[str, Any]]:
         """
         Inline related records for lookup fields listed in `expand`.
@@ -922,7 +828,7 @@ class DynamicEntityService:
         Unknown field names or fields without a resolvable reference are silently
         skipped so the caller does not need to pre-validate the expand list.
         """
-        field_map = {f['name']: f for f in field_defs}
+        field_map = {f["name"]: f for f in field_defs}
         tenant_id = str(self.current_user.tenant_id) if self.current_user.tenant_id else None
 
         for field_name in expand:
@@ -934,20 +840,22 @@ class DynamicEntityService:
             # Resolve target entity name.
             # Priority: reference_entity_name (already resolved at dict-build time
             #           from reference_entity_id) → fall back to reference_table_name.
-            ref_entity = field_def.get('reference_entity_name')
+            ref_entity = field_def.get("reference_entity_name")
 
             if not ref_entity:
                 # Fallback: try treating reference_table_name as a published entity
                 # table name.  This covers system tables exposed as platform entities.
-                ref_table = field_def.get('reference_table_name')
+                ref_table = field_def.get("reference_table_name")
                 if ref_table:
                     # Try to resolve entity name from table name
                     try:
                         from app.models.data_model import EntityDefinition as _ED
-                        row = self.db.query(_ED.name).filter(
-                            _ED.table_name == ref_table,
-                            _ED.status == 'published'
-                        ).first()
+
+                        row = (
+                            self.db.query(_ED.name)
+                            .filter(_ED.table_name == ref_table, _ED.status == "published")
+                            .first()
+                        )
                         if row:
                             ref_entity = row[0]
                     except Exception:
@@ -957,16 +865,12 @@ class DynamicEntityService:
                 logger.warning(
                     "expand: field '%s' has no resolvable reference entity "
                     "(reference_entity_id and reference_table_name both missing or unresolvable) — skipping",
-                    field_name
+                    field_name,
                 )
                 continue
 
             # Collect unique FK values from items (filter out None)
-            fk_values = list({
-                item.get(field_name)
-                for item in items
-                if item.get(field_name) is not None
-            })
+            fk_values = list({item.get(field_name) for item in items if item.get(field_name) is not None})
 
             if not fk_values:
                 for item in items:
@@ -978,19 +882,16 @@ class DynamicEntityService:
                 ref_model = self.model_generator.get_model(ref_entity, tenant_id)
                 ref_field_defs = self.model_generator.get_field_definitions(ref_entity, tenant_id)
 
-                ref_records_raw = self.db.query(ref_model).filter(
-                    ref_model.id.in_(fk_values)
-                ).all()
+                ref_records_raw = self.db.query(ref_model).filter(ref_model.id.in_(fk_values)).all()
 
                 related_records = {
-                    rec_dict.get('id'): rec_dict
+                    rec_dict.get("id"): rec_dict
                     for r in ref_records_raw
                     for rec_dict in [self._model_to_dict(r, ref_field_defs)]
                 }
             except Exception as exc:
                 logger.error(
-                    "expand: failed to fetch related entity '%s' for field '%s': %s",
-                    ref_entity, field_name, exc
+                    "expand: failed to fetch related entity '%s' for field '%s': %s", ref_entity, field_name, exc
                 )
                 related_records = {}
 
@@ -1008,7 +909,7 @@ class DynamicEntityService:
         metrics: List[Dict[str, Any]],
         filters: Optional[Dict] = None,
         date_trunc: Optional[str] = None,
-        date_field: Optional[str] = None
+        date_field: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Run an aggregation query on a dynamic entity.
@@ -1030,11 +931,12 @@ class DynamicEntityService:
         Returns:
             Dict with 'groups', 'total_groups', 'entity_name'.
         """
-        from sqlalchemy import select as sa_select
         from decimal import Decimal
 
+        from sqlalchemy import select as sa_select
+
         tenant_id = str(self.current_user.tenant_id) if self.current_user.tenant_id else None
-        self._check_entity_permission(entity_name, 'read')
+        self._check_entity_permission(entity_name, "read")
         model = self.model_generator.get_model(entity_name, tenant_id)
 
         # Build SELECT columns and GROUP BY expressions
@@ -1051,7 +953,7 @@ class DynamicEntityService:
             query = query.where(getattr(model, col_name) == col_value)
 
         # Exclude soft-deleted records (Gap 4.1)
-        if hasattr(model, 'deleted_at'):
+        if hasattr(model, "deleted_at"):
             query = query.where(model.deleted_at.is_(None))
 
         # User filters (reuse DynamicQueryBuilder's filter-clause builder)
@@ -1076,22 +978,15 @@ class DynamicEntityService:
                 # Normalize types for JSON serialization
                 if isinstance(val, Decimal):
                     val = float(val)
-                elif hasattr(val, 'isoformat'):
+                elif hasattr(val, "isoformat"):
                     val = val.isoformat()
                 group[key] = val
             groups.append(group)
 
-        return {
-            'groups': groups,
-            'total_groups': len(groups),
-            'entity_name': entity_name
-        }
+        return {"groups": groups, "total_groups": len(groups), "entity_name": entity_name}
 
     def _validate_and_prepare_data(
-        self,
-        field_defs: List[Dict],
-        data: Dict[str, Any],
-        is_create: bool = True
+        self, field_defs: List[Dict], data: Dict[str, Any], is_create: bool = True
     ) -> Dict[str, Any]:
         """
         Validate and prepare data for database operation
@@ -1112,7 +1007,7 @@ class DynamicEntityService:
         errors = []
 
         # Create field lookup
-        field_map = {f['name']: f for f in field_defs}
+        field_map = {f["name"]: f for f in field_defs}
 
         # Validate each field in data
         for field_name, value in data.items():
@@ -1122,10 +1017,10 @@ class DynamicEntityService:
                 continue
 
             field_def = field_map[field_name]
-            field_type = field_def.get('field_type', 'string')
+            field_type = field_def.get("field_type", "string")
 
             # Normalize empty strings to None for non-string field types
-            if value == '' and field_type not in ('string', 'email', 'url', 'phone', 'text', 'textarea'):
+            if value == "" and field_type not in ("string", "email", "url", "phone", "text", "textarea"):
                 value = None
 
             # Validate value
@@ -1138,21 +1033,18 @@ class DynamicEntityService:
             validated_value = self.field_mapper.deserialize_value(field_type, value)
 
             # Use db_column_name as key
-            column_name = field_def.get('db_column_name') or field_name
+            column_name = field_def.get("db_column_name") or field_name
             validated_data[column_name] = validated_value
 
         # Check required fields (only for create)
         if is_create:
             for field_def in field_defs:
-                if field_def.get('is_required') and not field_def.get('is_primary_key'):
-                    field_name = field_def['name']
-                    column_name = field_def.get('db_column_name') or field_name
+                if field_def.get("is_required") and not field_def.get("is_primary_key"):
+                    field_name = field_def["name"]
+                    column_name = field_def.get("db_column_name") or field_name
 
                     if column_name not in validated_data:
-                        errors.append({
-                            "field": field_name,
-                            "message": f"{field_def['label']} is required"
-                        })
+                        errors.append({"field": field_name, "message": f"{field_def['label']} is required"})
 
         if errors:
             raise EntityValidationError(errors=errors)
@@ -1161,18 +1053,18 @@ class DynamicEntityService:
 
     # Map system column names to their serialization field types
     SYSTEM_FIELD_TYPES = {
-        'id': 'uuid',
-        'tenant_id': 'uuid',
-        'company_id': 'uuid',
-        'branch_id': 'uuid',
-        'department_id': 'uuid',
-        'created_at': 'datetime',
-        'created_by': 'uuid',
-        'updated_at': 'datetime',
-        'updated_by': 'uuid',
-        'is_deleted': 'boolean',
-        'deleted_at': 'datetime',
-        'deleted_by': 'uuid',
+        "id": "uuid",
+        "tenant_id": "uuid",
+        "company_id": "uuid",
+        "branch_id": "uuid",
+        "department_id": "uuid",
+        "created_at": "datetime",
+        "created_by": "uuid",
+        "updated_at": "datetime",
+        "updated_by": "uuid",
+        "is_deleted": "boolean",
+        "deleted_at": "datetime",
+        "deleted_by": "uuid",
     }
 
     def _model_to_dict(self, record, field_defs: List[Dict]) -> Dict[str, Any]:
@@ -1187,26 +1079,20 @@ class DynamicEntityService:
             Dictionary representation
         """
         result = {}
-        field_types = {f.get('db_column_name') or f['name']: f['field_type'] for f in field_defs}
+        field_types = {f.get("db_column_name") or f["name"]: f["field_type"] for f in field_defs}
 
         for column in record.__table__.columns:
             value = getattr(record, column.name)
 
             # Determine field type: check user-defined fields first, then system fields
-            field_type = field_types.get(column.name) or self.SYSTEM_FIELD_TYPES.get(column.name, 'string')
+            field_type = field_types.get(column.name) or self.SYSTEM_FIELD_TYPES.get(column.name, "string")
             serialized_value = self.field_mapper.serialize_value(field_type, value)
 
             result[column.name] = serialized_value
 
         return result
 
-    async def _create_audit_log(
-        self,
-        action: str,
-        entity_name: str,
-        entity_id: Optional[str],
-        changes: Dict
-    ):
+    async def _create_audit_log(self, action: str, entity_name: str, entity_id: Optional[str], changes: Dict):
         """
         Create audit log entry
 
@@ -1226,18 +1112,13 @@ class DynamicEntityService:
                 entity_type=entity_name,
                 entity_id=entity_id,
                 changes=changes,
-                status='success'
+                status="success",
             )
         except Exception as e:
             # Don't fail the operation if audit logging fails
             logger.error(f"Failed to create audit log: {e}")
 
-    async def _trigger_automations(
-        self,
-        entity_name: str,
-        event: str,
-        record: Dict[str, Any]
-    ):
+    async def _trigger_automations(self, entity_name: str, event: str, record: Dict[str, Any]):
         """
         Trigger automation rules for nocode entity events
 
@@ -1256,17 +1137,17 @@ class DynamicEntityService:
             from app.services.automation_service import AutomationService
 
             # Find matching automation rules
-            rules = self.db.query(AutomationRule).filter(
-                AutomationRule.trigger_type == 'database',
-                AutomationRule.is_active == True
-            ).all()
+            rules = (
+                self.db.query(AutomationRule)
+                .filter(AutomationRule.trigger_type == "database", AutomationRule.is_active == True)
+                .all()
+            )
 
             # Filter rules by entity and event
             matching_rules = []
             for rule in rules:
                 trigger_config = rule.trigger_config or {}
-                if (trigger_config.get('entity_name') == entity_name and
-                    trigger_config.get('event') == event):
+                if trigger_config.get("entity_name") == entity_name and trigger_config.get("event") == event:
                     matching_rules.append(rule)
 
             if not matching_rules:
@@ -1281,12 +1162,12 @@ class DynamicEntityService:
                     await automation_service.execute_rule(
                         rule.id,
                         context={
-                            'entity': entity_name,
-                            'event': event,
-                            'record': record,
-                            'user_id': str(self.current_user.id),
-                            'tenant_id': str(self.current_user.tenant_id) if self.current_user.tenant_id else None
-                        }
+                            "entity": entity_name,
+                            "event": event,
+                            "record": record,
+                            "user_id": str(self.current_user.id),
+                            "tenant_id": str(self.current_user.tenant_id) if self.current_user.tenant_id else None,
+                        },
                     )
                 except Exception as rule_error:
                     # Log error but continue with other rules

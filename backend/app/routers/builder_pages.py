@@ -5,18 +5,17 @@ Handles CRUD operations for builder pages, versioning, and publishing.
 """
 
 import uuid
-from typing import List, Optional
 from datetime import datetime
-from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.orm import Session
-from sqlalchemy import and_, desc
-from pydantic import BaseModel, Field
+from typing import List, Optional
 
-from app.core.dependencies import get_db, get_current_user
-from app.core.scope import apply_tenant_scope
+from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel, Field
+from sqlalchemy import and_, desc
+from sqlalchemy.orm import Session
+
+from app.core.dependencies import get_current_user, get_db
 from app.models.builder_page import BuilderPage, BuilderPageVersion
 from app.models.user import User
-
 
 router = APIRouter()
 
@@ -24,6 +23,7 @@ router = APIRouter()
 # Pydantic models for request/response
 class PageCreate(BaseModel):
     """Schema for creating a new page."""
+
     name: str = Field(..., min_length=1, max_length=255)
     slug: str = Field(..., min_length=1, max_length=255)
     description: Optional[str] = None
@@ -44,6 +44,7 @@ class PageCreate(BaseModel):
 
 class PageUpdate(BaseModel):
     """Schema for updating a page."""
+
     name: Optional[str] = Field(None, min_length=1, max_length=255)
     slug: Optional[str] = Field(None, min_length=1, max_length=255)
     description: Optional[str] = None
@@ -64,6 +65,7 @@ class PageUpdate(BaseModel):
 
 class PagePublish(BaseModel):
     """Schema for publishing a page."""
+
     commit_message: Optional[str] = None
 
 
@@ -74,7 +76,7 @@ async def list_pages(
     module_name: Optional[str] = Query(None),
     published_only: bool = Query(False),
     skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=1000)
+    limit: int = Query(100, ge=1, le=1000),
 ):
     """
     List all builder pages with optional filtering.
@@ -103,22 +105,17 @@ async def list_pages(
 
 
 @router.get("/{page_id}", response_model=dict)
-async def get_page(
-    page_id: str,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
+async def get_page(page_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """
     Get a specific page by ID.
     """
     tenant_id = str(current_user.tenant_id)
 
-    page = db.query(BuilderPage).filter(
-        and_(
-            BuilderPage.id == page_id,
-            BuilderPage.tenant_id == tenant_id  # tenant_scope
-        )
-    ).first()
+    page = (
+        db.query(BuilderPage)
+        .filter(and_(BuilderPage.id == page_id, BuilderPage.tenant_id == tenant_id))  # tenant_scope
+        .first()
+    )
 
     if not page:
         raise HTTPException(status_code=404, detail="Page not found")
@@ -128,9 +125,7 @@ async def get_page(
 
 @router.post("/", response_model=dict, status_code=201)
 async def create_page(
-    page_data: PageCreate,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    page_data: PageCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
     """
     Create a new builder page.
@@ -139,32 +134,27 @@ async def create_page(
     user_id = str(current_user.id)
 
     # Check for duplicate slug
-    existing = db.query(BuilderPage).filter(
-        and_(
-            BuilderPage.tenant_id == tenant_id,  # tenant_scope
-            BuilderPage.slug == page_data.slug
-        )
-    ).first()
+    existing = (
+        db.query(BuilderPage)
+        .filter(and_(BuilderPage.tenant_id == tenant_id, BuilderPage.slug == page_data.slug))  # tenant_scope
+        .first()
+    )
     if existing:
         raise HTTPException(status_code=409, detail="Page with this slug already exists")
 
     # Check for duplicate route path
-    route_exists = db.query(BuilderPage).filter(
-        and_(
-            BuilderPage.tenant_id == tenant_id,  # tenant_scope
-            BuilderPage.route_path == page_data.route_path
+    route_exists = (
+        db.query(BuilderPage)
+        .filter(
+            and_(BuilderPage.tenant_id == tenant_id, BuilderPage.route_path == page_data.route_path)  # tenant_scope
         )
-    ).first()
+        .first()
+    )
     if route_exists:
         raise HTTPException(status_code=409, detail="Page with this route already exists")
 
     # Create page
-    page = BuilderPage(
-        id=str(uuid.uuid4()),
-        tenant_id=tenant_id,
-        created_by=user_id,
-        **page_data.dict()
-    )
+    page = BuilderPage(id=str(uuid.uuid4()), tenant_id=tenant_id, created_by=user_id, **page_data.dict())
 
     db.add(page)
     db.commit()
@@ -175,10 +165,7 @@ async def create_page(
 
 @router.put("/{page_id}", response_model=dict)
 async def update_page(
-    page_id: str,
-    page_data: PageUpdate,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    page_id: str, page_data: PageUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
     """
     Update an existing page.
@@ -187,25 +174,28 @@ async def update_page(
     user_id = str(current_user.id)
 
     # Get existing page
-    page = db.query(BuilderPage).filter(
-        and_(
-            BuilderPage.id == page_id,
-            BuilderPage.tenant_id == tenant_id  # tenant_scope
-        )
-    ).first()
+    page = (
+        db.query(BuilderPage)
+        .filter(and_(BuilderPage.id == page_id, BuilderPage.tenant_id == tenant_id))  # tenant_scope
+        .first()
+    )
 
     if not page:
         raise HTTPException(status_code=404, detail="Page not found")
 
     # Check for slug conflicts if slug is being changed
     if page_data.slug and page_data.slug != page.slug:
-        slug_exists = db.query(BuilderPage).filter(
-            and_(
-                BuilderPage.tenant_id == tenant_id,  # tenant_scope
-                BuilderPage.slug == page_data.slug,
-                BuilderPage.id != page_id
+        slug_exists = (
+            db.query(BuilderPage)
+            .filter(
+                and_(
+                    BuilderPage.tenant_id == tenant_id,  # tenant_scope
+                    BuilderPage.slug == page_data.slug,
+                    BuilderPage.id != page_id,
+                )
             )
-        ).first()
+            .first()
+        )
         if slug_exists:
             raise HTTPException(status_code=409, detail="Page with this slug already exists")
 
@@ -223,22 +213,17 @@ async def update_page(
 
 
 @router.delete("/{page_id}", status_code=204)
-async def delete_page(
-    page_id: str,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
+async def delete_page(page_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """
     Delete a page and all its versions.
     """
     tenant_id = str(current_user.tenant_id)
 
-    page = db.query(BuilderPage).filter(
-        and_(
-            BuilderPage.id == page_id,
-            BuilderPage.tenant_id == tenant_id  # tenant_scope
-        )
-    ).first()
+    page = (
+        db.query(BuilderPage)
+        .filter(and_(BuilderPage.id == page_id, BuilderPage.tenant_id == tenant_id))  # tenant_scope
+        .first()
+    )
 
     if not page:
         raise HTTPException(status_code=404, detail="Page not found")
@@ -254,7 +239,7 @@ async def publish_page(
     page_id: str,
     publish_data: PagePublish,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """
     Publish a page (creates a version snapshot).
@@ -263,20 +248,22 @@ async def publish_page(
     user_id = str(current_user.id)
 
     # Get page
-    page = db.query(BuilderPage).filter(
-        and_(
-            BuilderPage.id == page_id,
-            BuilderPage.tenant_id == tenant_id  # tenant_scope
-        )
-    ).first()
+    page = (
+        db.query(BuilderPage)
+        .filter(and_(BuilderPage.id == page_id, BuilderPage.tenant_id == tenant_id))  # tenant_scope
+        .first()
+    )
 
     if not page:
         raise HTTPException(status_code=404, detail="Page not found")
 
     # Get latest version number
-    latest_version = db.query(BuilderPageVersion).filter(
-        BuilderPageVersion.page_id == page_id
-    ).order_by(desc(BuilderPageVersion.version_number)).first()
+    latest_version = (
+        db.query(BuilderPageVersion)
+        .filter(BuilderPageVersion.page_id == page_id)
+        .order_by(desc(BuilderPageVersion.version_number))
+        .first()
+    )
 
     next_version_number = 1
     if latest_version:
@@ -292,7 +279,7 @@ async def publish_page(
         css_output=page.css_output,
         js_output=page.js_output,
         commit_message=publish_data.commit_message,
-        created_by=user_id
+        created_by=user_id,
     )
 
     db.add(version)
@@ -309,22 +296,17 @@ async def publish_page(
 
 
 @router.post("/{page_id}/unpublish", response_model=dict)
-async def unpublish_page(
-    page_id: str,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
+async def unpublish_page(page_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """
     Unpublish a page (keeps versions).
     """
     tenant_id = str(current_user.tenant_id)
 
-    page = db.query(BuilderPage).filter(
-        and_(
-            BuilderPage.id == page_id,
-            BuilderPage.tenant_id == tenant_id  # tenant_scope
-        )
-    ).first()
+    page = (
+        db.query(BuilderPage)
+        .filter(and_(BuilderPage.id == page_id, BuilderPage.tenant_id == tenant_id))  # tenant_scope
+        .first()
+    )
 
     if not page:
         raise HTTPException(status_code=404, detail="Page not found")
@@ -343,7 +325,7 @@ async def list_page_versions(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
     skip: int = Query(0, ge=0),
-    limit: int = Query(50, ge=1, le=100)
+    limit: int = Query(50, ge=1, le=100),
 ):
     """
     List all versions of a page.
@@ -351,30 +333,31 @@ async def list_page_versions(
     tenant_id = str(current_user.tenant_id)
 
     # Verify page exists and belongs to tenant
-    page = db.query(BuilderPage).filter(
-        and_(
-            BuilderPage.id == page_id,
-            BuilderPage.tenant_id == tenant_id  # tenant_scope
-        )
-    ).first()
+    page = (
+        db.query(BuilderPage)
+        .filter(and_(BuilderPage.id == page_id, BuilderPage.tenant_id == tenant_id))  # tenant_scope
+        .first()
+    )
 
     if not page:
         raise HTTPException(status_code=404, detail="Page not found")
 
     # Get versions
-    versions = db.query(BuilderPageVersion).filter(
-        BuilderPageVersion.page_id == page_id
-    ).order_by(desc(BuilderPageVersion.version_number)).offset(skip).limit(limit).all()
+    versions = (
+        db.query(BuilderPageVersion)
+        .filter(BuilderPageVersion.page_id == page_id)
+        .order_by(desc(BuilderPageVersion.version_number))
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
 
     return [version.to_dict() for version in versions]
 
 
 @router.get("/{page_id}/versions/{version_number}", response_model=dict)
 async def get_page_version(
-    page_id: str,
-    version_number: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    page_id: str, version_number: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
     """
     Get a specific version of a page.
@@ -382,23 +365,21 @@ async def get_page_version(
     tenant_id = str(current_user.tenant_id)
 
     # Verify page exists
-    page = db.query(BuilderPage).filter(
-        and_(
-            BuilderPage.id == page_id,
-            BuilderPage.tenant_id == tenant_id  # tenant_scope
-        )
-    ).first()
+    page = (
+        db.query(BuilderPage)
+        .filter(and_(BuilderPage.id == page_id, BuilderPage.tenant_id == tenant_id))  # tenant_scope
+        .first()
+    )
 
     if not page:
         raise HTTPException(status_code=404, detail="Page not found")
 
     # Get version
-    version = db.query(BuilderPageVersion).filter(
-        and_(
-            BuilderPageVersion.page_id == page_id,
-            BuilderPageVersion.version_number == version_number
-        )
-    ).first()
+    version = (
+        db.query(BuilderPageVersion)
+        .filter(and_(BuilderPageVersion.page_id == page_id, BuilderPageVersion.version_number == version_number))
+        .first()
+    )
 
     if not version:
         raise HTTPException(status_code=404, detail="Version not found")
@@ -408,10 +389,7 @@ async def get_page_version(
 
 @router.post("/{page_id}/restore/{version_number}", response_model=dict)
 async def restore_page_version(
-    page_id: str,
-    version_number: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    page_id: str, version_number: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
     """
     Restore a page to a previous version.
@@ -420,23 +398,21 @@ async def restore_page_version(
     user_id = str(current_user.id)
 
     # Get page
-    page = db.query(BuilderPage).filter(
-        and_(
-            BuilderPage.id == page_id,
-            BuilderPage.tenant_id == tenant_id  # tenant_scope
-        )
-    ).first()
+    page = (
+        db.query(BuilderPage)
+        .filter(and_(BuilderPage.id == page_id, BuilderPage.tenant_id == tenant_id))  # tenant_scope
+        .first()
+    )
 
     if not page:
         raise HTTPException(status_code=404, detail="Page not found")
 
     # Get version to restore
-    version = db.query(BuilderPageVersion).filter(
-        and_(
-            BuilderPageVersion.page_id == page_id,
-            BuilderPageVersion.version_number == version_number
-        )
-    ).first()
+    version = (
+        db.query(BuilderPageVersion)
+        .filter(and_(BuilderPageVersion.page_id == page_id, BuilderPageVersion.version_number == version_number))
+        .first()
+    )
 
     if not version:
         raise HTTPException(status_code=404, detail="Version not found")

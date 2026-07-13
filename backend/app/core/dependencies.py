@@ -13,10 +13,12 @@ security = HTTPBearer()
 
 import os as _os
 
+
 def _is_token_revoked_redis(jti: str) -> bool:
     """Check token blacklist in Redis. Returns False if Redis unavailable."""
     try:
         import redis as _redis
+
         _url = _os.environ.get("REDIS_URL", "")
         if not _url:
             return False
@@ -26,8 +28,6 @@ def _is_token_revoked_redis(jti: str) -> bool:
         return False
 
 
-
-
 def get_db():
     db = SessionLocal()
     try:
@@ -35,9 +35,9 @@ def get_db():
     finally:
         db.close()
 
+
 def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
-    db: Session = Depends(get_db)
+    credentials: HTTPAuthorizationCredentials = Depends(security), db: Session = Depends(get_db)
 ) -> User:
     """
     Extract and validate current user from JWT token.
@@ -80,10 +80,7 @@ def get_current_user(
     # Validate tenant_id from JWT matches user's tenant
     token_tenant_id = payload.get("tenant_id")
     if user.tenant_id and token_tenant_id and str(token_tenant_id) != str(user.tenant_id):
-        raise HTTPException(
-            status_code=401,
-            detail="Token tenant mismatch - please re-authenticate"
-        )
+        raise HTTPException(status_code=401, detail="Token tenant mismatch - please re-authenticate")
 
     return user
 
@@ -121,26 +118,25 @@ def verify_tenant_access(user: User, tenant_id: str) -> None:
         return  # Superusers can access any tenant
 
     if not user.tenant_id:
-        raise HTTPException(
-            status_code=403,
-            detail="User has no tenant assignment"
-        )
+        raise HTTPException(status_code=403, detail="User has no tenant assignment")
 
     if str(user.tenant_id) != str(tenant_id):
         raise HTTPException(
-            status_code=403,
-            detail="Access denied: You don't have permission to access this tenant's data"
+            status_code=403, detail="Access denied: You don't have permission to access this tenant's data"
         )
+
 
 def get_current_active_user(current_user: User = Depends(get_current_user)) -> User:
     if not current_user.is_active:
         raise HTTPException(status_code=400, detail="Inactive user")
     return current_user
 
+
 def require_superuser(current_user: User = Depends(get_current_user)) -> User:
     if not current_user.is_superuser:
         raise HTTPException(status_code=403, detail="Superuser required")
     return current_user
+
 
 def matches_permission(granted_codes, required_code: str) -> bool:
     """Return True if any granted permission code satisfies the required code.
@@ -157,14 +153,14 @@ def matches_permission(granted_codes, required_code: str) -> bool:
     """
     if required_code in granted_codes:
         return True
-    required_segments = required_code.split(':')
+    required_segments = required_code.split(":")
     for granted in granted_codes:
-        if '*' not in granted:
+        if "*" not in granted:
             continue
-        granted_segments = granted.split(':')
+        granted_segments = granted.split(":")
         if len(granted_segments) != len(required_segments):
             continue
-        if all(g == '*' or g == r for g, r in zip(granted_segments, required_segments)):
+        if all(g == "*" or g == r for g, r in zip(granted_segments, required_segments)):
             return True
     return False
 
@@ -183,19 +179,19 @@ def has_permission(permission: str):
     Returns:
         Function that validates the permission
     """
+
     def permission_checker(current_user: User = Depends(get_current_user)) -> User:
         if current_user.is_superuser:
             return current_user
 
-        user_permissions = current_user.get_permissions() if hasattr(current_user, 'get_permissions') else set()
+        user_permissions = current_user.get_permissions() if hasattr(current_user, "get_permissions") else set()
 
         if not matches_permission(user_permissions, permission):
-            raise HTTPException(
-                status_code=403,
-                detail=f"Permission '{permission}' required"
-            )
+            raise HTTPException(status_code=403, detail=f"Permission '{permission}' required")
         return current_user
+
     return permission_checker
+
 
 def has_any_permission(permissions: List[str]):
     """
@@ -209,19 +205,19 @@ def has_any_permission(permissions: List[str]):
     Returns:
         Function that validates user has at least one permission
     """
+
     def permission_checker(current_user: User = Depends(get_current_user)) -> User:
         if current_user.is_superuser:
             return current_user
 
-        user_permissions = current_user.get_permissions() if hasattr(current_user, 'get_permissions') else set()
+        user_permissions = current_user.get_permissions() if hasattr(current_user, "get_permissions") else set()
 
         if not any(matches_permission(user_permissions, perm) for perm in permissions):
-            raise HTTPException(
-                status_code=403,
-                detail=f"One of these permissions required: {', '.join(permissions)}"
-            )
+            raise HTTPException(status_code=403, detail=f"One of these permissions required: {', '.join(permissions)}")
         return current_user
+
     return permission_checker
+
 
 def has_role(role_code: str):
     """
@@ -236,20 +232,19 @@ def has_role(role_code: str):
     Returns:
         Function that validates the user has the role
     """
+
     def role_checker(current_user: User = Depends(get_current_user)) -> User:
         # Superusers have all roles
         if current_user.is_superuser:
             return current_user
 
         # Get user roles from RBAC system (via groups)
-        user_role_codes = current_user.get_roles() if hasattr(current_user, 'get_roles') else set()
+        user_role_codes = current_user.get_roles() if hasattr(current_user, "get_roles") else set()
 
         if role_code not in user_role_codes:
-            raise HTTPException(
-                status_code=403,
-                detail=f"Role '{role_code}' required"
-            )
+            raise HTTPException(status_code=403, detail=f"Role '{role_code}' required")
         return current_user
+
     return role_checker
 
 
@@ -264,14 +259,15 @@ def tenant_scoped_session(
 
     Story 22.3.2
     """
-    from app.core.tenant_listener import set_tenant_scope, clear_tenant_scope
+    from app.core.tenant_listener import clear_tenant_scope, set_tenant_scope
 
     if current_user.is_superuser:
-        set_tenant_scope(db, '__superuser__')
+        set_tenant_scope(db, "__superuser__")
     elif current_user.tenant_id:
         set_tenant_scope(db, str(current_user.tenant_id))
     else:
         from app.core.scope import TenantScopeMissingError
+
         raise TenantScopeMissingError("No tenant_id on authenticated user")
 
     try:

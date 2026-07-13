@@ -10,6 +10,7 @@ class AuditLog(Base):
     Tracks who did what, when, where, and the result.
     Provides complete audit trail for compliance and troubleshooting.
     """
+
     __tablename__ = "audit_logs"
 
     # Primary key
@@ -54,11 +55,11 @@ class AuditLog(Base):
 
     # Composite indexes for common queries
     __table_args__ = (
-        Index('ix_audit_user_action', 'user_id', 'action'),
-        Index('ix_audit_entity', 'entity_type', 'entity_id'),
-        Index('ix_audit_tenant_created', 'tenant_id', 'created_at'),
-        Index('ix_audit_company_created', 'company_id', 'created_at'),
-        Index('ix_audit_tenant_company', 'tenant_id', 'company_id'),
+        Index("ix_audit_user_action", "user_id", "action"),
+        Index("ix_audit_entity", "entity_type", "entity_id"),
+        Index("ix_audit_tenant_created", "tenant_id", "created_at"),
+        Index("ix_audit_company_created", "company_id", "created_at"),
+        Index("ix_audit_tenant_company", "tenant_id", "company_id"),
     )
 
     def __repr__(self):

@@ -14,13 +14,22 @@ Models:
 """
 
 from sqlalchemy import (
-    Column, String, Integer, Boolean, Text, ForeignKey, DateTime,
-    UniqueConstraint, CheckConstraint, Index, JSON
+    JSON,
+    Boolean,
+    CheckConstraint,
+    Column,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
-from app.models.base import Base, GUID, generate_uuid
+from app.models.base import GUID, Base, generate_uuid
 
 
 class Module(Base):
@@ -36,7 +45,8 @@ class Module(Base):
     - 'nocode': User-designed modules via the nocode platform
     - 'hybrid': Code modules extended with nocode components
     """
-    __tablename__ = 'modules'
+
+    __tablename__ = "modules"
 
     # Identity
     id = Column(GUID, primary_key=True, default=generate_uuid)
@@ -45,10 +55,10 @@ class Module(Base):
     description = Column(Text)
 
     # Module type
-    module_type = Column(String(20), nullable=False, default='nocode', index=True)  # code, nocode, hybrid
+    module_type = Column(String(20), nullable=False, default="nocode", index=True)  # code, nocode, hybrid
 
     # Versioning (Semantic Versioning: MAJOR.MINOR.PATCH)
-    version = Column(String(50), nullable=False, default='1.0.0')
+    version = Column(String(50), nullable=False, default="1.0.0")
     major_version = Column(Integer, nullable=False, default=1)
     minor_version = Column(Integer, nullable=False, default=0)
     patch_version = Column(Integer, nullable=False, default=0)
@@ -66,7 +76,7 @@ class Module(Base):
     license = Column(String(100))
 
     # Status
-    status = Column(String(50), nullable=False, default='draft', index=True)
+    status = Column(String(50), nullable=False, default="draft", index=True)
     # code modules: available, stable, beta, deprecated
     # nocode modules: draft, active, deprecated, archived
 
@@ -80,11 +90,11 @@ class Module(Base):
     visibility = Column(String(20), nullable=False, default="all_tenants", index=True)
 
     # Organization (NULL = platform-level)
-    tenant_id = Column(GUID, ForeignKey('tenants.id', ondelete='CASCADE'), nullable=True, index=True)
+    tenant_id = Column(GUID, ForeignKey("tenants.id", ondelete="CASCADE"), nullable=True, index=True)
 
     # Installation tracking (for code modules)
     installed_at = Column(DateTime)
-    installed_by_user_id = Column(GUID, ForeignKey('users.id', ondelete='SET NULL'))
+    installed_by_user_id = Column(GUID, ForeignKey("users.id", ondelete="SET NULL"))
 
     # Configuration & Manifest
     manifest = Column(JSON)  # Full manifest data (code modules)
@@ -111,16 +121,18 @@ class Module(Base):
     support_email = Column(String(255))
 
     # Audit
-    created_by = Column(GUID, ForeignKey('users.id'))
+    created_by = Column(GUID, ForeignKey("users.id"))
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_by = Column(GUID, ForeignKey('users.id'))
+    updated_by = Column(GUID, ForeignKey("users.id"))
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     published_at = Column(DateTime(timezone=True))
-    published_by = Column(GUID, ForeignKey('users.id'))
+    published_by = Column(GUID, ForeignKey("users.id"))
 
     # Sub-module hierarchy (B1 design)
-    parent_module_id = Column(GUID, ForeignKey('modules.id', ondelete='RESTRICT'), nullable=True)
-    parent_module = relationship('Module', foreign_keys=[parent_module_id], remote_side='Module.id', backref='sub_modules')
+    parent_module_id = Column(GUID, ForeignKey("modules.id", ondelete="RESTRICT"), nullable=True)
+    parent_module = relationship(
+        "Module", foreign_keys=[parent_module_id], remote_side="Module.id", backref="sub_modules"
+    )
 
     # Relationships
     tenant = relationship("Tenant", foreign_keys=[tenant_id], backref="modules")
@@ -129,63 +141,46 @@ class Module(Base):
     publisher = relationship("User", foreign_keys=[published_by])
     installed_by = relationship("User", foreign_keys=[installed_by_user_id])
 
-    activations = relationship(
-        "ModuleActivation",
-        back_populates="module",
-        cascade="all, delete-orphan"
-    )
+    activations = relationship("ModuleActivation", back_populates="module", cascade="all, delete-orphan")
 
     dependencies = relationship(
         "ModuleDependency",
         foreign_keys="[ModuleDependency.module_id]",
         back_populates="module",
-        cascade="all, delete-orphan"
+        cascade="all, delete-orphan",
     )
 
     depended_by = relationship(
-        "ModuleDependency",
-        foreign_keys="[ModuleDependency.depends_on_module_id]",
-        back_populates="depends_on_module"
+        "ModuleDependency", foreign_keys="[ModuleDependency.depends_on_module_id]", back_populates="depends_on_module"
     )
 
     versions = relationship(
         "ModuleVersion",
         back_populates="module",
         cascade="all, delete-orphan",
-        order_by="desc(ModuleVersion.version_number)"
+        order_by="desc(ModuleVersion.version_number)",
     )
 
-    services = relationship(
-        "ModuleService",
-        back_populates="module",
-        cascade="all, delete-orphan"
-    )
+    services = relationship("ModuleService", back_populates="module", cascade="all, delete-orphan")
 
     # Constraints
     __table_args__ = (
-        CheckConstraint('id != parent_module_id', name='no_self_parent'),
-        CheckConstraint(
-            "module_type IN ('code', 'nocode', 'hybrid')",
-            name='valid_module_type'
-        ),
+        CheckConstraint("id != parent_module_id", name="no_self_parent"),
+        CheckConstraint("module_type IN ('code', 'nocode', 'hybrid')", name="valid_module_type"),
         CheckConstraint(
             "install_status IN ('in_progress', 'ready', 'failed', 'deactivation_pending')",
-            name='ck_modules_install_status'
+            name="ck_modules_install_status",
         ),
-        CheckConstraint(
-            "visibility IN ('all_tenants', 'whitelist', 'hidden')",
-            name='ck_modules_visibility'
-        ),
+        CheckConstraint("visibility IN ('all_tenants', 'whitelist', 'hidden')", name="ck_modules_visibility"),
         # [sec-review-23 H-2] Restrict module name to safe characters to prevent
         # path traversal / shell injection when name is used in filesystem operations.
-        CheckConstraint(
-            r"name ~ '^[a-zA-Z0-9_-]+$'",
-            name='ck_modules_name_safe'
-        ),
+        CheckConstraint(r"name ~ '^[a-zA-Z0-9_-]+$'", name="ck_modules_name_safe"),
     )
 
     def __repr__(self):
-        return f"<Module(name='{self.name}', type='{self.module_type}', version='{self.version}', status='{self.status}')>"
+        return (
+            f"<Module(name='{self.name}', type='{self.module_type}', version='{self.version}', status='{self.status}')>"
+        )
 
 
 class ModuleActivation(Base):
@@ -201,20 +196,21 @@ class ModuleActivation(Base):
     Replaces the old TenantModule and CompanyModule tables with a single
     flexible activation model that supports any organizational scope.
     """
-    __tablename__ = 'module_activations'
+
+    __tablename__ = "module_activations"
     __tenant_scoped__ = True
 
     # Primary key
     id = Column(GUID, primary_key=True, default=generate_uuid)
 
     # Module reference
-    module_id = Column(GUID, ForeignKey('modules.id', ondelete='CASCADE'), nullable=False, index=True)
+    module_id = Column(GUID, ForeignKey("modules.id", ondelete="CASCADE"), nullable=False, index=True)
 
     # Organizational scope (at least tenant_id is required)
-    tenant_id = Column(GUID, ForeignKey('tenants.id', ondelete='CASCADE'), nullable=False, index=True)
-    company_id = Column(GUID, ForeignKey('companies.id', ondelete='CASCADE'), nullable=True, index=True)
-    branch_id = Column(GUID, ForeignKey('branches.id', ondelete='CASCADE'), nullable=True, index=True)
-    department_id = Column(GUID, ForeignKey('departments.id', ondelete='CASCADE'), nullable=True, index=True)
+    tenant_id = Column(GUID, ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False, index=True)
+    company_id = Column(GUID, ForeignKey("companies.id", ondelete="CASCADE"), nullable=True, index=True)
+    branch_id = Column(GUID, ForeignKey("branches.id", ondelete="CASCADE"), nullable=True, index=True)
+    department_id = Column(GUID, ForeignKey("departments.id", ondelete="CASCADE"), nullable=True, index=True)
 
     # Status
     is_enabled = Column(Boolean, default=False, nullable=False, index=True)
@@ -229,9 +225,9 @@ class ModuleActivation(Base):
 
     # Activation tracking
     enabled_at = Column(DateTime)
-    enabled_by_user_id = Column(GUID, ForeignKey('users.id', ondelete='SET NULL'))
+    enabled_by_user_id = Column(GUID, ForeignKey("users.id", ondelete="SET NULL"))
     disabled_at = Column(DateTime)
-    disabled_by_user_id = Column(GUID, ForeignKey('users.id', ondelete='SET NULL'))
+    disabled_by_user_id = Column(GUID, ForeignKey("users.id", ondelete="SET NULL"))
 
     # Usage tracking
     usage_count = Column(JSON)  # Track usage metrics
@@ -254,24 +250,23 @@ class ModuleActivation(Base):
     __table_args__ = (
         # Unique activation per scope level
         UniqueConstraint(
-            'module_id', 'tenant_id', 'company_id', 'branch_id', 'department_id',
-            name='unique_module_activation_scope'
+            "module_id", "tenant_id", "company_id", "branch_id", "department_id", name="unique_module_activation_scope"
         ),
-        Index('idx_module_activations_tenant', 'tenant_id'),
-        Index('idx_module_activations_module', 'module_id'),
-        Index('idx_module_activations_company', 'company_id'),
+        Index("idx_module_activations_tenant", "tenant_id"),
+        Index("idx_module_activations_module", "module_id"),
+        Index("idx_module_activations_company", "company_id"),
     )
 
     @property
     def scope_level(self) -> str:
         """Return the most specific scope level of this activation."""
         if self.department_id:
-            return 'department'
+            return "department"
         if self.branch_id:
-            return 'branch'
+            return "branch"
         if self.company_id:
-            return 'company'
-        return 'tenant'
+            return "company"
+        return "tenant"
 
     def __repr__(self):
         return f"<ModuleActivation(module_id={self.module_id}, tenant_id={self.tenant_id}, scope={self.scope_level}, enabled={self.is_enabled})>"
@@ -295,27 +290,18 @@ class ModuleDependency(Base):
     Defines relationships between modules with version constraints.
     Supports required, optional, and conflict declarations.
     """
-    __tablename__ = 'module_dependencies'
+
+    __tablename__ = "module_dependencies"
 
     # Identity
     id = Column(GUID, primary_key=True, default=generate_uuid)
 
     # Relationship
-    module_id = Column(
-        GUID,
-        ForeignKey('modules.id', ondelete='CASCADE'),
-        nullable=False,
-        index=True
-    )
-    depends_on_module_id = Column(
-        GUID,
-        ForeignKey('modules.id', ondelete='RESTRICT'),
-        nullable=False,
-        index=True
-    )
+    module_id = Column(GUID, ForeignKey("modules.id", ondelete="CASCADE"), nullable=False, index=True)
+    depends_on_module_id = Column(GUID, ForeignKey("modules.id", ondelete="RESTRICT"), nullable=False, index=True)
 
     # Dependency type
-    dependency_type = Column(String(20), nullable=False, default='required')
+    dependency_type = Column(String(20), nullable=False, default="required")
 
     # Version constraints (Semantic Versioning)
     min_version = Column(String(20))  # Minimum version (inclusive)
@@ -327,34 +313,20 @@ class ModuleDependency(Base):
 
     # Audit
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-    created_by = Column(GUID, ForeignKey('users.id'))
+    created_by = Column(GUID, ForeignKey("users.id"))
 
     # Relationships
-    module = relationship(
-        "Module",
-        foreign_keys=[module_id],
-        back_populates="dependencies"
-    )
-    depends_on_module = relationship(
-        "Module",
-        foreign_keys=[depends_on_module_id],
-        back_populates="depended_by"
-    )
+    module = relationship("Module", foreign_keys=[module_id], back_populates="dependencies")
+    depends_on_module = relationship("Module", foreign_keys=[depends_on_module_id], back_populates="depended_by")
     creator = relationship("User", foreign_keys=[created_by])
 
     # Constraints
     __table_args__ = (
-        CheckConstraint(
-            "dependency_type IN ('required', 'optional', 'conflicts')",
-            name='valid_dependency_type'
-        ),
-        CheckConstraint(
-            "module_id != depends_on_module_id",
-            name='no_self_dependency'
-        ),
-        UniqueConstraint('module_id', 'depends_on_module_id', name='unique_module_dependency'),
-        Index('idx_module_dependencies_module', 'module_id'),
-        Index('idx_module_dependencies_depends_on', 'depends_on_module_id'),
+        CheckConstraint("dependency_type IN ('required', 'optional', 'conflicts')", name="valid_dependency_type"),
+        CheckConstraint("module_id != depends_on_module_id", name="no_self_dependency"),
+        UniqueConstraint("module_id", "depends_on_module_id", name="unique_module_dependency"),
+        Index("idx_module_dependencies_module", "module_id"),
+        Index("idx_module_dependencies_depends_on", "depends_on_module_id"),
     )
 
     def __repr__(self):
@@ -368,18 +340,14 @@ class ModuleVersion(Base):
     Tracks all versions of a module with complete snapshots.
     Enables rollback and version comparison.
     """
-    __tablename__ = 'module_versions'
+
+    __tablename__ = "module_versions"
 
     # Identity
     id = Column(GUID, primary_key=True, default=generate_uuid)
 
     # Module reference
-    module_id = Column(
-        GUID,
-        ForeignKey('modules.id', ondelete='CASCADE'),
-        nullable=False,
-        index=True
-    )
+    module_id = Column(GUID, ForeignKey("modules.id", ondelete="CASCADE"), nullable=False, index=True)
 
     # Version info
     version = Column(String(20), nullable=False)
@@ -402,7 +370,7 @@ class ModuleVersion(Base):
 
     # Audit
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-    created_by = Column(GUID, ForeignKey('users.id'))
+    created_by = Column(GUID, ForeignKey("users.id"))
 
     # Relationships
     module = relationship("Module", back_populates="versions")
@@ -410,15 +378,14 @@ class ModuleVersion(Base):
 
     # Constraints
     __table_args__ = (
-        CheckConstraint(
-            "change_type IN ('major', 'minor', 'patch', 'hotfix')",
-            name='valid_change_type'
-        ),
-        UniqueConstraint('module_id', 'version', name='unique_module_version'),
-        Index('idx_module_versions_module', 'module_id'),
-        Index('idx_module_versions_current', 'module_id', 'is_current'),
-        Index('idx_module_versions_number', 'module_id', 'version_number'),
+        CheckConstraint("change_type IN ('major', 'minor', 'patch', 'hotfix')", name="valid_change_type"),
+        UniqueConstraint("module_id", "version", name="unique_module_version"),
+        Index("idx_module_versions_module", "module_id"),
+        Index("idx_module_versions_current", "module_id", "is_current"),
+        Index("idx_module_versions_number", "module_id", "version_number"),
     )
 
     def __repr__(self):
-        return f"<ModuleVersion(module_id='{self.module_id}', version='{self.version}', change_type='{self.change_type}')>"
+        return (
+            f"<ModuleVersion(module_id='{self.module_id}', version='{self.version}', change_type='{self.change_type}')>"
+        )

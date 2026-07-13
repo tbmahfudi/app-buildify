@@ -1,15 +1,18 @@
 """
 Dashboard schemas for request/response validation.
 """
-from pydantic import BaseModel, Field
-from typing import Optional, List, Dict, Any
+
 from datetime import datetime
 from enum import Enum
+from typing import Any, Dict, List, Optional
 from uuid import UUID
+
+from pydantic import BaseModel, Field
 
 
 class DashboardLayout(str, Enum):
     """Dashboard layout types."""
+
     GRID = "grid"
     FREEFORM = "freeform"
     RESPONSIVE = "responsive"
@@ -17,6 +20,7 @@ class DashboardLayout(str, Enum):
 
 class WidgetType(str, Enum):
     """Widget types."""
+
     REPORT_TABLE = "report_table"
     CHART = "chart"
     KPI_CARD = "kpi_card"
@@ -29,6 +33,7 @@ class WidgetType(str, Enum):
 
 class ChartType(str, Enum):
     """Chart types."""
+
     BAR = "bar"
     LINE = "line"
     PIE = "pie"
@@ -42,6 +47,7 @@ class ChartType(str, Enum):
 
 class RefreshInterval(str, Enum):
     """Refresh intervals."""
+
     NONE = "none"
     THIRTY_SECONDS = "30s"
     ONE_MINUTE = "1m"
@@ -53,8 +59,10 @@ class RefreshInterval(str, Enum):
 
 # Widget Schemas
 
+
 class WidgetPosition(BaseModel):
     """Widget position in grid layout."""
+
     x: int = Field(..., description="X position in grid")
     y: int = Field(..., description="Y position in grid")
     w: int = Field(..., description="Width in grid units")
@@ -63,6 +71,7 @@ class WidgetPosition(BaseModel):
 
 class ChartConfig(BaseModel):
     """Chart configuration for chart widgets."""
+
     chart_type: ChartType
     x_axis: str = Field(..., description="X-axis field")
     y_axis: List[str] = Field(..., description="Y-axis fields")
@@ -75,6 +84,7 @@ class ChartConfig(BaseModel):
 
 class KpiCardConfig(BaseModel):
     """KPI card configuration."""
+
     value_field: str = Field(..., description="Field to display as main value")
     label: str = Field(..., description="KPI label")
     format: Optional[str] = Field(None, description="Number format (e.g., currency, percentage)")
@@ -87,18 +97,21 @@ class KpiCardConfig(BaseModel):
 
 class TextWidgetConfig(BaseModel):
     """Text widget configuration."""
+
     content: str = Field(..., description="HTML or markdown content")
     content_type: str = Field("html", description="html or markdown")
 
 
 class IframeWidgetConfig(BaseModel):
     """Iframe widget configuration."""
+
     url: str = Field(..., description="URL to embed")
     allow_fullscreen: bool = True
 
 
 class WidgetDataSource(BaseModel):
     """Widget data source configuration."""
+
     type: str = Field(..., description="report, query, or api")
     report_id: Optional[UUID] = None
     query: Optional[str] = None
@@ -108,6 +121,7 @@ class WidgetDataSource(BaseModel):
 
 class DashboardWidgetBase(BaseModel):
     """Base dashboard widget schema."""
+
     title: str = Field(..., min_length=1, max_length=255)
     description: Optional[str] = None
     widget_type: WidgetType
@@ -127,11 +141,13 @@ class DashboardWidgetBase(BaseModel):
 
 class DashboardWidgetCreate(DashboardWidgetBase):
     """Create dashboard widget schema."""
+
     page_id: UUID
 
 
 class DashboardWidgetUpdate(BaseModel):
     """Update dashboard widget schema."""
+
     title: Optional[str] = Field(None, min_length=1, max_length=255)
     description: Optional[str] = None
     widget_type: Optional[WidgetType] = None
@@ -151,6 +167,7 @@ class DashboardWidgetUpdate(BaseModel):
 
 class DashboardWidgetResponse(DashboardWidgetBase):
     """Dashboard widget response schema."""
+
     id: UUID
     page_id: UUID
     tenant_id: UUID
@@ -163,8 +180,10 @@ class DashboardWidgetResponse(DashboardWidgetBase):
 
 # Page Schemas
 
+
 class LayoutConfig(BaseModel):
     """Page layout configuration."""
+
     columns: int = Field(12, description="Number of grid columns")
     row_height: int = Field(50, description="Height of each row in pixels")
     margin: List[int] = Field([10, 10], description="Margin between widgets [x, y]")
@@ -173,6 +192,7 @@ class LayoutConfig(BaseModel):
 
 class DashboardPageBase(BaseModel):
     """Base dashboard page schema."""
+
     name: str = Field(..., min_length=1, max_length=255)
     slug: Optional[str] = Field(None, max_length=100)
     description: Optional[str] = None
@@ -184,11 +204,13 @@ class DashboardPageBase(BaseModel):
 
 class DashboardPageCreate(DashboardPageBase):
     """Create dashboard page schema."""
+
     dashboard_id: UUID
 
 
 class DashboardPageUpdate(BaseModel):
     """Update dashboard page schema."""
+
     name: Optional[str] = Field(None, min_length=1, max_length=255)
     slug: Optional[str] = None
     description: Optional[str] = None
@@ -200,6 +222,7 @@ class DashboardPageUpdate(BaseModel):
 
 class DashboardPageResponse(DashboardPageBase):
     """Dashboard page response schema."""
+
     id: UUID
     dashboard_id: UUID
     tenant_id: UUID
@@ -213,8 +236,10 @@ class DashboardPageResponse(DashboardPageBase):
 
 # Dashboard Schemas
 
+
 class GlobalParameter(BaseModel):
     """Global dashboard parameter."""
+
     name: str
     label: str
     parameter_type: str
@@ -224,6 +249,7 @@ class GlobalParameter(BaseModel):
 
 class DashboardBase(BaseModel):
     """Base dashboard schema."""
+
     name: str = Field(..., min_length=1, max_length=255)
     description: Optional[str] = None
     category: Optional[str] = None
@@ -243,11 +269,11 @@ class DashboardBase(BaseModel):
 
 class DashboardCreate(DashboardBase):
     """Create dashboard schema."""
-    pass
 
 
 class DashboardUpdate(BaseModel):
     """Update dashboard schema."""
+
     name: Optional[str] = Field(None, min_length=1, max_length=255)
     description: Optional[str] = None
     category: Optional[str] = None
@@ -268,6 +294,7 @@ class DashboardUpdate(BaseModel):
 
 class DashboardResponse(DashboardBase):
     """Dashboard response schema."""
+
     id: UUID
     tenant_id: UUID
     created_by: UUID
@@ -283,6 +310,7 @@ class DashboardResponse(DashboardBase):
 
 class DashboardSummary(BaseModel):
     """Dashboard summary (without pages/widgets for listing)."""
+
     id: UUID
     name: str
     description: Optional[str]
@@ -301,8 +329,10 @@ class DashboardSummary(BaseModel):
 
 # Widget Data Schemas
 
+
 class WidgetDataRequest(BaseModel):
     """Request to get widget data."""
+
     widget_id: UUID
     parameters: Optional[Dict[str, Any]] = None
     use_cache: bool = True
@@ -310,6 +340,7 @@ class WidgetDataRequest(BaseModel):
 
 class WidgetDataResponse(BaseModel):
     """Widget data response."""
+
     widget_id: UUID
     data: Any
     metadata: Optional[Dict[str, Any]] = None
@@ -319,8 +350,10 @@ class WidgetDataResponse(BaseModel):
 
 # Dashboard Share Schemas
 
+
 class DashboardShareCreate(BaseModel):
     """Create dashboard share."""
+
     dashboard_id: UUID
     shared_with_user_id: Optional[UUID] = None
     shared_with_role_id: Optional[int] = None  # integer FK — legacy DB column
@@ -332,6 +365,7 @@ class DashboardShareCreate(BaseModel):
 
 class DashboardShareResponse(BaseModel):
     """Dashboard share response."""
+
     id: UUID
     dashboard_id: UUID
     shared_with_user_id: Optional[UUID]
@@ -350,8 +384,10 @@ class DashboardShareResponse(BaseModel):
 
 # Dashboard Snapshot Schemas
 
+
 class DashboardSnapshotCreate(BaseModel):
     """Create dashboard snapshot."""
+
     dashboard_id: UUID
     name: str
     description: Optional[str] = None
@@ -360,6 +396,7 @@ class DashboardSnapshotCreate(BaseModel):
 
 class DashboardSnapshotResponse(BaseModel):
     """Dashboard snapshot response."""
+
     id: UUID
     dashboard_id: UUID
     name: str
@@ -375,12 +412,15 @@ class DashboardSnapshotResponse(BaseModel):
 
 # Bulk Operations
 
+
 class BulkWidgetUpdateRequest(BaseModel):
     """Bulk update widgets (for repositioning)."""
+
     updates: List[Dict[str, Any]] = Field(..., description="List of {widget_id, position, order}")
 
 
 class DashboardCloneRequest(BaseModel):
     """Clone dashboard request."""
+
     name: str
     include_data: bool = False

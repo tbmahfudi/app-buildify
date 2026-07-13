@@ -5,11 +5,11 @@ This module provides a thread-safe cache for dynamically generated SQLAlchemy mo
 Models are cached per entity per tenant to avoid regenerating them on every request.
 """
 
-from typing import Type, Optional, Dict
-from threading import RLock
 import hashlib
 import json
 from datetime import datetime, timedelta
+from threading import RLock
+from typing import Dict, Optional, Type
 
 
 class ModelCache:
@@ -34,12 +34,7 @@ class ModelCache:
         self._lock = RLock()
         self._ttl = timedelta(minutes=ttl_minutes)
 
-    def get(
-        self,
-        tenant_id: str,
-        entity_name: str,
-        entity_def_hash: str
-    ) -> Optional[Type]:
+    def get(self, tenant_id: str, entity_name: str, entity_def_hash: str) -> Optional[Type]:
         """
         Get cached model if exists and not expired
 
@@ -64,15 +59,9 @@ class ModelCache:
                 del self._cache[cache_key]
                 return None
 
-            return entry['model']
+            return entry["model"]
 
-    def set(
-        self,
-        tenant_id: str,
-        entity_name: str,
-        entity_def_hash: str,
-        model: Type
-    ):
+    def set(self, tenant_id: str, entity_name: str, entity_def_hash: str, model: Type):
         """
         Cache a model
 
@@ -86,11 +75,11 @@ class ModelCache:
 
         with self._lock:
             self._cache[cache_key] = {
-                'model': model,
-                'created_at': datetime.utcnow(),
-                'tenant_id': tenant_id,
-                'entity_name': entity_name,
-                'hash': entity_def_hash
+                "model": model,
+                "created_at": datetime.utcnow(),
+                "tenant_id": tenant_id,
+                "entity_name": entity_name,
+                "hash": entity_def_hash,
             }
 
     def invalidate(self, tenant_id: Optional[str] = None, entity_name: Optional[str] = None):
@@ -112,10 +101,10 @@ class ModelCache:
             for key, entry in self._cache.items():
                 should_delete = True
 
-                if tenant_id and entry['tenant_id'] != tenant_id:
+                if tenant_id and entry["tenant_id"] != tenant_id:
                     should_delete = False
 
-                if entity_name and entry['entity_name'] != entity_name:
+                if entity_name and entry["entity_name"] != entity_name:
                     should_delete = False
 
                 if should_delete:
@@ -144,17 +133,17 @@ class ModelCache:
             # Group by tenant
             tenants = {}
             for entry in self._cache.values():
-                tenant_id = entry['tenant_id']
+                tenant_id = entry["tenant_id"]
                 if tenant_id not in tenants:
                     tenants[tenant_id] = 0
                 tenants[tenant_id] += 1
 
             return {
-                'total_entries': total,
-                'active_entries': total - expired,
-                'expired_entries': expired,
-                'tenants': tenants,
-                'ttl_minutes': self._ttl.total_seconds() / 60
+                "total_entries": total,
+                "active_entries": total - expired,
+                "expired_entries": expired,
+                "tenants": tenants,
+                "ttl_minutes": self._ttl.total_seconds() / 60,
             }
 
     def _build_key(self, tenant_id: str, entity_name: str, entity_def_hash: str) -> str:
@@ -163,7 +152,7 @@ class ModelCache:
 
     def _is_expired(self, entry: dict) -> bool:
         """Check if cache entry is expired"""
-        age = datetime.utcnow() - entry['created_at']
+        age = datetime.utcnow() - entry["created_at"]
         return age > self._ttl
 
     @staticmethod
@@ -181,31 +170,31 @@ class ModelCache:
         """
         # Extract only fields that affect model structure
         relevant_fields = {
-            'name': entity_def.get('name'),
-            'table_name': entity_def.get('table_name'),
-            'schema_name': entity_def.get('schema_name'),
-            'fields': [
+            "name": entity_def.get("name"),
+            "table_name": entity_def.get("table_name"),
+            "schema_name": entity_def.get("schema_name"),
+            "fields": [
                 {
-                    'name': f.get('name'),
-                    'field_type': f.get('field_type'),
-                    'db_column_name': f.get('db_column_name'),
-                    'is_required': f.get('is_required'),
-                    'is_primary_key': f.get('is_primary_key'),
-                    'is_unique': f.get('is_unique'),
-                    'max_length': f.get('max_length'),
-                    'precision': f.get('precision'),
-                    'scale': f.get('scale'),
+                    "name": f.get("name"),
+                    "field_type": f.get("field_type"),
+                    "db_column_name": f.get("db_column_name"),
+                    "is_required": f.get("is_required"),
+                    "is_primary_key": f.get("is_primary_key"),
+                    "is_unique": f.get("is_unique"),
+                    "max_length": f.get("max_length"),
+                    "precision": f.get("precision"),
+                    "scale": f.get("scale"),
                 }
-                for f in entity_def.get('fields', [])
+                for f in entity_def.get("fields", [])
             ],
-            'relationships': [
+            "relationships": [
                 {
-                    'name': r.get('name'),
-                    'type': r.get('relationship_type'),
-                    'target_entity': r.get('target_entity'),
+                    "name": r.get("name"),
+                    "type": r.get("relationship_type"),
+                    "target_entity": r.get("target_entity"),
                 }
-                for r in entity_def.get('relationships', [])
-            ]
+                for r in entity_def.get("relationships", [])
+            ],
         }
 
         # Sort to ensure consistent hashing

@@ -8,13 +8,14 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional, Union
 from uuid import UUID
 
-from pydantic import BaseModel, Field, ConfigDict, field_validator
-
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 # ==================== Field Definition Schemas ====================
 
+
 class FieldDefinitionBase(BaseModel):
     """Base schema for field definitions"""
+
     name: str = Field(..., max_length=100, description="Technical field name (snake_case)")
     label: str = Field(..., max_length=200, description="Display label")
     description: Optional[str] = None
@@ -29,7 +30,9 @@ class FieldDefinitionBase(BaseModel):
     min_length: Optional[int] = None
     max_value: Optional[float] = None
     min_value: Optional[float] = None
-    precision: Optional[int] = Field(None, description="Total number of digits for DECIMAL/NUMERIC (e.g., 5 in DECIMAL(5,2))")
+    precision: Optional[int] = Field(
+        None, description="Total number of digits for DECIMAL/NUMERIC (e.g., 5 in DECIMAL(5,2))"
+    )
     decimal_places: Optional[int] = Field(None, description="Number of decimal places/scale (e.g., 2 in DECIMAL(5,2))")
     default_value: Optional[str] = None
     default_expression: Optional[str] = None
@@ -45,13 +48,22 @@ class FieldDefinitionBase(BaseModel):
     prefix: Optional[str] = None
     suffix: Optional[str] = None
     reference_entity_id: Optional[UUID] = None
-    reference_table_name: Optional[str] = Field(None, description="Direct table name for system tables (users, tenants, etc.)")
-    reference_field: Optional[str] = Field(None, description="Target column in referenced table (e.g., 'id', 'code', 'username') - used in REFERENCES clause")
-    display_field: Optional[str] = Field(None, description="Column to display in UI dropdowns (e.g., 'name', 'full_name', 'email')")
+    reference_table_name: Optional[str] = Field(
+        None, description="Direct table name for system tables (users, tenants, etc.)"
+    )
+    reference_field: Optional[str] = Field(
+        None,
+        description="Target column in referenced table (e.g., 'id', 'code', 'username') - used in REFERENCES clause",
+    )
+    display_field: Optional[str] = Field(
+        None, description="Column to display in UI dropdowns (e.g., 'name', 'full_name', 'email')"
+    )
     relationship_type: Optional[str] = None
     on_delete: str = Field("NO ACTION", description="FK constraint on delete: CASCADE, SET NULL, RESTRICT, NO ACTION")
     on_update: str = Field("NO ACTION", description="FK constraint on update: CASCADE, SET NULL, RESTRICT, NO ACTION")
-    lookup_display_template: Optional[str] = Field(None, description="Display template for lookup (e.g., '{name} ({email})')")
+    lookup_display_template: Optional[str] = Field(
+        None, description="Display template for lookup (e.g., '{name} ({email})')"
+    )
     lookup_filter_field: Optional[str] = Field(None, description="Field to filter lookup by")
     lookup_search_fields: Optional[List[str]] = Field(None, description="Fields to search in autocomplete")
     lookup_allow_create: bool = Field(False, description="Allow quick-create from lookup")
@@ -66,32 +78,38 @@ class FieldDefinitionBase(BaseModel):
     meta_data: Dict[str, Any] = Field(default_factory=dict)
 
     @field_validator(
-        'is_required', 'is_unique', 'is_indexed', 'is_nullable',
-        'is_readonly', 'is_system', 'is_calculated', 'lookup_allow_create',
-        mode='before',
+        "is_required",
+        "is_unique",
+        "is_indexed",
+        "is_nullable",
+        "is_readonly",
+        "is_system",
+        "is_calculated",
+        "lookup_allow_create",
+        mode="before",
     )
     @classmethod
     def coerce_none_to_false(cls, v):
         return v if v is not None else False
 
-    @field_validator('validation_rules', mode='before')
+    @field_validator("validation_rules", mode="before")
     @classmethod
     def coerce_none_to_list(cls, v):
         return v if v is not None else []
 
-    @field_validator('display_order', 'lookup_recent_count', mode='before')
+    @field_validator("display_order", "lookup_recent_count", mode="before")
     @classmethod
     def coerce_none_int(cls, v, info):
         if v is not None:
             return v
-        return 5 if info.field_name == 'lookup_recent_count' else 0
+        return 5 if info.field_name == "lookup_recent_count" else 0
 
-    @field_validator('on_delete', 'on_update', mode='before')
+    @field_validator("on_delete", "on_update", mode="before")
     @classmethod
     def coerce_none_action(cls, v):
         return v if v is not None else "NO ACTION"
 
-    @field_validator('meta_data', mode='before')
+    @field_validator("meta_data", mode="before")
     @classmethod
     def coerce_none_to_dict(cls, v):
         return v if v is not None else {}
@@ -99,11 +117,11 @@ class FieldDefinitionBase(BaseModel):
 
 class FieldDefinitionCreate(FieldDefinitionBase):
     """Schema for creating a field definition"""
-    pass
 
 
 class FieldDefinitionUpdate(BaseModel):
     """Schema for updating a field definition"""
+
     label: Optional[str] = None
     description: Optional[str] = None
     help_text: Optional[str] = None
@@ -119,8 +137,13 @@ class FieldDefinitionUpdate(BaseModel):
     placeholder: Optional[str] = None
     reference_entity_id: Optional[UUID] = None
     reference_table_name: Optional[str] = None
-    reference_field: Optional[str] = Field(None, description="Target column in referenced table (e.g., 'id', 'code', 'username') - used in REFERENCES clause")
-    display_field: Optional[str] = Field(None, description="Column to display in UI dropdowns (e.g., 'name', 'full_name', 'email')")
+    reference_field: Optional[str] = Field(
+        None,
+        description="Target column in referenced table (e.g., 'id', 'code', 'username') - used in REFERENCES clause",
+    )
+    display_field: Optional[str] = Field(
+        None, description="Column to display in UI dropdowns (e.g., 'name', 'full_name', 'email')"
+    )
     relationship_type: Optional[str] = None
     on_delete: Optional[str] = None
     on_update: Optional[str] = None
@@ -141,6 +164,7 @@ class FieldDefinitionUpdate(BaseModel):
 
 class FieldDefinitionResponse(FieldDefinitionBase):
     """Schema for field definition response"""
+
     id: UUID
     entity_id: UUID
     tenant_id: Optional[UUID]  # NULL for platform-level fields
@@ -150,7 +174,7 @@ class FieldDefinitionResponse(FieldDefinitionBase):
     updated_by: Optional[UUID]
     is_deleted: bool = False
 
-    @field_validator('is_deleted', mode='before')
+    @field_validator("is_deleted", mode="before")
     @classmethod
     def coerce_none_is_deleted(cls, v):
         return v if v is not None else False
@@ -161,8 +185,10 @@ class FieldDefinitionResponse(FieldDefinitionBase):
 
 # ==================== Field Group Schemas ====================
 
+
 class FieldGroupBase(BaseModel):
     """Base schema for field groups"""
+
     name: str = Field(..., max_length=100, description="Technical group name (snake_case)")
     label: str = Field(..., max_length=200, description="Display label")
     description: Optional[str] = None
@@ -174,19 +200,19 @@ class FieldGroupBase(BaseModel):
     is_active: bool = True
     meta_data: Dict[str, Any] = Field(default_factory=dict)
 
-    @field_validator('is_collapsible', 'is_collapsed_default', 'is_active', mode='before')
+    @field_validator("is_collapsible", "is_collapsed_default", "is_active", mode="before")
     @classmethod
     def coerce_none_bool(cls, v, info):
         if v is not None:
             return v
-        return True if info.field_name in ('is_collapsible', 'is_active') else False
+        return True if info.field_name in ("is_collapsible", "is_active") else False
 
-    @field_validator('display_order', mode='before')
+    @field_validator("display_order", mode="before")
     @classmethod
     def coerce_none_order(cls, v):
         return v if v is not None else 0
 
-    @field_validator('meta_data', mode='before')
+    @field_validator("meta_data", mode="before")
     @classmethod
     def coerce_none_meta(cls, v):
         return v if v is not None else {}
@@ -194,11 +220,11 @@ class FieldGroupBase(BaseModel):
 
 class FieldGroupCreate(FieldGroupBase):
     """Schema for creating a field group"""
-    pass
 
 
 class FieldGroupUpdate(BaseModel):
     """Schema for updating a field group"""
+
     label: Optional[str] = None
     description: Optional[str] = None
     icon: Optional[str] = None
@@ -212,6 +238,7 @@ class FieldGroupUpdate(BaseModel):
 
 class FieldGroupResponse(FieldGroupBase):
     """Schema for field group response"""
+
     id: UUID
     entity_id: UUID
     tenant_id: Optional[UUID]
@@ -221,7 +248,7 @@ class FieldGroupResponse(FieldGroupBase):
     updated_by: Optional[UUID]
     is_deleted: bool = False
 
-    @field_validator('is_deleted', mode='before')
+    @field_validator("is_deleted", mode="before")
     @classmethod
     def coerce_none_is_deleted(cls, v):
         return v if v is not None else False
@@ -232,8 +259,10 @@ class FieldGroupResponse(FieldGroupBase):
 
 # ==================== Entity Definition Schemas ====================
 
+
 class EntityDefinitionBase(BaseModel):
     """Base schema for entity definitions"""
+
     name: str = Field(..., max_length=100, description="Technical entity name (snake_case)")
     label: str = Field(..., max_length=200, description="Display label")
     plural_label: Optional[str] = None
@@ -243,8 +272,7 @@ class EntityDefinitionBase(BaseModel):
     category: Optional[str] = None
     module_id: Optional[UUID] = Field(None, description="Associated module ID")
     data_scope: str = Field(
-        "tenant",
-        description="Organizational isolation level: platform, tenant, company, branch, department"
+        "tenant", description="Organizational isolation level: platform, tenant, company, branch, department"
     )
     table_name: str = Field(..., max_length=100, description="Database table name")
     schema_name: str = "public"
@@ -260,46 +288,51 @@ class EntityDefinitionBase(BaseModel):
     meta_data: Dict[str, Any] = Field(default_factory=dict)
 
     @field_validator(
-        'is_audited', 'is_versioned', 'supports_soft_delete',
-        'supports_attachments', 'supports_comments',
-        mode='before',
+        "is_audited",
+        "is_versioned",
+        "supports_soft_delete",
+        "supports_attachments",
+        "supports_comments",
+        mode="before",
     )
     @classmethod
     def coerce_none_bool(cls, v, info):
         if v is not None:
             return v
         defaults = {
-            'is_audited': True, 'supports_soft_delete': True,
-            'supports_attachments': True, 'supports_comments': True,
+            "is_audited": True,
+            "supports_soft_delete": True,
+            "supports_attachments": True,
+            "supports_comments": True,
         }
         return defaults.get(info.field_name, False)
 
-    @field_validator('entity_type', mode='before')
+    @field_validator("entity_type", mode="before")
     @classmethod
     def coerce_none_entity_type(cls, v):
         return v if v is not None else "custom"
 
-    @field_validator('data_scope', mode='before')
+    @field_validator("data_scope", mode="before")
     @classmethod
     def coerce_none_data_scope(cls, v):
         return v if v is not None else "tenant"
 
-    @field_validator('schema_name', mode='before')
+    @field_validator("schema_name", mode="before")
     @classmethod
     def coerce_none_schema(cls, v):
         return v if v is not None else "public"
 
-    @field_validator('default_sort_order', mode='before')
+    @field_validator("default_sort_order", mode="before")
     @classmethod
     def coerce_none_sort_order(cls, v):
         return v if v is not None else "ASC"
 
-    @field_validator('records_per_page', mode='before')
+    @field_validator("records_per_page", mode="before")
     @classmethod
     def coerce_none_records(cls, v):
         return v if v is not None else 25
 
-    @field_validator('meta_data', mode='before')
+    @field_validator("meta_data", mode="before")
     @classmethod
     def coerce_none_meta(cls, v):
         return v if v is not None else {}
@@ -307,11 +340,13 @@ class EntityDefinitionBase(BaseModel):
 
 class EntityDefinitionCreate(EntityDefinitionBase):
     """Schema for creating an entity definition"""
+
     fields: Optional[List[FieldDefinitionCreate]] = Field(default_factory=list)
 
 
 class EntityDefinitionUpdate(BaseModel):
     """Schema for updating an entity definition"""
+
     label: Optional[str] = None
     plural_label: Optional[str] = None
     description: Optional[str] = None
@@ -333,6 +368,7 @@ class EntityDefinitionUpdate(BaseModel):
 
 class EntityDefinitionResponse(EntityDefinitionBase):
     """Schema for entity definition response"""
+
     id: UUID
     tenant_id: Optional[UUID]  # NULL for platform-level entities
     status: str = "draft"
@@ -347,19 +383,19 @@ class EntityDefinitionResponse(EntityDefinitionBase):
     is_deleted: bool = False
     fields: List[FieldDefinitionResponse] = Field(default_factory=list)
 
-    @field_validator('status', mode='before')
+    @field_validator("status", mode="before")
     @classmethod
     def coerce_none_status(cls, v):
         return v if v is not None else "draft"
 
-    @field_validator('is_active', 'is_deleted', mode='before')
+    @field_validator("is_active", "is_deleted", mode="before")
     @classmethod
     def coerce_none_response_bool(cls, v, info):
         if v is not None:
             return v
-        return True if info.field_name == 'is_active' else False
+        return True if info.field_name == "is_active" else False
 
-    @field_validator('version', mode='before')
+    @field_validator("version", mode="before")
     @classmethod
     def coerce_none_version(cls, v):
         return v if v is not None else 1
@@ -370,8 +406,10 @@ class EntityDefinitionResponse(EntityDefinitionBase):
 
 # ==================== Relationship Definition Schemas ====================
 
+
 class RelationshipDefinitionBase(BaseModel):
     """Base schema for relationship definitions"""
+
     name: str = Field(..., max_length=100)
     label: str = Field(..., max_length=200)
     description: Optional[str] = None
@@ -390,17 +428,17 @@ class RelationshipDefinitionBase(BaseModel):
     display_in_target: bool = True
     meta_data: Dict[str, Any] = Field(default_factory=dict)
 
-    @field_validator('is_active', 'display_in_source', 'display_in_target', mode='before')
+    @field_validator("is_active", "display_in_source", "display_in_target", mode="before")
     @classmethod
     def coerce_none_bool(cls, v):
         return v if v is not None else True
 
-    @field_validator('on_delete', 'on_update', mode='before')
+    @field_validator("on_delete", "on_update", mode="before")
     @classmethod
     def coerce_none_action(cls, v):
         return v if v is not None else "NO ACTION"
 
-    @field_validator('meta_data', mode='before')
+    @field_validator("meta_data", mode="before")
     @classmethod
     def coerce_none_meta(cls, v):
         return v if v is not None else {}
@@ -408,11 +446,11 @@ class RelationshipDefinitionBase(BaseModel):
 
 class RelationshipDefinitionCreate(RelationshipDefinitionBase):
     """Schema for creating a relationship definition"""
-    pass
 
 
 class RelationshipDefinitionUpdate(BaseModel):
     """Schema for updating a relationship definition"""
+
     label: Optional[str] = None
     description: Optional[str] = None
     is_active: Optional[bool] = None
@@ -423,6 +461,7 @@ class RelationshipDefinitionUpdate(BaseModel):
 
 class RelationshipDefinitionResponse(RelationshipDefinitionBase):
     """Schema for relationship definition response"""
+
     id: UUID
     tenant_id: Optional[UUID]  # NULL for platform-level relationships
     created_at: datetime
@@ -431,7 +470,7 @@ class RelationshipDefinitionResponse(RelationshipDefinitionBase):
     updated_by: Optional[UUID]
     is_deleted: bool = False
 
-    @field_validator('is_deleted', mode='before')
+    @field_validator("is_deleted", mode="before")
     @classmethod
     def coerce_none_is_deleted(cls, v):
         return v if v is not None else False
@@ -442,8 +481,10 @@ class RelationshipDefinitionResponse(RelationshipDefinitionBase):
 
 # ==================== Index Definition Schemas ====================
 
+
 class IndexDefinitionBase(BaseModel):
     """Base schema for index definitions"""
+
     name: str = Field(..., max_length=100)
     index_type: str = "btree"
     field_names: List[str] = Field(..., description="Array of field names")
@@ -452,14 +493,14 @@ class IndexDefinitionBase(BaseModel):
     where_clause: Optional[str] = None
     is_active: bool = True
 
-    @field_validator('is_unique', 'is_partial', 'is_active', mode='before')
+    @field_validator("is_unique", "is_partial", "is_active", mode="before")
     @classmethod
     def coerce_none_bool(cls, v, info):
         if v is not None:
             return v
-        return True if info.field_name == 'is_active' else False
+        return True if info.field_name == "is_active" else False
 
-    @field_validator('index_type', mode='before')
+    @field_validator("index_type", mode="before")
     @classmethod
     def coerce_none_index_type(cls, v):
         return v if v is not None else "btree"
@@ -467,11 +508,11 @@ class IndexDefinitionBase(BaseModel):
 
 class IndexDefinitionCreate(IndexDefinitionBase):
     """Schema for creating an index definition"""
-    pass
 
 
 class IndexDefinitionResponse(IndexDefinitionBase):
     """Schema for index definition response"""
+
     id: UUID
     entity_id: UUID
     tenant_id: Optional[UUID]  # NULL for platform-level indexes
@@ -479,7 +520,7 @@ class IndexDefinitionResponse(IndexDefinitionBase):
     created_by: Optional[UUID]
     is_deleted: bool = False
 
-    @field_validator('is_deleted', mode='before')
+    @field_validator("is_deleted", mode="before")
     @classmethod
     def coerce_none_is_deleted(cls, v):
         return v if v is not None else False
@@ -490,8 +531,10 @@ class IndexDefinitionResponse(IndexDefinitionBase):
 
 # ==================== Migration Schemas ====================
 
+
 class MigrationResponse(BaseModel):
     """Schema for migration response"""
+
     id: UUID
     entity_id: UUID
     tenant_id: Optional[UUID]  # NULL for platform-level migrations
@@ -515,6 +558,7 @@ class MigrationResponse(BaseModel):
 
 class SchemaPreviewResponse(BaseModel):
     """Schema for schema preview"""
+
     sql_script: str
     affected_tables: List[str]
     warnings: List[str] = Field(default_factory=list)
@@ -523,12 +567,14 @@ class SchemaPreviewResponse(BaseModel):
 
 class PublishEntityRequest(BaseModel):
     """Schema for publishing an entity"""
+
     apply_migration: bool = True
     backup_data: bool = True
 
 
 class PublishEntityResponse(BaseModel):
     """Schema for publish entity response"""
+
     entity_id: UUID
     migration_id: UUID
     status: str
@@ -537,11 +583,13 @@ class PublishEntityResponse(BaseModel):
 
 # ==================== Schema Introspection Schemas ====================
 
+
 class DatabaseObjectInfo(BaseModel):
     """Information about a database object"""
+
     name: str
     type: str  # 'table', 'view', 'materialized_view'
-    db_schema: str = Field(alias='schema')
+    db_schema: str = Field(alias="schema")
     comment: Optional[str] = None
     definition: Optional[str] = None  # SQL definition for views
 
@@ -550,6 +598,7 @@ class DatabaseObjectInfo(BaseModel):
 
 class DatabaseObjectsResponse(BaseModel):
     """Response containing all database objects"""
+
     tables: List[DatabaseObjectInfo]
     views: List[DatabaseObjectInfo]
     materialized_views: List[DatabaseObjectInfo]
@@ -557,9 +606,10 @@ class DatabaseObjectsResponse(BaseModel):
 
 class IntrospectRequest(BaseModel):
     """Request to introspect a database object"""
+
     object_name: str
     object_type: str  # 'table', 'view', 'materialized_view'
-    db_schema: str = Field(default='public', alias='schema')
+    db_schema: str = Field(default="public", alias="schema")
     auto_save: bool = False
 
     model_config = ConfigDict(populate_by_name=True)
@@ -567,6 +617,7 @@ class IntrospectRequest(BaseModel):
 
 class IntrospectedFieldDefinition(BaseModel):
     """Field definition from introspection"""
+
     name: str
     label: str
     field_type: str
@@ -582,14 +633,20 @@ class IntrospectedFieldDefinition(BaseModel):
     decimal_places: Optional[int] = None
     default_value: Optional[str] = None
     reference_table: Optional[str] = None
-    reference_field: Optional[str] = Field(None, description="Target column in referenced table (e.g., 'id', 'code', 'username') - used in REFERENCES clause")
-    display_field: Optional[str] = Field(None, description="Column to display in UI dropdowns (e.g., 'name', 'full_name', 'email')")
+    reference_field: Optional[str] = Field(
+        None,
+        description="Target column in referenced table (e.g., 'id', 'code', 'username') - used in REFERENCES clause",
+    )
+    display_field: Optional[str] = Field(
+        None, description="Column to display in UI dropdowns (e.g., 'name', 'full_name', 'email')"
+    )
     relationship_type: Optional[str] = None
     display_order: int = 0
 
 
 class IntrospectedRelationship(BaseModel):
     """Relationship definition from introspection"""
+
     name: str
     label: str
     relationship_type: str
@@ -597,26 +654,28 @@ class IntrospectedRelationship(BaseModel):
     target_entity_name: str
     source_field_name: Optional[str] = None
     target_field_name: Optional[str] = None
-    on_delete: str = 'NO ACTION'
-    on_update: str = 'NO ACTION'
+    on_delete: str = "NO ACTION"
+    on_update: str = "NO ACTION"
 
 
 class IntrospectedIndex(BaseModel):
     """Index definition from introspection"""
+
     name: str
     field_names: List[str]
     is_unique: bool = False
-    index_type: str = 'btree'
+    index_type: str = "btree"
 
 
 class IntrospectedEntityDefinition(BaseModel):
     """Complete entity definition from introspection"""
+
     name: str
     label: str
     description: Optional[str] = None
     object_type: str  # 'table', 'view', 'materialized_view'
     table_name: str
-    schema_name: str = 'public'
+    schema_name: str = "public"
     view_definition: Optional[str] = None
     supports_insert: bool = True
     supports_update: bool = True
@@ -632,14 +691,16 @@ class IntrospectedEntityDefinition(BaseModel):
 
 class BatchIntrospectObject(BaseModel):
     """Single object for batch introspection"""
+
     name: str
     type: str  # 'table', 'view', 'materialized_view'
 
 
 class BatchIntrospectRequest(BaseModel):
     """Request for batch introspection"""
+
     objects: List[BatchIntrospectObject]
-    db_schema: str = Field(default='public', alias='schema')
+    db_schema: str = Field(default="public", alias="schema")
     auto_save: bool = False
 
     model_config = ConfigDict(populate_by_name=True)
@@ -647,6 +708,7 @@ class BatchIntrospectRequest(BaseModel):
 
 class BatchIntrospectResponse(BaseModel):
     """Response for batch introspection"""
+
     total: int
     queued: int
     message: str
@@ -655,8 +717,10 @@ class BatchIntrospectResponse(BaseModel):
 
 # ==================== Migration Schemas ====================
 
+
 class MigrationPreviewResponse(BaseModel):
     """Preview of migration changes"""
+
     entity_id: UUID
     entity_name: str
     table_name: str
@@ -669,11 +733,13 @@ class MigrationPreviewResponse(BaseModel):
 
 class PublishEntityRequest(BaseModel):
     """Request to publish an entity"""
+
     commit_message: Optional[str] = None
 
 
 class MigrationResponse(BaseModel):
     """Migration execution response"""
+
     id: UUID
     entity_id: UUID
     migration_name: str
@@ -696,12 +762,14 @@ class MigrationResponse(BaseModel):
 
 class MigrationListResponse(BaseModel):
     """List of migrations for an entity"""
+
     migrations: List[MigrationResponse]
     total: int
 
 
 class RollbackResponse(BaseModel):
     """Response for migration rollback"""
+
     migration_id: UUID
     status: str
     message: str

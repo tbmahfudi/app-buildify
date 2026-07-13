@@ -16,6 +16,7 @@ class Permission(Base):
     - products:read:company
     - audit:export:all
     """
+
     __tablename__ = "permissions"
 
     # Primary key
@@ -30,11 +31,11 @@ class Permission(Base):
 
     # Permission components
     resource = Column(String(50), nullable=False, index=True)  # users, products, companies, etc.
-    action = Column(String(50), nullable=False, index=True)    # create, read, update, delete, export, etc.
-    scope = Column(String(50), nullable=False, index=True)      # all, tenant, company, branch, department, own
+    action = Column(String(50), nullable=False, index=True)  # create, read, update, delete, export, etc.
+    scope = Column(String(50), nullable=False, index=True)  # all, tenant, company, branch, department, own
 
     # Categorization
-    category = Column(String(50), nullable=True, index=True)   # user_management, data, system, etc.
+    category = Column(String(50), nullable=True, index=True)  # user_management, data, system, etc.
 
     # Status
     is_active = Column(Boolean, default=True, nullable=False, index=True)
@@ -48,9 +49,7 @@ class Permission(Base):
     role_permissions = relationship("RolePermission", back_populates="permission", cascade="all, delete-orphan")
 
     # Composite indexes
-    __table_args__ = (
-        Index('ix_permission_resource_action_scope', 'resource', 'action', 'scope'),
-    )
+    __table_args__ = (Index("ix_permission_resource_action_scope", "resource", "action", "scope"),)
 
     def __repr__(self):
         return f"<Permission(code={self.code}, resource={self.resource}, action={self.action}, scope={self.scope})>"

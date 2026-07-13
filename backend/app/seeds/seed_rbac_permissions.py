@@ -2,9 +2,10 @@
 Create RBAC management permissions
 Covers: Roles, Permissions, Groups, User RBAC operations
 """
-from sqlalchemy.orm import Session
+
 from app.core.db import SessionLocal
 from app.models.permission import Permission
+
 
 def seed_rbac_permissions():
     """Seed all RBAC-related permissions"""
@@ -21,7 +22,7 @@ def seed_rbac_permissions():
                 "resource": "permissions",
                 "action": "read",
                 "scope": "all",
-                "category": "rbac"
+                "category": "rbac",
             },
             {
                 "code": "permissions:read:tenant",
@@ -30,7 +31,7 @@ def seed_rbac_permissions():
                 "resource": "permissions",
                 "action": "read",
                 "scope": "tenant",
-                "category": "rbac"
+                "category": "rbac",
             },
             {
                 "code": "permissions:read:own",
@@ -39,7 +40,7 @@ def seed_rbac_permissions():
                 "resource": "permissions",
                 "action": "read",
                 "scope": "own",
-                "category": "rbac"
+                "category": "rbac",
             },
             {
                 "code": "permissions:create:all",
@@ -48,7 +49,7 @@ def seed_rbac_permissions():
                 "resource": "permissions",
                 "action": "create",
                 "scope": "all",
-                "category": "rbac"
+                "category": "rbac",
             },
             {
                 "code": "permissions:update:all",
@@ -57,7 +58,7 @@ def seed_rbac_permissions():
                 "resource": "permissions",
                 "action": "update",
                 "scope": "all",
-                "category": "rbac"
+                "category": "rbac",
             },
             {
                 "code": "permissions:delete:all",
@@ -66,9 +67,8 @@ def seed_rbac_permissions():
                 "resource": "permissions",
                 "action": "delete",
                 "scope": "all",
-                "category": "rbac"
+                "category": "rbac",
             },
-
             # ==================== ROLE MANAGEMENT ====================
             {
                 "code": "roles:read:all",
@@ -77,7 +77,7 @@ def seed_rbac_permissions():
                 "resource": "roles",
                 "action": "read",
                 "scope": "all",
-                "category": "rbac"
+                "category": "rbac",
             },
             {
                 "code": "roles:read:tenant",
@@ -86,7 +86,7 @@ def seed_rbac_permissions():
                 "resource": "roles",
                 "action": "read",
                 "scope": "tenant",
-                "category": "rbac"
+                "category": "rbac",
             },
             {
                 "code": "roles:read:own",
@@ -95,7 +95,7 @@ def seed_rbac_permissions():
                 "resource": "roles",
                 "action": "read",
                 "scope": "own",
-                "category": "rbac"
+                "category": "rbac",
             },
             {
                 "code": "roles:create:tenant",
@@ -104,7 +104,7 @@ def seed_rbac_permissions():
                 "resource": "roles",
                 "action": "create",
                 "scope": "tenant",
-                "category": "rbac"
+                "category": "rbac",
             },
             {
                 "code": "roles:update:tenant",
@@ -113,7 +113,7 @@ def seed_rbac_permissions():
                 "resource": "roles",
                 "action": "update",
                 "scope": "tenant",
-                "category": "rbac"
+                "category": "rbac",
             },
             {
                 "code": "roles:delete:tenant",
@@ -122,7 +122,7 @@ def seed_rbac_permissions():
                 "resource": "roles",
                 "action": "delete",
                 "scope": "tenant",
-                "category": "rbac"
+                "category": "rbac",
             },
             {
                 "code": "roles:assign_permissions:tenant",
@@ -131,7 +131,7 @@ def seed_rbac_permissions():
                 "resource": "roles",
                 "action": "assign_permissions",
                 "scope": "tenant",
-                "category": "rbac"
+                "category": "rbac",
             },
             {
                 "code": "roles:revoke_permissions:tenant",
@@ -140,9 +140,8 @@ def seed_rbac_permissions():
                 "resource": "roles",
                 "action": "revoke_permissions",
                 "scope": "tenant",
-                "category": "rbac"
+                "category": "rbac",
             },
-
             # ==================== GROUP MANAGEMENT ====================
             {
                 "code": "groups:read:all",
@@ -151,7 +150,7 @@ def seed_rbac_permissions():
                 "resource": "groups",
                 "action": "read",
                 "scope": "all",
-                "category": "rbac"
+                "category": "rbac",
             },
             {
                 "code": "groups:read:tenant",
@@ -160,7 +159,7 @@ def seed_rbac_permissions():
                 "resource": "groups",
                 "action": "read",
                 "scope": "tenant",
-                "category": "rbac"
+                "category": "rbac",
             },
             {
                 "code": "groups:read:company",
@@ -169,7 +168,7 @@ def seed_rbac_permissions():
                 "resource": "groups",
                 "action": "read",
                 "scope": "company",
-                "category": "rbac"
+                "category": "rbac",
             },
             {
                 "code": "groups:read:own",
@@ -178,7 +177,7 @@ def seed_rbac_permissions():
                 "resource": "groups",
                 "action": "read",
                 "scope": "own",
-                "category": "rbac"
+                "category": "rbac",
             },
             {
                 "code": "groups:create:tenant",
@@ -187,7 +186,7 @@ def seed_rbac_permissions():
                 "resource": "groups",
                 "action": "create",
                 "scope": "tenant",
-                "category": "rbac"
+                "category": "rbac",
             },
             {
                 "code": "groups:update:tenant",
@@ -196,7 +195,7 @@ def seed_rbac_permissions():
                 "resource": "groups",
                 "action": "update",
                 "scope": "tenant",
-                "category": "rbac"
+                "category": "rbac",
             },
             {
                 "code": "groups:delete:tenant",
@@ -205,7 +204,7 @@ def seed_rbac_permissions():
                 "resource": "groups",
                 "action": "delete",
                 "scope": "tenant",
-                "category": "rbac"
+                "category": "rbac",
             },
             {
                 "code": "groups:add_members:tenant",
@@ -214,7 +213,7 @@ def seed_rbac_permissions():
                 "resource": "groups",
                 "action": "add_members",
                 "scope": "tenant",
-                "category": "rbac"
+                "category": "rbac",
             },
             {
                 "code": "groups:remove_members:tenant",
@@ -223,7 +222,7 @@ def seed_rbac_permissions():
                 "resource": "groups",
                 "action": "remove_members",
                 "scope": "tenant",
-                "category": "rbac"
+                "category": "rbac",
             },
             {
                 "code": "groups:assign_roles:tenant",
@@ -232,7 +231,7 @@ def seed_rbac_permissions():
                 "resource": "groups",
                 "action": "assign_roles",
                 "scope": "tenant",
-                "category": "rbac"
+                "category": "rbac",
             },
             {
                 "code": "groups:revoke_roles:tenant",
@@ -241,9 +240,8 @@ def seed_rbac_permissions():
                 "resource": "groups",
                 "action": "revoke_roles",
                 "scope": "tenant",
-                "category": "rbac"
+                "category": "rbac",
             },
-
             # ==================== USER RBAC OPERATIONS ====================
             {
                 "code": "users:read_roles:tenant",
@@ -252,7 +250,7 @@ def seed_rbac_permissions():
                 "resource": "users",
                 "action": "read_roles",
                 "scope": "tenant",
-                "category": "rbac"
+                "category": "rbac",
             },
             {
                 "code": "users:read_permissions:tenant",
@@ -261,7 +259,7 @@ def seed_rbac_permissions():
                 "resource": "users",
                 "action": "read_permissions",
                 "scope": "tenant",
-                "category": "rbac"
+                "category": "rbac",
             },
             {
                 "code": "users:assign_roles:tenant",
@@ -270,7 +268,7 @@ def seed_rbac_permissions():
                 "resource": "users",
                 "action": "assign_roles",
                 "scope": "tenant",
-                "category": "rbac"
+                "category": "rbac",
             },
             {
                 "code": "users:revoke_roles:tenant",
@@ -279,9 +277,8 @@ def seed_rbac_permissions():
                 "resource": "users",
                 "action": "revoke_roles",
                 "scope": "tenant",
-                "category": "rbac"
+                "category": "rbac",
             },
-
             # ==================== RBAC DASHBOARD ====================
             {
                 "code": "rbac:dashboard:view:tenant",
@@ -290,7 +287,7 @@ def seed_rbac_permissions():
                 "resource": "rbac",
                 "action": "dashboard:view",
                 "scope": "tenant",
-                "category": "rbac"
+                "category": "rbac",
             },
         ]
 
@@ -299,9 +296,7 @@ def seed_rbac_permissions():
         updated_count = 0
 
         for perm_data in permissions:
-            perm = db.query(Permission).filter(
-                Permission.code == perm_data["code"]
-            ).first()
+            perm = db.query(Permission).filter(Permission.code == perm_data["code"]).first()
 
             if not perm:
                 perm = Permission(**perm_data, is_active=True)
@@ -320,7 +315,7 @@ def seed_rbac_permissions():
         db.commit()
 
         print(f"\n{'='*60}")
-        print(f"RBAC Permissions Seed Complete")
+        print("RBAC Permissions Seed Complete")
         print(f"{'='*60}")
         print(f"✓ Created: {created_count} permissions")
         print(f"• Updated: {updated_count} permissions")
@@ -333,6 +328,7 @@ def seed_rbac_permissions():
         raise
     finally:
         db.close()
+
 
 if __name__ == "__main__":
     seed_rbac_permissions()

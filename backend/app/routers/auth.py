@@ -7,7 +7,6 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import func
 from sqlalchemy.orm import Session
-from sqlalchemy.orm.exc import StaleDataError
 
 from app.core.audit import create_audit_log
 from app.core.auth import (
@@ -27,15 +26,15 @@ from app.core.password_validator import PasswordValidator
 # Import security services
 from app.core.security_config import SecurityConfigService
 from app.core.session_manager import SessionManager
+from app.models.branch import Branch
+from app.models.company import Company
+from app.models.department import Department
 from app.models.login_attempt import LoginAttempt
 from app.models.password_reset_token import PasswordResetToken
+from app.models.tenant import Tenant
 from app.models.token_blacklist import TokenBlacklist
 from app.models.user import User
 from app.models.user_session import UserSession
-from app.models.tenant import Tenant
-from app.models.company import Company
-from app.models.branch import Branch
-from app.models.department import Department
 from app.schemas.auth import (
     LoginRequest,
     PasswordChangeRequest,
@@ -46,7 +45,7 @@ from app.schemas.auth import (
     TokenResponse,
     UserResponse,
 )
-from app.schemas.security import PasswordPolicyRequirements, PasswordStrengthCheck
+from app.schemas.security import PasswordPolicyRequirements
 
 security = HTTPBearer()
 
@@ -54,12 +53,9 @@ router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 # Set up logger at the top of your file
 logger = logging.getLogger(__name__)
 
+
 @router.post("/login", response_model=TokenResponse)
-def login(
-    credentials: LoginRequest,
-    request: Request,
-    db: Session = Depends(get_db)
-):
+def login(credentials: LoginRequest, request: Request, db: Session = Depends(get_db)):
     """
     Login endpoint - authenticates user and returns JWT tokens.
     Tenant ID is securely embedded in the JWT token payload.
@@ -114,7 +110,7 @@ def login(
             ip_address=ip_address,
             user_agent=user_agent,
             success=False,
-            failure_reason="Invalid credentials"
+            failure_reason="Invalid credentials",
         )
         db.add(login_attempt)
         db.commit()
@@ -132,13 +128,10 @@ def login(
             entity_id=credentials.email,
             request=request,
             status="failure",
-            error_message="Invalid credentials"
+            error_message="Invalid credentials",
         )
 
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect email or password"
-        )
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect email or password")
 
     # Check if account is locked
     if lockout_manager.is_account_locked(user):
@@ -151,7 +144,7 @@ def login(
             ip_address=ip_address,
             user_agent=user_agent,
             success=False,
-            failure_reason=f"Account locked until {locked_until}"
+            failure_reason=f"Account locked until {locked_until}",
         )
         db.add(login_attempt)
         db.commit()
@@ -165,12 +158,12 @@ def login(
             entity_id=str(user.id),
             request=request,
             status="failure",
-            error_message=f"Account locked until {locked_until}"
+            error_message=f"Account locked until {locked_until}",
         )
 
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail=f"Account is locked until {locked_until}. Please try again later or contact support."
+            detail=f"Account is locked until {locked_until}. Please try again later or contact support.",
         )
 
     # Check if account is active
@@ -182,7 +175,7 @@ def login(
             ip_address=ip_address,
             user_agent=user_agent,
             success=False,
-            failure_reason="User account is inactive"
+            failure_reason="User account is inactive",
         )
         db.add(login_attempt)
         db.commit()
@@ -196,13 +189,10 @@ def login(
             entity_id=str(user.id),
             request=request,
             status="failure",
-            error_message="User account is inactive"
+            error_message="User account is inactive",
         )
 
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Inactive user"
-        )
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Inactive user")
 
     # Check password expiration
     security_config = SecurityConfigService(db)
@@ -224,25 +214,24 @@ def login(
                 ip_address=ip_address,
                 user_agent=user_agent,
                 success=False,
-                failure_reason="Password expired"
+                failure_reason="Password expired",
             )
             db.add(login_attempt)
             db.commit()
 
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Password has expired. Please reset your password."
+                status_code=status.HTTP_403_FORBIDDEN, detail="Password has expired. Please reset your password."
             )
 
     # Get user permissions from RBAC system
-    permissions = list(user.get_permissions()) if hasattr(user, 'get_permissions') else []
+    permissions = list(user.get_permissions()) if hasattr(user, "get_permissions") else []
 
     # Create tokens with user context
     token_data = {
         "sub": str(user.id),
         "email": user.email,
         "tenant_id": str(user.tenant_id) if user.tenant_id else None,
-        "permissions": permissions
+        "permissions": permissions,
     }
 
     access_token = create_access_token(token_data)
@@ -255,12 +244,7 @@ def login(
     # Create user session
     if jti:
         try:
-            session_manager.create_session(
-                user=user,
-                jti=jti,
-                ip_address=ip_address,
-                user_agent=user_agent
-            )
+            session_manager.create_session(user=user, jti=jti, ip_address=ip_address, user_agent=user_agent)
         except Exception as e:
             logger.warning(f"Failed to create session for user {user.id}: {e}")
             # Continue with login even if session creation fails
@@ -272,7 +256,7 @@ def login(
         ip_address=ip_address,
         user_agent=user_agent,
         success=True,
-        failure_reason=None
+        failure_reason=None,
     )
     db.add(login_attempt)
 
@@ -291,33 +275,26 @@ def login(
 
     # Audit successful login
     create_audit_log(
-        db=db,
-        action="login",
-        user=user,
-        entity_type="user",
-        entity_id=str(user.id),
-        request=request,
-        status="success"
+        db=db, action="login", user=user, entity_type="user", entity_id=str(user.id), request=request, status="success"
     )
 
     # If password expired but grace login allowed, include warning in response
     response_data = {
         "access_token": access_token,
         "refresh_token": refresh_token,
-        "expires_in": ACCESS_TOKEN_EXPIRE_MIN * 60
+        "expires_in": ACCESS_TOKEN_EXPIRE_MIN * 60,
     }
 
     if password_expired and grace_login_allowed:
-        logger.info(f"User {user.id} logged in with expired password. Grace logins remaining: {user.grace_logins_remaining}")
+        logger.info(
+            f"User {user.id} logged in with expired password. Grace logins remaining: {user.grace_logins_remaining}"
+        )
 
     return TokenResponse(**response_data)
 
 
 @router.get("/config")
-def get_auth_config(
-    tenant_id: Optional[str] = None,
-    db: Session = Depends(get_db)
-):
+def get_auth_config(tenant_id: Optional[str] = None, db: Session = Depends(get_db)):
     """
     Get auth configuration for the frontend.
     Public endpoint — returns platform default when no tenant_id is provided.
@@ -328,10 +305,7 @@ def get_auth_config(
 
 
 @router.get("/password-policy", response_model=PasswordPolicyRequirements)
-def get_password_policy(
-    tenant_id: Optional[str] = None,
-    db: Session = Depends(get_db)
-):
+def get_password_policy(tenant_id: Optional[str] = None, db: Session = Depends(get_db)):
     """
     Get password policy requirements for display to users.
     This is a public endpoint (no authentication required) to show password requirements
@@ -377,10 +351,7 @@ def get_password_policy(
         requirements.append(f"Password expires after {expiration_days} days")
 
     return PasswordPolicyRequirements(
-        requirements=requirements,
-        expiration_days=expiration_days,
-        warning_days=warning_days,
-        grace_logins=grace_logins
+        requirements=requirements, expiration_days=expiration_days, warning_days=warning_days, grace_logins=grace_logins
     )
 
 
@@ -388,14 +359,14 @@ def get_password_policy(
 def refresh(refresh_req: RefreshRequest, db: Session = Depends(get_db)):
     """Refresh access token using refresh token"""
     payload = decode_token(refresh_req.refresh_token)
-    
+
     if not payload or payload.get("type") != "refresh":
         raise HTTPException(status_code=401, detail="Invalid refresh token")
-    
+
     user_id = payload.get("sub")
     if not user_id:
         raise HTTPException(status_code=401, detail="Invalid token")
-    
+
     user = db.query(User).filter(User.id == user_id).first()
     if not user or not user.is_active:
         raise HTTPException(status_code=401, detail="User not found or inactive")
@@ -423,14 +394,14 @@ def refresh(refresh_req: RefreshRequest, db: Session = Depends(get_db)):
             raise HTTPException(status_code=401, detail="Session expired due to inactivity")
 
     # Get user permissions from RBAC system
-    permissions = list(user.get_permissions()) if hasattr(user, 'get_permissions') else []
+    permissions = list(user.get_permissions()) if hasattr(user, "get_permissions") else []
 
     # Generate new tokens
     token_data = {
         "sub": str(user.id),
         "email": user.email,
         "tenant_id": str(user.tenant_id) if user.tenant_id else None,
-        "permissions": permissions
+        "permissions": permissions,
     }
 
     access_token = create_access_token(token_data)
@@ -443,15 +414,16 @@ def refresh(refresh_req: RefreshRequest, db: Session = Depends(get_db)):
     return TokenResponse(
         access_token=access_token,
         refresh_token=new_refresh_token,
-        expires_in=ACCESS_TOKEN_EXPIRE_MIN * 60  # Convert minutes to seconds
+        expires_in=ACCESS_TOKEN_EXPIRE_MIN * 60,  # Convert minutes to seconds
     )
+
 
 @router.get("/me", response_model=UserResponse)
 def get_me(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Get current user profile (incl. resolved tenant/company/branch names)."""
     # Get user roles and permissions from RBAC system
-    roles = list(current_user.get_roles()) if hasattr(current_user, 'get_roles') else []
-    permissions = list(current_user.get_permissions()) if hasattr(current_user, 'get_permissions') else []
+    roles = list(current_user.get_roles()) if hasattr(current_user, "get_roles") else []
+    permissions = list(current_user.get_permissions()) if hasattr(current_user, "get_permissions") else []
 
     # Resolve human-readable org context. The platform superadmin has no tenant
     # and is shown as "System"; all other levels are null-safe lookups.
@@ -494,25 +466,23 @@ def get_me(current_user: User = Depends(get_current_user), db: Session = Depends
         permissions=permissions,
         created_at=current_user.created_at,
         updated_at=current_user.updated_at,
-        last_login=current_user.last_login
+        last_login=current_user.last_login,
     )
+
 
 @router.put("/me", response_model=UserResponse)
 def update_me(
     profile_data: ProfileUpdate,
     request: Request,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """Update current user profile"""
     # Check if email is being changed and if it's already in use
     if profile_data.email and profile_data.email != current_user.email:
         existing_user = db.query(User).filter(User.email == profile_data.email).first()
         if existing_user:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Email already in use"
-            )
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already in use")
         current_user.email = profile_data.email
 
     # Update other fields
@@ -541,20 +511,17 @@ def update_me(
             entity_type="user",
             entity_id=str(current_user.id),
             request=request,
-            status="success"
+            status="success",
         )
 
         logger.info(f"User {current_user.id} updated their profile")
     except Exception as e:
         db.rollback()
         logger.error(f"Failed to update profile for user {current_user.id}: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to update profile"
-        )
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to update profile")
 
     # Get user permissions
-    permissions = list(current_user.get_permissions()) if hasattr(current_user, 'get_permissions') else []
+    permissions = list(current_user.get_permissions()) if hasattr(current_user, "get_permissions") else []
 
     return UserResponse(
         id=str(current_user.id),
@@ -571,15 +538,16 @@ def update_me(
         roles=permissions,
         created_at=current_user.created_at,
         updated_at=current_user.updated_at,
-        last_login=current_user.last_login
+        last_login=current_user.last_login,
     )
+
 
 @router.post("/change-password")
 def change_password(
     password_data: PasswordChangeRequest,
     request: Request,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """
     Change current user password with password policy validation and history tracking.
@@ -594,18 +562,14 @@ def change_password(
             entity_id=str(current_user.id),
             request=request,
             status="failure",
-            error_message="Invalid current password"
+            error_message="Invalid current password",
         )
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Current password is incorrect"
-        )
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Current password is incorrect")
 
     # Verify new password matches confirmation
     if password_data.new_password != password_data.confirm_password:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="New password and confirmation do not match"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="New password and confirmation do not match"
         )
 
     # Initialize security services
@@ -616,10 +580,7 @@ def change_password(
     session_manager = SessionManager(db)
 
     # Validate new password against policy
-    validation_result = password_validator.validate_password(
-        password=password_data.new_password,
-        user=current_user
-    )
+    validation_result = password_validator.validate_password(password=password_data.new_password, user=current_user)
 
     if not validation_result["is_valid"]:
         # Audit failed password change
@@ -631,11 +592,11 @@ def change_password(
             entity_id=str(current_user.id),
             request=request,
             status="failure",
-            error_message=f"Password validation failed: {', '.join(validation_result['errors'])}"
+            error_message=f"Password validation failed: {', '.join(validation_result['errors'])}",
         )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Password does not meet requirements: {', '.join(validation_result['errors'])}"
+            detail=f"Password does not meet requirements: {', '.join(validation_result['errors'])}",
         )
 
     # Check password history
@@ -649,11 +610,10 @@ def change_password(
             entity_id=str(current_user.id),
             request=request,
             status="failure",
-            error_message="Password reuse detected"
+            error_message="Password reuse detected",
         )
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Cannot reuse any of your last {history_count} passwords"
+            status_code=status.HTTP_400_BAD_REQUEST, detail=f"Cannot reuse any of your last {history_count} passwords"
         )
 
     # Update password
@@ -691,7 +651,7 @@ def change_password(
             entity_type="user",
             entity_id=str(current_user.id),
             request=request,
-            status="success"
+            status="success",
         )
 
         logger.info(f"User {current_user.id} changed their password")
@@ -704,11 +664,11 @@ def change_password(
                 notification_type="password_changed",
                 recipient=current_user.email,
                 subject="Password Changed",
-                message=f"Your password has been successfully changed.",
+                message="Your password has been successfully changed.",
                 template_data={
                     "user_name": current_user.full_name or current_user.email,
-                    "change_time": datetime.utcnow().isoformat()
-                }
+                    "change_time": datetime.utcnow().isoformat(),
+                },
             )
         except Exception as e:
             logger.warning(f"Failed to queue password change notification for user {current_user.id}: {e}")
@@ -726,9 +686,7 @@ def change_password(
 
                     # Revoke all sessions except current one
                     session_manager.revoke_all_user_sessions(
-                        user=current_user,
-                        except_jti=current_jti,
-                        reason="Password changed"
+                        user=current_user, except_jti=current_jti, reason="Password changed"
                     )
                     logger.info(f"Revoked all other sessions for user {current_user.id} after password change")
             except Exception as e:
@@ -737,20 +695,13 @@ def change_password(
     except Exception as e:
         db.rollback()
         logger.error(f"Failed to change password for user {current_user.id}: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to change password"
-        )
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to change password")
 
     return {"message": "Password changed successfully"}
 
 
 @router.post("/reset-password-request")
-def reset_password_request(
-    reset_data: PasswordResetRequest,
-    request: Request,
-    db: Session = Depends(get_db)
-):
+def reset_password_request(reset_data: PasswordResetRequest, request: Request, db: Session = Depends(get_db)):
     """
     Request a password reset token. Sends an email with the reset link.
     This is a public endpoint (no authentication required).
@@ -775,11 +726,15 @@ def reset_password_request(
         token_expire_hours = security_config.get_config("password_reset_token_expire_hours", user.tenant_id) or 24
 
         # Count recent reset attempts (within last hour)
-        recent_attempts = db.query(PasswordResetToken).filter(
-            PasswordResetToken.user_id == str(user.id),
-            PasswordResetToken.created_at > datetime.utcnow() - timedelta(hours=1),
-            PasswordResetToken.is_used == False
-        ).count()
+        recent_attempts = (
+            db.query(PasswordResetToken)
+            .filter(
+                PasswordResetToken.user_id == str(user.id),
+                PasswordResetToken.created_at > datetime.utcnow() - timedelta(hours=1),
+                PasswordResetToken.is_used == False,
+            )
+            .count()
+        )
 
         if recent_attempts >= max_attempts:
             logger.warning(f"Too many password reset attempts for user: {user.id}")
@@ -790,7 +745,7 @@ def reset_password_request(
         db.query(PasswordResetToken).filter(
             PasswordResetToken.user_id == str(user.id),
             PasswordResetToken.is_used == False,
-            PasswordResetToken.expires_at > datetime.utcnow()
+            PasswordResetToken.expires_at > datetime.utcnow(),
         ).update({"is_used": True})
 
         # Generate secure reset token
@@ -802,7 +757,7 @@ def reset_password_request(
             user_id=str(user.id),
             token=reset_token,
             expires_at=expires_at,
-            ip_address=request.client.host if request.client else None
+            ip_address=request.client.host if request.client else None,
         )
         db.add(token_record)
         db.commit()
@@ -822,8 +777,8 @@ def reset_password_request(
                 template_data={
                     "user_name": user.full_name or user.email,
                     "reset_link": reset_link,
-                    "expires_hours": token_expire_hours
-                }
+                    "expires_hours": token_expire_hours,
+                },
             )
             logger.info(f"Password reset email queued for user: {user.id}")
         except Exception as e:
@@ -837,48 +792,41 @@ def reset_password_request(
             entity_type="user",
             entity_id=str(user.id),
             request=request,
-            status="success"
+            status="success",
         )
 
     return {"message": "If an account with that email exists, a password reset link has been sent."}
 
 
 @router.post("/reset-password-confirm")
-def reset_password_confirm(
-    reset_data: PasswordResetConfirm,
-    request: Request,
-    db: Session = Depends(get_db)
-):
+def reset_password_confirm(reset_data: PasswordResetConfirm, request: Request, db: Session = Depends(get_db)):
     """
     Confirm password reset using the token sent via email.
     This is a public endpoint (no authentication required).
     """
     # Find valid reset token
-    token_record = db.query(PasswordResetToken).filter(
-        PasswordResetToken.token == reset_data.token,
-        PasswordResetToken.is_used == False,
-        PasswordResetToken.expires_at > datetime.utcnow()
-    ).first()
+    token_record = (
+        db.query(PasswordResetToken)
+        .filter(
+            PasswordResetToken.token == reset_data.token,
+            PasswordResetToken.is_used == False,
+            PasswordResetToken.expires_at > datetime.utcnow(),
+        )
+        .first()
+    )
 
     if not token_record:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid or expired reset token"
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired reset token")
 
     # Get user
     user = db.query(User).filter(User.id == token_record.user_id).first()
     if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
     # Verify new password matches confirmation
     if reset_data.new_password != reset_data.confirm_password:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="New password and confirmation do not match"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="New password and confirmation do not match"
         )
 
     # Initialize security services
@@ -889,23 +837,19 @@ def reset_password_confirm(
     session_manager = SessionManager(db)
 
     # Validate new password against policy
-    validation_result = password_validator.validate_password(
-        password=reset_data.new_password,
-        user=user
-    )
+    validation_result = password_validator.validate_password(password=reset_data.new_password, user=user)
 
     if not validation_result["is_valid"]:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Password does not meet requirements: {', '.join(validation_result['errors'])}"
+            detail=f"Password does not meet requirements: {', '.join(validation_result['errors'])}",
         )
 
     # Check password history
     if not password_history_service.is_password_allowed(user, reset_data.new_password):
         history_count = security_config.get_config("password_history_count", user.tenant_id) or 5
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Cannot reuse any of your last {history_count} passwords"
+            status_code=status.HTTP_400_BAD_REQUEST, detail=f"Cannot reuse any of your last {history_count} passwords"
         )
 
     # Update password
@@ -948,7 +892,7 @@ def reset_password_confirm(
             entity_type="user",
             entity_id=str(user.id),
             request=request,
-            status="success"
+            status="success",
         )
 
         logger.info(f"User {user.id} successfully reset their password")
@@ -961,21 +905,15 @@ def reset_password_confirm(
                 notification_type="password_changed",
                 recipient=user.email,
                 subject="Password Reset Successful",
-                message=f"Your password has been successfully reset.",
-                template_data={
-                    "user_name": user.full_name or user.email,
-                    "reset_time": datetime.utcnow().isoformat()
-                }
+                message="Your password has been successfully reset.",
+                template_data={"user_name": user.full_name or user.email, "reset_time": datetime.utcnow().isoformat()},
             )
         except Exception as e:
             logger.warning(f"Failed to queue password reset notification for user {user.id}: {e}")
 
         # Revoke all user sessions for security
         try:
-            session_manager.revoke_all_user_sessions(
-                user=user,
-                reason="Password reset"
-            )
+            session_manager.revoke_all_user_sessions(user=user, reason="Password reset")
             logger.info(f"Revoked all sessions for user {user.id} after password reset")
         except Exception as e:
             logger.warning(f"Failed to revoke sessions for user {user.id}: {e}")
@@ -983,13 +921,9 @@ def reset_password_confirm(
     except Exception as e:
         db.rollback()
         logger.error(f"Failed to reset password for user {user.id}: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to reset password"
-        )
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to reset password")
 
     return {"message": "Password has been reset successfully. You can now log in with your new password."}
-
 
 
 @router.get("/me/sessions")
@@ -1000,6 +934,7 @@ def list_my_sessions(
 ):
     """List current user's active sessions. Story 1.2.3"""
     from app.core.session_manager import SessionManager
+
     mgr = SessionManager(db)
     sessions = mgr.get_active_sessions(current_user)
     current_jti = None
@@ -1007,6 +942,7 @@ def list_my_sessions(
         token = request.headers.get("Authorization", "").replace("Bearer ", "")
         if token:
             import jwt as pyjwt
+
             payload = pyjwt.decode(token, options={"verify_signature": False})
             current_jti = payload.get("jti")
     except Exception:
@@ -1036,22 +972,34 @@ def terminate_session(
     http_request: Request = None,
 ):
     """Terminate a specific session. Story 1.2.3"""
-    from app.core.session_manager import SessionManager
     from app.core.audit import create_audit_log
+    from app.core.session_manager import SessionManager
+
     mgr = SessionManager(db)
     from app.models.user_session import UserSession
-    session = db.query(UserSession).filter(
-        UserSession.jti == session_jti,
-        UserSession.user_id == str(current_user.id),
-    ).first()
+
+    session = (
+        db.query(UserSession)
+        .filter(
+            UserSession.jti == session_jti,
+            UserSession.user_id == str(current_user.id),
+        )
+        .first()
+    )
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
     success = mgr.revoke_session(session_jti, reason="user_terminated")
     if not success:
         raise HTTPException(status_code=400, detail="Session could not be revoked")
-    create_audit_log(db=db, action="session_terminated", user=current_user,
-                     entity_type="session", entity_id=session_jti,
-                     request=http_request, status="success")
+    create_audit_log(
+        db=db,
+        action="session_terminated",
+        user=current_user,
+        entity_type="session",
+        entity_id=session_jti,
+        request=http_request,
+        status="success",
+    )
     return {"message": "Session terminated"}
 
 
@@ -1062,23 +1010,31 @@ def terminate_all_sessions(
     http_request: Request = None,
 ):
     """Terminate all sessions except current. Story 1.2.3"""
-    from app.core.session_manager import SessionManager
     from app.core.audit import create_audit_log
+    from app.core.session_manager import SessionManager
+
     current_jti = None
     try:
         token = http_request.headers.get("Authorization", "").replace("Bearer ", "") if http_request else ""
         if token:
             import jwt as pyjwt
+
             payload = pyjwt.decode(token, options={"verify_signature": False})
             current_jti = payload.get("jti")
     except Exception:
         pass
     mgr = SessionManager(db)
     count = mgr.revoke_all_user_sessions(current_user, except_jti=current_jti)
-    create_audit_log(db=db, action="sessions_terminated_all", user=current_user,
-                     entity_type="user", entity_id=str(current_user.id),
-                     context_info={"count": count},
-                     request=http_request, status="success")
+    create_audit_log(
+        db=db,
+        action="sessions_terminated_all",
+        user=current_user,
+        entity_type="user",
+        entity_id=str(current_user.id),
+        context_info={"count": count},
+        request=http_request,
+        status="success",
+    )
     return {"message": f"Terminated {count} sessions", "count": count}
 
 
@@ -1087,7 +1043,7 @@ def logout(
     request: Request,
     credentials: HTTPAuthorizationCredentials = Depends(security),
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """
     Logout endpoint - revokes the current access token by adding it to the blacklist.
@@ -1111,10 +1067,7 @@ def logout(
     # Add token to blacklist
     expires_at = datetime.fromtimestamp(payload.get("exp"))
     blacklist_entry = TokenBlacklist(
-        jti=jti,
-        user_id=str(current_user.id),
-        token_type=payload.get("type", "access"),
-        expires_at=expires_at
+        jti=jti, user_id=str(current_user.id), token_type=payload.get("type", "access"), expires_at=expires_at
     )
 
     db.add(blacklist_entry)
@@ -1122,7 +1075,10 @@ def logout(
 
     # Mirror revocation into Redis for fast lookup (non-fatal)
     try:
-        import os as _os, redis as _redis
+        import os as _os
+
+        import redis as _redis
+
         _redis_url = _os.environ.get("REDIS_URL", "")
         if _redis_url:
             _ttl = max(0, int(payload.get("exp", 0)) - int(__import__("time").time()))
@@ -1140,7 +1096,7 @@ def logout(
         entity_type="user",
         entity_id=str(current_user.id),
         request=request,
-        status="success"
+        status="success",
     )
 
     logger.info(f"User {current_user.id} logged out successfully")

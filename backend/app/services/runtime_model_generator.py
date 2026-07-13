@@ -5,17 +5,18 @@ This service reads EntityDefinition metadata from the database and generates
 SQLAlchemy ORM models at runtime. Models are cached for performance.
 """
 
-from typing import Type, Optional, Dict, Any, Set, List
-from sqlalchemy import Column, ForeignKey, Table, MetaData, String, DateTime, Boolean, text
-from sqlalchemy.dialects.postgresql import UUID as PG_UUID
-import uuid
-from sqlalchemy.orm import Session, relationship
-from sqlalchemy.ext.declarative import declarative_base
-from app.models.data_model import EntityDefinition, FieldDefinition, RelationshipDefinition
-from app.utils.field_type_mapper import FieldTypeMapper
-from app.core.model_cache import get_model_cache, ModelCache
-from app.core.scope import apply_tenant_scope_by_id
 import logging
+import uuid
+from typing import List, Optional, Set, Type
+
+from sqlalchemy import Boolean, Column, DateTime, text
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import Session
+
+from app.core.model_cache import ModelCache, get_model_cache
+from app.models.data_model import EntityDefinition
+from app.utils.field_type_mapper import FieldTypeMapper
 
 logger = logging.getLogger(__name__)
 
@@ -51,11 +52,7 @@ class RuntimeModelGenerator:
         # in DynamicEntityService.__init__).
         self._entity_def_cache: dict = {}
 
-    def get_model(
-        self,
-        entity_name: str,
-        tenant_id: Optional[str] = None
-    ) -> Type:
+    def get_model(self, entity_name: str, tenant_id: Optional[str] = None) -> Type:
         """
         Get or generate SQLAlchemy model for entity
 
@@ -73,9 +70,7 @@ class RuntimeModelGenerator:
         entity_def = self.get_entity_definition(entity_name, tenant_id)
 
         if not entity_def:
-            raise ValueError(
-                f"Entity '{entity_name}' not found or not published for tenant '{tenant_id}'"
-            )
+            raise ValueError(f"Entity '{entity_name}' not found or not published for tenant '{tenant_id}'")
 
         # Convert to dict for caching
         entity_dict = self._entity_to_dict(entity_def)
@@ -84,7 +79,7 @@ class RuntimeModelGenerator:
         entity_hash = self.cache.hash_entity_definition(entity_dict)
 
         # Check cache
-        cache_tenant_id = str(tenant_id) if tenant_id else 'platform'
+        cache_tenant_id = str(tenant_id) if tenant_id else "platform"
         cached_model = self.cache.get(cache_tenant_id, entity_name, entity_hash)
 
         if cached_model:
@@ -100,11 +95,7 @@ class RuntimeModelGenerator:
 
         return model
 
-    def invalidate_cache(
-        self,
-        entity_name: Optional[str] = None,
-        tenant_id: Optional[str] = None
-    ):
+    def invalidate_cache(self, entity_name: Optional[str] = None, tenant_id: Optional[str] = None):
         """
         Invalidate cached models
 
@@ -115,11 +106,7 @@ class RuntimeModelGenerator:
         self.cache.invalidate(tenant_id, entity_name)
         logger.info(f"Cache invalidated for entity={entity_name}, tenant={tenant_id}")
 
-    def get_entity_definition(
-        self,
-        entity_name: str,
-        tenant_id: Optional[str] = None
-    ) -> Optional[EntityDefinition]:
+    def get_entity_definition(self, entity_name: str, tenant_id: Optional[str] = None) -> Optional[EntityDefinition]:
         """Public accessor for the EntityDefinition row.
 
         Cached per-instance so callers (e.g. `DynamicEntityService` for
@@ -133,11 +120,7 @@ class RuntimeModelGenerator:
         self._entity_def_cache[key] = entity_def
         return entity_def
 
-    def _load_entity_definition(
-        self,
-        entity_name: str,
-        tenant_id: Optional[str]
-    ) -> Optional[EntityDefinition]:
+    def _load_entity_definition(self, entity_name: str, tenant_id: Optional[str]) -> Optional[EntityDefinition]:
         """
         Load EntityDefinition from database
 
@@ -151,8 +134,7 @@ class RuntimeModelGenerator:
         from sqlalchemy import or_
 
         query = self.db.query(EntityDefinition).filter(
-            EntityDefinition.name == entity_name,
-            EntityDefinition.status == 'published'
+            EntityDefinition.name == entity_name, EntityDefinition.status == "published"
         )
 
         # Check tenant-specific first, then platform-level
@@ -160,7 +142,7 @@ class RuntimeModelGenerator:
             query = query.filter(
                 or_(
                     EntityDefinition.tenant_id == tenant_id,  # tenant-scope-ok (or_() tenant branch)
-                    EntityDefinition.tenant_id.is_(None)
+                    EntityDefinition.tenant_id.is_(None),
                 )
             )
             # Prefer tenant-specific over platform
@@ -186,11 +168,7 @@ class RuntimeModelGenerator:
         # in data_model_service but handles entities whose table_name was stored
         # before a module was assigned (e.g. via import-from-database).
         table_name = entity_def.table_name
-        if (
-            entity_def.module_id
-            and entity_def.module
-            and entity_def.module.table_prefix
-        ):
+        if entity_def.module_id and entity_def.module and entity_def.module.table_prefix:
             prefix = entity_def.module.table_prefix
             if not table_name.startswith(f"{prefix}_"):
                 table_name = f"{prefix}_{table_name}"
@@ -200,79 +178,86 @@ class RuntimeModelGenerator:
         # expand feature without extra per-request queries (the entire dict is
         # cached along with the model).
         ref_entity_ids = [
-            str(f.reference_entity_id)
-            for f in entity_def.fields
-            if getattr(f, 'reference_entity_id', None)
+            str(f.reference_entity_id) for f in entity_def.fields if getattr(f, "reference_entity_id", None)
         ]
         ref_entity_name_map: dict = {}
         if ref_entity_ids:
             from app.models.data_model import EntityDefinition as _ED
-            rows = self.db.query(_ED.id, _ED.name).filter(
-                _ED.id.in_(ref_entity_ids)
-            ).all()
+
+            rows = self.db.query(_ED.id, _ED.name).filter(_ED.id.in_(ref_entity_ids)).all()
             ref_entity_name_map = {str(r.id): r.name for r in rows}
 
         return {
-            'id': str(entity_def.id),
-            'name': entity_def.name,
-            'entity_type': getattr(entity_def, 'entity_type', 'custom') or 'custom',
-            'table_name': table_name,
-            'schema_name': entity_def.schema_name or 'public',
-            'data_scope': getattr(entity_def, 'data_scope', 'tenant') or 'tenant',
-            'supports_soft_delete': getattr(entity_def, 'supports_soft_delete', False) or False,
-            'label': entity_def.label,
-            'plural_label': entity_def.plural_label,
-            'fields': [
+            "id": str(entity_def.id),
+            "name": entity_def.name,
+            "entity_type": getattr(entity_def, "entity_type", "custom") or "custom",
+            "table_name": table_name,
+            "schema_name": entity_def.schema_name or "public",
+            "data_scope": getattr(entity_def, "data_scope", "tenant") or "tenant",
+            "supports_soft_delete": getattr(entity_def, "supports_soft_delete", False) or False,
+            "label": entity_def.label,
+            "plural_label": entity_def.plural_label,
+            "fields": [
                 {
-                    'id': str(f.id),
-                    'name': f.name,
-                    'field_type': f.field_type,
-                    'db_column_name': f.name,
-                    'label': f.label,
-                    'is_required': f.is_required,
-                    'is_primary_key': f.name == 'id',
-                    'is_unique': f.is_unique,
-                    'is_indexed': f.is_indexed,
-                    'is_calculated': getattr(f, 'is_calculated', False) or False,
-                    'calculation_formula': getattr(f, 'calculation_formula', None),
-                    'allowed_values': f.allowed_values,
-                    'max_length': f.max_length,
-                    'min_length': f.min_length,
-                    'min_value': f.min_value,
-                    'max_value': f.max_value,
-                    'precision': f.precision,
-                    'scale': f.decimal_places,
-                    'default_value': f.default_value,
-                    'validation_rules': f.validation_rules,
+                    "id": str(f.id),
+                    "name": f.name,
+                    "field_type": f.field_type,
+                    "db_column_name": f.name,
+                    "label": f.label,
+                    "is_required": f.is_required,
+                    "is_primary_key": f.name == "id",
+                    "is_unique": f.is_unique,
+                    "is_indexed": f.is_indexed,
+                    "is_calculated": getattr(f, "is_calculated", False) or False,
+                    "calculation_formula": getattr(f, "calculation_formula", None),
+                    "allowed_values": f.allowed_values,
+                    "max_length": f.max_length,
+                    "min_length": f.min_length,
+                    "min_value": f.min_value,
+                    "max_value": f.max_value,
+                    "precision": f.precision,
+                    "scale": f.decimal_places,
+                    "default_value": f.default_value,
+                    "validation_rules": f.validation_rules,
                     # Lookup / reference attributes
-                    'reference_entity_id': str(f.reference_entity_id) if getattr(f, 'reference_entity_id', None) else None,
-                    'reference_entity_name': ref_entity_name_map.get(str(f.reference_entity_id)) if getattr(f, 'reference_entity_id', None) else None,
-                    'reference_table_name': getattr(f, 'reference_table_name', None),
-                    'reference_field': getattr(f, 'reference_field', None),
-                    'display_field': getattr(f, 'display_field', None),
-                    'relationship_type': getattr(f, 'relationship_type', None),
-                    'lookup_display_template': getattr(f, 'lookup_display_template', None),
-                    'lookup_search_fields': getattr(f, 'lookup_search_fields', None),
-                    'lookup_allow_create': getattr(f, 'lookup_allow_create', False),
-                    'lookup_recent_count': getattr(f, 'lookup_recent_count', 5),
-                    'lookup_filter_field': getattr(f, 'lookup_filter_field', None),
-                    'order': f.display_order,
+                    "reference_entity_id": (
+                        str(f.reference_entity_id) if getattr(f, "reference_entity_id", None) else None
+                    ),
+                    "reference_entity_name": (
+                        ref_entity_name_map.get(str(f.reference_entity_id))
+                        if getattr(f, "reference_entity_id", None)
+                        else None
+                    ),
+                    "reference_table_name": getattr(f, "reference_table_name", None),
+                    "reference_field": getattr(f, "reference_field", None),
+                    "display_field": getattr(f, "display_field", None),
+                    "relationship_type": getattr(f, "relationship_type", None),
+                    "lookup_display_template": getattr(f, "lookup_display_template", None),
+                    "lookup_search_fields": getattr(f, "lookup_search_fields", None),
+                    "lookup_allow_create": getattr(f, "lookup_allow_create", False),
+                    "lookup_recent_count": getattr(f, "lookup_recent_count", 5),
+                    "lookup_filter_field": getattr(f, "lookup_filter_field", None),
+                    "order": f.display_order,
                 }
                 for f in sorted(entity_def.fields, key=lambda x: x.display_order or 0)
             ],
-            'relationships': [
-                {
-                    'id': str(r.id),
-                    'name': r.name,
-                    'relationship_type': r.relationship_type,
-                    'target_entity_id': str(r.target_entity_id) if r.target_entity_id else None,
-                    'source_field_name': r.source_field_name,
-                    'target_field_name': r.target_field_name,
-                    'on_delete': r.on_delete,
-                    'on_update': r.on_update
-                }
-                for r in entity_def.source_relationships
-            ] if entity_def.source_relationships else []
+            "relationships": (
+                [
+                    {
+                        "id": str(r.id),
+                        "name": r.name,
+                        "relationship_type": r.relationship_type,
+                        "target_entity_id": str(r.target_entity_id) if r.target_entity_id else None,
+                        "source_field_name": r.source_field_name,
+                        "target_field_name": r.target_field_name,
+                        "on_delete": r.on_delete,
+                        "on_update": r.on_update,
+                    }
+                    for r in entity_def.source_relationships
+                ]
+                if entity_def.source_relationships
+                else []
+            ),
         }
 
     def _generate_model(self, entity_def: EntityDefinition, entity_dict: dict) -> Type:
@@ -286,26 +271,26 @@ class RuntimeModelGenerator:
         Returns:
             SQLAlchemy model class
         """
-        table_name = entity_dict['table_name']
-        schema_name = entity_dict['schema_name']
+        table_name = entity_dict["table_name"]
+        schema_name = entity_dict["schema_name"]
 
         # Virtual entities point to an existing DB view — the table already
         # exists and must not have SQLAlchemy try to validate/create it.
-        is_virtual = entity_dict.get('entity_type') == 'virtual'
+        is_virtual = entity_dict.get("entity_type") == "virtual"
 
         # Build attributes dict for model class
         attrs = {
-            '__tablename__': table_name,
-            '__table_args__': {'schema': schema_name, 'extend_existing': True},
-            '__entity_definition__': entity_dict,  # Store metadata for reference
-            '__is_virtual__': is_virtual,          # Convenience flag for the router layer
+            "__tablename__": table_name,
+            "__table_args__": {"schema": schema_name, "extend_existing": True},
+            "__entity_definition__": entity_dict,  # Store metadata for reference
+            "__is_virtual__": is_virtual,  # Convenience flag for the router layer
         }
 
         # Collect user-defined field names to avoid duplicates with system fields
-        fields = entity_dict['fields']
+        fields = entity_dict["fields"]
         user_field_names = set()
         for f in fields:
-            user_field_names.add(f.get('db_column_name') or f['name'])
+            user_field_names.add(f.get("db_column_name") or f["name"])
 
         # Introspect the real table early — needed to decide whether a system 'id'
         # column should be added and to fall back to DB PK when no 'id' exists.
@@ -315,30 +300,30 @@ class RuntimeModelGenerator:
         #   • no user-defined field claims the 'id' column name, AND
         #   • the real table actually has an 'id' column (imported tables whose PK
         #     has a different name must not get a phantom 'id' column).
-        has_user_id = 'id' in user_field_names
+        has_user_id = "id" in user_field_names
         system_id_added = False
-        if not has_user_id and 'id' in db_columns:
-            attrs['id'] = Column('id', PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+        if not has_user_id and "id" in db_columns:
+            attrs["id"] = Column("id", PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
             system_id_added = True
 
         # Determine which field should be the primary key.
         # Priority: system 'id' we just added → explicit is_primary_key → field named 'id'
         #           → DB-introspected PK → first field.
-        pk_field_name = 'id' if system_id_added else None
+        pk_field_name = "id" if system_id_added else None
 
         if not system_id_added:
             # Check for explicit primary key among user fields
             for f in fields:
-                if f.get('is_primary_key'):
-                    pk_field_name = f['db_column_name'] or f['name']
+                if f.get("is_primary_key"):
+                    pk_field_name = f["db_column_name"] or f["name"]
                     break
 
             # If no explicit PK, look for a user field named 'id'
             if not pk_field_name:
                 for f in fields:
-                    field_name = f['db_column_name'] or f['name']
-                    if field_name == 'id':
-                        pk_field_name = 'id'
+                    field_name = f["db_column_name"] or f["name"]
+                    if field_name == "id":
+                        pk_field_name = "id"
                         break
 
             # Fall back to the actual DB primary-key column(s) from information_schema
@@ -349,21 +334,20 @@ class RuntimeModelGenerator:
 
             # Last resort: first user field
             if not pk_field_name and fields:
-                pk_field_name = fields[0]['db_column_name'] or fields[0]['name']
+                pk_field_name = fields[0]["db_column_name"] or fields[0]["name"]
 
         # Add columns from FieldDefinitions
         for field in fields:
             # Mark the designated field as primary key
-            field_name = field['db_column_name'] or field['name']
+            field_name = field["db_column_name"] or field["name"]
             if field_name == pk_field_name:
                 field = dict(field)  # Copy to avoid modifying original
-                field['is_primary_key'] = True
+                field["is_primary_key"] = True
 
             column = self.field_mapper.to_sqlalchemy_column(
-                field,
-                include_foreign_key=False  # We'll handle relationships separately
+                field, include_foreign_key=False  # We'll handle relationships separately
             )
-            column_name = field['db_column_name'] or field['name']
+            column_name = field["db_column_name"] or field["name"]
             attrs[column_name] = column
 
         # Add system columns that the migration generator creates but are not
@@ -374,17 +358,17 @@ class RuntimeModelGenerator:
 
         # Map of system column name -> SQLAlchemy column definition
         system_columns = {
-            'tenant_id': lambda: Column('tenant_id', PG_UUID(as_uuid=False), nullable=True),
-            'company_id': lambda: Column('company_id', PG_UUID(as_uuid=False), nullable=True),
-            'branch_id': lambda: Column('branch_id', PG_UUID(as_uuid=False), nullable=True),
-            'department_id': lambda: Column('department_id', PG_UUID(as_uuid=False), nullable=True),
-            'created_at': lambda: Column('created_at', DateTime, nullable=True),
-            'created_by': lambda: Column('created_by', PG_UUID(as_uuid=False), nullable=True),
-            'updated_at': lambda: Column('updated_at', DateTime, nullable=True),
-            'updated_by': lambda: Column('updated_by', PG_UUID(as_uuid=False), nullable=True),
-            'is_deleted': lambda: Column('is_deleted', Boolean, default=False, nullable=True),
-            'deleted_at': lambda: Column('deleted_at', DateTime, nullable=True),
-            'deleted_by': lambda: Column('deleted_by', PG_UUID(as_uuid=False), nullable=True),
+            "tenant_id": lambda: Column("tenant_id", PG_UUID(as_uuid=False), nullable=True),
+            "company_id": lambda: Column("company_id", PG_UUID(as_uuid=False), nullable=True),
+            "branch_id": lambda: Column("branch_id", PG_UUID(as_uuid=False), nullable=True),
+            "department_id": lambda: Column("department_id", PG_UUID(as_uuid=False), nullable=True),
+            "created_at": lambda: Column("created_at", DateTime, nullable=True),
+            "created_by": lambda: Column("created_by", PG_UUID(as_uuid=False), nullable=True),
+            "updated_at": lambda: Column("updated_at", DateTime, nullable=True),
+            "updated_by": lambda: Column("updated_by", PG_UUID(as_uuid=False), nullable=True),
+            "is_deleted": lambda: Column("is_deleted", Boolean, default=False, nullable=True),
+            "deleted_at": lambda: Column("deleted_at", DateTime, nullable=True),
+            "deleted_by": lambda: Column("deleted_by", PG_UUID(as_uuid=False), nullable=True),
         }
 
         for col_name, col_factory in system_columns.items():
@@ -392,29 +376,20 @@ class RuntimeModelGenerator:
                 attrs[col_name] = col_factory()
 
         # Create model class dynamically
-        model_class_name = self._to_class_name(entity_dict['name'])
-        model_class = type(
-            model_class_name,
-            (DynamicBase,),
-            attrs
-        )
+        model_class_name = self._to_class_name(entity_dict["name"])
+        model_class = type(model_class_name, (DynamicBase,), attrs)
 
         # Set up relationships (if any)
         # Note: Relationships are tricky with dynamic models
         # We'll store relationship metadata but actual ORM relationships
         # require all target models to be generated first
-        if entity_dict.get('relationships'):
-            for rel in entity_dict['relationships']:
+        if entity_dict.get("relationships"):
+            for rel in entity_dict["relationships"]:
                 self._add_relationship(model_class, rel, entity_dict)
 
         return model_class
 
-    def _add_relationship(
-        self,
-        model_class: Type,
-        relationship_def: dict,
-        entity_dict: dict
-    ):
+    def _add_relationship(self, model_class: Type, relationship_def: dict, entity_dict: dict):
         """
         Add relationship to model class
 
@@ -426,22 +401,24 @@ class RuntimeModelGenerator:
             relationship_def: Relationship definition dict
             entity_dict: Entity definition dict
         """
-        rel_name = relationship_def['name']
-        rel_type = relationship_def['relationship_type']
-        target_entity_id = relationship_def.get('target_entity_id')
+        rel_name = relationship_def["name"]
+        rel_type = relationship_def["relationship_type"]
+        target_entity_id = relationship_def.get("target_entity_id")
 
         # For now, we'll store the relationship metadata as class attribute
         # Actual SQLAlchemy relationship() calls require target model to exist
-        if not hasattr(model_class, '_nocode_relationships'):
+        if not hasattr(model_class, "_nocode_relationships"):
             model_class._nocode_relationships = []
 
-        model_class._nocode_relationships.append({
-            'name': rel_name,
-            'type': rel_type,
-            'target_entity_id': target_entity_id,
-            'source_field_name': relationship_def.get('source_field_name'),
-            'target_field_name': relationship_def.get('target_field_name'),
-        })
+        model_class._nocode_relationships.append(
+            {
+                "name": rel_name,
+                "type": rel_type,
+                "target_entity_id": target_entity_id,
+                "source_field_name": relationship_def.get("source_field_name"),
+                "target_field_name": relationship_def.get("target_field_name"),
+            }
+        )
 
         # TODO: Implement actual SQLAlchemy relationships
         # This requires:
@@ -452,7 +429,7 @@ class RuntimeModelGenerator:
         # For Phase 2, we'll handle relationships at the query level
         # rather than using SQLAlchemy's relationship() feature
 
-    def _get_table_columns(self, table_name: str, schema_name: str = 'public') -> Set[str]:
+    def _get_table_columns(self, table_name: str, schema_name: str = "public") -> Set[str]:
         """
         Introspect actual database table to get existing column names.
 
@@ -461,16 +438,19 @@ class RuntimeModelGenerator:
             Returns empty set if the table does not exist or on error.
         """
         try:
-            result = self.db.execute(text(
-                "SELECT column_name FROM information_schema.columns "
-                "WHERE table_schema = :schema AND table_name = :table"
-            ), {"schema": schema_name, "table": table_name})
+            result = self.db.execute(
+                text(
+                    "SELECT column_name FROM information_schema.columns "
+                    "WHERE table_schema = :schema AND table_name = :table"
+                ),
+                {"schema": schema_name, "table": table_name},
+            )
             return {row[0] for row in result}
         except Exception as e:
             logger.warning(f"Could not introspect table {schema_name}.{table_name}: {e}")
             return set()
 
-    def _get_primary_key_columns(self, table_name: str, schema_name: str = 'public') -> List[str]:
+    def _get_primary_key_columns(self, table_name: str, schema_name: str = "public") -> List[str]:
         """
         Return the primary-key column names for a table, in key ordinal order.
 
@@ -482,7 +462,8 @@ class RuntimeModelGenerator:
             List of PK column names, empty list if the table/PK cannot be found.
         """
         try:
-            result = self.db.execute(text("""
+            result = self.db.execute(
+                text("""
                 SELECT kcu.column_name
                 FROM information_schema.table_constraints tc
                 JOIN information_schema.key_column_usage kcu
@@ -493,7 +474,9 @@ class RuntimeModelGenerator:
                   AND tc.table_schema = :schema
                   AND tc.table_name   = :table
                 ORDER BY kcu.ordinal_position
-            """), {"schema": schema_name, "table": table_name})
+            """),
+                {"schema": schema_name, "table": table_name},
+            )
             return [row[0] for row in result]
         except Exception as e:
             logger.warning(f"Could not get PK columns for {schema_name}.{table_name}: {e}")
@@ -514,8 +497,8 @@ class RuntimeModelGenerator:
         Returns:
             Python class name (PascalCase)
         """
-        parts = entity_name.split('_')
-        return ''.join(word.capitalize() for word in parts)
+        parts = entity_name.split("_")
+        return "".join(word.capitalize() for word in parts)
 
     def get_field_definitions(self, entity_name: str, tenant_id: Optional[str] = None) -> list:
         """
@@ -534,13 +517,9 @@ class RuntimeModelGenerator:
             raise ValueError(f"Entity '{entity_name}' not found")
 
         entity_dict = self._entity_to_dict(entity_def)
-        return entity_dict['fields']
+        return entity_dict["fields"]
 
-    def get_relationship_definitions(
-        self,
-        entity_name: str,
-        tenant_id: Optional[str] = None
-    ) -> list:
+    def get_relationship_definitions(self, entity_name: str, tenant_id: Optional[str] = None) -> list:
         """
         Get relationship definitions for an entity
 
@@ -557,4 +536,4 @@ class RuntimeModelGenerator:
             raise ValueError(f"Entity '{entity_name}' not found")
 
         entity_dict = self._entity_to_dict(entity_def)
-        return entity_dict.get('relationships', [])
+        return entity_dict.get("relationships", [])

@@ -10,12 +10,12 @@ Run: python -m app.seeds.seed_module_management_rbac
 
 import uuid
 from datetime import datetime
-from sqlalchemy.orm import Session
+
 from app.core.db import SessionLocal
-from app.models.permission import Permission
-from app.models.role import Role
 from app.models.group import Group
-from app.models.rbac_junctions import RolePermission, GroupRole
+from app.models.permission import Permission
+from app.models.rbac_junctions import GroupRole, RolePermission
+from app.models.role import Role
 from app.models.tenant import Tenant
 
 
@@ -35,9 +35,9 @@ def seed_module_management_rbac(tenant_code=None):
     db = SessionLocal()
 
     try:
-        print("\n" + "="*80)
+        print("\n" + "=" * 80)
         print("MODULE MANAGEMENT RBAC SETUP")
-        print("="*80 + "\n")
+        print("=" * 80 + "\n")
 
         # ========================================================================
         # STEP 1: Register Module Management Permissions
@@ -54,7 +54,7 @@ def seed_module_management_rbac(tenant_code=None):
                 "action": "list",
                 "scope": "tenant",
                 "category": "module_management",
-                "is_system": True
+                "is_system": True,
             },
             {
                 "code": "modules:view:tenant",
@@ -64,7 +64,7 @@ def seed_module_management_rbac(tenant_code=None):
                 "action": "view",
                 "scope": "tenant",
                 "category": "module_management",
-                "is_system": True
+                "is_system": True,
             },
             # Install/Uninstall (superuser only - platform-wide operations)
             {
@@ -75,7 +75,7 @@ def seed_module_management_rbac(tenant_code=None):
                 "action": "install",
                 "scope": "all",
                 "category": "module_management",
-                "is_system": True
+                "is_system": True,
             },
             {
                 "code": "modules:uninstall:all",
@@ -85,7 +85,7 @@ def seed_module_management_rbac(tenant_code=None):
                 "action": "uninstall",
                 "scope": "all",
                 "category": "module_management",
-                "is_system": True
+                "is_system": True,
             },
             {
                 "code": "modules:sync:all",
@@ -95,7 +95,7 @@ def seed_module_management_rbac(tenant_code=None):
                 "action": "sync",
                 "scope": "all",
                 "category": "module_management",
-                "is_system": True
+                "is_system": True,
             },
             # Enable/Disable for tenant (tenant admin operations)
             {
@@ -106,7 +106,7 @@ def seed_module_management_rbac(tenant_code=None):
                 "action": "enable",
                 "scope": "tenant",
                 "category": "module_management",
-                "is_system": True
+                "is_system": True,
             },
             {
                 "code": "modules:disable:tenant",
@@ -116,7 +116,7 @@ def seed_module_management_rbac(tenant_code=None):
                 "action": "disable",
                 "scope": "tenant",
                 "category": "module_management",
-                "is_system": True
+                "is_system": True,
             },
             {
                 "code": "modules:configure:tenant",
@@ -126,7 +126,7 @@ def seed_module_management_rbac(tenant_code=None):
                 "action": "configure",
                 "scope": "tenant",
                 "category": "module_management",
-                "is_system": True
+                "is_system": True,
             },
             # Management page access
             {
@@ -137,17 +137,15 @@ def seed_module_management_rbac(tenant_code=None):
                 "action": "manage",
                 "scope": "tenant",
                 "category": "module_management",
-                "is_system": True
-            }
+                "is_system": True,
+            },
         ]
 
         created_count = 0
         existing_count = 0
 
         for perm_data in module_permissions:
-            perm = db.query(Permission).filter(
-                Permission.code == perm_data["code"]
-            ).first()
+            perm = db.query(Permission).filter(Permission.code == perm_data["code"]).first()
 
             if not perm:
                 perm = Permission(
@@ -158,7 +156,7 @@ def seed_module_management_rbac(tenant_code=None):
                     action=perm_data["action"],
                     scope=perm_data["scope"],
                     category=perm_data["category"],
-                    is_system=perm_data["is_system"]
+                    is_system=perm_data["is_system"],
                 )
                 db.add(perm)
                 db.flush()
@@ -175,8 +173,9 @@ def seed_module_management_rbac(tenant_code=None):
         print(f"\n✓ Created {created_count} new permissions")
         print(f"✓ Found {existing_count} existing permissions")
 
-        permission_map = {p["code"]: db.query(Permission).filter(Permission.code == p["code"]).first()
-                         for p in module_permissions}
+        permission_map = {
+            p["code"]: db.query(Permission).filter(Permission.code == p["code"]).first() for p in module_permissions
+        }
 
         # ========================================================================
         # STEP 2: Create Roles and Groups (if tenant specified)
@@ -203,26 +202,20 @@ def seed_module_management_rbac(tenant_code=None):
                             "modules:enable:tenant",
                             "modules:disable:tenant",
                             "modules:configure:tenant",
-                            "modules:manage:tenant"
-                        ]
+                            "modules:manage:tenant",
+                        ],
                     },
                     "Module Viewer": {
                         "code": "MODULE_VIEWER",
                         "description": "View-only access to module information",
-                        "permissions": [
-                            "modules:list:tenant",
-                            "modules:view:tenant"
-                        ]
-                    }
+                        "permissions": ["modules:list:tenant", "modules:view:tenant"],
+                    },
                 }
 
                 role_map = {}
                 for role_name, role_config in roles_config.items():
                     # Check if role exists
-                    role = db.query(Role).filter(
-                        Role.code == role_config["code"],
-                        Role.tenant_id == tenant.id
-                    ).first()
+                    role = db.query(Role).filter(Role.code == role_config["code"], Role.tenant_id == tenant.id).first()
 
                     if not role:
                         role = Role(
@@ -231,7 +224,7 @@ def seed_module_management_rbac(tenant_code=None):
                             description=role_config["description"],
                             tenant_id=tenant.id,
                             is_active=True,
-                            created_at=datetime.utcnow()
+                            created_at=datetime.utcnow(),
                         )
                         db.add(role)
                         db.flush()
@@ -245,17 +238,18 @@ def seed_module_management_rbac(tenant_code=None):
                         perm = permission_map.get(perm_code)
                         if perm:
                             # Check if permission already assigned
-                            existing = db.query(RolePermission).filter(
-                                RolePermission.role_id == role.id,
-                                RolePermission.permission_id == perm.id
-                            ).first()
+                            existing = (
+                                db.query(RolePermission)
+                                .filter(RolePermission.role_id == role.id, RolePermission.permission_id == perm.id)
+                                .first()
+                            )
 
                             if not existing:
                                 role_perm = RolePermission(
                                     id=str(uuid.uuid4()),
                                     role_id=str(role.id),
                                     permission_id=str(perm.id),
-                                    created_at=datetime.utcnow()
+                                    created_at=datetime.utcnow(),
                                 )
                                 db.add(role_perm)
 
@@ -268,23 +262,27 @@ def seed_module_management_rbac(tenant_code=None):
                         "code": "MODULE_ADMINS",
                         "description": "Users who can manage modules for the tenant",
                         "roles": ["Module Administrator"],
-                        "group_type": "team"
+                        "group_type": "team",
                     },
                     "Module Viewers": {
                         "code": "MODULE_VIEWERS",
                         "description": "Users who can view module information",
                         "roles": ["Module Viewer"],
-                        "group_type": "team"
-                    }
+                        "group_type": "team",
+                    },
                 }
 
                 for group_name, group_config in groups_config.items():
                     # Check if group exists
-                    group = db.query(Group).filter(
-                        Group.code == group_config["code"],
-                        Group.tenant_id == tenant.id,
-                        Group.company_id == None  # Tenant-wide group
-                    ).first()
+                    group = (
+                        db.query(Group)
+                        .filter(
+                            Group.code == group_config["code"],
+                            Group.tenant_id == tenant.id,
+                            Group.company_id == None,  # Tenant-wide group
+                        )
+                        .first()
+                    )
 
                     if not group:
                         group = Group(
@@ -295,7 +293,7 @@ def seed_module_management_rbac(tenant_code=None):
                             company_id=None,  # Tenant-wide
                             group_type=group_config["group_type"],
                             is_active=True,
-                            created_at=datetime.utcnow()
+                            created_at=datetime.utcnow(),
                         )
                         db.add(group)
                         db.flush()
@@ -309,17 +307,18 @@ def seed_module_management_rbac(tenant_code=None):
                         role = role_map.get(role_name)
                         if role:
                             # Check if role already assigned to group
-                            existing = db.query(GroupRole).filter(
-                                GroupRole.group_id == group.id,
-                                GroupRole.role_id == role.id
-                            ).first()
+                            existing = (
+                                db.query(GroupRole)
+                                .filter(GroupRole.group_id == group.id, GroupRole.role_id == role.id)
+                                .first()
+                            )
 
                             if not existing:
                                 group_role = GroupRole(
                                     id=str(uuid.uuid4()),
                                     group_id=str(group.id),
                                     role_id=str(role.id),
-                                    created_at=datetime.utcnow()
+                                    created_at=datetime.utcnow(),
                                 )
                                 db.add(group_role)
                                 print(f"    ✓ Assigned role '{role_name}' to group '{group_name}'")
@@ -331,43 +330,43 @@ def seed_module_management_rbac(tenant_code=None):
         # ========================================================================
         # SUMMARY
         # ========================================================================
-        print("\n" + "="*80)
+        print("\n" + "=" * 80)
         print("✅ MODULE MANAGEMENT RBAC SETUP COMPLETE!")
-        print("="*80)
+        print("=" * 80)
 
-        print(f"\n📋 Permissions Created:")
-        print(f"   • Platform-wide operations (superuser only):")
-        print(f"      - modules:install:all")
-        print(f"      - modules:uninstall:all")
-        print(f"      - modules:sync:all")
+        print("\n📋 Permissions Created:")
+        print("   • Platform-wide operations (superuser only):")
+        print("      - modules:install:all")
+        print("      - modules:uninstall:all")
+        print("      - modules:sync:all")
 
-        print(f"\n   • Tenant operations (admin/users):")
-        print(f"      - modules:list:tenant")
-        print(f"      - modules:view:tenant")
-        print(f"      - modules:enable:tenant")
-        print(f"      - modules:disable:tenant")
-        print(f"      - modules:configure:tenant")
-        print(f"      - modules:manage:tenant")
+        print("\n   • Tenant operations (admin/users):")
+        print("      - modules:list:tenant")
+        print("      - modules:view:tenant")
+        print("      - modules:enable:tenant")
+        print("      - modules:disable:tenant")
+        print("      - modules:configure:tenant")
+        print("      - modules:manage:tenant")
 
         if tenant_code and roles_created > 0:
             print(f"\n👥 Roles and Groups Created for tenant '{tenant_code}':")
-            print(f"   • Module Administrator role → Module Administrators group")
-            print(f"   • Module Viewer role → Module Viewers group")
+            print("   • Module Administrator role → Module Administrators group")
+            print("   • Module Viewer role → Module Viewers group")
 
-        print(f"\n🎯 Next Steps:")
-        print(f"   1. Superusers automatically have all module management permissions")
+        print("\n🎯 Next Steps:")
+        print("   1. Superusers automatically have all module management permissions")
         if tenant_code and groups_created > 0:
-            print(f"   2. Add tenant admins to 'Module Administrators' group for tenant-level management")
-            print(f"   3. Add users to 'Module Viewers' group for view-only access")
-            print(f"   4. Restart the backend server")
-            print(f"   5. Access module management at /app#modules")
+            print("   2. Add tenant admins to 'Module Administrators' group for tenant-level management")
+            print("   3. Add users to 'Module Viewers' group for view-only access")
+            print("   4. Restart the backend server")
+            print("   5. Access module management at /app#modules")
         else:
-            print(f"   2. Run this script with a tenant code to create roles and groups")
-            print(f"      Example: seed_module_management_rbac('FASHIONHUB')")
-            print(f"   3. Restart the backend server")
-            print(f"   4. Access module management at /app#modules")
+            print("   2. Run this script with a tenant code to create roles and groups")
+            print("      Example: seed_module_management_rbac('FASHIONHUB')")
+            print("   3. Restart the backend server")
+            print("   4. Access module management at /app#modules")
 
-        print("\n" + "="*80 + "\n")
+        print("\n" + "=" * 80 + "\n")
 
     except Exception as e:
         print(f"\n❌ ERROR: {e}")

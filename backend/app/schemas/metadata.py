@@ -1,9 +1,12 @@
-from pydantic import BaseModel, Field, ConfigDict, field_validator, model_validator
-from typing import Optional, List, Dict, Any, Literal, Union
 from datetime import datetime
+from typing import Any, Dict, List, Literal, Optional, Union
+
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+
 
 class FieldMetadata(BaseModel):
     """Single field metadata for form configuration"""
+
     field: str = Field(..., description="Field name/key")
     title: str = Field(..., description="Display title for the field")
     type: str = Field(default="text", description="Field type: text, number, date, boolean, select, etc.")
@@ -18,7 +21,9 @@ class FieldMetadata(BaseModel):
     help_text: Optional[str] = Field(None, description="Help text for the field")
     placeholder: Optional[str] = Field(None, description="Placeholder text")
     reference_entity_id: Optional[str] = Field(None, description="Referenced entity ID for lookup/reference fields")
-    reference_entity_name: Optional[str] = Field(None, description="Referenced entity name for API calls (e.g., 'TicketCategory')")
+    reference_entity_name: Optional[str] = Field(
+        None, description="Referenced entity name for API calls (e.g., 'TicketCategory')"
+    )
     reference_table_name: Optional[str] = Field(None, description="Referenced table name for system lookups")
     reference_field: Optional[str] = Field(None, description="Target column in referenced table (e.g., 'id')")
     display_field: Optional[str] = Field(None, description="Column to display in UI dropdown (e.g., 'name')")
@@ -28,15 +33,15 @@ class FieldMetadata(BaseModel):
     depends_on_field: Optional[str] = Field(None, description="Parent field for cascading lookups")
     filter_expression: Optional[str] = Field(None, description="Filter expression for dependent options")
 
-    @model_validator(mode='before')
+    @model_validator(mode="before")
     @classmethod
     def normalize_field_data(cls, data):
         """Handle name -> field and label -> title mapping before validation"""
         if isinstance(data, dict):
-            if 'field' not in data and 'name' in data:
-                data['field'] = data['name']
-            if 'title' not in data and 'label' in data:
-                data['title'] = data['label']
+            if "field" not in data and "name" in data:
+                data["field"] = data["name"]
+            if "title" not in data and "label" in data:
+                data["title"] = data["label"]
         return data
 
     model_config = ConfigDict(
@@ -48,14 +53,16 @@ class FieldMetadata(BaseModel):
                 "required": True,
                 "readonly": False,
                 "validators": {"pattern": "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"},
-                "help_text": "Enter your email address"
+                "help_text": "Enter your email address",
             }
         },
-        extra='ignore'  # Ignore extra fields like 'name', 'label', 'order', etc.
+        extra="ignore",  # Ignore extra fields like 'name', 'label', 'order', etc.
     )
+
 
 class ColumnMetadata(BaseModel):
     """Table column metadata for grid configuration"""
+
     field: str = Field(..., description="Field name/key")
     title: str = Field(..., description="Column header title")
     sortable: bool = Field(default=True, description="Whether column is sortable")
@@ -65,30 +72,34 @@ class ColumnMetadata(BaseModel):
     rbac_view: Optional[List[str]] = Field(None, description="Roles that can view this column")
     align: Optional[Literal["left", "center", "right"]] = Field(None, description="Column alignment")
 
-    @model_validator(mode='before')
+    @model_validator(mode="before")
     @classmethod
     def normalize_column_data(cls, data):
         """Handle label -> title mapping before validation"""
         if isinstance(data, dict):
-            if 'title' not in data and 'label' in data:
-                data['title'] = data['label']
+            if "title" not in data and "label" in data:
+                data["title"] = data["label"]
         return data
 
-    model_config = ConfigDict(
-        extra='ignore'  # Ignore extra fields
-    )
+    model_config = ConfigDict(extra="ignore")  # Ignore extra fields
+
 
 class TableConfig(BaseModel):
     """Table/Grid configuration"""
+
     columns: List[ColumnMetadata] = Field(default_factory=list, description="Column definitions")
-    default_sort: Optional[Union[List[List[str]], Dict[str, str]]] = Field(None, description="Default sort configuration [[field, asc/desc]] or {field, direction}")
+    default_sort: Optional[Union[List[List[str]], Dict[str, str]]] = Field(
+        None, description="Default sort configuration [[field, asc/desc]] or {field, direction}"
+    )
     default_filters: Optional[Dict[str, Any]] = Field(None, description="Default filters")
     page_size: int = Field(default=25, ge=1, le=100, description="Default page size")
-    actions: Optional[Union[List[str], Dict[str, bool]]] = Field(None, description="Available actions: view, edit, delete")
+    actions: Optional[Union[List[str], Dict[str, bool]]] = Field(
+        None, description="Available actions: view, edit, delete"
+    )
     selectable: bool = Field(default=False, description="Whether rows are selectable")
     exportable: bool = Field(default=False, description="Whether data can be exported")
 
-    @field_validator('default_sort', mode='before')
+    @field_validator("default_sort", mode="before")
     @classmethod
     def normalize_default_sort(cls, v):
         """Convert dict format {field, direction} to list format [[field, direction]]"""
@@ -96,14 +107,14 @@ class TableConfig(BaseModel):
             return None
         if isinstance(v, dict):
             # Handle {field: "created_at", direction: "desc"} format
-            field = v.get('field')
-            direction = v.get('direction', 'asc')
+            field = v.get("field")
+            direction = v.get("direction", "asc")
             if field:
                 return [[field, direction]]
             return None
         return v
 
-    @field_validator('actions', mode='before')
+    @field_validator("actions", mode="before")
     @classmethod
     def normalize_actions(cls, v):
         """Convert dict format {view: True, edit: True} to list format ["view", "edit"]"""
@@ -119,25 +130,27 @@ class TableConfig(BaseModel):
             "example": {
                 "columns": [
                     {"field": "name", "title": "Name", "sortable": True},
-                    {"field": "email", "title": "Email", "sortable": True}
+                    {"field": "email", "title": "Email", "sortable": True},
                 ],
                 "default_sort": [["name", "asc"]],
                 "page_size": 25,
                 "actions": ["view", "edit", "delete"],
-                "selectable": True
+                "selectable": True,
             }
         }
     )
 
+
 class FormConfig(BaseModel):
     """Form configuration"""
+
     fields: List[FieldMetadata] = Field(default_factory=list, description="Field definitions")
     layout: Optional[str] = Field(default="vertical", description="Form layout type")
     sections: Optional[List[Dict[str, Any]]] = Field(None, description="Form sections for grouping fields")
     submit_button_text: Optional[str] = Field(None, description="Custom submit button text")
     cancel_button_text: Optional[str] = Field(None, description="Custom cancel button text")
 
-    @field_validator('layout', mode='before')
+    @field_validator("layout", mode="before")
     @classmethod
     def normalize_layout(cls, v):
         """Normalize layout values to supported types"""
@@ -145,33 +158,28 @@ class FormConfig(BaseModel):
             return "vertical"
         # Map alternative layout names to supported values
         layout_mapping = {
-            'single_column': 'vertical',
-            'two_column': 'horizontal',
-            'multi_column': 'grid',
-            'tabs': 'vertical',  # tabs layout falls back to vertical
+            "single_column": "vertical",
+            "two_column": "horizontal",
+            "multi_column": "grid",
+            "tabs": "vertical",  # tabs layout falls back to vertical
         }
         return layout_mapping.get(v, v) if v in layout_mapping else v
 
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
-                "fields": [
-                    {
-                        "field": "name",
-                        "title": "Name",
-                        "type": "text",
-                        "required": True
-                    }
-                ],
+                "fields": [{"field": "name", "title": "Name", "type": "text", "required": True}],
                 "layout": "vertical",
                 "submit_button_text": "Save",
-                "cancel_button_text": "Cancel"
+                "cancel_button_text": "Cancel",
             }
         }
     )
 
+
 class EntityMetadataResponse(BaseModel):
     """Complete entity metadata response"""
+
     id: str = Field(..., description="Metadata unique identifier")
     entity_name: str = Field(..., description="Entity name (unique identifier)")
     display_name: str = Field(..., description="Human-readable display name")
@@ -190,8 +198,10 @@ class EntityMetadataResponse(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
+
 class EntityMetadataCreate(BaseModel):
     """Create entity metadata"""
+
     entity_name: str = Field(..., max_length=100, description="Entity name (unique)")
     display_name: str = Field(..., max_length=255, description="Display name")
     description: Optional[str] = Field(None, description="Entity description")
@@ -201,8 +211,10 @@ class EntityMetadataCreate(BaseModel):
     permissions: Optional[Dict[str, List[str]]] = Field(None, description="Role permissions")
     is_system: bool = Field(default=False, description="System entity flag")
 
+
 class EntityMetadataUpdate(BaseModel):
     """Update entity metadata"""
+
     display_name: Optional[str] = Field(None, max_length=255, description="Display name")
     description: Optional[str] = Field(None, description="Entity description")
     icon: Optional[str] = Field(None, max_length=50, description="Icon name")
@@ -211,13 +223,17 @@ class EntityMetadataUpdate(BaseModel):
     permissions: Optional[Dict[str, List[str]]] = Field(None, description="Role permissions")
     is_active: Optional[bool] = Field(None, description="Active status")
 
+
 class EntityListResponse(BaseModel):
     """List of available entities"""
+
     entities: List[str] = Field(..., description="List of entity names")
     total: int = Field(..., description="Total count of entities")
 
+
 class EntityMetadataDetailResponse(BaseModel):
     """Detailed entity metadata with additional info"""
+
     metadata: EntityMetadataResponse = Field(..., description="Entity metadata")
     statistics: Optional[Dict[str, Any]] = Field(None, description="Usage statistics")
     last_accessed: Optional[datetime] = Field(None, description="Last accessed timestamp")

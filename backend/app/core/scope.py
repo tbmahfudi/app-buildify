@@ -5,6 +5,7 @@ Legacy shim — re-exports everything from backend.app.core.tenant.scope.
 Existing code that imports from backend.app.core.scope continues to work
 unchanged. New code should import from backend.app.core.tenant directly.
 """
+
 try:
     # Canonical location when the package root is ``app`` (production / tests).
     from app.core.tenant.scope import (  # noqa: F401

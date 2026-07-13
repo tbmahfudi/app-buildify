@@ -11,23 +11,22 @@ Run: python -m app.seeds.seed_nocode_samples
 """
 
 from datetime import datetime, timedelta
+
 from sqlalchemy.orm import Session
+
 from app.core.db import SessionLocal
-from app.models.data_model import EntityDefinition, FieldDefinition, RelationshipDefinition
-from app.models.workflow import WorkflowDefinition, WorkflowState, WorkflowTransition
 from app.models.automation import AutomationRule
+from app.models.base import generate_uuid
+from app.models.data_model import EntityDefinition, FieldDefinition
 from app.models.lookup import LookupConfiguration
 from app.models.tenant import Tenant
 from app.models.user import User
-from app.models.base import generate_uuid
+from app.models.workflow import WorkflowDefinition, WorkflowState, WorkflowTransition
 
 
 def get_all_tenants(db: Session):
     """Get all active tenants."""
-    tenants = db.query(Tenant).filter(
-        Tenant.is_active == True,
-        Tenant.deleted_at == None
-    ).all()
+    tenants = db.query(Tenant).filter(Tenant.is_active == True, Tenant.deleted_at == None).all()
 
     if not tenants:
         print("⚠️  No tenants found. Creating default tenant...")
@@ -38,7 +37,7 @@ def get_all_tenants(db: Session):
             subscription_status="active",
             is_active=True,
             created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow()
+            updated_at=datetime.utcnow(),
         )
         db.add(tenant)
         db.commit()
@@ -50,10 +49,7 @@ def get_all_tenants(db: Session):
 
 def get_or_create_user(db: Session, tenant_id: str):
     """Get the first admin user for the tenant."""
-    user = db.query(User).filter(
-        User.tenant_id == tenant_id,
-        User.is_active == True
-    ).first()
+    user = db.query(User).filter(User.tenant_id == tenant_id, User.is_active == True).first()
 
     if not user:
         print("  ⚠️  Warning: No user found. Some relationships may be incomplete.")
@@ -64,9 +60,9 @@ def get_or_create_user(db: Session, tenant_id: str):
 
 def seed_data_model_samples(db: Session, tenant_id: str, user_id: str = None):
     """Seed sample entities and fields for Data Model Designer."""
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     print("DATA MODEL DESIGNER - SAMPLE DATA")
-    print("="*80 + "\n")
+    print("=" * 80 + "\n")
 
     entities_data = [
         {
@@ -82,15 +78,56 @@ def seed_data_model_samples(db: Session, tenant_id: str, user_id: str = None):
             "supports_attachments": True,
             "status": "published",
             "fields": [
-                {"name": "first_name", "label": "First Name", "field_type": "string", "data_type": "VARCHAR", "max_length": 100, "is_required": True},
-                {"name": "last_name", "label": "Last Name", "field_type": "string", "data_type": "VARCHAR", "max_length": 100, "is_required": True},
-                {"name": "email", "label": "Email", "field_type": "email", "data_type": "VARCHAR", "max_length": 255, "is_required": True, "is_unique": True},
+                {
+                    "name": "first_name",
+                    "label": "First Name",
+                    "field_type": "string",
+                    "data_type": "VARCHAR",
+                    "max_length": 100,
+                    "is_required": True,
+                },
+                {
+                    "name": "last_name",
+                    "label": "Last Name",
+                    "field_type": "string",
+                    "data_type": "VARCHAR",
+                    "max_length": 100,
+                    "is_required": True,
+                },
+                {
+                    "name": "email",
+                    "label": "Email",
+                    "field_type": "email",
+                    "data_type": "VARCHAR",
+                    "max_length": 255,
+                    "is_required": True,
+                    "is_unique": True,
+                },
                 {"name": "phone", "label": "Phone", "field_type": "phone", "data_type": "VARCHAR", "max_length": 20},
-                {"name": "company", "label": "Company", "field_type": "string", "data_type": "VARCHAR", "max_length": 200},
-                {"name": "status", "label": "Status", "field_type": "choice", "data_type": "VARCHAR", "default_value": "active", "allowed_values": ["active", "inactive", "prospect"]},
+                {
+                    "name": "company",
+                    "label": "Company",
+                    "field_type": "string",
+                    "data_type": "VARCHAR",
+                    "max_length": 200,
+                },
+                {
+                    "name": "status",
+                    "label": "Status",
+                    "field_type": "choice",
+                    "data_type": "VARCHAR",
+                    "default_value": "active",
+                    "allowed_values": ["active", "inactive", "prospect"],
+                },
                 {"name": "customer_since", "label": "Customer Since", "field_type": "date", "data_type": "DATE"},
-                {"name": "lifetime_value", "label": "Lifetime Value", "field_type": "decimal", "data_type": "NUMERIC", "decimal_places": 2},
-            ]
+                {
+                    "name": "lifetime_value",
+                    "label": "Lifetime Value",
+                    "field_type": "decimal",
+                    "data_type": "NUMERIC",
+                    "decimal_places": 2,
+                },
+            ],
         },
         {
             "name": "order",
@@ -104,13 +141,42 @@ def seed_data_model_samples(db: Session, tenant_id: str, user_id: str = None):
             "supports_soft_delete": True,
             "status": "published",
             "fields": [
-                {"name": "order_number", "label": "Order Number", "field_type": "string", "data_type": "VARCHAR", "max_length": 50, "is_required": True, "is_unique": True},
-                {"name": "order_date", "label": "Order Date", "field_type": "datetime", "data_type": "TIMESTAMP", "is_required": True, "default_value": "now()"},
-                {"name": "total_amount", "label": "Total Amount", "field_type": "decimal", "data_type": "NUMERIC", "is_required": True, "decimal_places": 2},
-                {"name": "status", "label": "Status", "field_type": "choice", "data_type": "VARCHAR", "default_value": "pending", "allowed_values": ["pending", "confirmed", "shipped", "delivered", "cancelled"]},
+                {
+                    "name": "order_number",
+                    "label": "Order Number",
+                    "field_type": "string",
+                    "data_type": "VARCHAR",
+                    "max_length": 50,
+                    "is_required": True,
+                    "is_unique": True,
+                },
+                {
+                    "name": "order_date",
+                    "label": "Order Date",
+                    "field_type": "datetime",
+                    "data_type": "TIMESTAMP",
+                    "is_required": True,
+                    "default_value": "now()",
+                },
+                {
+                    "name": "total_amount",
+                    "label": "Total Amount",
+                    "field_type": "decimal",
+                    "data_type": "NUMERIC",
+                    "is_required": True,
+                    "decimal_places": 2,
+                },
+                {
+                    "name": "status",
+                    "label": "Status",
+                    "field_type": "choice",
+                    "data_type": "VARCHAR",
+                    "default_value": "pending",
+                    "allowed_values": ["pending", "confirmed", "shipped", "delivered", "cancelled"],
+                },
                 {"name": "shipping_address", "label": "Shipping Address", "field_type": "text", "data_type": "TEXT"},
                 {"name": "notes", "label": "Notes", "field_type": "text", "data_type": "TEXT"},
-            ]
+            ],
         },
         {
             "name": "product",
@@ -124,15 +190,55 @@ def seed_data_model_samples(db: Session, tenant_id: str, user_id: str = None):
             "supports_soft_delete": True,
             "status": "draft",
             "fields": [
-                {"name": "sku", "label": "SKU", "field_type": "string", "data_type": "VARCHAR", "max_length": 50, "is_required": True, "is_unique": True},
-                {"name": "name", "label": "Product Name", "field_type": "string", "data_type": "VARCHAR", "max_length": 200, "is_required": True},
+                {
+                    "name": "sku",
+                    "label": "SKU",
+                    "field_type": "string",
+                    "data_type": "VARCHAR",
+                    "max_length": 50,
+                    "is_required": True,
+                    "is_unique": True,
+                },
+                {
+                    "name": "name",
+                    "label": "Product Name",
+                    "field_type": "string",
+                    "data_type": "VARCHAR",
+                    "max_length": 200,
+                    "is_required": True,
+                },
                 {"name": "description", "label": "Description", "field_type": "text", "data_type": "TEXT"},
-                {"name": "price", "label": "Price", "field_type": "decimal", "data_type": "NUMERIC", "is_required": True, "decimal_places": 2},
+                {
+                    "name": "price",
+                    "label": "Price",
+                    "field_type": "decimal",
+                    "data_type": "NUMERIC",
+                    "is_required": True,
+                    "decimal_places": 2,
+                },
                 {"name": "cost", "label": "Cost", "field_type": "decimal", "data_type": "NUMERIC", "decimal_places": 2},
-                {"name": "stock_quantity", "label": "Stock Quantity", "field_type": "integer", "data_type": "INTEGER", "default_value": "0"},
-                {"name": "is_active", "label": "Active", "field_type": "boolean", "data_type": "BOOLEAN", "default_value": "true"},
-                {"name": "category", "label": "Category", "field_type": "string", "data_type": "VARCHAR", "max_length": 100},
-            ]
+                {
+                    "name": "stock_quantity",
+                    "label": "Stock Quantity",
+                    "field_type": "integer",
+                    "data_type": "INTEGER",
+                    "default_value": "0",
+                },
+                {
+                    "name": "is_active",
+                    "label": "Active",
+                    "field_type": "boolean",
+                    "data_type": "BOOLEAN",
+                    "default_value": "true",
+                },
+                {
+                    "name": "category",
+                    "label": "Category",
+                    "field_type": "string",
+                    "data_type": "VARCHAR",
+                    "max_length": 100,
+                },
+            ],
         },
     ]
 
@@ -140,11 +246,15 @@ def seed_data_model_samples(db: Session, tenant_id: str, user_id: str = None):
 
     for entity_data in entities_data:
         # Check if entity already exists
-        existing = db.query(EntityDefinition).filter(
-            EntityDefinition.tenant_id == tenant_id,
-            EntityDefinition.name == entity_data["name"],
-            EntityDefinition.is_deleted == False
-        ).first()
+        existing = (
+            db.query(EntityDefinition)
+            .filter(
+                EntityDefinition.tenant_id == tenant_id,
+                EntityDefinition.name == entity_data["name"],
+                EntityDefinition.is_deleted == False,
+            )
+            .first()
+        )
 
         if existing:
             print(f"  ⏭️  Entity exists: {entity_data['label']}")
@@ -155,11 +265,7 @@ def seed_data_model_samples(db: Session, tenant_id: str, user_id: str = None):
         fields_data = entity_data.pop("fields", [])
 
         entity = EntityDefinition(
-            id=str(generate_uuid()),
-            tenant_id=tenant_id,
-            created_by=user_id,
-            updated_by=user_id,
-            **entity_data
+            id=str(generate_uuid()), tenant_id=tenant_id, created_by=user_id, updated_by=user_id, **entity_data
         )
         db.add(entity)
         db.flush()
@@ -174,7 +280,7 @@ def seed_data_model_samples(db: Session, tenant_id: str, user_id: str = None):
                 is_system=False,
                 is_indexed=field_data.get("is_unique", False),
                 validation_rules=[],
-                **field_data
+                **field_data,
             )
             db.add(field)
 
@@ -188,9 +294,9 @@ def seed_data_model_samples(db: Session, tenant_id: str, user_id: str = None):
 
 def seed_workflow_samples(db: Session, tenant_id: str, user_id: str = None, entities: dict = None):
     """Seed sample workflows."""
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     print("WORKFLOW DESIGNER - SAMPLE DATA")
-    print("="*80 + "\n")
+    print("=" * 80 + "\n")
 
     workflows_data = [
         {
@@ -202,30 +308,70 @@ def seed_workflow_samples(db: Session, tenant_id: str, user_id: str = None, enti
             "canvas_data": {
                 "nodes": [
                     {"id": "start", "type": "start", "position": {"x": 100, "y": 100}},
-                    {"id": "review", "type": "task", "position": {"x": 300, "y": 100}, "data": {"label": "Manager Review"}},
-                    {"id": "approve", "type": "task", "position": {"x": 500, "y": 100}, "data": {"label": "Finance Approval"}},
-                    {"id": "end", "type": "end", "position": {"x": 700, "y": 100}}
+                    {
+                        "id": "review",
+                        "type": "task",
+                        "position": {"x": 300, "y": 100},
+                        "data": {"label": "Manager Review"},
+                    },
+                    {
+                        "id": "approve",
+                        "type": "task",
+                        "position": {"x": 500, "y": 100},
+                        "data": {"label": "Finance Approval"},
+                    },
+                    {"id": "end", "type": "end", "position": {"x": 700, "y": 100}},
                 ],
                 "edges": [
                     {"id": "e1", "source": "start", "target": "review"},
                     {"id": "e2", "source": "review", "target": "approve", "label": "Approved"},
-                    {"id": "e3", "source": "approve", "target": "end", "label": "Complete"}
-                ]
+                    {"id": "e3", "source": "approve", "target": "end", "label": "Complete"},
+                ],
             },
             "states": [
                 {"name": "draft", "label": "Draft", "state_type": "start", "color": "gray"},
-                {"name": "pending_review", "label": "Pending Manager Review", "state_type": "intermediate", "color": "yellow"},
-                {"name": "pending_approval", "label": "Pending Finance Approval", "state_type": "intermediate", "color": "blue"},
+                {
+                    "name": "pending_review",
+                    "label": "Pending Manager Review",
+                    "state_type": "intermediate",
+                    "color": "yellow",
+                },
+                {
+                    "name": "pending_approval",
+                    "label": "Pending Finance Approval",
+                    "state_type": "intermediate",
+                    "color": "blue",
+                },
                 {"name": "approved", "label": "Approved", "state_type": "end", "is_final": True, "color": "green"},
                 {"name": "rejected", "label": "Rejected", "state_type": "end", "is_final": True, "color": "red"},
             ],
             "transitions": [
                 {"name": "submit", "from_state": "draft", "to_state": "pending_review", "label": "Submit for Review"},
-                {"name": "approve_manager", "from_state": "pending_review", "to_state": "pending_approval", "label": "Manager Approved"},
-                {"name": "reject_manager", "from_state": "pending_review", "to_state": "rejected", "label": "Manager Rejected"},
-                {"name": "approve_finance", "from_state": "pending_approval", "to_state": "approved", "label": "Finance Approved"},
-                {"name": "reject_finance", "from_state": "pending_approval", "to_state": "rejected", "label": "Finance Rejected"},
-            ]
+                {
+                    "name": "approve_manager",
+                    "from_state": "pending_review",
+                    "to_state": "pending_approval",
+                    "label": "Manager Approved",
+                },
+                {
+                    "name": "reject_manager",
+                    "from_state": "pending_review",
+                    "to_state": "rejected",
+                    "label": "Manager Rejected",
+                },
+                {
+                    "name": "approve_finance",
+                    "from_state": "pending_approval",
+                    "to_state": "approved",
+                    "label": "Finance Approved",
+                },
+                {
+                    "name": "reject_finance",
+                    "from_state": "pending_approval",
+                    "to_state": "rejected",
+                    "label": "Finance Rejected",
+                },
+            ],
         },
         {
             "name": "customer_onboarding",
@@ -236,37 +382,61 @@ def seed_workflow_samples(db: Session, tenant_id: str, user_id: str = None, enti
             "canvas_data": {
                 "nodes": [
                     {"id": "start", "type": "start", "position": {"x": 100, "y": 100}},
-                    {"id": "verify", "type": "task", "position": {"x": 300, "y": 100}, "data": {"label": "Verify Information"}},
-                    {"id": "setup", "type": "task", "position": {"x": 500, "y": 100}, "data": {"label": "Account Setup"}},
-                    {"id": "end", "type": "end", "position": {"x": 700, "y": 100}}
+                    {
+                        "id": "verify",
+                        "type": "task",
+                        "position": {"x": 300, "y": 100},
+                        "data": {"label": "Verify Information"},
+                    },
+                    {
+                        "id": "setup",
+                        "type": "task",
+                        "position": {"x": 500, "y": 100},
+                        "data": {"label": "Account Setup"},
+                    },
+                    {"id": "end", "type": "end", "position": {"x": 700, "y": 100}},
                 ],
                 "edges": [
                     {"id": "e1", "source": "start", "target": "verify"},
                     {"id": "e2", "source": "verify", "target": "setup"},
-                    {"id": "e3", "source": "setup", "target": "end"}
-                ]
+                    {"id": "e3", "source": "setup", "target": "end"},
+                ],
             },
             "states": [
                 {"name": "new", "label": "New Customer", "state_type": "start", "color": "blue"},
-                {"name": "verifying", "label": "Verification in Progress", "state_type": "intermediate", "color": "yellow"},
+                {
+                    "name": "verifying",
+                    "label": "Verification in Progress",
+                    "state_type": "intermediate",
+                    "color": "yellow",
+                },
                 {"name": "setting_up", "label": "Setting Up Account", "state_type": "intermediate", "color": "purple"},
                 {"name": "active", "label": "Active Customer", "state_type": "end", "is_final": True, "color": "green"},
             ],
             "transitions": [
-                {"name": "start_verification", "from_state": "new", "to_state": "verifying", "label": "Start Verification"},
+                {
+                    "name": "start_verification",
+                    "from_state": "new",
+                    "to_state": "verifying",
+                    "label": "Start Verification",
+                },
                 {"name": "verified", "from_state": "verifying", "to_state": "setting_up", "label": "Verified"},
                 {"name": "setup_complete", "from_state": "setting_up", "to_state": "active", "label": "Setup Complete"},
-            ]
-        }
+            ],
+        },
     ]
 
     for workflow_data in workflows_data:
         # Check if workflow already exists
-        existing = db.query(WorkflowDefinition).filter(
-            WorkflowDefinition.tenant_id == tenant_id,
-            WorkflowDefinition.name == workflow_data["name"],
-            WorkflowDefinition.is_deleted == False
-        ).first()
+        existing = (
+            db.query(WorkflowDefinition)
+            .filter(
+                WorkflowDefinition.tenant_id == tenant_id,
+                WorkflowDefinition.name == workflow_data["name"],
+                WorkflowDefinition.is_deleted == False,
+            )
+            .first()
+        )
 
         if existing:
             print(f"  ⏭️  Workflow exists: {workflow_data['label']}")
@@ -283,7 +453,7 @@ def seed_workflow_samples(db: Session, tenant_id: str, user_id: str = None, enti
             updated_by=user_id,
             is_published=True,
             published_at=datetime.utcnow(),
-            **workflow_data
+            **workflow_data,
         )
         db.add(workflow)
         db.flush()
@@ -291,12 +461,7 @@ def seed_workflow_samples(db: Session, tenant_id: str, user_id: str = None, enti
         # Create states
         state_map = {}
         for state_data in states_data:
-            state = WorkflowState(
-                id=str(generate_uuid()),
-                workflow_id=workflow.id,
-                tenant_id=tenant_id,
-                **state_data
-            )
+            state = WorkflowState(id=str(generate_uuid()), workflow_id=workflow.id, tenant_id=tenant_id, **state_data)
             db.add(state)
             state_map[state_data["name"]] = state
 
@@ -313,20 +478,22 @@ def seed_workflow_samples(db: Session, tenant_id: str, user_id: str = None, enti
                 tenant_id=tenant_id,
                 from_state_id=state_map[from_state_name].id,
                 to_state_id=state_map[to_state_name].id,
-                **transition_data
+                **transition_data,
             )
             db.add(transition)
 
-        print(f"  ✅ Created workflow: {workflow.label} with {len(states_data)} states, {len(transitions_data)} transitions")
+        print(
+            f"  ✅ Created workflow: {workflow.label} with {len(states_data)} states, {len(transitions_data)} transitions"
+        )
 
     db.commit()
 
 
 def seed_automation_samples(db: Session, tenant_id: str, user_id: str = None, entities: dict = None):
     """Seed sample automation rules."""
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     print("AUTOMATION SYSTEM - SAMPLE DATA")
-    print("="*80 + "\n")
+    print("=" * 80 + "\n")
 
     automations_data = [
         {
@@ -337,10 +504,7 @@ def seed_automation_samples(db: Session, tenant_id: str, user_id: str = None, en
             "trigger_type": "database_event",
             "event_type": "create",
             "trigger_timing": "after",
-            "trigger_config": {
-                "entity": "customer",
-                "events": ["create"]
-            },
+            "trigger_config": {"entity": "customer", "events": ["create"]},
             "has_conditions": False,
             "conditions": {},
             "actions": [
@@ -350,14 +514,12 @@ def seed_automation_samples(db: Session, tenant_id: str, user_id: str = None, en
                         "to": "{{record.email}}",
                         "subject": "Welcome to Our Platform!",
                         "template": "welcome_customer",
-                        "variables": {
-                            "customer_name": "{{record.first_name}}"
-                        }
-                    }
+                        "variables": {"customer_name": "{{record.first_name}}"},
+                    },
                 }
             ],
             "is_active": True,
-            "execution_order": 1
+            "execution_order": 1,
         },
         {
             "name": "high_value_order_alert",
@@ -367,20 +529,11 @@ def seed_automation_samples(db: Session, tenant_id: str, user_id: str = None, en
             "trigger_type": "database_event",
             "event_type": "create",
             "trigger_timing": "after",
-            "trigger_config": {
-                "entity": "order",
-                "events": ["create"]
-            },
+            "trigger_config": {"entity": "order", "events": ["create"]},
             "has_conditions": True,
             "conditions": {
                 "operator": "and",
-                "rules": [
-                    {
-                        "field": "total_amount",
-                        "operator": "greater_than",
-                        "value": 10000
-                    }
-                ]
+                "rules": [{"field": "total_amount", "operator": "greater_than", "value": 10000}],
             },
             "actions": [
                 {
@@ -388,19 +541,16 @@ def seed_automation_samples(db: Session, tenant_id: str, user_id: str = None, en
                     "config": {
                         "recipient_role": "sales_manager",
                         "title": "High Value Order Alert",
-                        "message": "New order #{{record.order_number}} for ${{record.total_amount}}"
-                    }
+                        "message": "New order #{{record.order_number}} for ${{record.total_amount}}",
+                    },
                 },
                 {
                     "type": "log_event",
-                    "config": {
-                        "level": "info",
-                        "message": "High value order created: {{record.id}}"
-                    }
-                }
+                    "config": {"level": "info", "message": "High value order created: {{record.id}}"},
+                },
             ],
             "is_active": True,
-            "execution_order": 1
+            "execution_order": 1,
         },
         {
             "name": "low_stock_alert",
@@ -410,26 +560,14 @@ def seed_automation_samples(db: Session, tenant_id: str, user_id: str = None, en
             "trigger_type": "database_event",
             "event_type": "update",
             "trigger_timing": "after",
-            "trigger_config": {
-                "entity": "product",
-                "events": ["update"],
-                "watch_fields": ["stock_quantity"]
-            },
+            "trigger_config": {"entity": "product", "events": ["update"], "watch_fields": ["stock_quantity"]},
             "has_conditions": True,
             "conditions": {
                 "operator": "and",
                 "rules": [
-                    {
-                        "field": "stock_quantity",
-                        "operator": "less_than",
-                        "value": 10
-                    },
-                    {
-                        "field": "is_active",
-                        "operator": "equals",
-                        "value": True
-                    }
-                ]
+                    {"field": "stock_quantity", "operator": "less_than", "value": 10},
+                    {"field": "is_active", "operator": "equals", "value": True},
+                ],
             },
             "actions": [
                 {
@@ -437,12 +575,12 @@ def seed_automation_samples(db: Session, tenant_id: str, user_id: str = None, en
                     "config": {
                         "recipient_role": "inventory_manager",
                         "title": "Low Stock Alert",
-                        "message": "Product {{record.name}} (SKU: {{record.sku}}) is low on stock: {{record.stock_quantity}} units remaining"
-                    }
+                        "message": "Product {{record.name}} (SKU: {{record.sku}}) is low on stock: {{record.stock_quantity}} units remaining",
+                    },
                 }
             ],
             "is_active": True,
-            "execution_order": 1
+            "execution_order": 1,
         },
         {
             "name": "daily_sales_report",
@@ -453,21 +591,13 @@ def seed_automation_samples(db: Session, tenant_id: str, user_id: str = None, en
             "schedule_type": "cron",
             "cron_expression": "0 18 * * *",  # 6 PM every day
             "schedule_timezone": "UTC",
-            "trigger_config": {
-                "type": "scheduled",
-                "frequency": "daily"
-            },
+            "trigger_config": {"type": "scheduled", "frequency": "daily"},
             "has_conditions": False,
             "conditions": {},
             "actions": [
                 {
                     "type": "run_report",
-                    "config": {
-                        "report_name": "daily_sales_summary",
-                        "parameters": {
-                            "date": "{{today}}"
-                        }
-                    }
+                    "config": {"report_name": "daily_sales_summary", "parameters": {"date": "{{today}}"}},
                 },
                 {
                     "type": "send_email",
@@ -475,22 +605,26 @@ def seed_automation_samples(db: Session, tenant_id: str, user_id: str = None, en
                         "to": "sales@company.com",
                         "subject": "Daily Sales Report - {{today}}",
                         "template": "daily_sales_report",
-                        "attach_report": True
-                    }
-                }
+                        "attach_report": True,
+                    },
+                },
             ],
             "is_active": True,
-            "execution_order": 1
-        }
+            "execution_order": 1,
+        },
     ]
 
     for automation_data in automations_data:
         # Check if automation already exists
-        existing = db.query(AutomationRule).filter(
-            AutomationRule.tenant_id == tenant_id,
-            AutomationRule.name == automation_data["name"],
-            AutomationRule.is_deleted == False
-        ).first()
+        existing = (
+            db.query(AutomationRule)
+            .filter(
+                AutomationRule.tenant_id == tenant_id,
+                AutomationRule.name == automation_data["name"],
+                AutomationRule.is_deleted == False,
+            )
+            .first()
+        )
 
         if existing:
             print(f"  ⏭️  Automation exists: {automation_data['label']}")
@@ -502,11 +636,7 @@ def seed_automation_samples(db: Session, tenant_id: str, user_id: str = None, en
 
         # Create automation
         automation = AutomationRule(
-            id=str(generate_uuid()),
-            tenant_id=tenant_id,
-            created_by=user_id,
-            updated_by=user_id,
-            **automation_data
+            id=str(generate_uuid()), tenant_id=tenant_id, created_by=user_id, updated_by=user_id, **automation_data
         )
         db.add(automation)
 
@@ -517,9 +647,9 @@ def seed_automation_samples(db: Session, tenant_id: str, user_id: str = None, en
 
 def seed_lookup_samples(db: Session, tenant_id: str, user_id: str = None, entities: dict = None):
     """Seed sample lookup configurations."""
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     print("LOOKUP CONFIGURATION - SAMPLE DATA")
-    print("="*80 + "\n")
+    print("=" * 80 + "\n")
 
     lookups_data = [
         {
@@ -536,7 +666,7 @@ def seed_lookup_samples(db: Session, tenant_id: str, user_id: str = None, entiti
             ],
             "enable_caching": True,
             "cache_ttl_seconds": 86400,  # 24 hours
-            "is_active": True
+            "is_active": True,
         },
         {
             "name": "customer_status",
@@ -551,7 +681,7 @@ def seed_lookup_samples(db: Session, tenant_id: str, user_id: str = None, entiti
             ],
             "enable_caching": True,
             "cache_ttl_seconds": 86400,
-            "is_active": True
+            "is_active": True,
         },
         {
             "name": "countries",
@@ -571,7 +701,7 @@ def seed_lookup_samples(db: Session, tenant_id: str, user_id: str = None, entiti
             "enable_caching": True,
             "cache_ttl_seconds": 604800,  # 7 days
             "is_active": True,
-            "enable_search": True
+            "enable_search": True,
         },
         {
             "name": "product_categories",
@@ -588,17 +718,21 @@ def seed_lookup_samples(db: Session, tenant_id: str, user_id: str = None, entiti
             ],
             "enable_caching": True,
             "cache_ttl_seconds": 86400,
-            "is_active": True
-        }
+            "is_active": True,
+        },
     ]
 
     for lookup_data in lookups_data:
         # Check if lookup already exists
-        existing = db.query(LookupConfiguration).filter(
-            LookupConfiguration.tenant_id == tenant_id,
-            LookupConfiguration.name == lookup_data["name"],
-            LookupConfiguration.is_deleted == False
-        ).first()
+        existing = (
+            db.query(LookupConfiguration)
+            .filter(
+                LookupConfiguration.tenant_id == tenant_id,
+                LookupConfiguration.name == lookup_data["name"],
+                LookupConfiguration.is_deleted == False,
+            )
+            .first()
+        )
 
         if existing:
             print(f"  ⏭️  Lookup exists: {lookup_data['label']}")
@@ -606,11 +740,7 @@ def seed_lookup_samples(db: Session, tenant_id: str, user_id: str = None, entiti
 
         # Create lookup
         lookup = LookupConfiguration(
-            id=str(generate_uuid()),
-            tenant_id=tenant_id,
-            created_by=user_id,
-            updated_by=user_id,
-            **lookup_data
+            id=str(generate_uuid()), tenant_id=tenant_id, created_by=user_id, updated_by=user_id, **lookup_data
         )
         db.add(lookup)
 
@@ -621,15 +751,16 @@ def seed_lookup_samples(db: Session, tenant_id: str, user_id: str = None, entiti
 
 def seed_platform_level_samples(db: Session):
     """Seed platform-level sample data (shared across all tenants)."""
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     print("PLATFORM-LEVEL SAMPLE DATA (Shared across all tenants)")
-    print("="*80 + "\n")
+    print("=" * 80 + "\n")
 
     # Check if platform-level samples already exist
-    existing_platform_entities = db.query(EntityDefinition).filter(
-        EntityDefinition.tenant_id == None,
-        EntityDefinition.is_deleted == False
-    ).count()
+    existing_platform_entities = (
+        db.query(EntityDefinition)
+        .filter(EntityDefinition.tenant_id == None, EntityDefinition.is_deleted == False)
+        .count()
+    )
 
     if existing_platform_entities > 0:
         print(f"⏭️  Platform-level data already exists ({existing_platform_entities} entities). Skipping.")
@@ -653,17 +784,38 @@ def seed_platform_level_samples(db: Session):
         status="published",
         entity_type="custom",
         created_at=datetime.utcnow(),
-        updated_at=datetime.utcnow()
+        updated_at=datetime.utcnow(),
     )
     db.add(task_entity)
     db.flush()
 
     # Fields for Task entity
     task_fields = [
-        {"name": "title", "label": "Title", "field_type": "string", "data_type": "VARCHAR", "max_length": 200, "is_required": True},
+        {
+            "name": "title",
+            "label": "Title",
+            "field_type": "string",
+            "data_type": "VARCHAR",
+            "max_length": 200,
+            "is_required": True,
+        },
         {"name": "description", "label": "Description", "field_type": "text", "data_type": "TEXT"},
-        {"name": "priority", "label": "Priority", "field_type": "choice", "data_type": "VARCHAR", "default_value": "medium", "allowed_values": ["low", "medium", "high", "urgent"]},
-        {"name": "status", "label": "Status", "field_type": "choice", "data_type": "VARCHAR", "default_value": "todo", "allowed_values": ["todo", "in_progress", "completed", "cancelled"]},
+        {
+            "name": "priority",
+            "label": "Priority",
+            "field_type": "choice",
+            "data_type": "VARCHAR",
+            "default_value": "medium",
+            "allowed_values": ["low", "medium", "high", "urgent"],
+        },
+        {
+            "name": "status",
+            "label": "Status",
+            "field_type": "choice",
+            "data_type": "VARCHAR",
+            "default_value": "todo",
+            "allowed_values": ["todo", "in_progress", "completed", "cancelled"],
+        },
         {"name": "due_date", "label": "Due Date", "field_type": "date", "data_type": "DATE"},
     ]
 
@@ -674,7 +826,7 @@ def seed_platform_level_samples(db: Session):
             tenant_id=None,  # Inherit platform-level
             created_at=datetime.utcnow(),
             updated_at=datetime.utcnow(),
-            **field_data
+            **field_data,
         )
         db.add(field)
 
@@ -696,19 +848,47 @@ def seed_platform_level_samples(db: Session):
         status="published",
         entity_type="custom",
         created_at=datetime.utcnow(),
-        updated_at=datetime.utcnow()
+        updated_at=datetime.utcnow(),
     )
     db.add(contact_entity)
     db.flush()
 
     contact_fields = [
-        {"name": "first_name", "label": "First Name", "field_type": "string", "data_type": "VARCHAR", "max_length": 100, "is_required": True},
-        {"name": "last_name", "label": "Last Name", "field_type": "string", "data_type": "VARCHAR", "max_length": 100, "is_required": True},
-        {"name": "email", "label": "Email", "field_type": "email", "data_type": "VARCHAR", "max_length": 255, "is_unique": True},
+        {
+            "name": "first_name",
+            "label": "First Name",
+            "field_type": "string",
+            "data_type": "VARCHAR",
+            "max_length": 100,
+            "is_required": True,
+        },
+        {
+            "name": "last_name",
+            "label": "Last Name",
+            "field_type": "string",
+            "data_type": "VARCHAR",
+            "max_length": 100,
+            "is_required": True,
+        },
+        {
+            "name": "email",
+            "label": "Email",
+            "field_type": "email",
+            "data_type": "VARCHAR",
+            "max_length": 255,
+            "is_unique": True,
+        },
         {"name": "phone", "label": "Phone Number", "field_type": "phone", "data_type": "VARCHAR", "max_length": 20},
         {"name": "company", "label": "Company", "field_type": "string", "data_type": "VARCHAR", "max_length": 200},
         {"name": "job_title", "label": "Job Title", "field_type": "string", "data_type": "VARCHAR", "max_length": 100},
-        {"name": "contact_type", "label": "Contact Type", "field_type": "choice", "data_type": "VARCHAR", "default_value": "individual", "allowed_values": ["individual", "organization", "lead", "customer", "partner"]},
+        {
+            "name": "contact_type",
+            "label": "Contact Type",
+            "field_type": "choice",
+            "data_type": "VARCHAR",
+            "default_value": "individual",
+            "allowed_values": ["individual", "organization", "lead", "customer", "partner"],
+        },
         {"name": "notes", "label": "Notes", "field_type": "text", "data_type": "TEXT"},
     ]
 
@@ -719,7 +899,7 @@ def seed_platform_level_samples(db: Session):
             tenant_id=None,
             created_at=datetime.utcnow(),
             updated_at=datetime.utcnow(),
-            **field_data
+            **field_data,
         )
         db.add(field)
 
@@ -742,16 +922,44 @@ def seed_platform_level_samples(db: Session):
         status="published",
         entity_type="custom",
         created_at=datetime.utcnow(),
-        updated_at=datetime.utcnow()
+        updated_at=datetime.utcnow(),
     )
     db.add(document_entity)
     db.flush()
 
     document_fields = [
-        {"name": "title", "label": "Document Title", "field_type": "string", "data_type": "VARCHAR", "max_length": 200, "is_required": True},
-        {"name": "document_type", "label": "Document Type", "field_type": "choice", "data_type": "VARCHAR", "default_value": "general", "allowed_values": ["general", "contract", "invoice", "report", "proposal", "policy"]},
-        {"name": "version", "label": "Version", "field_type": "string", "data_type": "VARCHAR", "max_length": 20, "default_value": "1.0"},
-        {"name": "status", "label": "Status", "field_type": "choice", "data_type": "VARCHAR", "default_value": "draft", "allowed_values": ["draft", "in_review", "approved", "archived"]},
+        {
+            "name": "title",
+            "label": "Document Title",
+            "field_type": "string",
+            "data_type": "VARCHAR",
+            "max_length": 200,
+            "is_required": True,
+        },
+        {
+            "name": "document_type",
+            "label": "Document Type",
+            "field_type": "choice",
+            "data_type": "VARCHAR",
+            "default_value": "general",
+            "allowed_values": ["general", "contract", "invoice", "report", "proposal", "policy"],
+        },
+        {
+            "name": "version",
+            "label": "Version",
+            "field_type": "string",
+            "data_type": "VARCHAR",
+            "max_length": 20,
+            "default_value": "1.0",
+        },
+        {
+            "name": "status",
+            "label": "Status",
+            "field_type": "choice",
+            "data_type": "VARCHAR",
+            "default_value": "draft",
+            "allowed_values": ["draft", "in_review", "approved", "archived"],
+        },
         {"name": "content", "label": "Content", "field_type": "text", "data_type": "TEXT"},
         {"name": "tags", "label": "Tags", "field_type": "text", "data_type": "TEXT"},
         {"name": "expiry_date", "label": "Expiry Date", "field_type": "date", "data_type": "DATE"},
@@ -764,7 +972,7 @@ def seed_platform_level_samples(db: Session):
             tenant_id=None,
             created_at=datetime.utcnow(),
             updated_at=datetime.utcnow(),
-            **field_data
+            **field_data,
         )
         db.add(field)
 
@@ -782,7 +990,7 @@ def seed_platform_level_samples(db: Session):
         canvas_data={"nodes": [], "edges": []},
         is_published=True,
         created_at=datetime.utcnow(),
-        updated_at=datetime.utcnow()
+        updated_at=datetime.utcnow(),
     )
     db.add(approval_workflow)
     db.flush()
@@ -790,7 +998,13 @@ def seed_platform_level_samples(db: Session):
     # States for approval workflow
     states = [
         {"name": "draft", "label": "Draft", "state_type": "start", "color": "gray"},
-        {"name": "pending_approval", "label": "Pending Approval", "state_type": "approval", "color": "yellow", "requires_approval": True},
+        {
+            "name": "pending_approval",
+            "label": "Pending Approval",
+            "state_type": "approval",
+            "color": "yellow",
+            "requires_approval": True,
+        },
         {"name": "approved", "label": "Approved", "state_type": "end", "color": "green", "is_final": True},
         {"name": "rejected", "label": "Rejected", "state_type": "end", "color": "red", "is_final": True},
     ]
@@ -802,7 +1016,7 @@ def seed_platform_level_samples(db: Session):
             workflow_id=approval_workflow.id,
             tenant_id=None,  # Platform-level
             created_at=datetime.utcnow(),
-            **state_data
+            **state_data,
         )
         db.add(state)
         state_objs[state_data["name"]] = state
@@ -827,7 +1041,7 @@ def seed_platform_level_samples(db: Session):
             from_state_id=state_objs[trans_data["from"]].id,
             to_state_id=state_objs[trans_data["to"]].id,
             button_label=trans_data["label"],
-            created_at=datetime.utcnow()
+            created_at=datetime.utcnow(),
         )
         db.add(transition)
 
@@ -851,7 +1065,7 @@ def seed_platform_level_samples(db: Session):
         enable_caching=True,
         is_active=True,
         created_at=datetime.utcnow(),
-        updated_at=datetime.utcnow()
+        updated_at=datetime.utcnow(),
     )
     db.add(priority_lookup)
 
@@ -870,16 +1084,12 @@ def seed_platform_level_samples(db: Session):
         actions=[
             {
                 "type": "send_notification",
-                "config": {
-                    "title": "Welcome!",
-                    "message": "Welcome to the platform!",
-                    "type": "info"
-                }
+                "config": {"title": "Welcome!", "message": "Welcome to the platform!", "type": "info"},
             }
         ],
         is_active=False,  # Templates are inactive by default
         created_at=datetime.utcnow(),
-        updated_at=datetime.utcnow()
+        updated_at=datetime.utcnow(),
     )
     db.add(welcome_automation)
 
@@ -893,9 +1103,9 @@ def seed_platform_level_samples(db: Session):
 
 def seed_all_samples(db: Session):
     """Main function to seed sample data for ALL tenants."""
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     print("PHASE 1 NO-CODE PLATFORM - SAMPLE DATA SEED (ALL TENANTS)")
-    print("="*80 + "\n")
+    print("=" * 80 + "\n")
 
     # First, seed platform-level samples (shared across all tenants)
     try:
@@ -903,6 +1113,7 @@ def seed_all_samples(db: Session):
     except Exception as e:
         print(f"⚠️  Warning: Error seeding platform-level data: {e}")
         import traceback
+
         traceback.print_exc()
 
     # Get all active tenants
@@ -919,14 +1130,15 @@ def seed_all_samples(db: Session):
         print(f"{'='*80}\n")
 
         # Check if tenant already has sample data
-        existing_entities = db.query(EntityDefinition).filter(
-            EntityDefinition.tenant_id == tenant.id,
-            EntityDefinition.is_deleted == False
-        ).count()
+        existing_entities = (
+            db.query(EntityDefinition)
+            .filter(EntityDefinition.tenant_id == tenant.id, EntityDefinition.is_deleted == False)
+            .count()
+        )
 
         if existing_entities > 0:
             print(f"⏭️  Tenant already has {existing_entities} entities. Skipping to avoid duplicates.")
-            print(f"    (Delete existing data first if you want to re-seed)")
+            print("    (Delete existing data first if you want to re-seed)")
             skipped_tenants.append(tenant.name)
             continue
 
@@ -947,11 +1159,12 @@ def seed_all_samples(db: Session):
         except Exception as e:
             print(f"\n❌ Error seeding tenant {tenant.name}: {e}")
             import traceback
+
             traceback.print_exc()
 
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     print("SAMPLE DATA SEED COMPLETE")
-    print("="*80 + "\n")
+    print("=" * 80 + "\n")
 
     print("Summary:")
     print()
@@ -982,6 +1195,7 @@ def main():
     except Exception as e:
         print(f"❌ Error: {e}")
         import traceback
+
         traceback.print_exc()
         db.rollback()
         raise

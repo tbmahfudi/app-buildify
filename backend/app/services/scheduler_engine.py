@@ -4,25 +4,25 @@ Scheduler execution engine for running scheduled jobs.
 This module provides the background worker that monitors and executes scheduled jobs
 using APScheduler with hierarchical configuration support.
 """
-import logging
-from datetime import datetime, timedelta
-from typing import Optional, Dict, Any, Callable
-import traceback
-import os
-import asyncio
 
+import asyncio
+import logging
+import os
+import traceback
+from datetime import datetime
+from typing import Any, Callable, Dict, Optional
+
+from apscheduler.executors.pool import ThreadPoolExecutor
+from apscheduler.jobstores.memory import MemoryJobStore
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
-from apscheduler.triggers.interval import IntervalTrigger
 from apscheduler.triggers.date import DateTrigger
-from apscheduler.jobstores.memory import MemoryJobStore
-from apscheduler.executors.pool import ThreadPoolExecutor
-from sqlalchemy.orm import Session
+from apscheduler.triggers.interval import IntervalTrigger
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 
 from app.core.config import settings
-from app.models.scheduler import SchedulerJob, JobStatus, JobType
+from app.models.scheduler import JobStatus, JobType, SchedulerJob, SchedulerJobExecution
 from app.services.scheduler_service import SchedulerService
 
 logger = logging.getLogger(__name__)
@@ -50,25 +50,13 @@ class SchedulerEngine:
         """
         self.db_url = db_url or settings.DATABASE_URL
         self.engine = create_engine(self.db_url)
-        self.SessionLocal = sessionmaker(
-            autocommit=False,
-            autoflush=False,
-            bind=self.engine
-        )
+        self.SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=self.engine)
 
         # Initialize APScheduler
         self.scheduler = AsyncIOScheduler(
-            jobstores={
-                'default': MemoryJobStore()
-            },
-            executors={
-                'default': ThreadPoolExecutor(10)
-            },
-            job_defaults={
-                'coalesce': False,
-                'max_instances': 3,
-                'misfire_grace_time': 300  # 5 minutes
-            }
+            jobstores={"default": MemoryJobStore()},
+            executors={"default": ThreadPoolExecutor(10)},
+            job_defaults={"coalesce": False, "max_instances": 3, "misfire_grace_time": 300},  # 5 minutes
         )
 
         # Job handlers registry
@@ -140,33 +128,19 @@ class SchedulerEngine:
 
         if job.cron_expression:
             # CRON-based scheduling
-            trigger = CronTrigger.from_crontab(
-                job.cron_expression,
-                timezone=job.timezone
-            )
+            trigger = CronTrigger.from_crontab(job.cron_expression, timezone=job.timezone)
         elif job.interval_seconds:
             # Interval-based scheduling
             trigger = IntervalTrigger(
-                seconds=job.interval_seconds,
-                timezone=job.timezone,
-                start_date=job.start_time,
-                end_date=job.end_time
+                seconds=job.interval_seconds, timezone=job.timezone, start_date=job.start_time, end_date=job.end_time
             )
         elif job.start_time:
             # One-time scheduled execution
-            trigger = DateTrigger(
-                run_date=job.start_time,
-                timezone=job.timezone
-            )
+            trigger = DateTrigger(run_date=job.start_time, timezone=job.timezone)
 
         if trigger:
             self.scheduler.add_job(
-                func=self._execute_job,
-                trigger=trigger,
-                args=[job.id],
-                id=job_id,
-                name=job.name,
-                replace_existing=True
+                func=self._execute_job, trigger=trigger, args=[job.id], id=job_id, name=job.name, replace_existing=True
             )
             logger.info(f"Scheduled job: {job.name} (ID: {job.id})")
 
@@ -216,10 +190,7 @@ class SchedulerEngine:
 
             # Get effective configuration
             config = SchedulerService.get_effective_config(
-                db,
-                tenant_id=job.tenant_id,
-                company_id=job.company_id,
-                branch_id=job.branch_id
+                db, tenant_id=job.tenant_id, company_id=job.company_id, branch_id=job.branch_id
             )
 
             if not config or not config.is_enabled:
@@ -227,15 +198,12 @@ class SchedulerEngine:
                 return
 
             # Check concurrent job limit
-            running_count = db.query(SchedulerJobExecution).filter(
-                SchedulerJobExecution.status == JobStatus.RUNNING
-            ).count()
+            running_count = (
+                db.query(SchedulerJobExecution).filter(SchedulerJobExecution.status == JobStatus.RUNNING).count()
+            )
 
             if running_count >= config.max_concurrent_jobs:
-                logger.warning(
-                    f"Max concurrent jobs ({config.max_concurrent_jobs}) reached, "
-                    f"skipping job {job_id}"
-                )
+                logger.warning(f"Max concurrent jobs ({config.max_concurrent_jobs}) reached, " f"skipping job {job_id}")
                 return
 
             # Create execution record
@@ -245,7 +213,7 @@ class SchedulerEngine:
                 tenant_id=job.tenant_id,
                 company_id=job.company_id,
                 branch_id=job.branch_id,
-                scheduled_at=datetime.utcnow()
+                scheduled_at=datetime.utcnow(),
             )
             execution_id = execution.id
 
@@ -256,25 +224,17 @@ class SchedulerEngine:
 
             # Add log entry
             SchedulerService.add_execution_log(
-                db,
-                execution_id,
-                "INFO",
-                f"Job execution started by worker {self.worker_id}"
+                db, execution_id, "INFO", f"Job execution started by worker {self.worker_id}"
             )
 
             # Update status to running
-            SchedulerService.update_execution_status(
-                db,
-                execution_id,
-                JobStatus.RUNNING
-            )
+            SchedulerService.update_execution_status(db, execution_id, JobStatus.RUNNING)
 
             # Execute the job with retry logic
             max_retries = job.max_retries if job.max_retries is not None else config.max_retries
             retry_delay = job.retry_delay_seconds if job.retry_delay_seconds is not None else config.retry_delay_seconds
 
             result = None
-            last_error = None
 
             for attempt in range(max_retries + 1):
                 try:
@@ -282,19 +242,9 @@ class SchedulerEngine:
                     result = self._run_job_handler(db, job, execution_id)
 
                     # Success - update status
-                    SchedulerService.update_execution_status(
-                        db,
-                        execution_id,
-                        JobStatus.COMPLETED,
-                        result_data=result
-                    )
+                    SchedulerService.update_execution_status(db, execution_id, JobStatus.COMPLETED, result_data=result)
 
-                    SchedulerService.add_execution_log(
-                        db,
-                        execution_id,
-                        "INFO",
-                        "Job completed successfully"
-                    )
+                    SchedulerService.add_execution_log(db, execution_id, "INFO", "Job completed successfully")
 
                     # Update job success count
                     job.success_count += 1
@@ -308,7 +258,6 @@ class SchedulerEngine:
                     break  # Success, exit retry loop
 
                 except Exception as e:
-                    last_error = e
                     error_trace = traceback.format_exc()
 
                     SchedulerService.add_execution_log(
@@ -316,23 +265,18 @@ class SchedulerEngine:
                         execution_id,
                         "ERROR",
                         f"Attempt {attempt + 1}/{max_retries + 1} failed: {str(e)}",
-                        log_data={"traceback": error_trace}
+                        log_data={"traceback": error_trace},
                     )
 
                     if attempt < max_retries:
                         logger.warning(
-                            f"Job {job_id} failed (attempt {attempt + 1}), "
-                            f"retrying in {retry_delay} seconds"
+                            f"Job {job_id} failed (attempt {attempt + 1}), " f"retrying in {retry_delay} seconds"
                         )
                         asyncio.sleep(retry_delay)
                     else:
                         # Final failure
                         SchedulerService.update_execution_status(
-                            db,
-                            execution_id,
-                            JobStatus.FAILED,
-                            error_message=str(e),
-                            error_traceback=error_trace
+                            db, execution_id, JobStatus.FAILED, error_message=str(e), error_traceback=error_trace
                         )
 
                         # Update job failure count
@@ -348,21 +292,12 @@ class SchedulerEngine:
             logger.error(f"Unexpected error executing job {job_id}: {str(e)}")
             if execution_id:
                 SchedulerService.update_execution_status(
-                    db,
-                    execution_id,
-                    JobStatus.FAILED,
-                    error_message=str(e),
-                    error_traceback=traceback.format_exc()
+                    db, execution_id, JobStatus.FAILED, error_message=str(e), error_traceback=traceback.format_exc()
                 )
         finally:
             db.close()
 
-    def _run_job_handler(
-        self,
-        db: Session,
-        job: SchedulerJob,
-        execution_id: int
-    ) -> Dict[str, Any]:
+    def _run_job_handler(self, db: Session, job: SchedulerJob, execution_id: int) -> Dict[str, Any]:
         """
         Execute the actual job handler.
 
@@ -392,28 +327,13 @@ class SchedulerEngine:
         else:
             raise ValueError(f"Unsupported job type: {job.job_type}")
 
-    def _handle_report_generation(
-        self,
-        db: Session,
-        job: SchedulerJob,
-        execution_id: int
-    ) -> Dict[str, Any]:
+    def _handle_report_generation(self, db: Session, job: SchedulerJob, execution_id: int) -> Dict[str, Any]:
         """Handle report generation jobs."""
         # This would integrate with the existing report service
-        SchedulerService.add_execution_log(
-            db,
-            execution_id,
-            "INFO",
-            "Report generation job - implementation pending"
-        )
+        SchedulerService.add_execution_log(db, execution_id, "INFO", "Report generation job - implementation pending")
         return {"status": "success", "message": "Report generation placeholder"}
 
-    def _handle_webhook(
-        self,
-        db: Session,
-        job: SchedulerJob,
-        execution_id: int
-    ) -> Dict[str, Any]:
+    def _handle_webhook(self, db: Session, job: SchedulerJob, execution_id: int) -> Dict[str, Any]:
         """Handle webhook jobs."""
         import requests
 
@@ -426,39 +346,16 @@ class SchedulerEngine:
         if not url:
             raise ValueError("Webhook URL not specified in job parameters")
 
-        SchedulerService.add_execution_log(
-            db,
-            execution_id,
-            "INFO",
-            f"Sending {method} request to {url}"
-        )
+        SchedulerService.add_execution_log(db, execution_id, "INFO", f"Sending {method} request to {url}")
 
-        response = requests.request(
-            method=method,
-            url=url,
-            headers=headers,
-            json=data,
-            timeout=30
-        )
+        response = requests.request(method=method, url=url, headers=headers, json=data, timeout=30)
 
         response.raise_for_status()
 
-        return {
-            "status_code": response.status_code,
-            "response": response.json() if response.content else None
-        }
+        return {"status_code": response.status_code, "response": response.json() if response.content else None}
 
-    def _send_notification(
-        self,
-        db: Session,
-        job: SchedulerJob,
-        execution: Any,
-        config: Any,
-        success: bool
-    ):
+    def _send_notification(self, db: Session, job: SchedulerJob, execution: Any, config: Any, success: bool):
         """Send notification about job execution."""
         # This would integrate with the existing notification service
         status = "succeeded" if success else "failed"
-        logger.info(
-            f"Notification: Job '{job.name}' (ID: {job.id}) {status}"
-        )
+        logger.info(f"Notification: Job '{job.name}' (ID: {job.id}) {status}")

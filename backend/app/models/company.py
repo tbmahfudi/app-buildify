@@ -20,6 +20,7 @@ class Company(Base):
     A tenant can have multiple companies (up to max_companies limit).
     Companies contain branches, departments, and other organizational entities.
     """
+
     __tablename__ = "companies"
     __tenant_scoped__ = True
 
@@ -70,9 +71,7 @@ class Company(Base):
     groups = relationship("Group", back_populates="company", cascade="all, delete-orphan")
 
     # Constraints
-    __table_args__ = (
-        UniqueConstraint('tenant_id', 'code', name='uq_company_tenant_code'),
-    )
+    __table_args__ = (UniqueConstraint("tenant_id", "code", name="uq_company_tenant_code"),)
 
     def __repr__(self):
         return f"<Company(id={self.id}, name={self.name}, tenant_id={self.tenant_id})>"

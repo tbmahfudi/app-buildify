@@ -1,9 +1,11 @@
 """
 Base schemas with common utilities for UUID serialization.
 """
-from typing import Optional, Any, Dict
+
+from typing import Any, Optional
 from uuid import UUID
-from pydantic import BaseModel, field_validator, field_serializer, model_validator
+
+from pydantic import BaseModel, model_validator
 
 
 def serialize_uuid_field(value: Any) -> Optional[str]:
@@ -45,7 +47,7 @@ class UUIDMixin:
             # ... any UUID field will be automatically converted
     """
 
-    @model_validator(mode='before')
+    @model_validator(mode="before")
     @classmethod
     def convert_all_uuids_to_str(cls, data: Any) -> Any:
         """
@@ -67,16 +69,16 @@ class UUIDMixin:
             return converted_data
 
         # Handle ORM objects - convert to dict first
-        if hasattr(data, '__dict__'):
+        if hasattr(data, "__dict__"):
             converted_data = {}
             for key in dir(data):
                 # Skip private attributes and methods
-                if key.startswith('_'):
+                if key.startswith("_"):
                     continue
                 try:
                     value = getattr(data, key)
                     # Skip methods and SQLAlchemy internal attributes
-                    if callable(value) or key in ('metadata', 'registry'):
+                    if callable(value) or key in ("metadata", "registry"):
                         continue
                     if isinstance(value, UUID):
                         converted_data[key] = str(value)

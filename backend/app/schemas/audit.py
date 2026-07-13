@@ -1,11 +1,14 @@
-from pydantic import BaseModel, Field, ConfigDict, field_validator
-from typing import Optional, List, Dict, Any, Literal
 from datetime import datetime
+from typing import Any, Dict, List, Literal, Optional
+
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from .base import BaseResponse
 
+
 class AuditLogResponse(BaseResponse):
     """Audit log entry response"""
+
     id: str = Field(..., description="Audit log unique identifier")
     user_id: Optional[str] = Field(None, description="User ID who performed the action")
     user_email: Optional[str] = Field(None, description="User email")
@@ -22,15 +25,18 @@ class AuditLogResponse(BaseResponse):
     duration_ms: Optional[float] = Field(None, description="Operation duration in milliseconds")
     created_at: datetime = Field(..., description="Timestamp of the action")
 
-    @field_validator('entity_id', mode='before')
+    @field_validator("entity_id", mode="before")
     @classmethod
     def convert_entity_id_to_str(cls, value):
         """Convert entity_id to string if it's a UUID."""
         from .base import serialize_uuid_field
+
         return serialize_uuid_field(value)
+
 
 class AuditLogCreate(BaseModel):
     """Create audit log entry"""
+
     user_id: Optional[str] = Field(None, description="User ID")
     user_email: Optional[str] = Field(None, description="User email")
     tenant_id: Optional[str] = Field(None, description="Tenant ID")
@@ -45,8 +51,10 @@ class AuditLogCreate(BaseModel):
     error_message: Optional[str] = Field(None, description="Error message")
     duration_ms: Optional[float] = Field(None, description="Duration in ms")
 
+
 class AuditLogListRequest(BaseModel):
     """Request for listing audit logs"""
+
     user_id: Optional[str] = Field(None, description="Filter by user ID")
     user_email: Optional[str] = Field(None, description="Filter by user email")
     tenant_id: Optional[str] = Field(None, description="Filter by tenant ID")
@@ -70,13 +78,15 @@ class AuditLogListRequest(BaseModel):
                 "start_date": "2025-01-01T00:00:00Z",
                 "end_date": "2025-01-31T23:59:59Z",
                 "page": 1,
-                "page_size": 50
+                "page_size": 50,
             }
         }
     )
 
+
 class AuditLogListResponse(BaseModel):
     """List of audit logs"""
+
     logs: List[AuditLogResponse] = Field(..., description="List of audit log entries")
     total: int = Field(..., description="Total count")
     filtered: int = Field(..., description="Filtered count")
@@ -85,8 +95,10 @@ class AuditLogListResponse(BaseModel):
     has_next: bool = Field(default=False, description="Whether there's a next page")
     has_prev: bool = Field(default=False, description="Whether there's a previous page")
 
+
 class AuditLogStatsResponse(BaseModel):
     """Audit log statistics"""
+
     total_logs: int = Field(..., description="Total number of logs")
     success_count: int = Field(..., description="Number of successful operations")
     failure_count: int = Field(..., description="Number of failed operations")
@@ -96,8 +108,10 @@ class AuditLogStatsResponse(BaseModel):
     activity_by_hour: Optional[Dict[str, int]] = Field(None, description="Activity distribution by hour")
     activity_by_day: Optional[Dict[str, int]] = Field(None, description="Activity distribution by day")
 
+
 class AuditLogExportRequest(BaseModel):
     """Request to export audit logs"""
+
     filters: Optional[AuditLogListRequest] = Field(None, description="Filters to apply")
     format: Literal["csv", "xlsx", "json"] = Field(default="csv", description="Export format")
     fields: Optional[List[str]] = Field(None, description="Fields to include in export")

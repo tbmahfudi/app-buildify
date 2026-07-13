@@ -9,11 +9,11 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
-from sqlalchemy import and_, func, or_
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session, joinedload
 
 from app.core.audit import create_audit_log
-from app.core.dependencies import get_current_user, get_db, has_permission
+from app.core.dependencies import get_db, has_permission
 from app.models.branch import Branch
 from app.models.company import Company
 from app.models.department import Department
@@ -32,9 +32,11 @@ logger = logging.getLogger(__name__)
 # REQUEST MODELS (Pydantic)
 # ============================================================================
 
+
 class RoleCreate(BaseModel):
-    code: str = Field(..., min_length=1, max_length=50, pattern=r"^[a-z0-9_]+$",
-                      description="Lowercase identifier; unique per tenant")
+    code: str = Field(
+        ..., min_length=1, max_length=50, pattern=r"^[a-z0-9_]+$", description="Lowercase identifier; unique per tenant"
+    )
     name: str = Field(..., min_length=1, max_length=255)
     description: Optional[str] = None
     role_type: str = Field(default="custom", max_length=50)
@@ -54,6 +56,7 @@ class RoleUpdate(BaseModel):
 # PERMISSION ENDPOINTS
 # ============================================================================
 
+
 @router.get("/permissions")
 async def list_permissions(
     db: Session = Depends(get_db),
@@ -63,7 +66,7 @@ async def list_permissions(
     is_active: Optional[bool] = None,
     company_id: Optional[str] = None,
     skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=1000)
+    limit: int = Query(100, ge=1, le=1000),
 ):
     """List all permissions with optional filtering - requires permissions:read:tenant"""
     query = db.query(Permission)
@@ -76,7 +79,7 @@ async def list_permissions(
             or_(
                 Permission.code.ilike(f"%{search}%"),
                 Permission.name.ilike(f"%{search}%"),
-                Permission.description.ilike(f"%{search}%")
+                Permission.description.ilike(f"%{search}%"),
             )
         )
     if is_active is not None:
@@ -109,13 +112,13 @@ async def list_permissions(
                 "is_system": p.is_system,
                 "is_active": p.is_active,
                 "created_at": p.created_at.isoformat() if p.created_at else None,
-                "updated_at": p.updated_at.isoformat() if p.updated_at else None
+                "updated_at": p.updated_at.isoformat() if p.updated_at else None,
             }
             for p in permissions
         ],
         "total": total,
         "skip": skip,
-        "limit": limit
+        "limit": limit,
     }
 
 
@@ -125,7 +128,7 @@ async def get_grouped_permissions(
     current_user: User = Depends(has_permission("permissions:read:tenant")),
     role_id: Optional[str] = None,
     category: Optional[str] = None,
-    scope: Optional[str] = None
+    scope: Optional[str] = None,
 ):
     """
     Get permissions grouped by resource for easy permission management.
@@ -147,13 +150,11 @@ async def get_grouped_permissions(
     # Get role permissions if role_id provided
     role_permission_ids = set()
     if role_id:
-        role_perms = db.query(RolePermission.permission_id).filter(
-            RolePermission.role_id == role_id
-        ).all()
+        role_perms = db.query(RolePermission.permission_id).filter(RolePermission.role_id == role_id).all()
         role_permission_ids = {str(p[0]) for p in role_perms}
 
     # Standard CRUD actions
-    standard_actions = {'read', 'create', 'update', 'delete'}
+    standard_actions = {"read", "create", "update", "delete"}
 
     # Group by resource and scope
     grouped = {}
@@ -167,7 +168,7 @@ async def get_grouped_permissions(
                 "scope": perm.scope,
                 "category": perm.category,
                 "standard_actions": {},
-                "special_actions": {}
+                "special_actions": {},
             }
 
         perm_data = {
@@ -175,7 +176,7 @@ async def get_grouped_permissions(
             "code": perm.code,
             "name": perm.name,
             "description": perm.description,
-            "granted": str(perm.id) in role_permission_ids if role_id else False
+            "granted": str(perm.id) in role_permission_ids if role_id else False,
         }
 
         # Categorize as standard or special
@@ -187,26 +188,19 @@ async def get_grouped_permissions(
     # Convert to list and sort
     result = []
     for key, data in grouped.items():
-        result.append({
-            "key": key,
-            **data
-        })
+        result.append({"key": key, **data})
 
     # Sort by category, then resource
     result.sort(key=lambda x: (x["category"] or "", x["resource"]))
 
-    return {
-        "groups": result,
-        "total_resources": len(result),
-        "role_id": role_id
-    }
+    return {"groups": result, "total_resources": len(result), "role_id": role_id}
 
 
 @router.get("/permissions/{permission_id}")
 async def get_permission(
     permission_id: UUID,
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("permissions:read:tenant"))
+    current_user: User = Depends(has_permission("permissions:read:tenant")),
 ):
     """Get permission details including which roles have it - requires permissions:read:tenant"""
     permission = db.query(Permission).filter(Permission.id == permission_id).first()
@@ -230,22 +224,19 @@ async def get_permission(
         "is_system": permission.is_system,
         "is_active": permission.is_active,
         "roles": [
-            {
-                "id": str(rp.role.id),
-                "code": rp.role.code,
-                "name": rp.role.name,
-                "is_active": rp.role.is_active
-            }
-            for rp in role_permissions if rp.role
+            {"id": str(rp.role.id), "code": rp.role.code, "name": rp.role.name, "is_active": rp.role.is_active}
+            for rp in role_permissions
+            if rp.role
         ],
         "created_at": permission.created_at.isoformat() if permission.created_at else None,
-        "updated_at": permission.updated_at.isoformat() if permission.updated_at else None
+        "updated_at": permission.updated_at.isoformat() if permission.updated_at else None,
     }
 
 
 # ============================================================================
 # ROLE ENDPOINTS
 # ============================================================================
+
 
 @router.get("/roles")
 async def list_roles(
@@ -257,7 +248,7 @@ async def list_roles(
     tenant_id: Optional[str] = None,
     company_id: Optional[str] = None,
     skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=1000)
+    limit: int = Query(100, ge=1, le=1000),
 ):
     """List all roles with optional filtering - requires roles:read:tenant"""
     query = db.query(Role)
@@ -267,11 +258,7 @@ async def list_roles(
         query = query.filter(Role.role_type == role_type)
     if search:
         query = query.filter(
-            or_(
-                Role.code.ilike(f"%{search}%"),
-                Role.name.ilike(f"%{search}%"),
-                Role.description.ilike(f"%{search}%")
-            )
+            or_(Role.code.ilike(f"%{search}%"), Role.name.ilike(f"%{search}%"), Role.description.ilike(f"%{search}%"))
         )
     if is_active is not None:
         query = query.filter(Role.is_active == is_active)
@@ -283,25 +270,17 @@ async def list_roles(
         query = query.filter(
             or_(
                 Role.tenant_id == current_user.tenant_id,  # tenant_scope
-                Role.tenant_id.is_(None)  # Include system roles
+                Role.tenant_id.is_(None),  # Include system roles
             )
         )
     # Tenant filtering
     elif tenant_id:
         query = query.filter(
-            or_(
-                Role.tenant_id == tenant_id,  # tenant_scope
-                Role.tenant_id.is_(None)  # Include system roles
-            )
+            or_(Role.tenant_id == tenant_id, Role.tenant_id.is_(None))  # tenant_scope  # Include system roles
         )
     elif not current_user.is_superuser:
         # Non-superusers see only their tenant's roles + system roles
-        query = query.filter(
-            or_(
-                Role.tenant_id == current_user.tenant_id,  # tenant_scope
-                Role.tenant_id.is_(None)
-            )
-        )
+        query = query.filter(or_(Role.tenant_id == current_user.tenant_id, Role.tenant_id.is_(None)))  # tenant_scope
 
     # Order by role_type and code
     query = query.order_by(Role.role_type, Role.code)
@@ -324,21 +303,19 @@ async def list_roles(
                 "is_active": r.is_active,
                 "tenant_id": str(r.tenant_id) if r.tenant_id else None,
                 "created_at": r.created_at.isoformat() if r.created_at else None,
-                "updated_at": r.updated_at.isoformat() if r.updated_at else None
+                "updated_at": r.updated_at.isoformat() if r.updated_at else None,
             }
             for r in roles
         ],
         "total": total,
         "skip": skip,
-        "limit": limit
+        "limit": limit,
     }
 
 
 @router.get("/roles/{role_id}")
 async def get_role(
-    role_id: UUID,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("roles:read:tenant"))
+    role_id: UUID, db: Session = Depends(get_db), current_user: User = Depends(has_permission("roles:read:tenant"))
 ):
     """Get role details including permissions and assignments - requires roles:read:tenant"""
     role = db.query(Role).filter(Role.id == role_id).first()
@@ -354,20 +331,10 @@ async def get_role(
     )
 
     # Get direct user assignments (DEPRECATED - for backwards compatibility only)
-    user_roles = (
-        db.query(UserRole)
-        .filter(UserRole.role_id == role_id)
-        .options(joinedload(UserRole.user))
-        .all()
-    )
+    user_roles = db.query(UserRole).filter(UserRole.role_id == role_id).options(joinedload(UserRole.user)).all()
 
     # Get group assignments (CURRENT - group-based RBAC model)
-    group_roles = (
-        db.query(GroupRole)
-        .filter(GroupRole.role_id == role_id)
-        .options(joinedload(GroupRole.group))
-        .all()
-    )
+    group_roles = db.query(GroupRole).filter(GroupRole.role_id == role_id).options(joinedload(GroupRole.group)).all()
 
     return {
         "id": str(role.id),
@@ -384,9 +351,10 @@ async def get_role(
                 "code": rp.permission.code,
                 "name": rp.permission.name,
                 "category": rp.permission.category,
-                "is_active": rp.permission.is_active
+                "is_active": rp.permission.is_active,
             }
-            for rp in role_permissions if rp.permission
+            for rp in role_permissions
+            if rp.permission
         ],
         # DEPRECATED: Direct user-to-role assignments (use groups instead)
         "deprecated_direct_users": [
@@ -394,9 +362,10 @@ async def get_role(
                 "id": str(ur.user.id),
                 "email": ur.user.email,
                 "full_name": ur.user.full_name,
-                "is_active": ur.user.is_active
+                "is_active": ur.user.is_active,
             }
-            for ur in user_roles if ur.user
+            for ur in user_roles
+            if ur.user
         ],
         # Current group-based assignments
         "groups": [
@@ -404,12 +373,13 @@ async def get_role(
                 "id": str(gr.group.id),
                 "name": gr.group.name,
                 "group_type": gr.group.group_type,
-                "is_active": gr.group.is_active
+                "is_active": gr.group.is_active,
             }
-            for gr in group_roles if gr.group
+            for gr in group_roles
+            if gr.group
         ],
         "created_at": role.created_at.isoformat() if role.created_at else None,
-        "updated_at": role.updated_at.isoformat() if role.updated_at else None
+        "updated_at": role.updated_at.isoformat() if role.updated_at else None,
     }
 
 
@@ -418,7 +388,7 @@ async def create_role(
     payload: RoleCreate,
     request: Request,
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("roles:create:tenant"))
+    current_user: User = Depends(has_permission("roles:create:tenant")),
 ):
     """Create a custom role within the current user's tenant.
 
@@ -466,9 +436,7 @@ async def create_role(
                 status_code=404,
                 detail="Source role for copy_permissions_from not found in this tenant",
             )
-        source_perms = (
-            db.query(RolePermission).filter(RolePermission.role_id == source.id).all()
-        )
+        source_perms = db.query(RolePermission).filter(RolePermission.role_id == source.id).all()
         for sp in source_perms:
             db.add(RolePermission(role_id=role.id, permission_id=sp.permission_id))
 
@@ -509,7 +477,7 @@ async def update_role(
     payload: RoleUpdate,
     request: Request,
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("roles:update:tenant"))
+    current_user: User = Depends(has_permission("roles:update:tenant")),
 ):
     """Update a tenant role. System roles are immutable (returns 403)."""
     role = db.query(Role).filter(Role.id == role_id).first()
@@ -562,7 +530,7 @@ async def delete_role(
     role_id: UUID,
     request: Request,
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("roles:delete:tenant"))
+    current_user: User = Depends(has_permission("roles:delete:tenant")),
 ):
     """Delete a tenant role. Blocked if assigned to any user or group (409)."""
     role = db.query(Role).filter(Role.id == role_id).first()
@@ -610,7 +578,7 @@ async def assign_permissions_to_role(
     role_id: UUID,
     permission_ids: List[UUID],
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("roles:assign_permissions:tenant"))
+    current_user: User = Depends(has_permission("roles:assign_permissions:tenant")),
 ):
     """Assign multiple permissions to a role - requires roles:assign_permissions:tenant"""
     role = db.query(Role).filter(Role.id == role_id).first()
@@ -621,9 +589,7 @@ async def assign_permissions_to_role(
         raise HTTPException(status_code=403, detail="Cannot modify system role")
 
     # Get existing assignments
-    existing = db.query(RolePermission.permission_id).filter(
-        RolePermission.role_id == role_id
-    ).all()
+    existing = db.query(RolePermission.permission_id).filter(RolePermission.role_id == role_id).all()
     existing_ids = {str(p[0]) for p in existing}
 
     # Add new permissions
@@ -635,11 +601,7 @@ async def assign_permissions_to_role(
             if not perm:
                 continue
 
-            role_perm = RolePermission(
-                role_id=role_id,
-                permission_id=perm_id,
-                granted_by_user_id=current_user.id
-            )
+            role_perm = RolePermission(role_id=role_id, permission_id=perm_id, granted_by_user_id=current_user.id)
             db.add(role_perm)
             added.append(str(perm_id))
 
@@ -651,10 +613,7 @@ async def assign_permissions_to_role(
         entity_type="Role",
         entity_id=role_id,
         user=current_user,
-        changes={
-            "role_code": role.code,
-            "permissions_added": added
-        }
+        changes={"role_code": role.code, "permissions_added": added},
     )
 
     return {"message": f"Added {len(added)} permissions to role", "added": added}
@@ -665,7 +624,7 @@ async def remove_permission_from_role(
     role_id: UUID,
     permission_id: UUID,
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("roles:revoke_permissions:tenant"))
+    current_user: User = Depends(has_permission("roles:revoke_permissions:tenant")),
 ):
     """Remove a permission from a role - requires roles:revoke_permissions:tenant"""
     role = db.query(Role).filter(Role.id == role_id).first()
@@ -675,10 +634,11 @@ async def remove_permission_from_role(
     if role.is_system and not current_user.is_superuser:
         raise HTTPException(status_code=403, detail="Cannot modify system role")
 
-    role_perm = db.query(RolePermission).filter(
-        RolePermission.role_id == role_id,
-        RolePermission.permission_id == permission_id
-    ).first()
+    role_perm = (
+        db.query(RolePermission)
+        .filter(RolePermission.role_id == role_id, RolePermission.permission_id == permission_id)
+        .first()
+    )
 
     if not role_perm:
         raise HTTPException(status_code=404, detail="Permission assignment not found")
@@ -692,10 +652,7 @@ async def remove_permission_from_role(
         entity_type="Role",
         entity_id=role_id,
         user=current_user,
-        changes={
-            "role_code": role.code,
-            "permission_id": str(permission_id)
-        }
+        changes={"role_code": role.code, "permission_id": str(permission_id)},
     )
 
     return {"message": "Permission removed from role"}
@@ -707,7 +664,7 @@ async def bulk_update_role_permissions(
     grant_ids: List[UUID],
     revoke_ids: List[UUID],
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("roles:assign_permissions:tenant"))
+    current_user: User = Depends(has_permission("roles:assign_permissions:tenant")),
 ):
     """
     Bulk update role permissions - grant and revoke in a single transaction.
@@ -726,9 +683,7 @@ async def bulk_update_role_permissions(
         raise HTTPException(status_code=403, detail="Cannot modify system role")
 
     # Get existing assignments
-    existing = db.query(RolePermission.permission_id).filter(
-        RolePermission.role_id == role_id
-    ).all()
+    existing = db.query(RolePermission.permission_id).filter(RolePermission.role_id == role_id).all()
     existing_ids = {str(p[0]) for p in existing}
 
     # Grant new permissions
@@ -740,11 +695,7 @@ async def bulk_update_role_permissions(
             if not perm:
                 continue
 
-            role_perm = RolePermission(
-                role_id=role_id,
-                permission_id=perm_id,
-                granted_by_user_id=current_user.id
-            )
+            role_perm = RolePermission(role_id=role_id, permission_id=perm_id, granted_by_user_id=current_user.id)
             db.add(role_perm)
             granted.append(str(perm_id))
 
@@ -752,10 +703,11 @@ async def bulk_update_role_permissions(
     revoked = []
     for perm_id in revoke_ids:
         if str(perm_id) in existing_ids:
-            role_perm = db.query(RolePermission).filter(
-                RolePermission.role_id == role_id,
-                RolePermission.permission_id == perm_id
-            ).first()
+            role_perm = (
+                db.query(RolePermission)
+                .filter(RolePermission.role_id == role_id, RolePermission.permission_id == perm_id)
+                .first()
+            )
             if role_perm:
                 db.delete(role_perm)
                 revoked.append(str(perm_id))
@@ -768,11 +720,7 @@ async def bulk_update_role_permissions(
         entity_type="Role",
         entity_id=role_id,
         user=current_user,
-        changes={
-            "role_code": role.code,
-            "granted": granted,
-            "revoked": revoked
-        }
+        changes={"role_code": role.code, "granted": granted, "revoked": revoked},
     )
 
     return {
@@ -780,13 +728,14 @@ async def bulk_update_role_permissions(
         "granted": len(granted),
         "revoked": len(revoked),
         "granted_ids": granted,
-        "revoked_ids": revoked
+        "revoked_ids": revoked,
     }
 
 
 # ============================================================================
 # GROUP ENDPOINTS
 # ============================================================================
+
 
 @router.get("/groups")
 async def list_groups(
@@ -797,7 +746,7 @@ async def list_groups(
     is_active: Optional[bool] = None,
     company_id: Optional[str] = None,
     skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=1000)
+    limit: int = Query(100, ge=1, le=1000),
 ):
     """List all groups with optional filtering - requires groups:read:tenant"""
     query = db.query(Group)
@@ -809,20 +758,12 @@ async def list_groups(
     if group_type:
         query = query.filter(Group.group_type == group_type)
     if search:
-        query = query.filter(
-            or_(
-                Group.name.ilike(f"%{search}%"),
-                Group.description.ilike(f"%{search}%")
-            )
-        )
+        query = query.filter(or_(Group.name.ilike(f"%{search}%"), Group.description.ilike(f"%{search}%")))
     if is_active is not None:
         query = query.filter(Group.is_active == is_active)
     if company_id:
         query = query.filter(
-            or_(
-                Group.company_id == company_id,
-                Group.company_id.is_(None)  # Include tenant-wide groups
-            )
+            or_(Group.company_id == company_id, Group.company_id.is_(None))  # Include tenant-wide groups
         )
 
     # Order by group_type and name
@@ -845,21 +786,19 @@ async def list_groups(
                 "tenant_id": str(g.tenant_id) if g.tenant_id else None,
                 "company_id": str(g.company_id) if g.company_id else None,
                 "created_at": g.created_at.isoformat() if g.created_at else None,
-                "updated_at": g.updated_at.isoformat() if g.updated_at else None
+                "updated_at": g.updated_at.isoformat() if g.updated_at else None,
             }
             for g in groups
         ],
         "total": total,
         "skip": skip,
-        "limit": limit
+        "limit": limit,
     }
 
 
 @router.get("/groups/{group_id}")
 async def get_group(
-    group_id: UUID,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("groups:read:tenant"))
+    group_id: UUID, db: Session = Depends(get_db), current_user: User = Depends(has_permission("groups:read:tenant"))
 ):
     """Get group details including members and roles - requires groups:read:tenant"""
     group = db.query(Group).filter(Group.id == group_id).first()
@@ -867,20 +806,10 @@ async def get_group(
         raise HTTPException(status_code=404, detail="Group not found")
 
     # Get members
-    user_groups = (
-        db.query(UserGroup)
-        .filter(UserGroup.group_id == group_id)
-        .options(joinedload(UserGroup.user))
-        .all()
-    )
+    user_groups = db.query(UserGroup).filter(UserGroup.group_id == group_id).options(joinedload(UserGroup.user)).all()
 
     # Get roles
-    group_roles = (
-        db.query(GroupRole)
-        .filter(GroupRole.group_id == group_id)
-        .options(joinedload(GroupRole.role))
-        .all()
-    )
+    group_roles = db.query(GroupRole).filter(GroupRole.group_id == group_id).options(joinedload(GroupRole.role)).all()
 
     # Calculate effective permissions through roles
     all_permissions = set()
@@ -910,22 +839,19 @@ async def get_group(
                 "email": ug.user.email,
                 "full_name": ug.user.full_name,
                 "is_active": ug.user.is_active,
-                "joined_at": ug.created_at.isoformat() if ug.created_at else None
+                "joined_at": ug.created_at.isoformat() if ug.created_at else None,
             }
-            for ug in user_groups if ug.user
+            for ug in user_groups
+            if ug.user
         ],
         "roles": [
-            {
-                "id": str(gr.role.id),
-                "code": gr.role.code,
-                "name": gr.role.name,
-                "is_active": gr.role.is_active
-            }
-            for gr in group_roles if gr.role
+            {"id": str(gr.role.id), "code": gr.role.code, "name": gr.role.name, "is_active": gr.role.is_active}
+            for gr in group_roles
+            if gr.role
         ],
         "effective_permissions": sorted(list(all_permissions)),
         "created_at": group.created_at.isoformat() if group.created_at else None,
-        "updated_at": group.updated_at.isoformat() if group.updated_at else None
+        "updated_at": group.updated_at.isoformat() if group.updated_at else None,
     }
 
 
@@ -934,7 +860,7 @@ async def add_members_to_group(
     group_id: UUID,
     user_ids: List[UUID],
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("groups:add_members:tenant"))
+    current_user: User = Depends(has_permission("groups:add_members:tenant")),
 ):
     """Add multiple users to a group - requires groups:add_members:tenant"""
     group = db.query(Group).filter(Group.id == group_id).first()
@@ -942,9 +868,7 @@ async def add_members_to_group(
         raise HTTPException(status_code=404, detail="Group not found")
 
     # Get existing members
-    existing = db.query(UserGroup.user_id).filter(
-        UserGroup.group_id == group_id
-    ).all()
+    existing = db.query(UserGroup.user_id).filter(UserGroup.group_id == group_id).all()
     existing_ids = {str(u[0]) for u in existing}
 
     # Add new members
@@ -956,11 +880,7 @@ async def add_members_to_group(
             if not user:
                 continue
 
-            user_group = UserGroup(
-                user_id=user_id,
-                group_id=group_id,
-                added_by_user_id=current_user.id
-            )
+            user_group = UserGroup(user_id=user_id, group_id=group_id, added_by_user_id=current_user.id)
             db.add(user_group)
             added.append(str(user_id))
 
@@ -972,10 +892,7 @@ async def add_members_to_group(
         entity_type="Group",
         entity_id=group_id,
         user=current_user,
-        changes={
-            "group_name": group.name,
-            "members_added": added
-        }
+        changes={"group_name": group.name, "members_added": added},
     )
 
     return {"message": f"Added {len(added)} members to group", "added": added}
@@ -986,13 +903,10 @@ async def remove_member_from_group(
     group_id: UUID,
     user_id: UUID,
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("groups:remove_members:tenant"))
+    current_user: User = Depends(has_permission("groups:remove_members:tenant")),
 ):
     """Remove a user from a group - requires groups:remove_members:tenant"""
-    user_group = db.query(UserGroup).filter(
-        UserGroup.group_id == group_id,
-        UserGroup.user_id == user_id
-    ).first()
+    user_group = db.query(UserGroup).filter(UserGroup.group_id == group_id, UserGroup.user_id == user_id).first()
 
     if not user_group:
         raise HTTPException(status_code=404, detail="User not in group")
@@ -1006,9 +920,7 @@ async def remove_member_from_group(
         entity_type="Group",
         entity_id=group_id,
         user=current_user,
-        changes={
-            "removed_user_id": str(user_id)
-        }
+        changes={"removed_user_id": str(user_id)},
     )
 
     return {"message": "User removed from group"}
@@ -1019,7 +931,7 @@ async def assign_roles_to_group(
     group_id: UUID,
     role_ids: List[UUID],
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("groups:assign_roles:tenant"))
+    current_user: User = Depends(has_permission("groups:assign_roles:tenant")),
 ):
     """Assign multiple roles to a group - requires groups:assign_roles:tenant"""
     group = db.query(Group).filter(Group.id == group_id).first()
@@ -1027,9 +939,7 @@ async def assign_roles_to_group(
         raise HTTPException(status_code=404, detail="Group not found")
 
     # Get existing assignments
-    existing = db.query(GroupRole.role_id).filter(
-        GroupRole.group_id == group_id
-    ).all()
+    existing = db.query(GroupRole.role_id).filter(GroupRole.group_id == group_id).all()
     existing_ids = {str(r[0]) for r in existing}
 
     # Add new roles
@@ -1041,11 +951,7 @@ async def assign_roles_to_group(
             if not role:
                 continue
 
-            group_role = GroupRole(
-                group_id=group_id,
-                role_id=role_id,
-                granted_by_user_id=current_user.id
-            )
+            group_role = GroupRole(group_id=group_id, role_id=role_id, granted_by_user_id=current_user.id)
             db.add(group_role)
             added.append(str(role_id))
 
@@ -1057,10 +963,7 @@ async def assign_roles_to_group(
         entity_type="Group",
         entity_id=group_id,
         user=current_user,
-        changes={
-            "group_name": group.name,
-            "roles_added": added
-        }
+        changes={"group_name": group.name, "roles_added": added},
     )
 
     return {"message": f"Added {len(added)} roles to group", "added": added}
@@ -1071,13 +974,10 @@ async def remove_role_from_group(
     group_id: UUID,
     role_id: UUID,
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("groups:revoke_roles:tenant"))
+    current_user: User = Depends(has_permission("groups:revoke_roles:tenant")),
 ):
     """Remove a role from a group - requires groups:revoke_roles:tenant"""
-    group_role = db.query(GroupRole).filter(
-        GroupRole.group_id == group_id,
-        GroupRole.role_id == role_id
-    ).first()
+    group_role = db.query(GroupRole).filter(GroupRole.group_id == group_id, GroupRole.role_id == role_id).first()
 
     if not group_role:
         raise HTTPException(status_code=404, detail="Role assignment not found")
@@ -1091,9 +991,7 @@ async def remove_role_from_group(
         entity_type="Group",
         entity_id=group_id,
         user=current_user,
-        changes={
-            "role_id": str(role_id)
-        }
+        changes={"role_id": str(role_id)},
     )
 
     return {"message": "Role removed from group"}
@@ -1103,11 +1001,12 @@ async def remove_role_from_group(
 # USER RBAC ENDPOINTS
 # ============================================================================
 
+
 @router.get("/users/{user_id}/roles")
 async def get_user_roles(
     user_id: UUID,
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("users:read_roles:tenant"))
+    current_user: User = Depends(has_permission("users:read_roles:tenant")),
 ):
     """
     Get all roles for a user through group membership only - requires users:read_roles:tenant
@@ -1139,10 +1038,11 @@ async def get_user_roles(
                 "role_name": gr.role.name,
                 "group_id": str(gr.group.id),
                 "group_name": gr.group.name,
-                "is_active": gr.role.is_active and gr.group.is_active
+                "is_active": gr.role.is_active and gr.group.is_active,
             }
-            for gr in group_roles if gr.role and gr.group
-        ]
+            for gr in group_roles
+            if gr.role and gr.group
+        ],
     }
 
 
@@ -1150,7 +1050,7 @@ async def get_user_roles(
 async def get_user_permissions(
     user_id: UUID,
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("users:read_permissions:tenant"))
+    current_user: User = Depends(has_permission("users:read_permissions:tenant")),
 ):
     """Get all effective permissions for a user - requires users:read_permissions:tenant"""
     user = db.query(User).filter(User.id == user_id).first()
@@ -1158,20 +1058,14 @@ async def get_user_permissions(
         raise HTTPException(status_code=404, detail="User not found")
 
     # Use the model's get_permissions method
-    permissions = user.get_permissions() if hasattr(user, 'get_permissions') else set()
+    permissions = user.get_permissions() if hasattr(user, "get_permissions") else set()
 
     # Get details for each permission
     permission_details = []
     if permissions:
         perms = db.query(Permission).filter(Permission.code.in_(permissions)).all()
         permission_details = [
-            {
-                "id": str(p.id),
-                "code": p.code,
-                "name": p.name,
-                "category": p.category,
-                "description": p.description
-            }
+            {"id": str(p.id), "code": p.code, "name": p.name, "category": p.category, "description": p.description}
             for p in perms
         ]
 
@@ -1181,7 +1075,7 @@ async def get_user_permissions(
         "full_name": user.full_name,
         "is_superuser": user.is_superuser,
         "permissions": permission_details,
-        "permission_codes": sorted(list(permissions))
+        "permission_codes": sorted(list(permissions)),
     }
 
 
@@ -1190,7 +1084,7 @@ async def assign_roles_to_user(
     user_id: UUID,
     role_ids: List[UUID],
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("users:assign_roles:tenant"))
+    current_user: User = Depends(has_permission("users:assign_roles:tenant")),
 ):
     """
     DEPRECATED: Direct role assignment is deprecated.
@@ -1205,7 +1099,7 @@ async def assign_roles_to_user(
             "Please assign users to groups instead, then assign roles to those groups. "
             "Use POST /rbac/groups/{group_id}/members to add users to groups, "
             "and POST /rbac/groups/{group_id}/roles to assign roles to groups."
-        )
+        ),
     )
 
 
@@ -1214,7 +1108,7 @@ async def remove_role_from_user(
     user_id: UUID,
     role_id: UUID,
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("users:revoke_roles:tenant"))
+    current_user: User = Depends(has_permission("users:revoke_roles:tenant")),
 ):
     """
     DEPRECATED: Direct role removal is deprecated.
@@ -1229,7 +1123,7 @@ async def remove_role_from_user(
             "Please manage roles through groups instead. "
             "Use DELETE /rbac/groups/{group_id}/members/{user_id} to remove users from groups, "
             "or DELETE /rbac/groups/{group_id}/roles/{role_id} to remove roles from groups."
-        )
+        ),
     )
 
 
@@ -1237,11 +1131,12 @@ async def remove_role_from_user(
 # ORGANIZATION STRUCTURE ENDPOINTS
 # ============================================================================
 
+
 @router.get("/organization-structure")
 async def get_organization_structure(
     db: Session = Depends(get_db),
     current_user: User = Depends(has_permission("organization:view:tenant")),
-    tenant_id: Optional[str] = None
+    tenant_id: Optional[str] = None,
 ):
     """Get complete organization structure for a tenant - requires organization:view:tenant"""
     # Determine which tenant to query
@@ -1254,13 +1149,7 @@ async def get_organization_structure(
             query_tenant_id = first_tenant.id
         else:
             # No tenants exist at all
-            return {
-                "tenant": None,
-                "companies": [],
-                "groups": [],
-                "users": [],
-                "roles": []
-            }
+            return {"tenant": None, "companies": [], "groups": [], "users": [], "roles": []}
 
     # Check if user has a tenant
     if not query_tenant_id:
@@ -1287,12 +1176,9 @@ async def get_organization_structure(
     users = db.query(User).filter(User.tenant_id == query_tenant_id).all()  # tenant_scope
 
     # Get roles (system + tenant-specific)
-    roles = db.query(Role).filter(
-        or_(
-            Role.tenant_id == query_tenant_id,  # tenant_scope
-            Role.tenant_id.is_(None)
-        )
-    ).all()
+    roles = (
+        db.query(Role).filter(or_(Role.tenant_id == query_tenant_id, Role.tenant_id.is_(None))).all()  # tenant_scope
+    )
 
     # Build company hierarchy with branches and departments
     company_hierarchy = []
@@ -1305,47 +1191,37 @@ async def get_organization_structure(
             # Get departments for this branch
             branch_departments = [d for d in departments if str(d.branch_id) == str(b.id)]
 
-            branches_data.append({
-                "id": str(b.id),
-                "name": b.name,
-                "code": b.code,
-                "is_active": b.is_active,
-                "departments": [
-                    {
-                        "id": str(d.id),
-                        "name": d.name,
-                        "code": d.code,
-                        "is_active": d.is_active
-                    }
-                    for d in branch_departments
-                ]
-            })
+            branches_data.append(
+                {
+                    "id": str(b.id),
+                    "name": b.name,
+                    "code": b.code,
+                    "is_active": b.is_active,
+                    "departments": [
+                        {"id": str(d.id), "name": d.name, "code": d.code, "is_active": d.is_active}
+                        for d in branch_departments
+                    ],
+                }
+            )
 
         # Get departments without branches (company-level departments)
         company_departments = [d for d in departments if d.branch_id is None and str(d.company_id) == str(c.id)]
 
-        company_hierarchy.append({
-            "id": str(c.id),
-            "name": c.name,
-            "is_active": c.is_active,
-            "branches": branches_data,
-            "departments": [
-                {
-                    "id": str(d.id),
-                    "name": d.name,
-                    "code": d.code,
-                    "is_active": d.is_active
-                }
-                for d in company_departments
-            ]
-        })
+        company_hierarchy.append(
+            {
+                "id": str(c.id),
+                "name": c.name,
+                "is_active": c.is_active,
+                "branches": branches_data,
+                "departments": [
+                    {"id": str(d.id), "name": d.name, "code": d.code, "is_active": d.is_active}
+                    for d in company_departments
+                ],
+            }
+        )
 
     return {
-        "tenant": {
-            "id": str(tenant.id),
-            "name": tenant.name,
-            "is_active": tenant.is_active
-        },
+        "tenant": {"id": str(tenant.id), "name": tenant.name, "is_active": tenant.is_active},
         "companies": company_hierarchy,
         "groups": [
             {
@@ -1354,9 +1230,7 @@ async def get_organization_structure(
                 "group_type": g.group_type,
                 "company_id": str(g.company_id) if g.company_id else None,
                 "is_active": g.is_active,
-                "member_count": db.query(func.count(UserGroup.user_id)).filter(
-                    UserGroup.group_id == g.id
-                ).scalar()
+                "member_count": db.query(func.count(UserGroup.user_id)).filter(UserGroup.group_id == g.id).scalar(),
             }
             for g in groups
         ],
@@ -1366,7 +1240,7 @@ async def get_organization_structure(
                 "email": u.email,
                 "full_name": u.full_name,
                 "is_active": u.is_active,
-                "is_superuser": u.is_superuser
+                "is_superuser": u.is_superuser,
             }
             for u in users
         ],
@@ -1377,34 +1251,20 @@ async def get_organization_structure(
                 "name": r.name,
                 "role_type": r.role_type,
                 "is_system": r.is_system,
-                "is_active": r.is_active
+                "is_active": r.is_active,
             }
             for r in roles
-        ]
+        ],
     }
 
 
 @router.get("/permission-categories")
 async def get_permission_categories(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("permissions:read:tenant"))
+    db: Session = Depends(get_db), current_user: User = Depends(has_permission("permissions:read:tenant"))
 ):
     """Get all permission categories with counts - requires permissions:read:tenant"""
     categories = (
-        db.query(
-            Permission.category,
-            func.count(Permission.id).label('count')
-        )
-        .group_by(Permission.category)
-        .all()
+        db.query(Permission.category, func.count(Permission.id).label("count")).group_by(Permission.category).all()
     )
 
-    return {
-        "categories": [
-            {
-                "name": cat[0],
-                "count": cat[1]
-            }
-            for cat in categories if cat[0]
-        ]
-    }
+    return {"categories": [{"name": cat[0], "count": cat[1]} for cat in categories if cat[0]]}

@@ -5,6 +5,8 @@ Models for the no-code platform's automation and trigger system.
 Enables event-based automation without writing code.
 """
 
+from datetime import datetime
+
 from sqlalchemy import (
     Boolean,
     Column,
@@ -18,7 +20,6 @@ from sqlalchemy import (
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
-from datetime import datetime
 
 from .base import GUID, Base, generate_uuid
 
@@ -29,6 +30,7 @@ class AutomationRule(Base):
 
     Stores automation rules with triggers, conditions, and actions.
     """
+
     __tablename__ = "automation_rules"
 
     # Primary Key
@@ -45,7 +47,9 @@ class AutomationRule(Base):
     category = Column(String(100))
 
     # Trigger Configuration
-    trigger_type = Column(String(50), nullable=False)  # 'database_event', 'scheduled', 'user_action', 'webhook', 'manual'
+    trigger_type = Column(
+        String(50), nullable=False
+    )  # 'database_event', 'scheduled', 'user_action', 'webhook', 'manual'
     trigger_config = Column(JSONB, nullable=False)  # Trigger-specific configuration
 
     # Entity Association (for database events)
@@ -120,7 +124,11 @@ class AutomationRule(Base):
         Index("idx_automation_rules_tenant", "tenant_id", postgresql_where=text("is_deleted = false")),
         Index("idx_automation_rules_entity", "entity_id", postgresql_where=text("is_active = true")),
         Index("idx_automation_rules_trigger_type", "trigger_type", postgresql_where=text("is_active = true")),
-        Index("idx_automation_rules_next_run", "next_run_at", postgresql_where=text("is_active = true AND schedule_type IS NOT NULL")),
+        Index(
+            "idx_automation_rules_next_run",
+            "next_run_at",
+            postgresql_where=text("is_active = true AND schedule_type IS NOT NULL"),
+        ),
         Index("idx_automation_rules_event", "entity_id", "event_type", postgresql_where=text("is_active = true")),
     )
 
@@ -131,6 +139,7 @@ class AutomationExecution(Base):
 
     Tracks individual executions of automation rules.
     """
+
     __tablename__ = "automation_executions"
 
     # Primary Key
@@ -197,6 +206,7 @@ class ActionTemplate(Base):
 
     Stores reusable action templates for automations.
     """
+
     __tablename__ = "action_templates"
 
     # Primary Key
@@ -245,6 +255,7 @@ class WebhookConfig(Base):
 
     Stores webhook configurations for inbound and outbound webhooks.
     """
+
     __tablename__ = "webhook_configs"
 
     # Primary Key

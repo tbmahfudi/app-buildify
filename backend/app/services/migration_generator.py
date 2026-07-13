@@ -5,9 +5,10 @@ Generates SQL migration scripts for entity definitions.
 Handles CREATE TABLE, ALTER TABLE, and DROP TABLE operations.
 """
 
-from typing import Tuple, List, Dict, Any
+from typing import Any, Dict, Tuple
+
+from sqlalchemy import text
 from sqlalchemy.orm import Session
-from sqlalchemy import text, inspect
 
 from app.models.data_model import (
     EntityDefinition,
@@ -33,23 +34,24 @@ class MigrationGenerator:
 
         Returns: (up_script, down_script)
         """
-        entity_type = getattr(entity, 'entity_type', 'custom') or 'custom'
+        entity_type = getattr(entity, "entity_type", "custom") or "custom"
 
-        if entity_type == 'virtual':
+        if entity_type == "virtual":
             # Try to find a view_sql in meta_data
             meta = entity.meta_data or {}
             if isinstance(meta, str):
                 import json as _json
+
                 try:
                     meta = _json.loads(meta)
                 except Exception:
                     meta = {}
 
-            view_sql = meta.get('view_sql', '')
+            view_sql = meta.get("view_sql", "")
             if view_sql:
                 up_sql = view_sql.strip()
-                if not up_sql.endswith(';'):
-                    up_sql += ';'
+                if not up_sql.endswith(";"):
+                    up_sql += ";"
                 down_sql = f"DROP VIEW IF EXISTS {entity.table_name} CASCADE;"
             else:
                 up_sql = (
@@ -73,13 +75,16 @@ class MigrationGenerator:
     async def _table_exists(self, table_name: str) -> bool:
         """Check if table exists in database"""
         try:
-            result = self.db.execute(text("""
+            result = self.db.execute(
+                text("""
                 SELECT EXISTS (
                     SELECT FROM information_schema.tables
                     WHERE table_schema = 'public'
                     AND table_name = :table_name
                 )
-            """), {"table_name": table_name})
+            """),
+                {"table_name": table_name},
+            )
             return result.scalar()
         except Exception:
             return False
@@ -87,20 +92,20 @@ class MigrationGenerator:
     # Defines which org hierarchy columns to add for each data_scope level.
     # Each level includes all columns from the levels above it.
     SCOPE_COLUMNS = {
-        'platform': [],
-        'tenant': [
+        "platform": [],
+        "tenant": [
             ("tenant_id", "UUID REFERENCES tenants(id)"),
         ],
-        'company': [
+        "company": [
             ("tenant_id", "UUID REFERENCES tenants(id)"),
             ("company_id", "UUID REFERENCES companies(id)"),
         ],
-        'branch': [
+        "branch": [
             ("tenant_id", "UUID REFERENCES tenants(id)"),
             ("company_id", "UUID REFERENCES companies(id)"),
             ("branch_id", "UUID REFERENCES branches(id)"),
         ],
-        'department': [
+        "department": [
             ("tenant_id", "UUID REFERENCES tenants(id)"),
             ("company_id", "UUID REFERENCES companies(id)"),
             ("branch_id", "UUID REFERENCES branches(id)"),
@@ -120,8 +125,8 @@ class MigrationGenerator:
         field_definitions = ["    id UUID PRIMARY KEY DEFAULT gen_random_uuid()"]
 
         # Add organizational hierarchy columns based on data_scope
-        data_scope = getattr(entity, 'data_scope', 'tenant') or 'tenant'
-        scope_columns = self.SCOPE_COLUMNS.get(data_scope, self.SCOPE_COLUMNS['tenant'])
+        data_scope = getattr(entity, "data_scope", "tenant") or "tenant"
+        scope_columns = self.SCOPE_COLUMNS.get(data_scope, self.SCOPE_COLUMNS["tenant"])
         scope_col_names = {col_name for col_name, _ in scope_columns}
 
         for col_name, col_def in scope_columns:
@@ -130,13 +135,13 @@ class MigrationGenerator:
         # Reserved column names that are emitted automatically below (id, scope,
         # audit, soft-delete). User/system fields with these names must be
         # skipped here or the CREATE TABLE would declare a column twice.
-        reserved_col_names = {'id'} | scope_col_names
+        reserved_col_names = {"id"} | scope_col_names
         if entity.is_audited:
-            reserved_col_names |= {'created_at', 'created_by', 'updated_at', 'updated_by'}
+            reserved_col_names |= {"created_at", "created_by", "updated_at", "updated_by"}
         if entity.supports_soft_delete:
-            reserved_col_names |= {'is_deleted', 'deleted_at', 'deleted_by'}
+            reserved_col_names |= {"is_deleted", "deleted_at", "deleted_by"}
         if entity.is_versioned:
-            reserved_col_names |= {'_version_id', '_changed_by', '_changed_at'}
+            reserved_col_names |= {"_version_id", "_changed_by", "_changed_at"}
 
         # Add user-defined fields
         for field in fields:
@@ -148,20 +153,20 @@ class MigrationGenerator:
 
         # Add audit fields if enabled
         if entity.is_audited:
-            field_definitions.extend([
-                "    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
-                "    created_by UUID",
-                "    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
-                "    updated_by UUID"
-            ])
+            field_definitions.extend(
+                [
+                    "    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
+                    "    created_by UUID",
+                    "    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
+                    "    updated_by UUID",
+                ]
+            )
 
         # Add soft delete fields if enabled
         if entity.supports_soft_delete:
-            field_definitions.extend([
-                "    is_deleted BOOLEAN DEFAULT FALSE",
-                "    deleted_at TIMESTAMP",
-                "    deleted_by UUID"
-            ])
+            field_definitions.extend(
+                ["    is_deleted BOOLEAN DEFAULT FALSE", "    deleted_at TIMESTAMP", "    deleted_by UUID"]
+            )
 
         up_sql_parts.append(",\n".join(field_definitions))
         up_sql_parts.append(");")
@@ -201,7 +206,9 @@ CREATE INDEX IF NOT EXISTS idx_{versions_table}_changed_at ON {versions_table}(c
 
         for field in fields:
             if field.help_text:
-                up_sql += f"\nCOMMENT ON COLUMN {table_name}.{field.name} IS '{self._escape_sql_string(field.help_text)}';"
+                up_sql += (
+                    f"\nCOMMENT ON COLUMN {table_name}.{field.name} IS '{self._escape_sql_string(field.help_text)}';"
+                )
 
         # Generate DOWN script (DROP TABLE)
         down_sql = f"DROP TABLE IF EXISTS {table_name} CASCADE;"
@@ -235,9 +242,20 @@ CREATE INDEX IF NOT EXISTS idx_{versions_table}_changed_at ON {versions_table}(c
         for col_name in current_columns:
             if col_name not in desired_fields:
                 # Check if it's a system column
-                if col_name not in ['created_at', 'created_by', 'updated_at', 'updated_by',
-                                    'is_deleted', 'deleted_at', 'deleted_by', 'id',
-                                    'tenant_id', 'company_id', 'branch_id', 'department_id']:
+                if col_name not in [
+                    "created_at",
+                    "created_by",
+                    "updated_at",
+                    "updated_by",
+                    "is_deleted",
+                    "deleted_at",
+                    "deleted_by",
+                    "id",
+                    "tenant_id",
+                    "company_id",
+                    "branch_id",
+                    "department_id",
+                ]:
                     # DROP COLUMN
                     up_sql_parts.append(f"ALTER TABLE {table_name} DROP COLUMN IF EXISTS {col_name};")
                     # Note: We can't reliably reconstruct the down migration for dropped columns
@@ -246,7 +264,7 @@ CREATE INDEX IF NOT EXISTS idx_{versions_table}_changed_at ON {versions_table}(c
         # Detect modified columns (basic type changes)
         for field_name, field in desired_fields.items():
             if field_name in current_columns:
-                current_col_type = current_columns[field_name]['data_type']
+                current_col_type = current_columns[field_name]["data_type"]
                 desired_col_type = self._extract_base_type(field.data_type)
 
                 if not self._types_compatible(current_col_type, desired_col_type):
@@ -254,12 +272,10 @@ CREATE INDEX IF NOT EXISTS idx_{versions_table}_changed_at ON {versions_table}(c
                     up_sql_parts.append(
                         f"ALTER TABLE {table_name} ALTER COLUMN {field_name} TYPE {field.data_type} USING {field_name}::{field.data_type};"
                     )
-                    down_sql_parts.append(
-                        f"-- Reverting type change for {field_name} may result in data loss"
-                    )
+                    down_sql_parts.append(f"-- Reverting type change for {field_name} may result in data loss")
 
                 # Check nullability changes
-                current_nullable = current_columns[field_name]['is_nullable']
+                current_nullable = current_columns[field_name]["is_nullable"]
                 desired_nullable = field.is_nullable
 
                 if current_nullable != desired_nullable:
@@ -280,7 +296,7 @@ CREATE INDEX IF NOT EXISTS idx_{versions_table}_changed_at ON {versions_table}(c
         for idx_name in current_indexes:
             if idx_name not in desired_indexes:
                 # Don't drop primary key or system indexes
-                if not idx_name.endswith('_pkey') and not idx_name.startswith('pg_'):
+                if not idx_name.endswith("_pkey") and not idx_name.startswith("pg_"):
                     up_sql_parts.append(f"DROP INDEX IF EXISTS {idx_name};")
                     # Can't reconstruct index without more info
                     down_sql_parts.append(f"-- Cannot automatically restore dropped index: {idx_name}")
@@ -293,7 +309,8 @@ CREATE INDEX IF NOT EXISTS idx_{versions_table}_changed_at ON {versions_table}(c
 
     async def _get_current_columns(self, table_name: str) -> Dict[str, Dict[str, Any]]:
         """Get current columns from database"""
-        result = self.db.execute(text("""
+        result = self.db.execute(
+            text("""
             SELECT
                 column_name,
                 data_type,
@@ -303,22 +320,25 @@ CREATE INDEX IF NOT EXISTS idx_{versions_table}_changed_at ON {versions_table}(c
             FROM information_schema.columns
             WHERE table_schema = 'public'
             AND table_name = :table_name
-        """), {"table_name": table_name})
+        """),
+            {"table_name": table_name},
+        )
 
         columns = {}
         for row in result:
             columns[row.column_name] = {
-                'data_type': row.data_type.upper(),
-                'is_nullable': row.is_nullable == 'YES',
-                'column_default': row.column_default,
-                'character_maximum_length': row.character_maximum_length
+                "data_type": row.data_type.upper(),
+                "is_nullable": row.is_nullable == "YES",
+                "column_default": row.column_default,
+                "character_maximum_length": row.character_maximum_length,
             }
 
         return columns
 
     async def _get_current_indexes(self, table_name: str) -> Dict[str, Dict[str, Any]]:
         """Get current indexes from database"""
-        result = self.db.execute(text("""
+        result = self.db.execute(
+            text("""
             SELECT
                 i.relname as index_name,
                 a.attname as column_name,
@@ -329,16 +349,15 @@ CREATE INDEX IF NOT EXISTS idx_{versions_table}_changed_at ON {versions_table}(c
             JOIN pg_attribute a ON a.attrelid = t.oid AND a.attnum = ANY(ix.indkey)
             WHERE t.relname = :table_name
             AND t.relkind = 'r'
-        """), {"table_name": table_name})
+        """),
+            {"table_name": table_name},
+        )
 
         indexes = {}
         for row in result:
             if row.index_name not in indexes:
-                indexes[row.index_name] = {
-                    'columns': [],
-                    'is_unique': row.is_unique
-                }
-            indexes[row.index_name]['columns'].append(row.column_name)
+                indexes[row.index_name] = {"columns": [], "is_unique": row.is_unique}
+            indexes[row.index_name]["columns"].append(row.column_name)
 
         return indexes
 
@@ -353,13 +372,14 @@ CREATE INDEX IF NOT EXISTS idx_{versions_table}_changed_at ON {versions_table}(c
                   →  "unit_price * quantity * (1 + tax_rate)"
         """
         import re
-        return re.sub(r'\{(\w+)\}', r'\1', formula)
+
+        return re.sub(r"\{(\w+)\}", r"\1", formula)
 
     def _generate_field_definition(self, field: FieldDefinition) -> str:
         """Generate SQL field definition"""
         # Handle data type with precision/scale for DECIMAL/NUMERIC types
         data_type = field.data_type
-        if data_type and data_type.upper() in ['DECIMAL', 'NUMERIC']:
+        if data_type and data_type.upper() in ["DECIMAL", "NUMERIC"]:
             if field.precision and field.decimal_places is not None:
                 data_type = f"{data_type.upper()}({field.precision},{field.decimal_places})"
             elif field.precision:
@@ -367,8 +387,8 @@ CREATE INDEX IF NOT EXISTS idx_{versions_table}_changed_at ON {versions_table}(c
 
         # Calculated fields → PostgreSQL GENERATED ALWAYS AS ... STORED
         # This makes the value filterable/sortable without post-query computation.
-        is_calculated = getattr(field, 'is_calculated', False)
-        calculation_formula = getattr(field, 'calculation_formula', None)
+        is_calculated = getattr(field, "is_calculated", False)
+        calculation_formula = getattr(field, "calculation_formula", None)
         if is_calculated and calculation_formula:
             sql_expr = self._compile_formula(calculation_formula)
             return f"{field.name} {data_type} GENERATED ALWAYS AS ({sql_expr}) STORED"
@@ -376,7 +396,7 @@ CREATE INDEX IF NOT EXISTS idx_{versions_table}_changed_at ON {versions_table}(c
         parts = [field.name, data_type]
 
         # Primary key (assume 'id' field is always PK)
-        if field.name == 'id':
+        if field.name == "id":
             parts.append("PRIMARY KEY")
 
         # NOT NULL constraint
@@ -394,14 +414,21 @@ CREATE INDEX IF NOT EXISTS idx_{versions_table}_changed_at ON {versions_table}(c
             # VARCHAR) must be quoted too, otherwise `DEFAULT active` is parsed
             # by PostgreSQL as a column reference and the DDL fails.
             string_field_types = {
-                'string', 'text', 'email', 'url', 'phone',
-                'select', 'enum', 'multi_select', 'multiselect',
+                "string",
+                "text",
+                "email",
+                "url",
+                "phone",
+                "select",
+                "enum",
+                "multi_select",
+                "multiselect",
             }
-            dt_upper = (field.data_type or '').upper()
-            is_char_type = any(t in dt_upper for t in ('VARCHAR', 'CHAR', 'TEXT', 'CITEXT'))
+            dt_upper = (field.data_type or "").upper()
+            is_char_type = any(t in dt_upper for t in ("VARCHAR", "CHAR", "TEXT", "CITEXT"))
             if field.field_type in string_field_types or is_char_type:
                 parts.append(f"DEFAULT '{self._escape_sql_string(field.default_value)}'")
-            elif field.field_type == 'boolean':
+            elif field.field_type == "boolean":
                 parts.append(f"DEFAULT {field.default_value.upper()}")
             else:
                 parts.append(f"DEFAULT {field.default_value}")
@@ -409,7 +436,7 @@ CREATE INDEX IF NOT EXISTS idx_{versions_table}_changed_at ON {versions_table}(c
         # Foreign key reference
         if field.reference_table:
             # Use reference_field if specified, otherwise default to 'id'
-            ref_column = field.reference_field or 'id'
+            ref_column = field.reference_field or "id"
             parts.append(f"REFERENCES {field.reference_table}({ref_column})")
             if field.on_delete:
                 parts.append(f"ON DELETE {field.on_delete}")
@@ -433,8 +460,8 @@ CREATE INDEX IF NOT EXISTS idx_{versions_table}_changed_at ON {versions_table}(c
 
     def _extract_base_type(self, data_type: str) -> str:
         """Extract base type from data type (e.g., VARCHAR(255) -> VARCHAR)"""
-        if '(' in data_type:
-            return data_type.split('(')[0].strip().upper()
+        if "(" in data_type:
+            return data_type.split("(")[0].strip().upper()
         return data_type.strip().upper()
 
     def _types_compatible(self, type1: str, type2: str) -> bool:
@@ -449,11 +476,11 @@ CREATE INDEX IF NOT EXISTS idx_{versions_table}_changed_at ON {versions_table}(c
 
         # Compatible type groups
         compatible_groups = [
-            {'VARCHAR', 'TEXT', 'CHARACTER VARYING'},
-            {'INTEGER', 'INT', 'INT4'},
-            {'BIGINT', 'INT8'},
-            {'NUMERIC', 'DECIMAL'},
-            {'TIMESTAMP', 'TIMESTAMP WITHOUT TIME ZONE'},
+            {"VARCHAR", "TEXT", "CHARACTER VARYING"},
+            {"INTEGER", "INT", "INT4"},
+            {"BIGINT", "INT8"},
+            {"NUMERIC", "DECIMAL"},
+            {"TIMESTAMP", "TIMESTAMP WITHOUT TIME ZONE"},
         ]
 
         for group in compatible_groups:
@@ -478,12 +505,12 @@ CREATE INDEX IF NOT EXISTS idx_{versions_table}_changed_at ON {versions_table}(c
 
         if not table_exists:
             return {
-                'operation': 'CREATE',
-                'table_name': entity.table_name,
-                'changes': {
-                    'new_columns': [f.name for f in entity.fields],
-                    'new_indexes': [idx.name for idx in entity.indexes if idx.is_active]
-                }
+                "operation": "CREATE",
+                "table_name": entity.table_name,
+                "changes": {
+                    "new_columns": [f.name for f in entity.fields],
+                    "new_indexes": [idx.name for idx in entity.indexes if idx.is_active],
+                },
             }
         else:
             current_columns = await self._get_current_columns(entity.table_name)
@@ -493,31 +520,44 @@ CREATE INDEX IF NOT EXISTS idx_{versions_table}_changed_at ON {versions_table}(c
             desired_indexes = {idx.name: idx for idx in entity.indexes if idx.is_active}
 
             changes = {
-                'added_columns': [name for name in desired_fields if name not in current_columns],
-                'removed_columns': [name for name in current_columns if name not in desired_fields and name not in
-                                    ['created_at', 'created_by', 'updated_at', 'updated_by',
-                                     'is_deleted', 'deleted_at', 'deleted_by', 'id',
-                                     'tenant_id', 'company_id', 'branch_id', 'department_id']],
-                'modified_columns': [],
-                'added_indexes': [name for name in desired_indexes if name not in current_indexes],
-                'removed_indexes': [name for name in current_indexes if name not in desired_indexes and
-                                    not name.endswith('_pkey') and not name.startswith('pg_')]
+                "added_columns": [name for name in desired_fields if name not in current_columns],
+                "removed_columns": [
+                    name
+                    for name in current_columns
+                    if name not in desired_fields
+                    and name
+                    not in [
+                        "created_at",
+                        "created_by",
+                        "updated_at",
+                        "updated_by",
+                        "is_deleted",
+                        "deleted_at",
+                        "deleted_by",
+                        "id",
+                        "tenant_id",
+                        "company_id",
+                        "branch_id",
+                        "department_id",
+                    ]
+                ],
+                "modified_columns": [],
+                "added_indexes": [name for name in desired_indexes if name not in current_indexes],
+                "removed_indexes": [
+                    name
+                    for name in current_indexes
+                    if name not in desired_indexes and not name.endswith("_pkey") and not name.startswith("pg_")
+                ],
             }
 
             # Check for modified columns
             for field_name, field in desired_fields.items():
                 if field_name in current_columns:
-                    current_type = current_columns[field_name]['data_type']
+                    current_type = current_columns[field_name]["data_type"]
                     desired_type = self._extract_base_type(field.data_type)
                     if not self._types_compatible(current_type, desired_type):
-                        changes['modified_columns'].append({
-                            'name': field_name,
-                            'from_type': current_type,
-                            'to_type': field.data_type
-                        })
+                        changes["modified_columns"].append(
+                            {"name": field_name, "from_type": current_type, "to_type": field.data_type}
+                        )
 
-            return {
-                'operation': 'ALTER',
-                'table_name': entity.table_name,
-                'changes': changes
-            }
+            return {"operation": "ALTER", "table_name": entity.table_name, "changes": changes}

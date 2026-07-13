@@ -5,30 +5,29 @@ Business logic for the Workflow Designer feature.
 Implements state machine logic and workflow execution.
 """
 
-from typing import List, Optional
-from uuid import UUID
 from datetime import datetime
+from typing import Optional
+from uuid import UUID
 
-from sqlalchemy.orm import Session
-from sqlalchemy import or_
 from fastapi import HTTPException, status
+from sqlalchemy import or_
+from sqlalchemy.orm import Session
 
+from app.core.scope import apply_tenant_scope
 from app.models.workflow import (
     WorkflowDefinition,
+    WorkflowHistory,
+    WorkflowInstance,
     WorkflowState,
     WorkflowTransition,
-    WorkflowInstance,
-    WorkflowHistory,
 )
-from app.core.scope import apply_tenant_scope
 from app.schemas.workflow import (
     WorkflowDefinitionCreate,
     WorkflowDefinitionUpdate,
+    WorkflowInstanceCreate,
     WorkflowStateCreate,
     WorkflowStateUpdate,
     WorkflowTransitionCreate,
-    WorkflowTransitionUpdate,
-    WorkflowInstanceCreate,
     WorkflowTransitionExecuteRequest,
 )
 
@@ -47,8 +46,7 @@ class WorkflowService:
         """Create a new workflow definition"""
         # Check if workflow name already exists
         existing_q = self.db.query(WorkflowDefinition).filter(
-            WorkflowDefinition.name == workflow_data.name,
-            WorkflowDefinition.is_deleted == False
+            WorkflowDefinition.name == workflow_data.name, WorkflowDefinition.is_deleted == False
         )
         existing_q = apply_tenant_scope(existing_q, WorkflowDefinition, self.current_user)
         existing = existing_q.first()
@@ -56,15 +54,15 @@ class WorkflowService:
         if existing:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Workflow with name '{workflow_data.name}' already exists"
+                detail=f"Workflow with name '{workflow_data.name}' already exists",
             )
 
         # Create workflow
         workflow = WorkflowDefinition(
-            **workflow_data.model_dump(exclude={'states', 'transitions'}),
+            **workflow_data.model_dump(exclude={"states", "transitions"}),
             tenant_id=self.tenant_id,
             created_by=self.current_user.id,
-            updated_by=self.current_user.id
+            updated_by=self.current_user.id,
         )
 
         self.db.add(workflow)
@@ -73,20 +71,14 @@ class WorkflowService:
         # Create states if provided
         if workflow_data.states:
             for state_data in workflow_data.states:
-                state = WorkflowState(
-                    **state_data.model_dump(),
-                    workflow_id=workflow.id,
-                    tenant_id=self.tenant_id
-                )
+                state = WorkflowState(**state_data.model_dump(), workflow_id=workflow.id, tenant_id=self.tenant_id)
                 self.db.add(state)
 
         # Create transitions if provided
         if workflow_data.transitions:
             for transition_data in workflow_data.transitions:
                 transition = WorkflowTransition(
-                    **transition_data.model_dump(),
-                    workflow_id=workflow.id,
-                    tenant_id=self.tenant_id
+                    **transition_data.model_dump(), workflow_id=workflow.id, tenant_id=self.tenant_id
                 )
                 self.db.add(transition)
 
@@ -96,22 +88,20 @@ class WorkflowService:
         return workflow
 
     async def list_workflows(
-        self,
-        entity_id: Optional[UUID] = None,
-        category: Optional[str] = None,
-        include_platform: bool = True
+        self, entity_id: Optional[UUID] = None, category: Optional[str] = None, include_platform: bool = True
     ):
         """List all workflow definitions (tenant-specific and optionally platform-level)"""
         # Build tenant filter: include current tenant and optionally platform-level (tenant_id=NULL)
-        query = self.db.query(WorkflowDefinition).filter(
-            WorkflowDefinition.is_deleted == False
-        )
+        query = self.db.query(WorkflowDefinition).filter(WorkflowDefinition.is_deleted == False)
         if include_platform:
             _tid = self.current_user.tenant_id  # tenant_scope: or_() platform-include branch
-            query = query.filter(or_(
-                WorkflowDefinition.tenant_id == None,  # tenant-scope-ok (platform-level None check — or_() intentional cross-scope)
-                WorkflowDefinition.tenant_id == _tid  # tenant-scope-ok (or_() platform-include branch)
-            ))
+            query = query.filter(
+                or_(
+                    WorkflowDefinition.tenant_id
+                    == None,  # tenant-scope-ok (platform-level None check — or_() intentional cross-scope)
+                    WorkflowDefinition.tenant_id == _tid,  # tenant-scope-ok (or_() platform-include branch)
+                )
+            )
         else:
             query = apply_tenant_scope(query, WorkflowDefinition, self.current_user)
 
@@ -126,24 +116,23 @@ class WorkflowService:
         """Get workflow definition by ID (checks tenant-specific and optionally platform-level)"""
         # Build tenant filter
         query = self.db.query(WorkflowDefinition).filter(
-            WorkflowDefinition.id == workflow_id,
-            WorkflowDefinition.is_deleted == False
+            WorkflowDefinition.id == workflow_id, WorkflowDefinition.is_deleted == False
         )
         if include_platform:
             _tid = self.current_user.tenant_id  # tenant_scope: or_() platform-include branch
-            query = query.filter(or_(
-                WorkflowDefinition.tenant_id == None,  # tenant-scope-ok (platform-level None check — or_() intentional cross-scope)
-                WorkflowDefinition.tenant_id == _tid  # tenant-scope-ok (or_() platform-include branch)
-            ))
+            query = query.filter(
+                or_(
+                    WorkflowDefinition.tenant_id
+                    == None,  # tenant-scope-ok (platform-level None check — or_() intentional cross-scope)
+                    WorkflowDefinition.tenant_id == _tid,  # tenant-scope-ok (or_() platform-include branch)
+                )
+            )
         else:
             query = apply_tenant_scope(query, WorkflowDefinition, self.current_user)
         workflow = query.first()
 
         if not workflow:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Workflow not found"
-            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workflow not found")
 
         return workflow
 
@@ -178,30 +167,26 @@ class WorkflowService:
         workflow = await self.get_workflow(workflow_id)
 
         if workflow.is_published:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Workflow is already published"
-            )
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Workflow is already published")
 
         # Validate workflow has at least one start state and one end state
-        states = self.db.query(WorkflowState).filter(
-            WorkflowState.workflow_id == workflow_id,
-            WorkflowState.is_deleted == False
-        ).all()
+        states = (
+            self.db.query(WorkflowState)
+            .filter(WorkflowState.workflow_id == workflow_id, WorkflowState.is_deleted == False)
+            .all()
+        )
 
-        start_states = [s for s in states if s.state_type == 'start']
+        start_states = [s for s in states if s.state_type == "start"]
         end_states = [s for s in states if s.is_final]
 
         if not start_states:
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Workflow must have at least one start state"
+                status_code=status.HTTP_400_BAD_REQUEST, detail="Workflow must have at least one start state"
             )
 
         if not end_states:
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Workflow must have at least one end state"
+                status_code=status.HTTP_400_BAD_REQUEST, detail="Workflow must have at least one end state"
             )
 
         workflow.is_published = True
@@ -217,10 +202,7 @@ class WorkflowService:
         workflow = await self.get_workflow(workflow_id)
 
         if not workflow.is_published:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Workflow is not published"
-            )
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Workflow is not published")
 
         workflow.is_published = False
         workflow.published_at = None
@@ -232,25 +214,23 @@ class WorkflowService:
 
     async def simulate_workflow(self, workflow_id: UUID, simulation_data):
         """Simulate a workflow execution for testing purposes"""
-        workflow = await self.get_workflow(workflow_id)
+        await self.get_workflow(workflow_id)
 
         # Get all states and transitions
-        states = self.db.query(WorkflowState).filter(
-            WorkflowState.workflow_id == workflow_id,
-            WorkflowState.is_deleted == False
-        ).all()
+        states = (
+            self.db.query(WorkflowState)
+            .filter(WorkflowState.workflow_id == workflow_id, WorkflowState.is_deleted == False)
+            .all()
+        )
 
-        transitions = self.db.query(WorkflowTransition).filter(
-            WorkflowTransition.workflow_id == workflow_id,
-            WorkflowTransition.is_deleted == False
-        ).all()
+        transitions = (
+            self.db.query(WorkflowTransition)
+            .filter(WorkflowTransition.workflow_id == workflow_id, WorkflowTransition.is_deleted == False)
+            .all()
+        )
 
         if not states:
-            return {
-                "success": False,
-                "steps": [],
-                "message": "Workflow has no states defined"
-            }
+            return {"success": False, "steps": [], "message": "Workflow has no states defined"}
 
         # Find start state or use provided initial state
         start_state = None
@@ -258,14 +238,10 @@ class WorkflowService:
             start_state = next((s for s in states if str(s.id) == str(simulation_data.initial_state_id)), None)
 
         if not start_state:
-            start_state = next((s for s in states if s.state_type == 'start'), None)
+            start_state = next((s for s in states if s.state_type == "start"), None)
 
         if not start_state:
-            return {
-                "success": False,
-                "steps": [],
-                "message": "No start state found in workflow"
-            }
+            return {"success": False, "steps": [], "message": "No start state found in workflow"}
 
         # Simulate workflow execution
         simulation_steps = []
@@ -274,23 +250,21 @@ class WorkflowService:
         max_iterations = 20  # Prevent infinite loops
 
         while current_state and len(simulation_steps) < max_iterations:
-            if current_state.id in visited_states and current_state.state_type != 'start':
+            if current_state.id in visited_states and current_state.state_type != "start":
                 break  # Prevent cycles
 
             visited_states.add(current_state.id)
 
             # Record step
-            action = "Started" if current_state.state_type == 'start' else (
-                "Completed" if current_state.is_final else "Transitioned"
+            action = (
+                "Started"
+                if current_state.state_type == "start"
+                else ("Completed" if current_state.is_final else "Transitioned")
             )
-            simulation_steps.append({
-                "state": current_state.label,
-                "timestamp": datetime.utcnow(),
-                "action": action
-            })
+            simulation_steps.append({"state": current_state.label, "timestamp": datetime.utcnow(), "action": action})
 
             # If final state, stop
-            if current_state.is_final or current_state.state_type == 'end':
+            if current_state.is_final or current_state.state_type == "end":
                 break
 
             # Find next transition
@@ -308,33 +282,32 @@ class WorkflowService:
         return {
             "success": True,
             "steps": simulation_steps,
-            "message": f"Simulation completed successfully with {len(simulation_steps)} steps"
+            "message": f"Simulation completed successfully with {len(simulation_steps)} steps",
         }
 
     # ==================== Workflow State Methods ====================
 
     async def create_state(self, workflow_id: UUID, state_data: WorkflowStateCreate):
         """Add a state to a workflow"""
-        workflow = await self.get_workflow(workflow_id)
+        await self.get_workflow(workflow_id)
 
         # Check if state name already exists
-        existing = self.db.query(WorkflowState).filter(
-            WorkflowState.workflow_id == workflow_id,
-            WorkflowState.name == state_data.name,
-            WorkflowState.is_deleted == False
-        ).first()
+        existing = (
+            self.db.query(WorkflowState)
+            .filter(
+                WorkflowState.workflow_id == workflow_id,
+                WorkflowState.name == state_data.name,
+                WorkflowState.is_deleted == False,
+            )
+            .first()
+        )
 
         if existing:
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"State with name '{state_data.name}' already exists"
+                status_code=status.HTTP_400_BAD_REQUEST, detail=f"State with name '{state_data.name}' already exists"
             )
 
-        state = WorkflowState(
-            **state_data.model_dump(),
-            workflow_id=workflow_id,
-            tenant_id=self.tenant_id
-        )
+        state = WorkflowState(**state_data.model_dump(), workflow_id=workflow_id, tenant_id=self.tenant_id)
 
         self.db.add(state)
         self.db.commit()
@@ -346,24 +319,26 @@ class WorkflowService:
         """List all states for a workflow"""
         await self.get_workflow(workflow_id)  # Verify workflow exists
 
-        return self.db.query(WorkflowState).filter(
-            WorkflowState.workflow_id == workflow_id,
-            WorkflowState.is_deleted == False
-        ).all()
+        return (
+            self.db.query(WorkflowState)
+            .filter(WorkflowState.workflow_id == workflow_id, WorkflowState.is_deleted == False)
+            .all()
+        )
 
     async def update_state(self, workflow_id: UUID, state_id: UUID, state_data: WorkflowStateUpdate):
         """Update a workflow state"""
-        state = self.db.query(WorkflowState).filter(
-            WorkflowState.id == state_id,
-            WorkflowState.workflow_id == workflow_id,
-            WorkflowState.is_deleted == False
-        ).first()
+        state = (
+            self.db.query(WorkflowState)
+            .filter(
+                WorkflowState.id == state_id,
+                WorkflowState.workflow_id == workflow_id,
+                WorkflowState.is_deleted == False,
+            )
+            .first()
+        )
 
         if not state:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="State not found"
-            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="State not found")
 
         update_data = state_data.model_dump(exclude_unset=True)
         for key, value in update_data.items():
@@ -378,12 +353,10 @@ class WorkflowService:
 
     async def create_transition(self, workflow_id: UUID, transition_data: WorkflowTransitionCreate):
         """Add a transition to a workflow"""
-        workflow = await self.get_workflow(workflow_id)
+        await self.get_workflow(workflow_id)
 
         transition = WorkflowTransition(
-            **transition_data.model_dump(),
-            workflow_id=workflow_id,
-            tenant_id=self.tenant_id
+            **transition_data.model_dump(), workflow_id=workflow_id, tenant_id=self.tenant_id
         )
 
         self.db.add(transition)
@@ -396,20 +369,25 @@ class WorkflowService:
         """List all transitions for a workflow"""
         await self.get_workflow(workflow_id)  # Verify workflow exists
 
-        return self.db.query(WorkflowTransition).filter(
-            WorkflowTransition.workflow_id == workflow_id,
-            WorkflowTransition.is_deleted == False
-        ).all()
+        return (
+            self.db.query(WorkflowTransition)
+            .filter(WorkflowTransition.workflow_id == workflow_id, WorkflowTransition.is_deleted == False)
+            .all()
+        )
 
     async def delete_transition(self, workflow_id: UUID, transition_id: UUID):
         """Delete a workflow transition (soft delete)"""
         await self.get_workflow(workflow_id)  # Verify workflow exists
 
-        transition = self.db.query(WorkflowTransition).filter(
-            WorkflowTransition.id == transition_id,
-            WorkflowTransition.workflow_id == workflow_id,
-            WorkflowTransition.is_deleted == False
-        ).first()
+        transition = (
+            self.db.query(WorkflowTransition)
+            .filter(
+                WorkflowTransition.id == transition_id,
+                WorkflowTransition.workflow_id == workflow_id,
+                WorkflowTransition.is_deleted == False,
+            )
+            .first()
+        )
 
         if not transition:
             raise HTTPException(status_code=404, detail="Transition not found")
@@ -427,22 +405,22 @@ class WorkflowService:
 
         if not workflow.is_published:
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Cannot start instance of unpublished workflow"
+                status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot start instance of unpublished workflow"
             )
 
         # Find start state
-        start_state = self.db.query(WorkflowState).filter(
-            WorkflowState.workflow_id == instance_data.workflow_id,
-            WorkflowState.state_type == 'start',
-            WorkflowState.is_deleted == False
-        ).first()
+        start_state = (
+            self.db.query(WorkflowState)
+            .filter(
+                WorkflowState.workflow_id == instance_data.workflow_id,
+                WorkflowState.state_type == "start",
+                WorkflowState.is_deleted == False,
+            )
+            .first()
+        )
 
         if not start_state:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Workflow has no start state"
-            )
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Workflow has no start state")
 
         # Create instance
         instance = WorkflowInstance(
@@ -450,7 +428,7 @@ class WorkflowService:
             tenant_id=self.tenant_id,
             current_state_id=start_state.id,
             current_state_entered_at=datetime.utcnow(),
-            started_by=self.current_user.id
+            started_by=self.current_user.id,
         )
 
         self.db.add(instance)
@@ -462,8 +440,8 @@ class WorkflowService:
             tenant_id=self.tenant_id,
             to_state_id=start_state.id,
             performed_by=self.current_user.id,
-            action_type='start',
-            comment='Workflow instance started'
+            action_type="start",
+            comment="Workflow instance started",
         )
         self.db.add(history)
 
@@ -478,26 +456,16 @@ class WorkflowService:
 
     async def get_instance(self, instance_id: UUID):
         """Get workflow instance by ID"""
-        query = self.db.query(WorkflowInstance).filter(
-            WorkflowInstance.id == instance_id
-        )
+        query = self.db.query(WorkflowInstance).filter(WorkflowInstance.id == instance_id)
         query = apply_tenant_scope(query, WorkflowInstance, self.current_user)
         instance = query.first()
 
         if not instance:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Workflow instance not found"
-            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workflow instance not found")
 
         return instance
 
-    async def list_instances(
-        self,
-        workflow_id: UUID = None,
-        status: str = None,
-        entity_id: UUID = None
-    ):
+    async def list_instances(self, workflow_id: UUID = None, status: str = None, entity_id: UUID = None):
         """List workflow instances with optional filters"""
         query = self.db.query(WorkflowInstance)
         query = apply_tenant_scope(query, WorkflowInstance, self.current_user)
@@ -514,32 +482,28 @@ class WorkflowService:
         instances = query.order_by(WorkflowInstance.started_at.desc()).all()
         return instances
 
-    async def execute_transition(
-        self,
-        instance_id: UUID,
-        transition_request: WorkflowTransitionExecuteRequest
-    ):
+    async def execute_transition(self, instance_id: UUID, transition_request: WorkflowTransitionExecuteRequest):
         """Execute a workflow transition"""
         instance = await self.get_instance(instance_id)
 
-        if instance.status != 'active':
+        if instance.status != "active":
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Cannot execute transition on non-active instance"
+                status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot execute transition on non-active instance"
             )
 
         # Get transition
-        transition = self.db.query(WorkflowTransition).filter(
-            WorkflowTransition.id == transition_request.transition_id,
-            WorkflowTransition.from_state_id == instance.current_state_id,
-            WorkflowTransition.is_deleted == False
-        ).first()
+        transition = (
+            self.db.query(WorkflowTransition)
+            .filter(
+                WorkflowTransition.id == transition_request.transition_id,
+                WorkflowTransition.from_state_id == instance.current_state_id,
+                WorkflowTransition.is_deleted == False,
+            )
+            .first()
+        )
 
         if not transition:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Invalid transition from current state"
-            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invalid transition from current state")
 
         # Check permissions (simplified)
         # In production, check allowed_roles and allowed_users
@@ -568,7 +532,7 @@ class WorkflowService:
 
         # Check if workflow is complete
         if to_state.is_final:
-            instance.status = 'completed'
+            instance.status = "completed"
             instance.completed_at = datetime.utcnow()
 
         # Create history entry
@@ -579,9 +543,9 @@ class WorkflowService:
             to_state_id=to_state.id,
             transition_id=transition.id,
             performed_by=self.current_user.id,
-            action_type='transition',
+            action_type="transition",
             comment=transition_request.comment,
-            duration_minutes=duration_minutes
+            duration_minutes=duration_minutes,
         )
         self.db.add(history)
 
@@ -598,21 +562,27 @@ class WorkflowService:
         """Get history for a workflow instance"""
         await self.get_instance(instance_id)  # Verify instance exists
 
-        return self.db.query(WorkflowHistory).filter(
-            WorkflowHistory.instance_id == instance_id
-        ).order_by(WorkflowHistory.performed_at).all()
+        return (
+            self.db.query(WorkflowHistory)
+            .filter(WorkflowHistory.instance_id == instance_id)
+            .order_by(WorkflowHistory.performed_at)
+            .all()
+        )
 
     async def get_available_transitions(self, instance_id: UUID):
         """Get available transitions from current state"""
         instance = await self.get_instance(instance_id)
 
-        if instance.status != 'active':
+        if instance.status != "active":
             return []
 
-        transitions = self.db.query(WorkflowTransition).filter(
-            WorkflowTransition.from_state_id == instance.current_state_id,
-            WorkflowTransition.is_deleted == False
-        ).all()
+        transitions = (
+            self.db.query(WorkflowTransition)
+            .filter(
+                WorkflowTransition.from_state_id == instance.current_state_id, WorkflowTransition.is_deleted == False
+            )
+            .all()
+        )
 
         return transitions
 
@@ -625,7 +595,7 @@ class WorkflowService:
         # - Call webhook
         # - etc.
         for action in actions:
-            action_type = action.get('type')
+            action_type = action.get("type")
             # Log action execution
             print(f"Executing action: {action_type} for instance {instance.id}")
             # Action execution logic would go here

@@ -18,6 +18,9 @@ Import from here rather than from the submodule directly:
         tenant_scoped_session,
     )
 """
+
+# FastAPI dependency (ContextVar-based; T-22.007)
+from .dependencies import tenant_scoped_session
 from .scope import (
     TenantScopeMissingError,
     TenantScopeNotSetError,
@@ -30,9 +33,6 @@ from .scope import (
     with_admin_cross_tenant_scope,
     with_tenant_scope,
 )
-
-# FastAPI dependency (ContextVar-based; T-22.007)
-from .dependencies import tenant_scoped_session
 
 __all__ = [
     "TenantScopeNotSetError",

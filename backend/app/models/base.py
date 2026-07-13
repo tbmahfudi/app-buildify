@@ -6,6 +6,7 @@ from sqlalchemy.orm import declarative_base
 # Try to import PostgreSQL UUID type
 try:
     from sqlalchemy.dialects.postgresql import UUID as PG_UUID
+
     HAS_PG_UUID = True
 except ImportError:
     HAS_PG_UUID = False
@@ -20,12 +21,13 @@ class GUID(TypeDecorator):
     Uses PostgreSQL's UUID type when available, otherwise uses String(36).
     Ensures consistent UUID handling across PostgreSQL, MySQL, and SQLite.
     """
+
     impl = String(36)
     cache_ok = True
 
     def load_dialect_impl(self, dialect):
         """Load the appropriate type based on the database dialect."""
-        if dialect.name == 'postgresql' and HAS_PG_UUID:
+        if dialect.name == "postgresql" and HAS_PG_UUID:
             return dialect.type_descriptor(PG_UUID(as_uuid=True))
         else:
             return dialect.type_descriptor(String(36))
@@ -34,7 +36,7 @@ class GUID(TypeDecorator):
         """Convert UUID to appropriate type for database."""
         if value is None:
             return value
-        elif dialect.name == 'postgresql' and HAS_PG_UUID:
+        elif dialect.name == "postgresql" and HAS_PG_UUID:
             # PostgreSQL can handle UUID objects directly
             if isinstance(value, uuid.UUID):
                 return value

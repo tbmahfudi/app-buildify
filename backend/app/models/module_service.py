@@ -6,12 +6,11 @@ Models for cross-module service access (Phase 4 Priority 2):
 - ModuleServiceAccessLog: Audit log for service access
 """
 
-from sqlalchemy import Column, String, Integer, Boolean, Text, ForeignKey, DateTime, UniqueConstraint, CheckConstraint, Index, JSON
+from sqlalchemy import JSON, Boolean, Column, DateTime, ForeignKey, Index, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-from datetime import datetime
 
-from app.models.base import Base, GUID, generate_uuid
+from app.models.base import GUID, Base, generate_uuid
 
 
 class ModuleService(Base):
@@ -22,23 +21,19 @@ class ModuleService(Base):
     Each service defines a contract (methods and signatures) that other
     modules can call with permission checking and logging.
     """
-    __tablename__ = 'module_services'
+
+    __tablename__ = "module_services"
 
     # Identity
     id = Column(GUID, primary_key=True, default=generate_uuid)
 
     # Module reference
-    module_id = Column(
-        GUID,
-        ForeignKey('modules.id', ondelete='CASCADE'),
-        nullable=False,
-        index=True
-    )
+    module_id = Column(GUID, ForeignKey("modules.id", ondelete="CASCADE"), nullable=False, index=True)
 
     # Service definition
     service_name = Column(String(100), nullable=False, index=True)  # e.g., "EmployeeService"
     service_class = Column(String(200), nullable=False)  # Full Python class path
-    service_version = Column(String(20), nullable=False, default='1.0.0')
+    service_version = Column(String(20), nullable=False, default="1.0.0")
 
     # API contract (list of public methods with signatures)
     methods = Column(JSON, nullable=False, default=list)
@@ -51,25 +46,18 @@ class ModuleService(Base):
 
     # Audit
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-    created_by = Column(GUID, ForeignKey('users.id'))
+    created_by = Column(GUID, ForeignKey("users.id"))
 
     # Relationships
     module = relationship("Module", back_populates="services")
     creator = relationship("User", foreign_keys=[created_by])
-    access_logs = relationship(
-        "ModuleServiceAccessLog",
-        back_populates="service",
-        cascade="all, delete-orphan"
-    )
+    access_logs = relationship("ModuleServiceAccessLog", back_populates="service", cascade="all, delete-orphan")
 
     # Constraints
     __table_args__ = (
-        UniqueConstraint(
-            'module_id', 'service_name', 'service_version',
-            name='unique_module_service'
-        ),
-        Index('idx_module_services_module', 'module_id'),
-        Index('idx_module_services_name', 'service_name'),
+        UniqueConstraint("module_id", "service_name", "service_version", name="unique_module_service"),
+        Index("idx_module_services_module", "module_id"),
+        Index("idx_module_services_name", "service_name"),
     )
 
     def __repr__(self):
@@ -83,29 +71,21 @@ class ModuleServiceAccessLog(Base):
     Tracks all cross-module service calls for auditing, debugging,
     and performance monitoring.
     """
-    __tablename__ = 'module_service_access_log'
+
+    __tablename__ = "module_service_access_log"
     __tenant_scoped__ = True
 
     # Identity
     id = Column(GUID, primary_key=True, default=generate_uuid)
 
     # Access details
-    calling_module_id = Column(
-        GUID,
-        ForeignKey('modules.id', ondelete='SET NULL'),
-        index=True
-    )
-    service_id = Column(
-        GUID,
-        ForeignKey('module_services.id', ondelete='CASCADE'),
-        nullable=False,
-        index=True
-    )
+    calling_module_id = Column(GUID, ForeignKey("modules.id", ondelete="SET NULL"), index=True)
+    service_id = Column(GUID, ForeignKey("module_services.id", ondelete="CASCADE"), nullable=False, index=True)
     method_name = Column(String(100), nullable=False)
 
     # Request context
-    user_id = Column(GUID, ForeignKey('users.id', ondelete='SET NULL'))
-    tenant_id = Column(GUID, ForeignKey('tenants.id', ondelete='CASCADE'), nullable=False)
+    user_id = Column(GUID, ForeignKey("users.id", ondelete="SET NULL"))
+    tenant_id = Column(GUID, ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
     parameters = Column(JSON)  # Method parameters (sanitized)
 
     # Response
@@ -127,12 +107,12 @@ class ModuleServiceAccessLog(Base):
 
     # Constraints
     __table_args__ = (
-        Index('idx_service_access_calling_module', 'calling_module_id'),
-        Index('idx_service_access_service', 'service_id'),
-        Index('idx_service_access_time', 'accessed_at'),
-        Index('idx_service_access_tenant', 'tenant_id'),
+        Index("idx_service_access_calling_module", "calling_module_id"),
+        Index("idx_service_access_service", "service_id"),
+        Index("idx_service_access_time", "accessed_at"),
+        Index("idx_service_access_tenant", "tenant_id"),
     )
 
     def __repr__(self):
-        status = 'success' if self.success else 'error'
+        status = "success" if self.success else "error"
         return f"<ModuleServiceAccessLog(method='{self.method_name}', status='{status}')>"

@@ -1,4 +1,4 @@
-from sqlalchemy import Boolean, Column, DateTime, Index, Integer, String, Text, ForeignKey, func
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Index, Integer, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 
@@ -16,6 +16,7 @@ class MenuItem(Base):
 
     RBAC is enforced via permission and required_roles fields.
     """
+
     __tablename__ = "menu_items"
 
     # Primary key
@@ -66,9 +67,9 @@ class MenuItem(Base):
 
     # Composite indexes for performance
     __table_args__ = (
-        Index('ix_menu_tenant_active', 'tenant_id', 'is_active', 'is_visible'),
-        Index('ix_menu_parent_order', 'parent_id', 'order'),
-        Index('ix_menu_module', 'module_code'),
+        Index("ix_menu_tenant_active", "tenant_id", "is_active", "is_visible"),
+        Index("ix_menu_parent_order", "parent_id", "order"),
+        Index("ix_menu_module", "module_code"),
     )
 
     def __repr__(self):
@@ -77,20 +78,20 @@ class MenuItem(Base):
     def to_dict(self, include_children=False):
         """Convert menu item to dictionary."""
         result = {
-            'id': str(self.id),
-            'code': self.code,
-            'title': self.title,
-            'icon': self.icon,
-            'icon_color_primary': self.icon_color_primary,
-            'route': self.route,
-            'order': self.order,
-            'target': self.target,
-            'permission': self.permission,
-            'required_roles': self.required_roles,
-            'extra_data': self.extra_data,
+            "id": str(self.id),
+            "code": self.code,
+            "title": self.title,
+            "icon": self.icon,
+            "icon_color_primary": self.icon_color_primary,
+            "route": self.route,
+            "order": self.order,
+            "target": self.target,
+            "permission": self.permission,
+            "required_roles": self.required_roles,
+            "extra_data": self.extra_data,
         }
 
         if include_children:
-            result['children'] = []
+            result["children"] = []
 
         return result

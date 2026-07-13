@@ -4,12 +4,11 @@ Dashboard models for the dashboard visualization system.
 Dashboards can contain multiple pages, and each page contains multiple widgets.
 Widgets can display reports, charts, KPIs, and other visualizations.
 """
+
 import enum
 from datetime import datetime
 
-from sqlalchemy import JSON, Boolean, Column, DateTime
-from sqlalchemy import Enum as SQLEnum
-from sqlalchemy import ForeignKey, Integer, String, Text
+from sqlalchemy import JSON, Boolean, Column, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
 
 from app.models import Base
@@ -18,6 +17,7 @@ from app.models.base import GUID, generate_uuid
 
 class DashboardLayout(str, enum.Enum):
     """Dashboard layout types."""
+
     GRID = "grid"  # Grid-based layout
     FREEFORM = "freeform"  # Absolute positioning
     RESPONSIVE = "responsive"  # Responsive grid
@@ -25,6 +25,7 @@ class DashboardLayout(str, enum.Enum):
 
 class WidgetType(str, enum.Enum):
     """Dashboard widget types."""
+
     REPORT_TABLE = "report_table"  # Tabular report display
     CHART = "chart"  # Chart visualization
     KPI_CARD = "kpi_card"  # KPI/metric card
@@ -37,6 +38,7 @@ class WidgetType(str, enum.Enum):
 
 class ChartType(str, enum.Enum):
     """Chart types for chart widgets."""
+
     BAR = "bar"
     LINE = "line"
     PIE = "pie"
@@ -50,6 +52,7 @@ class ChartType(str, enum.Enum):
 
 class RefreshInterval(str, enum.Enum):
     """Auto-refresh intervals."""
+
     NONE = "none"
     THIRTY_SECONDS = "30s"
     ONE_MINUTE = "1m"
@@ -61,6 +64,7 @@ class RefreshInterval(str, enum.Enum):
 
 class Dashboard(Base):
     """Dashboard model - container for multiple pages."""
+
     __tablename__ = "dashboards"
     __tenant_scoped__ = True
 
@@ -102,12 +106,15 @@ class Dashboard(Base):
     is_favorite = Column(Boolean, default=False)
 
     # Relationships
-    pages = relationship("DashboardPage", back_populates="dashboard", cascade="all, delete-orphan", order_by="DashboardPage.order")
+    pages = relationship(
+        "DashboardPage", back_populates="dashboard", cascade="all, delete-orphan", order_by="DashboardPage.order"
+    )
     shares = relationship("DashboardShare", back_populates="dashboard", cascade="all, delete-orphan")
 
 
 class DashboardPage(Base):
     """Dashboard page - a single page within a dashboard."""
+
     __tablename__ = "dashboard_pages"
     __tenant_scoped__ = True
 
@@ -134,11 +141,14 @@ class DashboardPage(Base):
 
     # Relationships
     dashboard = relationship("Dashboard", back_populates="pages")
-    widgets = relationship("DashboardWidget", back_populates="page", cascade="all, delete-orphan", order_by="DashboardWidget.order")
+    widgets = relationship(
+        "DashboardWidget", back_populates="page", cascade="all, delete-orphan", order_by="DashboardWidget.order"
+    )
 
 
 class DashboardWidget(Base):
     """Dashboard widget - individual visualization component."""
+
     __tablename__ = "dashboard_widgets"
     __tenant_scoped__ = True
 
@@ -183,6 +193,7 @@ class DashboardWidget(Base):
 
 class DashboardShare(Base):
     """Dashboard sharing and collaboration."""
+
     __tablename__ = "dashboard_shares"
     __tenant_scoped__ = True
 
@@ -213,6 +224,7 @@ class DashboardShare(Base):
 
 class DashboardSnapshot(Base):
     """Dashboard snapshot - saved state at a point in time."""
+
     __tablename__ = "dashboard_snapshots"
     __tenant_scoped__ = True
 
@@ -235,6 +247,7 @@ class DashboardSnapshot(Base):
 
 class WidgetDataCache(Base):
     """Cache for widget data."""
+
     __tablename__ = "widget_data_cache"
     __tenant_scoped__ = True
 

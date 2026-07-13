@@ -9,6 +9,7 @@ class PasswordHistory(Base):
     Password history for preventing password reuse.
     Stores hashed passwords to enforce password history policies.
     """
+
     __tablename__ = "password_history"
 
     # Primary key

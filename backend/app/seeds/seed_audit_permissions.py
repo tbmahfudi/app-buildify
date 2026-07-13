@@ -2,9 +2,10 @@
 Create audit and monitoring permissions
 Covers: Audit Logs, System Logs, API Activity, Analytics
 """
-from sqlalchemy.orm import Session
+
 from app.core.db import SessionLocal
 from app.models.permission import Permission
+
 
 def seed_audit_permissions():
     """Seed all audit and monitoring-related permissions"""
@@ -21,7 +22,7 @@ def seed_audit_permissions():
                 "resource": "audit",
                 "action": "read",
                 "scope": "all",
-                "category": "audit"
+                "category": "audit",
             },
             {
                 "code": "audit:read:tenant",
@@ -30,7 +31,7 @@ def seed_audit_permissions():
                 "resource": "audit",
                 "action": "read",
                 "scope": "tenant",
-                "category": "audit"
+                "category": "audit",
             },
             {
                 "code": "audit:read:company",
@@ -39,7 +40,7 @@ def seed_audit_permissions():
                 "resource": "audit",
                 "action": "read",
                 "scope": "company",
-                "category": "audit"
+                "category": "audit",
             },
             {
                 "code": "audit:read:department",
@@ -48,7 +49,7 @@ def seed_audit_permissions():
                 "resource": "audit",
                 "action": "read",
                 "scope": "department",
-                "category": "audit"
+                "category": "audit",
             },
             {
                 "code": "audit:read:own",
@@ -57,7 +58,7 @@ def seed_audit_permissions():
                 "resource": "audit",
                 "action": "read",
                 "scope": "own",
-                "category": "audit"
+                "category": "audit",
             },
             {
                 "code": "audit:summary:read:all",
@@ -66,7 +67,7 @@ def seed_audit_permissions():
                 "resource": "audit",
                 "action": "summary:read",
                 "scope": "all",
-                "category": "audit"
+                "category": "audit",
             },
             {
                 "code": "audit:summary:read:tenant",
@@ -75,7 +76,7 @@ def seed_audit_permissions():
                 "resource": "audit",
                 "action": "summary:read",
                 "scope": "tenant",
-                "category": "audit"
+                "category": "audit",
             },
             {
                 "code": "audit:export:all",
@@ -84,7 +85,7 @@ def seed_audit_permissions():
                 "resource": "audit",
                 "action": "export",
                 "scope": "all",
-                "category": "audit"
+                "category": "audit",
             },
             {
                 "code": "audit:export:tenant",
@@ -93,7 +94,7 @@ def seed_audit_permissions():
                 "resource": "audit",
                 "action": "export",
                 "scope": "tenant",
-                "category": "audit"
+                "category": "audit",
             },
             {
                 "code": "audit:delete:all",
@@ -102,9 +103,8 @@ def seed_audit_permissions():
                 "resource": "audit",
                 "action": "delete",
                 "scope": "all",
-                "category": "audit"
+                "category": "audit",
             },
-
             # ==================== SYSTEM LOGS ====================
             {
                 "code": "logs:read:all",
@@ -113,7 +113,7 @@ def seed_audit_permissions():
                 "resource": "logs",
                 "action": "read",
                 "scope": "all",
-                "category": "audit"
+                "category": "audit",
             },
             {
                 "code": "logs:download:all",
@@ -122,7 +122,7 @@ def seed_audit_permissions():
                 "resource": "logs",
                 "action": "download",
                 "scope": "all",
-                "category": "audit"
+                "category": "audit",
             },
             {
                 "code": "logs:delete:all",
@@ -131,9 +131,8 @@ def seed_audit_permissions():
                 "resource": "logs",
                 "action": "delete",
                 "scope": "all",
-                "category": "audit"
+                "category": "audit",
             },
-
             # ==================== API ACTIVITY ====================
             {
                 "code": "api_activity:read:all",
@@ -142,7 +141,7 @@ def seed_audit_permissions():
                 "resource": "api_activity",
                 "action": "read",
                 "scope": "all",
-                "category": "audit"
+                "category": "audit",
             },
             {
                 "code": "api_activity:read:tenant",
@@ -151,7 +150,7 @@ def seed_audit_permissions():
                 "resource": "api_activity",
                 "action": "read",
                 "scope": "tenant",
-                "category": "audit"
+                "category": "audit",
             },
             {
                 "code": "api_activity:read:own",
@@ -160,7 +159,7 @@ def seed_audit_permissions():
                 "resource": "api_activity",
                 "action": "read",
                 "scope": "own",
-                "category": "audit"
+                "category": "audit",
             },
             {
                 "code": "api_activity:metrics:all",
@@ -169,7 +168,7 @@ def seed_audit_permissions():
                 "resource": "api_activity",
                 "action": "metrics",
                 "scope": "all",
-                "category": "audit"
+                "category": "audit",
             },
             {
                 "code": "api_activity:metrics:tenant",
@@ -178,9 +177,8 @@ def seed_audit_permissions():
                 "resource": "api_activity",
                 "action": "metrics",
                 "scope": "tenant",
-                "category": "audit"
+                "category": "audit",
             },
-
             # ==================== ANALYTICS ====================
             {
                 "code": "analytics:read:all",
@@ -189,7 +187,7 @@ def seed_audit_permissions():
                 "resource": "analytics",
                 "action": "read",
                 "scope": "all",
-                "category": "audit"
+                "category": "audit",
             },
             {
                 "code": "analytics:read:tenant",
@@ -198,7 +196,7 @@ def seed_audit_permissions():
                 "resource": "analytics",
                 "action": "read",
                 "scope": "tenant",
-                "category": "audit"
+                "category": "audit",
             },
             {
                 "code": "analytics:read:company",
@@ -207,7 +205,7 @@ def seed_audit_permissions():
                 "resource": "analytics",
                 "action": "read",
                 "scope": "company",
-                "category": "audit"
+                "category": "audit",
             },
             {
                 "code": "analytics:read:department",
@@ -216,7 +214,7 @@ def seed_audit_permissions():
                 "resource": "analytics",
                 "action": "read",
                 "scope": "department",
-                "category": "audit"
+                "category": "audit",
             },
             {
                 "code": "analytics:export:all",
@@ -225,7 +223,7 @@ def seed_audit_permissions():
                 "resource": "analytics",
                 "action": "export",
                 "scope": "all",
-                "category": "audit"
+                "category": "audit",
             },
             {
                 "code": "analytics:export:tenant",
@@ -234,9 +232,8 @@ def seed_audit_permissions():
                 "resource": "analytics",
                 "action": "export",
                 "scope": "tenant",
-                "category": "audit"
+                "category": "audit",
             },
-
             # ==================== MONITORING ====================
             {
                 "code": "monitoring:system:read:all",
@@ -245,7 +242,7 @@ def seed_audit_permissions():
                 "resource": "monitoring",
                 "action": "system:read",
                 "scope": "all",
-                "category": "audit"
+                "category": "audit",
             },
             {
                 "code": "monitoring:database:read:all",
@@ -254,7 +251,7 @@ def seed_audit_permissions():
                 "resource": "monitoring",
                 "action": "database:read",
                 "scope": "all",
-                "category": "audit"
+                "category": "audit",
             },
             {
                 "code": "monitoring:alerts:read:all",
@@ -263,7 +260,7 @@ def seed_audit_permissions():
                 "resource": "monitoring",
                 "action": "alerts:read",
                 "scope": "all",
-                "category": "audit"
+                "category": "audit",
             },
         ]
 
@@ -272,9 +269,7 @@ def seed_audit_permissions():
         updated_count = 0
 
         for perm_data in permissions:
-            perm = db.query(Permission).filter(
-                Permission.code == perm_data["code"]
-            ).first()
+            perm = db.query(Permission).filter(Permission.code == perm_data["code"]).first()
 
             if not perm:
                 perm = Permission(**perm_data, is_active=True)
@@ -293,7 +288,7 @@ def seed_audit_permissions():
         db.commit()
 
         print(f"\n{'='*60}")
-        print(f"Audit & Monitoring Permissions Seed Complete")
+        print("Audit & Monitoring Permissions Seed Complete")
         print(f"{'='*60}")
         print(f"✓ Created: {created_count} permissions")
         print(f"• Updated: {updated_count} permissions")
@@ -306,6 +301,7 @@ def seed_audit_permissions():
         raise
     finally:
         db.close()
+
 
 if __name__ == "__main__":
     seed_audit_permissions()

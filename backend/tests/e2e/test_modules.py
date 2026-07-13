@@ -32,6 +32,43 @@ def _err_msg(resp) -> str:
     return str(detail or "")
 
 
+# The module-registry classes below exercise the FILESYSTEM module loader, whose
+# only real module in this image was "financial" — since removed to a standalone
+# microservice (DEF-010), the in-process loader is vestigial and the endpoints
+# return 503 "Module system not initialized". Skip those classes when the loader
+# isn't initialized, mirroring the healthcare/redis probes elsewhere in the suite.
+# Tracked in GH#679.
+_REGISTRY_CLASSES = {
+    "TestModuleRegistryReads",
+    "TestModuleRegistryInstall",
+    "TestModuleRegistryEnable",
+    "TestModuleRegistryLifecycle",
+}
+
+
+@pytest.fixture(scope="session")
+def _financial_module_available(su) -> bool:
+    """True only if the filesystem 'financial' module is loadable here.
+
+    Covers both failure modes of a deployment without it: the loader may be
+    uninitialized (503) or initialized-but-empty (200 with no 'financial').
+    """
+    try:
+        r = su.get("/module-registry/available")
+        if r.status_code != 200:
+            return False
+        return any(m.get("name") == "financial" for m in r.json().get("modules", []))
+    except Exception:
+        return False
+
+
+@pytest.fixture(autouse=True)
+def _gate_module_registry(request, _financial_module_available):
+    cls = request.cls.__name__ if request.cls else ""
+    if cls in _REGISTRY_CLASSES and not _financial_module_available:
+        pytest.skip("Filesystem 'financial' module not loadable in this deployment (DEF-010 / GH#679)")
+
+
 @pytest.fixture
 def nocode_module(su, unique):
     sfx = unique("mod").replace("_", "")[:8]
@@ -293,6 +330,11 @@ class TestNocodeModuleCrud:
         assert d.status_code == 200
         assert su.get(f"/modules/{mid}").status_code == 404
 
+    @pytest.mark.xfail(
+        reason="Expects the 'financial' module registered; it was moved to a "
+        "standalone microservice and is not seeded here (DEF-010 / GH#679)",
+        strict=False,
+    )
     def test_list_modules(self, su):
         r = su.get("/modules")
         assert r.status_code == 200

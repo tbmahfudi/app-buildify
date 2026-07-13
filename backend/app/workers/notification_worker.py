@@ -157,11 +157,7 @@ class NotificationWorker:
         than ``stuck_after_seconds`` since their last update are reclaimed.
         """
         cutoff_seconds = self.stuck_after_seconds
-        stuck = (
-            db.query(NotificationQueue)
-            .filter(NotificationQueue.status == "processing")
-            .all()
-        )
+        stuck = db.query(NotificationQueue).filter(NotificationQueue.status == "processing").all()
         reclaimed = 0
         now = datetime.now(timezone.utc)
         for row in stuck:
@@ -191,10 +187,7 @@ class NotificationWorker:
         candidates = (
             db.query(NotificationQueue)
             .filter(NotificationQueue.status == "pending")
-            .filter(
-                (NotificationQueue.scheduled_for.is_(None))
-                | (NotificationQueue.scheduled_for <= now)
-            )
+            .filter((NotificationQueue.scheduled_for.is_(None)) | (NotificationQueue.scheduled_for <= now))
             .filter(NotificationQueue.attempts < NotificationQueue.max_attempts)
             .order_by(NotificationQueue.priority.asc(), NotificationQueue.created_at.asc())
             .limit(self.batch_size)
@@ -225,15 +218,16 @@ class NotificationWorker:
         """
         logger.info(
             "notification-worker dispatching id=%s type=%s method=%s recipient=%s",
-            row.id, row.notification_type, row.delivery_method, row.recipient,
+            row.id,
+            row.notification_type,
+            row.delivery_method,
+            row.recipient,
         )
         if row.delivery_method == "email":
             self._send_email(row)
             return
         # SMS / webhook / push are out of scope for epic-21 (see story 14.3)
-        raise NotImplementedError(
-            f"delivery_method '{row.delivery_method}' not yet implemented"
-        )
+        raise NotImplementedError(f"delivery_method '{row.delivery_method}' not yet implemented")
 
     # ----- email (T-21.2.2) ----------------------------------------------
 
@@ -247,9 +241,7 @@ class NotificationWorker:
         """
         config = self._get_smtp_config(row.tenant_id)
         if not config or not config.is_complete:
-            raise ValueError(
-                "No SMTP config available (checked tenant config, system config, and env vars)"
-            )
+            raise ValueError("No SMTP config available (checked tenant config, system config, and env vars)")
 
         subject = self._render(row.subject or "", row.template_data or {})
         body = self._render(row.message or "", row.template_data or {})
@@ -354,13 +346,18 @@ class NotificationWorker:
             row.status = "failed"  # dead-letter
             logger.error(
                 "notification-worker DEAD-LETTER id=%s after %s attempts: %s",
-                row.id, row.attempts, error,
+                row.id,
+                row.attempts,
+                error,
             )
         else:
             row.status = "pending"  # retry on next tick
             logger.warning(
                 "notification-worker transient failure id=%s attempts=%s/%s: %s",
-                row.id, row.attempts, row.max_attempts, error,
+                row.id,
+                row.attempts,
+                row.max_attempts,
+                error,
             )
         db.commit()
         # Only audit terminal outcomes (delivered / dead-letter), not
@@ -379,6 +376,7 @@ class NotificationWorker:
         """
         try:
             from app.core.audit import create_audit_log
+
             create_audit_log(
                 db=db,
                 action=action,

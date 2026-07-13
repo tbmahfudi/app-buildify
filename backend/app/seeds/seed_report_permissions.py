@@ -2,9 +2,10 @@
 Create report management permissions
 Covers: Report Definitions, Execution, Scheduling, Templates
 """
-from sqlalchemy.orm import Session
+
 from app.core.db import SessionLocal
 from app.models.permission import Permission
+
 
 def seed_report_permissions():
     """Seed all report-related permissions"""
@@ -21,7 +22,7 @@ def seed_report_permissions():
                 "resource": "reports",
                 "action": "read",
                 "scope": "all",
-                "category": "reports"
+                "category": "reports",
             },
             {
                 "code": "reports:read:tenant",
@@ -30,7 +31,7 @@ def seed_report_permissions():
                 "resource": "reports",
                 "action": "read",
                 "scope": "tenant",
-                "category": "reports"
+                "category": "reports",
             },
             {
                 "code": "reports:read:company",
@@ -39,7 +40,7 @@ def seed_report_permissions():
                 "resource": "reports",
                 "action": "read",
                 "scope": "company",
-                "category": "reports"
+                "category": "reports",
             },
             {
                 "code": "reports:read:department",
@@ -48,7 +49,7 @@ def seed_report_permissions():
                 "resource": "reports",
                 "action": "read",
                 "scope": "department",
-                "category": "reports"
+                "category": "reports",
             },
             {
                 "code": "reports:read:own",
@@ -57,7 +58,7 @@ def seed_report_permissions():
                 "resource": "reports",
                 "action": "read",
                 "scope": "own",
-                "category": "reports"
+                "category": "reports",
             },
             {
                 "code": "reports:create:tenant",
@@ -66,7 +67,7 @@ def seed_report_permissions():
                 "resource": "reports",
                 "action": "create",
                 "scope": "tenant",
-                "category": "reports"
+                "category": "reports",
             },
             {
                 "code": "reports:update:all",
@@ -75,7 +76,7 @@ def seed_report_permissions():
                 "resource": "reports",
                 "action": "update",
                 "scope": "all",
-                "category": "reports"
+                "category": "reports",
             },
             {
                 "code": "reports:update:tenant",
@@ -84,7 +85,7 @@ def seed_report_permissions():
                 "resource": "reports",
                 "action": "update",
                 "scope": "tenant",
-                "category": "reports"
+                "category": "reports",
             },
             {
                 "code": "reports:update:own",
@@ -93,7 +94,7 @@ def seed_report_permissions():
                 "resource": "reports",
                 "action": "update",
                 "scope": "own",
-                "category": "reports"
+                "category": "reports",
             },
             {
                 "code": "reports:delete:all",
@@ -102,7 +103,7 @@ def seed_report_permissions():
                 "resource": "reports",
                 "action": "delete",
                 "scope": "all",
-                "category": "reports"
+                "category": "reports",
             },
             {
                 "code": "reports:delete:tenant",
@@ -111,7 +112,7 @@ def seed_report_permissions():
                 "resource": "reports",
                 "action": "delete",
                 "scope": "tenant",
-                "category": "reports"
+                "category": "reports",
             },
             {
                 "code": "reports:delete:own",
@@ -120,9 +121,8 @@ def seed_report_permissions():
                 "resource": "reports",
                 "action": "delete",
                 "scope": "own",
-                "category": "reports"
+                "category": "reports",
             },
-
             # ==================== REPORT EXECUTION ====================
             {
                 "code": "reports:execute:all",
@@ -131,7 +131,7 @@ def seed_report_permissions():
                 "resource": "reports",
                 "action": "execute",
                 "scope": "all",
-                "category": "reports"
+                "category": "reports",
             },
             {
                 "code": "reports:execute:tenant",
@@ -140,7 +140,7 @@ def seed_report_permissions():
                 "resource": "reports",
                 "action": "execute",
                 "scope": "tenant",
-                "category": "reports"
+                "category": "reports",
             },
             {
                 "code": "reports:execute:company",
@@ -149,7 +149,7 @@ def seed_report_permissions():
                 "resource": "reports",
                 "action": "execute",
                 "scope": "company",
-                "category": "reports"
+                "category": "reports",
             },
             {
                 "code": "reports:execute:department",
@@ -158,7 +158,7 @@ def seed_report_permissions():
                 "resource": "reports",
                 "action": "execute",
                 "scope": "department",
-                "category": "reports"
+                "category": "reports",
             },
             {
                 "code": "reports:execute:own",
@@ -167,7 +167,7 @@ def seed_report_permissions():
                 "resource": "reports",
                 "action": "execute",
                 "scope": "own",
-                "category": "reports"
+                "category": "reports",
             },
             {
                 "code": "reports:run:tenant",
@@ -176,9 +176,8 @@ def seed_report_permissions():
                 "resource": "reports",
                 "action": "run",
                 "scope": "tenant",
-                "category": "reports"
+                "category": "reports",
             },
-
             # ==================== REPORT EXPORT ====================
             {
                 "code": "reports:export:all",
@@ -187,7 +186,7 @@ def seed_report_permissions():
                 "resource": "reports",
                 "action": "export",
                 "scope": "all",
-                "category": "reports"
+                "category": "reports",
             },
             {
                 "code": "reports:export:tenant",
@@ -196,7 +195,7 @@ def seed_report_permissions():
                 "resource": "reports",
                 "action": "export",
                 "scope": "tenant",
-                "category": "reports"
+                "category": "reports",
             },
             {
                 "code": "reports:export:company",
@@ -205,7 +204,7 @@ def seed_report_permissions():
                 "resource": "reports",
                 "action": "export",
                 "scope": "company",
-                "category": "reports"
+                "category": "reports",
             },
             {
                 "code": "reports:export:department",
@@ -214,9 +213,8 @@ def seed_report_permissions():
                 "resource": "reports",
                 "action": "export",
                 "scope": "department",
-                "category": "reports"
+                "category": "reports",
             },
-
             # ==================== REPORT EXECUTION HISTORY ====================
             {
                 "code": "reports:history:read:all",
@@ -225,7 +223,7 @@ def seed_report_permissions():
                 "resource": "reports",
                 "action": "history:read",
                 "scope": "all",
-                "category": "reports"
+                "category": "reports",
             },
             {
                 "code": "reports:history:read:tenant",
@@ -234,7 +232,7 @@ def seed_report_permissions():
                 "resource": "reports",
                 "action": "history:read",
                 "scope": "tenant",
-                "category": "reports"
+                "category": "reports",
             },
             {
                 "code": "reports:history:read:own",
@@ -243,9 +241,8 @@ def seed_report_permissions():
                 "resource": "reports",
                 "action": "history:read",
                 "scope": "own",
-                "category": "reports"
+                "category": "reports",
             },
-
             # ==================== REPORT SCHEDULING ====================
             {
                 "code": "reports:schedule:create:all",
@@ -254,7 +251,7 @@ def seed_report_permissions():
                 "resource": "reports",
                 "action": "schedule:create",
                 "scope": "all",
-                "category": "reports"
+                "category": "reports",
             },
             {
                 "code": "reports:schedule:create:tenant",
@@ -263,7 +260,7 @@ def seed_report_permissions():
                 "resource": "reports",
                 "action": "schedule:create",
                 "scope": "tenant",
-                "category": "reports"
+                "category": "reports",
             },
             {
                 "code": "reports:schedule:read:all",
@@ -272,7 +269,7 @@ def seed_report_permissions():
                 "resource": "reports",
                 "action": "schedule:read",
                 "scope": "all",
-                "category": "reports"
+                "category": "reports",
             },
             {
                 "code": "reports:schedule:read:tenant",
@@ -281,7 +278,7 @@ def seed_report_permissions():
                 "resource": "reports",
                 "action": "schedule:read",
                 "scope": "tenant",
-                "category": "reports"
+                "category": "reports",
             },
             {
                 "code": "reports:schedule:read:own",
@@ -290,7 +287,7 @@ def seed_report_permissions():
                 "resource": "reports",
                 "action": "schedule:read",
                 "scope": "own",
-                "category": "reports"
+                "category": "reports",
             },
             {
                 "code": "reports:schedule:update:all",
@@ -299,7 +296,7 @@ def seed_report_permissions():
                 "resource": "reports",
                 "action": "schedule:update",
                 "scope": "all",
-                "category": "reports"
+                "category": "reports",
             },
             {
                 "code": "reports:schedule:update:tenant",
@@ -308,7 +305,7 @@ def seed_report_permissions():
                 "resource": "reports",
                 "action": "schedule:update",
                 "scope": "tenant",
-                "category": "reports"
+                "category": "reports",
             },
             {
                 "code": "reports:schedule:update:own",
@@ -317,7 +314,7 @@ def seed_report_permissions():
                 "resource": "reports",
                 "action": "schedule:update",
                 "scope": "own",
-                "category": "reports"
+                "category": "reports",
             },
             {
                 "code": "reports:schedule:delete:all",
@@ -326,7 +323,7 @@ def seed_report_permissions():
                 "resource": "reports",
                 "action": "schedule:delete",
                 "scope": "all",
-                "category": "reports"
+                "category": "reports",
             },
             {
                 "code": "reports:schedule:delete:tenant",
@@ -335,7 +332,7 @@ def seed_report_permissions():
                 "resource": "reports",
                 "action": "schedule:delete",
                 "scope": "tenant",
-                "category": "reports"
+                "category": "reports",
             },
             {
                 "code": "reports:schedule:delete:own",
@@ -344,7 +341,7 @@ def seed_report_permissions():
                 "resource": "reports",
                 "action": "schedule:delete",
                 "scope": "own",
-                "category": "reports"
+                "category": "reports",
             },
             {
                 "code": "reports:schedule:tenant",
@@ -353,9 +350,8 @@ def seed_report_permissions():
                 "resource": "reports",
                 "action": "schedule",
                 "scope": "tenant",
-                "category": "reports"
+                "category": "reports",
             },
-
             # ==================== REPORT TEMPLATES ====================
             {
                 "code": "reports:templates:read:all",
@@ -364,7 +360,7 @@ def seed_report_permissions():
                 "resource": "reports",
                 "action": "templates:read",
                 "scope": "all",
-                "category": "reports"
+                "category": "reports",
             },
             {
                 "code": "reports:templates:read:tenant",
@@ -373,7 +369,7 @@ def seed_report_permissions():
                 "resource": "reports",
                 "action": "templates:read",
                 "scope": "tenant",
-                "category": "reports"
+                "category": "reports",
             },
             {
                 "code": "reports:templates:create:tenant",
@@ -382,7 +378,7 @@ def seed_report_permissions():
                 "resource": "reports",
                 "action": "templates:create",
                 "scope": "tenant",
-                "category": "reports"
+                "category": "reports",
             },
             {
                 "code": "reports:templates:update:tenant",
@@ -391,7 +387,7 @@ def seed_report_permissions():
                 "resource": "reports",
                 "action": "templates:update",
                 "scope": "tenant",
-                "category": "reports"
+                "category": "reports",
             },
             {
                 "code": "reports:templates:delete:tenant",
@@ -400,9 +396,8 @@ def seed_report_permissions():
                 "resource": "reports",
                 "action": "templates:delete",
                 "scope": "tenant",
-                "category": "reports"
+                "category": "reports",
             },
-
             # ==================== REPORT SHARING ====================
             {
                 "code": "reports:share:tenant",
@@ -411,7 +406,7 @@ def seed_report_permissions():
                 "resource": "reports",
                 "action": "share",
                 "scope": "tenant",
-                "category": "reports"
+                "category": "reports",
             },
         ]
 
@@ -420,9 +415,7 @@ def seed_report_permissions():
         updated_count = 0
 
         for perm_data in permissions:
-            perm = db.query(Permission).filter(
-                Permission.code == perm_data["code"]
-            ).first()
+            perm = db.query(Permission).filter(Permission.code == perm_data["code"]).first()
 
             if not perm:
                 perm = Permission(**perm_data, is_active=True)
@@ -441,7 +434,7 @@ def seed_report_permissions():
         db.commit()
 
         print(f"\n{'='*60}")
-        print(f"Report Permissions Seed Complete")
+        print("Report Permissions Seed Complete")
         print(f"{'='*60}")
         print(f"✓ Created: {created_count} permissions")
         print(f"• Updated: {updated_count} permissions")
@@ -454,6 +447,7 @@ def seed_report_permissions():
         raise
     finally:
         db.close()
+
 
 if __name__ == "__main__":
     seed_report_permissions()

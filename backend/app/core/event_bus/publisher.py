@@ -33,7 +33,7 @@ class EventPublisher:
         user_id: Optional[UUID | str] = None,
         event_source: str = "core-platform",
         ttl_hours: int = 24,
-        max_retries: int = 3
+        max_retries: int = 3,
     ) -> UUID:
         """
         Publish an event to the event bus.
@@ -82,17 +82,20 @@ class EventPublisher:
             )
         """)
 
-        await self.db.execute(query, {
-            "id": str(event_id),
-            "event_type": event_type,
-            "event_source": event_source,
-            "payload": json.dumps(payload),
-            "tenant_id": tenant_id,
-            "company_id": company_id,
-            "user_id": user_id,
-            "expires_at": expires_at,
-            "max_retries": max_retries
-        })
+        await self.db.execute(
+            query,
+            {
+                "id": str(event_id),
+                "event_type": event_type,
+                "event_source": event_source,
+                "payload": json.dumps(payload),
+                "tenant_id": tenant_id,
+                "company_id": company_id,
+                "user_id": user_id,
+                "expires_at": expires_at,
+                "max_retries": max_retries,
+            },
+        )
 
         await self.db.commit()
 
@@ -102,10 +105,7 @@ class EventPublisher:
         return event_id
 
     async def publish_batch(
-        self,
-        events: list[Dict[str, Any]],
-        tenant_id: UUID | str,
-        event_source: str = "core-platform"
+        self, events: list[Dict[str, Any]], tenant_id: UUID | str, event_source: str = "core-platform"
     ) -> list[UUID]:
         """
         Publish multiple events efficiently in a single database operation.
@@ -140,17 +140,19 @@ class EventPublisher:
             event_id = uuid4()
             event_ids.append(event_id)
 
-            batch_data.append({
-                "id": str(event_id),
-                "event_type": event.get("type"),
-                "event_source": event_source,
-                "payload": json.dumps(event.get("payload", {})),
-                "tenant_id": tenant_id,
-                "company_id": event.get("company_id"),
-                "user_id": event.get("user_id"),
-                "expires_at": datetime.utcnow() + timedelta(hours=24),
-                "max_retries": event.get("max_retries", 3)
-            })
+            batch_data.append(
+                {
+                    "id": str(event_id),
+                    "event_type": event.get("type"),
+                    "event_source": event_source,
+                    "payload": json.dumps(event.get("payload", {})),
+                    "tenant_id": tenant_id,
+                    "company_id": event.get("company_id"),
+                    "user_id": event.get("user_id"),
+                    "expires_at": datetime.utcnow() + timedelta(hours=24),
+                    "max_retries": event.get("max_retries", 3),
+                }
+            )
 
         # Batch insert
         query = text("""
@@ -198,8 +200,8 @@ class EventPublisher:
         await self._send_notify(f"events:{event_type}", payload)
 
         # Category channel (first part of event_type)
-        if '.' in event_type:
-            category = event_type.split('.')[0]
+        if "." in event_type:
+            category = event_type.split(".")[0]
             await self._send_notify(f"events:{category}", payload)
 
     async def _send_notify(self, channel: str, payload: str):

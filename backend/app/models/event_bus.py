@@ -14,6 +14,7 @@ class Event(Base):
     Note: This table should be created as UNLOGGED via migration:
     CREATE UNLOGGED TABLE events (...);
     """
+
     __tablename__ = "events"
 
     # Primary key
@@ -32,7 +33,7 @@ class Event(Base):
     user_id = Column(GUID, nullable=True)  # Optional user context
 
     # Processing status
-    status = Column(String(20), nullable=False, default='pending', index=True)
+    status = Column(String(20), nullable=False, default="pending", index=True)
     # Status values: 'pending', 'processing', 'completed', 'failed'
 
     retry_count = Column(Integer, nullable=False, default=0)
@@ -50,8 +51,8 @@ class Event(Base):
     # Table args for indexes
     __table_args__ = (
         # Partial index for pending events (most common query)
-        Index('idx_events_pending', 'created_at', postgresql_where=(status == 'pending')),
-        Index('idx_events_status_pending', 'status', postgresql_where=(status.in_(['pending', 'processing']))),
+        Index("idx_events_pending", "created_at", postgresql_where=(status == "pending")),
+        Index("idx_events_status_pending", "status", postgresql_where=(status.in_(["pending", "processing"]))),
     )
 
     def __repr__(self):
@@ -63,6 +64,7 @@ class EventSubscription(Base):
     Persistent table for event subscriptions.
     Defines which modules/handlers should receive which events.
     """
+
     __tablename__ = "event_subscriptions"
 
     # Primary key
@@ -85,7 +87,7 @@ class EventSubscription(Base):
     priority = Column(Integer, nullable=False, default=5)  # 1-10, higher = processed first
 
     # Delivery settings
-    delivery_mode = Column(String(20), nullable=False, default='async')  # 'async' or 'sync'
+    delivery_mode = Column(String(20), nullable=False, default="async")  # 'async' or 'sync'
     max_retry_attempts = Column(Integer, nullable=False, default=3)
     retry_delay_seconds = Column(Integer, nullable=False, default=60)
 
@@ -111,6 +113,7 @@ class EventHandler(Base):
     Track which handlers have processed which events.
     Provides idempotency and retry tracking.
     """
+
     __tablename__ = "event_handlers"
 
     # Primary key
@@ -121,7 +124,7 @@ class EventHandler(Base):
     subscription_id = Column(GUID, ForeignKey("event_subscriptions.id", ondelete="CASCADE"), nullable=False, index=True)
 
     # Processing status
-    status = Column(String(20), nullable=False, default='pending', index=True)
+    status = Column(String(20), nullable=False, default="pending", index=True)
     # Status values: 'pending', 'completed', 'failed', 'skipped'
 
     retry_count = Column(Integer, nullable=False, default=0)
@@ -139,9 +142,13 @@ class EventHandler(Base):
 
     # Table args for unique constraint
     __table_args__ = (
-        Index('uq_event_handler', 'event_id', 'subscription_id', unique=True),
-        Index('idx_event_handlers_pending', 'subscription_id', 'status',
-              postgresql_where=(status.in_(['pending', 'failed']))),
+        Index("uq_event_handler", "event_id", "subscription_id", unique=True),
+        Index(
+            "idx_event_handlers_pending",
+            "subscription_id",
+            "status",
+            postgresql_where=(status.in_(["pending", "failed"])),
+        ),
     )
 
     def __repr__(self):
@@ -153,6 +160,7 @@ class EventArchive(Base):
     Persistent archive for completed events.
     Used for analytics and audit purposes.
     """
+
     __tablename__ = "events_archive"
 
     # Primary key

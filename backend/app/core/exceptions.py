@@ -3,7 +3,6 @@ import traceback
 from fastapi import Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
-from pydantic import ValidationError
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 from .logging_config import get_logger
@@ -14,6 +13,7 @@ logger = get_logger(__name__)
 
 class AppException(Exception):
     """Base exception for application-specific errors"""
+
     def __init__(self, message: str, status_code: int = 500, details: dict = None):
         self.message = message
         self.status_code = status_code
@@ -54,6 +54,7 @@ class EntityValidationError(Exception):
         - ``dynamic-route-registry.js``: replace ``alert('Error: ...')`` in the
           create/edit form submit catch with inline form error rendering.
     """
+
     def __init__(self, errors: list, detail: str = None):
         # errors: list of {"field": str, "message": str}
         self.errors = errors
@@ -64,12 +65,14 @@ class EntityValidationError(Exception):
 
 class TenantAccessDenied(AppException):
     """Raised when user tries to access data from another tenant"""
+
     def __init__(self, message: str = "Access denied to tenant data"):
         super().__init__(message, status_code=403)
 
 
 class ResourceNotFound(AppException):
     """Raised when requested resource is not found"""
+
     def __init__(self, resource: str, resource_id: str):
         message = f"{resource} with ID {resource_id} not found"
         super().__init__(message, status_code=404)
@@ -77,6 +80,7 @@ class ResourceNotFound(AppException):
 
 class DuplicateResource(AppException):
     """Raised when attempting to create a duplicate resource"""
+
     def __init__(self, resource: str, field: str, value: str):
         message = f"{resource} with {field}='{value}' already exists"
         super().__init__(message, status_code=409)
@@ -107,11 +111,13 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     """Handle Pydantic validation errors"""
     errors = []
     for error in exc.errors():
-        errors.append({
-            "field": ".".join(str(loc) for loc in error["loc"]),
-            "message": error["msg"],
-            "type": error["type"],
-        })
+        errors.append(
+            {
+                "field": ".".join(str(loc) for loc in error["loc"]),
+                "message": error["msg"],
+                "type": error["type"],
+            }
+        )
 
     logger.warning(
         "Validation error",

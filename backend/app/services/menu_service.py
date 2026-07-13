@@ -7,27 +7,25 @@ Provides functions to:
 - Filter menus by permissions and roles
 - Integrate module menus with core menus
 """
-from sqlalchemy.orm import Session
-from sqlalchemy import and_, or_
-from typing import List, Dict, Any, Optional, Set
-from datetime import datetime
 
-from app.models.menu_item import MenuItem
-from app.models.user import User
-from app.models.nocode_module import ModuleActivation as TenantModule
-from app.models.builder_page import BuilderPage
+from datetime import datetime
+from typing import Any, Dict, List, Optional, Set
+
+from sqlalchemy import or_
+from sqlalchemy.orm import Session
+
 from app.core.scope import apply_tenant_scope_by_id
+from app.models.builder_page import BuilderPage
+from app.models.menu_item import MenuItem
+from app.models.nocode_module import ModuleActivation as TenantModule
+from app.models.user import User
 
 
 class MenuService:
     """Service for menu operations with RBAC."""
 
     @staticmethod
-    async def get_user_menu(
-        db: Session,
-        user: User,
-        include_modules: bool = True
-    ) -> List[Dict[str, Any]]:
+    async def get_user_menu(db: Session, user: User, include_modules: bool = True) -> List[Dict[str, Any]]:
         """
         Get menu items accessible to user based on RBAC.
 
@@ -41,31 +39,18 @@ class MenuService:
         """
         # Get user permissions and roles (through groups)
         permissions = user.get_permissions()
-        roles = list(user.get_roles()) if hasattr(user, 'get_roles') else []
+        roles = list(user.get_roles()) if hasattr(user, "get_roles") else []
 
         # Get accessible core menu items
-        menu_items = MenuService._get_accessible_menu_items(
-            db=db,
-            user=user,
-            permissions=permissions,
-            roles=roles
-        )
+        menu_items = MenuService._get_accessible_menu_items(db=db, user=user, permissions=permissions, roles=roles)
 
         # Include module menus if requested
         if include_modules:
-            module_menus = await MenuService._get_module_menu_items(
-                db=db,
-                user=user,
-                permissions=permissions
-            )
+            module_menus = await MenuService._get_module_menu_items(db=db, user=user, permissions=permissions)
             menu_items.extend(module_menus)
 
         # Include builder pages with show_in_menu=True
-        builder_menus = MenuService._get_builder_page_menu_items(
-            db=db,
-            user=user,
-            permissions=permissions
-        )
+        builder_menus = MenuService._get_builder_page_menu_items(db=db, user=user, permissions=permissions)
         menu_items.extend(builder_menus)
 
         # Build hierarchical structure
@@ -74,12 +59,7 @@ class MenuService:
         return menu_tree
 
     @staticmethod
-    def _get_accessible_menu_items(
-        db: Session,
-        user: User,
-        permissions: Set[str],
-        roles: List[str]
-    ) -> List[MenuItem]:
+    def _get_accessible_menu_items(db: Session, user: User, permissions: Set[str], roles: List[str]) -> List[MenuItem]:
         """
         Get menu items user can access from database.
 
@@ -94,8 +74,8 @@ class MenuService:
             MenuItem.is_visible == True,
             or_(
                 MenuItem.tenant_id == None,  # System menus  # tenant-scope-ok (or_() system menu branch)
-                MenuItem.tenant_id == user.tenant_id  # Tenant menus  # tenant-scope-ok (or_() tenant branch)
-            )
+                MenuItem.tenant_id == user.tenant_id,  # Tenant menus  # tenant-scope-ok (or_() tenant branch)
+            ),
         )
 
         all_items = query.all()
@@ -109,12 +89,7 @@ class MenuService:
         return accessible_items
 
     @staticmethod
-    def _is_menu_accessible(
-        item: MenuItem,
-        permissions: Set[str],
-        roles: List[str],
-        user: User
-    ) -> bool:
+    def _is_menu_accessible(item: MenuItem, permissions: Set[str], roles: List[str], user: User) -> bool:
         """
         Check if user can access a menu item.
 
@@ -141,17 +116,14 @@ class MenuService:
         # Check permission requirements (wildcard-aware per epic-21 story 4.2.1)
         if item.permission:
             from app.core.dependencies import matches_permission
+
             if not matches_permission(permissions, item.permission):
                 return False
 
         return True
 
     @staticmethod
-    async def _get_module_menu_items(
-        db: Session,
-        user: User,
-        permissions: Set[str]
-    ) -> List[MenuItem]:
+    async def _get_module_menu_items(db: Session, user: User, permissions: Set[str]) -> List[MenuItem]:
         """
         Get menu items from installed modules.
 
@@ -160,6 +132,7 @@ class MenuService:
         Also includes parent menu items from navigation.menu_items.
         """
         import logging
+
         logger = logging.getLogger(__name__)
 
         # Get enabled modules for tenant. Superusers have no tenant_id and are
@@ -168,16 +141,14 @@ class MenuService:
         module_q = db.query(TenantModule)
         if not getattr(user, "is_superuser", False):
             module_q = apply_tenant_scope_by_id(module_q, TenantModule, user.tenant_id)
-        tenant_modules = module_q.filter(
-            TenantModule.is_enabled == True
-        ).all()
+        tenant_modules = module_q.filter(TenantModule.is_enabled == True).all()
 
         module_menu_items = []
         parent_menu_codes = {}  # Track parent menu codes
 
         for tenant_module in tenant_modules:
             # Get module manifest from the module registry
-            if not tenant_module.module or not hasattr(tenant_module.module, 'manifest'):
+            if not tenant_module.module or not hasattr(tenant_module.module, "manifest"):
                 continue
 
             manifest = tenant_module.module.manifest if tenant_module.module.manifest else {}
@@ -190,28 +161,28 @@ class MenuService:
             logger.debug(f"  Manifest keys: {list(manifest.keys())}")
 
             # Process parent menu items from navigation.menu_items
-            navigation = manifest.get('navigation', {})
+            navigation = manifest.get("navigation", {})
             logger.debug(f"  Navigation: {navigation}")
-            menu_items_config = navigation.get('menu_items', [])
+            menu_items_config = navigation.get("menu_items", [])
             logger.debug(f"  menu_items_config: {menu_items_config}")
 
             for menu_item_config in menu_items_config:
                 # Create parent menu item
-                parent_code = menu_item_config.get('code', f"module_{module_code}_parent")
+                parent_code = menu_item_config.get("code", f"module_{module_code}_parent")
                 parent_menu_item = MenuItem(
                     code=parent_code,
-                    title=menu_item_config.get('label', module_code.title()),
-                    icon=menu_item_config.get('icon', 'ph-duotone ph-square'),
+                    title=menu_item_config.get("label", module_code.title()),
+                    icon=menu_item_config.get("icon", "ph-duotone ph-square"),
                     route=None,  # Parent items typically don't have routes
-                    permission=menu_item_config.get('permission'),
-                    order=menu_item_config.get('order', 999),
+                    permission=menu_item_config.get("permission"),
+                    order=menu_item_config.get("order", 999),
                     module_code=module_code,
                     is_system=False,
                     parent_id=None,
                     is_active=True,
                     is_visible=True,
-                    target='_self',
-                    extra_data={'icon_color': menu_item_config.get('icon_color')}
+                    target="_self",
+                    extra_data={"icon_color": menu_item_config.get("icon_color")},
                 )
 
                 # Explicitly set id to None to ensure it uses code for matching
@@ -224,38 +195,38 @@ class MenuService:
                 module_menu_items.append(parent_menu_item)
 
             # Process routes that have menu configuration
-            for route in manifest.get('routes', []):
-                if 'menu' not in route:
+            for route in manifest.get("routes", []):
+                if "menu" not in route:
                     continue
 
                 # Check permission (wildcard-aware per epic-21 story 4.2.1)
-                route_permission = route.get('permission')
+                route_permission = route.get("permission")
                 if route_permission:
                     from app.core.dependencies import matches_permission
+
                     if not matches_permission(permissions, route_permission):
                         continue
 
                 # Determine parent
-                menu_parent = route['menu'].get('parent')
-                parent_item = None
+                menu_parent = route["menu"].get("parent")
                 if menu_parent and menu_parent in parent_menu_codes:
-                    parent_item = parent_menu_codes[menu_parent]
+                    parent_menu_codes[menu_parent]
                     logger.debug(f"Route has parent: {menu_parent}")
 
                 # Create virtual MenuItem for module route
                 menu_item = MenuItem(
                     code=f"module_{module_code}_{route.get('path', '').replace('#/', '').replace('/', '_')}",
-                    title=route['menu'].get('label', route.get('name', 'Unknown')),
-                    icon=route['menu'].get('icon', 'ph-duotone ph-square'),
-                    route=route.get('path', '').replace('#/', ''),
+                    title=route["menu"].get("label", route.get("name", "Unknown")),
+                    icon=route["menu"].get("icon", "ph-duotone ph-square"),
+                    route=route.get("path", "").replace("#/", ""),
                     permission=route_permission,
-                    order=route['menu'].get('order', 999),
+                    order=route["menu"].get("order", 999),
                     module_code=module_code,
                     is_system=False,
                     parent_id=None,  # Don't use parent_id for module items (GUID type validation issues)
                     is_active=True,
                     is_visible=True,
-                    target='_self'
+                    target="_self",
                 )
 
                 # Explicitly set id to None
@@ -265,7 +236,9 @@ class MenuService:
                 # This avoids GUID type validation issues with non-UUID parent references
                 menu_item._parent_code = menu_parent if menu_parent in parent_menu_codes else None
 
-                logger.debug(f"Created menu item: code={menu_item.code}, _parent_code={getattr(menu_item, '_parent_code', None)}, id={menu_item.id}")
+                logger.debug(
+                    f"Created menu item: code={menu_item.code}, _parent_code={getattr(menu_item, '_parent_code', None)}, id={menu_item.id}"
+                )
 
                 module_menu_items.append(menu_item)
 
@@ -273,11 +246,7 @@ class MenuService:
         return module_menu_items
 
     @staticmethod
-    def _get_builder_page_menu_items(
-        db: Session,
-        user: User,
-        permissions: Set[str]
-    ) -> List[MenuItem]:
+    def _get_builder_page_menu_items(db: Session, user: User, permissions: Set[str]) -> List[MenuItem]:
         """
         Get menu items from builder pages with show_in_menu=True.
 
@@ -285,6 +254,7 @@ class MenuService:
         then converts them to MenuItem objects for consistency.
         """
         import logging
+
         logger = logging.getLogger(__name__)
 
         # Get builder pages with show_in_menu=True for this tenant.
@@ -294,15 +264,16 @@ class MenuService:
         # fail-loud scope filter so they see all published builder pages.
         builder_q = db.query(BuilderPage)
         if not getattr(user, "is_superuser", False):
-            builder_q = apply_tenant_scope_by_id(
-                builder_q, BuilderPage, str(user.tenant_id)
+            builder_q = apply_tenant_scope_by_id(builder_q, BuilderPage, str(user.tenant_id))
+        builder_pages = (
+            builder_q.filter(
+                BuilderPage.show_in_menu == True, BuilderPage.published == True  # Only show published pages
             )
-        builder_pages = builder_q.filter(
-            BuilderPage.show_in_menu == True,
-            BuilderPage.published == True  # Only show published pages
-        ).order_by(BuilderPage.menu_order, BuilderPage.name).all()
+            .order_by(BuilderPage.menu_order, BuilderPage.name)
+            .all()
+        )
 
-        logger.debug(f"Found builder pages with show_in_menu=True")
+        logger.debug("Found builder pages with show_in_menu=True")
 
         builder_menu_items = []
 
@@ -310,6 +281,7 @@ class MenuService:
             # Check permission if specified (wildcard-aware per epic-21 story 4.2.1)
             if page.permission_code:
                 from app.core.dependencies import matches_permission
+
                 if not matches_permission(permissions, page.permission_code):
                     logger.debug(f"Skipping builder page {page.name} - missing permission {page.permission_code}")
                     continue
@@ -318,17 +290,17 @@ class MenuService:
             menu_item = MenuItem(
                 code=f"builder_page_{page.slug}",
                 title=page.menu_label or page.name,
-                icon=page.menu_icon or 'ph-duotone ph-file-html',
-                route=page.route_path.lstrip('/'),  # Remove leading slash for consistency
+                icon=page.menu_icon or "ph-duotone ph-file-html",
+                route=page.route_path.lstrip("/"),  # Remove leading slash for consistency
                 permission=page.permission_code,
                 order=page.menu_order or 999,
-                module_code='builder',
+                module_code="builder",
                 is_system=False,
                 parent_id=None,
                 is_active=True,
                 is_visible=True,
-                target='_self',
-                extra_data={'builder_page_id': page.id}
+                target="_self",
+                extra_data={"builder_page_id": page.id},
             )
 
             # Set id to None (virtual menu item)
@@ -354,6 +326,7 @@ class MenuService:
         Filters out parent items that have no accessible children.
         """
         import logging
+
         logger = logging.getLogger(__name__)
 
         logger.debug(f"Building menu tree from {len(items)} items")
@@ -361,19 +334,19 @@ class MenuService:
         # Create lookup map
         item_map = {}
         for item in items:
-            item_id = str(item.id) if hasattr(item, 'id') and item.id else item.code
+            item_id = str(item.id) if hasattr(item, "id") and item.id else item.code
             item_map[item_id] = item
             logger.debug(f"  item_map[{item_id}] = {item.code} (parent_id={item.parent_id}, route={item.route})")
 
         # Build tree
         tree = []
         for item in items:
-            item_id = str(item.id) if hasattr(item, 'id') and item.id else item.code
+            item_id = str(item.id) if hasattr(item, "id") and item.id else item.code
 
             # Check if this is a root item (no parent reference)
             # For module items, check _parent_code; for DB items, check parent_id
             has_parent = False
-            if hasattr(item, '_parent_code') and item._parent_code:
+            if hasattr(item, "_parent_code") and item._parent_code:
                 has_parent = True
                 logger.debug(f"Item has _parent_code={item._parent_code}, not a root item")
             elif item.parent_id:
@@ -384,18 +357,18 @@ class MenuService:
                 # Root item
                 logger.debug(f"Processing root item: {item.code} (item_id={item_id})")
                 item_dict = MenuService._item_to_dict(item, item_map)
-                logger.debug(f"  -> has children")
+                logger.debug("  -> has children")
 
                 # Filter out parent menus with no children
                 # If the item has no route (parent-only) and no children, skip it
-                if not item_dict.get('route') and len(item_dict.get('children', [])) == 0:
+                if not item_dict.get("route") and len(item_dict.get("children", [])) == 0:
                     logger.debug(f"  -> Filtering out {item.code} (no route and no children)")
                     continue
 
                 tree.append(item_dict)
 
         # Sort by order
-        tree.sort(key=lambda x: x.get('order', 0))
+        tree.sort(key=lambda x: x.get("order", 0))
 
         logger.debug(f"Final tree has {len(tree)} root items")
         return tree
@@ -408,32 +381,33 @@ class MenuService:
         Recursively builds nested structure.
         """
         import logging
+
         logger = logging.getLogger(__name__)
 
-        item_id = str(item.id) if hasattr(item, 'id') and item.id else item.code
+        item_id = str(item.id) if hasattr(item, "id") and item.id else item.code
         logger.debug(f"    _item_to_dict: {item.code}, item_id={item_id}")
 
         result = {
-            'id': item_id,
-            'code': item.code,
-            'title': item.title,
-            'icon': item.icon,
-            'icon_color_primary': getattr(item, 'icon_color_primary', None),
-            'route': item.route,
-            'order': item.order,
-            'target': item.target,
-            'children': []
+            "id": item_id,
+            "code": item.code,
+            "title": item.title,
+            "icon": item.icon,
+            "icon_color_primary": getattr(item, "icon_color_primary", None),
+            "route": item.route,
+            "order": item.order,
+            "target": item.target,
+            "children": [],
         }
 
         # Include RBAC information (useful for client-side checks and UI state)
         if item.permission:
-            result['permission'] = item.permission
+            result["permission"] = item.permission
         if item.required_roles:
-            result['required_roles'] = item.required_roles
+            result["required_roles"] = item.required_roles
 
         # Add extra_data if present
         if item.extra_data:
-            result['extra_data'] = item.extra_data
+            result["extra_data"] = item.extra_data
 
         # Add children
         children = []
@@ -443,13 +417,17 @@ class MenuService:
             child_parent_ref = None
 
             # First check for module item parent reference (_parent_code)
-            if hasattr(child, '_parent_code') and child._parent_code:
+            if hasattr(child, "_parent_code") and child._parent_code:
                 child_parent_ref = child._parent_code
-                logger.debug(f"      Checking child {child.code}: _parent_code={child_parent_ref}, item_id={item_id}, match={child_parent_ref == item_id}")
+                logger.debug(
+                    f"      Checking child {child.code}: _parent_code={child_parent_ref}, item_id={item_id}, match={child_parent_ref == item_id}"
+                )
             # Otherwise check database parent_id (UUID)
             elif child.parent_id:
                 child_parent_ref = str(child.parent_id)
-                logger.debug(f"      Checking child {child.code}: parent_id={child_parent_ref}, item_id={item_id}, match={child_parent_ref == item_id}")
+                logger.debug(
+                    f"      Checking child {child.code}: parent_id={child_parent_ref}, item_id={item_id}, match={child_parent_ref == item_id}"
+                )
 
             if child_parent_ref and child_parent_ref == item_id:
                 logger.debug(f"      -> MATCH! Adding child: {child.code}")
@@ -463,20 +441,16 @@ class MenuService:
         # grandchildren are pruned before their parent is evaluated.
         for child in sorted(children, key=lambda x: x.order):
             child_dict = MenuService._item_to_dict(child, item_map)
-            if not child_dict.get('route') and len(child_dict.get('children', [])) == 0:
+            if not child_dict.get("route") and len(child_dict.get("children", [])) == 0:
                 logger.debug(f"    -> Pruning empty child group {child.code}")
                 continue
-            result['children'].append(child_dict)
+            result["children"].append(child_dict)
 
-        logger.debug(f"    item has children")
+        logger.debug("    item has children")
         return result
 
     @staticmethod
-    def get_all_menu_items(
-        db: Session,
-        user: User,
-        tenant_id: Optional[str] = None
-    ) -> List[MenuItem]:
+    def get_all_menu_items(db: Session, user: User, tenant_id: Optional[str] = None) -> List[MenuItem]:
         """
         Get all menu items for admin management.
 
@@ -495,7 +469,7 @@ class MenuService:
             query = query.filter(
                 or_(
                     MenuItem.tenant_id == user.tenant_id,  # tenant-scope-ok (or_() tenant branch)
-                    MenuItem.tenant_id == None  # System menus  # tenant-scope-ok (or_() system menu branch)
+                    MenuItem.tenant_id == None,  # System menus  # tenant-scope-ok (or_() system menu branch)
                 )
             )
         elif tenant_id:
@@ -503,18 +477,14 @@ class MenuService:
             query = query.filter(
                 or_(
                     MenuItem.tenant_id == tenant_id,  # tenant-scope-ok (or_() tenant branch)
-                    MenuItem.tenant_id == None  # tenant-scope-ok (or_() system menu branch)
+                    MenuItem.tenant_id == None,  # tenant-scope-ok (or_() system menu branch)
                 )
             )
 
         return query.order_by(MenuItem.order).all()
 
     @staticmethod
-    def create_menu_item(
-        db: Session,
-        user: User,
-        menu_data: Dict[str, Any]
-    ) -> MenuItem:
+    def create_menu_item(db: Session, user: User, menu_data: Dict[str, Any]) -> MenuItem:
         """
         Create a new menu item.
 
@@ -530,11 +500,11 @@ class MenuService:
 
         # Set tenant_id based on user permissions
         if not user.is_superuser:
-            menu_data['tenant_id'] = user.tenant_id
+            menu_data["tenant_id"] = user.tenant_id
 
         # Generate ID if not provided
-        if 'id' not in menu_data or not menu_data['id']:
-            menu_data['id'] = generate_uuid()
+        if "id" not in menu_data or not menu_data["id"]:
+            menu_data["id"] = generate_uuid()
 
         menu_item = MenuItem(**menu_data)
         db.add(menu_item)
@@ -544,12 +514,7 @@ class MenuService:
         return menu_item
 
     @staticmethod
-    def update_menu_item(
-        db: Session,
-        user: User,
-        menu_id: str,
-        menu_data: Dict[str, Any]
-    ) -> Optional[MenuItem]:
+    def update_menu_item(db: Session, user: User, menu_id: str, menu_data: Dict[str, Any]) -> Optional[MenuItem]:
         """
         Update a menu item.
 
@@ -574,7 +539,7 @@ class MenuService:
 
         # Update fields
         for key, value in menu_data.items():
-            if key != 'id' and hasattr(menu_item, key):
+            if key != "id" and hasattr(menu_item, key):
                 setattr(menu_item, key, value)
 
         menu_item.updated_at = datetime.utcnow()
@@ -584,11 +549,7 @@ class MenuService:
         return menu_item
 
     @staticmethod
-    def delete_menu_item(
-        db: Session,
-        user: User,
-        menu_id: str
-    ) -> bool:
+    def delete_menu_item(db: Session, user: User, menu_id: str) -> bool:
         """
         Delete a menu item (soft delete by setting is_active=False).
 
@@ -622,11 +583,7 @@ class MenuService:
         return True
 
     @staticmethod
-    def reorder_menu_items(
-        db: Session,
-        user: User,
-        reorder_data: List[Dict[str, Any]]
-    ) -> bool:
+    def reorder_menu_items(db: Session, user: User, reorder_data: List[Dict[str, Any]]) -> bool:
         """
         Reorder menu items.
 
@@ -639,8 +596,8 @@ class MenuService:
             True if successful
         """
         for item_data in reorder_data:
-            menu_id = item_data.get('id')
-            new_order = item_data.get('order')
+            menu_id = item_data.get("id")
+            new_order = item_data.get("order")
 
             menu_item = db.query(MenuItem).filter(MenuItem.id == menu_id).first()
 
@@ -657,11 +614,7 @@ class MenuService:
         return True
 
     @staticmethod
-    def get_or_create_nocode_parent(
-        db: Session,
-        tenant_id: Optional[str],
-        created_by: str
-    ) -> MenuItem:
+    def get_or_create_nocode_parent(db: Session, tenant_id: Optional[str], created_by: str) -> MenuItem:
         """
         Get or create the "No-Code Entities" parent menu item.
 
@@ -678,13 +631,17 @@ class MenuService:
         from app.models.base import generate_uuid
 
         # Check if parent menu already exists
-        parent = db.query(MenuItem).filter(
-            MenuItem.code == 'nocode_entities',
-            or_(
-                MenuItem.tenant_id == tenant_id,  # tenant-scope-ok (or_() tenant branch)
-                MenuItem.tenant_id == None  # System menu  # tenant-scope-ok (or_() system menu branch)
+        parent = (
+            db.query(MenuItem)
+            .filter(
+                MenuItem.code == "nocode_entities",
+                or_(
+                    MenuItem.tenant_id == tenant_id,  # tenant-scope-ok (or_() tenant branch)
+                    MenuItem.tenant_id == None,  # System menu  # tenant-scope-ok (or_() system menu branch)
+                ),
             )
-        ).first()
+            .first()
+        )
 
         if parent:
             return parent
@@ -692,22 +649,22 @@ class MenuService:
         # Create parent menu
         parent = MenuItem(
             id=generate_uuid(),
-            code='nocode_entities',
-            title='No-Code Entities',
+            code="nocode_entities",
+            title="No-Code Entities",
             route=None,  # Parent menu without direct route
-            icon='ph-duotone ph-squares-four',
+            icon="ph-duotone ph-squares-four",
             parent_id=None,
             order=90,  # Place near the end of the menu
-            permission='nocode:access:tenant',  # No-code area — developers/admins only
+            permission="nocode:access:tenant",  # No-code area — developers/admins only
             required_roles=[],
             is_system=False,
             is_active=True,
             is_visible=True,
             tenant_id=tenant_id,
             extra_data={
-                'is_nocode_parent': True,
-                'description': 'Dynamically generated entities from the No-Code platform'
-            }
+                "is_nocode_parent": True,
+                "description": "Dynamically generated entities from the No-Code platform",
+            },
         )
 
         db.add(parent)

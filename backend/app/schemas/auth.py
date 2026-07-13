@@ -1,25 +1,25 @@
-from pydantic import BaseModel, EmailStr, Field, ConfigDict
-from typing import Optional, List
 from datetime import datetime
+from typing import List, Optional
+
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
+
 
 class LoginRequest(BaseModel):
     """Login request. `email` accepts an email OR a username identifier
     (ADR-HC-009 D1): a value containing '@' is treated as an email, otherwise
     as a case-insensitive username. Kept as `email` for backward compatibility."""
+
     email: str = Field(..., min_length=1, description="Email address or username")
     password: str = Field(..., min_length=8, description="User password")
 
     model_config = ConfigDict(
-        json_schema_extra={
-            "example": {
-                "email": "user@example.com",
-                "password": "SecurePass123!"
-            }
-        }
+        json_schema_extra={"example": {"email": "user@example.com", "password": "SecurePass123!"}}
     )
+
 
 class TokenResponse(BaseModel):
     """JWT token response"""
+
     access_token: str = Field(..., description="JWT access token")
     refresh_token: str = Field(..., description="JWT refresh token")
     token_type: str = Field(default="bearer", description="Token type")
@@ -31,17 +31,21 @@ class TokenResponse(BaseModel):
                 "access_token": "eyJhbGciOiJIUzI1NiIs...",
                 "refresh_token": "eyJhbGciOiJIUzI1NiIs...",
                 "token_type": "bearer",
-                "expires_in": 3600
+                "expires_in": 3600,
             }
         }
     )
 
+
 class RefreshRequest(BaseModel):
     """Refresh token request"""
+
     refresh_token: str = Field(..., description="JWT refresh token")
+
 
 class UserCreate(BaseModel):
     """Create new user"""
+
     email: EmailStr = Field(..., description="User email address")
     password: str = Field(..., min_length=8, description="User password")
     full_name: Optional[str] = Field(None, max_length=255, description="User full name")
@@ -49,8 +53,10 @@ class UserCreate(BaseModel):
     roles: Optional[List[str]] = Field(default_factory=list, description="User roles")
     is_superuser: bool = Field(default=False, description="Superuser flag")
 
+
 class UserUpdate(BaseModel):
     """Update user information"""
+
     email: Optional[EmailStr] = Field(None, description="User email address")
     full_name: Optional[str] = Field(None, max_length=255, description="User full name")
     password: Optional[str] = Field(None, min_length=8, description="New password")
@@ -58,15 +64,19 @@ class UserUpdate(BaseModel):
     tenant_id: Optional[str] = Field(None, description="Tenant ID")
     roles: Optional[List[str]] = Field(None, description="User roles")
 
+
 class ProfileUpdate(BaseModel):
     """Update current user profile"""
+
     email: Optional[EmailStr] = Field(None, description="User email address")
     full_name: Optional[str] = Field(None, max_length=255, description="User full name")
     display_name: Optional[str] = Field(None, max_length=50, description="Display name for UI (max 50 chars)")
     phone: Optional[str] = Field(None, max_length=50, description="User phone number")
 
+
 class UserResponse(BaseModel):
     """User information response"""
+
     id: str = Field(..., description="User unique identifier")
     email: str = Field(..., description="User email address")
     full_name: Optional[str] = Field(None, description="User full name")
@@ -74,7 +84,10 @@ class UserResponse(BaseModel):
     phone: Optional[str] = Field(None, description="User phone number")
     is_active: bool = Field(..., description="Active status")
     is_superuser: bool = Field(..., description="Superuser flag")
-    must_set_password: bool = Field(False, description="True if the account carries a placeholder credential and must set a password before login (ADR-HC-009 D7)")
+    must_set_password: bool = Field(
+        False,
+        description="True if the account carries a placeholder credential and must set a password before login (ADR-HC-009 D7)",
+    )
     tenant_id: Optional[str] = Field(None, description="Tenant ID")
     default_company_id: Optional[str] = Field(None, description="Default company ID")
     branch_id: Optional[str] = Field(None, description="Branch ID")
@@ -93,18 +106,24 @@ class UserResponse(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
+
 class PasswordChangeRequest(BaseModel):
     """Password change request"""
+
     current_password: str = Field(..., min_length=8, description="Current password")
     new_password: str = Field(..., min_length=8, description="New password")
     confirm_password: str = Field(..., min_length=8, description="Confirm new password")
 
+
 class PasswordResetRequest(BaseModel):
     """Password reset request"""
+
     email: EmailStr = Field(..., description="User email address")
+
 
 class PasswordResetConfirm(BaseModel):
     """Password reset confirmation"""
+
     token: str = Field(..., description="Reset token")
     new_password: str = Field(..., min_length=8, description="New password")
     confirm_password: str = Field(..., min_length=8, description="Confirm new password")

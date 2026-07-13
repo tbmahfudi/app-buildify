@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     Application settings with type-safe configuration management.
     All settings can be overridden via environment variables.
     """
+
     # Application
     APP_NAME: str = "NoCode App"
     DEBUG: bool = False
@@ -46,12 +47,7 @@ class Settings(BaseSettings):
     # Monitoring
     ENABLE_METRICS: bool = False
 
-    model_config = SettingsConfigDict(
-        env_file=".env",
-        env_file_encoding="utf-8",
-        case_sensitive=True,
-        extra="ignore"
-    )
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", case_sensitive=True, extra="ignore")
 
     @property
     def allowed_origins_list(self) -> List[str]:

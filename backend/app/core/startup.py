@@ -1,9 +1,11 @@
 """
 Application startup tasks
 """
+
 import uuid
-from sqlalchemy.orm import Session
+
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from app.models.security_policy import SecurityPolicy
 
@@ -17,10 +19,7 @@ def ensure_default_security_policy(db: Session) -> None:
     """
     try:
         # Check if system default policy exists
-        query = select(SecurityPolicy).where(
-            SecurityPolicy.tenant_id == None,
-            SecurityPolicy.is_active == True
-        )
+        query = select(SecurityPolicy).where(SecurityPolicy.tenant_id == None, SecurityPolicy.is_active == True)
         result = db.execute(query)
         existing = result.scalars().first()
 
@@ -34,7 +33,6 @@ def ensure_default_security_policy(db: Session) -> None:
             tenant_id=None,  # NULL = system default
             policy_name="Default System Security Policy",
             policy_type="combined",
-
             # Password Policy - Moderate security
             password_min_length=12,
             password_max_length=128,
@@ -50,29 +48,25 @@ def ensure_default_security_policy(db: Session) -> None:
             password_expiration_days=90,
             password_expiration_warning_days=14,
             password_grace_logins=3,
-
             # Account Lockout Policy
             login_max_attempts=5,
             login_lockout_duration_min=30,
             login_lockout_type="progressive",
             login_reset_attempts_after_min=60,
             login_notify_user_on_lockout=True,
-
             # Session Policy
             session_timeout_minutes=60,
             session_absolute_timeout_hours=12,
             session_max_concurrent=3,
             session_terminate_on_password_change=True,
-
             # Password Reset Policy
             password_reset_token_expire_hours=24,
             password_reset_max_attempts=5,
             password_reset_notify_user=True,
-
             # Metadata
             is_active=True,
             created_by=None,
-            updated_by=None
+            updated_by=None,
         )
 
         db.add(default_policy)

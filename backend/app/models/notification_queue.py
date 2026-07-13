@@ -9,6 +9,7 @@ class NotificationQueue(Base):
     Queue for async notifications with retry logic.
     Acts as a buffer table for email, SMS, webhook, and push notifications.
     """
+
     __tablename__ = "notification_queue"
 
     # Primary key
@@ -33,7 +34,7 @@ class NotificationQueue(Base):
 
     # Priority and status
     priority = Column(Integer, nullable=False, default=5)  # 1-10, lower = higher priority
-    status = Column(String(20), nullable=False, default='pending', index=True)
+    status = Column(String(20), nullable=False, default="pending", index=True)
     # Status: 'pending', 'processing', 'sent', 'failed', 'cancelled'
 
     # Retry logic
@@ -59,13 +60,14 @@ class NotificationQueue(Base):
     @property
     def can_retry(self) -> bool:
         """Check if notification can be retried."""
-        return self.status == 'failed' and self.attempts < self.max_attempts
+        return self.status == "failed" and self.attempts < self.max_attempts
 
     @property
     def is_ready(self) -> bool:
         """Check if notification is ready to be sent."""
         from datetime import datetime, timezone
-        if self.status != 'pending':
+
+        if self.status != "pending":
             return False
         if self.scheduled_for is None:
             return True

@@ -10,11 +10,12 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-
 # ==================== Lookup Configuration Schemas ====================
+
 
 class LookupConfigurationBase(BaseModel):
     """Base schema for lookup configurations"""
+
     name: str = Field(..., max_length=100)
     label: str = Field(..., max_length=200)
     description: Optional[str] = None
@@ -62,11 +63,13 @@ class LookupConfigurationBase(BaseModel):
 
 class LookupConfigurationCreate(LookupConfigurationBase):
     """Schema for creating a lookup configuration"""
+
     module_id: Optional[UUID] = None
 
 
 class LookupConfigurationUpdate(BaseModel):
     """Schema for updating a lookup configuration"""
+
     module_id: Optional[UUID] = None
     label: Optional[str] = None
     description: Optional[str] = None
@@ -92,6 +95,7 @@ class LookupConfigurationUpdate(BaseModel):
 
 class LookupConfigurationResponse(LookupConfigurationBase):
     """Schema for lookup configuration response"""
+
     id: UUID
     tenant_id: Optional[UUID]  # NULL for platform-level lookup configurations
     module_id: Optional[UUID] = None
@@ -108,8 +112,10 @@ class LookupConfigurationResponse(LookupConfigurationBase):
 
 # ==================== Lookup Data Schemas ====================
 
+
 class LookupDataItem(BaseModel):
     """Schema for a single lookup data item"""
+
     value: Any
     label: str
     additional_data: Optional[Dict[str, Any]] = None
@@ -117,6 +123,7 @@ class LookupDataItem(BaseModel):
 
 class LookupDataResponse(BaseModel):
     """Schema for lookup data response"""
+
     items: List[LookupDataItem]
     total_count: int
     page: int
@@ -126,8 +133,10 @@ class LookupDataResponse(BaseModel):
 
 # ==================== Cascading Lookup Rule Schemas ====================
 
+
 class CascadingLookupRuleBase(BaseModel):
     """Base schema for cascading lookup rules"""
+
     name: str = Field(..., max_length=100)
     description: Optional[str] = None
     parent_lookup_id: UUID
@@ -142,11 +151,11 @@ class CascadingLookupRuleBase(BaseModel):
 
 class CascadingLookupRuleCreate(CascadingLookupRuleBase):
     """Schema for creating a cascading lookup rule"""
-    pass
 
 
 class CascadingLookupRuleUpdate(BaseModel):
     """Schema for updating a cascading lookup rule"""
+
     description: Optional[str] = None
     filter_type: Optional[str] = None
     parent_field: Optional[str] = None
@@ -159,6 +168,7 @@ class CascadingLookupRuleUpdate(BaseModel):
 
 class CascadingLookupRuleResponse(CascadingLookupRuleBase):
     """Schema for cascading lookup rule response"""
+
     id: UUID
     tenant_id: Optional[UUID]  # NULL for platform-level cascading rules
     is_active: bool

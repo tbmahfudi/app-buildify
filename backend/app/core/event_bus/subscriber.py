@@ -11,10 +11,10 @@ from typing import Callable, Dict, List, Optional
 
 import psycopg
 from psycopg import AsyncConnection
-from sqlalchemy import select, text
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.event_bus import Event, EventSubscription
+from app.models.event_bus import EventSubscription
 
 
 class EventSubscriber:
@@ -24,12 +24,7 @@ class EventSubscriber:
     Provides real-time event processing with pattern matching support.
     """
 
-    def __init__(
-        self,
-        db_session: AsyncSession,
-        module_name: str,
-        connection_string: str
-    ):
+    def __init__(self, db_session: AsyncSession, module_name: str, connection_string: str):
         """
         Initialize event subscriber.
 
@@ -47,11 +42,7 @@ class EventSubscriber:
         self._listen_task: Optional[asyncio.Task] = None
 
     def subscribe(
-        self,
-        event_pattern: str,
-        handler: Callable,
-        priority: int = 5,
-        filter_tenant_id: Optional[str] = None
+        self, event_pattern: str, handler: Callable, priority: int = 5, filter_tenant_id: Optional[str] = None
     ):
         """
         Register a handler for an event pattern.
@@ -72,17 +63,12 @@ class EventSubscriber:
         if event_pattern not in self.handlers:
             self.handlers[event_pattern] = []
 
-        self.handlers[event_pattern].append({
-            'handler': handler,
-            'priority': priority,
-            'tenant_filter': filter_tenant_id
-        })
+        self.handlers[event_pattern].append(
+            {"handler": handler, "priority": priority, "tenant_filter": filter_tenant_id}
+        )
 
         # Sort handlers by priority (descending)
-        self.handlers[event_pattern].sort(
-            key=lambda x: x['priority'],
-            reverse=True
-        )
+        self.handlers[event_pattern].sort(key=lambda x: x["priority"], reverse=True)
 
     async def start_listening(self, channels: Optional[List[str]] = None):
         """
@@ -95,13 +81,10 @@ class EventSubscriber:
             return
 
         if channels is None:
-            channels = ['events']
+            channels = ["events"]
 
         # Create dedicated connection for LISTEN
-        self._listen_conn = await psycopg.AsyncConnection.connect(
-            self.connection_string,
-            autocommit=True
-        )
+        self._listen_conn = await psycopg.AsyncConnection.connect(self.connection_string, autocommit=True)
 
         # Start listening on all specified channels
         for channel in channels:
@@ -154,22 +137,22 @@ class EventSubscriber:
 
             # Convert to dictionary
             event = {
-                'id': event_row.id,
-                'type': event_row.event_type,
-                'payload': event_row.payload if isinstance(event_row.payload, dict) else json.loads(event_row.payload),
-                'tenant_id': event_row.tenant_id,
-                'company_id': event_row.company_id,
-                'user_id': event_row.user_id,
-                'source': event_row.event_source
+                "id": event_row.id,
+                "type": event_row.event_type,
+                "payload": event_row.payload if isinstance(event_row.payload, dict) else json.loads(event_row.payload),
+                "tenant_id": event_row.tenant_id,
+                "company_id": event_row.company_id,
+                "user_id": event_row.user_id,
+                "source": event_row.event_source,
             }
 
             # Find matching handlers
-            matching_handlers = self._find_handlers(event['type'], event.get('tenant_id'))
+            matching_handlers = self._find_handlers(event["type"], event.get("tenant_id"))
 
             # Execute all matching handlers
             for handler_info in matching_handlers:
                 try:
-                    await handler_info['handler'](event)
+                    await handler_info["handler"](event)
                 except Exception as e:
                     # Log error but continue processing other handlers
                     print(f"Error in event handler: {e}")
@@ -195,14 +178,14 @@ class EventSubscriber:
             if self._matches_pattern(event_type, pattern):
                 for handler_info in handlers:
                     # Check tenant filter
-                    if handler_info.get('tenant_filter'):
-                        if str(handler_info['tenant_filter']) != str(tenant_id):
+                    if handler_info.get("tenant_filter"):
+                        if str(handler_info["tenant_filter"]) != str(tenant_id):
                             continue
 
                     matching.append(handler_info)
 
         # Sort by priority (descending)
-        matching.sort(key=lambda x: x['priority'], reverse=True)
+        matching.sort(key=lambda x: x["priority"], reverse=True)
         return matching
 
     def _matches_pattern(self, event_type: str, pattern: str) -> bool:
@@ -230,8 +213,8 @@ class EventSubscriber:
 
         # Convert pattern to regex
         # Replace '.' with '\.' and '*' with '[^.]*'
-        regex_pattern = pattern.replace('.', r'\.')
-        regex_pattern = regex_pattern.replace('*', r'[^.]*')
+        regex_pattern = pattern.replace(".", r"\.")
+        regex_pattern = regex_pattern.replace("*", r"[^.]*")
         regex_pattern = f"^{regex_pattern}$"
 
         return bool(re.match(regex_pattern, event_type))
@@ -242,7 +225,7 @@ class EventSubscriber:
         handler_name: str,
         priority: int = 5,
         callback_url: Optional[str] = None,
-        callback_method: Optional[str] = None
+        callback_method: Optional[str] = None,
     ) -> EventSubscription:
         """
         Register a subscription in the database for persistence.
@@ -273,7 +256,7 @@ class EventSubscriber:
             priority=priority,
             callback_url=callback_url,
             callback_method=callback_method,
-            is_active=True
+            is_active=True,
         )
 
         self.db.add(subscription)
@@ -324,12 +307,10 @@ class EventHandler:
             priority: Handler priority
             tenant_id: Optional tenant filter
         """
+
         def decorator(func: Callable):
             self.subscriber.subscribe(
-                event_pattern=event_pattern,
-                handler=func,
-                priority=priority,
-                filter_tenant_id=tenant_id
+                event_pattern=event_pattern, handler=func, priority=priority, filter_tenant_id=tenant_id
             )
             return func
 

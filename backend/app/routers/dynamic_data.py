@@ -5,37 +5,35 @@ Provides complete CRUD functionality for nocode entities via REST API.
 All endpoints are prefixed with /api/v1/dynamic-data
 """
 
-from fastapi import APIRouter, Depends, Query, HTTPException, status, Path
+import json
+import logging
+from typing import Optional
+
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
-from typing import Optional, List
-import json
-from app.core.dependencies import get_db, get_current_user
+
+from app.core.dependencies import get_current_user, get_db
 from app.core.exceptions import EntityValidationError
 from app.schemas.dynamic_data import (
-    DynamicDataCreateRequest,
-    DynamicDataUpdateRequest,
-    DynamicDataResponse,
-    DynamicDataListResponse,
+    AggregateResponse,
     DynamicDataBulkCreateRequest,
-    DynamicDataBulkUpdateRequest,
     DynamicDataBulkDeleteRequest,
     DynamicDataBulkResponse,
-    ValidationErrorResponse,
-    NotFoundResponse,
+    DynamicDataBulkUpdateRequest,
+    DynamicDataCreateRequest,
+    DynamicDataListResponse,
+    DynamicDataResponse,
+    DynamicDataUpdateRequest,
     ForbiddenResponse,
-    MetricSpec,
-    AggregateResponse,
+    NotFoundResponse,
+    ValidationErrorResponse,
 )
 from app.services.dynamic_entity_service import DynamicEntityService
-import logging
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(
-    prefix="/api/v1/dynamic-data",
-    tags=["Dynamic Data"]
-)
+router = APIRouter(prefix="/api/v1/dynamic-data", tags=["Dynamic Data"])
 
 
 def _require_writable_entity(entity_name: str, db: Session, current_user):
@@ -44,14 +42,15 @@ def _require_writable_entity(entity_name: str, db: Session, current_user):
     Virtual entities are read-only — write operations are not allowed.
     """
     from app.services.runtime_model_generator import RuntimeModelGenerator
+
     gen = RuntimeModelGenerator(db)
     tenant_id = str(current_user.tenant_id) if current_user.tenant_id else None
     entity_def = gen._load_entity_definition(entity_name, tenant_id)
-    if entity_def and getattr(entity_def, 'entity_type', 'custom') == 'virtual':
+    if entity_def and getattr(entity_def, "entity_type", "custom") == "virtual":
         raise HTTPException(
             status_code=status.HTTP_405_METHOD_NOT_ALLOWED,
             detail=f"Entity '{entity_name}' is a virtual (view-backed) entity and is read-only. "
-                   "POST, PUT, and DELETE are not supported."
+            "POST, PUT, and DELETE are not supported.",
         )
 
 
@@ -89,6 +88,7 @@ def _missing_table_error(entity_name: str, exc: Exception) -> Optional[HTTPExcep
 # CRUD Endpoints
 # ==============================================================================
 
+
 @router.post(
     "/{entity_name}/records",
     response_model=DynamicDataResponse,
@@ -99,14 +99,14 @@ def _missing_table_error(entity_name: str, exc: Exception) -> Optional[HTTPExcep
         201: {"description": "Record created successfully"},
         400: {"model": ValidationErrorResponse, "description": "Validation error"},
         403: {"model": ForbiddenResponse, "description": "Permission denied"},
-        404: {"model": NotFoundResponse, "description": "Entity not found or not published"}
-    }
+        404: {"model": NotFoundResponse, "description": "Entity not found or not published"},
+    },
 )
 async def create_record(
     entity_name: str = Path(..., description="Entity name"),
     request: DynamicDataCreateRequest = None,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user=Depends(get_current_user),
 ):
     """
     Create a new record in a dynamic entity.
@@ -137,16 +137,10 @@ async def create_record(
 
     try:
         result = await service.create_record(entity_name, request.data)
-        return DynamicDataResponse(
-            id=result.get('id', ''),
-            data=result
-        )
+        return DynamicDataResponse(id=result.get("id", ""), data=result)
     except EntityValidationError as e:
         logger.warning(f"Validation error creating {entity_name}: {e.detail}")
-        return JSONResponse(
-            status_code=400,
-            content={"detail": e.detail, "errors": e.errors}
-        )
+        return JSONResponse(status_code=400, content={"detail": e.detail, "errors": e.errors})
     except ValueError as e:
         logger.error(f"Validation error creating {entity_name}: {e}")
         raise HTTPException(status_code=400, detail=str(e))
@@ -167,39 +161,29 @@ async def create_record(
         200: {"description": "Records retrieved successfully"},
         400: {"model": ValidationErrorResponse, "description": "Invalid filter or sort parameters"},
         403: {"model": ForbiddenResponse, "description": "Permission denied"},
-        404: {"model": NotFoundResponse, "description": "Entity not found"}
-    }
+        404: {"model": NotFoundResponse, "description": "Entity not found"},
+    },
 )
 async def list_records(
     entity_name: str = Path(..., description="Entity name"),
     page: int = Query(1, ge=1, description="Page number (1-indexed)"),
     page_size: int = Query(25, ge=1, le=100, description="Items per page (max 100)"),
-    sort: Optional[str] = Query(
-        None,
-        description="Sort specification (e.g., 'name:asc,created_at:desc')"
-    ),
-    filters: Optional[str] = Query(
-        None,
-        description="Filter specification as JSON string"
-    ),
-    search: Optional[str] = Query(
-        None,
-        description="Global search term (searches across all text fields)"
-    ),
+    sort: Optional[str] = Query(None, description="Sort specification (e.g., 'name:asc,created_at:desc')"),
+    filters: Optional[str] = Query(None, description="Filter specification as JSON string"),
+    search: Optional[str] = Query(None, description="Global search term (searches across all text fields)"),
     expand: Optional[str] = Query(
         None,
         description=(
             "Comma-separated lookup field names to inline. "
             "E.g. 'customer_id,region_id' inlines the related record's fields "
             "as '{field}_data' in each row. Depth is limited to 1 level."
-        )
+        ),
     ),
     include_deleted: bool = Query(
-        False,
-        description="When true, includes soft-deleted records in results (admin only)"
+        False, description="When true, includes soft-deleted records in results (admin only)"
     ),
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user=Depends(get_current_user),
 ):
     """
     List records with optional filtering, sorting, and search.
@@ -250,23 +234,20 @@ async def list_records(
             try:
                 filter_dict = json.loads(filters)
             except json.JSONDecodeError:
-                raise HTTPException(
-                    status_code=400,
-                    detail="Invalid filters JSON"
-                )
+                raise HTTPException(status_code=400, detail="Invalid filters JSON")
 
         # Parse sort
         sort_list = []
         if sort:
-            for item in sort.split(','):
+            for item in sort.split(","):
                 item = item.strip()
-                if ':' in item:
-                    field, direction = item.split(':', 1)
+                if ":" in item:
+                    field, direction = item.split(":", 1)
                     sort_list.append((field.strip(), direction.strip()))
                 else:
-                    sort_list.append((item, 'asc'))
+                    sort_list.append((item, "asc"))
 
-        expand_list = [f.strip() for f in expand.split(',')] if expand else None
+        expand_list = [f.strip() for f in expand.split(",")] if expand else None
 
         result = await service.list_records(
             entity_name=entity_name,
@@ -276,7 +257,7 @@ async def list_records(
             page_size=page_size,
             search=search,
             expand=expand_list,
-            include_deleted=include_deleted
+            include_deleted=include_deleted,
         )
 
         return DynamicDataListResponse(**result)
@@ -300,14 +281,14 @@ async def list_records(
     responses={
         200: {"description": "Record retrieved successfully"},
         403: {"model": ForbiddenResponse, "description": "Permission denied"},
-        404: {"model": NotFoundResponse, "description": "Record not found"}
-    }
+        404: {"model": NotFoundResponse, "description": "Record not found"},
+    },
 )
 async def get_record(
     entity_name: str = Path(..., description="Entity name"),
     record_id: str = Path(..., description="Record ID"),
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user=Depends(get_current_user),
 ):
     """
     Get a single record by ID.
@@ -326,10 +307,7 @@ async def get_record(
 
     try:
         result = await service.get_record(entity_name, record_id)
-        return DynamicDataResponse(
-            id=result.get('id', ''),
-            data=result
-        )
+        return DynamicDataResponse(id=result.get("id", ""), data=result)
     except ValueError as e:
         logger.error(f"Record not found: {entity_name}/{record_id}")
         raise HTTPException(status_code=404, detail=str(e))
@@ -350,15 +328,15 @@ async def get_record(
         200: {"description": "Record updated successfully"},
         400: {"model": ValidationErrorResponse, "description": "Validation error"},
         403: {"model": ForbiddenResponse, "description": "Permission denied"},
-        404: {"model": NotFoundResponse, "description": "Record not found"}
-    }
+        404: {"model": NotFoundResponse, "description": "Record not found"},
+    },
 )
 async def update_record(
     entity_name: str = Path(..., description="Entity name"),
     record_id: str = Path(..., description="Record ID"),
     request: DynamicDataUpdateRequest = None,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user=Depends(get_current_user),
 ):
     """
     Update an existing record (partial update supported).
@@ -388,16 +366,10 @@ async def update_record(
 
     try:
         result = await service.update_record(entity_name, record_id, request.data)
-        return DynamicDataResponse(
-            id=result.get('id', ''),
-            data=result
-        )
+        return DynamicDataResponse(id=result.get("id", ""), data=result)
     except EntityValidationError as e:
         logger.warning(f"Validation error updating {entity_name}/{record_id}: {e.detail}")
-        return JSONResponse(
-            status_code=400,
-            content={"detail": e.detail, "errors": e.errors}
-        )
+        return JSONResponse(status_code=400, content={"detail": e.detail, "errors": e.errors})
     except ValueError as e:
         if "not found" in str(e).lower():
             raise HTTPException(status_code=404, detail=str(e))
@@ -419,14 +391,14 @@ async def update_record(
     responses={
         204: {"description": "Record deleted successfully"},
         403: {"model": ForbiddenResponse, "description": "Permission denied"},
-        404: {"model": NotFoundResponse, "description": "Record not found"}
-    }
+        404: {"model": NotFoundResponse, "description": "Record not found"},
+    },
 )
 async def delete_record(
     entity_name: str = Path(..., description="Entity name"),
     record_id: str = Path(..., description="Record ID"),
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user=Depends(get_current_user),
 ):
     """
     Delete a record.
@@ -457,18 +429,19 @@ async def delete_record(
 # Bulk Operation Endpoints
 # ==============================================================================
 
+
 @router.post(
     "/{entity_name}/records/bulk",
     response_model=DynamicDataBulkResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Bulk Create Records",
-    description="Create multiple records in a single request"
+    description="Create multiple records in a single request",
 )
 async def bulk_create_records(
     entity_name: str = Path(..., description="Entity name"),
     request: DynamicDataBulkCreateRequest = None,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user=Depends(get_current_user),
 ):
     """
     Create multiple records in a single request.
@@ -514,13 +487,13 @@ async def bulk_create_records(
     "/{entity_name}/records/bulk",
     response_model=DynamicDataBulkResponse,
     summary="Bulk Update Records",
-    description="Update multiple records in a single request"
+    description="Update multiple records in a single request",
 )
 async def bulk_update_records(
     entity_name: str = Path(..., description="Entity name"),
     request: DynamicDataBulkUpdateRequest = None,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user=Depends(get_current_user),
 ):
     """
     Update multiple records in a single request.
@@ -565,13 +538,13 @@ async def bulk_update_records(
     "/{entity_name}/records/bulk",
     response_model=DynamicDataBulkResponse,
     summary="Bulk Delete Records",
-    description="Delete multiple records in a single request"
+    description="Delete multiple records in a single request",
 )
 async def bulk_delete_records(
     entity_name: str = Path(..., description="Entity name"),
     request: DynamicDataBulkDeleteRequest = None,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user=Depends(get_current_user),
 ):
     """
     Delete multiple records in a single request.
@@ -611,6 +584,7 @@ async def bulk_delete_records(
 # Soft Delete Restore + Version History Endpoints (Stories 5.4.1, 5.1.5)
 # ==============================================================================
 
+
 @router.post(
     "/{entity_name}/records/{record_id}/restore",
     summary="Restore Soft-Deleted Record",
@@ -620,7 +594,7 @@ async def restore_record(
     entity_name: str = Path(...),
     record_id: str = Path(...),
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user=Depends(get_current_user),
 ):
     service = DynamicEntityService(db, current_user)
     try:
@@ -642,7 +616,7 @@ async def get_record_versions(
     entity_name: str = Path(...),
     record_id: str = Path(...),
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user=Depends(get_current_user),
 ):
     service = DynamicEntityService(db, current_user)
     try:
@@ -658,6 +632,7 @@ async def get_record_versions(
 # Aggregation Endpoint
 # ==============================================================================
 
+
 @router.get(
     "/{entity_name}/aggregate",
     response_model=AggregateResponse,
@@ -671,35 +646,24 @@ async def get_record_versions(
         200: {"description": "Aggregation results"},
         400: {"model": ValidationErrorResponse, "description": "Invalid parameters"},
         404: {"model": NotFoundResponse, "description": "Entity not found"},
-    }
+    },
 )
 async def aggregate_records(
     entity_name: str = Path(..., description="Entity name"),
-    group_by: Optional[str] = Query(
-        None,
-        description="Comma-separated field names to group by (e.g. 'status,region')"
-    ),
+    group_by: Optional[str] = Query(None, description="Comma-separated field names to group by (e.g. 'status,region')"),
     metrics: str = Query(
         ...,
         description=(
-            "JSON array of metric specs: "
-            '[{"field":"amount","function":"sum"},{"field":"id","function":"count"}]'
-        )
+            "JSON array of metric specs: " '[{"field":"amount","function":"sum"},{"field":"id","function":"count"}]'
+        ),
     ),
     filters: Optional[str] = Query(
-        None,
-        description="Filter specification as JSON string (same format as list endpoint)"
+        None, description="Filter specification as JSON string (same format as list endpoint)"
     ),
-    date_trunc: Optional[str] = Query(
-        None,
-        description="Date truncation unit: hour, day, week, month, quarter, year"
-    ),
-    date_field: Optional[str] = Query(
-        None,
-        description="Which group_by field to apply date_trunc to"
-    ),
+    date_trunc: Optional[str] = Query(None, description="Date truncation unit: hour, day, week, month, quarter, year"),
+    date_field: Optional[str] = Query(None, description="Which group_by field to apply date_trunc to"),
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user=Depends(get_current_user),
 ):
     """
     Aggregate records with GROUP BY and metric functions.
@@ -735,7 +699,7 @@ async def aggregate_records(
     service = DynamicEntityService(db, current_user)
 
     # Parse group_by
-    group_by_list = [f.strip() for f in group_by.split(',')] if group_by else None
+    group_by_list = [f.strip() for f in group_by.split(",")] if group_by else None
 
     # Parse metrics JSON
     try:
@@ -745,13 +709,9 @@ async def aggregate_records(
         # Validate each metric spec
         metrics_list = []
         for m in metrics_raw:
-            if 'field' not in m or 'function' not in m:
+            if "field" not in m or "function" not in m:
                 raise ValueError("Each metric must have 'field' and 'function' keys")
-            metrics_list.append({
-                'field': m['field'],
-                'function': m['function'],
-                'alias': m.get('alias')
-            })
+            metrics_list.append({"field": m["field"], "function": m["function"], "alias": m.get("alias")})
     except (json.JSONDecodeError, ValueError) as e:
         raise HTTPException(status_code=400, detail=f"Invalid metrics parameter: {e}")
 
@@ -764,11 +724,11 @@ async def aggregate_records(
             raise HTTPException(status_code=400, detail="Invalid filters JSON")
 
     # Validate date_trunc unit
-    valid_trunc_units = {'hour', 'day', 'week', 'month', 'quarter', 'year'}
+    valid_trunc_units = {"hour", "day", "week", "month", "quarter", "year"}
     if date_trunc and date_trunc not in valid_trunc_units:
         raise HTTPException(
             status_code=400,
-            detail=f"Invalid date_trunc value '{date_trunc}'. Must be one of: {', '.join(sorted(valid_trunc_units))}"
+            detail=f"Invalid date_trunc value '{date_trunc}'. Must be one of: {', '.join(sorted(valid_trunc_units))}",
         )
 
     try:
@@ -778,7 +738,7 @@ async def aggregate_records(
             metrics=metrics_list,
             filters=filter_dict,
             date_trunc=date_trunc,
-            date_field=date_field
+            date_field=date_field,
         )
         return AggregateResponse(**result)
     except ValueError as e:
@@ -795,11 +755,12 @@ async def aggregate_records(
 # Relationship Endpoints
 # ==============================================================================
 
+
 @router.get(
     "/{entity_name}/records/{record_id}/{relationship_name}",
     response_model=DynamicDataListResponse,
     summary="Get Related Records",
-    description="Get records related to a specific record via a relationship"
+    description="Get records related to a specific record via a relationship",
 )
 async def get_related_records(
     entity_name: str = Path(..., description="Entity name"),
@@ -812,7 +773,7 @@ async def get_related_records(
     search: Optional[str] = Query(None, description="Search term"),
     include_deleted: bool = Query(False, description="Include soft-deleted related records"),
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user=Depends(get_current_user),
 ):
     """
     Get records related via a defined relationship.
@@ -842,13 +803,13 @@ async def get_related_records(
     sort_list = None
     if sort:
         sort_list = []
-        for part in sort.split(','):
+        for part in sort.split(","):
             part = part.strip()
-            if ':' in part:
-                f, d = part.rsplit(':', 1)
+            if ":" in part:
+                f, d = part.rsplit(":", 1)
                 sort_list.append((f.strip(), d.strip()))
             else:
-                sort_list.append((part, 'asc'))
+                sort_list.append((part, "asc"))
 
     # Parse filters
     filter_dict = None
@@ -882,15 +843,16 @@ async def get_related_records(
 # Metadata Endpoints
 # ==============================================================================
 
+
 @router.get(
     "/{entity_name}/metadata",
     summary="Get Entity Metadata",
-    description="Get field definitions and relationship metadata for an entity"
+    description="Get field definitions and relationship metadata for an entity",
 )
 async def get_entity_metadata(
     entity_name: str = Path(..., description="Entity name"),
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user=Depends(get_current_user),
 ):
     """
     Get metadata for a dynamic entity.
@@ -914,64 +876,68 @@ async def get_entity_metadata(
 
     try:
         fields = generator.get_field_definitions(entity_name, tenant_id)
-        relationships = generator.get_relationship_definitions(entity_name, tenant_id)
+        generator.get_relationship_definitions(entity_name, tenant_id)
 
         # Get entity definition for display name
         entity_def = generator._load_entity_definition(entity_name, tenant_id)
 
         # Story 6.2.2 — aggregation hints
-        NUMERIC_TYPES = {'number', 'integer', 'decimal', 'float', 'money', 'bigint'}
-        NUMERIC_FUNCS = ['count', 'sum', 'avg', 'min', 'max']
-        FORMAT_MAP = {'number': 'number', 'decimal': 'decimal', 'money': 'currency', 'integer': 'integer'}
+        NUMERIC_TYPES = {"number", "integer", "decimal", "float", "money", "bigint"}
+        NUMERIC_FUNCS = ["count", "sum", "avg", "min", "max"]
+        FORMAT_MAP = {"number": "number", "decimal": "decimal", "money": "currency", "integer": "integer"}
 
         table_config_cols = []
         for f in fields:
-            ft = f.get('field_type', '') if isinstance(f, dict) else ''
+            ft = f.get("field_type", "") if isinstance(f, dict) else ""
             aggregatable = ft in NUMERIC_TYPES
             col = {
-                'field': f.get('name') if isinstance(f, dict) else str(f),
-                'label': f.get('label', f.get('name')) if isinstance(f, dict) else str(f),
-                'visible': True,
-                'sortable': True,
-                'filterable': True,
-                'aggregatable': aggregatable,
-                'aggregate_functions': NUMERIC_FUNCS if aggregatable else [],
-                'format': FORMAT_MAP.get(ft, 'text'),
+                "field": f.get("name") if isinstance(f, dict) else str(f),
+                "label": f.get("label", f.get("name")) if isinstance(f, dict) else str(f),
+                "visible": True,
+                "sortable": True,
+                "filterable": True,
+                "aggregatable": aggregatable,
+                "aggregate_functions": NUMERIC_FUNCS if aggregatable else [],
+                "format": FORMAT_MAP.get(ft, "text"),
             }
             if isinstance(f, dict):
-                if f.get('prefix'):
-                    col['prefix'] = f['prefix']
-                if f.get('suffix'):
-                    col['suffix'] = f['suffix']
+                if f.get("prefix"):
+                    col["prefix"] = f["prefix"]
+                if f.get("suffix"):
+                    col["suffix"] = f["suffix"]
             table_config_cols.append(col)
 
         # Prefer existing table_config if set on entity_def
-        if entity_def and getattr(entity_def, 'table_config', None):
+        if entity_def and getattr(entity_def, "table_config", None):
             computed_table_config = entity_def.table_config
         else:
             computed_table_config = {"columns": table_config_cols}
 
         # Story 5.3.2 — field-based relationships (forward + reverse)
-        REL_TYPES = {'relationship', 'lookup'}
+        REL_TYPES = {"relationship", "lookup"}
         field_relationships = []
 
         # Forward relationships: fields on this entity that reference another entity
         for f in fields:
             if not isinstance(f, dict):
                 continue
-            ft = f.get('field_type', '')
-            target = f.get('reference_entity_name') or f.get('reference_table_name')
+            ft = f.get("field_type", "")
+            target = f.get("reference_entity_name") or f.get("reference_table_name")
             if ft in REL_TYPES and target:
-                field_relationships.append({
-                    'name': f['name'],
-                    'label': f.get('label') or f['name'],
-                    'target_entity': target,
-                    'type': 'forward',
-                })
+                field_relationships.append(
+                    {
+                        "name": f["name"],
+                        "label": f.get("label") or f["name"],
+                        "target_entity": target,
+                        "type": "forward",
+                    }
+                )
 
         # Reverse relationships: fields on OTHER entities that reference this entity
         try:
-            from app.models.data_model import FieldDefinition as _FD, EntityDefinition as _EDef
+            from app.models.data_model import EntityDefinition as _EDef
+            from app.models.data_model import FieldDefinition as _FD
+
             if entity_def:
                 rev_rows = (
                     db.query(_FD, _EDef)
@@ -983,27 +949,29 @@ async def get_entity_metadata(
                     .all()
                 )
                 for rev_field, src_entity in rev_rows:
-                    field_relationships.append({
-                        'name': f'{src_entity.name}_set',
-                        'label': f'{src_entity.label or src_entity.name} (reverse)',
-                        'target_entity': src_entity.name,
-                        'field_name': rev_field.name,
-                        'type': 'reverse',
-                    })
+                    field_relationships.append(
+                        {
+                            "name": f"{src_entity.name}_set",
+                            "label": f"{src_entity.label or src_entity.name} (reverse)",
+                            "target_entity": src_entity.name,
+                            "field_name": rev_field.name,
+                            "type": "reverse",
+                        }
+                    )
         except Exception as _rev_exc:
             logger.warning(f"Could not compute reverse relationships for {entity_name}: {_rev_exc}")
 
         # Story 5.3.2 — aggregation_hints
-        NUMERIC_HINT_TYPES = {'number', 'decimal', 'currency', 'integer'}
+        NUMERIC_HINT_TYPES = {"number", "decimal", "currency", "integer"}
         aggregation_hints = [
             {
-                'field': f['name'],
-                'label': f.get('label', f['name']),
-                'aggregatable': True,
-                'aggregate_functions': ['sum', 'avg', 'min', 'max', 'count'],
+                "field": f["name"],
+                "label": f.get("label", f["name"]),
+                "aggregatable": True,
+                "aggregate_functions": ["sum", "avg", "min", "max", "count"],
             }
             for f in fields
-            if isinstance(f, dict) and f.get('field_type', '') in NUMERIC_HINT_TYPES
+            if isinstance(f, dict) and f.get("field_type", "") in NUMERIC_HINT_TYPES
         ]
 
         return {

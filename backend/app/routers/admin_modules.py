@@ -12,18 +12,17 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
-import time
-
-import requests
 import os
 import shutil
 import subprocess
 import tarfile
 import tempfile
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
+import requests
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
@@ -34,7 +33,7 @@ from app.models.user import User
 
 logger = logging.getLogger(__name__)
 
-HOST_PROJECT_ROOT = os.environ.get('HOST_PROJECT_ROOT', '/home/mahfudi/app-buildify')
+HOST_PROJECT_ROOT = os.environ.get("HOST_PROJECT_ROOT", "/home/mahfudi/app-buildify")
 
 router = APIRouter(tags=["admin-modules"])
 
@@ -55,6 +54,7 @@ def _get_registry():
 # ---------------------------------------------------------------------------
 # GET /  — list all modules in the catalog
 # ---------------------------------------------------------------------------
+
 
 @router.get("/")
 async def list_all_modules(
@@ -87,6 +87,7 @@ async def list_all_modules(
 # GET /{module_name}/install-status  — poll install status
 # ---------------------------------------------------------------------------
 
+
 @router.get("/{module_name}/install-status")
 async def get_install_status(
     module_name: str,
@@ -115,6 +116,7 @@ async def get_install_status(
 # ---------------------------------------------------------------------------
 # POST /upload-install  — upload a tarball and install it
 # ---------------------------------------------------------------------------
+
 
 @router.post("/upload-install", status_code=status.HTTP_200_OK)
 async def upload_and_install_module(
@@ -282,11 +284,15 @@ async def upload_and_install_module(
             _install_standalone(module_dir, module_name, module_version, port, db_module, db)
         elif parent_module_name:
             # Sub-module: inject into parent service directory instead of creating new
-            parent = db.query(Module).filter(
-                Module.name == parent_module_name,
-                Module.is_installed == True,
-                Module.install_status == "ready",
-            ).first()
+            parent = (
+                db.query(Module)
+                .filter(
+                    Module.name == parent_module_name,
+                    Module.is_installed == True,
+                    Module.install_status == "ready",
+                )
+                .first()
+            )
             if not parent:
                 raise HTTPException(
                     status_code=409,
@@ -391,7 +397,6 @@ async def upload_and_install_module(
         )
 
 
-
 def _install_standalone(
     module_dir: Path,
     name: str,
@@ -436,7 +441,7 @@ def _install_standalone(
         f"      context: ../../modules/{name}/backend\n"
         f"      dockerfile: Dockerfile\n"
         f"    ports:\n"
-        f"      - \"{port}:{port}\"\n"
+        f'      - "{port}:{port}"\n'
         f"    environment:\n"
         f"      SQLALCHEMY_DATABASE_URL: postgresql+psycopg2://appuser:apppass@postgres:5432/appdb\n"
         f"      MODULE_NAME: {name}\n"
@@ -509,9 +514,7 @@ def _run_alembic() -> None:
         timeout=300,
     )
     if result.returncode != 0:
-        raise RuntimeError(
-            f"alembic upgrade head failed (exit {result.returncode}):\n{result.stderr}"
-        )
+        raise RuntimeError(f"alembic upgrade head failed (exit {result.returncode}):\n{result.stderr}")
     logger.info("Alembic migrations completed")
 
 

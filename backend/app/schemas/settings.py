@@ -1,9 +1,12 @@
-from pydantic import BaseModel, Field, ConfigDict
-from typing import Optional, Dict, Any, Literal
 from datetime import datetime
+from typing import Any, Dict, Literal, Optional
+
+from pydantic import BaseModel, ConfigDict, Field
+
 
 class UserSettingsResponse(BaseModel):
     """User settings response"""
+
     id: str = Field(..., description="Settings unique identifier")
     user_id: str = Field(..., description="User ID")
     theme: str = Field(..., description="Theme preference (light/dark)")
@@ -16,8 +19,10 @@ class UserSettingsResponse(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
+
 class UserSettingsUpdate(BaseModel):
     """Update user settings"""
+
     theme: Optional[Literal["light", "dark"]] = Field(None, description="Theme preference")
     language: Optional[str] = Field(None, max_length=10, description="Language code")
     timezone: Optional[str] = Field(None, max_length=50, description="Timezone")
@@ -31,16 +36,15 @@ class UserSettingsUpdate(BaseModel):
                 "language": "en",
                 "timezone": "UTC",
                 "density": "normal",
-                "preferences": {
-                    "sidebar_collapsed": False,
-                    "default_page_size": 25
-                }
+                "preferences": {"sidebar_collapsed": False, "default_page_size": 25},
             }
         }
     )
 
+
 class TenantSettingsResponse(BaseModel):
     """Tenant settings response"""
+
     id: str = Field(..., description="Settings unique identifier")
     tenant_id: Optional[str] = Field(None, description="Tenant ID (None for default settings)")
     tenant_name: Optional[str] = Field(None, description="Tenant display name")
@@ -56,8 +60,10 @@ class TenantSettingsResponse(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
+
 class TenantSettingsUpdate(BaseModel):
     """Update tenant settings"""
+
     tenant_name: Optional[str] = Field(None, max_length=255, description="Tenant display name")
     logo_url: Optional[str] = Field(None, max_length=500, description="Logo URL")
     primary_color: Optional[str] = Field(None, pattern=r"^#[0-9A-Fa-f]{6}$", description="Primary color (hex)")
@@ -73,14 +79,8 @@ class TenantSettingsUpdate(BaseModel):
                 "logo_url": "https://example.com/logo.png",
                 "primary_color": "#0066CC",
                 "secondary_color": "#FF6600",
-                "enabled_features": {
-                    "advanced_reporting": True,
-                    "api_access": True
-                },
-                "settings": {
-                    "max_users": 100,
-                    "data_retention_days": 365
-                }
+                "enabled_features": {"advanced_reporting": True, "api_access": True},
+                "settings": {"max_users": 100, "data_retention_days": 365},
             }
         }
     )

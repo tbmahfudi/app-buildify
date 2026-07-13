@@ -7,37 +7,33 @@ REST API endpoints for managing module extensions (Phase 4 Priority 3):
 - Menu extensions
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
 from typing import List, Optional
 
-from app.core.dependencies import get_db, get_current_user
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.orm import Session
+
+from app.core.dependencies import get_current_user, get_db
 from app.models.user import User
 from app.schemas.module_extension import (
     EntityExtensionCreate,
     EntityExtensionResponse,
-    ScreenExtensionCreate,
-    ScreenExtensionResponse,
+    ExtensionOperationResponse,
     MenuExtensionCreate,
     MenuExtensionResponse,
-    ExtensionOperationResponse
+    ScreenExtensionCreate,
+    ScreenExtensionResponse,
 )
 from app.services.module_extension_service import ModuleExtensionService
 
-
-router = APIRouter(
-    prefix="/api/v1/module-extensions",
-    tags=["module-extensions"]
-)
+router = APIRouter(prefix="/api/v1/module-extensions", tags=["module-extensions"])
 
 
 # ===== Entity Extension Endpoints =====
 
+
 @router.post("/entity", response_model=ExtensionOperationResponse)
 async def create_entity_extension(
-    extension_data: EntityExtensionCreate,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    extension_data: EntityExtensionCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
     """
     Create entity extension.
@@ -87,20 +83,13 @@ async def create_entity_extension(
     success, message, data = service.create_entity_extension(
         extending_module_id=extension_data.extending_module_id,
         target_entity_id=extension_data.target_entity_id,
-        extension_fields=[field.model_dump() for field in extension_data.extension_fields]
+        extension_fields=[field.model_dump() for field in extension_data.extension_fields],
     )
 
     if not success:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=message
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=message)
 
-    return ExtensionOperationResponse(
-        success=success,
-        message=message,
-        data=data
-    )
+    return ExtensionOperationResponse(success=success, message=message, data=data)
 
 
 @router.get("/entity", response_model=List[EntityExtensionResponse])
@@ -108,7 +97,7 @@ async def list_entity_extensions(
     target_entity_id: Optional[str] = None,
     extending_module_id: Optional[str] = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """
     List entity extensions.
@@ -142,18 +131,14 @@ async def list_entity_extensions(
     """
     service = ModuleExtensionService(db, current_user)
     extensions = service.list_entity_extensions(
-        target_entity_id=target_entity_id,
-        extending_module_id=extending_module_id
+        target_entity_id=target_entity_id, extending_module_id=extending_module_id
     )
     return extensions
 
 
 @router.get("/entity/{entity_name}/records/{record_id}")
 async def get_entity_with_extensions(
-    entity_name: str,
-    record_id: str,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    entity_name: str, record_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
     """
     Get entity record with all extension data.
@@ -187,15 +172,11 @@ async def get_entity_with_extensions(
     ```
     """
     service = ModuleExtensionService(db, current_user)
-    record = service.get_entity_with_extensions(
-        entity_name=entity_name,
-        record_id=record_id
-    )
+    record = service.get_entity_with_extensions(entity_name=entity_name, record_id=record_id)
 
     if not record:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Record not found: {entity_name}/{record_id}"
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Record not found: {entity_name}/{record_id}"
         )
 
     return record
@@ -203,11 +184,10 @@ async def get_entity_with_extensions(
 
 # ===== Screen Extension Endpoints =====
 
+
 @router.post("/screen", response_model=ExtensionOperationResponse)
 async def create_screen_extension(
-    extension_data: ScreenExtensionCreate,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    extension_data: ScreenExtensionCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
     """
     Create screen extension.
@@ -262,20 +242,13 @@ async def create_screen_extension(
         extension_type=extension_data.extension_type,
         extension_config=extension_data.extension_config,
         position=extension_data.position,
-        required_permission=extension_data.required_permission
+        required_permission=extension_data.required_permission,
     )
 
     if not success:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=message
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=message)
 
-    return ExtensionOperationResponse(
-        success=success,
-        message=message,
-        data=data
-    )
+    return ExtensionOperationResponse(success=success, message=message, data=data)
 
 
 @router.get("/screen", response_model=List[ScreenExtensionResponse])
@@ -283,7 +256,7 @@ async def list_screen_extensions(
     target_screen: Optional[str] = None,
     target_module_id: Optional[str] = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """
     List screen extensions.
@@ -318,20 +291,16 @@ async def list_screen_extensions(
     ```
     """
     service = ModuleExtensionService(db, current_user)
-    extensions = service.list_screen_extensions(
-        target_screen=target_screen,
-        target_module_id=target_module_id
-    )
+    extensions = service.list_screen_extensions(target_screen=target_screen, target_module_id=target_module_id)
     return extensions
 
 
 # ===== Menu Extension Endpoints =====
 
+
 @router.post("/menu", response_model=ExtensionOperationResponse)
 async def create_menu_extension(
-    extension_data: MenuExtensionCreate,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    extension_data: MenuExtensionCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
     """
     Create menu extension.
@@ -392,27 +361,20 @@ async def create_menu_extension(
         target_menu_item=extension_data.target_menu_item,
         menu_config=extension_data.menu_config,
         position=extension_data.position,
-        required_permission=extension_data.required_permission
+        required_permission=extension_data.required_permission,
     )
 
     if not success:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=message
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=message)
 
-    return ExtensionOperationResponse(
-        success=success,
-        message=message,
-        data=data
-    )
+    return ExtensionOperationResponse(success=success, message=message, data=data)
 
 
 @router.get("/menu", response_model=List[MenuExtensionResponse])
 async def list_menu_extensions(
     target_module_id: Optional[str] = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """
     List menu extensions.
@@ -446,7 +408,5 @@ async def list_menu_extensions(
     ```
     """
     service = ModuleExtensionService(db, current_user)
-    extensions = service.list_menu_extensions(
-        target_module_id=target_module_id
-    )
+    extensions = service.list_menu_extensions(target_module_id=target_module_id)
     return extensions

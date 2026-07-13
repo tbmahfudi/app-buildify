@@ -19,6 +19,7 @@ class NotificationConfig(Base):
     NULL tenant_id means system-wide default configuration.
     Superadmin can configure both system defaults and tenant-specific settings.
     """
+
     __tablename__ = "notification_config"
 
     # Primary key
@@ -87,11 +88,11 @@ class NotificationConfig(Base):
     def get_methods_for_notification_type(self, notification_type: str) -> list:
         """Get enabled delivery methods for a specific notification type."""
         type_map = {
-            'account_locked': (self.account_locked_enabled, self.account_locked_methods),
-            'password_expiring': (self.password_expiring_enabled, self.password_expiring_methods),
-            'password_changed': (self.password_changed_enabled, self.password_changed_methods),
-            'password_reset': (self.password_reset_enabled, self.password_reset_methods),
-            'login_from_new_device': (self.login_from_new_device_enabled, self.login_from_new_device_methods),
+            "account_locked": (self.account_locked_enabled, self.account_locked_methods),
+            "password_expiring": (self.password_expiring_enabled, self.password_expiring_methods),
+            "password_changed": (self.password_changed_enabled, self.password_changed_methods),
+            "password_reset": (self.password_reset_enabled, self.password_reset_methods),
+            "login_from_new_device": (self.login_from_new_device_enabled, self.login_from_new_device_methods),
         }
 
         enabled, methods = type_map.get(notification_type, (False, None))
@@ -102,11 +103,11 @@ class NotificationConfig(Base):
         available_methods = []
         if methods:
             for method in methods:
-                if method == 'email' and self.email_enabled:
+                if method == "email" and self.email_enabled:
                     available_methods.append(method)
-                elif method == 'sms' and self.sms_enabled:
+                elif method == "sms" and self.sms_enabled:
                     available_methods.append(method)
-                elif method == 'webhook' and self.webhook_enabled:
+                elif method == "webhook" and self.webhook_enabled:
                     available_methods.append(method)
 
         return available_methods

@@ -6,18 +6,20 @@ Creates granular permissions for platform-level and tenant-level no-code managem
 Run: python -m app.seeds.seed_nocode_permissions
 """
 
-from sqlalchemy.orm import Session
-from app.core.db import SessionLocal
-from app.models.permission import Permission
-from app.models.base import generate_uuid
 from datetime import datetime
+
+from sqlalchemy.orm import Session
+
+from app.core.db import SessionLocal
+from app.models.base import generate_uuid
+from app.models.permission import Permission
 
 
 def seed_nocode_permissions(db: Session):
     """Seed permissions for no-code platform features."""
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     print("NO-CODE PLATFORM PERMISSIONS")
-    print("="*80 + "\n")
+    print("=" * 80 + "\n")
 
     permissions = [
         # ==================== Data Model Designer ====================
@@ -29,7 +31,7 @@ def seed_nocode_permissions(db: Session):
             "action": "create",
             "scope": "platform",
             "category": "nocode_platform",
-            "is_system": True
+            "is_system": True,
         },
         {
             "code": "data_model:create:tenant",
@@ -39,7 +41,7 @@ def seed_nocode_permissions(db: Session):
             "action": "create",
             "scope": "tenant",
             "category": "nocode",
-            "is_system": True
+            "is_system": True,
         },
         {
             "code": "data_model:read:platform",
@@ -49,7 +51,7 @@ def seed_nocode_permissions(db: Session):
             "action": "read",
             "scope": "platform",
             "category": "nocode_platform",
-            "is_system": True
+            "is_system": True,
         },
         {
             "code": "data_model:read:tenant",
@@ -59,7 +61,7 @@ def seed_nocode_permissions(db: Session):
             "action": "read",
             "scope": "tenant",
             "category": "nocode",
-            "is_system": True
+            "is_system": True,
         },
         {
             "code": "data_model:update:platform",
@@ -69,7 +71,7 @@ def seed_nocode_permissions(db: Session):
             "action": "update",
             "scope": "platform",
             "category": "nocode_platform",
-            "is_system": True
+            "is_system": True,
         },
         {
             "code": "data_model:update:tenant",
@@ -79,7 +81,7 @@ def seed_nocode_permissions(db: Session):
             "action": "update",
             "scope": "tenant",
             "category": "nocode",
-            "is_system": True
+            "is_system": True,
         },
         {
             "code": "data_model:delete:platform",
@@ -89,7 +91,7 @@ def seed_nocode_permissions(db: Session):
             "action": "delete",
             "scope": "platform",
             "category": "nocode_platform",
-            "is_system": True
+            "is_system": True,
         },
         {
             "code": "data_model:delete:tenant",
@@ -99,7 +101,7 @@ def seed_nocode_permissions(db: Session):
             "action": "delete",
             "scope": "tenant",
             "category": "nocode",
-            "is_system": True
+            "is_system": True,
         },
         {
             "code": "data_model:clone:platform",
@@ -109,9 +111,8 @@ def seed_nocode_permissions(db: Session):
             "action": "clone",
             "scope": "platform",
             "category": "nocode",
-            "is_system": True
+            "is_system": True,
         },
-
         # ==================== Workflow Designer ====================
         {
             "code": "workflow:create:platform",
@@ -121,7 +122,7 @@ def seed_nocode_permissions(db: Session):
             "action": "create",
             "scope": "platform",
             "category": "nocode_platform",
-            "is_system": True
+            "is_system": True,
         },
         {
             "code": "workflow:create:tenant",
@@ -131,7 +132,7 @@ def seed_nocode_permissions(db: Session):
             "action": "create",
             "scope": "tenant",
             "category": "nocode",
-            "is_system": True
+            "is_system": True,
         },
         {
             "code": "workflow:read:platform",
@@ -141,7 +142,7 @@ def seed_nocode_permissions(db: Session):
             "action": "read",
             "scope": "platform",
             "category": "nocode_platform",
-            "is_system": True
+            "is_system": True,
         },
         {
             "code": "workflow:read:tenant",
@@ -151,7 +152,7 @@ def seed_nocode_permissions(db: Session):
             "action": "read",
             "scope": "tenant",
             "category": "nocode",
-            "is_system": True
+            "is_system": True,
         },
         {
             "code": "workflow:update:platform",
@@ -161,7 +162,7 @@ def seed_nocode_permissions(db: Session):
             "action": "update",
             "scope": "platform",
             "category": "nocode_platform",
-            "is_system": True
+            "is_system": True,
         },
         {
             "code": "workflow:update:tenant",
@@ -171,7 +172,7 @@ def seed_nocode_permissions(db: Session):
             "action": "update",
             "scope": "tenant",
             "category": "nocode",
-            "is_system": True
+            "is_system": True,
         },
         {
             "code": "workflow:delete:platform",
@@ -181,7 +182,7 @@ def seed_nocode_permissions(db: Session):
             "action": "delete",
             "scope": "platform",
             "category": "nocode_platform",
-            "is_system": True
+            "is_system": True,
         },
         {
             "code": "workflow:delete:tenant",
@@ -191,7 +192,7 @@ def seed_nocode_permissions(db: Session):
             "action": "delete",
             "scope": "tenant",
             "category": "nocode",
-            "is_system": True
+            "is_system": True,
         },
         {
             "code": "workflow:clone:platform",
@@ -201,9 +202,8 @@ def seed_nocode_permissions(db: Session):
             "action": "clone",
             "scope": "platform",
             "category": "nocode",
-            "is_system": True
+            "is_system": True,
         },
-
         # ==================== Automation System ====================
         {
             "code": "automation:create:platform",
@@ -213,7 +213,7 @@ def seed_nocode_permissions(db: Session):
             "action": "create",
             "scope": "platform",
             "category": "nocode_platform",
-            "is_system": True
+            "is_system": True,
         },
         {
             "code": "automation:create:tenant",
@@ -223,7 +223,7 @@ def seed_nocode_permissions(db: Session):
             "action": "create",
             "scope": "tenant",
             "category": "nocode",
-            "is_system": True
+            "is_system": True,
         },
         {
             "code": "automation:read:platform",
@@ -233,7 +233,7 @@ def seed_nocode_permissions(db: Session):
             "action": "read",
             "scope": "platform",
             "category": "nocode_platform",
-            "is_system": True
+            "is_system": True,
         },
         {
             "code": "automation:read:tenant",
@@ -243,7 +243,7 @@ def seed_nocode_permissions(db: Session):
             "action": "read",
             "scope": "tenant",
             "category": "nocode",
-            "is_system": True
+            "is_system": True,
         },
         {
             "code": "automation:update:platform",
@@ -253,7 +253,7 @@ def seed_nocode_permissions(db: Session):
             "action": "update",
             "scope": "platform",
             "category": "nocode_platform",
-            "is_system": True
+            "is_system": True,
         },
         {
             "code": "automation:update:tenant",
@@ -263,7 +263,7 @@ def seed_nocode_permissions(db: Session):
             "action": "update",
             "scope": "tenant",
             "category": "nocode",
-            "is_system": True
+            "is_system": True,
         },
         {
             "code": "automation:delete:platform",
@@ -273,7 +273,7 @@ def seed_nocode_permissions(db: Session):
             "action": "delete",
             "scope": "platform",
             "category": "nocode_platform",
-            "is_system": True
+            "is_system": True,
         },
         {
             "code": "automation:delete:tenant",
@@ -283,7 +283,7 @@ def seed_nocode_permissions(db: Session):
             "action": "delete",
             "scope": "tenant",
             "category": "nocode",
-            "is_system": True
+            "is_system": True,
         },
         {
             "code": "automation:clone:platform",
@@ -293,9 +293,8 @@ def seed_nocode_permissions(db: Session):
             "action": "clone",
             "scope": "platform",
             "category": "nocode",
-            "is_system": True
+            "is_system": True,
         },
-
         # ==================== Lookup Configuration ====================
         {
             "code": "lookup:create:platform",
@@ -305,7 +304,7 @@ def seed_nocode_permissions(db: Session):
             "action": "create",
             "scope": "platform",
             "category": "nocode_platform",
-            "is_system": True
+            "is_system": True,
         },
         {
             "code": "lookup:create:tenant",
@@ -315,7 +314,7 @@ def seed_nocode_permissions(db: Session):
             "action": "create",
             "scope": "tenant",
             "category": "nocode",
-            "is_system": True
+            "is_system": True,
         },
         {
             "code": "lookup:read:platform",
@@ -325,7 +324,7 @@ def seed_nocode_permissions(db: Session):
             "action": "read",
             "scope": "platform",
             "category": "nocode_platform",
-            "is_system": True
+            "is_system": True,
         },
         {
             "code": "lookup:read:tenant",
@@ -335,7 +334,7 @@ def seed_nocode_permissions(db: Session):
             "action": "read",
             "scope": "tenant",
             "category": "nocode",
-            "is_system": True
+            "is_system": True,
         },
         {
             "code": "lookup:update:platform",
@@ -345,7 +344,7 @@ def seed_nocode_permissions(db: Session):
             "action": "update",
             "scope": "platform",
             "category": "nocode_platform",
-            "is_system": True
+            "is_system": True,
         },
         {
             "code": "lookup:update:tenant",
@@ -355,7 +354,7 @@ def seed_nocode_permissions(db: Session):
             "action": "update",
             "scope": "tenant",
             "category": "nocode",
-            "is_system": True
+            "is_system": True,
         },
         {
             "code": "lookup:delete:platform",
@@ -365,7 +364,7 @@ def seed_nocode_permissions(db: Session):
             "action": "delete",
             "scope": "platform",
             "category": "nocode_platform",
-            "is_system": True
+            "is_system": True,
         },
         {
             "code": "lookup:delete:tenant",
@@ -375,7 +374,7 @@ def seed_nocode_permissions(db: Session):
             "action": "delete",
             "scope": "tenant",
             "category": "nocode",
-            "is_system": True
+            "is_system": True,
         },
         {
             "code": "lookup:clone:platform",
@@ -385,7 +384,7 @@ def seed_nocode_permissions(db: Session):
             "action": "clone",
             "scope": "platform",
             "category": "nocode",
-            "is_system": True
+            "is_system": True,
         },
     ]
 
@@ -394,9 +393,7 @@ def seed_nocode_permissions(db: Session):
 
     for perm_data in permissions:
         # Check if permission already exists
-        existing = db.query(Permission).filter(
-            Permission.code == perm_data["code"]
-        ).first()
+        existing = db.query(Permission).filter(Permission.code == perm_data["code"]).first()
 
         if existing:
             print(f"  ⏭️  Permission exists: {perm_data['code']}")
@@ -404,11 +401,7 @@ def seed_nocode_permissions(db: Session):
             continue
 
         # Create permission
-        permission = Permission(
-            id=str(generate_uuid()),
-            created_at=datetime.utcnow(),
-            **perm_data
-        )
+        permission = Permission(id=str(generate_uuid()), created_at=datetime.utcnow(), **perm_data)
         db.add(permission)
         created_count += 1
         print(f"  ✅ Created permission: {perm_data['code']}")
@@ -416,7 +409,7 @@ def seed_nocode_permissions(db: Session):
     db.commit()
 
     print(f"\n{'='*80}")
-    print(f"SUMMARY")
+    print("SUMMARY")
     print(f"{'='*80}")
     print(f"  ✅ Created: {created_count} permissions")
     print(f"  ⏭️  Skipped: {skipped_count} permissions (already exist)")
@@ -432,6 +425,7 @@ def main():
     except Exception as e:
         print(f"❌ Error: {e}")
         import traceback
+
         traceback.print_exc()
         db.rollback()
     finally:
