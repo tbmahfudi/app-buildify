@@ -10,6 +10,7 @@ class RolePermission(Base):
 
     Assigns permissions to roles.
     """
+
     __tablename__ = "role_permissions"
 
     # Primary key
@@ -28,9 +29,7 @@ class RolePermission(Base):
     permission = relationship("Permission", back_populates="role_permissions")
 
     # Constraints
-    __table_args__ = (
-        UniqueConstraint('role_id', 'permission_id', name='uq_role_permission'),
-    )
+    __table_args__ = (UniqueConstraint("role_id", "permission_id", name="uq_role_permission"),)
 
     def __repr__(self):
         return f"<RolePermission(role_id={self.role_id}, permission_id={self.permission_id})>"
@@ -42,6 +41,7 @@ class UserRole(Base):
 
     Assigns roles directly to users.
     """
+
     __tablename__ = "user_roles"
 
     # Primary key
@@ -60,9 +60,7 @@ class UserRole(Base):
     role = relationship("Role", back_populates="user_roles")
 
     # Constraints
-    __table_args__ = (
-        UniqueConstraint('user_id', 'role_id', name='uq_user_role'),
-    )
+    __table_args__ = (UniqueConstraint("user_id", "role_id", name="uq_user_role"),)
 
     def __repr__(self):
         return f"<UserRole(user_id={self.user_id}, role_id={self.role_id})>"
@@ -74,6 +72,7 @@ class UserGroup(Base):
 
     Adds users to groups.
     """
+
     __tablename__ = "user_groups"
 
     # Primary key
@@ -92,9 +91,7 @@ class UserGroup(Base):
     group = relationship("Group", back_populates="user_groups")
 
     # Constraints
-    __table_args__ = (
-        UniqueConstraint('user_id', 'group_id', name='uq_user_group'),
-    )
+    __table_args__ = (UniqueConstraint("user_id", "group_id", name="uq_user_group"),)
 
     def __repr__(self):
         return f"<UserGroup(user_id={self.user_id}, group_id={self.group_id})>"
@@ -106,6 +103,7 @@ class GroupRole(Base):
 
     Assigns roles to groups.
     """
+
     __tablename__ = "group_roles"
 
     # Primary key
@@ -124,9 +122,7 @@ class GroupRole(Base):
     role = relationship("Role", back_populates="group_roles")
 
     # Constraints
-    __table_args__ = (
-        UniqueConstraint('group_id', 'role_id', name='uq_group_role'),
-    )
+    __table_args__ = (UniqueConstraint("group_id", "role_id", name="uq_group_role"),)
 
     def __repr__(self):
         return f"<GroupRole(group_id={self.group_id}, role_id={self.role_id})>"

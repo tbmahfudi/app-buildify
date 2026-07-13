@@ -11,16 +11,16 @@ Run: python -m backend.app.seeds.seed_financial_rbac
 
 import uuid
 from datetime import datetime
-from sqlalchemy.orm import Session
+
 from app.core.db import SessionLocal
-from app.models.tenant import Tenant
-from app.models.user import User
 from app.models.company import Company
-from app.models.role import Role
-from app.models.permission import Permission
-from app.models.rbac_junctions import RolePermission, GroupRole, UserGroup
 from app.models.group import Group
 from app.models.module_registry import ModuleRegistry, TenantModule
+from app.models.permission import Permission
+from app.models.rbac_junctions import GroupRole, RolePermission, UserGroup
+from app.models.role import Role
+from app.models.tenant import Tenant
+from app.models.user import User
 
 
 def seed_financial_rbac():
@@ -35,9 +35,9 @@ def seed_financial_rbac():
     db = SessionLocal()
 
     try:
-        print("\n" + "="*80)
+        print("\n" + "=" * 80)
         print("FINANCIAL MODULE RBAC SETUP FOR FASHIONHUB")
-        print("="*80 + "\n")
+        print("=" * 80 + "\n")
 
         # ========================================================================
         # STEP 1: Get FashionHub Tenant and Company
@@ -50,10 +50,7 @@ def seed_financial_rbac():
             print("   Please run seed_complete_org.py first")
             return
 
-        company = db.query(Company).filter(
-            Company.code == "FASHIONHUB",
-            Company.tenant_id == tenant.id
-        ).first()
+        company = db.query(Company).filter(Company.code == "FASHIONHUB", Company.tenant_id == tenant.id).first()
         if not company:
             print("❌ ERROR: FashionHub company not found!")
             return
@@ -72,133 +69,131 @@ def seed_financial_rbac():
                 "code": "financial:accounts:read:company",
                 "name": "View Accounts",
                 "description": "View chart of accounts",
-                "category": "financial"
+                "category": "financial",
             },
             {
                 "code": "financial:accounts:create:company",
                 "name": "Create Accounts",
                 "description": "Create new accounts in chart of accounts",
-                "category": "financial"
+                "category": "financial",
             },
             {
                 "code": "financial:accounts:update:company",
                 "name": "Update Accounts",
                 "description": "Update existing accounts",
-                "category": "financial"
+                "category": "financial",
             },
             {
                 "code": "financial:accounts:delete:company",
                 "name": "Delete Accounts",
                 "description": "Delete accounts from chart of accounts",
-                "category": "financial"
+                "category": "financial",
             },
             # Transactions
             {
                 "code": "financial:transactions:read:company",
                 "name": "View Transactions",
                 "description": "View financial transactions",
-                "category": "financial"
+                "category": "financial",
             },
             {
                 "code": "financial:transactions:create:company",
                 "name": "Create Transactions",
                 "description": "Create financial transactions",
-                "category": "financial"
+                "category": "financial",
             },
             {
                 "code": "financial:transactions:update:company",
                 "name": "Update Transactions",
                 "description": "Update financial transactions",
-                "category": "financial"
+                "category": "financial",
             },
             {
                 "code": "financial:transactions:delete:company",
                 "name": "Delete Transactions",
                 "description": "Delete financial transactions",
-                "category": "financial"
+                "category": "financial",
             },
             {
                 "code": "financial:transactions:post:company",
                 "name": "Post Transactions",
                 "description": "Post transactions to the ledger",
-                "category": "financial"
+                "category": "financial",
             },
             # Invoices
             {
                 "code": "financial:invoices:read:company",
                 "name": "View Invoices",
                 "description": "View invoices",
-                "category": "financial"
+                "category": "financial",
             },
             {
                 "code": "financial:invoices:create:company",
                 "name": "Create Invoices",
                 "description": "Create and manage invoices",
-                "category": "financial"
+                "category": "financial",
             },
             {
                 "code": "financial:invoices:update:company",
                 "name": "Update Invoices",
                 "description": "Update invoice details",
-                "category": "financial"
+                "category": "financial",
             },
             {
                 "code": "financial:invoices:delete:company",
                 "name": "Delete Invoices",
                 "description": "Delete invoices",
-                "category": "financial"
+                "category": "financial",
             },
             {
                 "code": "financial:invoices:send:company",
                 "name": "Send Invoices",
                 "description": "Send invoices to customers",
-                "category": "financial"
+                "category": "financial",
             },
             # Payments
             {
                 "code": "financial:payments:read:company",
                 "name": "View Payments",
                 "description": "View payment records",
-                "category": "financial"
+                "category": "financial",
             },
             {
                 "code": "financial:payments:create:company",
                 "name": "Create Payments",
                 "description": "Record payments",
-                "category": "financial"
+                "category": "financial",
             },
             {
                 "code": "financial:payments:update:company",
                 "name": "Update Payments",
                 "description": "Update payment records",
-                "category": "financial"
+                "category": "financial",
             },
             {
                 "code": "financial:payments:delete:company",
                 "name": "Delete Payments",
                 "description": "Delete payment records",
-                "category": "financial"
+                "category": "financial",
             },
             # Reports
             {
                 "code": "financial:reports:read:company",
                 "name": "View Reports",
                 "description": "View financial reports",
-                "category": "financial"
+                "category": "financial",
             },
             {
                 "code": "financial:reports:export:company",
                 "name": "Export Reports",
                 "description": "Export financial reports",
-                "category": "financial"
-            }
+                "category": "financial",
+            },
         ]
 
         permission_map = {}
         for perm_data in financial_permissions:
-            perm = db.query(Permission).filter(
-                Permission.code == perm_data["code"]
-            ).first()
+            perm = db.query(Permission).filter(Permission.code == perm_data["code"]).first()
 
             if not perm:
                 # Parse permission code: format is "financial:resource:action:scope"
@@ -219,7 +214,7 @@ def seed_financial_rbac():
                     action=action,
                     scope=scope,
                     category=perm_data["category"],
-                    is_system=False
+                    is_system=False,
                 )
                 db.add(perm)
                 db.flush()
@@ -261,8 +256,8 @@ def seed_financial_rbac():
                     "financial:payments:update:company",
                     "financial:payments:delete:company",
                     "financial:reports:read:company",
-                    "financial:reports:export:company"
-                ]
+                    "financial:reports:export:company",
+                ],
             },
             "Accountant": {
                 "code": "ACCOUNTANT",
@@ -276,8 +271,8 @@ def seed_financial_rbac():
                     "financial:transactions:post:company",
                     "financial:invoices:read:company",
                     "financial:payments:read:company",
-                    "financial:reports:read:company"
-                ]
+                    "financial:reports:read:company",
+                ],
             },
             "Billing Clerk": {
                 "code": "BILLING_CLERK",
@@ -289,8 +284,8 @@ def seed_financial_rbac():
                     "financial:invoices:send:company",
                     "financial:payments:read:company",
                     "financial:payments:create:company",
-                    "financial:payments:update:company"
-                ]
+                    "financial:payments:update:company",
+                ],
             },
             "Financial Viewer": {
                 "code": "FIN_VIEWER",
@@ -300,18 +295,15 @@ def seed_financial_rbac():
                     "financial:transactions:read:company",
                     "financial:invoices:read:company",
                     "financial:payments:read:company",
-                    "financial:reports:read:company"
-                ]
-            }
+                    "financial:reports:read:company",
+                ],
+            },
         }
 
         role_map = {}
         for role_name, role_config in roles_config.items():
             # Check if role exists
-            role = db.query(Role).filter(
-                Role.code == role_config["code"],
-                Role.tenant_id == tenant.id
-            ).first()
+            role = db.query(Role).filter(Role.code == role_config["code"], Role.tenant_id == tenant.id).first()
 
             if not role:
                 role = Role(
@@ -320,7 +312,7 @@ def seed_financial_rbac():
                     description=role_config["description"],
                     tenant_id=tenant.id,
                     is_active=True,
-                    created_at=datetime.utcnow()
+                    created_at=datetime.utcnow(),
                 )
                 db.add(role)
                 db.flush()
@@ -333,17 +325,18 @@ def seed_financial_rbac():
                 perm = permission_map.get(perm_code)
                 if perm:
                     # Check if permission already assigned
-                    existing = db.query(RolePermission).filter(
-                        RolePermission.role_id == role.id,
-                        RolePermission.permission_id == perm.id
-                    ).first()
+                    existing = (
+                        db.query(RolePermission)
+                        .filter(RolePermission.role_id == role.id, RolePermission.permission_id == perm.id)
+                        .first()
+                    )
 
                     if not existing:
                         role_perm = RolePermission(
                             id=str(uuid.uuid4()),
                             role_id=str(role.id),
                             permission_id=str(perm.id),
-                            created_at=datetime.utcnow()
+                            created_at=datetime.utcnow(),
                         )
                         db.add(role_perm)
 
@@ -363,36 +356,38 @@ def seed_financial_rbac():
                 "code": "FIN_MANAGERS",
                 "description": "Finance executives with full financial access",
                 "roles": ["Financial Manager"],
-                "group_type": "team"
+                "group_type": "team",
             },
             "Accountants": {
                 "code": "ACCOUNTANTS",
                 "description": "Accounting team members",
                 "roles": ["Accountant"],
-                "group_type": "team"
+                "group_type": "team",
             },
             "Billing Clerks": {
                 "code": "BILLING_CLERKS",
                 "description": "Billing and invoicing staff",
                 "roles": ["Billing Clerk"],
-                "group_type": "team"
+                "group_type": "team",
             },
             "Financial Viewers": {
                 "code": "FIN_VIEWERS",
                 "description": "Users with read-only financial access",
                 "roles": ["Financial Viewer"],
-                "group_type": "team"
-            }
+                "group_type": "team",
+            },
         }
 
         group_map = {}
         for group_name, group_config in groups_config.items():
             # Check if group exists
-            group = db.query(Group).filter(
-                Group.code == group_config["code"],
-                Group.tenant_id == tenant.id,
-                Group.company_id == company.id
-            ).first()
+            group = (
+                db.query(Group)
+                .filter(
+                    Group.code == group_config["code"], Group.tenant_id == tenant.id, Group.company_id == company.id
+                )
+                .first()
+            )
 
             if not group:
                 group = Group(
@@ -403,7 +398,7 @@ def seed_financial_rbac():
                     company_id=company.id,
                     group_type=group_config["group_type"],
                     is_active=True,
-                    created_at=datetime.utcnow()
+                    created_at=datetime.utcnow(),
                 )
                 db.add(group)
                 db.flush()
@@ -416,17 +411,16 @@ def seed_financial_rbac():
                 role = role_map.get(role_name)
                 if role:
                     # Check if role already assigned to group
-                    existing = db.query(GroupRole).filter(
-                        GroupRole.group_id == group.id,
-                        GroupRole.role_id == role.id
-                    ).first()
+                    existing = (
+                        db.query(GroupRole).filter(GroupRole.group_id == group.id, GroupRole.role_id == role.id).first()
+                    )
 
                     if not existing:
                         group_role = GroupRole(
                             id=str(uuid.uuid4()),
                             group_id=str(group.id),
                             role_id=str(role.id),
-                            created_at=datetime.utcnow()
+                            created_at=datetime.utcnow(),
                         )
                         db.add(group_role)
                         print(f"    ✓ Assigned role '{role_name}' to group '{group_name}'")
@@ -444,18 +438,14 @@ def seed_financial_rbac():
         print("\n🔐 Step 5: Assigning FashionHub users to groups...")
 
         user_assignments = [
-            {
-                "email": "cfo@fashionhub.com",
-                "groups": ["Financial Managers"],
-                "title": "CFO (Chief Financial Officer)"
-            },
+            {"email": "cfo@fashionhub.com", "groups": ["Financial Managers"], "title": "CFO (Chief Financial Officer)"},
             {
                 "email": "accountant1@fashionhub.com",
                 "groups": ["Accountants"],
                 "title": "Senior Accountant",
                 "create_if_missing": True,
                 "dept": "FIN",
-                "branch": "CORP"
+                "branch": "CORP",
             },
             {
                 "email": "accountant2@fashionhub.com",
@@ -463,7 +453,7 @@ def seed_financial_rbac():
                 "title": "Staff Accountant",
                 "create_if_missing": True,
                 "dept": "FIN",
-                "branch": "CORP"
+                "branch": "CORP",
             },
             {
                 "email": "billing@fashionhub.com",
@@ -471,7 +461,7 @@ def seed_financial_rbac():
                 "title": "Billing Specialist",
                 "create_if_missing": True,
                 "dept": "FIN",
-                "branch": "CORP"
+                "branch": "CORP",
             },
             {
                 "email": "ar@fashionhub.com",
@@ -479,29 +469,26 @@ def seed_financial_rbac():
                 "title": "Accounts Receivable Clerk",
                 "create_if_missing": True,
                 "dept": "FIN",
-                "branch": "CORP"
+                "branch": "CORP",
             },
             {
                 "email": "ceo@fashionhub.com",
                 "groups": ["Financial Viewers"],
-                "title": "CEO (Read-only financial access)"
+                "title": "CEO (Read-only financial access)",
             },
             {
                 "email": "manager.nyc1@fashionhub.com",
                 "groups": ["Financial Viewers"],
-                "title": "Store Manager (View financial reports)"
-            }
+                "title": "Store Manager (View financial reports)",
+            },
         ]
 
         from app.core.auth import hash_password
-        from app.models.department import Department
         from app.models.branch import Branch
+        from app.models.department import Department
 
         for assignment in user_assignments:
-            user = db.query(User).filter(
-                User.email == assignment["email"],
-                User.tenant_id == tenant.id
-            ).first()
+            user = db.query(User).filter(User.email == assignment["email"], User.tenant_id == tenant.id).first()
 
             # Create user if doesn't exist and create_if_missing is True
             if not user and assignment.get("create_if_missing"):
@@ -510,16 +497,18 @@ def seed_financial_rbac():
                 branch = None
 
                 if assignment.get("dept"):
-                    dept = db.query(Department).filter(
-                        Department.code == assignment["dept"],
-                        Department.company_id == company.id
-                    ).first()
+                    dept = (
+                        db.query(Department)
+                        .filter(Department.code == assignment["dept"], Department.company_id == company.id)
+                        .first()
+                    )
 
                 if assignment.get("branch"):
-                    branch = db.query(Branch).filter(
-                        Branch.code == assignment["branch"],
-                        Branch.company_id == company.id
-                    ).first()
+                    branch = (
+                        db.query(Branch)
+                        .filter(Branch.code == assignment["branch"], Branch.company_id == company.id)
+                        .first()
+                    )
 
                 user = User(
                     email=assignment["email"],
@@ -532,7 +521,7 @@ def seed_financial_rbac():
                     is_active=True,
                     is_superuser=False,
                     is_verified=True,
-                    created_at=datetime.utcnow()
+                    created_at=datetime.utcnow(),
                 )
                 db.add(user)
                 db.flush()
@@ -547,17 +536,16 @@ def seed_financial_rbac():
                 group = group_map.get(group_name)
                 if group:
                     # Check if user already in group
-                    existing = db.query(UserGroup).filter(
-                        UserGroup.user_id == user.id,
-                        UserGroup.group_id == group.id
-                    ).first()
+                    existing = (
+                        db.query(UserGroup).filter(UserGroup.user_id == user.id, UserGroup.group_id == group.id).first()
+                    )
 
                     if not existing:
                         user_group = UserGroup(
                             id=str(uuid.uuid4()),
                             user_id=str(user.id),
                             group_id=str(group.id),
-                            created_at=datetime.utcnow()
+                            created_at=datetime.utcnow(),
                         )
                         db.add(user_group)
                         print(f"  ✓ Added {user.email} to group '{group_name}'")
@@ -565,7 +553,7 @@ def seed_financial_rbac():
                         print(f"  • User {user.email} already in group '{group_name}'")
 
         db.commit()
-        print(f"✓ User group assignments completed")
+        print("✓ User group assignments completed")
 
         # ========================================================================
         # STEP 6: Enable Financial Module for FashionHub Tenant
@@ -573,19 +561,18 @@ def seed_financial_rbac():
         print("\n🔌 Step 6: Enabling Financial module for FashionHub tenant...")
 
         # Check if Financial module is registered
-        module = db.query(ModuleRegistry).filter(
-            ModuleRegistry.name == "financial"
-        ).first()
+        module = db.query(ModuleRegistry).filter(ModuleRegistry.name == "financial").first()
 
         if not module:
             print("  ⚠ Financial module not registered in module_registry")
             print("     The module will be auto-discovered on next server startup")
         else:
             # Check if already enabled for tenant
-            tenant_module = db.query(TenantModule).filter(
-                TenantModule.tenant_id == tenant.id,
-                TenantModule.module_id == module.id
-            ).first()
+            tenant_module = (
+                db.query(TenantModule)
+                .filter(TenantModule.tenant_id == tenant.id, TenantModule.module_id == module.id)
+                .first()
+            )
 
             if not tenant_module:
                 tenant_module = TenantModule(
@@ -598,9 +585,9 @@ def seed_financial_rbac():
                         "fiscal_year_start": "01-01",
                         "enable_multi_currency": False,
                         "tax_rate": 8.875,  # NYC sales tax
-                        "invoice_prefix": "FH"
+                        "invoice_prefix": "FH",
                     },
-                    enabled_at=datetime.utcnow()
+                    enabled_at=datetime.utcnow(),
                 )
                 db.add(tenant_module)
                 db.commit()
@@ -617,32 +604,32 @@ def seed_financial_rbac():
         # ========================================================================
         # SUMMARY
         # ========================================================================
-        print("\n" + "="*80)
+        print("\n" + "=" * 80)
         print("✅ FINANCIAL RBAC SETUP COMPLETE!")
-        print("="*80)
+        print("=" * 80)
         print(f"\n📊 Company: {company.name}")
         print(f"🏢 Tenant: {tenant.name}")
-        print(f"\n👥 Roles Created:")
+        print("\n👥 Roles Created:")
         for role_name in roles_config.keys():
             print(f"   • {role_name}")
 
-        print(f"\n🏢 Groups Created:")
+        print("\n🏢 Groups Created:")
         for group_name in groups_config.keys():
             print(f"   • {group_name}")
 
-        print(f"\n🔐 User Access Configured (via Groups):")
+        print("\n🔐 User Access Configured (via Groups):")
         for assignment in user_assignments:
             groups_str = ", ".join(assignment["groups"])
             print(f"   • {assignment['email']:<30} → {groups_str}")
 
         print(f"\n📋 Permissions Registered: {len(financial_permissions)}")
-        print(f"\n🎯 Next Steps:")
-        print(f"   1. Restart the backend server")
-        print(f"   2. Login as CFO: cfo@fashionhub.com / password123")
-        print(f"   3. Navigate to Financial module")
-        print(f"   4. Test different user permissions")
+        print("\n🎯 Next Steps:")
+        print("   1. Restart the backend server")
+        print("   2. Login as CFO: cfo@fashionhub.com / password123")
+        print("   3. Navigate to Financial module")
+        print("   4. Test different user permissions")
 
-        print("\n" + "="*80 + "\n")
+        print("\n" + "=" * 80 + "\n")
 
     except Exception as e:
         print(f"\n❌ ERROR: {e}")

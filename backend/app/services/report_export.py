@@ -1,26 +1,27 @@
 """
 Report export service for generating various output formats.
 """
+
 import csv
-import json
 import io
-from typing import List, Dict, Any
+import json
 from datetime import datetime
-import os
+from typing import Any, Dict, List
 
 try:
     from openpyxl import Workbook
-    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
+
     OPENPYXL_AVAILABLE = True
 except ImportError:
     OPENPYXL_AVAILABLE = False
 
 try:
     from reportlab.lib import colors
-    from reportlab.lib.pagesizes import letter, A4
-    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+    from reportlab.lib.pagesizes import letter
     from reportlab.lib.styles import getSampleStyleSheet
-    from reportlab.lib.units import inch
+    from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+
     REPORTLAB_AVAILABLE = True
 except ImportError:
     REPORTLAB_AVAILABLE = False
@@ -37,12 +38,12 @@ class ReportExporter:
         writer.writeheader()
         writer.writerows(data)
 
-        return output.getvalue().encode('utf-8')
+        return output.getvalue().encode("utf-8")
 
     @staticmethod
     def export_to_json(data: List[Dict[str, Any]]) -> bytes:
         """Export report data to JSON format."""
-        return json.dumps(data, indent=2, default=str).encode('utf-8')
+        return json.dumps(data, indent=2, default=str).encode("utf-8")
 
     @staticmethod
     def export_to_excel_raw(data: List[Dict[str, Any]], columns: List[str]) -> bytes:
@@ -61,7 +62,7 @@ class ReportExporter:
         # Write data
         for row_idx, row_data in enumerate(data, start=2):
             for col_idx, column in enumerate(columns, start=1):
-                value = row_data.get(column, '')
+                value = row_data.get(column, "")
                 ws.cell(row=row_idx, column=col_idx, value=value)
 
         # Save to bytes
@@ -75,7 +76,7 @@ class ReportExporter:
         data: List[Dict[str, Any]],
         columns: List[str],
         report_name: str = "Report",
-        formatting_rules: List[Dict[str, Any]] = None
+        formatting_rules: List[Dict[str, Any]] = None,
     ) -> bytes:
         """Export report data to Excel (formatted)."""
         if not OPENPYXL_AVAILABLE:
@@ -99,23 +100,20 @@ class ReportExporter:
 
         # Border style
         thin_border = Border(
-            left=Side(style='thin'),
-            right=Side(style='thin'),
-            top=Side(style='thin'),
-            bottom=Side(style='thin')
+            left=Side(style="thin"), right=Side(style="thin"), top=Side(style="thin"), bottom=Side(style="thin")
         )
 
         # Write data with formatting
         for row_idx, row_data in enumerate(data, start=2):
             for col_idx, column in enumerate(columns, start=1):
-                value = row_data.get(column, '')
+                value = row_data.get(column, "")
                 cell = ws.cell(row=row_idx, column=col_idx, value=value)
                 cell.border = thin_border
 
                 # Apply conditional formatting if rules exist
                 if formatting_rules:
                     for rule in formatting_rules:
-                        if column in rule.get('applies_to', []):
+                        if column in rule.get("applies_to", []):
                             # Simple condition evaluation (expand as needed)
                             # This is a placeholder for more complex condition logic
                             pass
@@ -124,12 +122,12 @@ class ReportExporter:
         for col_idx, column in enumerate(columns, start=1):
             max_length = len(column)
             for row_idx in range(2, len(data) + 2):
-                cell_value = str(ws.cell(row=row_idx, column=col_idx).value or '')
+                cell_value = str(ws.cell(row=row_idx, column=col_idx).value or "")
                 max_length = max(max_length, len(cell_value))
             ws.column_dimensions[chr(64 + col_idx)].width = min(max_length + 2, 50)
 
         # Freeze header row
-        ws.freeze_panes = 'A2'
+        ws.freeze_panes = "A2"
 
         # Save to bytes
         output = io.BytesIO()
@@ -139,10 +137,7 @@ class ReportExporter:
 
     @staticmethod
     def export_to_pdf(
-        data: List[Dict[str, Any]],
-        columns: List[str],
-        report_name: str = "Report",
-        parameters: Dict[str, Any] = None
+        data: List[Dict[str, Any]], columns: List[str], report_name: str = "Report", parameters: Dict[str, Any] = None
     ) -> bytes:
         """Export report data to PDF format."""
         if not REPORTLAB_AVAILABLE:
@@ -154,8 +149,8 @@ class ReportExporter:
 
         # Styles
         styles = getSampleStyleSheet()
-        title_style = styles['Heading1']
-        normal_style = styles['Normal']
+        title_style = styles["Heading1"]
+        normal_style = styles["Normal"]
 
         # Title
         title = Paragraph(report_name, title_style)
@@ -176,27 +171,30 @@ class ReportExporter:
         # Prepare table data
         table_data = [columns]  # Headers
         for row in data:
-            table_data.append([str(row.get(col, '')) for col in columns])
+            table_data.append([str(row.get(col, "")) for col in columns])
 
         # Create table
         table = Table(table_data)
 
         # Table styling
-        table.setStyle(TableStyle([
-            # Header styling
-            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#366092')),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, 0), 10),
-            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-
-            # Data styling
-            ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
-            ('FONTSIZE', (0, 1), (-1, -1), 8),
-            ('GRID', (0, 0), (-1, -1), 1, colors.black),
-            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f0f0f0')]),
-        ]))
+        table.setStyle(
+            TableStyle(
+                [
+                    # Header styling
+                    ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#366092")),
+                    ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
+                    ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                    ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                    ("FONTSIZE", (0, 0), (-1, 0), 10),
+                    ("BOTTOMPADDING", (0, 0), (-1, 0), 12),
+                    # Data styling
+                    ("FONTNAME", (0, 1), (-1, -1), "Helvetica"),
+                    ("FONTSIZE", (0, 1), (-1, -1), 8),
+                    ("GRID", (0, 0), (-1, -1), 1, colors.black),
+                    ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f0f0f0")]),
+                ]
+            )
+        )
 
         elements.append(table)
 
@@ -207,10 +205,7 @@ class ReportExporter:
 
     @staticmethod
     def export_to_html(
-        data: List[Dict[str, Any]],
-        columns: List[str],
-        report_name: str = "Report",
-        parameters: Dict[str, Any] = None
+        data: List[Dict[str, Any]], columns: List[str], report_name: str = "Report", parameters: Dict[str, Any] = None
     ) -> bytes:
         """Export report data to HTML format (print-friendly)."""
         html = f"""
@@ -279,7 +274,7 @@ class ReportExporter:
         html += "    </div>\n"
 
         # Print button
-        html += "    <button onclick=\"window.print()\">Print Report</button>\n"
+        html += '    <button onclick="window.print()">Print Report</button>\n'
 
         # Table
         html += "    <table>\n"
@@ -294,7 +289,7 @@ class ReportExporter:
         for row in data:
             html += "            <tr>\n"
             for col in columns:
-                value = row.get(col, '')
+                value = row.get(col, "")
                 html += f"                <td>{value}</td>\n"
             html += "            </tr>\n"
 
@@ -303,7 +298,7 @@ class ReportExporter:
         html += "</body>\n"
         html += "</html>"
 
-        return html.encode('utf-8')
+        return html.encode("utf-8")
 
     @staticmethod
     def export_report(
@@ -312,7 +307,7 @@ class ReportExporter:
         export_format: str,
         report_name: str = "Report",
         parameters: Dict[str, Any] = None,
-        formatting_rules: List[Dict[str, Any]] = None
+        formatting_rules: List[Dict[str, Any]] = None,
     ) -> tuple[bytes, str]:
         """
         Export report to specified format.
@@ -325,9 +320,7 @@ class ReportExporter:
         elif export_format == "excel_raw":
             return ReportExporter.export_to_excel_raw(data, columns), "xlsx"
         elif export_format == "excel_formatted":
-            return ReportExporter.export_to_excel_formatted(
-                data, columns, report_name, formatting_rules
-            ), "xlsx"
+            return ReportExporter.export_to_excel_formatted(data, columns, report_name, formatting_rules), "xlsx"
         elif export_format == "pdf":
             return ReportExporter.export_to_pdf(data, columns, report_name, parameters), "pdf"
         elif export_format == "html":

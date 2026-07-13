@@ -2,13 +2,15 @@
 Pydantic schemas for module management
 """
 
-from pydantic import BaseModel, Field
-from typing import Optional, List, Dict, Any
 from datetime import datetime
+from typing import Any, Dict, List, Optional
+
+from pydantic import BaseModel, Field
 
 
 class ModuleBase(BaseModel):
     """Base module schema"""
+
     name: str = Field(..., description="Module name (unique identifier)")
     display_name: str = Field(..., description="Human-readable name")
     version: str = Field(..., description="Module version (semver)")
@@ -18,6 +20,7 @@ class ModuleBase(BaseModel):
 
 class ModuleInfo(ModuleBase):
     """Detailed module information"""
+
     tags: Optional[List[str]] = None
     author: Optional[str] = None
     license: Optional[str] = None
@@ -36,6 +39,7 @@ class ModuleInfo(ModuleBase):
 
 class ModuleListItem(BaseModel):
     """Module list item for overview"""
+
     name: str
     display_name: str
     version: str
@@ -52,39 +56,41 @@ class ModuleListItem(BaseModel):
 
 class ModuleInstallRequest(BaseModel):
     """Request to install a module"""
+
     module_name: str = Field(..., description="Name of module to install")
 
 
 class ModuleUninstallRequest(BaseModel):
     """Request to uninstall a module"""
+
     module_name: str = Field(..., description="Name of module to uninstall")
 
 
 class ModuleEnableRequest(BaseModel):
     """Request to enable a module for a tenant"""
+
     module_name: str = Field(..., description="Name of module to enable")
     tenant_id: Optional[str] = Field(
-        None,
-        description="Tenant ID to enable module for (superuser only, defaults to current user's tenant)"
+        None, description="Tenant ID to enable module for (superuser only, defaults to current user's tenant)"
     )
-    configuration: Optional[Dict[str, Any]] = Field(
-        None,
-        description="Tenant-specific configuration (optional)"
-    )
+    configuration: Optional[Dict[str, Any]] = Field(None, description="Tenant-specific configuration (optional)")
 
 
 class ModuleDisableRequest(BaseModel):
     """Request to disable a module for a tenant"""
+
     module_name: str = Field(..., description="Name of module to disable")
 
 
 class ModuleConfigurationUpdate(BaseModel):
     """Update module configuration for a tenant"""
+
     configuration: Dict[str, Any] = Field(..., description="New configuration values")
 
 
 class TenantModuleInfo(BaseModel):
     """Information about a module enabled for a tenant"""
+
     module_name: str
     display_name: str
     version: str
@@ -100,6 +106,7 @@ class TenantModuleInfo(BaseModel):
 
 class TenantModuleInfoWithTenant(BaseModel):
     """Information about a module enabled for a tenant (includes tenant info for superuser)"""
+
     module_name: str
     display_name: str
     version: str
@@ -118,6 +125,7 @@ class TenantModuleInfoWithTenant(BaseModel):
 
 class ModuleOperationResponse(BaseModel):
     """Response from module operation"""
+
     success: bool
     message: str
     module_name: Optional[str] = None
@@ -126,24 +134,28 @@ class ModuleOperationResponse(BaseModel):
 
 class AvailableModulesResponse(BaseModel):
     """Response containing list of available modules"""
+
     modules: List[ModuleListItem]
     total: int
 
 
 class EnabledModulesResponse(BaseModel):
     """Response containing list of enabled modules for tenant"""
+
     modules: List[TenantModuleInfo]
     total: int
 
 
 class AllTenantsModulesResponse(BaseModel):
     """Response containing list of enabled modules across all tenants (superuser only)"""
+
     modules: List[TenantModuleInfoWithTenant]
     total: int
 
 
 class ModuleManifest(BaseModel):
     """Full module manifest"""
+
     name: str
     display_name: str
     version: str
@@ -173,6 +185,7 @@ class ModuleManifest(BaseModel):
 
 class ModuleRegistrationRequest(BaseModel):
     """Request from module to register itself with core platform"""
+
     manifest: Dict[str, Any] = Field(..., description="Full module manifest")
     backend_service_url: str = Field(..., description="URL of module backend service")
     health_check_url: Optional[str] = Field(None, description="Health check endpoint URL")
@@ -180,18 +193,17 @@ class ModuleRegistrationRequest(BaseModel):
 
 class ModuleRegistrationResponse(BaseModel):
     """Response to module registration request"""
+
     success: bool
     message: str
     module_name: str
     registered_at: datetime
-    should_install: bool = Field(
-        default=False,
-        description="Whether module should run installation scripts"
-    )
+    should_install: bool = Field(default=False, description="Whether module should run installation scripts")
 
 
 class ModuleHeartbeatRequest(BaseModel):
     """Heartbeat request from module"""
+
     module_name: str
     version: str
     status: str = Field(default="healthy", description="Module health status")
@@ -200,6 +212,7 @@ class ModuleHeartbeatRequest(BaseModel):
 
 class ModuleHeartbeatResponse(BaseModel):
     """Response to heartbeat"""
+
     success: bool
     message: str
     last_seen: datetime
@@ -207,8 +220,10 @@ class ModuleHeartbeatResponse(BaseModel):
 
 # ── Epic-23 additions ─────────────────────────────────────────────────────────
 
+
 class ModuleErrorResponse(BaseModel):
     """Structured error body for /api/v1/modules endpoints (T-23.003)."""
+
     code: str
     message: str
     detail: Optional[Any] = None
@@ -236,6 +251,7 @@ class ActivationPreviewDependency(BaseModel):
 
 class ActivationPreviewResponse(BaseModel):
     """Response for GET /modules/{name}/activation-preview (T-23.002)."""
+
     module_name: str
     display_name: str
     permissions: List[ActivationPreviewPermission]
@@ -250,6 +266,7 @@ class ModuleListItemV2(BaseModel):
 
     T-23.018 — Story 23.4.1 backend AC.
     """
+
     id: str
     name: str
     display_name: str
@@ -275,6 +292,7 @@ class ModulesListResponse(BaseModel):
 
 class ModuleEnableResponse(BaseModel):
     """Response for POST /api/v1/modules/{module_id}/enable (T-23.020)."""
+
     status: str  # "active"
     permissions_added: List[str] = Field(default_factory=list)
     menu_items_added: List[str] = Field(default_factory=list)
@@ -285,6 +303,7 @@ class ModuleEnableResponse(BaseModel):
 
 class TenantDBStatusResponse(BaseModel):
     """Response for GET /api/v1/modules/{module_id}/tenant-db-status (T-22.017)."""
+
     status: str
     connection_secret_ref: Optional[str] = None
     error_message: Optional[str] = None
@@ -293,6 +312,7 @@ class TenantDBStatusResponse(BaseModel):
 
 class ModuleDisableResponse(BaseModel):
     """Response for POST /api/v1/modules/{module_id}/disable (T-23.022)."""
+
     status: str  # "inactive"
     permissions_deactivated: List[str] = Field(default_factory=list)
     menu_items_deactivated: List[str] = Field(default_factory=list)
@@ -300,5 +320,6 @@ class ModuleDisableResponse(BaseModel):
 
 class ModuleDeactivateAllResponse(BaseModel):
     """Response for POST /api/v1/admin/modules/{module_id}/deactivate-all (T-23.024)."""
+
     status: str  # "deactivation_pending"
     tenants_deactivated: int

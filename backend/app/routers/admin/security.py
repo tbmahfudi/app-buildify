@@ -8,14 +8,14 @@ Provides endpoints for managing:
 - Login attempts audit
 - Notification configuration
 """
+
 from datetime import datetime
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
-from app.core.dependencies import get_current_user, get_db, has_permission
-from app.models.account_lockout import AccountLockout
+from app.core.dependencies import get_db, has_permission
 from app.models.login_attempt import LoginAttempt
 from app.models.notification_config import NotificationConfig
 from app.models.notification_queue import NotificationQueue
@@ -41,22 +41,22 @@ router = APIRouter(prefix="/api/v1/admin/security", tags=["admin", "security"])
 
 # ==================== Security Policies ====================
 
+
 @router.get("/policies", response_model=List[SecurityPolicyResponse])
 def list_security_policies(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("security_policy:read:all"))
+    db: Session = Depends(get_db), current_user: User = Depends(has_permission("security_policy:read:all"))
 ):
     """
     List all security policies (system default and tenant-specific).
 
     Requires: security_policy:read:all
     """
-    policies = db.query(SecurityPolicy).filter(
-        SecurityPolicy.is_active == True
-    ).order_by(
-        SecurityPolicy.tenant_id.asc(),
-        SecurityPolicy.created_at.desc()
-    ).all()
+    policies = (
+        db.query(SecurityPolicy)
+        .filter(SecurityPolicy.is_active == True)
+        .order_by(SecurityPolicy.tenant_id.asc(), SecurityPolicy.created_at.desc())
+        .all()
+    )
 
     return policies
 
@@ -65,7 +65,7 @@ def list_security_policies(
 def get_security_policy(
     policy_id: str,
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("security_policy:read:all"))
+    current_user: User = Depends(has_permission("security_policy:read:all")),
 ):
     """
     Get a specific security policy by ID.
@@ -84,7 +84,7 @@ def get_security_policy(
 def create_security_policy(
     policy_data: SecurityPolicyCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("security_policy:write:all"))
+    current_user: User = Depends(has_permission("security_policy:write:all")),
 ):
     """
     Create a new security policy (system default or tenant-specific).
@@ -94,22 +94,20 @@ def create_security_policy(
     Note: Only one policy per tenant. If tenant_id is NULL, creates system default.
     """
     # Check if policy already exists for this tenant
-    existing = db.query(SecurityPolicy).filter(
-        SecurityPolicy.tenant_id == policy_data.tenant_id,  # tenant_scope
-        SecurityPolicy.is_active == True
-    ).first()
+    existing = (
+        db.query(SecurityPolicy)
+        .filter(SecurityPolicy.tenant_id == policy_data.tenant_id, SecurityPolicy.is_active == True)  # tenant_scope
+        .first()
+    )
 
     if existing:
         tenant_str = f"tenant {policy_data.tenant_id}" if policy_data.tenant_id else "system default"
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Security policy already exists for {tenant_str}. Use PUT to update."
+            detail=f"Security policy already exists for {tenant_str}. Use PUT to update.",
         )
 
-    policy = SecurityPolicy(
-        **policy_data.dict(exclude={'created_by'}),
-        created_by=str(current_user.id)
-    )
+    policy = SecurityPolicy(**policy_data.dict(exclude={"created_by"}), created_by=str(current_user.id))
     db.add(policy)
     db.commit()
     db.refresh(policy)
@@ -122,7 +120,7 @@ def update_security_policy(
     policy_id: str,
     policy_data: SecurityPolicyUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("security_policy:write:all"))
+    current_user: User = Depends(has_permission("security_policy:write:all")),
 ):
     """
     Update an existing security policy.
@@ -135,7 +133,7 @@ def update_security_policy(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Security policy not found")
 
     # Update fields
-    for field, value in policy_data.dict(exclude_unset=True, exclude={'updated_by'}).items():
+    for field, value in policy_data.dict(exclude_unset=True, exclude={"updated_by"}).items():
         setattr(policy, field, value)
 
     policy.updated_by = str(current_user.id)
@@ -149,7 +147,7 @@ def update_security_policy(
 def delete_security_policy(
     policy_id: str,
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("security_policy:delete:all"))
+    current_user: User = Depends(has_permission("security_policy:delete:all")),
 ):
     """
     Delete (deactivate) a security policy.
@@ -165,8 +163,7 @@ def delete_security_policy(
 
     if policy.tenant_id is None:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot delete system default policy. Update it instead."
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot delete system default policy. Update it instead."
         )
 
     policy.is_active = False
@@ -175,11 +172,12 @@ def delete_security_policy(
 
 # ==================== Locked Accounts ====================
 
+
 @router.get("/locked-accounts", response_model=List[LockedAccountResponse])
 def list_locked_accounts(
     tenant_id: Optional[str] = Query(None),
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("security:view_locked_accounts:all"))
+    current_user: User = Depends(has_permission("security:view_locked_accounts:all")),
 ):
     """
     List all currently locked accounts.
@@ -188,10 +186,7 @@ def list_locked_accounts(
     """
     now = datetime.utcnow()
 
-    query = db.query(User).filter(
-        User.locked_until != None,
-        User.locked_until > now
-    )
+    query = db.query(User).filter(User.locked_until != None, User.locked_until > now)
 
     if tenant_id:
         query = query.filter(User.tenant_id == tenant_id)  # tenant_scope
@@ -206,7 +201,7 @@ def list_locked_accounts(
             tenant_id=str(user.tenant_id) if user.tenant_id else None,
             locked_until=user.locked_until,
             failed_attempts=user.failed_login_attempts or 0,
-            is_active=user.is_active
+            is_active=user.is_active,
         )
         for user in users
     ]
@@ -216,7 +211,7 @@ def list_locked_accounts(
 def unlock_account(
     unlock_data: UnlockAccountRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("security:unlock_account:all"))
+    current_user: User = Depends(has_permission("security:unlock_account:all")),
 ):
     """
     Manually unlock a locked user account.
@@ -238,19 +233,14 @@ def unlock_account(
 
     # Unlock
     lockout_manager.unlock_account(
-        user=user,
-        unlocked_by_id=str(current_user.id),
-        reason=unlock_data.reason or "Manual unlock by administrator"
+        user=user, unlocked_by_id=str(current_user.id), reason=unlock_data.reason or "Manual unlock by administrator"
     )
 
-    return {
-        "message": "Account unlocked successfully",
-        "user_id": str(user.id),
-        "email": user.email
-    }
+    return {"message": "Account unlocked successfully", "user_id": str(user.id), "email": user.email}
 
 
 # ==================== Active Sessions ====================
+
 
 @router.get("/sessions", response_model=List[UserSessionResponse])
 def list_active_sessions(
@@ -258,7 +248,7 @@ def list_active_sessions(
     tenant_id: Optional[str] = Query(None),
     limit: int = Query(100, ge=1, le=500),
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("security:view_sessions:all"))
+    current_user: User = Depends(has_permission("security:view_sessions:all")),
 ):
     """
     List active user sessions.
@@ -267,10 +257,7 @@ def list_active_sessions(
     """
     now = datetime.utcnow()
 
-    query = db.query(UserSession).filter(
-        UserSession.revoked_at == None,
-        UserSession.expires_at > now
-    )
+    query = db.query(UserSession).filter(UserSession.revoked_at == None, UserSession.expires_at > now)
 
     if user_id:
         query = query.filter(UserSession.user_id == user_id)
@@ -288,7 +275,7 @@ def list_active_sessions(
 def revoke_session(
     revoke_data: RevokeSessionRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("security:revoke_session:all"))
+    current_user: User = Depends(has_permission("security:revoke_session:all")),
 ):
     """
     Revoke a user session.
@@ -307,18 +294,14 @@ def revoke_session(
     session_manager = SessionManager(db)
     session_manager.revoke_session(session.jti, reason="Admin revocation")
 
-    return {
-        "message": "Session revoked successfully",
-        "session_id": str(session.id),
-        "user_id": str(session.user_id)
-    }
+    return {"message": "Session revoked successfully", "session_id": str(session.id), "user_id": str(session.user_id)}
 
 
 @router.post("/sessions/revoke-all/{user_id}", status_code=status.HTTP_200_OK)
 def revoke_all_user_sessions(
     user_id: str,
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("security:revoke_session:all"))
+    current_user: User = Depends(has_permission("security:revoke_session:all")),
 ):
     """
     Revoke all active sessions for a user.
@@ -336,14 +319,11 @@ def revoke_all_user_sessions(
     session_manager = SessionManager(db)
     count = session_manager.revoke_all_user_sessions(user=user, reason="Admin bulk revocation")
 
-    return {
-        "message": f"Revoked {count} active sessions",
-        "user_id": user_id,
-        "sessions_revoked": count
-    }
+    return {"message": f"Revoked {count} active sessions", "user_id": user_id, "sessions_revoked": count}
 
 
 # ==================== Login Attempts ====================
+
 
 @router.get("/login-attempts", response_model=List[LoginAttemptResponse])
 def list_login_attempts(
@@ -351,7 +331,7 @@ def list_login_attempts(
     success: Optional[bool] = Query(None),
     limit: int = Query(100, ge=1, le=500),
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("security:view_login_attempts:all"))
+    current_user: User = Depends(has_permission("security:view_login_attempts:all")),
 ):
     """
     List login attempts for audit.
@@ -373,11 +353,12 @@ def list_login_attempts(
 
 # ==================== Notification Configuration ====================
 
+
 @router.get("/notification-config", response_model=List[NotificationConfigResponse])
 def list_notification_configs(
     tenant_id: Optional[str] = Query(None),
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("notification_config:read:all"))
+    current_user: User = Depends(has_permission("notification_config:read:all")),
 ):
     """
     List notification configurations.
@@ -401,7 +382,7 @@ def update_notification_config(
     config_id: str,
     config_data: NotificationConfigUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("notification_config:write:all"))
+    current_user: User = Depends(has_permission("notification_config:write:all")),
 ):
     """
     Update notification configuration.
@@ -414,7 +395,7 @@ def update_notification_config(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Notification config not found")
 
     # Update fields
-    for field, value in config_data.dict(exclude_unset=True, exclude={'updated_by'}).items():
+    for field, value in config_data.dict(exclude_unset=True, exclude={"updated_by"}).items():
         setattr(config, field, value)
 
     config.updated_by = str(current_user.id)
@@ -430,7 +411,7 @@ def list_notification_queue(
     notification_type: Optional[str] = Query(None),
     limit: int = Query(100, ge=1, le=500),
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("notification_queue:read:all"))
+    current_user: User = Depends(has_permission("notification_queue:read:all")),
 ):
     """
     List notification queue for monitoring.
@@ -445,9 +426,8 @@ def list_notification_queue(
     if notification_type:
         query = query.filter(NotificationQueue.notification_type == notification_type)
 
-    notifications = query.order_by(
-        NotificationQueue.priority.asc(),
-        NotificationQueue.created_at.asc()
-    ).limit(limit).all()
+    notifications = (
+        query.order_by(NotificationQueue.priority.asc(), NotificationQueue.created_at.asc()).limit(limit).all()
+    )
 
     return notifications

@@ -24,6 +24,7 @@ class Group(Base):
 
     Groups simplify role assignment - assign roles to groups, add users to groups.
     """
+
     __tablename__ = "groups"
     __tenant_scoped__ = True
 
@@ -66,8 +67,8 @@ class Group(Base):
     # Constraints
     __table_args__ = (
         # Group code must be unique per tenant + company combination
-        UniqueConstraint('tenant_id', 'company_id', 'code', name='uq_group_tenant_company_code'),
-        Index('ix_group_tenant_company', 'tenant_id', 'company_id'),
+        UniqueConstraint("tenant_id", "company_id", "code", name="uq_group_tenant_company_code"),
+        Index("ix_group_tenant_company", "tenant_id", "company_id"),
     )
 
     def __repr__(self):

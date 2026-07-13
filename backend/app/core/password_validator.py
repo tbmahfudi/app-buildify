@@ -9,6 +9,7 @@ Supports checking against:
 - Password history
 - Username/email similarity
 """
+
 import re
 from typing import List, Optional, Tuple
 
@@ -22,6 +23,7 @@ from app.core.security_config import PasswordPolicyConfig
 
 class PasswordValidationError(Exception):
     """Raised when password validation fails"""
+
     def __init__(self, errors: List[str]):
         self.errors = errors
         super().__init__("; ".join(errors))
@@ -35,7 +37,9 @@ class PasswordValidator:
     def __init__(self, policy: PasswordPolicyConfig):
         self.policy = policy
 
-    def validate_strength(self, password: str, user_email: Optional[str] = None, user_name: Optional[str] = None) -> Tuple[bool, List[str]]:
+    def validate_strength(
+        self, password: str, user_email: Optional[str] = None, user_name: Optional[str] = None
+    ) -> Tuple[bool, List[str]]:
         """
         Validate password strength against policy rules.
 
@@ -57,13 +61,13 @@ class PasswordValidator:
             errors.append(f"Password must not exceed {self.policy.max_length} characters")
 
         # Character type requirements
-        if self.policy.require_uppercase and not re.search(r'[A-Z]', password):
+        if self.policy.require_uppercase and not re.search(r"[A-Z]", password):
             errors.append("Password must contain at least one uppercase letter")
 
-        if self.policy.require_lowercase and not re.search(r'[a-z]', password):
+        if self.policy.require_lowercase and not re.search(r"[a-z]", password):
             errors.append("Password must contain at least one lowercase letter")
 
-        if self.policy.require_digit and not re.search(r'\d', password):
+        if self.policy.require_digit and not re.search(r"\d", password):
             errors.append("Password must contain at least one digit")
 
         if self.policy.require_special_char and not re.search(r'[!@#$%^&*()_+\-=\[\]{};:\'",.<>?/\\|`~]', password):
@@ -76,9 +80,11 @@ class PasswordValidator:
 
         # Repeating characters check
         if self.policy.max_repeating_chars > 0:
-            pattern = r'(.)\1{' + str(self.policy.max_repeating_chars) + ',}'
+            pattern = r"(.)\1{" + str(self.policy.max_repeating_chars) + ",}"
             if re.search(pattern, password):
-                errors.append(f"Password must not contain more than {self.policy.max_repeating_chars} consecutive repeating characters")
+                errors.append(
+                    f"Password must not contain more than {self.policy.max_repeating_chars} consecutive repeating characters"
+                )
 
         # Common password check
         if not self.policy.allow_common and is_common_password(password):
@@ -111,9 +117,12 @@ class PasswordValidator:
         from app.models import PasswordHistory
 
         # Get last N password hashes
-        query = select(PasswordHistory).where(
-            PasswordHistory.user_id == user_id
-        ).order_by(PasswordHistory.created_at.desc()).limit(self.policy.history_count)
+        query = (
+            select(PasswordHistory)
+            .where(PasswordHistory.user_id == user_id)
+            .order_by(PasswordHistory.created_at.desc())
+            .limit(self.policy.history_count)
+        )
 
         result = await db.execute(query)
         history = result.scalars().all()
@@ -121,7 +130,10 @@ class PasswordValidator:
         # Check if new password matches any historical password
         for hist in history:
             if verify_password(new_password, hist.hashed_password):
-                return (False, f"Password has been used recently. Please choose a different password (last {self.policy.history_count} passwords are blocked)")
+                return (
+                    False,
+                    f"Password has been used recently. Please choose a different password (last {self.policy.history_count} passwords are blocked)",
+                )
 
         return (True, None)
 
@@ -131,7 +143,7 @@ class PasswordValidator:
         password: str,
         user_id: Optional[str] = None,
         user_email: Optional[str] = None,
-        user_name: Optional[str] = None
+        user_name: Optional[str] = None,
     ) -> Tuple[bool, List[str]]:
         """
         Perform full password validation including strength and history checks.
@@ -186,7 +198,9 @@ class PasswordValidator:
             requirements.append(f"Must contain at least {self.policy.min_unique_chars} unique characters")
 
         if self.policy.max_repeating_chars > 0:
-            requirements.append(f"Must not have more than {self.policy.max_repeating_chars} consecutive repeating characters")
+            requirements.append(
+                f"Must not have more than {self.policy.max_repeating_chars} consecutive repeating characters"
+            )
 
         if not self.policy.allow_common:
             requirements.append("Must not be a commonly used password")
@@ -215,7 +229,7 @@ async def validate_password(
     user_id: Optional[str] = None,
     user_email: Optional[str] = None,
     user_name: Optional[str] = None,
-    raise_on_error: bool = False
+    raise_on_error: bool = False,
 ) -> Tuple[bool, List[str]]:
     """
     Convenience function to validate a password against a policy.

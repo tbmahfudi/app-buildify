@@ -5,6 +5,8 @@ Models for the no-code platform's workflow/business process designer feature.
 Enables visual design of workflows, approval processes, and state machines.
 """
 
+from datetime import datetime
+
 from sqlalchemy import (
     Boolean,
     Column,
@@ -18,7 +20,6 @@ from sqlalchemy import (
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
-from datetime import datetime
 
 from .base import GUID, Base, generate_uuid
 
@@ -30,6 +31,7 @@ class WorkflowDefinition(Base):
     Stores metadata for workflow definitions.
     Each workflow represents a business process or approval flow.
     """
+
     __tablename__ = "workflow_definitions"
 
     # Primary Key
@@ -92,6 +94,7 @@ class WorkflowState(Base):
 
     Represents individual states in a workflow.
     """
+
     __tablename__ = "workflow_states"
 
     # Primary Key
@@ -140,13 +143,15 @@ class WorkflowState(Base):
 
     # Relationships
     workflow = relationship("WorkflowDefinition", back_populates="states")
-    transitions_from = relationship("WorkflowTransition", foreign_keys="WorkflowTransition.from_state_id", back_populates="from_state")
-    transitions_to = relationship("WorkflowTransition", foreign_keys="WorkflowTransition.to_state_id", back_populates="to_state")
+    transitions_from = relationship(
+        "WorkflowTransition", foreign_keys="WorkflowTransition.from_state_id", back_populates="from_state"
+    )
+    transitions_to = relationship(
+        "WorkflowTransition", foreign_keys="WorkflowTransition.to_state_id", back_populates="to_state"
+    )
 
     # Table constraints
-    __table_args__ = (
-        Index("idx_workflow_states_workflow", "workflow_id"),
-    )
+    __table_args__ = (Index("idx_workflow_states_workflow", "workflow_id"),)
 
 
 class WorkflowTransition(Base):
@@ -155,6 +160,7 @@ class WorkflowTransition(Base):
 
     Represents transitions between workflow states.
     """
+
     __tablename__ = "workflow_transitions"
 
     # Primary Key
@@ -219,6 +225,7 @@ class WorkflowInstance(Base):
 
     Represents a running instance of a workflow for a specific record.
     """
+
     __tablename__ = "workflow_instances"
 
     # Primary Key
@@ -273,6 +280,7 @@ class WorkflowHistory(Base):
 
     Tracks all transitions and actions in a workflow instance.
     """
+
     __tablename__ = "workflow_history"
 
     # Primary Key

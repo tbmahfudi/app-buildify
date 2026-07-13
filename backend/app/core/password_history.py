@@ -3,7 +3,7 @@ Password History Service
 
 Manages password history tracking to prevent password reuse.
 """
-from datetime import datetime
+
 from typing import List
 
 from sqlalchemy.orm import Session
@@ -32,10 +32,7 @@ class PasswordHistoryService:
         Returns:
             PasswordHistory instance
         """
-        history_entry = PasswordHistory(
-            user_id=str(user.id),
-            hashed_password=hashed_password
-        )
+        history_entry = PasswordHistory(user_id=str(user.id), hashed_password=hashed_password)
         self.db.add(history_entry)
 
         # Get security config to determine history limit
@@ -61,15 +58,16 @@ class PasswordHistoryService:
         """
         if keep_count == 0:
             # Delete all history
-            deleted = self.db.query(PasswordHistory).filter(
-                PasswordHistory.user_id == str(user.id)
-            ).delete()
+            deleted = self.db.query(PasswordHistory).filter(PasswordHistory.user_id == str(user.id)).delete()
             return deleted
 
         # Get all history entries for user, ordered by date
-        all_history = self.db.query(PasswordHistory).filter(
-            PasswordHistory.user_id == str(user.id)
-        ).order_by(PasswordHistory.created_at.desc()).all()
+        all_history = (
+            self.db.query(PasswordHistory)
+            .filter(PasswordHistory.user_id == str(user.id))
+            .order_by(PasswordHistory.created_at.desc())
+            .all()
+        )
 
         # Delete entries beyond keep_count
         if len(all_history) > keep_count:
@@ -93,9 +91,11 @@ class PasswordHistoryService:
         Returns:
             List of PasswordHistory entries
         """
-        query = self.db.query(PasswordHistory).filter(
-            PasswordHistory.user_id == str(user.id)
-        ).order_by(PasswordHistory.created_at.desc())
+        query = (
+            self.db.query(PasswordHistory)
+            .filter(PasswordHistory.user_id == str(user.id))
+            .order_by(PasswordHistory.created_at.desc())
+        )
 
         if limit:
             query = query.limit(limit)

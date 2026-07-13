@@ -12,8 +12,19 @@ from .account_lockout import AccountLockout
 
 # Audit and settings
 from .audit import AuditLog
+
+# No-Code Platform - Automation System
+from .automation import (
+    ActionTemplate,
+    AutomationExecution,
+    AutomationRule,
+    WebhookConfig,
+)
 from .base import GUID, Base, generate_uuid
 from .branch import Branch
+
+# Builder system
+from .builder_page import BuilderPage, BuilderPageVersion
 from .company import Company
 
 # Dashboard system
@@ -25,60 +36,35 @@ from .dashboard import (
     DashboardWidget,
     WidgetDataCache,
 )
-from .department import Department
-from .group import Group
-from .login_attempt import LoginAttempt
-from .menu_item import MenuItem
-# Unified module system
-from .nocode_module import Module, ModuleActivation
-# Backward-compatible aliases
-from .nocode_module import ModuleRegistry, TenantModule, NocodeModule, CompanyModule
-
-# Event bus
-from .event_bus import Event, EventSubscription, EventHandler, EventArchive
-from .notification_config import NotificationConfig
-from .notification_queue import NotificationQueue
-
-# Builder system
-from .builder_page import BuilderPage, BuilderPageVersion
 
 # No-Code Platform - Data Model Designer
 from .data_model import (
     EntityDefinition,
-    FieldDefinition,
-    RelationshipDefinition,
-    IndexDefinition,
     EntityMigration,
+    FieldDefinition,
+    IndexDefinition,
+    RelationshipDefinition,
 )
+from .department import Department
 
-# No-Code Platform - Workflow Designer
-from .workflow import (
-    WorkflowDefinition,
-    WorkflowState,
-    WorkflowTransition,
-    WorkflowInstance,
-    WorkflowHistory,
-)
-
-# No-Code Platform - Automation System
-from .automation import (
-    AutomationRule,
-    AutomationExecution,
-    ActionTemplate,
-    WebhookConfig,
-)
+# Event bus
+from .event_bus import Event, EventArchive, EventHandler, EventSubscription
+from .group import Group
+from .login_attempt import LoginAttempt
 
 # No-Code Platform - Lookup Configuration
 from .lookup import (
-    LookupConfiguration,
-    LookupCache,
     CascadingLookupRule,
+    LookupCache,
+    LookupConfiguration,
 )
+from .menu_item import MenuItem
 
-# No-Code Platform - Module System Foundation (Phase 4)
-from .nocode_module import (
-    ModuleDependency,
-    ModuleVersion,
+# No-Code Platform - Module Extension Framework (Phase 4 Priority 3)
+from .module_extension import (
+    ModuleEntityExtension,
+    ModuleMenuExtension,
+    ModuleScreenExtension,
 )
 
 # No-Code Platform - Module Service Registry (Phase 4 Priority 2)
@@ -87,15 +73,21 @@ from .module_service import (
     ModuleServiceAccessLog,
 )
 
-# No-Code Platform - Module Extension Framework (Phase 4 Priority 3)
-from .module_extension import (
-    ModuleEntityExtension,
-    ModuleScreenExtension,
-    ModuleMenuExtension,
+# No-Code Platform - Module System Foundation (Phase 4)
+# Backward-compatible aliases
+# Unified module system
+from .nocode_module import (
+    CompanyModule,
+    Module,
+    ModuleActivation,
+    ModuleDependency,
+    ModuleRegistry,
+    ModuleVersion,
+    NocodeModule,
+    TenantModule,
 )
-
-# Per-tenant module database registry (Epic 22.4.1)
-from .tenant_module_database import TenantModuleDatabase
+from .notification_config import NotificationConfig
+from .notification_queue import NotificationQueue
 
 # Security system
 from .password_history import PasswordHistory
@@ -135,6 +127,9 @@ from .settings import TenantSettings, UserSettings
 # Core entities
 from .tenant import Tenant
 
+# Per-tenant module database registry (Epic 22.4.1)
+from .tenant_module_database import TenantModuleDatabase
+
 # Token revocation
 from .token_blacklist import TokenBlacklist
 from .user import User
@@ -143,42 +138,44 @@ from .user import User
 from .user_company_access import UserCompanyAccess
 from .user_session import UserSession
 
+# No-Code Platform - Workflow Designer
+from .workflow import (
+    WorkflowDefinition,
+    WorkflowHistory,
+    WorkflowInstance,
+    WorkflowState,
+    WorkflowTransition,
+)
+
 # Export all models
 __all__ = [
     # Base
     "Base",
     "GUID",
     "generate_uuid",
-
     # Core entities
     "Tenant",
     "Company",
     "Branch",
     "Department",
     "User",
-
     # Multi-company access
     "UserCompanyAccess",
-
     # RBAC
     "Permission",
     "Role",
     "Group",
-
     # RBAC junctions
     "RolePermission",
     "UserRole",
     "UserGroup",
     "GroupRole",
-
     # Audit and settings
     "AuditLog",
     "UserSettings",
     "TenantSettings",
-
     # Token revocation
     "TokenBlacklist",
-
     # Unified module system
     "Module",
     "ModuleActivation",
@@ -187,23 +184,19 @@ __all__ = [
     "TenantModule",
     "NocodeModule",
     "CompanyModule",
-
     # Event bus
     "Event",
     "EventSubscription",
     "EventHandler",
     "EventArchive",
-
     # Menu system
     "MenuItem",
-
     # Report system
     "ReportDefinition",
     "ReportExecution",
     "ReportSchedule",
     "ReportTemplate",
     "ReportCache",
-
     # Dashboard system
     "Dashboard",
     "DashboardPage",
@@ -211,7 +204,6 @@ __all__ = [
     "DashboardShare",
     "DashboardSnapshot",
     "WidgetDataCache",
-
     # Security system
     "PasswordHistory",
     "LoginAttempt",
@@ -221,56 +213,46 @@ __all__ = [
     "NotificationQueue",
     "NotificationConfig",
     "PasswordResetToken",
-
     # Scheduler system
     "SchedulerConfig",
     "SchedulerJob",
     "SchedulerJobExecution",
     "SchedulerJobLog",
-
     # Builder system
     "BuilderPage",
     "BuilderPageVersion",
-
     # No-Code Platform - Data Model Designer
     "EntityDefinition",
     "FieldDefinition",
     "RelationshipDefinition",
     "IndexDefinition",
     "EntityMigration",
-
     # No-Code Platform - Workflow Designer
     "WorkflowDefinition",
     "WorkflowState",
     "WorkflowTransition",
     "WorkflowInstance",
     "WorkflowHistory",
-
     # No-Code Platform - Automation System
     "AutomationRule",
     "AutomationExecution",
     "ActionTemplate",
     "WebhookConfig",
-
     # No-Code Platform - Lookup Configuration
     "LookupConfiguration",
     "LookupCache",
     "CascadingLookupRule",
-
     # No-Code Platform - Module System Foundation (Phase 4)
     "NocodeModule",
     "ModuleDependency",
     "ModuleVersion",
-
     # No-Code Platform - Module Service Registry (Phase 4 Priority 2)
     "ModuleService",
     "ModuleServiceAccessLog",
-
     # No-Code Platform - Module Extension Framework (Phase 4 Priority 3)
     "ModuleEntityExtension",
     "ModuleScreenExtension",
     "ModuleMenuExtension",
-
     # Per-tenant module database registry
     "TenantModuleDatabase",
 ]

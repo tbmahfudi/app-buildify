@@ -5,27 +5,25 @@ Business logic for the Lookup Configuration feature.
 Handles dynamic data retrieval and caching.
 """
 
-from typing import List, Optional
-from uuid import UUID
-from datetime import datetime, timedelta
 import hashlib
 import json
+from datetime import datetime, timedelta
+from typing import Optional
+from uuid import UUID
 
-from sqlalchemy.orm import Session
-from sqlalchemy import text
 from fastapi import HTTPException, status
+from sqlalchemy.orm import Session
 
-from app.models.lookup import (
-    LookupConfiguration,
-    LookupCache,
-    CascadingLookupRule,
-)
 from app.core.scope import apply_tenant_scope
+from app.models.lookup import (
+    CascadingLookupRule,
+    LookupCache,
+    LookupConfiguration,
+)
 from app.schemas.lookup import (
+    CascadingLookupRuleCreate,
     LookupConfigurationCreate,
     LookupConfigurationUpdate,
-    CascadingLookupRuleCreate,
-    CascadingLookupRuleUpdate,
 )
 
 
@@ -43,8 +41,7 @@ class LookupService:
         """Create a new lookup configuration"""
         # Check if configuration name already exists
         existing_q = self.db.query(LookupConfiguration).filter(
-            LookupConfiguration.name == config_data.name,
-            LookupConfiguration.is_deleted == False
+            LookupConfiguration.name == config_data.name, LookupConfiguration.is_deleted == False
         )
         existing_q = apply_tenant_scope(existing_q, LookupConfiguration, self.current_user)
         existing = existing_q.first()
@@ -52,14 +49,14 @@ class LookupService:
         if existing:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Lookup configuration with name '{config_data.name}' already exists"
+                detail=f"Lookup configuration with name '{config_data.name}' already exists",
             )
 
         config = LookupConfiguration(
             **config_data.model_dump(),
             tenant_id=self.tenant_id,
             created_by=self.current_user.id,
-            updated_by=self.current_user.id
+            updated_by=self.current_user.id,
         )
 
         self.db.add(config)
@@ -69,24 +66,22 @@ class LookupService:
         return config
 
     async def list_configurations(
-        self,
-        source_type: Optional[str] = None,
-        entity_id: Optional[UUID] = None,
-        include_platform: bool = True
+        self, source_type: Optional[str] = None, entity_id: Optional[UUID] = None, include_platform: bool = True
     ):
         """List all lookup configurations (tenant-specific and optionally platform-level)"""
         from sqlalchemy import or_
 
         # Build tenant filter: include current tenant and optionally platform-level (tenant_id=NULL)
-        query = self.db.query(LookupConfiguration).filter(
-            LookupConfiguration.is_deleted == False
-        )
+        query = self.db.query(LookupConfiguration).filter(LookupConfiguration.is_deleted == False)
         if include_platform:
             _tid = self.current_user.tenant_id  # tenant_scope: or_() platform-include
-            query = query.filter(or_(
-                LookupConfiguration.tenant_id == None,  # tenant-scope-ok (platform-level None check — or_() intentional cross-scope)
-                LookupConfiguration.tenant_id == _tid  # tenant-scope-ok (or_() platform-include branch)
-            ))
+            query = query.filter(
+                or_(
+                    LookupConfiguration.tenant_id
+                    == None,  # tenant-scope-ok (platform-level None check — or_() intentional cross-scope)
+                    LookupConfiguration.tenant_id == _tid,  # tenant-scope-ok (or_() platform-include branch)
+                )
+            )
         else:
             query = apply_tenant_scope(query, LookupConfiguration, self.current_user)
 
@@ -103,24 +98,23 @@ class LookupService:
 
         # Build tenant filter
         cfg_q = self.db.query(LookupConfiguration).filter(
-            LookupConfiguration.id == config_id,
-            LookupConfiguration.is_deleted == False
+            LookupConfiguration.id == config_id, LookupConfiguration.is_deleted == False
         )
         if include_platform:
             _tid = self.current_user.tenant_id  # tenant_scope: or_() platform-include
-            cfg_q = cfg_q.filter(or_(
-                LookupConfiguration.tenant_id == None,  # tenant-scope-ok (platform-level None check — or_() intentional cross-scope)
-                LookupConfiguration.tenant_id == _tid  # tenant-scope-ok (or_() platform-include branch)
-            ))
+            cfg_q = cfg_q.filter(
+                or_(
+                    LookupConfiguration.tenant_id
+                    == None,  # tenant-scope-ok (platform-level None check — or_() intentional cross-scope)
+                    LookupConfiguration.tenant_id == _tid,  # tenant-scope-ok (or_() platform-include branch)
+                )
+            )
         else:
             cfg_q = apply_tenant_scope(cfg_q, LookupConfiguration, self.current_user)
         config = cfg_q.first()
 
         if not config:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Lookup configuration not found"
-            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lookup configuration not found")
 
         return config
 
@@ -165,7 +159,7 @@ class LookupService:
         filters: Optional[dict] = None,
         parent_value: Optional[str] = None,
         page: int = 1,
-        page_size: int = 50
+        page_size: int = 50,
     ):
         """Get lookup data based on configuration"""
         config = await self.get_configuration(config_id)
@@ -189,8 +183,7 @@ class LookupService:
             data = await self._get_api_data(config, search, filters, parent_value)
         else:
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Unsupported source type: {config.source_type}"
+                status_code=status.HTTP_400_BAD_REQUEST, detail=f"Unsupported source type: {config.source_type}"
             )
 
         # Cache the data
@@ -203,11 +196,7 @@ class LookupService:
 
     async def create_cascading_rule(self, rule_data: CascadingLookupRuleCreate):
         """Create a cascading lookup rule"""
-        rule = CascadingLookupRule(
-            **rule_data.model_dump(),
-            tenant_id=self.tenant_id,
-            created_by=self.current_user.id
-        )
+        rule = CascadingLookupRule(**rule_data.model_dump(), tenant_id=self.tenant_id, created_by=self.current_user.id)
 
         self.db.add(rule)
         self.db.commit()
@@ -216,14 +205,10 @@ class LookupService:
         return rule
 
     async def list_cascading_rules(
-        self,
-        parent_lookup_id: Optional[UUID] = None,
-        child_lookup_id: Optional[UUID] = None
+        self, parent_lookup_id: Optional[UUID] = None, child_lookup_id: Optional[UUID] = None
     ):
         """List cascading lookup rules"""
-        query = self.db.query(CascadingLookupRule).filter(
-            CascadingLookupRule.is_active == True
-        )
+        query = self.db.query(CascadingLookupRule).filter(CascadingLookupRule.is_active == True)
         query = apply_tenant_scope(query, CascadingLookupRule, self.current_user)
 
         if parent_lookup_id:
@@ -236,29 +221,24 @@ class LookupService:
     # ==================== Helper Methods ====================
 
     def _generate_cache_key(
-        self,
-        config_id: UUID,
-        search: Optional[str],
-        filters: Optional[dict],
-        parent_value: Optional[str]
+        self, config_id: UUID, search: Optional[str], filters: Optional[dict], parent_value: Optional[str]
     ) -> str:
         """Generate a cache key for lookup data"""
-        key_data = {
-            "config_id": str(config_id),
-            "search": search,
-            "filters": filters,
-            "parent_value": parent_value
-        }
+        key_data = {"config_id": str(config_id), "search": search, "filters": filters, "parent_value": parent_value}
         key_string = json.dumps(key_data, sort_keys=True)
         return hashlib.md5(key_string.encode()).hexdigest()
 
     async def _get_from_cache(self, lookup_id: UUID, cache_key: str):
         """Get data from cache"""
-        cache_entry = self.db.query(LookupCache).filter(
-            LookupCache.lookup_id == lookup_id,
-            LookupCache.cache_key == cache_key,
-            LookupCache.expires_at > datetime.utcnow()
-        ).first()
+        cache_entry = (
+            self.db.query(LookupCache)
+            .filter(
+                LookupCache.lookup_id == lookup_id,
+                LookupCache.cache_key == cache_key,
+                LookupCache.expires_at > datetime.utcnow(),
+            )
+            .first()
+        )
 
         if cache_entry:
             # Update hit count
@@ -280,7 +260,7 @@ class LookupService:
             cache_key=cache_key,
             cached_data=data,
             record_count=len(data),
-            expires_at=expires_at
+            expires_at=expires_at,
         )
 
         self.db.add(cache_entry)
@@ -288,35 +268,21 @@ class LookupService:
 
     async def _clear_cache(self, lookup_id: UUID):
         """Clear all cache entries for a lookup"""
-        self.db.query(LookupCache).filter(
-            LookupCache.lookup_id == lookup_id
-        ).delete()
+        self.db.query(LookupCache).filter(LookupCache.lookup_id == lookup_id).delete()
         self.db.commit()
 
-    async def _get_static_list_data(
-        self,
-        config: LookupConfiguration,
-        search: Optional[str],
-        filters: Optional[dict]
-    ):
+    async def _get_static_list_data(self, config: LookupConfiguration, search: Optional[str], filters: Optional[dict]):
         """Get data from static list"""
         data = config.static_options or []
 
         if search and config.enable_search:
             search_lower = search.lower()
-            data = [
-                item for item in data
-                if search_lower in str(item.get("label", "")).lower()
-            ]
+            data = [item for item in data if search_lower in str(item.get("label", "")).lower()]
 
         return data
 
     async def _get_entity_data(
-        self,
-        config: LookupConfiguration,
-        search: Optional[str],
-        filters: Optional[dict],
-        parent_value: Optional[str]
+        self, config: LookupConfiguration, search: Optional[str], filters: Optional[dict], parent_value: Optional[str]
     ):
         """Get data from entity source (simplified)"""
         # Simplified implementation
@@ -327,11 +293,7 @@ class LookupService:
         ]
 
     async def _get_custom_query_data(
-        self,
-        config: LookupConfiguration,
-        search: Optional[str],
-        filters: Optional[dict],
-        parent_value: Optional[str]
+        self, config: LookupConfiguration, search: Optional[str], filters: Optional[dict], parent_value: Optional[str]
     ):
         """Get data from custom query (simplified)"""
         # Simplified implementation
@@ -339,11 +301,7 @@ class LookupService:
         return []
 
     async def _get_api_data(
-        self,
-        config: LookupConfiguration,
-        search: Optional[str],
-        filters: Optional[dict],
-        parent_value: Optional[str]
+        self, config: LookupConfiguration, search: Optional[str], filters: Optional[dict], parent_value: Optional[str]
     ):
         """Get data from API source (simplified)"""
         # Simplified implementation
@@ -362,5 +320,5 @@ class LookupService:
             "total_count": len(data),
             "page": page,
             "page_size": page_size,
-            "has_more": end_idx < len(data)
+            "has_more": end_idx < len(data),
         }

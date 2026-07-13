@@ -1,21 +1,22 @@
 """
 Scheduler service for managing hierarchical scheduler configurations and jobs.
 """
-from sqlalchemy.orm import Session
-from sqlalchemy import and_, or_
-from typing import List, Dict, Any, Optional
-from datetime import datetime
+
 import uuid
+from datetime import datetime
+from typing import Any, Dict, List, Optional
+
+from sqlalchemy.orm import Session
 
 from app.core.scope import apply_tenant_scope_by_id
 from app.models.scheduler import (
+    ConfigLevel,
+    JobStatus,
+    JobType,
     SchedulerConfig,
     SchedulerJob,
     SchedulerJobExecution,
     SchedulerJobLog,
-    ConfigLevel,
-    JobStatus,
-    JobType
 )
 
 
@@ -29,7 +30,7 @@ class SchedulerService:
         db: Session,
         tenant_id: Optional[uuid.UUID] = None,
         company_id: Optional[uuid.UUID] = None,
-        branch_id: Optional[uuid.UUID] = None
+        branch_id: Optional[uuid.UUID] = None,
     ) -> Optional[SchedulerConfig]:
         """
         Get the most specific configuration for the given hierarchy.
@@ -47,45 +48,49 @@ class SchedulerService:
         """
         # Try branch level first
         if branch_id and company_id and tenant_id:
-            config = apply_tenant_scope_by_id(
-                db.query(SchedulerConfig), SchedulerConfig, tenant_id
-            ).filter(
-                SchedulerConfig.config_level == ConfigLevel.BRANCH,
-                SchedulerConfig.company_id == company_id,
-                SchedulerConfig.branch_id == branch_id,
-                SchedulerConfig.is_active == True
-            ).first()
+            config = (
+                apply_tenant_scope_by_id(db.query(SchedulerConfig), SchedulerConfig, tenant_id)
+                .filter(
+                    SchedulerConfig.config_level == ConfigLevel.BRANCH,
+                    SchedulerConfig.company_id == company_id,
+                    SchedulerConfig.branch_id == branch_id,
+                    SchedulerConfig.is_active == True,
+                )
+                .first()
+            )
             if config:
                 return config
 
         # Try company level
         if company_id and tenant_id:
-            config = apply_tenant_scope_by_id(
-                db.query(SchedulerConfig), SchedulerConfig, tenant_id
-            ).filter(
-                SchedulerConfig.config_level == ConfigLevel.COMPANY,
-                SchedulerConfig.company_id == company_id,
-                SchedulerConfig.is_active == True
-            ).first()
+            config = (
+                apply_tenant_scope_by_id(db.query(SchedulerConfig), SchedulerConfig, tenant_id)
+                .filter(
+                    SchedulerConfig.config_level == ConfigLevel.COMPANY,
+                    SchedulerConfig.company_id == company_id,
+                    SchedulerConfig.is_active == True,
+                )
+                .first()
+            )
             if config:
                 return config
 
         # Try tenant level
         if tenant_id:
-            config = apply_tenant_scope_by_id(
-                db.query(SchedulerConfig), SchedulerConfig, tenant_id
-            ).filter(
-                SchedulerConfig.config_level == ConfigLevel.TENANT,
-                SchedulerConfig.is_active == True
-            ).first()
+            config = (
+                apply_tenant_scope_by_id(db.query(SchedulerConfig), SchedulerConfig, tenant_id)
+                .filter(SchedulerConfig.config_level == ConfigLevel.TENANT, SchedulerConfig.is_active == True)
+                .first()
+            )
             if config:
                 return config
 
         # Fall back to system level
-        config = db.query(SchedulerConfig).filter(
-            SchedulerConfig.config_level == ConfigLevel.SYSTEM,
-            SchedulerConfig.is_active == True
-        ).first()
+        config = (
+            db.query(SchedulerConfig)
+            .filter(SchedulerConfig.config_level == ConfigLevel.SYSTEM, SchedulerConfig.is_active == True)
+            .first()
+        )
 
         return config
 
@@ -139,11 +144,7 @@ class SchedulerService:
         return config
 
     @staticmethod
-    def update_config(
-        db: Session,
-        config_id: int,
-        **kwargs
-    ) -> Optional[SchedulerConfig]:
+    def update_config(db: Session, config_id: int, **kwargs) -> Optional[SchedulerConfig]:
         """
         Update an existing scheduler configuration.
 
@@ -155,9 +156,7 @@ class SchedulerService:
         Returns:
             Updated configuration or None if not found
         """
-        config = db.query(SchedulerConfig).filter(
-            SchedulerConfig.id == config_id
-        ).first()
+        config = db.query(SchedulerConfig).filter(SchedulerConfig.id == config_id).first()
 
         if not config:
             return None
@@ -183,9 +182,7 @@ class SchedulerService:
         Returns:
             True if deleted, False if not found
         """
-        config = db.query(SchedulerConfig).filter(
-            SchedulerConfig.id == config_id
-        ).first()
+        config = db.query(SchedulerConfig).filter(SchedulerConfig.id == config_id).first()
 
         if not config:
             return False
@@ -252,9 +249,7 @@ class SchedulerService:
         Returns:
             Job or None if not found
         """
-        return db.query(SchedulerJob).filter(
-            SchedulerJob.id == job_id
-        ).first()
+        return db.query(SchedulerJob).filter(SchedulerJob.id == job_id).first()
 
     @staticmethod
     def list_jobs(
@@ -265,7 +260,7 @@ class SchedulerService:
         is_active: Optional[bool] = None,
         job_type: Optional[JobType] = None,
         skip: int = 0,
-        limit: int = 100
+        limit: int = 100,
     ) -> List[SchedulerJob]:
         """
         List scheduled jobs with optional filters.
@@ -299,11 +294,7 @@ class SchedulerService:
         return query.offset(skip).limit(limit).all()
 
     @staticmethod
-    def update_job(
-        db: Session,
-        job_id: int,
-        **kwargs
-    ) -> Optional[SchedulerJob]:
+    def update_job(db: Session, job_id: int, **kwargs) -> Optional[SchedulerJob]:
         """
         Update a scheduled job.
 
@@ -315,9 +306,7 @@ class SchedulerService:
         Returns:
             Updated job or None if not found
         """
-        job = db.query(SchedulerJob).filter(
-            SchedulerJob.id == job_id
-        ).first()
+        job = db.query(SchedulerJob).filter(SchedulerJob.id == job_id).first()
 
         if not job:
             return None
@@ -343,9 +332,7 @@ class SchedulerService:
         Returns:
             True if deleted, False if not found
         """
-        job = db.query(SchedulerJob).filter(
-            SchedulerJob.id == job_id
-        ).first()
+        job = db.query(SchedulerJob).filter(SchedulerJob.id == job_id).first()
 
         if not job:
             return False
@@ -363,7 +350,7 @@ class SchedulerService:
         tenant_id: Optional[uuid.UUID] = None,
         company_id: Optional[uuid.UUID] = None,
         branch_id: Optional[uuid.UUID] = None,
-        scheduled_at: Optional[datetime] = None
+        scheduled_at: Optional[datetime] = None,
     ) -> SchedulerJobExecution:
         """
         Create a new job execution record.
@@ -385,7 +372,7 @@ class SchedulerService:
             company_id=company_id,
             branch_id=branch_id,
             scheduled_at=scheduled_at or datetime.utcnow(),
-            status=JobStatus.PENDING
+            status=JobStatus.PENDING,
         )
         db.add(execution)
         db.commit()
@@ -400,7 +387,7 @@ class SchedulerService:
         error_message: Optional[str] = None,
         error_traceback: Optional[str] = None,
         result_data: Optional[Dict[str, Any]] = None,
-        execution_time_ms: Optional[int] = None
+        execution_time_ms: Optional[int] = None,
     ) -> Optional[SchedulerJobExecution]:
         """
         Update execution status and results.
@@ -417,9 +404,7 @@ class SchedulerService:
         Returns:
             Updated execution or None if not found
         """
-        execution = db.query(SchedulerJobExecution).filter(
-            SchedulerJobExecution.id == execution_id
-        ).first()
+        execution = db.query(SchedulerJobExecution).filter(SchedulerJobExecution.id == execution_id).first()
 
         if not execution:
             return None
@@ -450,11 +435,7 @@ class SchedulerService:
 
     @staticmethod
     def add_execution_log(
-        db: Session,
-        execution_id: int,
-        log_level: str,
-        message: str,
-        log_data: Optional[Dict[str, Any]] = None
+        db: Session, execution_id: int, log_level: str, message: str, log_data: Optional[Dict[str, Any]] = None
     ) -> SchedulerJobLog:
         """
         Add a log entry to a job execution.
@@ -469,12 +450,7 @@ class SchedulerService:
         Returns:
             Created log entry
         """
-        log = SchedulerJobLog(
-            execution_id=execution_id,
-            log_level=log_level,
-            message=message,
-            log_data=log_data
-        )
+        log = SchedulerJobLog(execution_id=execution_id, log_level=log_level, message=message, log_data=log_data)
         db.add(log)
         db.commit()
         db.refresh(log)
@@ -482,11 +458,7 @@ class SchedulerService:
 
     @staticmethod
     def get_execution_logs(
-        db: Session,
-        execution_id: int,
-        log_level: Optional[str] = None,
-        skip: int = 0,
-        limit: int = 100
+        db: Session, execution_id: int, log_level: Optional[str] = None, skip: int = 0, limit: int = 100
     ) -> List[SchedulerJobLog]:
         """
         Get logs for an execution.
@@ -501,24 +473,16 @@ class SchedulerService:
         Returns:
             List of log entries
         """
-        query = db.query(SchedulerJobLog).filter(
-            SchedulerJobLog.execution_id == execution_id
-        )
+        query = db.query(SchedulerJobLog).filter(SchedulerJobLog.execution_id == execution_id)
 
         if log_level:
             query = query.filter(SchedulerJobLog.log_level == log_level)
 
-        return query.order_by(
-            SchedulerJobLog.created_at.asc()
-        ).offset(skip).limit(limit).all()
+        return query.order_by(SchedulerJobLog.created_at.asc()).offset(skip).limit(limit).all()
 
     @staticmethod
     def get_job_executions(
-        db: Session,
-        job_id: int,
-        status: Optional[JobStatus] = None,
-        skip: int = 0,
-        limit: int = 50
+        db: Session, job_id: int, status: Optional[JobStatus] = None, skip: int = 0, limit: int = 50
     ) -> List[SchedulerJobExecution]:
         """
         Get execution history for a job.
@@ -533,13 +497,9 @@ class SchedulerService:
         Returns:
             List of executions
         """
-        query = db.query(SchedulerJobExecution).filter(
-            SchedulerJobExecution.job_id == job_id
-        )
+        query = db.query(SchedulerJobExecution).filter(SchedulerJobExecution.job_id == job_id)
 
         if status:
             query = query.filter(SchedulerJobExecution.status == status)
 
-        return query.order_by(
-            SchedulerJobExecution.scheduled_at.desc()
-        ).offset(skip).limit(limit).all()
+        return query.order_by(SchedulerJobExecution.scheduled_at.desc()).offset(skip).limit(limit).all()

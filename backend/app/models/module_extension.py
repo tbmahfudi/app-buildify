@@ -7,11 +7,22 @@ Models for module extension framework (Phase 4 Priority 3):
 - ModuleMenuExtension: Menu item extensions
 """
 
-from sqlalchemy import Column, String, Integer, Boolean, Text, ForeignKey, DateTime, UniqueConstraint, CheckConstraint, Index, JSON
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    CheckConstraint,
+    Column,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
-from app.models.base import Base, GUID, generate_uuid
+from app.models.base import GUID, Base, generate_uuid
 
 
 class ModuleEntityExtension(Base):
@@ -28,31 +39,18 @@ class ModuleEntityExtension(Base):
     The extension table is created dynamically and has a foreign key
     to the base entity table.
     """
-    __tablename__ = 'module_entity_extensions'
+
+    __tablename__ = "module_entity_extensions"
 
     # Identity
     id = Column(GUID, primary_key=True, default=generate_uuid)
 
     # Extension source (module adding the extension)
-    extending_module_id = Column(
-        GUID,
-        ForeignKey('modules.id', ondelete='CASCADE'),
-        nullable=False,
-        index=True
-    )
+    extending_module_id = Column(GUID, ForeignKey("modules.id", ondelete="CASCADE"), nullable=False, index=True)
 
     # Extension target
-    target_module_id = Column(
-        GUID,
-        ForeignKey('modules.id', ondelete='CASCADE'),
-        nullable=False
-    )
-    target_entity_id = Column(
-        GUID,
-        ForeignKey('entity_definitions.id', ondelete='CASCADE'),
-        nullable=False,
-        index=True
-    )
+    target_module_id = Column(GUID, ForeignKey("modules.id", ondelete="CASCADE"), nullable=False)
+    target_entity_id = Column(GUID, ForeignKey("entity_definitions.id", ondelete="CASCADE"), nullable=False, index=True)
 
     # Extension details
     extension_table = Column(String(100), nullable=False)  # e.g., "payroll_hr_employees_ext"
@@ -63,30 +61,19 @@ class ModuleEntityExtension(Base):
 
     # Audit
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-    created_by = Column(GUID, ForeignKey('users.id'))
+    created_by = Column(GUID, ForeignKey("users.id"))
 
     # Relationships
-    extending_module = relationship(
-        "Module",
-        foreign_keys=[extending_module_id],
-        backref="entity_extensions_created"
-    )
-    target_module = relationship(
-        "Module",
-        foreign_keys=[target_module_id],
-        backref="entity_extensions_received"
-    )
+    extending_module = relationship("Module", foreign_keys=[extending_module_id], backref="entity_extensions_created")
+    target_module = relationship("Module", foreign_keys=[target_module_id], backref="entity_extensions_received")
     target_entity = relationship("EntityDefinition", backref="extensions")
     creator = relationship("User", foreign_keys=[created_by])
 
     # Constraints
     __table_args__ = (
-        UniqueConstraint(
-            'extending_module_id', 'target_entity_id',
-            name='unique_module_entity_extension'
-        ),
-        Index('idx_entity_extensions_extending', 'extending_module_id'),
-        Index('idx_entity_extensions_target', 'target_entity_id'),
+        UniqueConstraint("extending_module_id", "target_entity_id", name="unique_module_entity_extension"),
+        Index("idx_entity_extensions_extending", "extending_module_id"),
+        Index("idx_entity_extensions_target", "target_entity_id"),
     )
 
     def __repr__(self):
@@ -110,32 +97,21 @@ class ModuleScreenExtension(Base):
     - Benefits module adds "Benefits" tab to same screen
     - Each module can see and edit only its own extension data
     """
-    __tablename__ = 'module_screen_extensions'
+
+    __tablename__ = "module_screen_extensions"
 
     # Identity
     id = Column(GUID, primary_key=True, default=generate_uuid)
 
     # Extension source (module adding the extension)
-    extending_module_id = Column(
-        GUID,
-        ForeignKey('modules.id', ondelete='CASCADE'),
-        nullable=False,
-        index=True
-    )
+    extending_module_id = Column(GUID, ForeignKey("modules.id", ondelete="CASCADE"), nullable=False, index=True)
 
     # Extension target
-    target_module_id = Column(
-        GUID,
-        ForeignKey('modules.id', ondelete='CASCADE'),
-        nullable=False
-    )
+    target_module_id = Column(GUID, ForeignKey("modules.id", ondelete="CASCADE"), nullable=False)
     target_screen = Column(String(100), nullable=False)  # e.g., "employee_detail"
 
     # Extension details
-    extension_type = Column(
-        String(50),
-        nullable=False
-    )  # tab, section, widget, action
+    extension_type = Column(String(50), nullable=False)  # tab, section, widget, action
     extension_config = Column(JSON, nullable=False)  # Configuration (label, icon, component, etc.)
     position = Column(Integer, default=999)  # Display order
 
@@ -147,29 +123,18 @@ class ModuleScreenExtension(Base):
 
     # Audit
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-    created_by = Column(GUID, ForeignKey('users.id'))
+    created_by = Column(GUID, ForeignKey("users.id"))
 
     # Relationships
-    extending_module = relationship(
-        "Module",
-        foreign_keys=[extending_module_id],
-        backref="screen_extensions_created"
-    )
-    target_module = relationship(
-        "Module",
-        foreign_keys=[target_module_id],
-        backref="screen_extensions_received"
-    )
+    extending_module = relationship("Module", foreign_keys=[extending_module_id], backref="screen_extensions_created")
+    target_module = relationship("Module", foreign_keys=[target_module_id], backref="screen_extensions_received")
     creator = relationship("User", foreign_keys=[created_by])
 
     # Constraints
     __table_args__ = (
-        CheckConstraint(
-            "extension_type IN ('tab', 'section', 'widget', 'action')",
-            name='valid_screen_extension_type'
-        ),
-        Index('idx_screen_extensions_target', 'target_module_id', 'target_screen'),
-        Index('idx_screen_extensions_extending', 'extending_module_id'),
+        CheckConstraint("extension_type IN ('tab', 'section', 'widget', 'action')", name="valid_screen_extension_type"),
+        Index("idx_screen_extensions_target", "target_module_id", "target_screen"),
+        Index("idx_screen_extensions_extending", "extending_module_id"),
     )
 
     def __repr__(self):
@@ -203,24 +168,17 @@ class ModuleMenuExtension(Base):
       ]
     }
     """
-    __tablename__ = 'module_menu_extensions'
+
+    __tablename__ = "module_menu_extensions"
 
     # Identity
     id = Column(GUID, primary_key=True, default=generate_uuid)
 
     # Extension source (module adding the extension)
-    extending_module_id = Column(
-        GUID,
-        ForeignKey('modules.id', ondelete='CASCADE'),
-        nullable=False,
-        index=True
-    )
+    extending_module_id = Column(GUID, ForeignKey("modules.id", ondelete="CASCADE"), nullable=False, index=True)
 
     # Extension target (NULL = add to root menu)
-    target_module_id = Column(
-        GUID,
-        ForeignKey('modules.id', ondelete='CASCADE')
-    )
+    target_module_id = Column(GUID, ForeignKey("modules.id", ondelete="CASCADE"))
     target_menu_item = Column(String(100))  # Parent menu item (e.g., "hr_management")
 
     # Menu item details
@@ -235,27 +193,19 @@ class ModuleMenuExtension(Base):
 
     # Audit
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-    created_by = Column(GUID, ForeignKey('users.id'))
+    created_by = Column(GUID, ForeignKey("users.id"))
 
     # Relationships
-    extending_module = relationship(
-        "Module",
-        foreign_keys=[extending_module_id],
-        backref="menu_extensions_created"
-    )
-    target_module = relationship(
-        "Module",
-        foreign_keys=[target_module_id],
-        backref="menu_extensions_received"
-    )
+    extending_module = relationship("Module", foreign_keys=[extending_module_id], backref="menu_extensions_created")
+    target_module = relationship("Module", foreign_keys=[target_module_id], backref="menu_extensions_received")
     creator = relationship("User", foreign_keys=[created_by])
 
     # Constraints
     __table_args__ = (
-        Index('idx_menu_extensions_target', 'target_module_id'),
-        Index('idx_menu_extensions_extending', 'extending_module_id'),
+        Index("idx_menu_extensions_target", "target_module_id"),
+        Index("idx_menu_extensions_extending", "extending_module_id"),
     )
 
     def __repr__(self):
-        target = self.target_menu_item or 'root'
+        target = self.target_menu_item or "root"
         return f"<ModuleMenuExtension(target='{target}', active={self.is_active})>"

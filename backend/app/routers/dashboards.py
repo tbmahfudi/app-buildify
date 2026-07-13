@@ -1,6 +1,7 @@
 """
 Dashboard API router.
 """
+
 import logging
 from typing import List, Optional
 from uuid import UUID
@@ -8,7 +9,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.orm import Session
 
-from app.core.dependencies import get_current_user, get_db, has_permission
+from app.core.dependencies import get_db, has_permission
 from app.core.exceptions_helpers import not_found_exception
 from app.models.user import User
 from app.schemas.dashboard import (
@@ -39,19 +40,17 @@ logger = logging.getLogger(__name__)
 
 # ==================== Dashboard Endpoints ====================
 
+
 @router.post("", response_model=DashboardResponse, status_code=status.HTTP_201_CREATED)
 def create_dashboard(
     dashboard_data: DashboardCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("dashboards:create:tenant"))
+    current_user: User = Depends(has_permission("dashboards:create:tenant")),
 ):
     """Create a new dashboard - requires dashboards:create:tenant"""
     try:
         dashboard = DashboardService.create_dashboard(
-            db=db,
-            tenant_id=current_user.tenant_id,
-            user_id=current_user.id,
-            dashboard_data=dashboard_data
+            db=db, tenant_id=current_user.tenant_id, user_id=current_user.id, dashboard_data=dashboard_data
         )
         return dashboard
     except Exception as e:
@@ -65,7 +64,7 @@ def list_dashboards(
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("dashboards:read:tenant"))
+    current_user: User = Depends(has_permission("dashboards:read:tenant")),
 ):
     """List all accessible dashboards - requires dashboards:read:tenant"""
     dashboards = DashboardService.list_dashboards(
@@ -75,25 +74,27 @@ def list_dashboards(
         category=category,
         favorites_only=favorites_only,
         skip=skip,
-        limit=limit
+        limit=limit,
     )
 
     # Convert to summary format
     summaries = []
     for dashboard in dashboards:
-        summaries.append(DashboardSummary(
-            id=dashboard.id,
-            name=dashboard.name,
-            description=dashboard.description,
-            category=dashboard.category,
-            tags=dashboard.tags,
-            is_public=dashboard.is_public,
-            is_favorite=dashboard.is_favorite,
-            created_by=dashboard.created_by,
-            created_at=dashboard.created_at,
-            updated_at=dashboard.updated_at,
-            page_count=len(dashboard.pages)
-        ))
+        summaries.append(
+            DashboardSummary(
+                id=dashboard.id,
+                name=dashboard.name,
+                description=dashboard.description,
+                category=dashboard.category,
+                tags=dashboard.tags,
+                is_public=dashboard.is_public,
+                is_favorite=dashboard.is_favorite,
+                created_by=dashboard.created_by,
+                created_at=dashboard.created_at,
+                updated_at=dashboard.updated_at,
+                page_count=len(dashboard.pages),
+            )
+        )
 
     return summaries
 
@@ -102,14 +103,11 @@ def list_dashboards(
 def get_dashboard(
     dashboard_id: UUID,
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("dashboards:read:tenant"))
+    current_user: User = Depends(has_permission("dashboards:read:tenant")),
 ):
     """Get a specific dashboard with all pages and widgets - requires dashboards:read:tenant"""
     dashboard = DashboardService.get_dashboard(
-        db=db,
-        tenant_id=current_user.tenant_id,
-        dashboard_id=dashboard_id,
-        user_id=current_user.id
+        db=db, tenant_id=current_user.tenant_id, dashboard_id=dashboard_id, user_id=current_user.id
     )
 
     if not dashboard:
@@ -123,14 +121,11 @@ def update_dashboard(
     dashboard_id: UUID,
     dashboard_data: DashboardUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("dashboards:update:own"))
+    current_user: User = Depends(has_permission("dashboards:update:own")),
 ):
     """Update a dashboard - requires dashboards:update:own"""
     dashboard = DashboardService.update_dashboard(
-        db=db,
-        tenant_id=current_user.tenant_id,
-        dashboard_id=dashboard_id,
-        dashboard_data=dashboard_data
+        db=db, tenant_id=current_user.tenant_id, dashboard_id=dashboard_id, dashboard_data=dashboard_data
     )
 
     if not dashboard:
@@ -143,14 +138,10 @@ def update_dashboard(
 def delete_dashboard(
     dashboard_id: UUID,
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("dashboards:delete:own"))
+    current_user: User = Depends(has_permission("dashboards:delete:own")),
 ):
     """Delete a dashboard (soft delete) - requires dashboards:delete:own"""
-    success = DashboardService.delete_dashboard(
-        db=db,
-        tenant_id=current_user.tenant_id,
-        dashboard_id=dashboard_id
-    )
+    success = DashboardService.delete_dashboard(db=db, tenant_id=current_user.tenant_id, dashboard_id=dashboard_id)
 
     if not success:
         raise not_found_exception("Dashboard", str(dashboard_id))
@@ -163,7 +154,7 @@ def clone_dashboard(
     dashboard_id: UUID,
     clone_request: DashboardCloneRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("dashboards:clone:tenant"))
+    current_user: User = Depends(has_permission("dashboards:clone:tenant")),
 ):
     """Clone an existing dashboard - requires dashboards:clone:tenant"""
     dashboard = DashboardService.clone_dashboard(
@@ -171,7 +162,7 @@ def clone_dashboard(
         tenant_id=current_user.tenant_id,
         user_id=current_user.id,
         dashboard_id=dashboard_id,
-        new_name=clone_request.name
+        new_name=clone_request.name,
     )
 
     if not dashboard:
@@ -182,19 +173,16 @@ def clone_dashboard(
 
 # ==================== Dashboard Page Endpoints ====================
 
+
 @router.post("/pages", response_model=DashboardPageResponse, status_code=status.HTTP_201_CREATED)
 def create_page(
     page_data: DashboardPageCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("dashboards:create_page:tenant"))
+    current_user: User = Depends(has_permission("dashboards:create_page:tenant")),
 ):
     """Create a new dashboard page - requires dashboards:create_page:tenant"""
     try:
-        page = DashboardService.create_page(
-            db=db,
-            tenant_id=current_user.tenant_id,
-            page_data=page_data
-        )
+        page = DashboardService.create_page(db=db, tenant_id=current_user.tenant_id, page_data=page_data)
         return page
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
@@ -205,15 +193,10 @@ def update_page(
     page_id: UUID,
     page_data: DashboardPageUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("dashboards:update_page:own"))
+    current_user: User = Depends(has_permission("dashboards:update_page:own")),
 ):
     """Update a dashboard page - requires dashboards:update_page:own"""
-    page = DashboardService.update_page(
-        db=db,
-        tenant_id=current_user.tenant_id,
-        page_id=page_id,
-        page_data=page_data
-    )
+    page = DashboardService.update_page(db=db, tenant_id=current_user.tenant_id, page_id=page_id, page_data=page_data)
 
     if not page:
         raise not_found_exception("Page", str(page_id))
@@ -225,14 +208,10 @@ def update_page(
 def delete_page(
     page_id: UUID,
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("dashboards:delete_page:own"))
+    current_user: User = Depends(has_permission("dashboards:delete_page:own")),
 ):
     """Delete a dashboard page - requires dashboards:delete_page:own"""
-    success = DashboardService.delete_page(
-        db=db,
-        tenant_id=current_user.tenant_id,
-        page_id=page_id
-    )
+    success = DashboardService.delete_page(db=db, tenant_id=current_user.tenant_id, page_id=page_id)
 
     if not success:
         raise not_found_exception("Page", str(page_id))
@@ -242,19 +221,16 @@ def delete_page(
 
 # ==================== Dashboard Widget Endpoints ====================
 
+
 @router.post("/widgets", response_model=DashboardWidgetResponse, status_code=status.HTTP_201_CREATED)
 def create_widget(
     widget_data: DashboardWidgetCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("dashboards:create_widget:tenant"))
+    current_user: User = Depends(has_permission("dashboards:create_widget:tenant")),
 ):
     """Create a new dashboard widget - requires dashboards:create_widget:tenant"""
     try:
-        widget = DashboardService.create_widget(
-            db=db,
-            tenant_id=current_user.tenant_id,
-            widget_data=widget_data
-        )
+        widget = DashboardService.create_widget(db=db, tenant_id=current_user.tenant_id, widget_data=widget_data)
         return widget
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
@@ -265,14 +241,11 @@ def update_widget(
     widget_id: UUID,
     widget_data: DashboardWidgetUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("dashboards:update_widget:own"))
+    current_user: User = Depends(has_permission("dashboards:update_widget:own")),
 ):
     """Update a dashboard widget - requires dashboards:update_widget:own"""
     widget = DashboardService.update_widget(
-        db=db,
-        tenant_id=current_user.tenant_id,
-        widget_id=widget_id,
-        widget_data=widget_data
+        db=db, tenant_id=current_user.tenant_id, widget_id=widget_id, widget_data=widget_data
     )
 
     if not widget:
@@ -285,14 +258,10 @@ def update_widget(
 def delete_widget(
     widget_id: UUID,
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("dashboards:delete_widget:own"))
+    current_user: User = Depends(has_permission("dashboards:delete_widget:own")),
 ):
     """Delete a dashboard widget - requires dashboards:delete_widget:own"""
-    success = DashboardService.delete_widget(
-        db=db,
-        tenant_id=current_user.tenant_id,
-        widget_id=widget_id
-    )
+    success = DashboardService.delete_widget(db=db, tenant_id=current_user.tenant_id, widget_id=widget_id)
 
     if not success:
         raise not_found_exception("Widget", str(widget_id))
@@ -304,14 +273,12 @@ def delete_widget(
 def bulk_update_widgets(
     bulk_request: BulkWidgetUpdateRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("dashboards:update_widget:own"))
+    current_user: User = Depends(has_permission("dashboards:update_widget:own")),
 ):
     """Bulk update widget positions and order (for drag-drop) - requires dashboards:update_widget:own"""
     try:
         success = DashboardService.bulk_update_widgets(
-            db=db,
-            tenant_id=current_user.tenant_id,
-            updates=bulk_request.updates
+            db=db, tenant_id=current_user.tenant_id, updates=bulk_request.updates
         )
         return {"success": success}
     except Exception as e:
@@ -320,11 +287,12 @@ def bulk_update_widgets(
 
 # ==================== Widget Data Endpoints ====================
 
+
 @router.post("/widgets/data", response_model=WidgetDataResponse)
 def get_widget_data(
     data_request: WidgetDataRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("dashboards:read:tenant"))
+    current_user: User = Depends(has_permission("dashboards:read:tenant")),
 ):
     """Get data for a specific widget. Reuses ReportService for report-based widgets - requires dashboards:read:tenant"""
     try:
@@ -334,15 +302,15 @@ def get_widget_data(
             user_id=current_user.id,
             widget_id=data_request.widget_id,
             parameters=data_request.parameters,
-            use_cache=data_request.use_cache
+            use_cache=data_request.use_cache,
         )
 
         return WidgetDataResponse(
             widget_id=data_request.widget_id,
-            data=result['data'],
-            metadata={'widget_type': result.get('widget_type')},
-            cached=result.get('cached', False),
-            execution_time_ms=result.get('execution_time_ms')
+            data=result["data"],
+            metadata={"widget_type": result.get("widget_type")},
+            cached=result.get("cached", False),
+            execution_time_ms=result.get("execution_time_ms"),
         )
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
@@ -352,19 +320,17 @@ def get_widget_data(
 
 # ==================== Dashboard Sharing Endpoints ====================
 
+
 @router.post("/shares", response_model=DashboardShareResponse, status_code=status.HTTP_201_CREATED)
 def create_share(
     share_data: DashboardShareCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("dashboards:share:tenant"))
+    current_user: User = Depends(has_permission("dashboards:share:tenant")),
 ):
     """Share a dashboard with a user or role - requires dashboards:share:tenant"""
     try:
         share = DashboardService.create_share(
-            db=db,
-            tenant_id=current_user.tenant_id,
-            user_id=current_user.id,
-            share_data=share_data
+            db=db, tenant_id=current_user.tenant_id, user_id=current_user.id, share_data=share_data
         )
         return share
     except Exception as e:
@@ -373,19 +339,17 @@ def create_share(
 
 # ==================== Dashboard Snapshot Endpoints ====================
 
+
 @router.post("/snapshots", response_model=DashboardSnapshotResponse, status_code=status.HTTP_201_CREATED)
 def create_snapshot(
     snapshot_data: DashboardSnapshotCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("dashboards:snapshot:tenant"))
+    current_user: User = Depends(has_permission("dashboards:snapshot:tenant")),
 ):
     """Create a snapshot of a dashboard at a specific point in time - requires dashboards:snapshot:tenant"""
     try:
         snapshot = DashboardService.create_snapshot(
-            db=db,
-            tenant_id=current_user.tenant_id,
-            user_id=current_user.id,
-            snapshot_data=snapshot_data
+            db=db, tenant_id=current_user.tenant_id, user_id=current_user.id, snapshot_data=snapshot_data
         )
         return snapshot
     except ValueError as e:

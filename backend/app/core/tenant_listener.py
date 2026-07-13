@@ -29,6 +29,7 @@ Call TenantScopeListener.install(engine) once at FastAPI lifespan startup,
 AFTER tenant_scoped_session is deployed to all tenant routes (T-22.009)
 to avoid HTTP 500 storms on existing requests that do not yet set scope.
 """
+
 from __future__ import annotations
 
 import logging
@@ -36,14 +37,14 @@ import logging
 from sqlalchemy import event
 from sqlalchemy.orm import Session
 
+from app.core.tenant.scope import TenantScopeNotSetError as TenantScopeMissingError
 from app.core.tenant.scope import (
-    TenantScopeNotSetError as TenantScopeMissingError,
     _current_tenant_id,
 )
 
 logger = logging.getLogger(__name__)
 
-_SCOPE_ATTR = '_tenant_scope'
+_SCOPE_ATTR = "_tenant_scope"
 
 # ---------------------------------------------------------------------------
 # Session-attribute helpers (T-22.005 API)
@@ -57,7 +58,7 @@ def set_tenant_scope(session: Session, tenant_id) -> None:
     """Bind tenant_id to session and to the current ContextVar context."""
     _current_tenant_id.set(str(tenant_id))  # type: ignore[arg-type]
     setattr(session, _SCOPE_ATTR, str(tenant_id))
-    logger.debug('tenant_scope.set (session) tenant_id=%s', tenant_id)
+    logger.debug("tenant_scope.set (session) tenant_id=%s", tenant_id)
 
 
 def clear_tenant_scope(session: Session) -> None:
@@ -65,7 +66,7 @@ def clear_tenant_scope(session: Session) -> None:
     _current_tenant_id.set(None)
     if hasattr(session, _SCOPE_ATTR):
         delattr(session, _SCOPE_ATTR)
-    logger.debug('tenant_scope.clear (session)')
+    logger.debug("tenant_scope.clear (session)")
 
 
 # ---------------------------------------------------------------------------
@@ -97,12 +98,12 @@ class TenantScopeListener:
         Must be called AFTER all routes use tenant_scoped_session (T-22.009
         merged) to prevent HTTP 500 storms on unscoped requests.
         """
-        event.listen(Session, 'do_orm_execute', cls._on_orm_execute)
+        event.listen(Session, "do_orm_execute", cls._on_orm_execute)
         # do_orm_execute does NOT fire for unit-of-work flushes (session.add /
         # session.delete + flush), so INSERT/UPDATE/DELETE on a scoped model
         # would otherwise bypass enforcement. before_flush closes that gap.
-        event.listen(Session, 'before_flush', cls._on_before_flush)
-        logger.info('TenantScopeListener installed on Session')
+        event.listen(Session, "before_flush", cls._on_before_flush)
+        logger.info("TenantScopeListener installed on Session")
 
     @staticmethod
     def _on_before_flush(session, flush_context, instances) -> None:
@@ -117,33 +118,33 @@ class TenantScopeListener:
             (a write must not target a foreign tenant's row).
         """
         scope = _current_tenant_id.get()
-        if scope == '__superuser__':
+        if scope == "__superuser__":
             return
 
         for state_set in (session.new, session.dirty, session.deleted):
             for obj in state_set:
-                if not getattr(type(obj), '__tenant_scoped__', False):
+                if not getattr(type(obj), "__tenant_scoped__", False):
                     continue
                 if scope is None:
-                    logger.error(
-                        'tenant_scope.flush.missing model=%s', type(obj).__name__
-                    )
+                    logger.error("tenant_scope.flush.missing model=%s", type(obj).__name__)
                     raise TenantScopeMissingError(
-                        f'Write on tenant-scoped model {type(obj).__name__!r} '
-                        'flushed without tenant scope set. Use '
-                        'tenant_scoped_session() or set_tenant_scope(session, '
-                        'tenant_id) for background tasks.'
+                        f"Write on tenant-scoped model {type(obj).__name__!r} "
+                        "flushed without tenant scope set. Use "
+                        "tenant_scoped_session() or set_tenant_scope(session, "
+                        "tenant_id) for background tasks."
                     )
-                row_tenant = getattr(obj, 'tenant_id', None)
+                row_tenant = getattr(obj, "tenant_id", None)
                 if row_tenant is not None and str(row_tenant) != str(scope):
                     logger.error(
-                        'tenant_scope.flush.cross_tenant model=%s row_tenant=%s scope=%s',
-                        type(obj).__name__, row_tenant, scope,
+                        "tenant_scope.flush.cross_tenant model=%s row_tenant=%s scope=%s",
+                        type(obj).__name__,
+                        row_tenant,
+                        scope,
                     )
                     raise TenantScopeMissingError(
-                        f'Write on tenant-scoped model {type(obj).__name__!r} '
-                        f'targets tenant {row_tenant} but the active scope is '
-                        f'{scope}. Cross-tenant writes are not permitted.'
+                        f"Write on tenant-scoped model {type(obj).__name__!r} "
+                        f"targets tenant {row_tenant} but the active scope is "
+                        f"{scope}. Cross-tenant writes are not permitted."
                     )
 
     @staticmethod
@@ -162,7 +163,7 @@ class TenantScopeListener:
         try:
             mappers = list(orm_execute_state.all_mappers)
         except AttributeError:
-            bm = getattr(orm_execute_state, 'bind_mapper', None)
+            bm = getattr(orm_execute_state, "bind_mapper", None)
             mappers = [bm] if bm is not None else []
 
         if not mappers:
@@ -177,44 +178,40 @@ class TenantScopeListener:
             if mapper is None:
                 continue
             model = mapper.class_
-            if not getattr(model, '__tenant_scoped__', False):
+            if not getattr(model, "__tenant_scoped__", False):
                 continue
 
             # A scoped model is involved -- enforce scope.
 
-            if scope == '__superuser__':
-                logger.debug(
-                    'tenant_scope.listener superuser bypass model=%s', model.__name__
-                )
+            if scope == "__superuser__":
+                logger.debug("tenant_scope.listener superuser bypass model=%s", model.__name__)
                 return  # Bypass applies to all entities in this query
 
             if scope is None:
                 logger.error(
-                    'tenant_scope.missing model=%s statement=%s',
+                    "tenant_scope.missing model=%s statement=%s",
                     model.__name__,
                     type(orm_execute_state.statement).__name__,
                 )
                 raise TenantScopeMissingError(
-                    f'Query on tenant-scoped model {model.__name__!r} executed without '
-                    'tenant scope set. Use tenant_scoped_session() dependency or '
-                    'set_tenant_scope(session, tenant_id) for background tasks.'
+                    f"Query on tenant-scoped model {model.__name__!r} executed without "
+                    "tenant scope set. Use tenant_scoped_session() dependency or "
+                    "set_tenant_scope(session, tenant_id) for background tasks."
                 )
 
             # Inject WHERE tenant_id = :scope.
-            tenant_col = getattr(model, 'tenant_id', None)
+            tenant_col = getattr(model, "tenant_id", None)
             if tenant_col is None:
                 logger.warning(
-                    'tenant_scope.listener model %s has __tenant_scoped__=True '
-                    'but no tenant_id column; skipping filter injection',
+                    "tenant_scope.listener model %s has __tenant_scoped__=True "
+                    "but no tenant_id column; skipping filter injection",
                     model.__name__,
                 )
                 return
 
-            orm_execute_state.statement = orm_execute_state.statement.where(
-                tenant_col == scope
-            )
+            orm_execute_state.statement = orm_execute_state.statement.where(tenant_col == scope)
             logger.debug(
-                'tenant_scope.listener injected tenant_id filter model=%s scope=%s',
+                "tenant_scope.listener injected tenant_id filter model=%s scope=%s",
                 model.__name__,
                 scope,
             )

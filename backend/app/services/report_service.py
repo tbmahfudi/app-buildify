@@ -1,32 +1,21 @@
 """
 Report service for business logic.
 """
-from sqlalchemy.orm import Session
-from sqlalchemy import text, and_, or_
-from typing import List, Dict, Any, Optional
-from datetime import datetime, timedelta
+
 import hashlib
 import json
+from datetime import datetime, timedelta
+from typing import Any, Dict, List, Optional
 
-from app.models.report import (
-    ReportDefinition,
-    ReportExecution,
-    ReportSchedule,
-    ReportCache,
-    ExportFormat
-)
+from sqlalchemy import or_, text
+from sqlalchemy.orm import Session
+
 from app.core.scope import apply_tenant_scope_by_id
-from app.schemas.report import (
-    ReportDefinitionCreate,
-    ReportDefinitionUpdate,
-    ReportExecutionRequest,
-    LookupDataRequest,
-    FilterGroup
-)
+from app.models.report import ReportCache, ReportDefinition, ReportExecution
+from app.schemas.report import LookupDataRequest, ReportDefinitionCreate, ReportDefinitionUpdate, ReportExecutionRequest
 
-
-_ALLOWED_AGGREGATIONS = {'sum', 'avg', 'count', 'min', 'max', 'none'}
-_ALLOWED_ORDER_DIRECTIONS = {'asc', 'desc'}
+_ALLOWED_AGGREGATIONS = {"sum", "avg", "count", "min", "max", "none"}
+_ALLOWED_ORDER_DIRECTIONS = {"asc", "desc"}
 
 
 class ReportQueryValidationError(ValueError):
@@ -77,43 +66,52 @@ class ReportService:
         visual designer format (data_source / columns / chart_config).
         """
         # Derive base_entity from data_source if not provided
-        if not report_dict.get('base_entity'):
-            data_source = report_dict.get('data_source') or {}
-            entities = data_source.get('entities', [])
+        if not report_dict.get("base_entity"):
+            data_source = report_dict.get("data_source") or {}
+            entities = data_source.get("entities", [])
             if entities:
                 first = entities[0]
                 if isinstance(first, dict):
-                    report_dict['base_entity'] = first.get('entity_name') or first.get('name') or ''
+                    report_dict["base_entity"] = first.get("entity_name") or first.get("name") or ""
                 elif isinstance(first, str):
-                    report_dict['base_entity'] = first
+                    report_dict["base_entity"] = first
 
         # Remove extra keys not in the model to avoid SQLAlchemy errors
         model_columns = {
-            'name', 'title', 'description', 'category', 'module_id', 'report_type',
-            'base_entity', 'data_source', 'query_config', 'columns_config', 'columns',
-            'chart_config', 'parameters', 'visualization_config', 'formatting_rules',
-            'is_public', 'allowed_roles', 'allowed_users', 'is_template', 'is_active',
+            "name",
+            "title",
+            "description",
+            "category",
+            "module_id",
+            "report_type",
+            "base_entity",
+            "data_source",
+            "query_config",
+            "columns_config",
+            "columns",
+            "chart_config",
+            "parameters",
+            "visualization_config",
+            "formatting_rules",
+            "is_public",
+            "allowed_roles",
+            "allowed_users",
+            "is_template",
+            "is_active",
         }
         return {k: v for k, v in report_dict.items() if k in model_columns}
 
     @staticmethod
     def create_report_definition(
-        db: Session,
-        tenant_id,
-        user_id,
-        report_data: ReportDefinitionCreate
+        db: Session, tenant_id, user_id, report_data: ReportDefinitionCreate
     ) -> ReportDefinition:
         """Create a new report definition."""
         report_dict = report_data.model_dump()
         report_dict = ReportService._normalize_report_dict(report_dict)
 
         import uuid
-        db_report = ReportDefinition(
-            id=uuid.uuid4(),
-            tenant_id=tenant_id,
-            created_by=user_id,
-            **report_dict
-        )
+
+        db_report = ReportDefinition(id=uuid.uuid4(), tenant_id=tenant_id, created_by=user_id, **report_dict)
         db.add(db_report)
         db.commit()
         db.refresh(db_report)
@@ -121,17 +119,11 @@ class ReportService:
 
     @staticmethod
     def get_report_definition(
-        db: Session,
-        tenant_id,
-        report_id,
-        user_id: Optional[int] = None
+        db: Session, tenant_id, report_id, user_id: Optional[int] = None
     ) -> Optional[ReportDefinition]:
         """Get a report definition by ID."""
-        query = apply_tenant_scope_by_id(
-            db.query(ReportDefinition), ReportDefinition, tenant_id
-        ).filter(
-            ReportDefinition.id == report_id,
-            ReportDefinition.is_active == True
+        query = apply_tenant_scope_by_id(db.query(ReportDefinition), ReportDefinition, tenant_id).filter(
+            ReportDefinition.id == report_id, ReportDefinition.is_active == True
         )
 
         report = query.first()
@@ -151,12 +143,10 @@ class ReportService:
         user_id: Optional[int] = None,
         category: Optional[str] = None,
         skip: int = 0,
-        limit: int = 100
+        limit: int = 100,
     ) -> List[ReportDefinition]:
         """List report definitions."""
-        query = apply_tenant_scope_by_id(
-            db.query(ReportDefinition), ReportDefinition, tenant_id
-        ).filter(
+        query = apply_tenant_scope_by_id(db.query(ReportDefinition), ReportDefinition, tenant_id).filter(
             ReportDefinition.is_active == True
         )
 
@@ -167,28 +157,20 @@ class ReportService:
         if user_id:
             # For now, filter by public or created_by only
             # TODO: Implement proper JSONB containment check for allowed_users
-            query = query.filter(
-                or_(
-                    ReportDefinition.is_public == True,
-                    ReportDefinition.created_by == user_id
-                )
-            )
+            query = query.filter(or_(ReportDefinition.is_public == True, ReportDefinition.created_by == user_id))
 
         return query.offset(skip).limit(limit).all()
 
     @staticmethod
     def update_report_definition(
-        db: Session,
-        tenant_id,
-        report_id,
-        report_data: ReportDefinitionUpdate
+        db: Session, tenant_id, report_id, report_data: ReportDefinitionUpdate
     ) -> Optional[ReportDefinition]:
         """Update a report definition."""
-        db_report = apply_tenant_scope_by_id(
-            db.query(ReportDefinition), ReportDefinition, tenant_id
-        ).filter(
-            ReportDefinition.id == report_id
-        ).first()
+        db_report = (
+            apply_tenant_scope_by_id(db.query(ReportDefinition), ReportDefinition, tenant_id)
+            .filter(ReportDefinition.id == report_id)
+            .first()
+        )
 
         if not db_report:
             return None
@@ -206,17 +188,13 @@ class ReportService:
         return db_report
 
     @staticmethod
-    def delete_report_definition(
-        db: Session,
-        tenant_id,
-        report_id
-    ) -> bool:
+    def delete_report_definition(db: Session, tenant_id, report_id) -> bool:
         """Soft delete a report definition."""
-        db_report = apply_tenant_scope_by_id(
-            db.query(ReportDefinition), ReportDefinition, tenant_id
-        ).filter(
-            ReportDefinition.id == report_id
-        ).first()
+        db_report = (
+            apply_tenant_scope_by_id(db.query(ReportDefinition), ReportDefinition, tenant_id)
+            .filter(ReportDefinition.id == report_id)
+            .first()
+        )
 
         if not db_report:
             return False
@@ -226,25 +204,19 @@ class ReportService:
         return True
 
     @staticmethod
-    def execute_report(
-        db: Session,
-        tenant_id,
-        user_id,
-        request: ReportExecutionRequest
-    ) -> ReportExecution:
+    def execute_report(db: Session, tenant_id, user_id, request: ReportExecutionRequest) -> ReportExecution:
         """Execute a report and return results."""
         start_time = datetime.utcnow()
 
         # Get report definition
-        report_def = ReportService.get_report_definition(
-            db, tenant_id, request.report_definition_id, user_id
-        )
+        report_def = ReportService.get_report_definition(db, tenant_id, request.report_definition_id, user_id)
 
         if not report_def:
             raise ValueError("Report definition not found or access denied")
 
         # Create execution record
         import uuid
+
         execution = ReportExecution(
             id=uuid.uuid4(),
             tenant_id=tenant_id,
@@ -252,7 +224,7 @@ class ReportService:
             executed_by=user_id,
             parameters_used=request.parameters,
             export_format=request.export_format,
-            status="running"
+            status="running",
         )
         db.add(execution)
         db.commit()
@@ -269,22 +241,19 @@ class ReportService:
             if cached_data:
                 # Use cached data
                 execution.status = "completed"
-                execution.row_count = cached_data.get('row_count', 0)
+                execution.row_count = cached_data.get("row_count", 0)
                 execution.execution_time_ms = 0
             else:
                 # Build and execute query
-                query_result = ReportService._build_and_execute_query(
-                    db, tenant_id, report_def, request.parameters
-                )
+                query_result = ReportService._build_and_execute_query(db, tenant_id, report_def, request.parameters)
 
                 execution.status = "completed"
-                execution.row_count = len(query_result.get('data', []))
+                execution.row_count = len(query_result.get("data", []))
 
                 # Cache the results
                 if request.use_cache:
                     ReportService._cache_results(
-                        db, tenant_id, request.report_definition_id,
-                        request.parameters, query_result
+                        db, tenant_id, request.report_definition_id, request.parameters, query_result
                     )
 
             # Calculate execution time
@@ -301,10 +270,7 @@ class ReportService:
 
     @staticmethod
     def _build_and_execute_query(
-        db: Session,
-        tenant_id,
-        report_def: ReportDefinition,
-        parameters: Optional[Dict[str, Any]]
+        db: Session, tenant_id, report_def: ReportDefinition, parameters: Optional[Dict[str, Any]]
     ) -> Dict[str, Any]:
         """
         Build and execute the report query.
@@ -326,7 +292,7 @@ class ReportService:
 
         # Resolve columns: prefer columns_config (legacy), fall back to columns (designer format)
         columns_config = report_def.columns_config or []
-        if not columns_config and hasattr(report_def, 'columns') and report_def.columns:
+        if not columns_config and hasattr(report_def, "columns") and report_def.columns:
             columns_config = [
                 {
                     "name": c.get("name"),
@@ -340,9 +306,9 @@ class ReportService:
         # Build SELECT clause
         select_fields = []
         for col in columns_config:
-            col_name = col.get('name')
-            col_label = col.get('label', col_name) or col_name
-            aggregation = (col.get('aggregation') or col.get('aggregate') or 'none').lower()
+            col_name = col.get("name")
+            col_label = col.get("label", col_name) or col_name
+            aggregation = (col.get("aggregation") or col.get("aggregate") or "none").lower()
 
             if aggregation not in _ALLOWED_AGGREGATIONS:
                 raise ReportQueryValidationError(f"Unknown or disallowed aggregation: {aggregation}")
@@ -350,13 +316,13 @@ class ReportService:
             quoted_col = ReportService._validate_column(col_name, allowed_columns, "column")
             quoted_label = ReportService._quote_identifier(str(col_label))
 
-            if aggregation != 'none':
+            if aggregation != "none":
                 select_fields.append(f"{aggregation.upper()}({quoted_col}) as {quoted_label}")
             else:
                 select_fields.append(f"{quoted_col} as {quoted_label}")
 
         if not select_fields:
-            select_fields = ['*']
+            select_fields = ["*"]
 
         # Build FROM clause
         from_clause = ReportService._quote_identifier(base_entity)
@@ -365,14 +331,14 @@ class ReportService:
         # Only filter by tenant_id when the value is actually set (superusers may have None)
         where_conditions = []
         query_params: dict = {}
-        if tenant_id is not None and 'tenant_id' in allowed_columns:
+        if tenant_id is not None and "tenant_id" in allowed_columns:
             where_conditions.append('"tenant_id" = :tenant_id')
             query_params["tenant_id"] = str(tenant_id)
 
         # Add filter conditions from query config
-        if query_config.get('filters'):
+        if query_config.get("filters"):
             filter_sql, filter_params = ReportService._build_filter_sql(
-                query_config['filters'], parameters, allowed_columns
+                query_config["filters"], parameters, allowed_columns
             )
             if filter_sql:
                 where_conditions.append(filter_sql)
@@ -380,20 +346,19 @@ class ReportService:
 
         # Build GROUP BY clause
         group_by_clause = ""
-        if query_config.get('group_by'):
+        if query_config.get("group_by"):
             quoted_group_fields = [
-                ReportService._validate_column(f, allowed_columns, "group_by field")
-                for f in query_config['group_by']
+                ReportService._validate_column(f, allowed_columns, "group_by field") for f in query_config["group_by"]
             ]
             group_by_clause = f"GROUP BY {', '.join(quoted_group_fields)}"
 
         # Build ORDER BY clause
         order_by_clause = ""
-        if query_config.get('order_by'):
+        if query_config.get("order_by"):
             order_by_parts = []
-            for order in query_config['order_by']:
-                field = order.get('field')
-                direction = (order.get('direction') or 'ASC').lower()
+            for order in query_config["order_by"]:
+                field = order.get("field")
+                direction = (order.get("direction") or "ASC").lower()
                 if direction not in _ALLOWED_ORDER_DIRECTIONS:
                     raise ReportQueryValidationError(f"Unknown or disallowed sort direction: {direction}")
                 quoted_field = ReportService._validate_column(field, allowed_columns, "order_by field")
@@ -402,9 +367,9 @@ class ReportService:
 
         # Build LIMIT clause
         limit_clause = ""
-        if query_config.get('limit'):
+        if query_config.get("limit"):
             limit_clause = "LIMIT :__limit"
-            query_params["__limit"] = int(query_config['limit'])
+            query_params["__limit"] = int(query_config["limit"])
 
         # Construct full query — omit WHERE entirely when there are no conditions
         where_clause = f"WHERE {' AND '.join(where_conditions)}" if where_conditions else ""
@@ -425,19 +390,15 @@ class ReportService:
         columns = result.keys()
         data = [dict(zip(columns, row)) for row in rows]
 
-        return {
-            'data': data,
-            'row_count': len(data),
-            'columns': list(columns)
-        }
+        return {"data": data, "row_count": len(data), "columns": list(columns)}
 
     _OPERATOR_SQL = {
-        'eq': '=',
-        'ne': '!=',
-        'gt': '>',
-        'lt': '<',
-        'gte': '>=',
-        'lte': '<=',
+        "eq": "=",
+        "ne": "!=",
+        "gt": ">",
+        "lt": "<",
+        "gte": ">=",
+        "lte": "<=",
     }
 
     @staticmethod
@@ -459,11 +420,11 @@ class ReportService:
         conditions = []
         params: dict = {}
 
-        for condition in filter_group.get('conditions', []):
-            field = condition.get('field')
-            operator = condition.get('operator')
-            value = condition.get('value')
-            param_name = condition.get('parameter')
+        for condition in filter_group.get("conditions", []):
+            field = condition.get("field")
+            operator = condition.get("operator")
+            value = condition.get("value")
+            param_name = condition.get("parameter")
 
             # Use parameter value if specified
             if param_name and parameters:
@@ -477,10 +438,10 @@ class ReportService:
             if operator in ReportService._OPERATOR_SQL:
                 conditions.append(f"{quoted_field} {ReportService._OPERATOR_SQL[operator]} :{bind_name}")
                 params[bind_name] = value
-            elif operator == 'like':
+            elif operator == "like":
                 conditions.append(f"{quoted_field} LIKE :{bind_name}")
                 params[bind_name] = f"%{value}%"
-            elif operator == 'in':
+            elif operator == "in":
                 if isinstance(value, list) and value:
                     bind_names = []
                     for v in value:
@@ -491,7 +452,7 @@ class ReportService:
                     conditions.append(f"{quoted_field} IN ({', '.join(bind_names)})")
 
         # Handle nested groups recursively
-        for nested_group in filter_group.get('groups', []):
+        for nested_group in filter_group.get("groups", []):
             nested_sql, nested_params = ReportService._build_filter_sql(
                 nested_group, parameters, allowed_columns, _counter
             )
@@ -499,28 +460,27 @@ class ReportService:
                 conditions.append(f"({nested_sql})")
                 params.update(nested_params)
 
-        logic = filter_group.get('logic', 'AND')
-        if logic not in ('AND', 'OR'):
-            logic = 'AND'
+        logic = filter_group.get("logic", "AND")
+        if logic not in ("AND", "OR"):
+            logic = "AND"
         return f" {logic} ".join(conditions), params
 
     @staticmethod
     def _get_cached_data(
-        db: Session,
-        tenant_id,
-        report_id,
-        parameters: Optional[Dict[str, Any]]
+        db: Session, tenant_id, report_id, parameters: Optional[Dict[str, Any]]
     ) -> Optional[Dict[str, Any]]:
         """Get cached report data if available and not expired."""
         cache_key = ReportService._generate_cache_key(report_id, parameters)
 
-        cache_entry = apply_tenant_scope_by_id(
-            db.query(ReportCache), ReportCache, tenant_id
-        ).filter(
-            ReportCache.report_definition_id == report_id,
-            ReportCache.cache_key == cache_key,
-            ReportCache.expires_at > datetime.utcnow()
-        ).first()
+        cache_entry = (
+            apply_tenant_scope_by_id(db.query(ReportCache), ReportCache, tenant_id)
+            .filter(
+                ReportCache.report_definition_id == report_id,
+                ReportCache.cache_key == cache_key,
+                ReportCache.expires_at > datetime.utcnow(),
+            )
+            .first()
+        )
 
         if cache_entry:
             cache_entry.hit_count += 1
@@ -536,29 +496,26 @@ class ReportService:
         report_id,
         parameters: Optional[Dict[str, Any]],
         data: Dict[str, Any],
-        ttl_minutes: int = 60
+        ttl_minutes: int = 60,
     ):
         """Cache report results."""
         cache_key = ReportService._generate_cache_key(report_id, parameters)
-        params_hash = hashlib.sha256(
-            json.dumps(parameters or {}, sort_keys=True).encode()
-        ).hexdigest()
+        params_hash = hashlib.sha256(json.dumps(parameters or {}, sort_keys=True).encode()).hexdigest()
 
         # Check if cache entry exists
-        cache_entry = db.query(ReportCache).filter(
-            ReportCache.cache_key == cache_key
-        ).first()
+        cache_entry = db.query(ReportCache).filter(ReportCache.cache_key == cache_key).first()
 
         expires_at = datetime.utcnow() + timedelta(minutes=ttl_minutes)
 
         if cache_entry:
             # Update existing cache
             cache_entry.cached_data = data
-            cache_entry.row_count = data.get('row_count', 0)
+            cache_entry.row_count = data.get("row_count", 0)
             cache_entry.expires_at = expires_at
         else:
             # Create new cache entry
             import uuid as _uuid
+
             cache_entry = ReportCache(
                 id=_uuid.uuid4(),
                 tenant_id=tenant_id,
@@ -566,8 +523,8 @@ class ReportService:
                 cache_key=cache_key,
                 parameters_hash=params_hash,
                 cached_data=data,
-                row_count=data.get('row_count', 0),
-                expires_at=expires_at
+                row_count=data.get("row_count", 0),
+                expires_at=expires_at,
             )
             db.add(cache_entry)
 
@@ -580,11 +537,7 @@ class ReportService:
         return f"report_{report_id}_{hashlib.sha256(params_str.encode()).hexdigest()}"
 
     @staticmethod
-    def get_lookup_data(
-        db: Session,
-        tenant_id,
-        request: LookupDataRequest
-    ) -> Dict[str, Any]:
+    def get_lookup_data(db: Session, tenant_id, request: LookupDataRequest) -> Dict[str, Any]:
         """Get lookup data for a parameter."""
         entity = request.entity
         display_field = request.display_field
@@ -633,9 +586,6 @@ class ReportService:
         result = db.execute(text(sql), params)
         rows = result.fetchall()
 
-        items = [{'value': row[0], 'label': row[1]} for row in rows]
+        items = [{"value": row[0], "label": row[1]} for row in rows]
 
-        return {
-            'items': items,
-            'total_count': len(items)
-        }
+        return {"items": items, "total_count": len(items)}

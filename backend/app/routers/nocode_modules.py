@@ -5,41 +5,40 @@ REST API for Module System Foundation (Phase 4 Priority 1).
 Provides endpoints for module CRUD, dependencies, and versioning.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query
-from sqlalchemy.orm import Session
 from typing import List, Optional
 
-from app.core.dependencies import get_db, get_current_user
-from app.services.nocode_module_service import NocodeModuleService
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy.orm import Session
+
+from app.core.dependencies import get_current_user, get_db
+from app.models.user import User
 from app.schemas.nocode_module import (
-    NocodeModuleCreate,
-    NocodeModuleUpdate,
-    NocodeModuleResponse,
-    NocodeModuleListResponse,
+    DependencyCompatibilityCheck,
+    ModuleComponentsResponse,
     ModuleDependencyCreate,
     ModuleDependencyResponse,
     ModuleDependentResponse,
-    DependencyCompatibilityCheck,
-    ModuleVersionCreate,
-    ModuleVersionResponse,
-    ModuleVersionListResponse,
     ModuleOperationResponse,
+    ModuleVersionCreate,
+    ModuleVersionListResponse,
+    ModuleVersionResponse,
+    NocodeModuleCreate,
+    NocodeModuleListResponse,
+    NocodeModuleResponse,
+    NocodeModuleUpdate,
     ValidationResponse,
-    ModuleComponentsResponse,
-    ModulePublishRequest,
 )
-from app.models.user import User
+from app.services.nocode_module_service import NocodeModuleService
 
 router = APIRouter(prefix="/api/v1/modules", tags=["modules"])
 
 
 # ==================== Module CRUD ====================
 
+
 @router.post("", response_model=ModuleOperationResponse, status_code=status.HTTP_201_CREATED)
 async def create_module(
-    module_data: NocodeModuleCreate,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    module_data: NocodeModuleCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
     """
     Create a new no-code module.
@@ -57,7 +56,7 @@ async def create_module(
         category=module_data.category,
         icon=module_data.icon,
         color=module_data.color,
-        is_platform_level=module_data.is_platform_level
+        is_platform_level=module_data.is_platform_level,
     )
 
     if not success:
@@ -72,7 +71,7 @@ async def list_modules(
     category: Optional[str] = Query(None, description="Filter by category"),
     include_platform: bool = Query(True, description="Include platform-level templates"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """
     List all modules accessible to the current user.
@@ -81,24 +80,13 @@ async def list_modules(
     """
     service = NocodeModuleService(db, current_user)
 
-    modules = await service.list_modules(
-        status=status_filter,
-        category=category,
-        include_platform=include_platform
-    )
+    modules = await service.list_modules(status=status_filter, category=category, include_platform=include_platform)
 
-    return NocodeModuleListResponse(
-        modules=[NocodeModuleResponse(**m) for m in modules],
-        total=len(modules)
-    )
+    return NocodeModuleListResponse(modules=[NocodeModuleResponse(**m) for m in modules], total=len(modules))
 
 
 @router.get("/{module_id}", response_model=NocodeModuleResponse)
-async def get_module(
-    module_id: str,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
+async def get_module(module_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """
     Get detailed information about a specific module.
     """
@@ -107,10 +95,7 @@ async def get_module(
     module = await service.get_module(module_id)
 
     if not module:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Module with ID '{module_id}' not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Module with ID '{module_id}' not found")
 
     return NocodeModuleResponse(**module)
 
@@ -120,7 +105,7 @@ async def update_module(
     module_id: str,
     module_data: NocodeModuleUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """
     Update module metadata.
@@ -136,7 +121,7 @@ async def update_module(
         category=module_data.category,
         icon=module_data.icon,
         color=module_data.color,
-        config=module_data.config
+        config=module_data.config,
     )
 
     if not success:
@@ -146,11 +131,7 @@ async def update_module(
 
 
 @router.post("/{module_id}/publish", response_model=ModuleOperationResponse)
-async def publish_module(
-    module_id: str,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
+async def publish_module(module_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """
     Publish module (draft → active).
 
@@ -167,11 +148,7 @@ async def publish_module(
 
 
 @router.delete("/{module_id}", response_model=ModuleOperationResponse)
-async def delete_module(
-    module_id: str,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
+async def delete_module(module_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """
     Delete module.
 
@@ -191,11 +168,10 @@ async def delete_module(
 
 # ==================== Dependencies ====================
 
+
 @router.get("/{module_id}/dependencies", response_model=List[ModuleDependencyResponse])
 async def list_dependencies(
-    module_id: str,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    module_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
     """
     List all dependencies for a module.
@@ -214,7 +190,7 @@ async def add_dependency(
     module_id: str,
     dependency_data: ModuleDependencyCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """
     Add a dependency between modules.
@@ -229,7 +205,7 @@ async def add_dependency(
         dependency_type=dependency_data.dependency_type,
         min_version=dependency_data.min_version,
         max_version=dependency_data.max_version,
-        reason=dependency_data.reason
+        reason=dependency_data.reason,
     )
 
     if not success:
@@ -240,10 +216,7 @@ async def add_dependency(
 
 @router.delete("/{module_id}/dependencies/{dependency_id}", response_model=ModuleOperationResponse)
 async def remove_dependency(
-    module_id: str,
-    dependency_id: str,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    module_id: str, dependency_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
     """
     Remove a dependency.
@@ -260,9 +233,7 @@ async def remove_dependency(
 
 @router.get("/{module_id}/dependents", response_model=List[ModuleDependentResponse])
 async def list_dependents(
-    module_id: str,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    module_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
     """
     List modules that depend on this module.
@@ -278,9 +249,7 @@ async def list_dependents(
 
 @router.get("/{module_id}/dependencies/check", response_model=DependencyCompatibilityCheck)
 async def check_dependency_compatibility(
-    module_id: str,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    module_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
     """
     Check if all dependencies are satisfied.
@@ -293,20 +262,14 @@ async def check_dependency_compatibility(
 
     is_compatible, issues = await service.check_dependency_compatibility(module_id)
 
-    return DependencyCompatibilityCheck(
-        is_compatible=is_compatible,
-        issues=issues
-    )
+    return DependencyCompatibilityCheck(is_compatible=is_compatible, issues=issues)
 
 
 # ==================== Versioning ====================
 
+
 @router.get("/{module_id}/versions", response_model=ModuleVersionListResponse)
-async def list_versions(
-    module_id: str,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
+async def list_versions(module_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """
     List all versions of a module.
 
@@ -316,10 +279,7 @@ async def list_versions(
 
     versions = await service.list_versions(module_id)
 
-    return ModuleVersionListResponse(
-        versions=[ModuleVersionResponse(**v) for v in versions],
-        total=len(versions)
-    )
+    return ModuleVersionListResponse(versions=[ModuleVersionResponse(**v) for v in versions], total=len(versions))
 
 
 @router.post("/{module_id}/versions", response_model=ModuleOperationResponse)
@@ -327,7 +287,7 @@ async def create_version(
     module_id: str,
     version_data: ModuleVersionCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """
     Create a new version of the module.
@@ -347,26 +307,23 @@ async def create_version(
         change_type=version_data.change_type,
         change_summary=version_data.change_summary,
         changelog=version_data.changelog,
-        breaking_changes=version_data.breaking_changes
+        breaking_changes=version_data.breaking_changes,
     )
 
     if not success:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=message)
 
-    return ModuleOperationResponse(
-        success=True,
-        message=message,
-        data={"new_version": new_version}
-    )
+    return ModuleOperationResponse(success=True, message=message, data={"new_version": new_version})
 
 
 # ==================== Validation Helpers ====================
+
 
 @router.post("/validate/prefix", response_model=ValidationResponse)
 async def validate_prefix(
     table_prefix: str = Query(..., description="Table prefix to validate"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """
     Validate if a table prefix is available.
@@ -387,7 +344,7 @@ async def validate_name(
     name: str = Query(..., description="Module name to validate"),
     is_platform_level: bool = Query(False, description="Check at platform level"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """
     Validate if a module name is available.
@@ -403,11 +360,10 @@ async def validate_name(
 
 # ==================== Module Components ====================
 
+
 @router.get("/{module_id}/components", response_model=ModuleComponentsResponse)
 async def get_module_components(
-    module_id: str,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    module_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
     """
     List all components belonging to a module.
@@ -419,19 +375,17 @@ async def get_module_components(
     # Get module
     module = await service.get_module(module_id)
     if not module:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Module with ID '{module_id}' not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Module with ID '{module_id}' not found")
 
     # Create snapshot (which includes all components)
     from app.models.nocode_module import Module
+
     module_obj = db.query(Module).filter(Module.id == module_id).first()
     snapshot = await service._create_module_snapshot(module_obj)
 
     return ModuleComponentsResponse(
         module_id=module_id,
-        module_name=module['name'],
+        module_name=module["name"],
         components=snapshot,
-        component_counts=snapshot.get('component_counts', {})
+        component_counts=snapshot.get("component_counts", {}),
     )

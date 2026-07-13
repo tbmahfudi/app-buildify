@@ -53,7 +53,7 @@ def configure_version_location():
             print(f"[INFO] Configured version_locations for {db_type}: {version_location}")
         else:
             raise ValueError(f"No migration folder configured for database type: {db_type}")
-    except Exception as e:
+    except Exception:
         # If we can't determine database type yet, that's okay - it will be determined later
         pass
 

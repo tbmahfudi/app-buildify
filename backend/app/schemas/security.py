@@ -1,15 +1,16 @@
 """
 Pydantic schemas for security administration.
 """
-from pydantic import BaseModel, Field, field_serializer
-from typing import Optional, List, Dict, Any
+
 from datetime import datetime
-from uuid import UUID
+from typing import Any, Dict, List, Optional
 
-from .base import BaseResponse, serialize_uuid_field
+from pydantic import BaseModel, Field
 
+from .base import BaseResponse
 
 # ==================== Security Policy Schemas ====================
+
 
 class SecurityPolicyBase(BaseModel):
     tenant_id: Optional[str] = Field(None, description="Tenant ID (NULL for system default)")
@@ -104,6 +105,7 @@ class SecurityPolicyResponse(SecurityPolicyBase, BaseResponse):
 
 # ==================== Locked Account Schemas ====================
 
+
 class LockedAccountResponse(BaseModel):
     user_id: str
     email: str
@@ -120,6 +122,7 @@ class UnlockAccountRequest(BaseModel):
 
 
 # ==================== Session Schemas ====================
+
 
 class UserSessionResponse(BaseResponse):
     id: str
@@ -141,6 +144,7 @@ class RevokeSessionRequest(BaseModel):
 
 # ==================== Login Attempt Schemas ====================
 
+
 class LoginAttemptResponse(BaseResponse):
     id: str
     user_id: Optional[str]
@@ -153,6 +157,7 @@ class LoginAttemptResponse(BaseResponse):
 
 
 # ==================== Notification Config Schemas ====================
+
 
 class NotificationConfigBase(BaseModel):
     tenant_id: Optional[str] = Field(None, description="Tenant ID (NULL for system default)")
@@ -244,6 +249,7 @@ class NotificationConfigResponse(NotificationConfigBase, BaseResponse):
 
 # ==================== Notification Queue Schemas ====================
 
+
 class NotificationQueueResponse(BaseResponse):
     id: str
     tenant_id: Optional[str]
@@ -267,8 +273,10 @@ class NotificationQueueResponse(BaseResponse):
 
 # ==================== Password Policy Display (for users) ====================
 
+
 class PasswordPolicyRequirements(BaseModel):
     """Password policy requirements displayed to users"""
+
     requirements: List[str]
     expiration_days: int
     warning_days: int
@@ -277,6 +285,7 @@ class PasswordPolicyRequirements(BaseModel):
 
 class PasswordStrengthCheck(BaseModel):
     """Response for password strength checking"""
+
     is_valid: bool
     errors: List[str]
     score: Optional[int] = Field(None, description="Strength score 0-100")

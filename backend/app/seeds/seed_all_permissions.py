@@ -1,22 +1,25 @@
 """
 Master seed script to run all permission seeds and role templates
 """
+
 import sys
+
+from .seed_audit_permissions import seed_audit_permissions
+from .seed_dashboard_permissions import seed_dashboard_permissions
 from .seed_organization_permissions import seed_organization_permissions
 from .seed_rbac_permissions import seed_rbac_permissions
-from .seed_dashboard_permissions import seed_dashboard_permissions
 from .seed_report_permissions import seed_report_permissions
-from .seed_scheduler_permissions import seed_scheduler_permissions
-from .seed_audit_permissions import seed_audit_permissions
-from .seed_settings_permissions import seed_settings_permissions
 from .seed_role_templates import seed_role_templates
+from .seed_scheduler_permissions import seed_scheduler_permissions
+from .seed_settings_permissions import seed_settings_permissions
+
 
 def seed_all_permissions():
     """Run all permission seed scripts and create role templates"""
 
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("SEEDING ALL PERMISSIONS AND ROLE TEMPLATES")
-    print("="*70 + "\n")
+    print("=" * 70 + "\n")
 
     try:
         # Seed organization permissions
@@ -59,19 +62,20 @@ def seed_all_permissions():
         print("-" * 70)
         seed_role_templates()
 
-        print("\n" + "="*70)
+        print("\n" + "=" * 70)
         print("✅ ALL PERMISSIONS AND ROLE TEMPLATES SEEDED SUCCESSFULLY")
-        print("="*70)
+        print("=" * 70)
         print("\nNext steps:")
         print("1. Review the created permissions and roles in the database")
         print("2. Assign roles to users")
         print("3. Update API endpoints to use these permissions")
         print("4. Test permission enforcement")
-        print("\n" + "="*70 + "\n")
+        print("\n" + "=" * 70 + "\n")
 
     except Exception as e:
         print(f"\n❌ Error seeding permissions: {e}")
         sys.exit(1)
+
 
 if __name__ == "__main__":
     seed_all_permissions()

@@ -24,6 +24,7 @@ class Role(Base):
 
     Roles contain collections of permissions.
     """
+
     __tablename__ = "roles"
 
     # Primary key
@@ -63,8 +64,8 @@ class Role(Base):
     __table_args__ = (
         # System roles: code must be unique globally
         # Tenant roles: code must be unique per tenant
-        UniqueConstraint('tenant_id', 'code', name='uq_role_tenant_code'),
-        Index('ix_role_tenant_type', 'tenant_id', 'role_type'),
+        UniqueConstraint("tenant_id", "code", name="uq_role_tenant_code"),
+        Index("ix_role_tenant_type", "tenant_id", "role_type"),
     )
 
     def __repr__(self):

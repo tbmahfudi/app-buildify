@@ -3,6 +3,7 @@ backend/app/core/tenant/dependencies.py
 FastAPI dependency providing tenant-scoped SQLAlchemy sessions via ContextVar scope.
 Story 22.3.2 / T-22.007
 """
+
 from __future__ import annotations
 
 from typing import Generator
@@ -10,13 +11,11 @@ from typing import Generator
 from fastapi import Depends
 from sqlalchemy.orm import Session
 
-from app.core.db import SessionLocal
 from app.core.dependencies import get_current_user, get_db
 from app.core.tenant.scope import (
     TenantScopeNotSetError,
     clear_tenant_scope,
     set_tenant_scope,
-    with_tenant_scope,
 )
 from app.models.user import User
 
@@ -48,9 +47,7 @@ def tenant_scoped_session(
     elif current_user.tenant_id:
         tenant_id = current_user.tenant_id
     else:
-        raise TenantScopeNotSetError(
-            "Authenticated user has no tenant_id and is not a superuser."
-        )
+        raise TenantScopeNotSetError("Authenticated user has no tenant_id and is not a superuser.")
 
     set_tenant_scope(tenant_id)
     try:

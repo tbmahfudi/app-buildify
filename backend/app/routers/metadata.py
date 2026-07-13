@@ -1,11 +1,10 @@
 import logging
-from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.core.audit import create_audit_log
-from app.core.dependencies import get_current_user, get_db, has_permission
+from app.core.dependencies import get_db, has_permission
 from app.models.data_model import EntityDefinition
 from app.models.user import User
 from app.schemas.metadata import (
@@ -39,7 +38,7 @@ def _build_response(entity: EntityDefinition) -> EntityMetadataResponse:
         permissions=permissions,
         version=entity.version,
         is_active=entity.is_active,
-        is_system=(entity.entity_type == 'system'),
+        is_system=(entity.entity_type == "system"),
         created_at=entity.created_at,
         updated_at=entity.updated_at,
         created_by=str(entity.created_by) if entity.created_by else None,
@@ -48,44 +47,46 @@ def _build_response(entity: EntityDefinition) -> EntityMetadataResponse:
 
 
 @router.get("/entities", response_model=EntityListResponse)
-def list_entities(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("metadata:read:tenant"))
-):
+def list_entities(db: Session = Depends(get_db), current_user: User = Depends(has_permission("metadata:read:tenant"))):
     """
     List all available entities.
 
     Requires permission: metadata:read:tenant
     """
-    entities = db.query(EntityDefinition).filter(
-        EntityDefinition.status == 'published',
-        EntityDefinition.is_active == True,
-        EntityDefinition.is_deleted == False,
-        EntityDefinition.table_config.isnot(None),
-    ).all()
-
-    return EntityListResponse(
-        entities=[e.name for e in entities],
-        total=len(entities)
+    entities = (
+        db.query(EntityDefinition)
+        .filter(
+            EntityDefinition.status == "published",
+            EntityDefinition.is_active == True,
+            EntityDefinition.is_deleted == False,
+            EntityDefinition.table_config.isnot(None),
+        )
+        .all()
     )
+
+    return EntityListResponse(entities=[e.name for e in entities], total=len(entities))
 
 
 @router.get("/entities/{entity_name}", response_model=EntityMetadataResponse)
 def get_entity_metadata(
     entity_name: str,
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("metadata:read:tenant"))
+    current_user: User = Depends(has_permission("metadata:read:tenant")),
 ):
     """
     Get metadata for a specific entity.
 
     Requires permission: metadata:read:tenant
     """
-    entity = db.query(EntityDefinition).filter(
-        EntityDefinition.name == entity_name,
-        EntityDefinition.is_active == True,
-        EntityDefinition.is_deleted == False,
-    ).first()
+    entity = (
+        db.query(EntityDefinition)
+        .filter(
+            EntityDefinition.name == entity_name,
+            EntityDefinition.is_active == True,
+            EntityDefinition.is_deleted == False,
+        )
+        .first()
+    )
 
     if not entity:
         raise HTTPException(status_code=404, detail=f"Entity '{entity_name}' not found")
@@ -97,7 +98,7 @@ def get_entity_metadata(
 def create_entity_metadata(
     payload: EntityMetadataCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("metadata:create:tenant"))
+    current_user: User = Depends(has_permission("metadata:create:tenant")),
 ):
     """
     Seed UI config for an existing published entity.
@@ -107,22 +108,20 @@ def create_entity_metadata(
 
     Requires permission: metadata:create:tenant
     """
-    entity = db.query(EntityDefinition).filter(
-        EntityDefinition.name == payload.entity_name,
-        EntityDefinition.is_deleted == False,
-    ).first()
+    entity = (
+        db.query(EntityDefinition)
+        .filter(
+            EntityDefinition.name == payload.entity_name,
+            EntityDefinition.is_deleted == False,
+        )
+        .first()
+    )
 
     if not entity:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Entity definition '{payload.entity_name}' not found"
-        )
+        raise HTTPException(status_code=404, detail=f"Entity definition '{payload.entity_name}' not found")
 
     if entity.table_config is not None:
-        raise HTTPException(
-            status_code=400,
-            detail=f"UI config for entity '{payload.entity_name}' already exists"
-        )
+        raise HTTPException(status_code=400, detail=f"UI config for entity '{payload.entity_name}' already exists")
 
     entity.table_config = payload.table_config.dict()
     entity.form_config = payload.form_config.dict()
@@ -138,7 +137,7 @@ def create_entity_metadata(
         entity_type="entity_definitions",
         entity_id=str(entity.id),
         context_info={"entity_name": payload.entity_name},
-        status="success"
+        status="success",
     )
 
     return _build_response(entity)
@@ -149,22 +148,26 @@ def update_entity_metadata(
     entity_name: str,
     updates: EntityMetadataUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("metadata:update:tenant"))
+    current_user: User = Depends(has_permission("metadata:update:tenant")),
 ):
     """
     Update entity UI configuration.
 
     Requires permission: metadata:update:tenant
     """
-    entity = db.query(EntityDefinition).filter(
-        EntityDefinition.name == entity_name,
-        EntityDefinition.is_deleted == False,
-    ).first()
+    entity = (
+        db.query(EntityDefinition)
+        .filter(
+            EntityDefinition.name == entity_name,
+            EntityDefinition.is_deleted == False,
+        )
+        .first()
+    )
 
     if not entity:
         raise HTTPException(status_code=404, detail=f"Entity '{entity_name}' not found")
 
-    if entity.entity_type == 'system':
+    if entity.entity_type == "system":
         raise HTTPException(status_code=403, detail="Cannot modify system entity")
 
     if updates.display_name is not None:
@@ -195,7 +198,7 @@ def update_entity_metadata(
         entity_type="entity_definitions",
         entity_id=str(entity.id),
         context_info={"entity_name": entity_name},
-        status="success"
+        status="success",
     )
 
     return _build_response(entity)
@@ -205,22 +208,26 @@ def update_entity_metadata(
 def delete_entity_metadata(
     entity_name: str,
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("metadata:delete:tenant"))
+    current_user: User = Depends(has_permission("metadata:delete:tenant")),
 ):
     """
     Deactivate an entity (soft delete).
 
     Requires permission: metadata:delete:tenant
     """
-    entity = db.query(EntityDefinition).filter(
-        EntityDefinition.name == entity_name,
-        EntityDefinition.is_deleted == False,
-    ).first()
+    entity = (
+        db.query(EntityDefinition)
+        .filter(
+            EntityDefinition.name == entity_name,
+            EntityDefinition.is_deleted == False,
+        )
+        .first()
+    )
 
     if not entity:
         raise HTTPException(status_code=404, detail=f"Entity '{entity_name}' not found")
 
-    if entity.entity_type == 'system':
+    if entity.entity_type == "system":
         raise HTTPException(status_code=403, detail="Cannot delete system entity")
 
     entity.is_active = False
@@ -235,7 +242,7 @@ def delete_entity_metadata(
         entity_type="entity_definitions",
         entity_id=str(entity.id),
         context_info={"entity_name": entity_name},
-        status="success"
+        status="success",
     )
 
     return None
@@ -245,7 +252,7 @@ def delete_entity_metadata(
 def regenerate_entity_metadata(
     entity_name: str,
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("metadata:update:tenant"))
+    current_user: User = Depends(has_permission("metadata:update:tenant")),
 ):
     """
     Force-regenerate UI config for a published entity from scratch.
@@ -256,17 +263,18 @@ def regenerate_entity_metadata(
 
     Requires permission: metadata:update:tenant
     """
-    entity = db.query(EntityDefinition).filter(
-        EntityDefinition.name == entity_name,
-        EntityDefinition.status == 'published',
-        EntityDefinition.is_deleted == False,
-    ).first()
+    entity = (
+        db.query(EntityDefinition)
+        .filter(
+            EntityDefinition.name == entity_name,
+            EntityDefinition.status == "published",
+            EntityDefinition.is_deleted == False,
+        )
+        .first()
+    )
 
     if not entity:
-        raise HTTPException(
-            status_code=404,
-            detail=f"No published entity definition found for '{entity_name}'"
-        )
+        raise HTTPException(status_code=404, detail=f"No published entity definition found for '{entity_name}'")
 
     # Clear stored config so auto_generate_metadata starts fresh
     entity.table_config = None
@@ -283,7 +291,7 @@ def regenerate_entity_metadata(
         entity_type="entity_definitions",
         entity_id=str(entity.id),
         context_info={"entity_name": entity_name},
-        status="success"
+        status="success",
     )
 
     return _build_response(entity)

@@ -7,6 +7,7 @@ Supports hierarchical configuration at:
 - Company level (applies to specific company within tenant)
 - Branch level (applies to specific branch within company)
 """
+
 import enum
 from datetime import datetime
 
@@ -21,14 +22,16 @@ from app.models.base import GUID, generate_uuid
 
 class ConfigLevel(str, enum.Enum):
     """Configuration hierarchy levels."""
-    SYSTEM = "system"      # System-wide configuration
-    TENANT = "tenant"      # Tenant-specific configuration
-    COMPANY = "company"    # Company-specific configuration
-    BRANCH = "branch"      # Branch-specific configuration
+
+    SYSTEM = "system"  # System-wide configuration
+    TENANT = "tenant"  # Tenant-specific configuration
+    COMPANY = "company"  # Company-specific configuration
+    BRANCH = "branch"  # Branch-specific configuration
 
 
 class JobStatus(str, enum.Enum):
     """Job execution status."""
+
     PENDING = "pending"
     RUNNING = "running"
     COMPLETED = "completed"
@@ -39,6 +42,7 @@ class JobStatus(str, enum.Enum):
 
 class JobType(str, enum.Enum):
     """Types of scheduled jobs."""
+
     REPORT_GENERATION = "report_generation"
     DATA_SYNC = "data_sync"
     NOTIFICATION_BATCH = "notification_batch"
@@ -58,6 +62,7 @@ class SchedulerConfig(Base):
 
     Each level can override settings from higher levels.
     """
+
     __tablename__ = "scheduler_configs"
 
     id = Column(GUID, primary_key=True, default=generate_uuid, index=True)
@@ -66,7 +71,7 @@ class SchedulerConfig(Base):
     config_level = Column(SQLEnum(ConfigLevel), nullable=False, default=ConfigLevel.SYSTEM)
     tenant_id = Column(GUID, nullable=True, index=True)  # NULL for system level
     company_id = Column(GUID, nullable=True, index=True)  # NULL for system/tenant level
-    branch_id = Column(GUID, nullable=True, index=True)   # NULL for system/tenant/company level
+    branch_id = Column(GUID, nullable=True, index=True)  # NULL for system/tenant/company level
 
     # Configuration name and description
     name = Column(String(255), nullable=False)
@@ -101,18 +106,36 @@ class SchedulerConfig(Base):
 
     __table_args__ = (
         # Ensure unique configuration per level
-        Index('idx_scheduler_config_system', 'config_level',
-              unique=True,
-              postgresql_where=(config_level == ConfigLevel.SYSTEM)),
-        Index('idx_scheduler_config_tenant', 'config_level', 'tenant_id',
-              unique=True,
-              postgresql_where=(config_level == ConfigLevel.TENANT)),
-        Index('idx_scheduler_config_company', 'config_level', 'tenant_id', 'company_id',
-              unique=True,
-              postgresql_where=(config_level == ConfigLevel.COMPANY)),
-        Index('idx_scheduler_config_branch', 'config_level', 'tenant_id', 'company_id', 'branch_id',
-              unique=True,
-              postgresql_where=(config_level == ConfigLevel.BRANCH)),
+        Index(
+            "idx_scheduler_config_system",
+            "config_level",
+            unique=True,
+            postgresql_where=(config_level == ConfigLevel.SYSTEM),
+        ),
+        Index(
+            "idx_scheduler_config_tenant",
+            "config_level",
+            "tenant_id",
+            unique=True,
+            postgresql_where=(config_level == ConfigLevel.TENANT),
+        ),
+        Index(
+            "idx_scheduler_config_company",
+            "config_level",
+            "tenant_id",
+            "company_id",
+            unique=True,
+            postgresql_where=(config_level == ConfigLevel.COMPANY),
+        ),
+        Index(
+            "idx_scheduler_config_branch",
+            "config_level",
+            "tenant_id",
+            "company_id",
+            "branch_id",
+            unique=True,
+            postgresql_where=(config_level == ConfigLevel.BRANCH),
+        ),
     )
 
 
@@ -123,6 +146,7 @@ class SchedulerJob(Base):
     Jobs are associated with a configuration level and can be
     scheduled using CRON expressions or interval-based scheduling.
     """
+
     __tablename__ = "scheduler_jobs"
 
     id = Column(GUID, primary_key=True, default=generate_uuid, index=True)
@@ -178,10 +202,10 @@ class SchedulerJob(Base):
     executions = relationship("SchedulerJobExecution", back_populates="job", cascade="all, delete-orphan")
 
     __table_args__ = (
-        Index('idx_scheduler_job_active', 'is_active', 'next_run_at'),
-        Index('idx_scheduler_job_tenant', 'tenant_id', 'is_active'),
-        Index('idx_scheduler_job_company', 'company_id', 'is_active'),
-        Index('idx_scheduler_job_branch', 'branch_id', 'is_active'),
+        Index("idx_scheduler_job_active", "is_active", "next_run_at"),
+        Index("idx_scheduler_job_tenant", "tenant_id", "is_active"),
+        Index("idx_scheduler_job_company", "company_id", "is_active"),
+        Index("idx_scheduler_job_branch", "branch_id", "is_active"),
     )
 
 
@@ -191,6 +215,7 @@ class SchedulerJobExecution(Base):
 
     Records each execution attempt with detailed status and metrics.
     """
+
     __tablename__ = "scheduler_job_executions"
 
     id = Column(GUID, primary_key=True, default=generate_uuid, index=True)
@@ -228,8 +253,8 @@ class SchedulerJobExecution(Base):
     logs = relationship("SchedulerJobLog", back_populates="execution", cascade="all, delete-orphan")
 
     __table_args__ = (
-        Index('idx_scheduler_execution_status', 'status', 'scheduled_at'),
-        Index('idx_scheduler_execution_job', 'job_id', 'started_at'),
+        Index("idx_scheduler_execution_status", "status", "scheduled_at"),
+        Index("idx_scheduler_execution_job", "job_id", "started_at"),
     )
 
 
@@ -239,6 +264,7 @@ class SchedulerJobLog(Base):
 
     Captures step-by-step progress and debugging information.
     """
+
     __tablename__ = "scheduler_job_logs"
 
     id = Column(GUID, primary_key=True, default=generate_uuid, index=True)
@@ -255,6 +281,4 @@ class SchedulerJobLog(Base):
     # Relationships
     execution = relationship("SchedulerJobExecution", back_populates="logs")
 
-    __table_args__ = (
-        Index('idx_scheduler_log_execution', 'execution_id', 'created_at'),
-    )
+    __table_args__ = (Index("idx_scheduler_log_execution", "execution_id", "created_at"),)

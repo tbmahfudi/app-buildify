@@ -9,6 +9,7 @@ class LoginAttempt(Base):
     Tracks all login attempts (successful and failed) for security audit.
     Used for detecting brute force attacks and enforcing account lockout policies.
     """
+
     __tablename__ = "login_attempts"
 
     # Primary key

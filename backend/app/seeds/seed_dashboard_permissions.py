@@ -2,9 +2,10 @@
 Create dashboard management permissions
 Covers: Dashboards, Pages, Widgets, Shares, Snapshots
 """
-from sqlalchemy.orm import Session
+
 from app.core.db import SessionLocal
 from app.models.permission import Permission
+
 
 def seed_dashboard_permissions():
     """Seed all dashboard-related permissions"""
@@ -21,7 +22,7 @@ def seed_dashboard_permissions():
                 "resource": "dashboards",
                 "action": "read",
                 "scope": "all",
-                "category": "dashboard"
+                "category": "dashboard",
             },
             {
                 "code": "dashboards:read:tenant",
@@ -30,7 +31,7 @@ def seed_dashboard_permissions():
                 "resource": "dashboards",
                 "action": "read",
                 "scope": "tenant",
-                "category": "dashboard"
+                "category": "dashboard",
             },
             {
                 "code": "dashboards:read:own",
@@ -39,7 +40,7 @@ def seed_dashboard_permissions():
                 "resource": "dashboards",
                 "action": "read",
                 "scope": "own",
-                "category": "dashboard"
+                "category": "dashboard",
             },
             {
                 "code": "dashboards:create:tenant",
@@ -48,7 +49,7 @@ def seed_dashboard_permissions():
                 "resource": "dashboards",
                 "action": "create",
                 "scope": "tenant",
-                "category": "dashboard"
+                "category": "dashboard",
             },
             {
                 "code": "dashboards:update:all",
@@ -57,7 +58,7 @@ def seed_dashboard_permissions():
                 "resource": "dashboards",
                 "action": "update",
                 "scope": "all",
-                "category": "dashboard"
+                "category": "dashboard",
             },
             {
                 "code": "dashboards:update:tenant",
@@ -66,7 +67,7 @@ def seed_dashboard_permissions():
                 "resource": "dashboards",
                 "action": "update",
                 "scope": "tenant",
-                "category": "dashboard"
+                "category": "dashboard",
             },
             {
                 "code": "dashboards:update:own",
@@ -75,7 +76,7 @@ def seed_dashboard_permissions():
                 "resource": "dashboards",
                 "action": "update",
                 "scope": "own",
-                "category": "dashboard"
+                "category": "dashboard",
             },
             {
                 "code": "dashboards:delete:all",
@@ -84,7 +85,7 @@ def seed_dashboard_permissions():
                 "resource": "dashboards",
                 "action": "delete",
                 "scope": "all",
-                "category": "dashboard"
+                "category": "dashboard",
             },
             {
                 "code": "dashboards:delete:tenant",
@@ -93,7 +94,7 @@ def seed_dashboard_permissions():
                 "resource": "dashboards",
                 "action": "delete",
                 "scope": "tenant",
-                "category": "dashboard"
+                "category": "dashboard",
             },
             {
                 "code": "dashboards:delete:own",
@@ -102,7 +103,7 @@ def seed_dashboard_permissions():
                 "resource": "dashboards",
                 "action": "delete",
                 "scope": "own",
-                "category": "dashboard"
+                "category": "dashboard",
             },
             {
                 "code": "dashboards:clone:tenant",
@@ -111,7 +112,7 @@ def seed_dashboard_permissions():
                 "resource": "dashboards",
                 "action": "clone",
                 "scope": "tenant",
-                "category": "dashboard"
+                "category": "dashboard",
             },
             {
                 "code": "dashboards:share:tenant",
@@ -120,7 +121,7 @@ def seed_dashboard_permissions():
                 "resource": "dashboards",
                 "action": "share",
                 "scope": "tenant",
-                "category": "dashboard"
+                "category": "dashboard",
             },
             {
                 "code": "dashboards:snapshot:tenant",
@@ -129,7 +130,7 @@ def seed_dashboard_permissions():
                 "resource": "dashboards",
                 "action": "snapshot",
                 "scope": "tenant",
-                "category": "dashboard"
+                "category": "dashboard",
             },
             {
                 "code": "dashboards:export:tenant",
@@ -138,9 +139,8 @@ def seed_dashboard_permissions():
                 "resource": "dashboards",
                 "action": "export",
                 "scope": "tenant",
-                "category": "dashboard"
+                "category": "dashboard",
             },
-
             # ==================== DASHBOARD PAGES ====================
             {
                 "code": "dashboards:create_page:tenant",
@@ -149,7 +149,7 @@ def seed_dashboard_permissions():
                 "resource": "dashboards",
                 "action": "create_page",
                 "scope": "tenant",
-                "category": "dashboard"
+                "category": "dashboard",
             },
             {
                 "code": "dashboards:update_page:all",
@@ -158,7 +158,7 @@ def seed_dashboard_permissions():
                 "resource": "dashboards",
                 "action": "update_page",
                 "scope": "all",
-                "category": "dashboard"
+                "category": "dashboard",
             },
             {
                 "code": "dashboards:update_page:own",
@@ -167,7 +167,7 @@ def seed_dashboard_permissions():
                 "resource": "dashboards",
                 "action": "update_page",
                 "scope": "own",
-                "category": "dashboard"
+                "category": "dashboard",
             },
             {
                 "code": "dashboards:delete_page:all",
@@ -176,7 +176,7 @@ def seed_dashboard_permissions():
                 "resource": "dashboards",
                 "action": "delete_page",
                 "scope": "all",
-                "category": "dashboard"
+                "category": "dashboard",
             },
             {
                 "code": "dashboards:delete_page:own",
@@ -185,9 +185,8 @@ def seed_dashboard_permissions():
                 "resource": "dashboards",
                 "action": "delete_page",
                 "scope": "own",
-                "category": "dashboard"
+                "category": "dashboard",
             },
-
             # ==================== DASHBOARD WIDGETS ====================
             {
                 "code": "dashboards:create_widget:tenant",
@@ -196,7 +195,7 @@ def seed_dashboard_permissions():
                 "resource": "dashboards",
                 "action": "create_widget",
                 "scope": "tenant",
-                "category": "dashboard"
+                "category": "dashboard",
             },
             {
                 "code": "dashboards:update_widget:all",
@@ -205,7 +204,7 @@ def seed_dashboard_permissions():
                 "resource": "dashboards",
                 "action": "update_widget",
                 "scope": "all",
-                "category": "dashboard"
+                "category": "dashboard",
             },
             {
                 "code": "dashboards:update_widget:own",
@@ -214,7 +213,7 @@ def seed_dashboard_permissions():
                 "resource": "dashboards",
                 "action": "update_widget",
                 "scope": "own",
-                "category": "dashboard"
+                "category": "dashboard",
             },
             {
                 "code": "dashboards:delete_widget:all",
@@ -223,7 +222,7 @@ def seed_dashboard_permissions():
                 "resource": "dashboards",
                 "action": "delete_widget",
                 "scope": "all",
-                "category": "dashboard"
+                "category": "dashboard",
             },
             {
                 "code": "dashboards:delete_widget:own",
@@ -232,9 +231,8 @@ def seed_dashboard_permissions():
                 "resource": "dashboards",
                 "action": "delete_widget",
                 "scope": "own",
-                "category": "dashboard"
+                "category": "dashboard",
             },
-
             # ==================== LEGACY DASHBOARD PERMISSIONS ====================
             {
                 "code": "dashboard:view:tenant",
@@ -243,7 +241,7 @@ def seed_dashboard_permissions():
                 "resource": "dashboard",
                 "action": "view",
                 "scope": "tenant",
-                "category": "dashboard"
+                "category": "dashboard",
             },
             {
                 "code": "dashboard:edit:own",
@@ -252,7 +250,7 @@ def seed_dashboard_permissions():
                 "resource": "dashboard",
                 "action": "edit",
                 "scope": "own",
-                "category": "dashboard"
+                "category": "dashboard",
             },
             {
                 "code": "dashboard:edit:tenant",
@@ -261,7 +259,7 @@ def seed_dashboard_permissions():
                 "resource": "dashboard",
                 "action": "edit",
                 "scope": "tenant",
-                "category": "dashboard"
+                "category": "dashboard",
             },
             {
                 "code": "dashboard:create:tenant",
@@ -270,7 +268,7 @@ def seed_dashboard_permissions():
                 "resource": "dashboard",
                 "action": "create",
                 "scope": "tenant",
-                "category": "dashboard"
+                "category": "dashboard",
             },
             {
                 "code": "dashboard:delete:tenant",
@@ -279,7 +277,7 @@ def seed_dashboard_permissions():
                 "resource": "dashboard",
                 "action": "delete",
                 "scope": "tenant",
-                "category": "dashboard"
+                "category": "dashboard",
             },
             {
                 "code": "dashboard:share:tenant",
@@ -288,7 +286,7 @@ def seed_dashboard_permissions():
                 "resource": "dashboard",
                 "action": "share",
                 "scope": "tenant",
-                "category": "dashboard"
+                "category": "dashboard",
             },
             {
                 "code": "dashboard:export:tenant",
@@ -297,7 +295,7 @@ def seed_dashboard_permissions():
                 "resource": "dashboard",
                 "action": "export",
                 "scope": "tenant",
-                "category": "dashboard"
+                "category": "dashboard",
             },
         ]
 
@@ -306,9 +304,7 @@ def seed_dashboard_permissions():
         updated_count = 0
 
         for perm_data in permissions:
-            perm = db.query(Permission).filter(
-                Permission.code == perm_data["code"]
-            ).first()
+            perm = db.query(Permission).filter(Permission.code == perm_data["code"]).first()
 
             if not perm:
                 perm = Permission(**perm_data, is_active=True)
@@ -327,7 +323,7 @@ def seed_dashboard_permissions():
         db.commit()
 
         print(f"\n{'='*60}")
-        print(f"Dashboard Permissions Seed Complete")
+        print("Dashboard Permissions Seed Complete")
         print(f"{'='*60}")
         print(f"✓ Created: {created_count} permissions")
         print(f"• Updated: {updated_count} permissions")
@@ -340,6 +336,7 @@ def seed_dashboard_permissions():
         raise
     finally:
         db.close()
+
 
 if __name__ == "__main__":
     seed_dashboard_permissions()

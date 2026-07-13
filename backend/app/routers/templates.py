@@ -4,22 +4,23 @@ Template Management API Router
 API endpoints for template versioning, packaging, and distribution.
 """
 
-from fastapi import APIRouter, Depends, Query, UploadFile, File
+import io
+from typing import Optional
+from uuid import UUID
+
+from fastapi import APIRouter, Depends, File, Query, UploadFile
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
-from typing import List, Optional
-from uuid import UUID
-import io
 
-from app.core.dependencies import get_db, get_current_user
-from app.services.template_version_service import TemplateVersionService
+from app.core.dependencies import get_current_user, get_db
 from app.services.template_package_service import TemplatePackageService
-
+from app.services.template_version_service import TemplateVersionService
 
 router = APIRouter(prefix="/api/v1/templates", tags=["Template Management"])
 
 
 # ==================== Version Endpoints ====================
+
 
 @router.post("/versions")
 async def create_version(
@@ -30,13 +31,12 @@ async def create_version(
     changelog: Optional[str] = Query(None, description="Detailed changelog"),
     version_name: Optional[str] = Query(None, description="Version name (e.g., v1.0)"),
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user=Depends(get_current_user),
 ):
     """Create a new version snapshot of a template."""
     service = TemplateVersionService(db, current_user)
     return await service.create_version(
-        template_type, template_id, change_summary,
-        change_type, changelog, version_name
+        template_type, template_id, change_summary, change_type, changelog, version_name
     )
 
 
@@ -45,7 +45,7 @@ async def list_versions(
     template_type: str = Query(...),
     template_id: UUID = Query(...),
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user=Depends(get_current_user),
 ):
     """List all versions of a template."""
     service = TemplateVersionService(db, current_user)
@@ -53,11 +53,7 @@ async def list_versions(
 
 
 @router.get("/versions/{version_id}")
-async def get_version(
-    version_id: UUID,
-    db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
-):
+async def get_version(version_id: UUID, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     """Get a specific version by ID."""
     service = TemplateVersionService(db, current_user)
     return await service.get_version(version_id)
@@ -69,7 +65,7 @@ async def rollback_version(
     template_id: UUID = Query(...),
     version_number: int = Query(...),
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user=Depends(get_current_user),
 ):
     """Rollback a template to a previous version."""
     service = TemplateVersionService(db, current_user)
@@ -83,7 +79,7 @@ async def compare_versions(
     from_version: int = Query(...),
     to_version: int = Query(...),
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user=Depends(get_current_user),
 ):
     """Compare two versions of a template."""
     service = TemplateVersionService(db, current_user)
@@ -92,12 +88,13 @@ async def compare_versions(
 
 # ==================== Export Endpoints ====================
 
+
 @router.get("/export/entity/{entity_id}")
 async def export_entity(
     entity_id: UUID,
     include_fields: bool = Query(True),
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user=Depends(get_current_user),
 ):
     """Export an entity template as JSON."""
     service = TemplatePackageService(db, current_user)
@@ -114,17 +111,15 @@ async def create_package(
     author: Optional[str] = Query(None),
     license: str = Query("MIT"),
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user=Depends(get_current_user),
 ):
     """Create a template package from multiple templates."""
     import json
+
     template_refs = json.loads(template_ids)
 
     service = TemplatePackageService(db, current_user)
-    return await service.create_package(
-        name, description, template_refs,
-        category_code, version, author, license
-    )
+    return await service.create_package(name, description, template_refs, category_code, version, author, license)
 
 
 @router.get("/packages")
@@ -132,7 +127,7 @@ async def list_packages(
     category_id: Optional[UUID] = Query(None),
     is_verified: Optional[bool] = Query(None),
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user=Depends(get_current_user),
 ):
     """List available template packages."""
     service = TemplatePackageService(db, current_user)
@@ -140,11 +135,7 @@ async def list_packages(
 
 
 @router.get("/packages/{package_id}/download")
-async def download_package(
-    package_id: UUID,
-    db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
-):
+async def download_package(package_id: UUID, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     """Download a template package as ZIP file."""
     service = TemplatePackageService(db, current_user)
     zip_data = await service.export_package_as_zip(package_id)
@@ -152,11 +143,12 @@ async def download_package(
     return StreamingResponse(
         io.BytesIO(zip_data),
         media_type="application/zip",
-        headers={"Content-Disposition": f"attachment; filename=template-package-{package_id}.zip"}
+        headers={"Content-Disposition": f"attachment; filename=template-package-{package_id}.zip"},
     )
 
 
 # ==================== Import Endpoints ====================
+
 
 @router.post("/import/entity")
 async def import_entity(
@@ -164,7 +156,7 @@ async def import_entity(
     target_tenant_id: Optional[UUID] = Query(None),
     make_platform_level: bool = Query(False),
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user=Depends(get_current_user),
 ):
     """Import an entity template from JSON."""
     service = TemplatePackageService(db, current_user)
@@ -177,7 +169,7 @@ async def import_package(
     target_tenant_id: Optional[UUID] = Query(None),
     make_platform_level: bool = Query(False),
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user=Depends(get_current_user),
 ):
     """Import a complete template package."""
     service = TemplatePackageService(db, current_user)
@@ -190,7 +182,7 @@ async def import_from_zip(
     target_tenant_id: Optional[UUID] = Query(None),
     make_platform_level: bool = Query(False),
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user=Depends(get_current_user),
 ):
     """Import templates from a ZIP file."""
     service = TemplatePackageService(db, current_user)

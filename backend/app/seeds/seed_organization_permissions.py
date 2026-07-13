@@ -2,9 +2,10 @@
 Create organization management permissions
 Covers: Tenants, Companies, Branches, Departments, Users
 """
-from sqlalchemy.orm import Session
+
 from app.core.db import SessionLocal
 from app.models.permission import Permission
+
 
 def seed_organization_permissions():
     """Seed all organization-related permissions"""
@@ -21,7 +22,7 @@ def seed_organization_permissions():
                 "resource": "tenants",
                 "action": "read",
                 "scope": "all",
-                "category": "organization"
+                "category": "organization",
             },
             {
                 "code": "tenants:read:own",
@@ -30,7 +31,7 @@ def seed_organization_permissions():
                 "resource": "tenants",
                 "action": "read",
                 "scope": "own",
-                "category": "organization"
+                "category": "organization",
             },
             {
                 "code": "tenants:create:all",
@@ -39,7 +40,7 @@ def seed_organization_permissions():
                 "resource": "tenants",
                 "action": "create",
                 "scope": "all",
-                "category": "organization"
+                "category": "organization",
             },
             {
                 "code": "tenants:update:all",
@@ -48,7 +49,7 @@ def seed_organization_permissions():
                 "resource": "tenants",
                 "action": "update",
                 "scope": "all",
-                "category": "organization"
+                "category": "organization",
             },
             {
                 "code": "tenants:update:own",
@@ -57,7 +58,7 @@ def seed_organization_permissions():
                 "resource": "tenants",
                 "action": "update",
                 "scope": "own",
-                "category": "organization"
+                "category": "organization",
             },
             {
                 "code": "tenants:delete:all",
@@ -66,9 +67,8 @@ def seed_organization_permissions():
                 "resource": "tenants",
                 "action": "delete",
                 "scope": "all",
-                "category": "organization"
+                "category": "organization",
             },
-
             # ==================== COMPANY MANAGEMENT ====================
             {
                 "code": "companies:read:all",
@@ -77,7 +77,7 @@ def seed_organization_permissions():
                 "resource": "companies",
                 "action": "read",
                 "scope": "all",
-                "category": "organization"
+                "category": "organization",
             },
             {
                 "code": "companies:read:tenant",
@@ -86,7 +86,7 @@ def seed_organization_permissions():
                 "resource": "companies",
                 "action": "read",
                 "scope": "tenant",
-                "category": "organization"
+                "category": "organization",
             },
             {
                 "code": "companies:read:own",
@@ -95,7 +95,7 @@ def seed_organization_permissions():
                 "resource": "companies",
                 "action": "read",
                 "scope": "own",
-                "category": "organization"
+                "category": "organization",
             },
             {
                 "code": "companies:create:tenant",
@@ -104,7 +104,7 @@ def seed_organization_permissions():
                 "resource": "companies",
                 "action": "create",
                 "scope": "tenant",
-                "category": "organization"
+                "category": "organization",
             },
             {
                 "code": "companies:update:tenant",
@@ -113,7 +113,7 @@ def seed_organization_permissions():
                 "resource": "companies",
                 "action": "update",
                 "scope": "tenant",
-                "category": "organization"
+                "category": "organization",
             },
             {
                 "code": "companies:update:own",
@@ -122,7 +122,7 @@ def seed_organization_permissions():
                 "resource": "companies",
                 "action": "update",
                 "scope": "own",
-                "category": "organization"
+                "category": "organization",
             },
             {
                 "code": "companies:delete:tenant",
@@ -131,9 +131,8 @@ def seed_organization_permissions():
                 "resource": "companies",
                 "action": "delete",
                 "scope": "tenant",
-                "category": "organization"
+                "category": "organization",
             },
-
             # ==================== BRANCH MANAGEMENT ====================
             {
                 "code": "branches:read:all",
@@ -142,7 +141,7 @@ def seed_organization_permissions():
                 "resource": "branches",
                 "action": "read",
                 "scope": "all",
-                "category": "organization"
+                "category": "organization",
             },
             {
                 "code": "branches:read:tenant",
@@ -151,7 +150,7 @@ def seed_organization_permissions():
                 "resource": "branches",
                 "action": "read",
                 "scope": "tenant",
-                "category": "organization"
+                "category": "organization",
             },
             {
                 "code": "branches:read:company",
@@ -160,7 +159,7 @@ def seed_organization_permissions():
                 "resource": "branches",
                 "action": "read",
                 "scope": "company",
-                "category": "organization"
+                "category": "organization",
             },
             {
                 "code": "branches:read:own",
@@ -169,7 +168,7 @@ def seed_organization_permissions():
                 "resource": "branches",
                 "action": "read",
                 "scope": "own",
-                "category": "organization"
+                "category": "organization",
             },
             {
                 "code": "branches:create:company",
@@ -178,7 +177,7 @@ def seed_organization_permissions():
                 "resource": "branches",
                 "action": "create",
                 "scope": "company",
-                "category": "organization"
+                "category": "organization",
             },
             {
                 "code": "branches:update:company",
@@ -187,7 +186,7 @@ def seed_organization_permissions():
                 "resource": "branches",
                 "action": "update",
                 "scope": "company",
-                "category": "organization"
+                "category": "organization",
             },
             {
                 "code": "branches:update:own",
@@ -196,7 +195,7 @@ def seed_organization_permissions():
                 "resource": "branches",
                 "action": "update",
                 "scope": "own",
-                "category": "organization"
+                "category": "organization",
             },
             {
                 "code": "branches:delete:company",
@@ -205,9 +204,8 @@ def seed_organization_permissions():
                 "resource": "branches",
                 "action": "delete",
                 "scope": "company",
-                "category": "organization"
+                "category": "organization",
             },
-
             # ==================== DEPARTMENT MANAGEMENT ====================
             {
                 "code": "departments:read:all",
@@ -216,7 +214,7 @@ def seed_organization_permissions():
                 "resource": "departments",
                 "action": "read",
                 "scope": "all",
-                "category": "organization"
+                "category": "organization",
             },
             {
                 "code": "departments:read:tenant",
@@ -225,7 +223,7 @@ def seed_organization_permissions():
                 "resource": "departments",
                 "action": "read",
                 "scope": "tenant",
-                "category": "organization"
+                "category": "organization",
             },
             {
                 "code": "departments:read:branch",
@@ -234,7 +232,7 @@ def seed_organization_permissions():
                 "resource": "departments",
                 "action": "read",
                 "scope": "branch",
-                "category": "organization"
+                "category": "organization",
             },
             {
                 "code": "departments:read:own",
@@ -243,7 +241,7 @@ def seed_organization_permissions():
                 "resource": "departments",
                 "action": "read",
                 "scope": "own",
-                "category": "organization"
+                "category": "organization",
             },
             {
                 "code": "departments:create:branch",
@@ -252,7 +250,7 @@ def seed_organization_permissions():
                 "resource": "departments",
                 "action": "create",
                 "scope": "branch",
-                "category": "organization"
+                "category": "organization",
             },
             {
                 "code": "departments:update:branch",
@@ -261,7 +259,7 @@ def seed_organization_permissions():
                 "resource": "departments",
                 "action": "update",
                 "scope": "branch",
-                "category": "organization"
+                "category": "organization",
             },
             {
                 "code": "departments:update:own",
@@ -270,7 +268,7 @@ def seed_organization_permissions():
                 "resource": "departments",
                 "action": "update",
                 "scope": "own",
-                "category": "organization"
+                "category": "organization",
             },
             {
                 "code": "departments:delete:branch",
@@ -279,9 +277,8 @@ def seed_organization_permissions():
                 "resource": "departments",
                 "action": "delete",
                 "scope": "branch",
-                "category": "organization"
+                "category": "organization",
             },
-
             # ==================== ORGANIZATION VIEW ====================
             {
                 "code": "organization:view:tenant",
@@ -290,9 +287,8 @@ def seed_organization_permissions():
                 "resource": "organization",
                 "action": "view",
                 "scope": "tenant",
-                "category": "organization"
+                "category": "organization",
             },
-
             # ==================== USER MANAGEMENT ====================
             {
                 "code": "users:read:all",
@@ -301,7 +297,7 @@ def seed_organization_permissions():
                 "resource": "users",
                 "action": "read",
                 "scope": "all",
-                "category": "user_management"
+                "category": "user_management",
             },
             {
                 "code": "users:read:tenant",
@@ -310,7 +306,7 @@ def seed_organization_permissions():
                 "resource": "users",
                 "action": "read",
                 "scope": "tenant",
-                "category": "user_management"
+                "category": "user_management",
             },
             {
                 "code": "users:read:company",
@@ -319,7 +315,7 @@ def seed_organization_permissions():
                 "resource": "users",
                 "action": "read",
                 "scope": "company",
-                "category": "user_management"
+                "category": "user_management",
             },
             {
                 "code": "users:read:department",
@@ -328,7 +324,7 @@ def seed_organization_permissions():
                 "resource": "users",
                 "action": "read",
                 "scope": "department",
-                "category": "user_management"
+                "category": "user_management",
             },
             {
                 "code": "users:read:own",
@@ -337,7 +333,7 @@ def seed_organization_permissions():
                 "resource": "users",
                 "action": "read",
                 "scope": "own",
-                "category": "user_management"
+                "category": "user_management",
             },
             {
                 "code": "users:create:tenant",
@@ -346,7 +342,7 @@ def seed_organization_permissions():
                 "resource": "users",
                 "action": "create",
                 "scope": "tenant",
-                "category": "user_management"
+                "category": "user_management",
             },
             {
                 "code": "users:update:all",
@@ -355,7 +351,7 @@ def seed_organization_permissions():
                 "resource": "users",
                 "action": "update",
                 "scope": "all",
-                "category": "user_management"
+                "category": "user_management",
             },
             {
                 "code": "users:update:tenant",
@@ -364,7 +360,7 @@ def seed_organization_permissions():
                 "resource": "users",
                 "action": "update",
                 "scope": "tenant",
-                "category": "user_management"
+                "category": "user_management",
             },
             {
                 "code": "users:update:own",
@@ -373,7 +369,7 @@ def seed_organization_permissions():
                 "resource": "users",
                 "action": "update",
                 "scope": "own",
-                "category": "user_management"
+                "category": "user_management",
             },
             {
                 "code": "users:delete:all",
@@ -382,7 +378,7 @@ def seed_organization_permissions():
                 "resource": "users",
                 "action": "delete",
                 "scope": "all",
-                "category": "user_management"
+                "category": "user_management",
             },
             {
                 "code": "users:delete:tenant",
@@ -391,7 +387,7 @@ def seed_organization_permissions():
                 "resource": "users",
                 "action": "delete",
                 "scope": "tenant",
-                "category": "user_management"
+                "category": "user_management",
             },
             {
                 "code": "users:reset_password:all",
@@ -400,7 +396,7 @@ def seed_organization_permissions():
                 "resource": "users",
                 "action": "reset_password",
                 "scope": "all",
-                "category": "user_management"
+                "category": "user_management",
             },
             {
                 "code": "users:reset_password:tenant",
@@ -409,7 +405,7 @@ def seed_organization_permissions():
                 "resource": "users",
                 "action": "reset_password",
                 "scope": "tenant",
-                "category": "user_management"
+                "category": "user_management",
             },
             {
                 "code": "users:change_password:own",
@@ -418,7 +414,7 @@ def seed_organization_permissions():
                 "resource": "users",
                 "action": "change_password",
                 "scope": "own",
-                "category": "user_management"
+                "category": "user_management",
             },
             {
                 "code": "users:impersonate:all",
@@ -427,19 +423,16 @@ def seed_organization_permissions():
                 "resource": "users",
                 "action": "impersonate",
                 "scope": "all",
-                "category": "user_management"
+                "category": "user_management",
             },
         ]
 
         # Create permissions
         created_count = 0
         updated_count = 0
-        existing_count = 0
 
         for perm_data in permissions:
-            perm = db.query(Permission).filter(
-                Permission.code == perm_data["code"]
-            ).first()
+            perm = db.query(Permission).filter(Permission.code == perm_data["code"]).first()
 
             if not perm:
                 perm = Permission(**perm_data, is_active=True)
@@ -458,7 +451,7 @@ def seed_organization_permissions():
         db.commit()
 
         print(f"\n{'='*60}")
-        print(f"Organization Permissions Seed Complete")
+        print("Organization Permissions Seed Complete")
         print(f"{'='*60}")
         print(f"✓ Created: {created_count} permissions")
         print(f"• Updated: {updated_count} permissions")
@@ -471,6 +464,7 @@ def seed_organization_permissions():
         raise
     finally:
         db.close()
+
 
 if __name__ == "__main__":
     seed_organization_permissions()

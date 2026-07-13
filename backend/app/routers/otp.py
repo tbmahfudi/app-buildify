@@ -1,12 +1,11 @@
 import logging
 import os
 import random
-import secrets
 import uuid
 from typing import Optional
 
 import redis
-from fastapi import APIRouter, HTTPException, Request, status
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
@@ -14,24 +13,28 @@ logger = logging.getLogger(__name__)
 REDIS_URL = os.environ.get("REDIS_URL", "redis://redis:6379/0")
 _redis: Optional[redis.Redis] = None
 
+
 def get_redis() -> redis.Redis:
     global _redis
     if _redis is None:
         _redis = redis.from_url(REDIS_URL, decode_responses=True)
     return _redis
 
+
 router = APIRouter(prefix="/api/v1/otp", tags=["otp"])
 
 ALLOWED_PURPOSES = {"patient_registration", "patient_login", "staff_2fa", "password_reset"}
-OTP_TTL = 600        # 10 min
-COOLDOWN_TTL = 60    # 1 min between resends
+OTP_TTL = 600  # 10 min
+COOLDOWN_TTL = 60  # 1 min between resends
 MAX_ATTEMPTS = 5
-TOKEN_TTL = 300      # 5 min one-time token
+TOKEN_TTL = 300  # 5 min one-time token
+
 
 class OtpSendRequest(BaseModel):
     phone: str
     purpose: str
     tenant_code: str
+
 
 class OtpVerifyRequest(BaseModel):
     phone: str
@@ -39,25 +42,32 @@ class OtpVerifyRequest(BaseModel):
     tenant_code: str
     code: str
 
+
 class OtpSendResponse(BaseModel):
     message: str
     resend_after: int
+
 
 class OtpVerifyResponse(BaseModel):
     verified: bool
     otp_token: Optional[str] = None
 
+
 def _code_key(purpose: str, tenant_code: str, phone: str) -> str:
     return f"otp:code:{purpose}:{tenant_code}:{phone}"
+
 
 def _attempts_key(purpose: str, tenant_code: str, phone: str) -> str:
     return f"otp:attempts:{purpose}:{tenant_code}:{phone}"
 
+
 def _cooldown_key(purpose: str, tenant_code: str, phone: str) -> str:
     return f"otp:cooldown:{purpose}:{tenant_code}:{phone}"
 
+
 def _token_key(token: str) -> str:
     return f"otp:token:{token}"
+
 
 @router.post("/send", response_model=OtpSendResponse)
 async def send_otp(body: OtpSendRequest):
@@ -123,6 +133,7 @@ async def verify_otp(body: OtpVerifyRequest):
 def _send_otp_message(phone: str, code: str, purpose: str) -> None:
     """Fire-and-forget: try WhatsApp, fall back to SMS, log if both unavailable."""
     import threading
+
     threading.Thread(target=_dispatch_message, args=(phone, code, purpose), daemon=True).start()
 
 
@@ -134,6 +145,7 @@ def _dispatch_message(phone: str, code: str, purpose: str) -> None:
     if wa_url:
         try:
             import httpx
+
             token = os.environ.get("WHATSAPP_API_TOKEN", "")
             resp = httpx.post(
                 wa_url,
@@ -151,6 +163,7 @@ def _dispatch_message(phone: str, code: str, purpose: str) -> None:
     if sms_url:
         try:
             import httpx
+
             resp = httpx.post(sms_url, json={"to": phone, "text": message}, timeout=10)
             if resp.status_code < 300:
                 logger.info(f"SMS OTP sent to {phone}")

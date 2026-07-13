@@ -19,6 +19,7 @@ class Branch(Base):
 
     Branches belong to a company and can have departments.
     """
+
     __tablename__ = "branches"
     __tenant_scoped__ = True
 
@@ -67,9 +68,7 @@ class Branch(Base):
     departments = relationship("Department", back_populates="branch", cascade="all, delete-orphan")
 
     # Constraints
-    __table_args__ = (
-        UniqueConstraint('tenant_id', 'company_id', 'code', name='uq_branch_company_code'),
-    )
+    __table_args__ = (UniqueConstraint("tenant_id", "company_id", "code", name="uq_branch_company_code"),)
 
     def __repr__(self):
         return f"<Branch(id={self.id}, name={self.name}, company_id={self.company_id})>"

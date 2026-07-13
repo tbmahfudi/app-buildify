@@ -4,46 +4,45 @@ Data Model Designer API Router
 API endpoints for the Data Model Designer feature.
 """
 
-from fastapi import APIRouter, Depends, Query
-from sqlalchemy.orm import Session
 from typing import List, Optional
 from uuid import UUID
 
-from app.core.dependencies import get_db, get_current_user
+from fastapi import APIRouter, Depends, Query
+from sqlalchemy.orm import Session
+
+from app.core.dependencies import get_current_user, get_db
 from app.schemas.data_model import (
-    EntityDefinitionCreate,
-    EntityDefinitionUpdate,
-    EntityDefinitionResponse,
-    FieldDefinitionCreate,
-    FieldDefinitionUpdate,
-    FieldDefinitionResponse,
-    RelationshipDefinitionCreate,
-    RelationshipDefinitionResponse,
-    DatabaseObjectsResponse,
-    IntrospectRequest,
-    IntrospectedEntityDefinition,
     BatchIntrospectRequest,
     BatchIntrospectResponse,
-    MigrationPreviewResponse,
-    PublishEntityRequest,
-    MigrationResponse,
+    DatabaseObjectsResponse,
+    EntityDefinitionCreate,
+    EntityDefinitionResponse,
+    EntityDefinitionUpdate,
+    FieldDefinitionCreate,
+    FieldDefinitionResponse,
+    FieldDefinitionUpdate,
+    IntrospectedEntityDefinition,
+    IntrospectRequest,
     MigrationListResponse,
+    MigrationPreviewResponse,
+    MigrationResponse,
+    PublishEntityRequest,
+    RelationshipDefinitionCreate,
+    RelationshipDefinitionResponse,
     RollbackResponse,
 )
 from app.services.data_model_service import DataModelService
 from app.services.schema_introspector import SchemaIntrospector
-
 
 router = APIRouter(prefix="/api/v1/data-model", tags=["Data Model Designer"])
 
 
 # ==================== Entity Endpoints ====================
 
+
 @router.post("/entities", response_model=EntityDefinitionResponse)
 async def create_entity(
-    entity: EntityDefinitionCreate,
-    db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    entity: EntityDefinitionCreate, db: Session = Depends(get_db), current_user=Depends(get_current_user)
 ):
     """Create a new entity definition"""
     service = DataModelService(db, current_user)
@@ -56,7 +55,7 @@ async def list_entities(
     entity_type: Optional[str] = Query(None),
     status: Optional[str] = Query(None),
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user=Depends(get_current_user),
 ):
     """List all entity definitions"""
     service = DataModelService(db, current_user)
@@ -64,11 +63,7 @@ async def list_entities(
 
 
 @router.get("/entities/{entity_id}", response_model=EntityDefinitionResponse)
-async def get_entity(
-    entity_id: UUID,
-    db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
-):
+async def get_entity(entity_id: UUID, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     """Get entity definition by ID"""
     service = DataModelService(db, current_user)
     return await service.get_entity(entity_id)
@@ -79,7 +74,7 @@ async def update_entity(
     entity_id: UUID,
     entity: EntityDefinitionUpdate,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user=Depends(get_current_user),
 ):
     """Update entity definition"""
     service = DataModelService(db, current_user)
@@ -87,11 +82,7 @@ async def update_entity(
 
 
 @router.delete("/entities/{entity_id}")
-async def delete_entity(
-    entity_id: UUID,
-    db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
-):
+async def delete_entity(entity_id: UUID, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     """Delete entity definition (soft delete)"""
     service = DataModelService(db, current_user)
     return await service.delete_entity(entity_id)
@@ -103,7 +94,7 @@ async def clone_entity(
     new_name: Optional[str] = Query(None, description="Name for the cloned entity"),
     new_label: Optional[str] = Query(None, description="Label for the cloned entity"),
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user=Depends(get_current_user),
 ):
     """Clone a platform-level entity to a tenant-specific version"""
     service = DataModelService(db, current_user)
@@ -112,12 +103,10 @@ async def clone_entity(
 
 # ==================== Field Endpoints ====================
 
+
 @router.post("/entities/{entity_id}/fields", response_model=FieldDefinitionResponse)
 async def create_field(
-    entity_id: UUID,
-    field: FieldDefinitionCreate,
-    db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    entity_id: UUID, field: FieldDefinitionCreate, db: Session = Depends(get_db), current_user=Depends(get_current_user)
 ):
     """Add a field to an entity"""
     service = DataModelService(db, current_user)
@@ -129,7 +118,7 @@ async def list_fields(
     entity_id: UUID,
     include_deleted: bool = Query(False, description="Include soft-deleted fields"),
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user=Depends(get_current_user),
 ):
     """List all fields for an entity"""
     service = DataModelService(db, current_user)
@@ -142,10 +131,11 @@ async def update_field(
     field_id: UUID,
     field: FieldDefinitionUpdate,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user=Depends(get_current_user),
 ):
     """Update a field definition"""
     import logging
+
     _logger = logging.getLogger(__name__)
 
     service = DataModelService(db, current_user)
@@ -156,10 +146,15 @@ async def update_field(
     try:
         from app.models.data_model import EntityDefinition
         from app.services.metadata_sync_service import MetadataSyncService
-        entity_def = db.query(EntityDefinition).filter(
-            EntityDefinition.id == entity_id,
-            EntityDefinition.is_deleted == False,
-        ).first()
+
+        entity_def = (
+            db.query(EntityDefinition)
+            .filter(
+                EntityDefinition.id == entity_id,
+                EntityDefinition.is_deleted == False,
+            )
+            .first()
+        )
         if entity_def and entity_def.status == "published":
             MetadataSyncService(db).auto_generate_metadata(
                 entity_definition=entity_def,
@@ -173,10 +168,7 @@ async def update_field(
 
 @router.delete("/entities/{entity_id}/fields/{field_id}")
 async def delete_field(
-    entity_id: UUID,
-    field_id: UUID,
-    db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    entity_id: UUID, field_id: UUID, db: Session = Depends(get_db), current_user=Depends(get_current_user)
 ):
     """Delete a field definition"""
     service = DataModelService(db, current_user)
@@ -185,10 +177,7 @@ async def delete_field(
 
 @router.post("/entities/{entity_id}/fields/{field_id}/restore", response_model=FieldDefinitionResponse)
 async def restore_field(
-    entity_id: UUID,
-    field_id: UUID,
-    db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    entity_id: UUID, field_id: UUID, db: Session = Depends(get_db), current_user=Depends(get_current_user)
 ):
     """Restore a soft-deleted field"""
     service = DataModelService(db, current_user)
@@ -197,10 +186,7 @@ async def restore_field(
 
 @router.delete("/entities/{entity_id}/fields/{field_id}/permanent")
 async def permanently_delete_field(
-    entity_id: UUID,
-    field_id: UUID,
-    db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    entity_id: UUID, field_id: UUID, db: Session = Depends(get_db), current_user=Depends(get_current_user)
 ):
     """Permanently delete a soft-deleted field from database"""
     service = DataModelService(db, current_user)
@@ -208,11 +194,7 @@ async def permanently_delete_field(
 
 
 @router.get("/entities/{entity_id}/fields/deleted")
-async def list_deleted_fields(
-    entity_id: UUID,
-    db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
-):
+async def list_deleted_fields(entity_id: UUID, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     """List all soft-deleted fields for an entity"""
     service = DataModelService(db, current_user)
     return await service.list_deleted_fields(entity_id)
@@ -220,11 +202,10 @@ async def list_deleted_fields(
 
 # ==================== Relationship Endpoints ====================
 
+
 @router.post("/relationships", response_model=RelationshipDefinitionResponse)
 async def create_relationship(
-    relationship: RelationshipDefinitionCreate,
-    db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    relationship: RelationshipDefinitionCreate, db: Session = Depends(get_db), current_user=Depends(get_current_user)
 ):
     """Create a relationship between entities"""
     service = DataModelService(db, current_user)
@@ -233,9 +214,7 @@ async def create_relationship(
 
 @router.get("/relationships", response_model=List[RelationshipDefinitionResponse])
 async def list_relationships(
-    entity_id: Optional[UUID] = Query(None),
-    db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    entity_id: Optional[UUID] = Query(None), db: Session = Depends(get_db), current_user=Depends(get_current_user)
 ):
     """List relationships"""
     service = DataModelService(db, current_user)
@@ -244,9 +223,7 @@ async def list_relationships(
 
 @router.delete("/relationships/{relationship_id}")
 async def delete_relationship(
-    relationship_id: UUID,
-    db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    relationship_id: UUID, db: Session = Depends(get_db), current_user=Depends(get_current_user)
 ):
     """Delete a relationship"""
     service = DataModelService(db, current_user)
@@ -255,11 +232,12 @@ async def delete_relationship(
 
 # ==================== Schema Introspection Endpoints ====================
 
+
 @router.get("/introspect/objects", response_model=DatabaseObjectsResponse)
 async def list_database_objects(
-    schema: str = Query('public', description="Database schema to introspect"),
+    schema: str = Query("public", description="Database schema to introspect"),
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user=Depends(get_current_user),
 ):
     """
     List all tables and views available for introspection
@@ -274,9 +252,7 @@ async def list_database_objects(
 
 @router.post("/introspect/generate", response_model=IntrospectedEntityDefinition)
 async def generate_entity_from_db_object(
-    request: IntrospectRequest,
-    db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    request: IntrospectRequest, db: Session = Depends(get_db), current_user=Depends(get_current_user)
 ):
     """
     Introspect a database object and generate EntityDefinition
@@ -290,11 +266,7 @@ async def generate_entity_from_db_object(
     introspector = SchemaIntrospector(db)
 
     # Introspect the object
-    entity_data = await introspector.introspect_object(
-        request.object_name,
-        request.object_type,
-        request.schema
-    )
+    entity_data = await introspector.introspect_object(request.object_name, request.object_type, request.schema)
 
     # Optionally auto-save
     if request.auto_save:
@@ -308,9 +280,7 @@ async def generate_entity_from_db_object(
 
 @router.post("/introspect/batch-generate", response_model=BatchIntrospectResponse)
 async def batch_generate_entities(
-    request: BatchIntrospectRequest,
-    db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    request: BatchIntrospectRequest, db: Session = Depends(get_db), current_user=Depends(get_current_user)
 ):
     """
     Generate EntityDefinitions for multiple database objects
@@ -331,11 +301,7 @@ async def batch_generate_entities(
     for obj in request.objects:
         try:
             # Introspect the object
-            entity_data = await introspector.introspect_object(
-                obj.name,
-                obj.type,
-                request.schema
-            )
+            entity_data = await introspector.introspect_object(obj.name, obj.type, request.schema)
 
             # Save if requested
             if request.auto_save:
@@ -350,18 +316,15 @@ async def batch_generate_entities(
         "total": len(request.objects),
         "queued": created_count,
         "message": f"Processed {created_count} objects successfully, {failed_count} failed",
-        "status": "completed" if failed_count == 0 else "partial"
+        "status": "completed" if failed_count == 0 else "partial",
     }
 
 
 # ==================== Migration Endpoints ====================
 
+
 @router.get("/entities/{entity_id}/preview-migration", response_model=MigrationPreviewResponse)
-async def preview_migration(
-    entity_id: UUID,
-    db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
-):
+async def preview_migration(entity_id: UUID, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     """
     Preview schema changes before publishing
 
@@ -377,7 +340,7 @@ async def generate_migration(
     entity_id: UUID,
     request: PublishEntityRequest,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user=Depends(get_current_user),
 ):
     """
     Generate and save migration without executing it
@@ -391,11 +354,7 @@ async def generate_migration(
 
 
 @router.post("/migrations/{migration_id}/execute", response_model=MigrationResponse)
-async def execute_migration(
-    migration_id: UUID,
-    db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
-):
+async def execute_migration(migration_id: UUID, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     """
     Execute a pending migration
 
@@ -413,7 +372,7 @@ async def publish_entity(
     entity_id: UUID,
     request: PublishEntityRequest,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user=Depends(get_current_user),
 ):
     """
     Publish entity and execute migration
@@ -427,11 +386,7 @@ async def publish_entity(
 
 
 @router.get("/entities/{entity_id}/migrations", response_model=MigrationListResponse)
-async def list_migrations(
-    entity_id: UUID,
-    db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
-):
+async def list_migrations(entity_id: UUID, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     """
     List migration history for an entity
 
@@ -443,11 +398,7 @@ async def list_migrations(
 
 
 @router.post("/migrations/{migration_id}/rollback", response_model=RollbackResponse)
-async def rollback_migration(
-    migration_id: UUID,
-    db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
-):
+async def rollback_migration(migration_id: UUID, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     """
     Rollback a migration
 
@@ -459,41 +410,42 @@ async def rollback_migration(
 
 
 @router.post("/entities/regenerate-menus")
-async def regenerate_entity_menus(
-    db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
-):
+async def regenerate_entity_menus(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     """
     Regenerate menu items and metadata for all published entities.
 
     This is a repair endpoint that creates missing menu items and EntityMetadata
     for entities that were published but don't have corresponding entries.
     """
+    import logging
+
+    from sqlalchemy import or_
+
     from app.models.data_model import EntityDefinition
     from app.models.menu_item import MenuItem
     from app.services.menu_service import MenuService
     from app.services.metadata_sync_service import MetadataSyncService
-    from sqlalchemy import or_
-    import logging
 
     logger = logging.getLogger(__name__)
 
     # Get all published entities for current tenant
-    published_entities = db.query(EntityDefinition).filter(
-        EntityDefinition.status == 'published',
-        or_(
-            EntityDefinition.tenant_id == current_user.tenant_id,  # tenant_scope
-            EntityDefinition.tenant_id == None  # tenant_scope
+    published_entities = (
+        db.query(EntityDefinition)
+        .filter(
+            EntityDefinition.status == "published",
+            or_(
+                EntityDefinition.tenant_id == current_user.tenant_id,  # tenant_scope
+                EntityDefinition.tenant_id == None,  # tenant_scope
+            ),
         )
-    ).all()
+        .all()
+    )
 
     if not published_entities:
         return {"success": True, "message": "No published entities found", "created": 0}
 
     # Ensure parent menu exists
-    parent_menu = MenuService.get_or_create_nocode_parent(
-        db, current_user.tenant_id, str(current_user.id)
-    )
+    parent_menu = MenuService.get_or_create_nocode_parent(db, current_user.tenant_id, str(current_user.id))
 
     menu_created = 0
     menu_skipped = 0
@@ -510,10 +462,7 @@ async def regenerate_entity_menus(
             # auto_generate_metadata handles both create and update (sync_metadata).
             # Always call it so existing config is refreshed with current field
             # definitions (e.g. newly-set allowed_values for select fields).
-            metadata_sync.auto_generate_metadata(
-                entity_definition=entity,
-                created_by=str(current_user.id)
-            )
+            metadata_sync.auto_generate_metadata(entity_definition=entity, created_by=str(current_user.id))
             if had_config:
                 metadata_skipped += 1  # repurposed as "updated" count for now
             else:
@@ -523,7 +472,7 @@ async def regenerate_entity_menus(
             logger.error(f"Failed to create metadata for {entity.name}: {str(e)}")
 
         # --- Create menu item ---
-        menu_code = f'nocode_entity_{entity.name}'
+        menu_code = f"nocode_entity_{entity.name}"
 
         existing_menu = db.query(MenuItem).filter(MenuItem.code == menu_code).first()
         if existing_menu:
@@ -532,19 +481,16 @@ async def regenerate_entity_menus(
 
         try:
             menu_data = {
-                'code': menu_code,
-                'title': entity.label or entity.name.replace('_', ' ').title(),
-                'route': f'dynamic/{entity.name}/list',
-                'icon': entity.icon or 'ph-duotone ph-database',
-                'parent_id': parent_menu.id,
-                'permission': None,
-                'required_roles': [],
-                'is_system': False,
-                'is_active': True,
-                'extra_data': {
-                    'entity_id': str(entity.id),
-                    'is_nocode': True
-                }
+                "code": menu_code,
+                "title": entity.label or entity.name.replace("_", " ").title(),
+                "route": f"dynamic/{entity.name}/list",
+                "icon": entity.icon or "ph-duotone ph-database",
+                "parent_id": parent_menu.id,
+                "permission": None,
+                "required_roles": [],
+                "is_system": False,
+                "is_active": True,
+                "extra_data": {"entity_id": str(entity.id), "is_nocode": True},
             }
 
             MenuService.create_menu_item(db=db, user=current_user, menu_data=menu_data)
@@ -560,5 +506,5 @@ async def regenerate_entity_menus(
         "menus_skipped": menu_skipped,
         "metadata_created": metadata_created,
         "metadata_skipped": metadata_skipped,
-        "parent_menu_id": str(parent_menu.id)
+        "parent_menu_id": str(parent_menu.id),
     }

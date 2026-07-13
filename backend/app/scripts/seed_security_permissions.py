@@ -3,6 +3,7 @@ Seed script for security management permissions and roles.
 
 Run this script to create permissions and roles for the security policy system.
 """
+
 import asyncio
 import sys
 from pathlib import Path
@@ -10,9 +11,9 @@ from pathlib import Path
 # Add parent directory to path
 sys.path.append(str(Path(__file__).parent.parent.parent))
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy import select
 
 from app.core.config import get_settings
 from app.models import Permission, Role, RolePermission
@@ -28,7 +29,9 @@ async def seed_security_permissions():
     if db_url.startswith("sqlite"):
         async_db_url = db_url.replace("sqlite://", "sqlite+aiosqlite://")
     elif db_url.startswith("postgresql"):
-        async_db_url = db_url.replace("postgresql://", "postgresql+asyncpg://").replace("postgresql+psycopg2://", "postgresql+asyncpg://")
+        async_db_url = db_url.replace("postgresql://", "postgresql+asyncpg://").replace(
+            "postgresql+psycopg2://", "postgresql+asyncpg://"
+        )
     elif db_url.startswith("mysql"):
         async_db_url = db_url.replace("mysql://", "mysql+aiomysql://").replace("mysql+pymysql://", "mysql+aiomysql://")
     else:
@@ -49,7 +52,7 @@ async def seed_security_permissions():
                 "description": "View system and tenant security policies",
                 "resource": "security_policy",
                 "action": "read",
-                "scope": "all"
+                "scope": "all",
             },
             {
                 "code": "security_policy:write:all",
@@ -57,7 +60,7 @@ async def seed_security_permissions():
                 "description": "Create and update security policies",
                 "resource": "security_policy",
                 "action": "write",
-                "scope": "all"
+                "scope": "all",
             },
             {
                 "code": "security_policy:delete:all",
@@ -65,9 +68,8 @@ async def seed_security_permissions():
                 "description": "Delete tenant security policies",
                 "resource": "security_policy",
                 "action": "delete",
-                "scope": "all"
+                "scope": "all",
             },
-
             # Account Lockout Management
             {
                 "code": "security:view_locked_accounts:all",
@@ -75,7 +77,7 @@ async def seed_security_permissions():
                 "description": "View list of locked user accounts",
                 "resource": "security",
                 "action": "view_locked_accounts",
-                "scope": "all"
+                "scope": "all",
             },
             {
                 "code": "security:unlock_account:all",
@@ -83,9 +85,8 @@ async def seed_security_permissions():
                 "description": "Manually unlock locked user accounts",
                 "resource": "security",
                 "action": "unlock_account",
-                "scope": "all"
+                "scope": "all",
             },
-
             # Session Management
             {
                 "code": "security:view_sessions:all",
@@ -93,7 +94,7 @@ async def seed_security_permissions():
                 "description": "View all active user sessions",
                 "resource": "security",
                 "action": "view_sessions",
-                "scope": "all"
+                "scope": "all",
             },
             {
                 "code": "security:revoke_session:all",
@@ -101,9 +102,8 @@ async def seed_security_permissions():
                 "description": "Revoke user sessions",
                 "resource": "security",
                 "action": "revoke_session",
-                "scope": "all"
+                "scope": "all",
             },
-
             # Login Attempt Audit
             {
                 "code": "security:view_login_attempts:all",
@@ -111,9 +111,8 @@ async def seed_security_permissions():
                 "description": "View login attempt audit logs",
                 "resource": "security",
                 "action": "view_login_attempts",
-                "scope": "all"
+                "scope": "all",
             },
-
             # Notification Configuration
             {
                 "code": "notification_config:read:all",
@@ -121,7 +120,7 @@ async def seed_security_permissions():
                 "description": "View notification configuration",
                 "resource": "notification_config",
                 "action": "read",
-                "scope": "all"
+                "scope": "all",
             },
             {
                 "code": "notification_config:write:all",
@@ -129,9 +128,8 @@ async def seed_security_permissions():
                 "description": "Update notification configuration",
                 "resource": "notification_config",
                 "action": "write",
-                "scope": "all"
+                "scope": "all",
             },
-
             # Notification Queue (for monitoring)
             {
                 "code": "notification_queue:read:all",
@@ -139,7 +137,7 @@ async def seed_security_permissions():
                 "description": "View pending and sent notifications",
                 "resource": "notification_queue",
                 "action": "read",
-                "scope": "all"
+                "scope": "all",
             },
         ]
 
@@ -181,7 +179,7 @@ async def seed_security_permissions():
                     "notification_config:read:all",
                     "notification_config:write:all",
                     "notification_queue:read:all",
-                ]
+                ],
             },
             {
                 "code": "security_viewer",
@@ -194,7 +192,7 @@ async def seed_security_permissions():
                     "security:view_login_attempts:all",
                     "notification_config:read:all",
                     "notification_queue:read:all",
-                ]
+                ],
             },
             {
                 "code": "support_admin",
@@ -206,8 +204,8 @@ async def seed_security_permissions():
                     "security:view_sessions:all",
                     "security:revoke_session:all",
                     "security:view_login_attempts:all",
-                ]
-            }
+                ],
+            },
         ]
 
         # Create roles and assign permissions
@@ -222,10 +220,7 @@ async def seed_security_permissions():
                 role = existing_role
             else:
                 role = Role(
-                    code=role_data["code"],
-                    name=role_data["name"],
-                    description=role_data["description"],
-                    is_active=True
+                    code=role_data["code"], name=role_data["name"], description=role_data["description"], is_active=True
                 )
                 db.add(role)
                 await db.flush()
@@ -241,17 +236,13 @@ async def seed_security_permissions():
 
                 # Check if role-permission already exists
                 query = select(RolePermission).where(
-                    RolePermission.role_id == role.id,
-                    RolePermission.permission_id == perm.id
+                    RolePermission.role_id == role.id, RolePermission.permission_id == perm.id
                 )
                 result = await db.execute(query)
                 existing_rp = result.scalars().first()
 
                 if not existing_rp:
-                    role_permission = RolePermission(
-                        role_id=role.id,
-                        permission_id=perm.id
-                    )
+                    role_permission = RolePermission(role_id=role.id, permission_id=perm.id)
                     db.add(role_permission)
                     print(f"    ➕ Assigned permission: {perm_code} to {role.code}")
 

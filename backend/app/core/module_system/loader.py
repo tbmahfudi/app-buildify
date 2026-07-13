@@ -5,11 +5,12 @@ Discovers and dynamically loads modules from the modules directory.
 """
 
 import importlib.util
+import logging
 import sys
 from pathlib import Path
 from typing import Dict, List, Optional
+
 from .base_module import BaseModule
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -64,7 +65,7 @@ class ModuleLoader:
                 continue
 
             # Skip __pycache__ and hidden directories
-            if module_dir.name.startswith('__') or module_dir.name.startswith('.'):
+            if module_dir.name.startswith("__") or module_dir.name.startswith("."):
                 continue
 
             # Check for required files
@@ -75,9 +76,7 @@ class ModuleLoader:
                 modules.append(module_dir.name)
                 logger.info(f"Discovered module: {module_dir.name}")
             else:
-                logger.debug(
-                    f"Skipping {module_dir.name}: missing manifest.json or module.py"
-                )
+                logger.debug(f"Skipping {module_dir.name}: missing manifest.json or module.py")
 
         logger.info(f"Discovered {len(modules)} modules: {', '.join(modules)}")
         return modules
@@ -110,10 +109,7 @@ class ModuleLoader:
 
         try:
             # Create module spec for dynamic import
-            spec = importlib.util.spec_from_file_location(
-                f"modules.{module_name}.module",
-                module_file
-            )
+            spec = importlib.util.spec_from_file_location(f"modules.{module_name}.module", module_file)
 
             if spec is None or spec.loader is None:
                 logger.error(f"Failed to create module spec for {module_name}")
@@ -130,7 +126,7 @@ class ModuleLoader:
 
             if not hasattr(module, module_class_name):
                 # Try alternate naming: just capitalize first letter
-                alt_class_name = module_name.capitalize() + 'Module'
+                alt_class_name = module_name.capitalize() + "Module"
                 if hasattr(module, alt_class_name):
                     module_class_name = alt_class_name
                 else:
@@ -145,9 +141,7 @@ class ModuleLoader:
 
             # Verify it inherits from BaseModule
             if not issubclass(module_class, BaseModule):
-                logger.error(
-                    f"Module class {module_class_name} does not inherit from BaseModule"
-                )
+                logger.error(f"Module class {module_class_name} does not inherit from BaseModule")
                 return None
 
             # Instantiate the module
@@ -268,11 +262,11 @@ class ModuleLoader:
             Expected class name
         """
         # Replace dashes with underscores
-        normalized = module_name.replace('-', '_')
+        normalized = module_name.replace("-", "_")
 
         # Split by underscore and capitalize each word
-        words = normalized.split('_')
-        pascal_case = ''.join(word.capitalize() for word in words)
+        words = normalized.split("_")
+        pascal_case = "".join(word.capitalize() for word in words)
 
         return f"{pascal_case}Module"
 
@@ -309,8 +303,9 @@ class ModuleLoader:
 
         # Try to parse manifest
         import json
+
         try:
-            with open(manifest_file, 'r') as f:
+            with open(manifest_file, "r") as f:
                 manifest = json.load(f)
 
             # Check required fields
@@ -324,7 +319,6 @@ class ModuleLoader:
 
         return True, None
 
-
     def validate_manifest(self, manifest: dict) -> tuple:
         """Validate a manifest dict against manifest.schema.json.
 
@@ -333,6 +327,7 @@ class ModuleLoader:
             (False, formatted_error_string) on jsonschema.ValidationError.
         """
         import json as _json
+
         try:
             import jsonschema
         except ImportError:
@@ -351,8 +346,8 @@ class ModuleLoader:
             if pp.get("enabled"):
                 if not pp.get("entry_point"):
                     logger.warning(
-                        "public_portal.enabled is true but entry_point is missing "
-                        "(module=%s)", manifest.get("name"),
+                        "public_portal.enabled is true but entry_point is missing " "(module=%s)",
+                        manifest.get("name"),
                     )
                 for rt in pp.get("routes", []) or []:
                     aud = rt.get("audience", "public")
@@ -360,13 +355,16 @@ class ModuleLoader:
                         logger.warning(
                             "public_portal route %s has non-standard audience %r "
                             "(expected public|patient) (module=%s)",
-                            rt.get("path"), aud, manifest.get("name"),
+                            rt.get("path"),
+                            aud,
+                            manifest.get("name"),
                         )
                 if pp.get("routing") == "path":
                     logger.warning(
                         "public_portal.routing=path requires a server SPA-fallback "
                         "alias for /portal/%s/ (module=%s)",
-                        manifest.get("name"), manifest.get("name"),
+                        manifest.get("name"),
+                        manifest.get("name"),
                     )
             return True, None
         except jsonschema.ValidationError as exc:

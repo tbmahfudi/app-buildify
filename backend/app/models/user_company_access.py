@@ -19,6 +19,7 @@ class UserCompanyAccess(Base):
     Allows a user to access multiple companies within their tenant.
     Defines the access level for each company.
     """
+
     __tablename__ = "user_company_access"
 
     # Primary key
@@ -29,12 +30,7 @@ class UserCompanyAccess(Base):
     company_id = Column(GUID, ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True)
 
     # Access level
-    access_level = Column(
-        String(50),
-        nullable=False,
-        default="full",
-        comment="Access level: full, read, restricted"
-    )
+    access_level = Column(String(50), nullable=False, default="full", comment="Access level: full, read, restricted")
     # - full: Can read and write all data
     # - read: Can only read data
     # - restricted: Limited access based on branch/department
@@ -47,7 +43,9 @@ class UserCompanyAccess(Base):
     department_id = Column(GUID, ForeignKey("departments.id", ondelete="SET NULL"), nullable=True, index=True)
 
     # Granted by
-    granted_by_user_id = Column(GUID, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)  # Who granted this access
+    granted_by_user_id = Column(
+        GUID, ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )  # Who granted this access
     granted_at = Column(DateTime, server_default=func.now(), nullable=False)
 
     # Timestamps
@@ -62,9 +60,7 @@ class UserCompanyAccess(Base):
     department = relationship("Department")
 
     # Constraints
-    __table_args__ = (
-        UniqueConstraint('user_id', 'company_id', name='uq_user_company_access'),
-    )
+    __table_args__ = (UniqueConstraint("user_id", "company_id", name="uq_user_company_access"),)
 
     def __repr__(self):
         return f"<UserCompanyAccess(user_id={self.user_id}, company_id={self.company_id}, level={self.access_level})>"

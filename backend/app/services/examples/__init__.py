@@ -16,10 +16,9 @@ Phase 4 Priority 2 - Cross-Module Access
 from .hr_employee_service import EmployeeService, register_hr_services
 from .payroll_service import PayrollService, register_payroll_services
 
-
 __all__ = [
-    'EmployeeService',
-    'register_hr_services',
-    'PayrollService',
-    'register_payroll_services',
+    "EmployeeService",
+    "register_hr_services",
+    "PayrollService",
+    "register_payroll_services",
 ]

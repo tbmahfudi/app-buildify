@@ -12,7 +12,6 @@ This creates:
 Run: python -m app.seeds.seed_builder_menu
 """
 
-from sqlalchemy.orm import Session
 from app.core.db import SessionLocal
 from app.models.menu_item import MenuItem
 
@@ -48,7 +47,7 @@ def seed_builder_menu():
                 is_active=True,
                 is_visible=True,
                 is_system=True,
-                module_code=None
+                module_code=None,
             )
             db.add(dev_tools)
             db.flush()  # Get the ID
@@ -76,14 +75,14 @@ def seed_builder_menu():
                 is_active=True,
                 is_visible=True,
                 is_system=True,
-                module_code=None
+                module_code=None,
             )
             db.add(ui_builder)
             db.flush()
-            print(f"  ✅ Created: UI Builder (parent: Developer Tools)")
+            print("  ✅ Created: UI Builder (parent: Developer Tools)")
             created_count += 1
         else:
-            print(f"  ⏭️  UI Builder already exists")
+            print("  ⏭️  UI Builder already exists")
             existing_count += 1
 
         # Step 3: Create Page Designer menu item
@@ -104,19 +103,19 @@ def seed_builder_menu():
                 is_active=True,
                 is_visible=True,
                 is_system=True,
-                module_code=None
+                module_code=None,
             )
             db.add(page_designer)
-            print(f"  ✅ Created: Page Designer (route: builder, permission: builder:design:tenant)")
+            print("  ✅ Created: Page Designer (route: builder, permission: builder:design:tenant)")
             created_count += 1
         else:
             # Update permission if it changed
             if page_designer.permission != "builder:design:tenant":
                 page_designer.permission = "builder:design:tenant"
                 updated_count += 1
-                print(f"  🔄 Updated: Page Designer (permission updated)")
+                print("  🔄 Updated: Page Designer (permission updated)")
             else:
-                print(f"  ⏭️  Page Designer already exists")
+                print("  ⏭️  Page Designer already exists")
                 existing_count += 1
 
         # Step 4: Create Manage Pages menu item
@@ -137,19 +136,19 @@ def seed_builder_menu():
                 is_active=True,
                 is_visible=True,
                 is_system=True,
-                module_code=None
+                module_code=None,
             )
             db.add(manage_pages)
-            print(f"  ✅ Created: Manage Pages (route: builder/pages, permission: builder:pages:read:tenant)")
+            print("  ✅ Created: Manage Pages (route: builder/pages, permission: builder:pages:read:tenant)")
             created_count += 1
         else:
             # Update permission if it changed
             if manage_pages.permission != "builder:pages:read:tenant":
                 manage_pages.permission = "builder:pages:read:tenant"
                 updated_count += 1
-                print(f"  🔄 Updated: Manage Pages (permission updated)")
+                print("  🔄 Updated: Manage Pages (permission updated)")
             else:
-                print(f"  ⏭️  Manage Pages already exists")
+                print("  ⏭️  Manage Pages already exists")
                 existing_count += 1
 
         # Step 5: Create Pages Showcase menu item
@@ -170,19 +169,19 @@ def seed_builder_menu():
                 is_active=True,
                 is_visible=True,
                 is_system=True,
-                module_code=None
+                module_code=None,
             )
             db.add(pages_showcase)
-            print(f"  ✅ Created: Pages Showcase (route: builder/showcase, permission: builder:design:tenant)")
+            print("  ✅ Created: Pages Showcase (route: builder/showcase, permission: builder:design:tenant)")
             created_count += 1
         else:
             # Update permission if it changed
             if pages_showcase.permission != "builder:design:tenant":
                 pages_showcase.permission = "builder:design:tenant"
                 updated_count += 1
-                print(f"  🔄 Updated: Pages Showcase (permission updated)")
+                print("  🔄 Updated: Pages Showcase (permission updated)")
             else:
-                print(f"  ⏭️  Pages Showcase already exists")
+                print("  ⏭️  Pages Showcase already exists")
                 existing_count += 1
 
         db.commit()
@@ -190,17 +189,17 @@ def seed_builder_menu():
         print("\n" + "=" * 70)
         print("✅ UI BUILDER MENU ITEMS SEEDED SUCCESSFULLY")
         print("=" * 70)
-        print(f"\nSummary:")
+        print("\nSummary:")
         print(f"  • Created: {created_count} menu items")
         print(f"  • Updated: {updated_count} menu items")
         print(f"  • Existing: {existing_count} menu items")
-        print(f"\nMenu Structure:")
-        print(f"  Developer Tools")
-        print(f"    └── UI Builder")
-        print(f"          ├── Page Designer (builder:design:tenant)")
-        print(f"          ├── Manage Pages (builder:pages:read:tenant)")
-        print(f"          └── Pages Showcase (builder:design:tenant)")
-        print(f"\nThe UI Builder menu should now appear for users with the required permissions!")
+        print("\nMenu Structure:")
+        print("  Developer Tools")
+        print("    └── UI Builder")
+        print("          ├── Page Designer (builder:design:tenant)")
+        print("          ├── Manage Pages (builder:pages:read:tenant)")
+        print("          └── Pages Showcase (builder:design:tenant)")
+        print("\nThe UI Builder menu should now appear for users with the required permissions!")
         print("=" * 70 + "\n")
 
     except Exception as e:

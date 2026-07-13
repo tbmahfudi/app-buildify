@@ -2,9 +2,10 @@
 Create settings management permissions
 Covers: General Settings, Integration, API Keys, Email, SMS, Metadata
 """
-from sqlalchemy.orm import Session
+
 from app.core.db import SessionLocal
 from app.models.permission import Permission
+
 
 def seed_settings_permissions():
     """Seed all settings-related permissions"""
@@ -21,7 +22,7 @@ def seed_settings_permissions():
                 "resource": "settings",
                 "action": "read",
                 "scope": "all",
-                "category": "settings"
+                "category": "settings",
             },
             {
                 "code": "settings:read:tenant",
@@ -30,7 +31,7 @@ def seed_settings_permissions():
                 "resource": "settings",
                 "action": "read",
                 "scope": "tenant",
-                "category": "settings"
+                "category": "settings",
             },
             {
                 "code": "settings:read:own",
@@ -39,7 +40,7 @@ def seed_settings_permissions():
                 "resource": "settings",
                 "action": "read",
                 "scope": "own",
-                "category": "settings"
+                "category": "settings",
             },
             {
                 "code": "settings:update:all",
@@ -48,7 +49,7 @@ def seed_settings_permissions():
                 "resource": "settings",
                 "action": "update",
                 "scope": "all",
-                "category": "settings"
+                "category": "settings",
             },
             {
                 "code": "settings:update:tenant",
@@ -57,7 +58,7 @@ def seed_settings_permissions():
                 "resource": "settings",
                 "action": "update",
                 "scope": "tenant",
-                "category": "settings"
+                "category": "settings",
             },
             {
                 "code": "settings:update:own",
@@ -66,9 +67,8 @@ def seed_settings_permissions():
                 "resource": "settings",
                 "action": "update",
                 "scope": "own",
-                "category": "settings"
+                "category": "settings",
             },
-
             # ==================== BRANDING SETTINGS ====================
             {
                 "code": "settings:branding:read:tenant",
@@ -77,7 +77,7 @@ def seed_settings_permissions():
                 "resource": "settings",
                 "action": "branding:read",
                 "scope": "tenant",
-                "category": "settings"
+                "category": "settings",
             },
             {
                 "code": "settings:branding:update:tenant",
@@ -86,7 +86,7 @@ def seed_settings_permissions():
                 "resource": "settings",
                 "action": "branding:update",
                 "scope": "tenant",
-                "category": "settings"
+                "category": "settings",
             },
             {
                 "code": "settings:branding:tenant",
@@ -95,9 +95,8 @@ def seed_settings_permissions():
                 "resource": "settings",
                 "action": "branding",
                 "scope": "tenant",
-                "category": "settings"
+                "category": "settings",
             },
-
             # ==================== THEME & LANGUAGE ====================
             {
                 "code": "settings:theme:own",
@@ -106,7 +105,7 @@ def seed_settings_permissions():
                 "resource": "settings",
                 "action": "theme",
                 "scope": "own",
-                "category": "settings"
+                "category": "settings",
             },
             {
                 "code": "settings:language:own",
@@ -115,9 +114,8 @@ def seed_settings_permissions():
                 "resource": "settings",
                 "action": "language",
                 "scope": "own",
-                "category": "settings"
+                "category": "settings",
             },
-
             # ==================== INTEGRATION SETTINGS ====================
             {
                 "code": "settings:integration:read:all",
@@ -126,7 +124,7 @@ def seed_settings_permissions():
                 "resource": "settings",
                 "action": "integration:read",
                 "scope": "all",
-                "category": "settings"
+                "category": "settings",
             },
             {
                 "code": "settings:integration:read:tenant",
@@ -135,7 +133,7 @@ def seed_settings_permissions():
                 "resource": "settings",
                 "action": "integration:read",
                 "scope": "tenant",
-                "category": "settings"
+                "category": "settings",
             },
             {
                 "code": "settings:integration:update:tenant",
@@ -144,7 +142,7 @@ def seed_settings_permissions():
                 "resource": "settings",
                 "action": "integration:update",
                 "scope": "tenant",
-                "category": "settings"
+                "category": "settings",
             },
             {
                 "code": "integrations:read:tenant",
@@ -153,7 +151,7 @@ def seed_settings_permissions():
                 "resource": "integrations",
                 "action": "read",
                 "scope": "tenant",
-                "category": "settings"
+                "category": "settings",
             },
             {
                 "code": "integrations:configure:tenant",
@@ -162,7 +160,7 @@ def seed_settings_permissions():
                 "resource": "integrations",
                 "action": "configure",
                 "scope": "tenant",
-                "category": "settings"
+                "category": "settings",
             },
             {
                 "code": "integrations:enable:tenant",
@@ -171,7 +169,7 @@ def seed_settings_permissions():
                 "resource": "integrations",
                 "action": "enable",
                 "scope": "tenant",
-                "category": "settings"
+                "category": "settings",
             },
             {
                 "code": "integrations:disable:tenant",
@@ -180,7 +178,7 @@ def seed_settings_permissions():
                 "resource": "integrations",
                 "action": "disable",
                 "scope": "tenant",
-                "category": "settings"
+                "category": "settings",
             },
             {
                 "code": "integrations:test:tenant",
@@ -189,7 +187,7 @@ def seed_settings_permissions():
                 "resource": "integrations",
                 "action": "test",
                 "scope": "tenant",
-                "category": "settings"
+                "category": "settings",
             },
             {
                 "code": "integrations:logs:read:tenant",
@@ -198,9 +196,8 @@ def seed_settings_permissions():
                 "resource": "integrations",
                 "action": "logs:read",
                 "scope": "tenant",
-                "category": "settings"
+                "category": "settings",
             },
-
             # ==================== API KEY MANAGEMENT ====================
             {
                 "code": "settings:api_keys:read:all",
@@ -209,7 +206,7 @@ def seed_settings_permissions():
                 "resource": "settings",
                 "action": "api_keys:read",
                 "scope": "all",
-                "category": "settings"
+                "category": "settings",
             },
             {
                 "code": "settings:api_keys:read:tenant",
@@ -218,7 +215,7 @@ def seed_settings_permissions():
                 "resource": "settings",
                 "action": "api_keys:read",
                 "scope": "tenant",
-                "category": "settings"
+                "category": "settings",
             },
             {
                 "code": "settings:api_keys:create:tenant",
@@ -227,7 +224,7 @@ def seed_settings_permissions():
                 "resource": "settings",
                 "action": "api_keys:create",
                 "scope": "tenant",
-                "category": "settings"
+                "category": "settings",
             },
             {
                 "code": "settings:api_keys:revoke:tenant",
@@ -236,7 +233,7 @@ def seed_settings_permissions():
                 "resource": "settings",
                 "action": "api_keys:revoke",
                 "scope": "tenant",
-                "category": "settings"
+                "category": "settings",
             },
             {
                 "code": "settings:api_keys:delete:tenant",
@@ -245,9 +242,8 @@ def seed_settings_permissions():
                 "resource": "settings",
                 "action": "api_keys:delete",
                 "scope": "tenant",
-                "category": "settings"
+                "category": "settings",
             },
-
             # ==================== EMAIL CONFIGURATION ====================
             {
                 "code": "settings:email:read:all",
@@ -256,7 +252,7 @@ def seed_settings_permissions():
                 "resource": "settings",
                 "action": "email:read",
                 "scope": "all",
-                "category": "settings"
+                "category": "settings",
             },
             {
                 "code": "settings:email:read:tenant",
@@ -265,7 +261,7 @@ def seed_settings_permissions():
                 "resource": "settings",
                 "action": "email:read",
                 "scope": "tenant",
-                "category": "settings"
+                "category": "settings",
             },
             {
                 "code": "settings:email:update:tenant",
@@ -274,7 +270,7 @@ def seed_settings_permissions():
                 "resource": "settings",
                 "action": "email:update",
                 "scope": "tenant",
-                "category": "settings"
+                "category": "settings",
             },
             {
                 "code": "settings:email:test:tenant",
@@ -283,9 +279,8 @@ def seed_settings_permissions():
                 "resource": "settings",
                 "action": "email:test",
                 "scope": "tenant",
-                "category": "settings"
+                "category": "settings",
             },
-
             # ==================== SMS CONFIGURATION ====================
             {
                 "code": "settings:sms:read:all",
@@ -294,7 +289,7 @@ def seed_settings_permissions():
                 "resource": "settings",
                 "action": "sms:read",
                 "scope": "all",
-                "category": "settings"
+                "category": "settings",
             },
             {
                 "code": "settings:sms:read:tenant",
@@ -303,7 +298,7 @@ def seed_settings_permissions():
                 "resource": "settings",
                 "action": "sms:read",
                 "scope": "tenant",
-                "category": "settings"
+                "category": "settings",
             },
             {
                 "code": "settings:sms:update:tenant",
@@ -312,7 +307,7 @@ def seed_settings_permissions():
                 "resource": "settings",
                 "action": "sms:update",
                 "scope": "tenant",
-                "category": "settings"
+                "category": "settings",
             },
             {
                 "code": "settings:sms:test:tenant",
@@ -321,9 +316,8 @@ def seed_settings_permissions():
                 "resource": "settings",
                 "action": "sms:test",
                 "scope": "tenant",
-                "category": "settings"
+                "category": "settings",
             },
-
             # ==================== METADATA MANAGEMENT ====================
             {
                 "code": "metadata:read:all",
@@ -332,7 +326,7 @@ def seed_settings_permissions():
                 "resource": "metadata",
                 "action": "read",
                 "scope": "all",
-                "category": "settings"
+                "category": "settings",
             },
             {
                 "code": "metadata:read:tenant",
@@ -341,7 +335,7 @@ def seed_settings_permissions():
                 "resource": "metadata",
                 "action": "read",
                 "scope": "tenant",
-                "category": "settings"
+                "category": "settings",
             },
             {
                 "code": "metadata:create:tenant",
@@ -350,7 +344,7 @@ def seed_settings_permissions():
                 "resource": "metadata",
                 "action": "create",
                 "scope": "tenant",
-                "category": "settings"
+                "category": "settings",
             },
             {
                 "code": "metadata:update:tenant",
@@ -359,7 +353,7 @@ def seed_settings_permissions():
                 "resource": "metadata",
                 "action": "update",
                 "scope": "tenant",
-                "category": "settings"
+                "category": "settings",
             },
             {
                 "code": "metadata:delete:tenant",
@@ -368,9 +362,8 @@ def seed_settings_permissions():
                 "resource": "metadata",
                 "action": "delete",
                 "scope": "tenant",
-                "category": "settings"
+                "category": "settings",
             },
-
             # ==================== SCHEMA DESIGN ====================
             {
                 "code": "metadata:schema:design:tenant",
@@ -379,7 +372,7 @@ def seed_settings_permissions():
                 "resource": "metadata",
                 "action": "schema:design",
                 "scope": "tenant",
-                "category": "settings"
+                "category": "settings",
             },
             {
                 "code": "metadata:schema:deploy:tenant",
@@ -388,7 +381,7 @@ def seed_settings_permissions():
                 "resource": "metadata",
                 "action": "schema:deploy",
                 "scope": "tenant",
-                "category": "settings"
+                "category": "settings",
             },
             {
                 "code": "metadata:schema:export:tenant",
@@ -397,9 +390,8 @@ def seed_settings_permissions():
                 "resource": "metadata",
                 "action": "schema:export",
                 "scope": "tenant",
-                "category": "settings"
+                "category": "settings",
             },
-
             # ==================== FIELD CUSTOMIZATION ====================
             {
                 "code": "metadata:fields:create:tenant",
@@ -408,7 +400,7 @@ def seed_settings_permissions():
                 "resource": "metadata",
                 "action": "fields:create",
                 "scope": "tenant",
-                "category": "settings"
+                "category": "settings",
             },
             {
                 "code": "metadata:fields:update:tenant",
@@ -417,7 +409,7 @@ def seed_settings_permissions():
                 "resource": "metadata",
                 "action": "fields:update",
                 "scope": "tenant",
-                "category": "settings"
+                "category": "settings",
             },
             {
                 "code": "metadata:fields:delete:tenant",
@@ -426,9 +418,8 @@ def seed_settings_permissions():
                 "resource": "metadata",
                 "action": "fields:delete",
                 "scope": "tenant",
-                "category": "settings"
+                "category": "settings",
             },
-
             # ==================== AUTH POLICIES ====================
             {
                 "code": "auth_policies:read:tenant",
@@ -437,7 +428,7 @@ def seed_settings_permissions():
                 "resource": "auth_policies",
                 "action": "read",
                 "scope": "tenant",
-                "category": "settings"
+                "category": "settings",
             },
             {
                 "code": "auth_policies:update:tenant",
@@ -446,7 +437,7 @@ def seed_settings_permissions():
                 "resource": "auth_policies",
                 "action": "update",
                 "scope": "tenant",
-                "category": "settings"
+                "category": "settings",
             },
         ]
 
@@ -455,9 +446,7 @@ def seed_settings_permissions():
         updated_count = 0
 
         for perm_data in permissions:
-            perm = db.query(Permission).filter(
-                Permission.code == perm_data["code"]
-            ).first()
+            perm = db.query(Permission).filter(Permission.code == perm_data["code"]).first()
 
             if not perm:
                 perm = Permission(**perm_data, is_active=True)
@@ -476,7 +465,7 @@ def seed_settings_permissions():
         db.commit()
 
         print(f"\n{'='*60}")
-        print(f"Settings Permissions Seed Complete")
+        print("Settings Permissions Seed Complete")
         print(f"{'='*60}")
         print(f"✓ Created: {created_count} permissions")
         print(f"• Updated: {updated_count} permissions")
@@ -489,6 +478,7 @@ def seed_settings_permissions():
         raise
     finally:
         db.close()
+
 
 if __name__ == "__main__":
     seed_settings_permissions()

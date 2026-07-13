@@ -1,9 +1,9 @@
 """
 Report API router.
 """
+
 import io
 import logging
-import os
 from datetime import datetime
 from typing import List, Optional
 from uuid import UUID
@@ -12,12 +12,9 @@ from fastapi import APIRouter, Depends, HTTPException, Response, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
-from fastapi import Query as QueryParam
-
 from app.core.dependencies import get_current_user, get_db, has_permission
 from app.core.exceptions_helpers import not_found_exception
-from app.core.response_builders import build_list_response
-from app.models.data_model import EntityDefinition, FieldDefinition, RelationshipDefinition
+from app.models.data_model import EntityDefinition, RelationshipDefinition
 from app.models.user import User
 from app.schemas.report import (
     ExportFormat,
@@ -37,13 +34,14 @@ from app.schemas.report import (
     ReportTemplateResponse,
 )
 from app.services.report_export import ReportExporter
-from app.services.report_service import ReportService, ReportQueryValidationError
+from app.services.report_service import ReportQueryValidationError, ReportService
 
 router = APIRouter(prefix="/api/v1/reports", tags=["reports"])
 logger = logging.getLogger(__name__)
 
 
 # Join Suggestion Endpoint
+
 
 @router.post("/entities/join-suggestions")
 def get_join_suggestions(
@@ -84,9 +82,9 @@ def get_join_suggestions(
         .all()
     )
 
-    entity_by_id   = {str(e.id): e for e in entity_rows}
+    entity_by_id = {str(e.id): e for e in entity_rows}
     entity_by_name = {e.name: e for e in entity_rows}
-    entity_ids     = [e.id for e in entity_rows]
+    entity_ids = [e.id for e in entity_rows]
 
     suggestions = []
     seen = set()  # deduplicate (from_entity, from_field, to_entity, to_field)
@@ -107,16 +105,18 @@ def get_join_suggestions(
             if key in seen:
                 continue
             seen.add(key)
-            suggestions.append({
-                "from_entity": entity.name,
-                "from_field":  field.name,
-                "to_entity":   ref_entity.name,
-                "to_field":    to_field,
-                "join_type":   "LEFT",
-                "confidence":  "high",
-                "label":       f"{entity.label or entity.name}.{field.label or field.name} → {ref_entity.label or ref_entity.name}",
-                "source":      "field_reference",
-            })
+            suggestions.append(
+                {
+                    "from_entity": entity.name,
+                    "from_field": field.name,
+                    "to_entity": ref_entity.name,
+                    "to_field": to_field,
+                    "join_type": "LEFT",
+                    "confidence": "high",
+                    "label": f"{entity.label or entity.name}.{field.label or field.name} → {ref_entity.label or ref_entity.name}",
+                    "source": "field_reference",
+                }
+            )
 
     # ── Source 2: RelationshipDefinition ────────────────────────────────────
     rels = (
@@ -136,32 +136,35 @@ def get_join_suggestions(
         if not src or not tgt:
             continue
         from_field = rel.source_field_name or "id"
-        to_field   = rel.target_field_name or "id"
+        to_field = rel.target_field_name or "id"
         key = (src.name, from_field, tgt.name, to_field)
         if key in seen:
             continue
         seen.add(key)
-        suggestions.append({
-            "from_entity": src.name,
-            "from_field":  from_field,
-            "to_entity":   tgt.name,
-            "to_field":    to_field,
-            "join_type":   "LEFT",
-            "confidence":  "high",
-            "label":       rel.label or f"{src.label or src.name} → {tgt.label or tgt.name}",
-            "source":      "relationship_definition",
-        })
+        suggestions.append(
+            {
+                "from_entity": src.name,
+                "from_field": from_field,
+                "to_entity": tgt.name,
+                "to_field": to_field,
+                "join_type": "LEFT",
+                "confidence": "high",
+                "label": rel.label or f"{src.label or src.name} → {tgt.label or tgt.name}",
+                "source": "relationship_definition",
+            }
+        )
 
     return suggestions
 
 
 # Report Definition Endpoints
 
+
 @router.post("/definitions", response_model=ReportDefinitionResponse, status_code=status.HTTP_201_CREATED)
 def create_report_definition(
     report_data: ReportDefinitionCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("reports:create:tenant"))
+    current_user: User = Depends(has_permission("reports:create:tenant")),
 ):
     """
     Create a new report definition.
@@ -170,10 +173,7 @@ def create_report_definition(
     """
     try:
         report = ReportService.create_report_definition(
-            db=db,
-            tenant_id=current_user.tenant_id,
-            user_id=current_user.id,
-            report_data=report_data
+            db=db, tenant_id=current_user.tenant_id, user_id=current_user.id, report_data=report_data
         )
         return report
     except Exception as e:
@@ -186,7 +186,7 @@ def list_report_definitions(
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("reports:read:tenant"))
+    current_user: User = Depends(has_permission("reports:read:tenant")),
 ):
     """
     List all accessible report definitions.
@@ -194,21 +194,14 @@ def list_report_definitions(
     Requires permission: reports:read:tenant
     """
     reports = ReportService.list_report_definitions(
-        db=db,
-        tenant_id=current_user.tenant_id,
-        user_id=current_user.id,
-        category=category,
-        skip=skip,
-        limit=limit
+        db=db, tenant_id=current_user.tenant_id, user_id=current_user.id, category=category, skip=skip, limit=limit
     )
     return reports
 
 
 @router.get("/definitions/{report_id}", response_model=ReportDefinitionResponse)
 def get_report_definition(
-    report_id: UUID,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("reports:read:tenant"))
+    report_id: UUID, db: Session = Depends(get_db), current_user: User = Depends(has_permission("reports:read:tenant"))
 ):
     """
     Get a specific report definition.
@@ -216,10 +209,7 @@ def get_report_definition(
     Requires permission: reports:read:tenant
     """
     report = ReportService.get_report_definition(
-        db=db,
-        tenant_id=current_user.tenant_id,
-        report_id=report_id,
-        user_id=current_user.id
+        db=db, tenant_id=current_user.tenant_id, report_id=report_id, user_id=current_user.id
     )
 
     if not report:
@@ -233,7 +223,7 @@ def update_report_definition(
     report_id: UUID,
     report_data: ReportDefinitionUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("reports:update:own"))
+    current_user: User = Depends(has_permission("reports:update:own")),
 ):
     """
     Update a report definition.
@@ -241,10 +231,7 @@ def update_report_definition(
     Requires permission: reports:update:own
     """
     report = ReportService.update_report_definition(
-        db=db,
-        tenant_id=current_user.tenant_id,
-        report_id=report_id,
-        report_data=report_data
+        db=db, tenant_id=current_user.tenant_id, report_id=report_id, report_data=report_data
     )
 
     if not report:
@@ -255,20 +242,14 @@ def update_report_definition(
 
 @router.delete("/definitions/{report_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_report_definition(
-    report_id: UUID,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("reports:delete:own"))
+    report_id: UUID, db: Session = Depends(get_db), current_user: User = Depends(has_permission("reports:delete:own"))
 ):
     """
     Delete a report definition (soft delete).
 
     Requires permission: reports:delete:own
     """
-    success = ReportService.delete_report_definition(
-        db=db,
-        tenant_id=current_user.tenant_id,
-        report_id=report_id
-    )
+    success = ReportService.delete_report_definition(db=db, tenant_id=current_user.tenant_id, report_id=report_id)
 
     if not success:
         raise not_found_exception("Report", str(report_id))
@@ -278,11 +259,12 @@ def delete_report_definition(
 
 # Report Execution Endpoints
 
+
 @router.post("/execute", response_model=ReportExecutionResponse)
 def execute_report(
     request: ReportExecutionRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("reports:execute:tenant"))
+    current_user: User = Depends(has_permission("reports:execute:tenant")),
 ):
     """
     Execute a report and return results or export file.
@@ -291,10 +273,7 @@ def execute_report(
     """
     try:
         execution = ReportService.execute_report(
-            db=db,
-            tenant_id=current_user.tenant_id,
-            user_id=current_user.id,
-            request=request
+            db=db, tenant_id=current_user.tenant_id, user_id=current_user.id, request=request
         )
         return execution
     except ReportQueryValidationError as e:
@@ -309,7 +288,7 @@ def execute_report(
 def execute_and_export_report(
     request: ReportExecutionRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("reports:export:tenant"))
+    current_user: User = Depends(has_permission("reports:export:tenant")),
 ):
     """
     Execute a report and return the exported file.
@@ -319,10 +298,7 @@ def execute_and_export_report(
     try:
         # Get report definition
         report_def = ReportService.get_report_definition(
-            db=db,
-            tenant_id=current_user.tenant_id,
-            report_id=request.report_definition_id,
-            user_id=current_user.id
+            db=db, tenant_id=current_user.tenant_id, report_id=request.report_definition_id, user_id=current_user.id
         )
 
         if not report_def:
@@ -330,44 +306,39 @@ def execute_and_export_report(
 
         # Build and execute query
         query_result = ReportService._build_and_execute_query(
-            db=db,
-            tenant_id=current_user.tenant_id,
-            report_def=report_def,
-            parameters=request.parameters
+            db=db, tenant_id=current_user.tenant_id, report_def=report_def, parameters=request.parameters
         )
 
         # Export to requested format
         export_format = request.export_format or ExportFormat.PDF
         file_content, file_extension = ReportExporter.export_report(
-            data=query_result['data'],
-            columns=query_result['columns'],
+            data=query_result["data"],
+            columns=query_result["columns"],
             export_format=export_format.value,
             report_name=report_def.name,
             parameters=request.parameters,
-            formatting_rules=report_def.formatting_rules
+            formatting_rules=report_def.formatting_rules,
         )
 
         # Determine content type
         content_types = {
-            'csv': 'text/csv',
-            'json': 'application/json',
-            'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            'pdf': 'application/pdf',
-            'html': 'text/html'
+            "csv": "text/csv",
+            "json": "application/json",
+            "xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            "pdf": "application/pdf",
+            "html": "text/html",
         }
-        content_type = content_types.get(file_extension, 'application/octet-stream')
+        content_type = content_types.get(file_extension, "application/octet-stream")
 
         # Generate filename
-        timestamp = datetime.utcnow().strftime('%Y%m%d_%H%M%S')
+        timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
         filename = f"{report_def.name.replace(' ', '_')}_{timestamp}.{file_extension}"
 
         # Return file as streaming response
         return StreamingResponse(
             io.BytesIO(file_content),
             media_type=content_type,
-            headers={
-                'Content-Disposition': f'attachment; filename="{filename}"'
-            }
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
         )
 
     except HTTPException:
@@ -386,7 +357,7 @@ def execute_and_export_report(
 def preview_report(
     request: ReportPreviewRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("reports:execute:tenant"))
+    current_user: User = Depends(has_permission("reports:execute:tenant")),
 ):
     """
     Execute an ad-hoc preview of a report without saving it.
@@ -394,8 +365,9 @@ def preview_report(
     Accepts a partial report config and returns up to `limit` rows.
     Requires permission: reports:execute:tenant
     """
-    from app.models.data_model import EntityDefinition
     import re
+
+    from app.models.data_model import EntityDefinition
 
     # ── 1. Resolve entity name ───────────────────────────────────────────────
     # Accept flat `base_entity` (legacy) OR nested `data_source.base_entity`
@@ -417,16 +389,12 @@ def preview_report(
     if ds_entities and isinstance(ds_entities[0], dict):
         fields = ds_entities[0].get("fields", [])
         if fields and fields[0].get("entity_id"):
-            entity_def = db.query(EntityDefinition).filter(
-                EntityDefinition.id == fields[0]["entity_id"]
-            ).first()
+            entity_def = db.query(EntityDefinition).filter(EntityDefinition.id == fields[0]["entity_id"]).first()
 
     # Fallback: convert PascalCase → snake_case and look up by name
     if not entity_def:
         snake_name = re.sub(r"(?<!^)(?=[A-Z])", "_", entity_name).lower()
-        entity_def = db.query(EntityDefinition).filter(
-            EntityDefinition.name == snake_name
-        ).first()
+        entity_def = db.query(EntityDefinition).filter(EntityDefinition.name == snake_name).first()
 
     if entity_def:
         table_name = entity_def.table_name
@@ -475,10 +443,7 @@ def preview_report(
         )
     except Exception as e:
         logger.error(f"Report preview error: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Preview failed: {str(e)}"
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Preview failed: {str(e)}")
 
 
 @router.get("/executions/history")
@@ -487,7 +452,7 @@ def get_execution_history(
     skip: int = 0,
     limit: int = 50,
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("reports:history:read:tenant"))
+    current_user: User = Depends(has_permission("reports:history:read:tenant")),
 ):
     """
     Get report execution history.
@@ -496,9 +461,7 @@ def get_execution_history(
     """
     from app.models.report import ReportExecution
 
-    query = db.query(ReportExecution).filter(
-        ReportExecution.tenant_id == current_user.tenant_id  # tenant_scope
-    )
+    query = db.query(ReportExecution).filter(ReportExecution.tenant_id == current_user.tenant_id)  # tenant_scope
 
     if report_id:
         query = query.filter(ReportExecution.report_definition_id == report_id)
@@ -511,19 +474,14 @@ def get_execution_history(
 
 # Lookup Data Endpoints
 
+
 @router.post("/lookup", response_model=LookupDataResponse)
 def get_lookup_data(
-    request: LookupDataRequest,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    request: LookupDataRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
     """Get lookup data for report parameters."""
     try:
-        result = ReportService.get_lookup_data(
-            db=db,
-            tenant_id=current_user.tenant_id,
-            request=request
-        )
+        result = ReportService.get_lookup_data(db=db, tenant_id=current_user.tenant_id, request=request)
         return result
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
@@ -531,11 +489,12 @@ def get_lookup_data(
 
 # Report Schedule Endpoints
 
+
 @router.post("/schedules", response_model=ReportScheduleResponse, status_code=status.HTTP_201_CREATED)
 def create_report_schedule(
     schedule_data: ReportScheduleCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("reports:schedule:create:tenant"))
+    current_user: User = Depends(has_permission("reports:schedule:create:tenant")),
 ):
     """
     Create a new report schedule.
@@ -546,10 +505,7 @@ def create_report_schedule(
 
     # Verify report exists
     report = ReportService.get_report_definition(
-        db=db,
-        tenant_id=current_user.tenant_id,
-        report_id=schedule_data.report_definition_id,
-        user_id=current_user.id
+        db=db, tenant_id=current_user.tenant_id, report_id=schedule_data.report_definition_id, user_id=current_user.id
     )
 
     if not report:
@@ -557,11 +513,9 @@ def create_report_schedule(
 
     # Create schedule
     import uuid as _uuid
+
     db_schedule = ReportSchedule(
-        id=_uuid.uuid4(),
-        tenant_id=current_user.tenant_id,
-        created_by=current_user.id,
-        **schedule_data.model_dump()
+        id=_uuid.uuid4(), tenant_id=current_user.tenant_id, created_by=current_user.id, **schedule_data.model_dump()
     )
     db.add(db_schedule)
     db.commit()
@@ -576,7 +530,7 @@ def list_report_schedules(
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("reports:schedule:read:tenant"))
+    current_user: User = Depends(has_permission("reports:schedule:read:tenant")),
 ):
     """
     List all report schedules.
@@ -585,9 +539,7 @@ def list_report_schedules(
     """
     from app.models.report import ReportSchedule
 
-    query = db.query(ReportSchedule).filter(
-        ReportSchedule.tenant_id == current_user.tenant_id  # tenant_scope
-    )
+    query = db.query(ReportSchedule).filter(ReportSchedule.tenant_id == current_user.tenant_id)  # tenant_scope
 
     if report_id:
         query = query.filter(ReportSchedule.report_definition_id == report_id)
@@ -601,7 +553,7 @@ def update_report_schedule(
     schedule_id: UUID,
     schedule_data: ReportScheduleUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("reports:schedule:update:own"))
+    current_user: User = Depends(has_permission("reports:schedule:update:own")),
 ):
     """
     Update a report schedule.
@@ -610,10 +562,11 @@ def update_report_schedule(
     """
     from app.models.report import ReportSchedule
 
-    db_schedule = db.query(ReportSchedule).filter(
-        ReportSchedule.id == schedule_id,
-        ReportSchedule.tenant_id == current_user.tenant_id  # tenant_scope
-    ).first()
+    db_schedule = (
+        db.query(ReportSchedule)
+        .filter(ReportSchedule.id == schedule_id, ReportSchedule.tenant_id == current_user.tenant_id)  # tenant_scope
+        .first()
+    )
 
     if not db_schedule:
         raise not_found_exception("Schedule", str(schedule_id))
@@ -631,7 +584,7 @@ def update_report_schedule(
 def delete_report_schedule(
     schedule_id: UUID,
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("reports:schedule:delete:own"))
+    current_user: User = Depends(has_permission("reports:schedule:delete:own")),
 ):
     """
     Delete a report schedule.
@@ -640,10 +593,11 @@ def delete_report_schedule(
     """
     from app.models.report import ReportSchedule
 
-    db_schedule = db.query(ReportSchedule).filter(
-        ReportSchedule.id == schedule_id,
-        ReportSchedule.tenant_id == current_user.tenant_id  # tenant_scope
-    ).first()
+    db_schedule = (
+        db.query(ReportSchedule)
+        .filter(ReportSchedule.id == schedule_id, ReportSchedule.tenant_id == current_user.tenant_id)  # tenant_scope
+        .first()
+    )
 
     if not db_schedule:
         raise not_found_exception("Schedule", str(schedule_id))
@@ -655,13 +609,14 @@ def delete_report_schedule(
 
 # Report Templates Endpoints
 
+
 @router.get("/templates", response_model=List[ReportTemplateResponse])
 def list_report_templates(
     category: Optional[str] = None,
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("reports:templates:read:tenant"))
+    current_user: User = Depends(has_permission("reports:templates:read:tenant")),
 ):
     """
     List available report templates.
@@ -684,7 +639,7 @@ def create_from_template(
     template_id: UUID,
     name: str,
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("reports:templates:create:tenant"))
+    current_user: User = Depends(has_permission("reports:templates:create:tenant")),
 ):
     """
     Create a new report from a template.
@@ -700,14 +655,18 @@ def create_from_template(
 
     # Create report from template config
     import uuid as _uuid
+
     template_config = template.template_config or {}
     db_report = ReportDefinition(
         id=_uuid.uuid4(),
         tenant_id=current_user.tenant_id,
         created_by=current_user.id,
         name=name,
-        **{k: v for k, v in template_config.items()
-           if k not in ('id', 'tenant_id', 'created_by', 'created_at', 'updated_at')}
+        **{
+            k: v
+            for k, v in template_config.items()
+            if k not in ("id", "tenant_id", "created_by", "created_at", "updated_at")
+        },
     )
     db.add(db_report)
 

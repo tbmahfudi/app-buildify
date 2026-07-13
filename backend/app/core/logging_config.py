@@ -62,11 +62,7 @@ def get_logger(name: str) -> structlog.stdlib.BoundLogger:
 
 
 def add_request_context(
-    request_id: str,
-    method: str,
-    path: str,
-    user_id: str = None,
-    tenant_id: str = None
+    request_id: str, method: str, path: str, user_id: str = None, tenant_id: str = None
 ) -> Dict[str, Any]:
     """
     Add request context to logs for better traceability.

@@ -3,35 +3,37 @@ Dashboard service - business logic for dashboards.
 
 Reuses ReportService for data fetching and execution.
 """
-from sqlalchemy.orm import Session
-from sqlalchemy import and_, or_
-from typing import List, Dict, Any, Optional
-from datetime import datetime, timedelta
+
 import hashlib
 import json
+from datetime import datetime, timedelta
+from typing import Any, Dict, List, Optional
 
+from sqlalchemy import or_
+from sqlalchemy.orm import Session
+
+from app.core.scope import apply_tenant_scope_by_id
 from app.models.dashboard import (
     Dashboard,
     DashboardPage,
-    DashboardWidget,
     DashboardShare,
     DashboardSnapshot,
+    DashboardWidget,
     WidgetDataCache,
-    WidgetType
+    WidgetType,
 )
 from app.schemas.dashboard import (
     DashboardCreate,
-    DashboardUpdate,
     DashboardPageCreate,
     DashboardPageUpdate,
+    DashboardShareCreate,
+    DashboardSnapshotCreate,
+    DashboardUpdate,
     DashboardWidgetCreate,
     DashboardWidgetUpdate,
-    DashboardShareCreate,
-    DashboardSnapshotCreate
 )
-from app.core.scope import apply_tenant_scope_by_id
-from app.services.report_service import ReportService
 from app.schemas.report import ReportExecutionRequest
+from app.services.report_service import ReportService
 
 
 class DashboardService:
@@ -40,30 +42,20 @@ class DashboardService:
     # ==================== Dashboard CRUD ====================
 
     @staticmethod
-    def create_dashboard(
-        db: Session,
-        tenant_id: int,
-        user_id: int,
-        dashboard_data: DashboardCreate
-    ) -> Dashboard:
+    def create_dashboard(db: Session, tenant_id: int, user_id: int, dashboard_data: DashboardCreate) -> Dashboard:
         """Create a new dashboard."""
         dashboard_dict = dashboard_data.model_dump()
 
         # Convert Pydantic models to dict for JSON columns
-        json_fields = ['global_parameters', 'global_filters', 'tags', 'allowed_roles', 'allowed_users']
+        json_fields = ["global_parameters", "global_filters", "tags", "allowed_roles", "allowed_users"]
         for field in json_fields:
             if field in dashboard_dict and dashboard_dict[field] is not None:
                 if isinstance(dashboard_dict[field], list):
                     dashboard_dict[field] = [
-                        item.model_dump() if hasattr(item, 'model_dump') else item
-                        for item in dashboard_dict[field]
+                        item.model_dump() if hasattr(item, "model_dump") else item for item in dashboard_dict[field]
                     ]
 
-        db_dashboard = Dashboard(
-            tenant_id=tenant_id,
-            created_by=user_id,
-            **dashboard_dict
-        )
+        db_dashboard = Dashboard(tenant_id=tenant_id, created_by=user_id, **dashboard_dict)
         db.add(db_dashboard)
         db.commit()
         db.refresh(db_dashboard)
@@ -71,16 +63,10 @@ class DashboardService:
 
     @staticmethod
     def get_dashboard(
-        db: Session,
-        tenant_id: int,
-        dashboard_id: int,
-        user_id: Optional[int] = None
+        db: Session, tenant_id: int, dashboard_id: int, user_id: Optional[int] = None
     ) -> Optional[Dashboard]:
         """Get dashboard by ID with permission check."""
-        q = db.query(Dashboard).filter(
-            Dashboard.id == dashboard_id,
-            Dashboard.is_active == True
-        )
+        q = db.query(Dashboard).filter(Dashboard.id == dashboard_id, Dashboard.is_active == True)
         q = apply_tenant_scope_by_id(q, Dashboard, tenant_id)
         dashboard = q.first()
 
@@ -91,11 +77,15 @@ class DashboardService:
         if not dashboard.is_public and user_id:
             if dashboard.allowed_users and user_id not in dashboard.allowed_users:
                 # Check if user has access via share
-                share = db.query(DashboardShare).filter(
-                    DashboardShare.dashboard_id == dashboard_id,
-                    DashboardShare.shared_with_user_id == user_id,
-                    DashboardShare.can_view == True
-                ).first()
+                share = (
+                    db.query(DashboardShare)
+                    .filter(
+                        DashboardShare.dashboard_id == dashboard_id,
+                        DashboardShare.shared_with_user_id == user_id,
+                        DashboardShare.can_view == True,
+                    )
+                    .first()
+                )
                 if not share:
                     return None
 
@@ -109,12 +99,10 @@ class DashboardService:
         category: Optional[str] = None,
         favorites_only: bool = False,
         skip: int = 0,
-        limit: int = 100
+        limit: int = 100,
     ) -> List[Dashboard]:
         """List dashboards with filtering."""
-        query = db.query(Dashboard).filter(
-            Dashboard.is_active == True
-        )
+        query = db.query(Dashboard).filter(Dashboard.is_active == True)
         query = apply_tenant_scope_by_id(query, Dashboard, tenant_id)
 
         if category:
@@ -127,21 +115,13 @@ class DashboardService:
         if user_id:
             # For now, filter by public or created_by only
             # TODO: Implement proper JSONB containment check for allowed_users
-            query = query.filter(
-                or_(
-                    Dashboard.is_public == True,
-                    Dashboard.created_by == user_id
-                )
-            )
+            query = query.filter(or_(Dashboard.is_public == True, Dashboard.created_by == user_id))
 
         return query.offset(skip).limit(limit).all()
 
     @staticmethod
     def update_dashboard(
-        db: Session,
-        tenant_id: int,
-        dashboard_id: int,
-        dashboard_data: DashboardUpdate
+        db: Session, tenant_id: int, dashboard_id: int, dashboard_data: DashboardUpdate
     ) -> Optional[Dashboard]:
         """Update dashboard."""
         q = db.query(Dashboard).filter(Dashboard.id == dashboard_id)
@@ -154,13 +134,12 @@ class DashboardService:
         update_data = dashboard_data.model_dump(exclude_unset=True)
 
         # Convert Pydantic models to dict for JSON columns
-        json_fields = ['global_parameters', 'global_filters', 'tags', 'allowed_roles', 'allowed_users']
+        json_fields = ["global_parameters", "global_filters", "tags", "allowed_roles", "allowed_users"]
         for field in json_fields:
             if field in update_data and update_data[field] is not None:
                 if isinstance(update_data[field], list):
                     update_data[field] = [
-                        item.model_dump() if hasattr(item, 'model_dump') else item
-                        for item in update_data[field]
+                        item.model_dump() if hasattr(item, "model_dump") else item for item in update_data[field]
                     ]
 
         for field, value in update_data.items():
@@ -172,11 +151,7 @@ class DashboardService:
         return db_dashboard
 
     @staticmethod
-    def delete_dashboard(
-        db: Session,
-        tenant_id: int,
-        dashboard_id: int
-    ) -> bool:
+    def delete_dashboard(db: Session, tenant_id: int, dashboard_id: int) -> bool:
         """Soft delete dashboard."""
         q = db.query(Dashboard).filter(Dashboard.id == dashboard_id)
         q = apply_tenant_scope_by_id(q, Dashboard, tenant_id)
@@ -191,11 +166,7 @@ class DashboardService:
 
     @staticmethod
     def clone_dashboard(
-        db: Session,
-        tenant_id: int,
-        user_id: int,
-        dashboard_id: int,
-        new_name: str
+        db: Session, tenant_id: int, user_id: int, dashboard_id: int, new_name: str
     ) -> Optional[Dashboard]:
         """Clone an existing dashboard."""
         source_dashboard = DashboardService.get_dashboard(db, tenant_id, dashboard_id, user_id)
@@ -216,7 +187,7 @@ class DashboardService:
             global_filters=source_dashboard.global_filters,
             refresh_interval=source_dashboard.refresh_interval,
             show_header=source_dashboard.show_header,
-            show_filters=source_dashboard.show_filters
+            show_filters=source_dashboard.show_filters,
         )
         db.add(new_dashboard)
         db.flush()
@@ -232,7 +203,7 @@ class DashboardService:
                 icon=page.icon,
                 layout_config=page.layout_config,
                 order=page.order,
-                is_default=page.is_default
+                is_default=page.is_default,
             )
             db.add(new_page)
             db.flush()
@@ -256,7 +227,7 @@ class DashboardService:
                     show_border=widget.show_border,
                     background_color=widget.background_color,
                     auto_refresh=widget.auto_refresh,
-                    refresh_interval=widget.refresh_interval
+                    refresh_interval=widget.refresh_interval,
                 )
                 db.add(new_widget)
 
@@ -267,23 +238,16 @@ class DashboardService:
     # ==================== Dashboard Page CRUD ====================
 
     @staticmethod
-    def create_page(
-        db: Session,
-        tenant_id: int,
-        page_data: DashboardPageCreate
-    ) -> DashboardPage:
+    def create_page(db: Session, tenant_id: int, page_data: DashboardPageCreate) -> DashboardPage:
         """Create a new dashboard page."""
         page_dict = page_data.model_dump()
 
         # Convert layout_config if it's a Pydantic model
-        if 'layout_config' in page_dict and page_dict['layout_config'] is not None:
-            if hasattr(page_dict['layout_config'], 'model_dump'):
-                page_dict['layout_config'] = page_dict['layout_config'].model_dump()
+        if "layout_config" in page_dict and page_dict["layout_config"] is not None:
+            if hasattr(page_dict["layout_config"], "model_dump"):
+                page_dict["layout_config"] = page_dict["layout_config"].model_dump()
 
-        db_page = DashboardPage(
-            tenant_id=tenant_id,
-            **page_dict
-        )
+        db_page = DashboardPage(tenant_id=tenant_id, **page_dict)
         db.add(db_page)
         db.commit()
         db.refresh(db_page)
@@ -291,10 +255,7 @@ class DashboardService:
 
     @staticmethod
     def update_page(
-        db: Session,
-        tenant_id: int,
-        page_id: int,
-        page_data: DashboardPageUpdate
+        db: Session, tenant_id: int, page_id: int, page_data: DashboardPageUpdate
     ) -> Optional[DashboardPage]:
         """Update dashboard page."""
         q = db.query(DashboardPage).filter(DashboardPage.id == page_id)
@@ -307,9 +268,9 @@ class DashboardService:
         update_data = page_data.model_dump(exclude_unset=True)
 
         # Convert layout_config if it's a Pydantic model
-        if 'layout_config' in update_data and update_data['layout_config'] is not None:
-            if hasattr(update_data['layout_config'], 'model_dump'):
-                update_data['layout_config'] = update_data['layout_config'].model_dump()
+        if "layout_config" in update_data and update_data["layout_config"] is not None:
+            if hasattr(update_data["layout_config"], "model_dump"):
+                update_data["layout_config"] = update_data["layout_config"].model_dump()
 
         for field, value in update_data.items():
             setattr(db_page, field, value)
@@ -320,11 +281,7 @@ class DashboardService:
         return db_page
 
     @staticmethod
-    def delete_page(
-        db: Session,
-        tenant_id: int,
-        page_id: int
-    ) -> bool:
+    def delete_page(db: Session, tenant_id: int, page_id: int) -> bool:
         """Delete dashboard page."""
         q = db.query(DashboardPage).filter(DashboardPage.id == page_id)
         q = apply_tenant_scope_by_id(q, DashboardPage, tenant_id)
@@ -340,26 +297,18 @@ class DashboardService:
     # ==================== Dashboard Widget CRUD ====================
 
     @staticmethod
-    def create_widget(
-        db: Session,
-        tenant_id: int,
-        widget_data: DashboardWidgetCreate
-    ) -> DashboardWidget:
+    def create_widget(db: Session, tenant_id: int, widget_data: DashboardWidgetCreate) -> DashboardWidget:
         """Create a new dashboard widget."""
         widget_dict = widget_data.model_dump()
 
         # Convert Pydantic models to dict for JSON columns
-        json_fields = ['data_source_config', 'widget_config', 'chart_config',
-                      'filter_mapping', 'position']
+        json_fields = ["data_source_config", "widget_config", "chart_config", "filter_mapping", "position"]
         for field in json_fields:
             if field in widget_dict and widget_dict[field] is not None:
-                if hasattr(widget_dict[field], 'model_dump'):
+                if hasattr(widget_dict[field], "model_dump"):
                     widget_dict[field] = widget_dict[field].model_dump()
 
-        db_widget = DashboardWidget(
-            tenant_id=tenant_id,
-            **widget_dict
-        )
+        db_widget = DashboardWidget(tenant_id=tenant_id, **widget_dict)
         db.add(db_widget)
         db.commit()
         db.refresh(db_widget)
@@ -367,10 +316,7 @@ class DashboardService:
 
     @staticmethod
     def update_widget(
-        db: Session,
-        tenant_id: int,
-        widget_id: int,
-        widget_data: DashboardWidgetUpdate
+        db: Session, tenant_id: int, widget_id: int, widget_data: DashboardWidgetUpdate
     ) -> Optional[DashboardWidget]:
         """Update dashboard widget."""
         q = db.query(DashboardWidget).filter(DashboardWidget.id == widget_id)
@@ -383,11 +329,10 @@ class DashboardService:
         update_data = widget_data.model_dump(exclude_unset=True)
 
         # Convert Pydantic models to dict for JSON columns
-        json_fields = ['data_source_config', 'widget_config', 'chart_config',
-                      'filter_mapping', 'position']
+        json_fields = ["data_source_config", "widget_config", "chart_config", "filter_mapping", "position"]
         for field in json_fields:
             if field in update_data and update_data[field] is not None:
-                if hasattr(update_data[field], 'model_dump'):
+                if hasattr(update_data[field], "model_dump"):
                     update_data[field] = update_data[field].model_dump()
 
         for field, value in update_data.items():
@@ -399,11 +344,7 @@ class DashboardService:
         return db_widget
 
     @staticmethod
-    def delete_widget(
-        db: Session,
-        tenant_id: int,
-        widget_id: int
-    ) -> bool:
+    def delete_widget(db: Session, tenant_id: int, widget_id: int) -> bool:
         """Delete dashboard widget."""
         q = db.query(DashboardWidget).filter(DashboardWidget.id == widget_id)
         q = apply_tenant_scope_by_id(q, DashboardWidget, tenant_id)
@@ -417,16 +358,12 @@ class DashboardService:
         return True
 
     @staticmethod
-    def bulk_update_widgets(
-        db: Session,
-        tenant_id: int,
-        updates: List[Dict[str, Any]]
-    ) -> bool:
+    def bulk_update_widgets(db: Session, tenant_id: int, updates: List[Dict[str, Any]]) -> bool:
         """Bulk update widget positions and order."""
         for update in updates:
-            widget_id = update.get('widget_id')
-            position = update.get('position')
-            order = update.get('order')
+            widget_id = update.get("widget_id")
+            position = update.get("position")
+            order = update.get("order")
 
             _wq = db.query(DashboardWidget).filter(DashboardWidget.id == widget_id)
             _wq = apply_tenant_scope_by_id(_wq, DashboardWidget, tenant_id)
@@ -451,7 +388,7 @@ class DashboardService:
         user_id: int,
         widget_id: int,
         parameters: Optional[Dict[str, Any]] = None,
-        use_cache: bool = True
+        use_cache: bool = True,
     ) -> Dict[str, Any]:
         """
         Get data for a widget - REUSES ReportService for report-based widgets.
@@ -465,15 +402,9 @@ class DashboardService:
 
         # Check cache first
         if use_cache:
-            cached_data = DashboardService._get_cached_widget_data(
-                db, tenant_id, widget_id, parameters
-            )
+            cached_data = DashboardService._get_cached_widget_data(db, tenant_id, widget_id, parameters)
             if cached_data:
-                return {
-                    'data': cached_data,
-                    'cached': True,
-                    'widget_type': widget.widget_type
-                }
+                return {"data": cached_data, "cached": True, "widget_type": widget.widget_type}
 
         # Get data based on widget type
         data = None
@@ -483,55 +414,35 @@ class DashboardService:
         if widget.widget_type == WidgetType.REPORT_TABLE and widget.report_definition_id:
             # REUSE ReportService for report-based widgets
             execution_request = ReportExecutionRequest(
-                report_definition_id=widget.report_definition_id,
-                parameters=parameters or {},
-                use_cache=use_cache
+                report_definition_id=widget.report_definition_id, parameters=parameters or {}, use_cache=use_cache
             )
-            execution = ReportService.execute_report(
-                db, tenant_id, user_id, execution_request
-            )
+            execution = ReportService.execute_report(db, tenant_id, user_id, execution_request)
 
-            if execution.status == 'completed':
+            if execution.status == "completed":
                 # Fetch the actual data from the execution
                 query_result = ReportService._build_and_execute_query(
                     db,
                     tenant_id,
-                    ReportService.get_report_definition(
-                        db, tenant_id, widget.report_definition_id, user_id
-                    ),
-                    parameters or {}
+                    ReportService.get_report_definition(db, tenant_id, widget.report_definition_id, user_id),
+                    parameters or {},
                 )
-                data = query_result['data']
+                data = query_result["data"]
                 execution_time_ms = execution.execution_time_ms or 0
 
         elif widget.widget_type == WidgetType.CHART and widget.report_definition_id:
             # REUSE ReportService for chart data
-            report_def = ReportService.get_report_definition(
-                db, tenant_id, widget.report_definition_id, user_id
-            )
+            report_def = ReportService.get_report_definition(db, tenant_id, widget.report_definition_id, user_id)
             if report_def:
-                query_result = ReportService._build_and_execute_query(
-                    db, tenant_id, report_def, parameters or {}
-                )
-                data = DashboardService._transform_data_for_chart(
-                    query_result['data'],
-                    widget.chart_config
-                )
+                query_result = ReportService._build_and_execute_query(db, tenant_id, report_def, parameters or {})
+                data = DashboardService._transform_data_for_chart(query_result["data"], widget.chart_config)
 
         elif widget.widget_type == WidgetType.KPI_CARD:
             # For KPI cards, fetch single metric from report
             if widget.report_definition_id:
-                report_def = ReportService.get_report_definition(
-                    db, tenant_id, widget.report_definition_id, user_id
-                )
+                report_def = ReportService.get_report_definition(db, tenant_id, widget.report_definition_id, user_id)
                 if report_def:
-                    query_result = ReportService._build_and_execute_query(
-                        db, tenant_id, report_def, parameters or {}
-                    )
-                    data = DashboardService._transform_data_for_kpi(
-                        query_result['data'],
-                        widget.widget_config
-                    )
+                    query_result = ReportService._build_and_execute_query(db, tenant_id, report_def, parameters or {})
+                    data = DashboardService._transform_data_for_kpi(query_result["data"], widget.widget_config)
 
         elif widget.widget_type == WidgetType.TEXT:
             # Static text widget
@@ -547,38 +458,30 @@ class DashboardService:
 
         # Cache the result
         if use_cache and data:
-            DashboardService._cache_widget_data(
-                db, tenant_id, widget_id, parameters, data
-            )
+            DashboardService._cache_widget_data(db, tenant_id, widget_id, parameters, data)
 
         return {
-            'data': data,
-            'cached': False,
-            'execution_time_ms': execution_time_ms,
-            'widget_type': widget.widget_type
+            "data": data,
+            "cached": False,
+            "execution_time_ms": execution_time_ms,
+            "widget_type": widget.widget_type,
         }
 
     @staticmethod
     def _transform_data_for_chart(data: List[Dict], chart_config: Optional[Dict]) -> Dict:
         """Transform report data for chart visualization."""
         if not chart_config:
-            return {'data': data}
+            return {"data": data}
 
         # Extract chart configuration
-        x_axis = chart_config.get('x_axis')
-        y_axis = chart_config.get('y_axis', [])
+        x_axis = chart_config.get("x_axis")
+        y_axis = chart_config.get("y_axis", [])
 
         # Build chart-friendly format
-        chart_data = {
-            'labels': [row.get(x_axis) for row in data],
-            'datasets': []
-        }
+        chart_data = {"labels": [row.get(x_axis) for row in data], "datasets": []}
 
         for y_field in y_axis:
-            chart_data['datasets'].append({
-                'label': y_field,
-                'data': [row.get(y_field) for row in data]
-            })
+            chart_data["datasets"].append({"label": y_field, "data": [row.get(y_field) for row in data]})
 
         return chart_data
 
@@ -586,9 +489,9 @@ class DashboardService:
     def _transform_data_for_kpi(data: List[Dict], widget_config: Optional[Dict]) -> Dict:
         """Transform report data for KPI card."""
         if not widget_config or not data:
-            return {'value': 0}
+            return {"value": 0}
 
-        value_field = widget_config.get('value_field')
+        value_field = widget_config.get("value_field")
 
         # Aggregate if multiple rows
         if len(data) > 0:
@@ -601,17 +504,14 @@ class DashboardService:
             value = 0
 
         return {
-            'value': value,
-            'label': widget_config.get('label', ''),
-            'format': widget_config.get('format', 'number')
+            "value": value,
+            "label": widget_config.get("label", ""),
+            "format": widget_config.get("format", "number"),
         }
 
     @staticmethod
     def _get_cached_widget_data(
-        db: Session,
-        tenant_id: int,
-        widget_id: int,
-        parameters: Optional[Dict[str, Any]]
+        db: Session, tenant_id: int, widget_id: int, parameters: Optional[Dict[str, Any]]
     ) -> Optional[Any]:
         """Get cached widget data."""
         cache_key = DashboardService._generate_widget_cache_key(widget_id, parameters)
@@ -619,7 +519,7 @@ class DashboardService:
         cache_q = db.query(WidgetDataCache).filter(
             WidgetDataCache.widget_id == widget_id,
             WidgetDataCache.cache_key == cache_key,
-            WidgetDataCache.expires_at > datetime.utcnow()
+            WidgetDataCache.expires_at > datetime.utcnow(),
         )
         cache_q = apply_tenant_scope_by_id(cache_q, WidgetDataCache, tenant_id)
         cache_entry = cache_q.first()
@@ -638,18 +538,14 @@ class DashboardService:
         widget_id: int,
         parameters: Optional[Dict[str, Any]],
         data: Any,
-        ttl_minutes: int = 15
+        ttl_minutes: int = 15,
     ):
         """Cache widget data."""
         cache_key = DashboardService._generate_widget_cache_key(widget_id, parameters)
-        params_hash = hashlib.sha256(
-            json.dumps(parameters or {}, sort_keys=True).encode()
-        ).hexdigest()
+        params_hash = hashlib.sha256(json.dumps(parameters or {}, sort_keys=True).encode()).hexdigest()
 
         # Check if cache entry exists
-        cache_entry = db.query(WidgetDataCache).filter(
-            WidgetDataCache.cache_key == cache_key
-        ).first()
+        cache_entry = db.query(WidgetDataCache).filter(WidgetDataCache.cache_key == cache_key).first()
 
         expires_at = datetime.utcnow() + timedelta(minutes=ttl_minutes)
 
@@ -663,7 +559,7 @@ class DashboardService:
                 cache_key=cache_key,
                 parameters_hash=params_hash,
                 cached_data=data,
-                expires_at=expires_at
+                expires_at=expires_at,
             )
             db.add(cache_entry)
 
@@ -678,12 +574,7 @@ class DashboardService:
     # ==================== Dashboard Sharing ====================
 
     @staticmethod
-    def create_share(
-        db: Session,
-        tenant_id: int,
-        user_id: int,
-        share_data: DashboardShareCreate
-    ) -> DashboardShare:
+    def create_share(db: Session, tenant_id: int, user_id: int, share_data: DashboardShareCreate) -> DashboardShare:
         """Create dashboard share."""
         import secrets
 
@@ -691,7 +582,7 @@ class DashboardService:
             tenant_id=tenant_id,
             created_by=user_id,
             share_token=secrets.token_urlsafe(32) if not share_data.shared_with_user_id else None,
-            **share_data.model_dump()
+            **share_data.model_dump(),
         )
         db.add(db_share)
         db.commit()
@@ -702,48 +593,39 @@ class DashboardService:
 
     @staticmethod
     def create_snapshot(
-        db: Session,
-        tenant_id: int,
-        user_id: int,
-        snapshot_data: DashboardSnapshotCreate
+        db: Session, tenant_id: int, user_id: int, snapshot_data: DashboardSnapshotCreate
     ) -> DashboardSnapshot:
         """Create dashboard snapshot."""
         # Get full dashboard data
-        dashboard = DashboardService.get_dashboard(
-            db, tenant_id, snapshot_data.dashboard_id, user_id
-        )
+        dashboard = DashboardService.get_dashboard(db, tenant_id, snapshot_data.dashboard_id, user_id)
 
         if not dashboard:
             raise ValueError("Dashboard not found")
 
         # Serialize dashboard state (str() on UUIDs so JSON column can serialize them)
         snapshot_dict = {
-            'dashboard': {
-                'id': str(dashboard.id),
-                'name': dashboard.name,
-                'description': dashboard.description,
-                'layout_type': dashboard.layout_type,
-                'theme': dashboard.theme
+            "dashboard": {
+                "id": str(dashboard.id),
+                "name": dashboard.name,
+                "description": dashboard.description,
+                "layout_type": dashboard.layout_type,
+                "theme": dashboard.theme,
             },
-            'pages': [],
-            'created_at': datetime.utcnow().isoformat()
+            "pages": [],
+            "created_at": datetime.utcnow().isoformat(),
         }
 
         for page in dashboard.pages:
-            page_dict = {
-                'id': str(page.id),
-                'name': page.name,
-                'widgets': []
-            }
+            page_dict = {"id": str(page.id), "name": page.name, "widgets": []}
             for widget in page.widgets:
                 widget_dict = {
-                    'id': str(widget.id),
-                    'title': widget.title,
-                    'widget_type': widget.widget_type,
-                    'position': widget.position
+                    "id": str(widget.id),
+                    "title": widget.title,
+                    "widget_type": widget.widget_type,
+                    "position": widget.position,
                 }
-                page_dict['widgets'].append(widget_dict)
-            snapshot_dict['pages'].append(page_dict)
+                page_dict["widgets"].append(widget_dict)
+            snapshot_dict["pages"].append(page_dict)
 
         db_snapshot = DashboardSnapshot(
             tenant_id=tenant_id,
@@ -752,7 +634,7 @@ class DashboardService:
             name=snapshot_data.name,
             description=snapshot_data.description,
             snapshot_data=snapshot_dict,
-            parameters_used=snapshot_data.parameters_used
+            parameters_used=snapshot_data.parameters_used,
         )
         db.add(db_snapshot)
         db.commit()

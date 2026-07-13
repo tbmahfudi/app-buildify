@@ -5,9 +5,10 @@ Defines taxonomy for organizing no-code platform templates.
 Categories help users find relevant templates based on industry or use-case.
 """
 
+from datetime import datetime
+
 from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Index, Integer, String, Text
 from sqlalchemy.orm import relationship
-from datetime import datetime
 
 from .base import GUID, Base, generate_uuid
 
@@ -19,6 +20,7 @@ class TemplateCategory(Base):
     Hierarchical categorization for platform templates.
     Supports both industry-based and use-case-based organization.
     """
+
     __tablename__ = "template_categories"
 
     # Primary Key
@@ -52,9 +54,7 @@ class TemplateCategory(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationships
-    children = relationship("TemplateCategory",
-                          remote_side=[id],
-                          backref="parent")
+    children = relationship("TemplateCategory", remote_side=[id], backref="parent")
 
     # Table constraints
     __table_args__ = (
@@ -74,6 +74,7 @@ class TemplateVersion(Base):
     Tracks version history of platform templates.
     Stores snapshots of template configuration for rollback and audit.
     """
+
     __tablename__ = "template_versions"
 
     # Primary Key
@@ -122,6 +123,7 @@ class TemplatePackage(Base):
     Packages multiple templates together for import/export.
     Useful for distributing template bundles (e.g., "CRM Starter Pack").
     """
+
     __tablename__ = "template_packages"
 
     # Primary Key

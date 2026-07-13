@@ -10,11 +10,12 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator
 
-
 # ==================== Automation Rule Schemas ====================
+
 
 class AutomationRuleBase(BaseModel):
     """Base schema for automation rules"""
+
     name: str = Field(..., max_length=100)
     label: str = Field(..., max_length=200)
     description: Optional[str] = None
@@ -46,12 +47,14 @@ class AutomationRuleBase(BaseModel):
 
 class AutomationRuleCreate(AutomationRuleBase):
     """Schema for creating an automation rule"""
+
     module_id: Optional[UUID] = None
     is_active: bool = False  # Default to inactive, user can enable from list
 
 
 class AutomationRuleUpdate(BaseModel):
     """Schema for updating an automation rule"""
+
     module_id: Optional[UUID] = None
     label: Optional[str] = None
     description: Optional[str] = None
@@ -74,6 +77,7 @@ class AutomationRuleUpdate(BaseModel):
 
 class AutomationRuleResponse(AutomationRuleBase):
     """Schema for automation rule response"""
+
     id: UUID
     tenant_id: Optional[UUID]  # NULL for platform-level automation rules
     module_id: Optional[UUID] = None
@@ -93,17 +97,17 @@ class AutomationRuleResponse(AutomationRuleBase):
     deleted_at: Optional[datetime]
     is_deleted: bool
 
-    @field_validator('actions', mode='before')
+    @field_validator("actions", mode="before")
     @classmethod
     def set_actions_default(cls, v):
         return v if v is not None else []
 
-    @field_validator('conditions', mode='before')
+    @field_validator("conditions", mode="before")
     @classmethod
     def set_conditions_default(cls, v):
         return v if v is not None else {}
 
-    @field_validator('trigger_config', mode='before')
+    @field_validator("trigger_config", mode="before")
     @classmethod
     def set_trigger_config_default(cls, v):
         return v if v is not None else {}
@@ -114,8 +118,10 @@ class AutomationRuleResponse(AutomationRuleBase):
 
 # ==================== Automation Execution Schemas ====================
 
+
 class AutomationExecutionResponse(BaseModel):
     """Schema for automation execution response"""
+
     id: UUID
     rule_id: UUID
     tenant_id: Optional[UUID]  # NULL for platform-level automation executions
@@ -148,12 +154,14 @@ class AutomationExecutionResponse(BaseModel):
 
 class AutomationTestRequest(BaseModel):
     """Schema for testing an automation rule"""
+
     test_data: Dict[str, Any] = Field(..., description="Test data for the automation")
     dry_run: bool = Field(True, description="Don't execute actual actions")
 
 
 class AutomationTestResponse(BaseModel):
     """Schema for automation test response"""
+
     success: bool
     conditions_met: bool
     condition_evaluation: Dict[str, Any]
@@ -165,8 +173,10 @@ class AutomationTestResponse(BaseModel):
 
 # ==================== Action Template Schemas ====================
 
+
 class ActionTemplateResponse(BaseModel):
     """Schema for action template response"""
+
     id: UUID
     tenant_id: Optional[UUID]
     name: str
@@ -189,8 +199,10 @@ class ActionTemplateResponse(BaseModel):
 
 # ==================== Webhook Config Schemas ====================
 
+
 class WebhookConfigBase(BaseModel):
     """Base schema for webhook configs"""
+
     name: str = Field(..., max_length=100)
     label: str = Field(..., max_length=200)
     description: Optional[str] = None
@@ -213,11 +225,13 @@ class WebhookConfigBase(BaseModel):
 
 class WebhookConfigCreate(WebhookConfigBase):
     """Schema for creating a webhook config"""
+
     module_id: Optional[UUID] = None
 
 
 class WebhookConfigUpdate(BaseModel):
     """Schema for updating a webhook config"""
+
     module_id: Optional[UUID] = None
     label: Optional[str] = None
     description: Optional[str] = None
@@ -235,6 +249,7 @@ class WebhookConfigUpdate(BaseModel):
 
 class WebhookConfigResponse(WebhookConfigBase):
     """Schema for webhook config response"""
+
     id: UUID
     tenant_id: Optional[UUID]  # NULL for platform-level webhook configs
     module_id: Optional[UUID] = None

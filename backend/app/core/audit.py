@@ -1,6 +1,6 @@
+import asyncio
 import json
 import uuid
-from datetime import datetime
 from typing import Any, Dict, Optional
 
 from fastapi import Request
@@ -20,17 +20,17 @@ def create_audit_log(
     context_info: Optional[Dict[str, Any]] = None,
     request: Optional[Request] = None,
     status: str = "success",
-    error_message: Optional[str] = None
+    error_message: Optional[str] = None,
 ):
     """Create an audit log entry"""
-    
+
     # Extract request info
     ip_address = None
     user_agent = None
     if request:
         ip_address = request.client.host if request.client else None
         user_agent = request.headers.get("user-agent")
-    
+
     # Create log entry
     audit_log = AuditLog(
         id=str(uuid.uuid4()),
@@ -46,48 +46,45 @@ def create_audit_log(
         user_agent=user_agent,
         request_id=str(uuid.uuid4()),
         status=status,
-        error_message=error_message
+        error_message=error_message,
     )
-    
+
     db.add(audit_log)
     db.commit()
-    
+
     return audit_log
+
 
 def compute_diff(before: Dict[str, Any], after: Dict[str, Any]) -> Dict[str, Any]:
     """Compute differences between two dictionaries"""
     changes = {}
-    
+
     # Check for modified and new fields
     for key, new_value in after.items():
         old_value = before.get(key)
         if old_value != new_value:
-            changes[key] = {
-                "before": old_value,
-                "after": new_value
-            }
-    
+            changes[key] = {"before": old_value, "after": new_value}
+
     # Check for removed fields
     for key in before:
         if key not in after:
-            changes[key] = {
-                "before": before[key],
-                "after": None
-            }
-    
+            changes[key] = {"before": before[key], "after": None}
+
     return changes
+
 
 def audit_action(action: str, entity_type: Optional[str] = None):
     """Decorator to automatically audit an action"""
+
     def decorator(func):
         async def wrapper(*args, **kwargs):
-            db = kwargs.get('db')
-            current_user = kwargs.get('current_user')
-            request = kwargs.get('request')
-            
+            db = kwargs.get("db")
+            current_user = kwargs.get("current_user")
+            request = kwargs.get("request")
+
             try:
                 result = await func(*args, **kwargs) if asyncio.iscoroutinefunction(func) else func(*args, **kwargs)
-                
+
                 # Log success
                 if db and current_user:
                     create_audit_log(
@@ -96,9 +93,9 @@ def audit_action(action: str, entity_type: Optional[str] = None):
                         user=current_user,
                         entity_type=entity_type,
                         request=request,
-                        status="success"
+                        status="success",
                     )
-                
+
                 return result
             except Exception as e:
                 # Log failure
@@ -110,9 +107,10 @@ def audit_action(action: str, entity_type: Optional[str] = None):
                         entity_type=entity_type,
                         request=request,
                         status="failure",
-                        error_message=str(e)
+                        error_message=str(e),
                     )
                 raise
-        
+
         return wrapper
+
     return decorator

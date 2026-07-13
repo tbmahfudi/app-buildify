@@ -21,6 +21,7 @@ class Department(Base):
     - Company-wide (branch_id is NULL)
     - Branch-specific (branch_id is set)
     """
+
     __tablename__ = "departments"
     __tenant_scoped__ = True
 
@@ -62,9 +63,7 @@ class Department(Base):
     parent_department = relationship("Department", remote_side=[id], foreign_keys=[parent_department_id])
 
     # Constraints
-    __table_args__ = (
-        UniqueConstraint('tenant_id', 'company_id', 'branch_id', 'code', name='uq_dept_branch_code'),
-    )
+    __table_args__ = (UniqueConstraint("tenant_id", "company_id", "branch_id", "code", name="uq_dept_branch_code"),)
 
     def __repr__(self):
         return f"<Department(id={self.id}, name={self.name}, company_id={self.company_id})>"

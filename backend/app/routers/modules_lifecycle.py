@@ -10,27 +10,26 @@ T-23.020  POST /{name}/enable      (dep-check, menu merge, RBAC seed — stub un
 T-23.022  POST /{name}/disable     (dependents check, menu remove — stub until T-23.022)
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status, Request
-from sqlalchemy.orm import Session
-from typing import List
+import logging
 
-from app.core.dependencies import get_db, get_current_user, require_superuser
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from sqlalchemy.orm import Session
+
 from app.core.audit import create_audit_log
-from app.models.user import User
-from app.models.module_registry import ModuleRegistry, TenantModule
+from app.core.dependencies import get_current_user, get_db, require_superuser
 from app.models.menu_item import MenuItem
+from app.models.module_registry import ModuleRegistry, TenantModule
 from app.models.permission import Permission
+from app.models.user import User
 from app.schemas.module import (
-    ActivationPreviewResponse,
-    ActivationPreviewPermission,
-    ActivationPreviewMenuItem,
     ActivationPreviewDependency,
-    ModuleOperationResponse,
-    ModuleErrorResponse,
+    ActivationPreviewMenuItem,
+    ActivationPreviewPermission,
+    ActivationPreviewResponse,
     ModuleListItemV2,
+    ModuleOperationResponse,
     ModulesListResponse,
 )
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +46,7 @@ def module_error(code: str, message: str, http_status: int = 400, detail=None):
 
 # ── GET /api/v1/modules ───────────────────────────────────────────────────────
 
+
 @router.get("", response_model=ModulesListResponse)
 async def list_modules(
     db: Session = Depends(get_db),
@@ -59,45 +59,52 @@ async def list_modules(
     # T-23.018: only show modules that are fully installed and visible to all tenants.
     # NULL install_status = legacy row (pre-migration) — treated as ready.
     from sqlalchemy import or_
-    modules = db.query(ModuleRegistry).filter(
-        ModuleRegistry.is_installed == True,
-        or_(
-            ModuleRegistry.install_status == None,
-            ModuleRegistry.install_status == "ready",
-        ),
-    ).all()
+
+    modules = (
+        db.query(ModuleRegistry)
+        .filter(
+            ModuleRegistry.is_installed == True,
+            or_(
+                ModuleRegistry.install_status == None,
+                ModuleRegistry.install_status == "ready",
+            ),
+        )
+        .all()
+    )
     # Honour visibility column (Python-side for SQLite compat in tests)
-    modules = [
-        m for m in modules
-        if getattr(m, "visibility", "all_tenants") in ("all_tenants", None)
-    ]
+    modules = [m for m in modules if getattr(m, "visibility", "all_tenants") in ("all_tenants", None)]
 
     # Build a set of enabled module IDs for this tenant
     enabled_ids = {
         tm.module_id
-        for tm in db.query(TenantModule).filter(
+        for tm in db.query(TenantModule)
+        .filter(
             TenantModule.tenant_id == current_user.tenant_id,  # tenant_scope
             TenantModule.is_enabled == True,
-        ).all()
+        )
+        .all()
     }
 
     items = []
     for m in modules:
-        items.append(ModuleListItemV2(
-            name=m.name,
-            display_name=m.display_name,
-            version=m.version,
-            description=m.description,
-            category=m.category,
-            is_core=m.is_core,
-            install_status=getattr(m, "install_status", "ready") or "ready",
-            activation_status="active" if m.id in enabled_ids else "inactive",
-        ))
+        items.append(
+            ModuleListItemV2(
+                name=m.name,
+                display_name=m.display_name,
+                version=m.version,
+                description=m.description,
+                category=m.category,
+                is_core=m.is_core,
+                install_status=getattr(m, "install_status", "ready") or "ready",
+                activation_status="active" if m.id in enabled_ids else "inactive",
+            )
+        )
 
     return ModulesListResponse(modules=items, total=len(items))
 
 
 # ── GET /api/v1/modules/{module_name}/activation-preview ─────────────────────
+
 
 @router.get("/{module_name}/activation-preview", response_model=ActivationPreviewResponse)
 async def activation_preview(
@@ -109,9 +116,7 @@ async def activation_preview(
     Return the permissions, menu items, and dependency status that will be
     applied when a tenant activates this module.  Used by ActivationModal (T-23.021).
     """
-    module = db.query(ModuleRegistry).filter(
-        ModuleRegistry.name == module_name
-    ).first()
+    module = db.query(ModuleRegistry).filter(ModuleRegistry.name == module_name).first()
 
     if not module:
         module_error("MODULE_NOT_FOUND", f"Module '{module_name}' is not installed.", 404)
@@ -156,18 +161,18 @@ async def activation_preview(
 
     enabled_names = {
         tm.module.name
-        for tm in db.query(TenantModule).filter(
+        for tm in db.query(TenantModule)
+        .filter(
             TenantModule.tenant_id == current_user.tenant_id,  # tenant_scope
             TenantModule.is_enabled == True,
-        ).all()
+        )
+        .all()
         if tm.module
     }
 
     dependencies = []
     for dep_name in dep_names:
-        dep_module = db.query(ModuleRegistry).filter(
-            ModuleRegistry.name == dep_name
-        ).first()
+        dep_module = db.query(ModuleRegistry).filter(ModuleRegistry.name == dep_name).first()
         if dep_module is None:
             dep_status = "not_installed"
         elif dep_name in enabled_names:
@@ -175,12 +180,14 @@ async def activation_preview(
         else:
             dep_status = "inactive"
 
-        dependencies.append(ActivationPreviewDependency(
-            name=dep_name,
-            display_name=dep_module.display_name if dep_module else dep_name,
-            status=dep_status,
-            required_version=raw_deps.get(dep_name) if isinstance(raw_deps, dict) else None,
-        ))
+        dependencies.append(
+            ActivationPreviewDependency(
+                name=dep_name,
+                display_name=dep_module.display_name if dep_module else dep_name,
+                status=dep_status,
+                required_version=raw_deps.get(dep_name) if isinstance(raw_deps, dict) else None,
+            )
+        )
 
     return ActivationPreviewResponse(
         module_name=module.name,
@@ -193,6 +200,7 @@ async def activation_preview(
 
 # ── POST /api/v1/modules/{module_name}/enable ─────────────────────────────────
 
+
 @router.post("/{module_name}/enable", response_model=ModuleOperationResponse)
 async def enable_module(
     module_name: str,
@@ -204,9 +212,7 @@ async def enable_module(
     Activate a module for the current tenant.
     T-23.020: dep-check 409, merges manifest menu_items into tenant tree, seeds manifest permissions into RBAC.
     """
-    module = db.query(ModuleRegistry).filter(
-        ModuleRegistry.name == module_name
-    ).first()
+    module = db.query(ModuleRegistry).filter(ModuleRegistry.name == module_name).first()
 
     if not module:
         module_error("MODULE_NOT_FOUND", f"Module '{module_name}' is not installed.", 404)
@@ -224,10 +230,12 @@ async def enable_module(
     if dep_names:
         enabled_names = {
             tm.module.name
-            for tm in db.query(TenantModule).filter(
+            for tm in db.query(TenantModule)
+            .filter(
                 TenantModule.tenant_id == current_user.tenant_id,  # tenant_scope
                 TenantModule.is_enabled == True,
-            ).all()
+            )
+            .all()
             if tm.module
         }
         unmet = [d for d in dep_names if d not in enabled_names]
@@ -241,10 +249,15 @@ async def enable_module(
 
     # Create or update TenantModule
     from datetime import datetime
-    tenant_module = db.query(TenantModule).filter(
-        TenantModule.tenant_id == current_user.tenant_id,  # tenant_scope
-        TenantModule.module_id == module.id,
-    ).first()
+
+    tenant_module = (
+        db.query(TenantModule)
+        .filter(
+            TenantModule.tenant_id == current_user.tenant_id,  # tenant_scope
+            TenantModule.module_id == module.id,
+        )
+        .first()
+    )
 
     if tenant_module:
         if tenant_module.is_enabled:
@@ -253,6 +266,7 @@ async def enable_module(
         tenant_module.enabled_at = datetime.utcnow()
     else:
         from app.models.base import generate_uuid
+
         tenant_module = TenantModule(
             id=generate_uuid(),
             tenant_id=current_user.tenant_id,
@@ -278,20 +292,23 @@ async def enable_module(
             _existing_mi.tenant_id = current_user.tenant_id
         else:
             from app.models.base import generate_uuid as _gen_uuid
-            db.add(MenuItem(
-                id=_gen_uuid(),
-                code=_code,
-                tenant_id=current_user.tenant_id,
-                title=_mi.get("label", module.display_name),
-                icon=_mi.get("icon"),
-                route=_mi.get("route"),
-                order=_mi.get("order", 100),
-                permission=_mi.get("permission"),
-                module_code=module_name,
-                is_system=False,
-                is_active=True,
-                is_visible=True,
-            ))
+
+            db.add(
+                MenuItem(
+                    id=_gen_uuid(),
+                    code=_code,
+                    tenant_id=current_user.tenant_id,
+                    title=_mi.get("label", module.display_name),
+                    icon=_mi.get("icon"),
+                    route=_mi.get("route"),
+                    order=_mi.get("order", 100),
+                    permission=_mi.get("permission"),
+                    module_code=module_name,
+                    is_system=False,
+                    is_active=True,
+                    is_visible=True,
+                )
+            )
 
     # T-23.020: seed manifest permissions into tenant RBAC (upsert, non-fatal)
     try:
@@ -303,18 +320,20 @@ async def enable_module(
             _existing_p = db.query(Permission).filter(Permission.code == _pcode).first()
             if not _existing_p:
                 _parts = (_pcode + "::").split(":")
-                db.add(Permission(
-                    id=_gen_uuid(),
-                    code=_pcode,
-                    name=_perm.get("name", _pcode) if isinstance(_perm, dict) else _pcode,
-                    description=_perm.get("description") if isinstance(_perm, dict) else None,
-                    resource=_parts[0] or module_name,
-                    action=_parts[1] or "access",
-                    scope=_parts[2] or "tenant",
-                    category=module_name,
-                    is_active=True,
-                    is_system=False,
-                ))
+                db.add(
+                    Permission(
+                        id=_gen_uuid(),
+                        code=_pcode,
+                        name=_perm.get("name", _pcode) if isinstance(_perm, dict) else _pcode,
+                        description=_perm.get("description") if isinstance(_perm, dict) else None,
+                        resource=_parts[0] or module_name,
+                        action=_parts[1] or "access",
+                        scope=_parts[2] or "tenant",
+                        category=module_name,
+                        is_active=True,
+                        is_system=False,
+                    )
+                )
         db.commit()
     except Exception as _rbac_err:
         logger.warning(f"RBAC seed failed for '{module_name}': {_rbac_err}", exc_info=True)
@@ -323,7 +342,9 @@ async def enable_module(
     # T-23.014: call post_enable hook (non-fatal on failure)
     try:
         from pathlib import Path as _Path
+
         from app.core.module_system.loader import ModuleLoader
+
         _modules_root = _Path(__file__).parent.parent.parent / "modules"
         _loader = ModuleLoader(_modules_root)
         _instance = _loader.load_module(module_name)
@@ -356,6 +377,7 @@ async def enable_module(
 
 # ── POST /api/v1/modules/{module_name}/disable ────────────────────────────────
 
+
 @router.post("/{module_name}/disable", response_model=ModuleOperationResponse)
 async def disable_module(
     module_name: str,
@@ -367,9 +389,7 @@ async def disable_module(
     Deactivate a module for the current tenant.
     T-23.022: dependents check 409, removes module menu items, sets module permissions is_active=False.
     """
-    module = db.query(ModuleRegistry).filter(
-        ModuleRegistry.name == module_name
-    ).first()
+    module = db.query(ModuleRegistry).filter(ModuleRegistry.name == module_name).first()
 
     if not module:
         module_error("MODULE_NOT_FOUND", f"Module '{module_name}' is not installed.", 404)
@@ -377,21 +397,29 @@ async def disable_module(
     if module.is_core:
         module_error("SYSTEM_MODULE_PROTECTED", f"Core module '{module_name}' cannot be toggled.", 403)
 
-    tenant_module = db.query(TenantModule).filter(
-        TenantModule.tenant_id == current_user.tenant_id,  # tenant_scope
-        TenantModule.module_id == module.id,
-    ).first()
+    tenant_module = (
+        db.query(TenantModule)
+        .filter(
+            TenantModule.tenant_id == current_user.tenant_id,  # tenant_scope
+            TenantModule.module_id == module.id,
+        )
+        .first()
+    )
 
     if not tenant_module or not tenant_module.is_enabled:
         module_error("ALREADY_DISABLED", f"Module '{module_name}' is not active for this tenant.", 409)
 
     # T-23.022: check whether any active modules depend on this one
     _active_dep_names = []
-    _all_tenant_modules = db.query(TenantModule).filter(
-        TenantModule.tenant_id == current_user.tenant_id,  # tenant_scope
-        TenantModule.is_enabled == True,
-        TenantModule.module_id != module.id,
-    ).all()
+    _all_tenant_modules = (
+        db.query(TenantModule)
+        .filter(
+            TenantModule.tenant_id == current_user.tenant_id,  # tenant_scope
+            TenantModule.is_enabled == True,
+            TenantModule.module_id != module.id,
+        )
+        .all()
+    )
     for _tm in _all_tenant_modules:
         _dep_mod = _tm.module
         if _dep_mod is None:
@@ -410,6 +438,7 @@ async def disable_module(
         )
 
     from datetime import datetime
+
     tenant_module.is_enabled = False
     tenant_module.disabled_at = datetime.utcnow()
     tenant_module.disabled_by_user_id = current_user.id
@@ -417,10 +446,14 @@ async def disable_module(
 
     # T-23.022: deactivate this module's menu items for the tenant
     try:
-        _menu_rows = db.query(MenuItem).filter(
-            MenuItem.module_code == module_name,
-            MenuItem.tenant_id == current_user.tenant_id,  # tenant_scope
-        ).all()
+        _menu_rows = (
+            db.query(MenuItem)
+            .filter(
+                MenuItem.module_code == module_name,
+                MenuItem.tenant_id == current_user.tenant_id,  # tenant_scope
+            )
+            .all()
+        )
         for _row in _menu_rows:
             _row.is_active = False
 
@@ -462,8 +495,9 @@ async def disable_module(
 # T-23.007  POST /api/v1/modules/validate  — dry-run manifest validation
 # ---------------------------------------------------------------------------
 
+from typing import Optional as _Optional
+
 from pydantic import BaseModel as _BaseModel
-from typing import Optional as _Optional, Any as _Any
 
 
 class ManifestValidateRequest(_BaseModel):
@@ -483,8 +517,9 @@ def validate_manifest(
     Dry-run manifest validation — no DB writes.
     Returns 200 {valid:true} or 422 {valid:false, errors:[...]}.
     """
-    from app.core.module_system.loader import ModuleLoader
     from pathlib import Path
+
+    from app.core.module_system.loader import ModuleLoader
 
     loader = ModuleLoader(Path("/tmp"))  # path unused for schema-only validation
     ok, err = loader.validate_manifest(payload.manifest)
@@ -517,9 +552,13 @@ async def admin_deactivate_all(
     Superadmin only. Sets install_status=deactivation_pending, then disables
     every TenantModule row. Non-fatal per-tenant failures are logged.
     """
-    module = db.query(ModuleRegistry).filter(
-        ModuleRegistry.id == module_id,
-    ).first()
+    module = (
+        db.query(ModuleRegistry)
+        .filter(
+            ModuleRegistry.id == module_id,
+        )
+        .first()
+    )
     if not module:
         # try by name as fallback
         module = db.query(ModuleRegistry).filter(ModuleRegistry.name == module_id).first()
@@ -533,12 +572,17 @@ async def admin_deactivate_all(
     module.install_status = "deactivation_pending"
     db.commit()
 
-    tenant_modules = db.query(TenantModule).filter(
-        TenantModule.module_id == module.id,
-        TenantModule.is_enabled == True,
-    ).all()
+    tenant_modules = (
+        db.query(TenantModule)
+        .filter(
+            TenantModule.module_id == module.id,
+            TenantModule.is_enabled == True,
+        )
+        .all()
+    )
 
     from datetime import datetime
+
     deactivated = []
     failed = []
     for tm in tenant_modules:
@@ -562,7 +606,7 @@ async def admin_deactivate_all(
     # Deactivate module permissions globally
     try:
         _manifest_da: dict = module.manifest or {}
-        for _perm_da in (_manifest_da.get("permissions", []) or []):
+        for _perm_da in _manifest_da.get("permissions", []) or []:
             _pc = _perm_da if isinstance(_perm_da, str) else _perm_da.get("code", "")
             if _pc:
                 _p = db.query(Permission).filter(Permission.code == _pc).first()
@@ -609,13 +653,16 @@ async def admin_uninstall_module(
     if confirm.lower() != "true":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail={"code": "CONFIRMATION_REQUIRED",
-                    "message": "Send header X-Confirm-Uninstall: true to confirm."},
+            detail={"code": "CONFIRMATION_REQUIRED", "message": "Send header X-Confirm-Uninstall: true to confirm."},
         )
 
-    module = db.query(ModuleRegistry).filter(
-        ModuleRegistry.id == module_id,
-    ).first()
+    module = (
+        db.query(ModuleRegistry)
+        .filter(
+            ModuleRegistry.id == module_id,
+        )
+        .first()
+    )
     if not module:
         module = db.query(ModuleRegistry).filter(ModuleRegistry.name == module_id).first()
     if not module:
@@ -625,10 +672,14 @@ async def admin_uninstall_module(
         module_error("SYSTEM_MODULE_PROTECTED", "Core modules cannot be uninstalled.", 403)
 
     # Check no tenants have it enabled
-    active_count = db.query(TenantModule).filter(
-        TenantModule.module_id == module.id,
-        TenantModule.is_enabled == True,
-    ).count()
+    active_count = (
+        db.query(TenantModule)
+        .filter(
+            TenantModule.module_id == module.id,
+            TenantModule.is_enabled == True,
+        )
+        .count()
+    )
     if active_count > 0:
         module_error(
             "DEPENDENTS_ACTIVE",
@@ -645,7 +696,7 @@ async def admin_uninstall_module(
 
     # Deactivate permissions seeded by this module
     _manifest_ui: dict = module.manifest or {}
-    for _perm_ui in (_manifest_ui.get("permissions", []) or []):
+    for _perm_ui in _manifest_ui.get("permissions", []) or []:
         _pcu = _perm_ui if isinstance(_perm_ui, str) else _perm_ui.get("code", "")
         if _pcu:
             _pu = db.query(Permission).filter(Permission.code == _pcu).first()

@@ -1,34 +1,51 @@
 import os
+from contextlib import asynccontextmanager
+from datetime import datetime
+from pathlib import Path
 
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from contextlib import asynccontextmanager
-from datetime import datetime
 
 from app.core.config import get_settings
-from app.core.logging_config import setup_logging, get_logger
-from app.core.exceptions import register_exception_handlers
-from app.core.rate_limiter import setup_rate_limiting
 from app.core.db import SessionLocal
-from app.core.tenant_listener import TenantScopeListener
-from app.core.security_middleware import SecurityMiddleware
+from app.core.exceptions import register_exception_handlers
+from app.core.logging_config import get_logger, setup_logging
 from app.core.module_scope_middleware import ModuleScopeMiddleware
-from app.core.startup import ensure_default_security_policy
-from app.routers import org, auth, metadata, data, audit, settings, modules, rbac, reports, dashboards, scheduler, menu, builder_pages
-from app.routers import admin_modules as admin_modules_router
-from app.routers import otp as otp_router
-from app.routers import public as public_router
-from app.routers import otp as otp_router
-from app.routers import public as public_router
-from app.routers import otp as otp_router
-from app.routers import public as public_router
-from app.routers import otp as otp_router
-from app.routers import public as public_router
-from app.routers import data_model, workflows, automations, lookups, dynamic_data, nocode_modules, module_extensions, modules_lifecycle
-from app.routers.admin import security as admin_security
 from app.core.module_system.registry import ModuleRegistryService
-from pathlib import Path
+from app.core.rate_limiter import setup_rate_limiting
+from app.core.security_middleware import SecurityMiddleware
+from app.core.startup import ensure_default_security_policy
+from app.core.tenant_listener import TenantScopeListener
+from app.routers import admin_modules as admin_modules_router
+from app.routers import (
+    audit,
+    auth,
+    automations,
+    builder_pages,
+    dashboards,
+    data,
+    data_model,
+    dynamic_data,
+    lookups,
+    menu,
+    metadata,
+    module_extensions,
+    modules,
+    modules_lifecycle,
+    nocode_modules,
+    org,
+)
+from app.routers import otp as otp_router
+from app.routers import public as public_router
+from app.routers import (
+    rbac,
+    reports,
+    scheduler,
+    settings,
+    workflows,
+)
+from app.routers.admin import security as admin_security
 
 # Initialize settings and logging
 settings_instance = get_settings()
@@ -47,6 +64,7 @@ async def lifespan(app: FastAPI):
     global module_registry
 
     import os as _os
+
     # Skip slow startup tasks in test environment
     if _os.environ.get("TESTING"):
         logger.info("TESTING mode: skipping startup tasks")
@@ -58,13 +76,15 @@ async def lifespan(app: FastAPI):
 
     # Run database migrations on startup (skipped when TESTING=1)
     import os as _os
+
     if not _os.environ.get("TESTING"):
         try:
-            from alembic.config import Config as AlembicConfig
             from alembic import command as alembic_command
-            alembic_cfg = AlembicConfig(_os.path.join(_os.path.dirname(__file__), '..', 'alembic.ini'))
-            alembic_cfg.set_main_option('script_location', _os.path.join(_os.path.dirname(__file__), 'alembic'))
-            alembic_command.upgrade(alembic_cfg, 'head')
+            from alembic.config import Config as AlembicConfig
+
+            alembic_cfg = AlembicConfig(_os.path.join(_os.path.dirname(__file__), "..", "alembic.ini"))
+            alembic_cfg.set_main_option("script_location", _os.path.join(_os.path.dirname(__file__), "alembic"))
+            alembic_command.upgrade(alembic_cfg, "head")
             logger.info("Database migrations applied successfully")
         except Exception as e:
             logger.warning(f"Failed to run migrations on startup: {e}", exc_info=True)
@@ -98,13 +118,16 @@ async def lifespan(app: FastAPI):
         # Include routers from installed modules
         for router in module_registry.get_all_routers():
             app.include_router(router)
-            logger.info(f"Included router from module")
+            logger.info("Included router from module")
 
         # Make module_registry available to routes
         from app.routers import modules as modules_router
+
         modules_router.module_registry = module_registry
         admin_modules_router.router.module_registry = module_registry  # type: ignore
-        import app.routers.admin_modules as _am; _am._module_registry = module_registry
+        import app.routers.admin_modules as _am
+
+        _am._module_registry = module_registry
 
         logger.info(f"Module system initialized: {module_registry.get_module_count()} modules loaded")
     except Exception as e:
@@ -140,7 +163,9 @@ async def lifespan(app: FastAPI):
     if os.environ.get("NOTIFICATION_WORKER_INPROCESS", "false").strip().lower() in ("1", "true", "yes", "on"):
         try:
             import threading
+
             from app.workers.notification_worker import NotificationWorker
+
             notification_worker = NotificationWorker()
             notification_worker_thread = threading.Thread(
                 target=notification_worker.run,
@@ -167,9 +192,11 @@ async def lifespan(app: FastAPI):
     # design — enabling globally now causes a 500 storm. Enable per-environment
     # with ENABLE_TENANT_SCOPE_LISTENER=true once the migration is complete.
     import os as _os
+
     if _os.environ.get("ENABLE_TENANT_SCOPE_LISTENER", "false").lower() in ("1", "true", "yes"):
         from app.core.db import engine as _db_engine
-        _tenant_listener = TenantScopeListener()
+
+        TenantScopeListener()
         TenantScopeListener.install(_db_engine)
         logger.info("TenantScopeListener ENABLED (ENABLE_TENANT_SCOPE_LISTENER set)")
     else:
@@ -196,13 +223,14 @@ app = FastAPI(
     lifespan=lifespan,
     docs_url="/api/docs",
     redoc_url="/api/redoc",
-    openapi_url="/api/openapi.json"
+    openapi_url="/api/openapi.json",
 )
 
 
 # Prometheus metrics endpoint (prometheus-client)
 try:
-    from prometheus_client import make_asgi_app as _make_metrics_app, multiprocess, CollectorRegistry
+    from prometheus_client import make_asgi_app as _make_metrics_app
+
     _metrics_app = _make_metrics_app()
     app.mount("/metrics", _metrics_app)
     logger.info("Prometheus /metrics endpoint mounted")
@@ -215,7 +243,7 @@ app.add_middleware(
     allow_origins=settings_instance.allowed_origins_list,
     allow_credentials=True,
     allow_methods=["*"],
-    allow_headers=["*"]
+    allow_headers=["*"],
 )
 
 # Add security middleware for session timeout and password expiration enforcement
@@ -223,6 +251,7 @@ app.middleware("http")(SecurityMiddleware(app))
 
 # Module scope middleware — routes /api/v1/modules/{id}/... to per-tenant DB
 app.add_middleware(ModuleScopeMiddleware)
+
 
 # Module access control middleware
 @app.middleware("http")
@@ -241,7 +270,29 @@ async def module_access_middleware(request: Request, call_next):
             potential_module = path_parts[3]
 
             # Skip core endpoints
-            core_endpoints = ["auth", "org", "metadata", "data", "audit", "settings", "modules", "module-registry", "rbac", "reports", "dashboards", "scheduler", "menu", "health", "healthz", "system", "data-model", "workflows", "automations", "lookups", "dynamic-data"]
+            core_endpoints = [
+                "auth",
+                "org",
+                "metadata",
+                "data",
+                "audit",
+                "settings",
+                "modules",
+                "module-registry",
+                "rbac",
+                "reports",
+                "dashboards",
+                "scheduler",
+                "menu",
+                "health",
+                "healthz",
+                "system",
+                "data-model",
+                "workflows",
+                "automations",
+                "lookups",
+                "dynamic-data",
+            ]
             if potential_module not in core_endpoints:
                 # This might be a module endpoint
                 # Check if module exists and is enabled
@@ -258,6 +309,7 @@ async def module_access_middleware(request: Request, call_next):
 
     response = await call_next(request)
     return response
+
 
 # Setup rate limiting
 limiter = setup_rate_limiting(app)
@@ -327,7 +379,7 @@ async def root():
         "version": "0.3.0",
         "api_version": "v1",
         "docs": "/api/docs",
-        "health": "/api/health"
+        "health": "/api/health",
     }
 
 
@@ -343,7 +395,7 @@ async def health_check(request: Request):
         "timestamp": datetime.utcnow().isoformat(),
         "version": "0.3.0",
         "environment": settings_instance.ENVIRONMENT,
-        "components": {}
+        "components": {},
     }
 
     # Check database
@@ -354,10 +406,7 @@ async def health_check(request: Request):
         health_status["components"]["database"] = {"status": "healthy"}
     except Exception as e:
         health_status["status"] = "degraded"
-        health_status["components"]["database"] = {
-            "status": "unhealthy",
-            "error": str(e)
-        }
+        health_status["components"]["database"] = {"status": "unhealthy", "error": str(e)}
 
     # Check rate limiting
     health_status["components"]["rate_limiting"] = {
@@ -366,7 +415,7 @@ async def health_check(request: Request):
 
     return JSONResponse(
         status_code=status.HTTP_200_OK if health_status["status"] == "healthy" else status.HTTP_503_SERVICE_UNAVAILABLE,
-        content=health_status
+        content=health_status,
     )
 
 
@@ -406,7 +455,7 @@ async def system_info():
             "nocode-workflow-designer",
             "nocode-automation-system",
             "nocode-lookup-configuration",
-            "nocode-runtime-data-layer"
+            "nocode-runtime-data-layer",
         ],
-        "loaded_modules": module_registry.get_module_count() if module_registry else 0
+        "loaded_modules": module_registry.get_module_count() if module_registry else 0,
     }

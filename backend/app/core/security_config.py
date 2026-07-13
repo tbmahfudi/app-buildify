@@ -6,6 +6,7 @@ Provides configurable security policies with:
 - Database-level overrides (tenant-specific)
 - Hierarchical fallback (tenant -> system default -> env vars -> code defaults)
 """
+
 import os
 from functools import lru_cache
 from typing import Any, Dict, Optional
@@ -48,10 +49,10 @@ class AccountLockoutConfig(BaseModel):
 
     # Progressive lockout durations (in minutes)
     progressive_durations: Dict[int, int] = {
-        3: 5,    # 3 attempts: 5 min lockout
-        5: 15,   # 5 attempts: 15 min lockout
-        7: 60,   # 7 attempts: 60 min lockout
-        10: 1440  # 10+ attempts: 24 hour lockout
+        3: 5,  # 3 attempts: 5 min lockout
+        5: 15,  # 5 attempts: 15 min lockout
+        7: 60,  # 7 attempts: 60 min lockout
+        10: 1440,  # 10+ attempts: 24 hour lockout
     }
 
 
@@ -135,12 +136,7 @@ def load_from_env() -> SecurityConfig:
         notify_user=os.getenv("PASSWORD_RESET_NOTIFY_USER", "true").lower() == "true",
     )
 
-    return SecurityConfig(
-        password=password_config,
-        lockout=lockout_config,
-        session=session_config,
-        reset=reset_config
-    )
+    return SecurityConfig(password=password_config, lockout=lockout_config, session=session_config, reset=reset_config)
 
 
 def load_from_db(security_policy_dict: Dict[str, Any]) -> SecurityConfig:
@@ -157,44 +153,59 @@ def load_from_db(security_policy_dict: Dict[str, Any]) -> SecurityConfig:
         require_uppercase=security_policy_dict.get("password_require_uppercase", env_config.password.require_uppercase),
         require_lowercase=security_policy_dict.get("password_require_lowercase", env_config.password.require_lowercase),
         require_digit=security_policy_dict.get("password_require_digit", env_config.password.require_digit),
-        require_special_char=security_policy_dict.get("password_require_special_char", env_config.password.require_special_char),
+        require_special_char=security_policy_dict.get(
+            "password_require_special_char", env_config.password.require_special_char
+        ),
         min_unique_chars=security_policy_dict.get("password_min_unique_chars", env_config.password.min_unique_chars),
-        max_repeating_chars=security_policy_dict.get("password_max_repeating_chars", env_config.password.max_repeating_chars),
+        max_repeating_chars=security_policy_dict.get(
+            "password_max_repeating_chars", env_config.password.max_repeating_chars
+        ),
         allow_common=security_policy_dict.get("password_allow_common", env_config.password.allow_common),
         allow_username=security_policy_dict.get("password_allow_username", env_config.password.allow_username),
         history_count=security_policy_dict.get("password_history_count", env_config.password.history_count),
         expiration_days=security_policy_dict.get("password_expiration_days", env_config.password.expiration_days),
-        expiration_warning_days=security_policy_dict.get("password_expiration_warning_days", env_config.password.expiration_warning_days),
+        expiration_warning_days=security_policy_dict.get(
+            "password_expiration_warning_days", env_config.password.expiration_warning_days
+        ),
         grace_logins=security_policy_dict.get("password_grace_logins", env_config.password.grace_logins),
     )
 
     lockout_config = AccountLockoutConfig(
         max_attempts=security_policy_dict.get("login_max_attempts", env_config.lockout.max_attempts),
-        lockout_duration_min=security_policy_dict.get("login_lockout_duration_min", env_config.lockout.lockout_duration_min),
+        lockout_duration_min=security_policy_dict.get(
+            "login_lockout_duration_min", env_config.lockout.lockout_duration_min
+        ),
         lockout_type=security_policy_dict.get("login_lockout_type", env_config.lockout.lockout_type),
-        reset_attempts_after_min=security_policy_dict.get("login_reset_attempts_after_min", env_config.lockout.reset_attempts_after_min),
-        notify_user_on_lockout=security_policy_dict.get("login_notify_user_on_lockout", env_config.lockout.notify_user_on_lockout),
+        reset_attempts_after_min=security_policy_dict.get(
+            "login_reset_attempts_after_min", env_config.lockout.reset_attempts_after_min
+        ),
+        notify_user_on_lockout=security_policy_dict.get(
+            "login_notify_user_on_lockout", env_config.lockout.notify_user_on_lockout
+        ),
     )
 
     session_config = SessionSecurityConfig(
         timeout_minutes=security_policy_dict.get("session_timeout_minutes", env_config.session.timeout_minutes),
-        absolute_timeout_hours=security_policy_dict.get("session_absolute_timeout_hours", env_config.session.absolute_timeout_hours),
+        absolute_timeout_hours=security_policy_dict.get(
+            "session_absolute_timeout_hours", env_config.session.absolute_timeout_hours
+        ),
         max_concurrent=security_policy_dict.get("session_max_concurrent", env_config.session.max_concurrent),
-        terminate_on_password_change=security_policy_dict.get("session_terminate_on_password_change", env_config.session.terminate_on_password_change),
+        terminate_on_password_change=security_policy_dict.get(
+            "session_terminate_on_password_change", env_config.session.terminate_on_password_change
+        ),
     )
 
     reset_config = PasswordResetConfig(
-        token_expire_hours=security_policy_dict.get("password_reset_token_expire_hours", env_config.reset.token_expire_hours),
-        max_attempts_per_hour=security_policy_dict.get("password_reset_max_attempts", env_config.reset.max_attempts_per_hour),
+        token_expire_hours=security_policy_dict.get(
+            "password_reset_token_expire_hours", env_config.reset.token_expire_hours
+        ),
+        max_attempts_per_hour=security_policy_dict.get(
+            "password_reset_max_attempts", env_config.reset.max_attempts_per_hour
+        ),
         notify_user=security_policy_dict.get("password_reset_notify_user", env_config.reset.notify_user),
     )
 
-    return SecurityConfig(
-        password=password_config,
-        lockout=lockout_config,
-        session=session_config,
-        reset=reset_config
-    )
+    return SecurityConfig(password=password_config, lockout=lockout_config, session=session_config, reset=reset_config)
 
 
 @lru_cache()
@@ -227,10 +238,7 @@ async def get_security_config(db, tenant_id: Optional[str] = None) -> SecurityCo
 
     # Try tenant-specific policy first
     if tenant_id:
-        query = select(SecurityPolicy).where(
-            SecurityPolicy.tenant_id == tenant_id,
-            SecurityPolicy.is_active == True
-        )
+        query = select(SecurityPolicy).where(SecurityPolicy.tenant_id == tenant_id, SecurityPolicy.is_active == True)
         result = await db.execute(query)
         tenant_policy = result.scalars().first()
 
@@ -238,10 +246,7 @@ async def get_security_config(db, tenant_id: Optional[str] = None) -> SecurityCo
             return load_from_db(tenant_policy.to_dict())
 
     # Try system default policy (tenant_id = NULL)
-    query = select(SecurityPolicy).where(
-        SecurityPolicy.tenant_id == None,
-        SecurityPolicy.is_active == True
-    )
+    query = select(SecurityPolicy).where(SecurityPolicy.tenant_id == None, SecurityPolicy.is_active == True)
     result = await db.execute(query)
     system_policy = result.scalars().first()
 
@@ -278,6 +283,7 @@ async def get_reset_policy(db, tenant_id: Optional[str] = None) -> PasswordReset
 
 
 # ==================== Synchronous Service Class ====================
+
 
 class SecurityConfigService:
     """
@@ -320,10 +326,11 @@ class SecurityConfigService:
             if cache_key in self._cache:
                 return self._cache[cache_key]
 
-            policy = self.db.query(SecurityPolicy).filter(
-                SecurityPolicy.tenant_id == tenant_id,
-                SecurityPolicy.is_active == True
-            ).first()
+            policy = (
+                self.db.query(SecurityPolicy)
+                .filter(SecurityPolicy.tenant_id == tenant_id, SecurityPolicy.is_active == True)
+                .first()
+            )
 
             if policy:
                 value = getattr(policy, key, None)
@@ -336,10 +343,11 @@ class SecurityConfigService:
         if system_cache_key in self._cache:
             return self._cache[system_cache_key]
 
-        system_policy = self.db.query(SecurityPolicy).filter(
-            SecurityPolicy.tenant_id == None,
-            SecurityPolicy.is_active == True
-        ).first()
+        system_policy = (
+            self.db.query(SecurityPolicy)
+            .filter(SecurityPolicy.tenant_id == None, SecurityPolicy.is_active == True)
+            .first()
+        )
 
         if system_policy:
             value = getattr(system_policy, key, None)
@@ -367,20 +375,17 @@ class SecurityConfigService:
             "password_expiration_days": default_config.password.expiration_days,
             "password_expiration_warning_days": default_config.password.expiration_warning_days,
             "password_grace_logins": default_config.password.grace_logins,
-
             # Lockout policy
             "login_max_attempts": default_config.lockout.max_attempts,
             "login_lockout_duration_min": default_config.lockout.lockout_duration_min,
             "login_lockout_type": default_config.lockout.lockout_type,
             "login_reset_attempts_after_min": default_config.lockout.reset_attempts_after_min,
             "login_notify_user_on_lockout": default_config.lockout.notify_user_on_lockout,
-
             # Session policy
             "session_timeout_minutes": default_config.session.timeout_minutes,
             "session_absolute_timeout_hours": default_config.session.absolute_timeout_hours,
             "session_max_concurrent": default_config.session.max_concurrent,
             "session_terminate_on_password_change": default_config.session.terminate_on_password_change,
-
             # Reset policy
             "password_reset_token_expire_hours": default_config.reset.token_expire_hours,
             "password_reset_max_attempts": default_config.reset.max_attempts_per_hour,

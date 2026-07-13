@@ -2,10 +2,13 @@
 ModuleScopeMiddleware — routes module endpoints to per-tenant DBs.
 Story 22.4.3
 """
+
 from __future__ import annotations
+
+import logging
 import os
 import re
-import logging
+
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 
@@ -29,11 +32,11 @@ class ModuleScopeMiddleware(BaseHTTPMiddleware):
     Full connection-pool wiring is tracked in story 22.4.3 follow-up.
     """
 
-    MODULE_PATH_RE = re.compile(r'^/api/v1/modules/([^/]+)/')
+    MODULE_PATH_RE = re.compile(r"^/api/v1/modules/([^/]+)/")
 
     async def dispatch(self, request: Request, call_next):
-        strategy = os.environ.get('DATABASE_STRATEGY', 'shared')
-        if strategy != 'per_tenant':
+        strategy = os.environ.get("DATABASE_STRATEGY", "shared")
+        if strategy != "per_tenant":
             return await call_next(request)
 
         match = self.MODULE_PATH_RE.match(request.url.path)

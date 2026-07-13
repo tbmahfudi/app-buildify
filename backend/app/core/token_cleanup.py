@@ -28,9 +28,7 @@ def cleanup_expired_tokens(db: Session) -> int:
     """
     try:
         # Delete tokens where expires_at is in the past
-        result = db.query(TokenBlacklist).filter(
-            TokenBlacklist.expires_at < datetime.utcnow()
-        ).delete()
+        result = db.query(TokenBlacklist).filter(TokenBlacklist.expires_at < datetime.utcnow()).delete()
 
         db.commit()
         logger.info(f"Cleaned up {result} expired tokens from blacklist")
@@ -53,13 +51,7 @@ def get_blacklist_stats(db: Session) -> dict:
         Dictionary with blacklist statistics
     """
     total = db.query(TokenBlacklist).count()
-    expired = db.query(TokenBlacklist).filter(
-        TokenBlacklist.expires_at < datetime.utcnow()
-    ).count()
+    expired = db.query(TokenBlacklist).filter(TokenBlacklist.expires_at < datetime.utcnow()).count()
     active = total - expired
 
-    return {
-        "total": total,
-        "expired": expired,
-        "active": active
-    }
+    return {"total": total, "expired": expired, "active": active}

@@ -11,7 +11,8 @@ Key benefits:
 - Reduced boilerplate code
 - Easy to update response format globally
 """
-from typing import Any, Callable, Dict, List, Optional, Type, TypeVar
+
+from typing import Any, Dict, List, Optional, Type, TypeVar
 
 from pydantic import BaseModel
 from sqlalchemy.orm import Query, Session
@@ -24,10 +25,7 @@ SchemaType = TypeVar("SchemaType", bound=BaseModel)
 
 
 def build_list_response(
-    query: Query,
-    skip: int = 0,
-    limit: int = 100,
-    response_model: Optional[Type[SchemaType]] = None
+    query: Query, skip: int = 0, limit: int = 100, response_model: Optional[Type[SchemaType]] = None
 ) -> Dict[str, Any]:
     """
     Build a standardized paginated list response.
@@ -57,13 +55,7 @@ def build_list_response(
     if response_model:
         items = [response_model.from_orm(item) for item in items]
 
-    return {
-        "items": items,
-        "total": total,
-        "skip": skip,
-        "limit": limit,
-        "has_more": (skip + limit) < total
-    }
+    return {"items": items, "total": total, "skip": skip, "limit": limit, "has_more": (skip + limit) < total}
 
 
 def build_paginated_response(
@@ -73,7 +65,7 @@ def build_paginated_response(
     limit: int = 100,
     filters: Optional[Dict[str, Any]] = None,
     order_by: Optional[Any] = None,
-    response_model: Optional[Type[SchemaType]] = None
+    response_model: Optional[Type[SchemaType]] = None,
 ) -> Dict[str, Any]:
     """
     Build a paginated response with automatic filtering and ordering.
@@ -114,9 +106,7 @@ def build_paginated_response(
 
 
 def build_success_response(
-    message: str,
-    data: Optional[Any] = None,
-    meta: Optional[Dict[str, Any]] = None
+    message: str, data: Optional[Any] = None, meta: Optional[Dict[str, Any]] = None
 ) -> Dict[str, Any]:
     """
     Build a standardized success response.
@@ -136,10 +126,7 @@ def build_success_response(
         ...     meta={"id": company_id}
         ... )
     """
-    response = {
-        "success": True,
-        "message": message
-    }
+    response = {"success": True, "message": message}
 
     if data is not None:
         response["data"] = data
@@ -150,10 +137,7 @@ def build_success_response(
     return response
 
 
-def build_delete_response(
-    entity_name: str,
-    entity_id: str
-) -> Dict[str, Any]:
+def build_delete_response(entity_name: str, entity_id: str) -> Dict[str, Any]:
     """
     Build a standardized delete success response.
 
@@ -167,11 +151,7 @@ def build_delete_response(
     Example:
         >>> return build_delete_response("Company", company_id)
     """
-    return {
-        "success": True,
-        "message": f"{entity_name} deleted successfully",
-        "deleted_id": entity_id
-    }
+    return {"success": True, "message": f"{entity_name} deleted successfully", "deleted_id": entity_id}
 
 
 def build_bulk_response(
@@ -179,7 +159,7 @@ def build_bulk_response(
     updated: Optional[int] = None,
     deleted: Optional[int] = None,
     failed: Optional[int] = None,
-    errors: Optional[List[Dict[str, Any]]] = None
+    errors: Optional[List[Dict[str, Any]]] = None,
 ) -> Dict[str, Any]:
     """
     Build a standardized bulk operation response.
@@ -202,10 +182,7 @@ def build_bulk_response(
         ...     errors=[{"index": 7, "error": "Duplicate code"}]
         ... )
     """
-    response = {
-        "success": (failed or 0) == 0,
-        "summary": {}
-    }
+    response = {"success": (failed or 0) == 0, "summary": {}}
 
     if created is not None:
         response["summary"]["created"] = created
@@ -228,7 +205,7 @@ def build_search_response(
     search_fields: List[str],
     skip: int = 0,
     limit: int = 100,
-    response_model: Optional[Type[SchemaType]] = None
+    response_model: Optional[Type[SchemaType]] = None,
 ) -> Dict[str, Any]:
     """
     Build a search response with highlighting of matched fields.
@@ -256,14 +233,12 @@ def build_search_response(
     from sqlalchemy import or_
 
     # Build search filter
-    model = query.column_descriptions[0]['entity']
+    model = query.column_descriptions[0]["entity"]
     search_filters = []
 
     for field in search_fields:
         if hasattr(model, field):
-            search_filters.append(
-                getattr(model, field).ilike(f"%{search_term}%")
-            )
+            search_filters.append(getattr(model, field).ilike(f"%{search_term}%"))
 
     if search_filters:
         query = query.filter(or_(*search_filters))
@@ -275,10 +250,7 @@ def build_search_response(
     return response
 
 
-def build_aggregation_response(
-    data: List[Dict[str, Any]],
-    aggregations: Dict[str, Any]
-) -> Dict[str, Any]:
+def build_aggregation_response(data: List[Dict[str, Any]], aggregations: Dict[str, Any]) -> Dict[str, Any]:
     """
     Build a response with aggregated data.
 
@@ -299,19 +271,11 @@ def build_aggregation_response(
         ...     }
         ... )
     """
-    return {
-        "data": data,
-        "aggregations": aggregations,
-        "count": len(data)
-    }
+    return {"data": data, "aggregations": aggregations, "count": len(data)}
 
 
 def build_export_response(
-    file_path: str,
-    file_name: str,
-    file_size: int,
-    format: str,
-    record_count: int
+    file_path: str, file_name: str, file_size: int, format: str, record_count: int
 ) -> Dict[str, Any]:
     """
     Build a response for data export operations.
@@ -342,14 +306,12 @@ def build_export_response(
         "file_size": file_size,
         "format": format,
         "record_count": record_count,
-        "download_url": f"/api/downloads/{file_name}"
+        "download_url": f"/api/downloads/{file_name}",
     }
 
 
 def build_validation_response(
-    valid: bool,
-    errors: Optional[Dict[str, List[str]]] = None,
-    warnings: Optional[Dict[str, List[str]]] = None
+    valid: bool, errors: Optional[Dict[str, List[str]]] = None, warnings: Optional[Dict[str, List[str]]] = None
 ) -> Dict[str, Any]:
     """
     Build a validation response.
@@ -369,11 +331,7 @@ def build_validation_response(
         ...     warnings={"phone": ["Area code not recognized"]}
         ... )
     """
-    response = {
-        "valid": valid,
-        "error_count": 0,
-        "warning_count": 0
-    }
+    response = {"valid": valid, "error_count": 0, "warning_count": 0}
 
     if errors:
         response["errors"] = errors
@@ -387,12 +345,7 @@ def build_validation_response(
 
 
 def build_batch_status_response(
-    batch_id: str,
-    status: str,
-    total: int,
-    completed: int,
-    failed: int,
-    progress_percentage: float
+    batch_id: str, status: str, total: int, completed: int, failed: int, progress_percentage: float
 ) -> Dict[str, Any]:
     """
     Build a batch operation status response.
@@ -426,7 +379,7 @@ def build_batch_status_response(
         "failed": failed,
         "pending": total - completed - failed,
         "progress_percentage": progress_percentage,
-        "is_complete": status in ["completed", "failed"]
+        "is_complete": status in ["completed", "failed"],
     }
 
 
@@ -445,7 +398,4 @@ def list_response(items: List[Any], total: Optional[int] = None) -> Dict[str, An
     Example:
         >>> return list_response(companies, total=100)
     """
-    return {
-        "items": items,
-        "total": total if total is not None else len(items)
-    }
+    return {"items": items, "total": total if total is not None else len(items)}

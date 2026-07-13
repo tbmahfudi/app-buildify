@@ -9,6 +9,7 @@ class AccountLockout(Base):
     Tracks account lockouts due to failed login attempts.
     Supports both automatic and manual lockouts/unlocks.
     """
+
     __tablename__ = "account_lockouts"
 
     # Primary key
@@ -39,6 +40,7 @@ class AccountLockout(Base):
     def is_active(self) -> bool:
         """Check if lockout is still active."""
         from datetime import datetime, timezone
+
         if self.unlocked_at:
             return False  # Manually unlocked
         return datetime.now(timezone.utc) < self.locked_until

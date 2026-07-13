@@ -12,6 +12,7 @@ Responsibilities:
 connection_secret_ref format (dev): env:MODULE_DB_{DB_NAME_UPPER}
 In production this would be a Vault path or AWS Secrets Manager ARN.
 """
+
 from __future__ import annotations
 
 import logging
@@ -29,6 +30,7 @@ from app.core.db import SessionLocal
 from app.models.tenant_module_database import TenantModuleDatabase
 
 logger = logging.getLogger(__name__)
+
 
 # ---------------------------------------------------------------------------
 # Module registry: path to each module Alembic root.
@@ -145,7 +147,9 @@ class ModuleDBProvisioner:
 
         logger.info(
             "provisioner.provision.start tenant_id=%s module=%s db_name=%s",
-            tenant_id, module_name, db_name,
+            tenant_id,
+            module_name,
+            db_name,
         )
 
         db: Session = SessionLocal()
@@ -165,15 +169,9 @@ class ModuleDBProvisioner:
             except IntegrityError:
                 # Row already exists -- idempotent; fetch it.
                 db.rollback()
-                row = (
-                    db.query(TenantModuleDatabase)
-                    .filter_by(tenant_id=tenant_id, db_name=db_name)
-                    .one()
-                )
+                row = db.query(TenantModuleDatabase).filter_by(tenant_id=tenant_id, db_name=db_name).one()
                 if row.status == "ready":
-                    logger.info(
-                        "provisioner.provision.already_ready db_name=%s", db_name
-                    )
+                    logger.info("provisioner.provision.already_ready db_name=%s", db_name)
                     return row.connection_secret_ref or connection_secret_ref
                 row.status = "provisioning"
                 row.error_message = None
@@ -196,7 +194,9 @@ class ModuleDBProvisioner:
             elapsed = time.monotonic() - t_start
             logger.info(
                 "provisioner.provision.done db_name=%s elapsed_s=%.2f gate=%s",
-                db_name, elapsed, "PASS" if elapsed <= 60 else "FAIL",
+                db_name,
+                elapsed,
+                "PASS" if elapsed <= 60 else "FAIL",
             )
             return connection_secret_ref
 
@@ -204,7 +204,10 @@ class ModuleDBProvisioner:
             elapsed = time.monotonic() - t_start
             logger.error(
                 "provisioner.provision.failed db_name=%s elapsed_s=%.2f error=%s",
-                db_name, elapsed, exc, exc_info=True,
+                db_name,
+                elapsed,
+                exc,
+                exc_info=True,
             )
             if row is not None:
                 try:
@@ -213,9 +216,7 @@ class ModuleDBProvisioner:
                     db.commit()
                 except Exception:
                     db.rollback()
-            raise RuntimeError(
-                f"Provisioning failed for {db_name} after {elapsed:.2f}s: {exc}"
-            ) from exc
+            raise RuntimeError(f"Provisioning failed for {db_name} after {elapsed:.2f}s: {exc}") from exc
         finally:
             db.close()
 
@@ -224,16 +225,14 @@ class ModuleDBProvisioner:
         db_name = self._make_db_name(tenant_id, module_name)
         logger.info(
             "provisioner.deprovision.start tenant_id=%s module=%s db_name=%s",
-            tenant_id, module_name, db_name,
+            tenant_id,
+            module_name,
+            db_name,
         )
 
         db: Session = SessionLocal()
         try:
-            row = (
-                db.query(TenantModuleDatabase)
-                .filter_by(tenant_id=tenant_id, db_name=db_name)
-                .one_or_none()
-            )
+            row = db.query(TenantModuleDatabase).filter_by(tenant_id=tenant_id, db_name=db_name).one_or_none()
 
             # Step 1: mark deprovisioning.
             if row is not None:
@@ -251,11 +250,14 @@ class ModuleDBProvisioner:
 
             logger.info(
                 "provisioner.deprovision.done tenant_id=%s db_name=%s",
-                tenant_id, db_name,
+                tenant_id,
+                db_name,
             )
         except Exception as exc:
             logger.error(
-                "provisioner.deprovision.failed db_name=%s error=%s", db_name, exc,
+                "provisioner.deprovision.failed db_name=%s error=%s",
+                db_name,
+                exc,
                 exc_info=True,
             )
             db.rollback()
@@ -285,6 +287,7 @@ class ModuleDBProvisioner:
         For the prototype we derive a stable UUID from the name.
         """
         import uuid
+
         return uuid.uuid5(uuid.NAMESPACE_DNS, f"module.{module_name}")
 
     @staticmethod
@@ -293,7 +296,7 @@ class ModuleDBProvisioner:
         raw = _get_postgres_admin_url()
         for prefix in ("postgresql+psycopg2://", "postgresql+asyncpg://"):
             if raw.startswith(prefix):
-                raw = "postgresql://" + raw[len(prefix):]
+                raw = "postgresql://" + raw[len(prefix) :]
                 break
         return raw
 
@@ -302,10 +305,11 @@ class ModuleDBProvisioner:
         try:
             import psycopg2
             import psycopg2.errors  # noqa: F401
+
             admin_url = _get_postgres_admin_url()
             for prefix in ("postgresql+psycopg2://", "postgresql+asyncpg://"):
                 if admin_url.startswith(prefix):
-                    admin_url = "postgresql://" + admin_url[len(prefix):]
+                    admin_url = "postgresql://" + admin_url[len(prefix) :]
                     break
             conn = psycopg2.connect(admin_url)
             conn.autocommit = True
@@ -314,9 +318,7 @@ class ModuleDBProvisioner:
                 cur.execute(f'CREATE DATABASE "{db_name}"')
             except Exception as exc:
                 if "already exists" in str(exc):
-                    logger.info(
-                        "provisioner.create_database.already_exists db_name=%s", db_name
-                    )
+                    logger.info("provisioner.create_database.already_exists db_name=%s", db_name)
                 else:
                     raise
             finally:
@@ -327,21 +329,22 @@ class ModuleDBProvisioner:
             base = admin_url.rsplit("/", 1)[0]
             result = subprocess.run(
                 ["psql", f"{base}/postgres", "-c", f'CREATE DATABASE "{db_name}"'],
-                capture_output=True, text=True, timeout=30,
+                capture_output=True,
+                text=True,
+                timeout=30,
             )
             if result.returncode != 0 and "already exists" not in result.stderr:
-                raise RuntimeError(
-                    f"CREATE DATABASE failed: {result.stderr.strip()}"
-                )
+                raise RuntimeError(f"CREATE DATABASE failed: {result.stderr.strip()}")
 
     def _drop_database(self, db_name: str) -> None:
         """DROP DATABASE IF EXISTS, terminating active connections first."""
         try:
             import psycopg2
+
             admin_url = _get_postgres_admin_url()
             for prefix in ("postgresql+psycopg2://", "postgresql+asyncpg://"):
                 if admin_url.startswith(prefix):
-                    admin_url = "postgresql://" + admin_url[len(prefix):]
+                    admin_url = "postgresql://" + admin_url[len(prefix) :]
                     break
             conn = psycopg2.connect(admin_url)
             conn.autocommit = True
@@ -359,14 +362,22 @@ class ModuleDBProvisioner:
             admin_url = self._build_admin_url()
             base = admin_url.rsplit("/", 1)[0]
             subprocess.run(
-                ["psql", f"{base}/postgres", "-c",
-                 f"SELECT pg_terminate_backend(pid) FROM pg_stat_activity "
-                 f"WHERE datname = '{db_name}' AND pid <> pg_backend_pid();"],
-                capture_output=True, text=True, timeout=30,
+                [
+                    "psql",
+                    f"{base}/postgres",
+                    "-c",
+                    f"SELECT pg_terminate_backend(pid) FROM pg_stat_activity "
+                    f"WHERE datname = '{db_name}' AND pid <> pg_backend_pid();",
+                ],
+                capture_output=True,
+                text=True,
+                timeout=30,
             )
             result = subprocess.run(
                 ["psql", f"{base}/postgres", "-c", f'DROP DATABASE IF EXISTS "{db_name}"'],
-                capture_output=True, text=True, timeout=30,
+                capture_output=True,
+                text=True,
+                timeout=30,
             )
             if result.returncode != 0:
                 raise RuntimeError(f"DROP DATABASE failed: {result.stderr.strip()}")
@@ -380,13 +391,9 @@ class ModuleDBProvisioner:
         module_alembic_dirs = get_module_alembic_dirs()
         module_dir = module_alembic_dirs.get(module_name)
         if module_dir is None:
-            raise ValueError(
-                f"Unknown module {module_name!r}. Known: {sorted(module_alembic_dirs)}"
-            )
+            raise ValueError(f"Unknown module {module_name!r}. Known: {sorted(module_alembic_dirs)}")
         if not module_dir.exists():
-            raise ValueError(
-                f"Module directory for {module_name!r} not found: {module_dir}"
-            )
+            raise ValueError(f"Module directory for {module_name!r} not found: {module_dir}")
 
         admin_url = _get_postgres_admin_url()
         base = admin_url.rsplit("/", 1)[0]
@@ -403,17 +410,19 @@ class ModuleDBProvisioner:
 
         result = subprocess.run(
             ["python", "-m", "alembic", "upgrade", "head"],
-            capture_output=True, text=True,
+            capture_output=True,
+            text=True,
             timeout=55,  # 5 s headroom before the 60 s NFR boundary.
             cwd=str(module_dir),
             env=env,
         )
         if result.returncode != 0:
             raise RuntimeError(
-                f"Alembic migrations failed for {module_name!r} against {db_name!r}:\n"
-                f"{result.stderr}"
+                f"Alembic migrations failed for {module_name!r} against {db_name!r}:\n" f"{result.stderr}"
             )
         logger.debug(
             "provisioner.migrations.output module=%s db_name=%s stdout=%s",
-            module_name, db_name, result.stdout[:500],
+            module_name,
+            db_name,
+            result.stdout[:500],
         )

@@ -8,27 +8,27 @@ Provides REST API for backend-driven RBAC menu system:
 - Tenant-specific menu customization
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status, Request
-from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
+import logging
 from typing import List, Optional
 
-from app.core.dependencies import get_db, get_current_user, has_permission
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
+
 from app.core.audit import create_audit_log
-from app.models.user import User
+from app.core.dependencies import get_current_user, get_db, has_permission
 from app.models.menu_item import MenuItem
-from app.services.menu_service import MenuService
+from app.models.user import User
 from app.schemas.menu import (
     MenuItemCreate,
-    MenuItemUpdate,
+    MenuItemListResponse,
     MenuItemResponse,
     MenuItemTree,
-    MenuReorderRequest,
+    MenuItemUpdate,
     MenuOperationResponse,
-    UserMenuResponse,
-    MenuItemListResponse,
+    MenuReorderRequest,
 )
-import logging
+from app.services.menu_service import MenuService
 
 logger = logging.getLogger(__name__)
 
@@ -37,9 +37,7 @@ router = APIRouter(prefix="/api/v1/menu", tags=["menu"])
 
 @router.get("", response_model=List[MenuItemTree])
 async def get_user_menu(
-    include_modules: bool = True,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    include_modules: bool = True, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
     """
     Get menu items accessible to current user based on RBAC.
@@ -58,27 +56,20 @@ async def get_user_menu(
         Hierarchical menu structure with only accessible items
     """
     try:
-        menu_tree = await MenuService.get_user_menu(
-            db=db,
-            user=current_user,
-            include_modules=include_modules
-        )
+        menu_tree = await MenuService.get_user_menu(db=db, user=current_user, include_modules=include_modules)
 
         return menu_tree
 
     except Exception as e:
         logger.error(f"Error fetching user menu: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to load menu"
-        )
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to load menu")
 
 
 @router.get("/admin", response_model=MenuItemListResponse)
 async def get_all_menu_items(
     tenant_id: Optional[str] = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("menu:manage:tenant"))
+    current_user: User = Depends(has_permission("menu:manage:tenant")),
 ):
     """
     Get all menu items for admin management.
@@ -92,30 +83,20 @@ async def get_all_menu_items(
         List of all menu items (not filtered by RBAC)
     """
     try:
-        menu_items = MenuService.get_all_menu_items(
-            db=db,
-            user=current_user,
-            tenant_id=tenant_id
-        )
+        menu_items = MenuService.get_all_menu_items(db=db, user=current_user, tenant_id=tenant_id)
 
         return MenuItemListResponse(
-            items=[MenuItemResponse.from_orm(item) for item in menu_items],
-            total=len(menu_items)
+            items=[MenuItemResponse.from_orm(item) for item in menu_items], total=len(menu_items)
         )
 
     except Exception as e:
         logger.error(f"Error fetching menu items for admin: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to fetch menu items"
-        )
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to fetch menu items")
 
 
 @router.get("/{menu_id}", response_model=MenuItemResponse)
 async def get_menu_item(
-    menu_id: str,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("menu:read:tenant"))
+    menu_id: str, db: Session = Depends(get_db), current_user: User = Depends(has_permission("menu:read:tenant"))
 ):
     """
     Get a specific menu item by ID.
@@ -125,18 +106,12 @@ async def get_menu_item(
     menu_item = db.query(MenuItem).filter(MenuItem.id == menu_id).first()
 
     if not menu_item:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Menu item not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Menu item not found")
 
     # Check tenant access
     if not current_user.is_superuser:
         if menu_item.tenant_id and menu_item.tenant_id != current_user.tenant_id:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Access denied"
-            )
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
 
     return MenuItemResponse.from_orm(menu_item)
 
@@ -146,7 +121,7 @@ async def create_menu_item(
     menu_data: MenuItemCreate,
     request: Request,
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("menu:create:tenant"))
+    current_user: User = Depends(has_permission("menu:create:tenant")),
 ):
     """
     Create a new menu item.
@@ -164,11 +139,7 @@ async def create_menu_item(
         menu_dict = menu_data.model_dump()
 
         # Create menu item
-        menu_item = MenuService.create_menu_item(
-            db=db,
-            user=current_user,
-            menu_data=menu_dict
-        )
+        menu_item = MenuService.create_menu_item(db=db, user=current_user, menu_data=menu_dict)
 
         # Audit log
         create_audit_log(
@@ -177,32 +148,19 @@ async def create_menu_item(
             user=current_user,
             entity_type="menu_item",
             entity_id=str(menu_item.id),
-            changes={
-                "code": menu_item.code,
-                "title": menu_item.title,
-                "route": menu_item.route
-            },
-            request=request
+            changes={"code": menu_item.code, "title": menu_item.title, "route": menu_item.route},
+            request=request,
         )
 
         return MenuItemResponse.from_orm(menu_item)
 
     except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except IntegrityError:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="A menu item with this code already exists"
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="A menu item with this code already exists")
     except Exception as e:
         logger.error(f"Error creating menu item: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to create menu item"
-        )
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to create menu item")
 
 
 @router.put("/{menu_id}", response_model=MenuItemResponse)
@@ -211,7 +169,7 @@ async def update_menu_item(
     menu_data: MenuItemUpdate,
     request: Request,
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("menu:update:tenant"))
+    current_user: User = Depends(has_permission("menu:update:tenant")),
 ):
     """
     Update a menu item.
@@ -230,18 +188,10 @@ async def update_menu_item(
         menu_dict = menu_data.model_dump(exclude_none=True)
 
         # Update menu item
-        menu_item = MenuService.update_menu_item(
-            db=db,
-            user=current_user,
-            menu_id=menu_id,
-            menu_data=menu_dict
-        )
+        menu_item = MenuService.update_menu_item(db=db, user=current_user, menu_id=menu_id, menu_data=menu_dict)
 
         if not menu_item:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Menu item not found or access denied"
-            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Menu item not found or access denied")
 
         # Audit log
         create_audit_log(
@@ -251,10 +201,8 @@ async def update_menu_item(
             entity_type="menu_item",
             entity_id=str(menu_item.id),
             changes=menu_dict,
-            context_info={
-                "code": menu_item.code
-            },
-            request=request
+            context_info={"code": menu_item.code},
+            request=request,
         )
 
         return MenuItemResponse.from_orm(menu_item)
@@ -262,16 +210,10 @@ async def update_menu_item(
     except HTTPException:
         raise
     except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
         logger.error(f"Error updating menu item: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to update menu item"
-        )
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to update menu item")
 
 
 @router.delete("/{menu_id}", response_model=MenuOperationResponse)
@@ -279,7 +221,7 @@ async def delete_menu_item(
     menu_id: str,
     request: Request,
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("menu:delete:tenant"))
+    current_user: User = Depends(has_permission("menu:delete:tenant")),
 ):
     """
     Delete a menu item (soft delete).
@@ -303,16 +245,12 @@ async def delete_menu_item(
             menu_title = None
 
         # Delete menu item
-        success = MenuService.delete_menu_item(
-            db=db,
-            user=current_user,
-            menu_id=menu_id
-        )
+        success = MenuService.delete_menu_item(db=db, user=current_user, menu_id=menu_id)
 
         if not success:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Menu item not found, access denied, or cannot delete system menu"
+                detail="Menu item not found, access denied, or cannot delete system menu",
             )
 
         # Audit log
@@ -322,26 +260,17 @@ async def delete_menu_item(
             user=current_user,
             entity_type="menu_item",
             entity_id=menu_id,
-            context_info={
-                "code": menu_code,
-                "title": menu_title
-            },
-            request=request
+            context_info={"code": menu_code, "title": menu_title},
+            request=request,
         )
 
-        return MenuOperationResponse(
-            success=True,
-            message="Menu item deleted successfully"
-        )
+        return MenuOperationResponse(success=True, message="Menu item deleted successfully")
 
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Error deleting menu item: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to delete menu item"
-        )
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to delete menu item")
 
 
 @router.post("/reorder", response_model=MenuOperationResponse)
@@ -349,7 +278,7 @@ async def reorder_menu_items(
     reorder_data: MenuReorderRequest,
     request: Request,
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("menu:update:tenant"))
+    current_user: User = Depends(has_permission("menu:update:tenant")),
 ):
     """
     Reorder menu items.
@@ -367,17 +296,10 @@ async def reorder_menu_items(
         items = [item.model_dump() for item in reorder_data.items]
 
         # Reorder menu items
-        success = MenuService.reorder_menu_items(
-            db=db,
-            user=current_user,
-            reorder_data=items
-        )
+        success = MenuService.reorder_menu_items(db=db, user=current_user, reorder_data=items)
 
         if not success:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Failed to reorder menu items"
-            )
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Failed to reorder menu items")
 
         # Audit log
         create_audit_log(
@@ -385,31 +307,22 @@ async def reorder_menu_items(
             action="menu.reorder",
             user=current_user,
             entity_type="menu_item",
-            context_info={
-                "item_count": len(items)
-            },
-            request=request
+            context_info={"item_count": len(items)},
+            request=request,
         )
 
-        return MenuOperationResponse(
-            success=True,
-            message=f"Successfully reordered {len(items)} menu items"
-        )
+        return MenuOperationResponse(success=True, message=f"Successfully reordered {len(items)} menu items")
 
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Error reordering menu items: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to reorder menu items"
-        )
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to reorder menu items")
 
 
 @router.get("/sync/status")
 async def get_sync_status(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("menu:manage:tenant"))
+    db: Session = Depends(get_db), current_user: User = Depends(has_permission("menu:manage:tenant"))
 ):
     """
     Get menu sync status.
@@ -432,21 +345,17 @@ async def get_sync_status(
             "last_sync": latest_item.created_at.isoformat() if latest_item else None,
             "menu_items_count": menu_items_count,
             "sync_version": "1.0",
-            "is_synced": menu_items_count > 0
+            "is_synced": menu_items_count > 0,
         }
 
     except Exception as e:
         logger.error(f"Error getting sync status: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to get sync status"
-        )
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to get sync status")
 
 
 @router.get("/sync/history")
 async def get_sync_history(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("menu:manage:tenant"))
+    db: Session = Depends(get_db), current_user: User = Depends(has_permission("menu:manage:tenant"))
 ):
     """
     Get menu sync history.
@@ -461,8 +370,7 @@ async def get_sync_history(
 
 @router.get("/sync/preview")
 async def preview_sync(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("menu:manage:tenant"))
+    db: Session = Depends(get_db), current_user: User = Depends(has_permission("menu:manage:tenant"))
 ):
     """
     Preview changes that would be made by syncing menu.json.
@@ -493,40 +401,34 @@ async def preview_sync(
         if not menu_json_file:
             raise FileNotFoundError("menu.json not found")
 
-        with open(menu_json_file, 'r', encoding='utf-8') as f:
+        with open(menu_json_file, "r", encoding="utf-8") as f:
             menu_data = json.load(f)
 
         # Count items in JSON (recursively)
         def count_items(items):
             count = 0
             for item in items:
-                if 'header' not in item or 'title' in item:
+                if "header" not in item or "title" in item:
                     count += 1
-                if 'submenu' in item:
-                    count += count_items(item['submenu'])
+                if "submenu" in item:
+                    count += count_items(item["submenu"])
             return count
 
-        json_count = count_items(menu_data.get('items', []))
+        json_count = count_items(menu_data.get("items", []))
         db_count = db.query(MenuItem).count()
 
         return {
             "new_items": max(0, json_count - db_count),
             "updated_items": min(json_count, db_count),
             "removed_items": max(0, db_count - json_count),
-            "total_items": json_count
+            "total_items": json_count,
         }
 
-    except FileNotFoundError as e:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="menu.json file not found"
-        )
+    except FileNotFoundError:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="menu.json file not found")
     except Exception as e:
         logger.error(f"Error previewing sync: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to preview sync"
-        )
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to preview sync")
 
 
 @router.post("/sync", response_model=MenuOperationResponse)
@@ -534,7 +436,7 @@ async def sync_menu_from_json(
     clear_existing: bool = False,
     request: Request = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("menu:manage:tenant"))
+    current_user: User = Depends(has_permission("menu:manage:tenant")),
 ):
     """
     Sync menu items from menu.json file to database.
@@ -563,28 +465,22 @@ async def sync_menu_from_json(
             action="menu.sync",
             user=current_user,
             entity_type="menu_item",
-            context_info={
-                "items_created": items_created,
-                "clear_existing": clear_existing
-            },
-            request=request
+            context_info={"items_created": items_created, "clear_existing": clear_existing},
+            request=request,
         )
 
         return MenuOperationResponse(
             success=True,
             message=f"Successfully synced {items_created} menu items from menu.json",
-            items_synced=items_created
+            items_synced=items_created,
         )
 
     except FileNotFoundError as e:
         logger.error(f"menu.json not found: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="menu.json file not found. Please ensure it exists in frontend/config/menu.json"
+            detail="menu.json file not found. Please ensure it exists in frontend/config/menu.json",
         )
     except Exception as e:
         logger.error(f"Error syncing menu from JSON: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to sync menu: {str(e)}"
-        )
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to sync menu: {str(e)}")

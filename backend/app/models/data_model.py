@@ -5,6 +5,8 @@ Models for the no-code platform's data model designer feature.
 Enables users to create and manage database entities without writing code.
 """
 
+from datetime import datetime
+
 from sqlalchemy import (
     Boolean,
     Column,
@@ -19,7 +21,6 @@ from sqlalchemy import (
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
-from datetime import datetime
 
 from .base import GUID, Base, generate_uuid
 
@@ -31,6 +32,7 @@ class EntityDefinition(Base):
     Stores metadata for custom entities/tables created through the data model designer.
     Each entity definition represents a table that will be created in the database.
     """
+
     __tablename__ = "entity_definitions"
 
     # Primary Key
@@ -86,9 +88,9 @@ class EntityDefinition(Base):
     meta_data = Column(JSONB, default=dict)  # Extended configuration
 
     # UI configuration (consolidated from entity_metadata)
-    table_config = Column(JSONB, nullable=True)   # Generated table/grid config
-    form_config = Column(JSONB, nullable=True)    # Generated form config
-    permissions = Column(JSONB, nullable=True)    # {role: [actions]} RBAC permissions
+    table_config = Column(JSONB, nullable=True)  # Generated table/grid config
+    form_config = Column(JSONB, nullable=True)  # Generated form config
+    permissions = Column(JSONB, nullable=True)  # {role: [actions]} RBAC permissions
 
     # Versioning
     version = Column(Integer, default=1)
@@ -104,11 +106,20 @@ class EntityDefinition(Base):
 
     # Relationships
     module = relationship("Module", foreign_keys=[module_id], backref="entities")
-    fields = relationship("FieldDefinition", foreign_keys="FieldDefinition.entity_id", back_populates="entity", cascade="all, delete-orphan")
+    fields = relationship(
+        "FieldDefinition",
+        foreign_keys="FieldDefinition.entity_id",
+        back_populates="entity",
+        cascade="all, delete-orphan",
+    )
     migrations = relationship("EntityMigration", back_populates="entity")
     indexes = relationship("IndexDefinition", back_populates="entity", cascade="all, delete-orphan")
-    source_relationships = relationship("RelationshipDefinition", foreign_keys="RelationshipDefinition.source_entity_id", back_populates="source_entity")
-    target_relationships = relationship("RelationshipDefinition", foreign_keys="RelationshipDefinition.target_entity_id", back_populates="target_entity")
+    source_relationships = relationship(
+        "RelationshipDefinition", foreign_keys="RelationshipDefinition.source_entity_id", back_populates="source_entity"
+    )
+    target_relationships = relationship(
+        "RelationshipDefinition", foreign_keys="RelationshipDefinition.target_entity_id", back_populates="target_entity"
+    )
 
     # Table constraints
     __table_args__ = (
@@ -125,6 +136,7 @@ class FieldDefinition(Base):
     Stores metadata for fields within entity definitions.
     Each field represents a column in the database table.
     """
+
     __tablename__ = "field_definitions"
 
     # Primary Key
@@ -183,7 +195,9 @@ class FieldDefinition(Base):
     # Relationship Fields (for lookup/reference fields)
     reference_entity_id = Column(GUID, ForeignKey("entity_definitions.id"), nullable=True)
     reference_table_name = Column(String(100))  # Direct table name for system tables (users, tenants, etc.)
-    reference_field = Column(String(100))  # Target column in referenced table (for REFERENCES clause, e.g., 'id', 'code', 'username')
+    reference_field = Column(
+        String(100)
+    )  # Target column in referenced table (for REFERENCES clause, e.g., 'id', 'code', 'username')
     display_field = Column(String(100))  # Column to display in UI dropdowns (e.g., 'name', 'full_name', 'email')
     relationship_type = Column(String(50))  # 'many-to-one', 'one-to-one'
 
@@ -254,6 +268,7 @@ class FieldGroup(Base):
     Organizes fields into collapsible sections for better form organization.
     Groups can have their own visibility rules and display order.
     """
+
     __tablename__ = "field_groups"
 
     # Primary Key
@@ -291,7 +306,9 @@ class FieldGroup(Base):
 
     # Relationships
     entity = relationship("EntityDefinition", foreign_keys=[entity_id], backref="field_groups")
-    fields = relationship("FieldDefinition", foreign_keys="FieldDefinition.field_group_id", back_populates="field_group")
+    fields = relationship(
+        "FieldDefinition", foreign_keys="FieldDefinition.field_group_id", back_populates="field_group"
+    )
 
     # Table constraints
     __table_args__ = (
@@ -307,6 +324,7 @@ class RelationshipDefinition(Base):
     Stores metadata for relationships between entities.
     Supports one-to-many, many-to-many, and one-to-one relationships.
     """
+
     __tablename__ = "relationship_definitions"
 
     # Primary Key
@@ -355,8 +373,12 @@ class RelationshipDefinition(Base):
     is_deleted = Column(Boolean, default=False)
 
     # Relationships
-    source_entity = relationship("EntityDefinition", foreign_keys=[source_entity_id], back_populates="source_relationships")
-    target_entity = relationship("EntityDefinition", foreign_keys=[target_entity_id], back_populates="target_relationships")
+    source_entity = relationship(
+        "EntityDefinition", foreign_keys=[source_entity_id], back_populates="source_relationships"
+    )
+    target_entity = relationship(
+        "EntityDefinition", foreign_keys=[target_entity_id], back_populates="target_relationships"
+    )
 
     # Table constraints
     __table_args__ = (
@@ -371,6 +393,7 @@ class IndexDefinition(Base):
 
     Stores metadata for database indexes on entities.
     """
+
     __tablename__ = "index_definitions"
 
     # Primary Key
@@ -403,9 +426,7 @@ class IndexDefinition(Base):
     entity = relationship("EntityDefinition", back_populates="indexes")
 
     # Table constraints
-    __table_args__ = (
-        Index("idx_index_definitions_entity", "entity_id"),
-    )
+    __table_args__ = (Index("idx_index_definitions_entity", "entity_id"),)
 
 
 class EntityMigration(Base):
@@ -415,6 +436,7 @@ class EntityMigration(Base):
     Tracks database migrations for entity definitions.
     Stores up/down scripts and execution status.
     """
+
     __tablename__ = "entity_migrations"
 
     # Primary Key

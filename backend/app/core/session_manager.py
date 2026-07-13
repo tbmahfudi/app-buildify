@@ -7,6 +7,7 @@ Manages user sessions with support for:
 - Session termination on password change
 - Activity tracking
 """
+
 from datetime import datetime, timedelta
 from typing import List, Optional
 
@@ -38,7 +39,7 @@ class SessionManager:
         device_id: Optional[str] = None,
         device_name: Optional[str] = None,
         ip_address: Optional[str] = None,
-        user_agent: Optional[str] = None
+        user_agent: Optional[str] = None,
     ) -> UserSession:
         """
         Create a new user session.
@@ -55,14 +56,13 @@ class SessionManager:
             UserSession instance
         """
         # Calculate expiration based on policy
-        timeout_minutes = self.security_config.get_config("session_timeout_minutes", user.tenant_id) or ACCESS_TOKEN_EXPIRE_MIN
+        timeout_minutes = (
+            self.security_config.get_config("session_timeout_minutes", user.tenant_id) or ACCESS_TOKEN_EXPIRE_MIN
+        )
         absolute_timeout_hours = self.security_config.get_config("session_absolute_timeout_hours", user.tenant_id) or 24
 
         # Use the shorter of the two timeouts
-        timeout_delta = min(
-            timedelta(minutes=timeout_minutes),
-            timedelta(hours=absolute_timeout_hours)
-        )
+        timeout_delta = min(timedelta(minutes=timeout_minutes), timedelta(hours=absolute_timeout_hours))
         expires_at = datetime.utcnow() + timeout_delta
 
         session = UserSession(
@@ -72,7 +72,7 @@ class SessionManager:
             device_id=device_id,
             device_name=device_name,
             ip_address=ip_address,
-            user_agent=user_agent
+            user_agent=user_agent,
         )
         self.db.add(session)
         self.db.commit()
@@ -95,11 +95,12 @@ class SessionManager:
         """
         now = datetime.utcnow()
 
-        sessions = self.db.query(UserSession).filter(
-            UserSession.user_id == str(user.id),
-            UserSession.revoked_at == None,
-            UserSession.expires_at > now
-        ).order_by(UserSession.last_activity.desc()).all()
+        sessions = (
+            self.db.query(UserSession)
+            .filter(UserSession.user_id == str(user.id), UserSession.revoked_at == None, UserSession.expires_at > now)
+            .order_by(UserSession.last_activity.desc())
+            .all()
+        )
 
         return sessions
 
@@ -167,10 +168,7 @@ class SessionManager:
         return False
 
     def revoke_all_user_sessions(
-        self,
-        user: User,
-        except_jti: Optional[str] = None,
-        reason: Optional[str] = None
+        self, user: User, except_jti: Optional[str] = None, reason: Optional[str] = None
     ) -> int:
         """
         Revoke all active sessions for a user.
@@ -186,9 +184,7 @@ class SessionManager:
         now = datetime.utcnow()
 
         query = self.db.query(UserSession).filter(
-            UserSession.user_id == str(user.id),
-            UserSession.revoked_at == None,
-            UserSession.expires_at > now
+            UserSession.user_id == str(user.id), UserSession.revoked_at == None, UserSession.expires_at > now
         )
 
         if except_jti:
@@ -235,9 +231,7 @@ class SessionManager:
         """
         cutoff = datetime.utcnow() - timedelta(hours=older_than_hours)
 
-        count = self.db.query(UserSession).filter(
-            UserSession.expires_at < cutoff
-        ).delete()
+        count = self.db.query(UserSession).filter(UserSession.expires_at < cutoff).delete()
 
         self.db.commit()
         return count

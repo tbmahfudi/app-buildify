@@ -9,12 +9,13 @@ class TokenBlacklist(Base):
     Uses UNLOGGED table for PostgreSQL or MEMORY engine for MySQL for performance.
     Tokens are automatically cleaned up after expiration.
     """
+
     __tablename__ = "token_blacklist"
     __table_args__ = (
-        Index('ix_token_blacklist_jti', 'jti'),
-        Index('ix_token_blacklist_expires_at', 'expires_at'),
+        Index("ix_token_blacklist_jti", "jti"),
+        Index("ix_token_blacklist_expires_at", "expires_at"),
         # MySQL MEMORY engine option for better performance
-        {'mysql_engine': 'MEMORY'}
+        {"mysql_engine": "MEMORY"},
     )
 
     jti = Column(String(255), primary_key=True)  # JWT ID (unique token identifier)

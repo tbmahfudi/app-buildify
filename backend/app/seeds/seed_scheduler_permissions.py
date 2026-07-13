@@ -2,9 +2,10 @@
 Create scheduler management permissions
 Covers: Scheduler Configuration, Jobs, Executions
 """
-from sqlalchemy.orm import Session
+
 from app.core.db import SessionLocal
 from app.models.permission import Permission
+
 
 def seed_scheduler_permissions():
     """Seed all scheduler-related permissions"""
@@ -21,7 +22,7 @@ def seed_scheduler_permissions():
                 "resource": "scheduler",
                 "action": "config:read",
                 "scope": "all",
-                "category": "scheduler"
+                "category": "scheduler",
             },
             {
                 "code": "scheduler:config:read:tenant",
@@ -30,7 +31,7 @@ def seed_scheduler_permissions():
                 "resource": "scheduler",
                 "action": "config:read",
                 "scope": "tenant",
-                "category": "scheduler"
+                "category": "scheduler",
             },
             {
                 "code": "scheduler:config:create:tenant",
@@ -39,7 +40,7 @@ def seed_scheduler_permissions():
                 "resource": "scheduler",
                 "action": "config:create",
                 "scope": "tenant",
-                "category": "scheduler"
+                "category": "scheduler",
             },
             {
                 "code": "scheduler:config:update:tenant",
@@ -48,7 +49,7 @@ def seed_scheduler_permissions():
                 "resource": "scheduler",
                 "action": "config:update",
                 "scope": "tenant",
-                "category": "scheduler"
+                "category": "scheduler",
             },
             {
                 "code": "scheduler:config:delete:tenant",
@@ -57,9 +58,8 @@ def seed_scheduler_permissions():
                 "resource": "scheduler",
                 "action": "config:delete",
                 "scope": "tenant",
-                "category": "scheduler"
+                "category": "scheduler",
             },
-
             # ==================== SCHEDULED JOBS ====================
             {
                 "code": "scheduler:jobs:read:all",
@@ -68,7 +68,7 @@ def seed_scheduler_permissions():
                 "resource": "scheduler",
                 "action": "jobs:read",
                 "scope": "all",
-                "category": "scheduler"
+                "category": "scheduler",
             },
             {
                 "code": "scheduler:jobs:read:tenant",
@@ -77,7 +77,7 @@ def seed_scheduler_permissions():
                 "resource": "scheduler",
                 "action": "jobs:read",
                 "scope": "tenant",
-                "category": "scheduler"
+                "category": "scheduler",
             },
             {
                 "code": "scheduler:jobs:read:own",
@@ -86,7 +86,7 @@ def seed_scheduler_permissions():
                 "resource": "scheduler",
                 "action": "jobs:read",
                 "scope": "own",
-                "category": "scheduler"
+                "category": "scheduler",
             },
             {
                 "code": "scheduler:jobs:create:tenant",
@@ -95,7 +95,7 @@ def seed_scheduler_permissions():
                 "resource": "scheduler",
                 "action": "jobs:create",
                 "scope": "tenant",
-                "category": "scheduler"
+                "category": "scheduler",
             },
             {
                 "code": "scheduler:jobs:update:all",
@@ -104,7 +104,7 @@ def seed_scheduler_permissions():
                 "resource": "scheduler",
                 "action": "jobs:update",
                 "scope": "all",
-                "category": "scheduler"
+                "category": "scheduler",
             },
             {
                 "code": "scheduler:jobs:update:tenant",
@@ -113,7 +113,7 @@ def seed_scheduler_permissions():
                 "resource": "scheduler",
                 "action": "jobs:update",
                 "scope": "tenant",
-                "category": "scheduler"
+                "category": "scheduler",
             },
             {
                 "code": "scheduler:jobs:update:own",
@@ -122,7 +122,7 @@ def seed_scheduler_permissions():
                 "resource": "scheduler",
                 "action": "jobs:update",
                 "scope": "own",
-                "category": "scheduler"
+                "category": "scheduler",
             },
             {
                 "code": "scheduler:jobs:delete:all",
@@ -131,7 +131,7 @@ def seed_scheduler_permissions():
                 "resource": "scheduler",
                 "action": "jobs:delete",
                 "scope": "all",
-                "category": "scheduler"
+                "category": "scheduler",
             },
             {
                 "code": "scheduler:jobs:delete:tenant",
@@ -140,7 +140,7 @@ def seed_scheduler_permissions():
                 "resource": "scheduler",
                 "action": "jobs:delete",
                 "scope": "tenant",
-                "category": "scheduler"
+                "category": "scheduler",
             },
             {
                 "code": "scheduler:jobs:delete:own",
@@ -149,7 +149,7 @@ def seed_scheduler_permissions():
                 "resource": "scheduler",
                 "action": "jobs:delete",
                 "scope": "own",
-                "category": "scheduler"
+                "category": "scheduler",
             },
             {
                 "code": "scheduler:jobs:execute:all",
@@ -158,7 +158,7 @@ def seed_scheduler_permissions():
                 "resource": "scheduler",
                 "action": "jobs:execute",
                 "scope": "all",
-                "category": "scheduler"
+                "category": "scheduler",
             },
             {
                 "code": "scheduler:jobs:execute:tenant",
@@ -167,7 +167,7 @@ def seed_scheduler_permissions():
                 "resource": "scheduler",
                 "action": "jobs:execute",
                 "scope": "tenant",
-                "category": "scheduler"
+                "category": "scheduler",
             },
             {
                 "code": "scheduler:jobs:execute:own",
@@ -176,9 +176,8 @@ def seed_scheduler_permissions():
                 "resource": "scheduler",
                 "action": "jobs:execute",
                 "scope": "own",
-                "category": "scheduler"
+                "category": "scheduler",
             },
-
             # ==================== JOB EXECUTIONS & HISTORY ====================
             {
                 "code": "scheduler:executions:read:all",
@@ -187,7 +186,7 @@ def seed_scheduler_permissions():
                 "resource": "scheduler",
                 "action": "executions:read",
                 "scope": "all",
-                "category": "scheduler"
+                "category": "scheduler",
             },
             {
                 "code": "scheduler:executions:read:tenant",
@@ -196,7 +195,7 @@ def seed_scheduler_permissions():
                 "resource": "scheduler",
                 "action": "executions:read",
                 "scope": "tenant",
-                "category": "scheduler"
+                "category": "scheduler",
             },
             {
                 "code": "scheduler:executions:read:own",
@@ -205,7 +204,7 @@ def seed_scheduler_permissions():
                 "resource": "scheduler",
                 "action": "executions:read",
                 "scope": "own",
-                "category": "scheduler"
+                "category": "scheduler",
             },
             {
                 "code": "scheduler:executions:cancel:all",
@@ -214,7 +213,7 @@ def seed_scheduler_permissions():
                 "resource": "scheduler",
                 "action": "executions:cancel",
                 "scope": "all",
-                "category": "scheduler"
+                "category": "scheduler",
             },
             {
                 "code": "scheduler:executions:cancel:tenant",
@@ -223,7 +222,7 @@ def seed_scheduler_permissions():
                 "resource": "scheduler",
                 "action": "executions:cancel",
                 "scope": "tenant",
-                "category": "scheduler"
+                "category": "scheduler",
             },
             {
                 "code": "scheduler:executions:cancel:own",
@@ -232,9 +231,8 @@ def seed_scheduler_permissions():
                 "resource": "scheduler",
                 "action": "executions:cancel",
                 "scope": "own",
-                "category": "scheduler"
+                "category": "scheduler",
             },
-
             # ==================== LEGACY SCHEDULER PERMISSIONS ====================
             {
                 "code": "scheduler:read:tenant",
@@ -243,7 +241,7 @@ def seed_scheduler_permissions():
                 "resource": "scheduler",
                 "action": "read",
                 "scope": "tenant",
-                "category": "scheduler"
+                "category": "scheduler",
             },
             {
                 "code": "scheduler:create:tenant",
@@ -252,7 +250,7 @@ def seed_scheduler_permissions():
                 "resource": "scheduler",
                 "action": "create",
                 "scope": "tenant",
-                "category": "scheduler"
+                "category": "scheduler",
             },
             {
                 "code": "scheduler:update:tenant",
@@ -261,7 +259,7 @@ def seed_scheduler_permissions():
                 "resource": "scheduler",
                 "action": "update",
                 "scope": "tenant",
-                "category": "scheduler"
+                "category": "scheduler",
             },
             {
                 "code": "scheduler:delete:tenant",
@@ -270,7 +268,7 @@ def seed_scheduler_permissions():
                 "resource": "scheduler",
                 "action": "delete",
                 "scope": "tenant",
-                "category": "scheduler"
+                "category": "scheduler",
             },
             {
                 "code": "scheduler:execute:tenant",
@@ -279,7 +277,7 @@ def seed_scheduler_permissions():
                 "resource": "scheduler",
                 "action": "execute",
                 "scope": "tenant",
-                "category": "scheduler"
+                "category": "scheduler",
             },
             {
                 "code": "scheduler:history:read:tenant",
@@ -288,7 +286,7 @@ def seed_scheduler_permissions():
                 "resource": "scheduler",
                 "action": "history:read",
                 "scope": "tenant",
-                "category": "scheduler"
+                "category": "scheduler",
             },
         ]
 
@@ -297,9 +295,7 @@ def seed_scheduler_permissions():
         updated_count = 0
 
         for perm_data in permissions:
-            perm = db.query(Permission).filter(
-                Permission.code == perm_data["code"]
-            ).first()
+            perm = db.query(Permission).filter(Permission.code == perm_data["code"]).first()
 
             if not perm:
                 perm = Permission(**perm_data, is_active=True)
@@ -318,7 +314,7 @@ def seed_scheduler_permissions():
         db.commit()
 
         print(f"\n{'='*60}")
-        print(f"Scheduler Permissions Seed Complete")
+        print("Scheduler Permissions Seed Complete")
         print(f"{'='*60}")
         print(f"✓ Created: {created_count} permissions")
         print(f"• Updated: {updated_count} permissions")
@@ -331,6 +327,7 @@ def seed_scheduler_permissions():
         raise
     finally:
         db.close()
+
 
 if __name__ == "__main__":
     seed_scheduler_permissions()

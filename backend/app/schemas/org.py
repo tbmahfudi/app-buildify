@@ -1,20 +1,25 @@
-from pydantic import BaseModel, Field, ConfigDict, field_validator
-from typing import Optional, List
 from datetime import datetime
+from typing import List, Optional
+
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from .base import BaseResponse, UUIDMixin
+
 
 # Company Schemas
 class CompanyBase(BaseModel):
     """Base company schema"""
+
     code: str = Field(..., max_length=32, description="Company code")
     name: str = Field(..., max_length=255, description="Company name")
     description: Optional[str] = Field(None, description="Company description")
 
     model_config = ConfigDict(from_attributes=True)
 
+
 class CompanyCreate(CompanyBase):
     """Create company request"""
+
     tenant_id: str = Field(..., description="Tenant ID")
 
     model_config = ConfigDict(
@@ -23,19 +28,23 @@ class CompanyCreate(CompanyBase):
                 "tenant_id": "123e4567-e89b-12d3-a456-426614174000",
                 "code": "COMP001",
                 "name": "Example Company",
-                "description": "Main company"
+                "description": "Main company",
             }
         }
     )
 
+
 class CompanyUpdate(BaseModel):
     """Update company request"""
+
     code: Optional[str] = Field(None, max_length=32, description="Company code")
     name: Optional[str] = Field(None, max_length=255, description="Company name")
     description: Optional[str] = Field(None, description="Company description")
 
+
 class CompanyResponse(CompanyBase, BaseResponse):
     """Company response"""
+
     id: str = Field(..., description="Company unique identifier")
     tenant_id: str = Field(..., description="Tenant ID")
     created_at: datetime = Field(..., description="Creation timestamp")
@@ -43,9 +52,11 @@ class CompanyResponse(CompanyBase, BaseResponse):
 
     model_config = ConfigDict(from_attributes=True)
 
+
 # Branch Schemas
 class BranchBase(UUIDMixin, BaseModel):
     """Base branch schema"""
+
     company_id: str = Field(..., description="Company ID")
     code: str = Field(..., max_length=32, description="Branch code")
     name: str = Field(..., max_length=255, description="Branch name")
@@ -53,26 +64,28 @@ class BranchBase(UUIDMixin, BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
+
 class BranchCreate(BranchBase):
     """Create branch request"""
+
     model_config = ConfigDict(
         json_schema_extra={
-            "example": {
-                "company_id": "123e4567-e89b-12d3-a456-426614174000",
-                "code": "BR001",
-                "name": "Main Branch"
-            }
+            "example": {"company_id": "123e4567-e89b-12d3-a456-426614174000", "code": "BR001", "name": "Main Branch"}
         }
     )
 
+
 class BranchUpdate(BaseModel):
     """Update branch request"""
+
     code: Optional[str] = Field(None, max_length=32, description="Branch code")
     name: Optional[str] = Field(None, max_length=255, description="Branch name")
     description: Optional[str] = Field(None, description="Branch description")
 
+
 class BranchResponse(BranchBase, BaseResponse):
     """Branch response"""
+
     id: str = Field(..., description="Branch unique identifier")
     tenant_id: str = Field(..., description="Tenant ID")
     created_at: datetime = Field(..., description="Creation timestamp")
@@ -80,9 +93,11 @@ class BranchResponse(BranchBase, BaseResponse):
 
     model_config = ConfigDict(from_attributes=True)
 
+
 # Department Schemas
 class DepartmentBase(UUIDMixin, BaseModel):
     """Base department schema"""
+
     company_id: str = Field(..., description="Company ID")
     branch_id: Optional[str] = Field(None, description="Branch ID (optional)")
     code: str = Field(..., max_length=32, description="Department code")
@@ -91,28 +106,34 @@ class DepartmentBase(UUIDMixin, BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
+
 class DepartmentCreate(DepartmentBase):
     """Create department request"""
+
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
                 "company_id": "123e4567-e89b-12d3-a456-426614174000",
                 "branch_id": "123e4567-e89b-12d3-a456-426614174001",
                 "code": "DEPT001",
-                "name": "IT Department"
+                "name": "IT Department",
             }
         }
     )
 
+
 class DepartmentUpdate(BaseModel):
     """Update department request"""
+
     branch_id: Optional[str] = Field(None, description="Branch ID")
     code: Optional[str] = Field(None, max_length=32, description="Department code")
     name: Optional[str] = Field(None, max_length=255, description="Department name")
     description: Optional[str] = Field(None, description="Department description")
 
+
 class DepartmentResponse(DepartmentBase, BaseResponse):
     """Department response"""
+
     id: str = Field(..., description="Department unique identifier")
     tenant_id: str = Field(..., description="Tenant ID")
     created_at: datetime = Field(..., description="Creation timestamp")
@@ -120,36 +141,46 @@ class DepartmentResponse(DepartmentBase, BaseResponse):
 
     model_config = ConfigDict(from_attributes=True)
 
+
 # List responses
 class CompanyListResponse(BaseModel):
     """List of companies response"""
+
     items: List[CompanyResponse] = Field(..., description="List of companies")
     total: int = Field(..., description="Total count")
     page: Optional[int] = Field(None, description="Current page number")
     page_size: Optional[int] = Field(None, description="Page size")
 
+
 class BranchListResponse(BaseModel):
     """List of branches response"""
+
     items: List[BranchResponse] = Field(..., description="List of branches")
     total: int = Field(..., description="Total count")
     page: Optional[int] = Field(None, description="Current page number")
     page_size: Optional[int] = Field(None, description="Page size")
 
+
 class DepartmentListResponse(BaseModel):
     """List of departments response"""
+
     items: List[DepartmentResponse] = Field(..., description="List of departments")
     total: int = Field(..., description="Total count")
     page: Optional[int] = Field(None, description="Current page number")
     page_size: Optional[int] = Field(None, description="Page size")
 
+
 # Tenant Schemas
 class TenantBase(BaseModel):
     """Base tenant schema"""
+
     name: str = Field(..., max_length=255, description="Tenant name")
     code: str = Field(..., max_length=50, description="Tenant code (unique)")
     description: Optional[str] = Field(None, description="Tenant description")
     subscription_tier: Optional[str] = Field("free", description="Subscription tier (free, basic, premium, enterprise)")
-    subscription_status: Optional[str] = Field("active", description="Subscription status (active, suspended, cancelled)")
+    subscription_status: Optional[str] = Field(
+        "active", description="Subscription status (active, suspended, cancelled)"
+    )
     max_companies: Optional[int] = Field(10, description="Maximum number of companies")
     max_users: Optional[int] = Field(500, description="Maximum number of users")
     max_storage_gb: Optional[int] = Field(10, description="Maximum storage in GB")
@@ -160,6 +191,7 @@ class TenantBase(BaseModel):
     contact_phone: Optional[str] = Field(None, max_length=50, description="Contact phone")
     logo_url: Optional[str] = Field(None, max_length=500, description="Logo URL")
     primary_color: Optional[str] = Field(None, max_length=7, description="Primary brand color (hex)")
+
 
 class TenantCreate(TenantBase):
     """Create tenant request"""
@@ -180,10 +212,11 @@ class TenantCreate(TenantBase):
                 "subscription_tier": "premium",
                 "max_companies": 50,
                 "max_users": 1000,
-                "contact_email": "admin@acme.com"
+                "contact_email": "admin@acme.com",
             }
         }
     )
+
 
 class TenantUpdate(BaseModel):
     """Update tenant request"""
@@ -211,8 +244,10 @@ class TenantUpdate(BaseModel):
     logo_url: Optional[str] = Field(None, max_length=500, description="Logo URL")
     primary_color: Optional[str] = Field(None, max_length=7, description="Primary brand color")
 
+
 class TenantResponse(BaseResponse):
     """Tenant response"""
+
     id: str = Field(..., description="Tenant unique identifier")
     name: str = Field(..., description="Tenant name")
     code: str = Field(..., description="Tenant code")
@@ -239,8 +274,10 @@ class TenantResponse(BaseResponse):
 
     model_config = ConfigDict(from_attributes=True)
 
+
 class TenantListResponse(BaseModel):
     """List of tenants response"""
+
     items: List[TenantResponse] = Field(..., description="List of tenants")
     total: int = Field(..., description="Total count")
     page: Optional[int] = Field(None, description="Current page number")

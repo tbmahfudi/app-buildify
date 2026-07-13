@@ -5,6 +5,8 @@ Models for the no-code platform's lookup/reference configuration feature.
 Enables comprehensive configuration for dropdown fields and data relationships.
 """
 
+from datetime import datetime
+
 from sqlalchemy import (
     Boolean,
     Column,
@@ -18,7 +20,6 @@ from sqlalchemy import (
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
-from datetime import datetime
 
 from .base import GUID, Base, generate_uuid
 
@@ -29,6 +30,7 @@ class LookupConfiguration(Base):
 
     Stores configuration for dropdown fields, reference fields, and data lookups.
     """
+
     __tablename__ = "lookup_configurations"
 
     # Primary Key
@@ -124,8 +126,12 @@ class LookupConfiguration(Base):
 
     # Relationships
     cache_entries = relationship("LookupCache", back_populates="lookup", cascade="all, delete-orphan")
-    parent_rules = relationship("CascadingLookupRule", foreign_keys="CascadingLookupRule.parent_lookup_id", back_populates="parent_lookup")
-    child_rules = relationship("CascadingLookupRule", foreign_keys="CascadingLookupRule.child_lookup_id", back_populates="child_lookup")
+    parent_rules = relationship(
+        "CascadingLookupRule", foreign_keys="CascadingLookupRule.parent_lookup_id", back_populates="parent_lookup"
+    )
+    child_rules = relationship(
+        "CascadingLookupRule", foreign_keys="CascadingLookupRule.child_lookup_id", back_populates="child_lookup"
+    )
 
     # Table constraints
     __table_args__ = (
@@ -141,6 +147,7 @@ class LookupCache(Base):
 
     Caches lookup data for performance optimization.
     """
+
     __tablename__ = "lookup_cache"
 
     # Primary Key
@@ -180,6 +187,7 @@ class CascadingLookupRule(Base):
     Defines parent-child relationships between lookup configurations
     for cascading dropdown functionality.
     """
+
     __tablename__ = "cascading_lookup_rules"
 
     # Primary Key

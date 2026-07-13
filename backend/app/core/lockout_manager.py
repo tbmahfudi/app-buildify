@@ -7,8 +7,9 @@ Manages account lockouts based on failed login attempts with support for:
 - Automatic lockout expiration
 - Manual admin unlock
 """
+
 from datetime import datetime, timedelta
-from typing import Optional, Tuple
+from typing import Optional
 
 from sqlalchemy.orm import Session
 
@@ -32,10 +33,7 @@ class LockoutManager:
         self.security_config = SecurityConfigService(db)
 
     def get_recent_failed_attempts(
-        self,
-        email: str,
-        tenant_id: Optional[str] = None,
-        since_minutes: Optional[int] = None
+        self, email: str, tenant_id: Optional[str] = None, since_minutes: Optional[int] = None
     ) -> int:
         """
         Count recent failed login attempts for an email.
@@ -53,11 +51,11 @@ class LockoutManager:
 
         since_time = datetime.utcnow() - timedelta(minutes=since_minutes)
 
-        count = self.db.query(LoginAttempt).filter(
-            LoginAttempt.email == email,
-            LoginAttempt.success == False,
-            LoginAttempt.created_at >= since_time
-        ).count()
+        count = (
+            self.db.query(LoginAttempt)
+            .filter(LoginAttempt.email == email, LoginAttempt.success == False, LoginAttempt.created_at >= since_time)
+            .count()
+        )
 
         return count
 
@@ -87,10 +85,7 @@ class LockoutManager:
             return base_duration
 
     def apply_lockout(
-        self,
-        user: User,
-        attempt_count: int,
-        reason: str = "Too many failed login attempts"
+        self, user: User, attempt_count: int, reason: str = "Too many failed login attempts"
     ) -> AccountLockout:
         """
         Apply account lockout to a user.
@@ -112,10 +107,7 @@ class LockoutManager:
 
         # Create lockout record
         lockout = AccountLockout(
-            user_id=str(user.id),
-            locked_until=locked_until,
-            lockout_reason=reason,
-            attempt_count=attempt_count
+            user_id=str(user.id), locked_until=locked_until, lockout_reason=reason, attempt_count=attempt_count
         )
         self.db.add(lockout)
         self.db.commit()
@@ -156,7 +148,7 @@ class LockoutManager:
             return
 
         # Count recent failed attempts
-        failed_attempts = self.get_recent_failed_attempts(user.email, user.tenant_id)
+        self.get_recent_failed_attempts(user.email, user.tenant_id)
         max_attempts = self.security_config.get_config("login_max_attempts", user.tenant_id) or 5
 
         # Increment attempt count
@@ -171,6 +163,7 @@ class LockoutManager:
             if notify_on_lockout:
                 try:
                     from app.core.notification_service import NotificationService
+
                     notification_service = NotificationService(self.db)
                     notification_service.queue_notification(
                         tenant_id=user.tenant_id,
@@ -182,21 +175,19 @@ class LockoutManager:
                         template_data={
                             "user_name": user.full_name or user.email,
                             "locked_until": user.locked_until.isoformat(),
-                            "attempt_count": user.failed_login_attempts
-                        }
+                            "attempt_count": user.failed_login_attempts,
+                        },
                     )
                 except Exception as e:
                     # Don't fail the lockout if notification fails
                     import logging
+
                     logging.warning(f"Failed to queue lockout notification for user {user.id}: {e}")
         else:
             self.db.commit()
 
     def unlock_account(
-        self,
-        user: User,
-        unlocked_by_id: Optional[str] = None,
-        reason: str = "Manual unlock by admin"
+        self, user: User, unlocked_by_id: Optional[str] = None, reason: str = "Manual unlock by admin"
     ) -> None:
         """
         Manually unlock a user account.
@@ -211,11 +202,16 @@ class LockoutManager:
         user.failed_login_attempts = 0
 
         # Update most recent active lockout
-        lockout = self.db.query(AccountLockout).filter(
-            AccountLockout.user_id == str(user.id),
-            AccountLockout.unlocked_at == None,
-            AccountLockout.locked_until > datetime.utcnow()
-        ).order_by(AccountLockout.locked_at.desc()).first()
+        lockout = (
+            self.db.query(AccountLockout)
+            .filter(
+                AccountLockout.user_id == str(user.id),
+                AccountLockout.unlocked_at == None,
+                AccountLockout.locked_until > datetime.utcnow(),
+            )
+            .order_by(AccountLockout.locked_at.desc())
+            .first()
+        )
 
         if lockout:
             lockout.unlocked_at = datetime.utcnow()

@@ -13,18 +13,20 @@ This seed file implements the proper RBAC model where:
 Run: python -m app.seeds.seed_rbac_with_groups
 """
 
-import uuid
-from datetime import datetime
-from sqlalchemy.orm import Session
-from app.core.db import SessionLocal
-from app.models.permission import Permission
-from app.models.role import Role
-from app.models.group import Group
-from app.models.rbac_junctions import RolePermission, GroupRole, UserGroup
-from app.models.user import User
-from app.models.tenant import Tenant
 import json as _json
 import os as _os
+import uuid
+from datetime import datetime
+
+from sqlalchemy.orm import Session
+
+from app.core.db import SessionLocal
+from app.models.group import Group
+from app.models.permission import Permission
+from app.models.rbac_junctions import GroupRole, RolePermission, UserGroup
+from app.models.role import Role
+from app.models.tenant import Tenant
+from app.models.user import User
 
 # Baked permission catalog: the exact set a tenant administrator is granted in a
 # working environment (exported from the reference DB). A fresh seed otherwise
@@ -111,70 +113,70 @@ DEFAULT_GROUPS = [
         "name": "Administrators",
         "description": "Full system administrators with complete access",
         "group_type": "team",
-        "roles": ["tenant_admin"]
+        "roles": ["tenant_admin"],
     },
     {
         "code": "managers",
         "name": "Managers",
         "description": "Department and team managers with supervisory access",
         "group_type": "team",
-        "roles": ["manager"]
+        "roles": ["manager"],
     },
     {
         "code": "employees",
         "name": "Employees",
         "description": "Standard employees with operational access",
         "group_type": "team",
-        "roles": ["employee"]
+        "roles": ["employee"],
     },
     {
         "code": "viewers",
         "name": "Viewers",
         "description": "Read-only access for viewing data",
         "group_type": "team",
-        "roles": ["viewer"]
+        "roles": ["viewer"],
     },
     {
         "code": "finance_team",
         "name": "Finance Team",
         "description": "Financial operations and accounting team",
         "group_type": "department",
-        "roles": ["accountant"]
+        "roles": ["accountant"],
     },
     {
         "code": "hr_team",
         "name": "HR Team",
         "description": "Human resources and people operations team",
         "group_type": "department",
-        "roles": ["hr_manager"]
+        "roles": ["hr_manager"],
     },
     {
         "code": "it_support",
         "name": "IT Support",
         "description": "Technical support and system administration",
         "group_type": "team",
-        "roles": ["it_admin"]
+        "roles": ["it_admin"],
     },
     {
         "code": "engineering",
         "name": "Engineering Team",
         "description": "Software development and engineering",
         "group_type": "department",
-        "roles": ["developer"]
+        "roles": ["developer"],
     },
     {
         "code": "sales_team",
         "name": "Sales Team",
         "description": "Sales and business development",
         "group_type": "department",
-        "roles": ["sales_rep"]
+        "roles": ["sales_rep"],
     },
     {
         "code": "marketing_team",
         "name": "Marketing Team",
         "description": "Marketing and communications",
         "group_type": "department",
-        "roles": ["marketer"]
+        "roles": ["marketer"],
     },
     {
         # Public / patient-portal members. NOT an admin-level group.
@@ -182,8 +184,8 @@ DEFAULT_GROUPS = [
         "name": "Patients",
         "description": "Healthcare patient-portal users (self-service, own data only)",
         "group_type": "team",
-        "roles": ["patient"]
-    }
+        "roles": ["patient"],
+    },
 ]
 
 
@@ -198,23 +200,41 @@ DEFAULT_ROLES = [
         "description": "Full administrative access to tenant",
         "role_type": "default",
         "permissions": [
-            "users:read:tenant", "users:create:tenant", "users:update:tenant", "users:delete:tenant",
-            "roles:read:tenant", "roles:create:tenant", "roles:update:tenant", "roles:delete:tenant",
-            "roles:assign_permissions:tenant", "roles:revoke_permissions:tenant",
-            "groups:read:tenant", "groups:create:tenant", "groups:update:tenant", "groups:delete:tenant",
-            "groups:add_members:tenant", "groups:remove_members:tenant",
-            "groups:assign_roles:tenant", "groups:revoke_roles:tenant",
+            "users:read:tenant",
+            "users:create:tenant",
+            "users:update:tenant",
+            "users:delete:tenant",
+            "roles:read:tenant",
+            "roles:create:tenant",
+            "roles:update:tenant",
+            "roles:delete:tenant",
+            "roles:assign_permissions:tenant",
+            "roles:revoke_permissions:tenant",
+            "groups:read:tenant",
+            "groups:create:tenant",
+            "groups:update:tenant",
+            "groups:delete:tenant",
+            "groups:add_members:tenant",
+            "groups:remove_members:tenant",
+            "groups:assign_roles:tenant",
+            "groups:revoke_roles:tenant",
             "permissions:read:tenant",
-            "companies:read:tenant", "companies:create:tenant", "companies:update:tenant",
+            "companies:read:tenant",
+            "companies:create:tenant",
+            "companies:update:tenant",
             "organization:view:tenant",
             # Module & menu management. The menu items gate on modules:manage /
             # menu:manage, but the lifecycle endpoints check the GRANULAR action
             # codes (enable/disable/configure), so a tenant admin needs both the
             # umbrella and the granular module permissions.
-            "modules:manage:tenant", "menu:manage:tenant",
-            "modules:enable:tenant", "modules:disable:tenant",
-            "modules:configure:tenant", "modules:view:tenant", "modules:list:tenant"
-        ]
+            "modules:manage:tenant",
+            "menu:manage:tenant",
+            "modules:enable:tenant",
+            "modules:disable:tenant",
+            "modules:configure:tenant",
+            "modules:view:tenant",
+            "modules:list:tenant",
+        ],
     },
     # NOTE: tenant_admin's permission list is expanded below to the full baked
     # catalog (TENANT_ADMIN_PERM_CODES) so a fresh seed grants a tenant admin the
@@ -224,43 +244,28 @@ DEFAULT_ROLES = [
         "name": "Manager",
         "description": "Department/team manager with supervisory access",
         "role_type": "default",
-        "permissions": [
-            "users:read:tenant",
-            "groups:read:tenant",
-            "roles:read:tenant",
-            "organization:view:tenant"
-        ]
+        "permissions": ["users:read:tenant", "groups:read:tenant", "roles:read:tenant", "organization:view:tenant"],
     },
     {
         "code": "employee",
         "name": "Employee",
         "description": "Standard employee with operational access",
         "role_type": "default",
-        "permissions": [
-            "users:read:own",
-            "roles:read:own",
-            "permissions:read:own"
-        ]
+        "permissions": ["users:read:own", "roles:read:own", "permissions:read:own"],
     },
     {
         "code": "viewer",
         "name": "Viewer",
         "description": "Read-only access to data",
         "role_type": "default",
-        "permissions": [
-            "users:read:own",
-            "roles:read:own"
-        ]
+        "permissions": ["users:read:own", "roles:read:own"],
     },
     {
         "code": "accountant",
         "name": "Accountant",
         "description": "Financial operations access",
         "role_type": "default",
-        "permissions": [
-            "users:read:tenant",
-            "roles:read:own"
-        ]
+        "permissions": ["users:read:tenant", "roles:read:own"],
     },
     {
         "code": "hr_manager",
@@ -275,8 +280,8 @@ DEFAULT_ROLES = [
             "groups:add_members:tenant",
             "groups:remove_members:tenant",
             "roles:read:tenant",
-            "organization:view:tenant"
-        ]
+            "organization:view:tenant",
+        ],
     },
     {
         "code": "it_admin",
@@ -289,38 +294,29 @@ DEFAULT_ROLES = [
             "users:update:tenant",
             "groups:read:tenant",
             "roles:read:tenant",
-            "organization:view:tenant"
-        ]
+            "organization:view:tenant",
+        ],
     },
     {
         "code": "developer",
         "name": "Developer",
         "description": "Software development access",
         "role_type": "default",
-        "permissions": [
-            "users:read:own",
-            "roles:read:own"
-        ]
+        "permissions": ["users:read:own", "roles:read:own"],
     },
     {
         "code": "sales_rep",
         "name": "Sales Representative",
         "description": "Sales operations access",
         "role_type": "default",
-        "permissions": [
-            "users:read:own",
-            "roles:read:own"
-        ]
+        "permissions": ["users:read:own", "roles:read:own"],
     },
     {
         "code": "marketer",
         "name": "Marketing Specialist",
         "description": "Marketing operations access",
         "role_type": "default",
-        "permissions": [
-            "users:read:own",
-            "roles:read:own"
-        ]
+        "permissions": ["users:read:own", "roles:read:own"],
     },
     {
         # Public / patient-portal self-service role. Deliberately minimal:
@@ -330,11 +326,8 @@ DEFAULT_ROLES = [
         "name": "Patient (Portal)",
         "description": "Healthcare patient-portal self-service access (own data only)",
         "role_type": "default",
-        "permissions": [
-            "users:read:own",
-            "users:change_password:own"
-        ]
-    }
+        "permissions": ["users:read:own", "users:change_password:own"],
+    },
 ]
 
 
@@ -351,6 +344,7 @@ if TENANT_ADMIN_PERM_CODES:
 # ============================================================================
 # HELPER FUNCTIONS
 # ============================================================================
+
 
 def create_id():
     """Generate UUID as string."""
@@ -378,19 +372,21 @@ def ensure_permission_catalog(db: Session) -> int:
         if not code or code in existing:
             continue
         parts = code.split(":")
-        db.add(Permission(
-            id=create_id(),
-            code=code,
-            name=p.get("name") or code,
-            description=p.get("description"),
-            resource=p.get("resource") or (parts[0] if parts else code),
-            action=p.get("action") or (parts[1] if len(parts) > 1 else "read"),
-            scope=p.get("scope") or (parts[-1] if len(parts) > 2 else "tenant"),
-            category=p.get("category"),
-            is_active=True,
-            is_system=bool(p.get("is_system")),
-            created_at=datetime.utcnow(),
-        ))
+        db.add(
+            Permission(
+                id=create_id(),
+                code=code,
+                name=p.get("name") or code,
+                description=p.get("description"),
+                resource=p.get("resource") or (parts[0] if parts else code),
+                action=p.get("action") or (parts[1] if len(parts) > 1 else "read"),
+                scope=p.get("scope") or (parts[-1] if len(parts) > 2 else "tenant"),
+                category=p.get("category"),
+                is_active=True,
+                is_system=bool(p.get("is_system")),
+                created_at=datetime.utcnow(),
+            )
+        )
         created += 1
     if created:
         db.flush()
@@ -400,44 +396,44 @@ def ensure_permission_catalog(db: Session) -> int:
 
 def create_roles_for_tenant(db: Session, tenant_id: str):
     """Create default roles for a tenant."""
-    print(f"\n  Creating roles for tenant...")
+    print("\n  Creating roles for tenant...")
 
     created_roles = {}
 
     for role_data in DEFAULT_ROLES:
         # Check if role exists
-        existing = db.query(Role).filter(
-            Role.tenant_id == tenant_id,
-            Role.code == role_data['code']
-        ).first()
+        existing = db.query(Role).filter(Role.tenant_id == tenant_id, Role.code == role_data["code"]).first()
 
         if existing:
             # Role already present — ensure it carries every permission in the
             # current definition (adds newly-introduced perms on re-run, e.g.
             # modules:manage:tenant / menu:manage:tenant for tenant_admin).
             added = 0
-            for perm_code in role_data['permissions']:
+            for perm_code in role_data["permissions"]:
                 permission = get_or_create_permission(db, perm_code)
                 if not permission:
                     continue
-                has = db.query(RolePermission).filter(
-                    RolePermission.role_id == existing.id,
-                    RolePermission.permission_id == permission.id
-                ).first()
+                has = (
+                    db.query(RolePermission)
+                    .filter(RolePermission.role_id == existing.id, RolePermission.permission_id == permission.id)
+                    .first()
+                )
                 if not has:
-                    db.add(RolePermission(
-                        id=create_id(),
-                        role_id=existing.id,
-                        permission_id=permission.id,
-                        created_at=datetime.utcnow()
-                    ))
+                    db.add(
+                        RolePermission(
+                            id=create_id(),
+                            role_id=existing.id,
+                            permission_id=permission.id,
+                            created_at=datetime.utcnow(),
+                        )
+                    )
                     added += 1
             if added:
                 db.flush()
                 print(f"    ✓ Role exists: {role_data['name']} (+{added} new permission(s))")
             else:
                 print(f"    ✓ Role exists: {role_data['name']}")
-            created_roles[role_data['code']] = existing
+            created_roles[role_data["code"]] = existing
             continue
 
         # Create role
@@ -445,30 +441,27 @@ def create_roles_for_tenant(db: Session, tenant_id: str):
         role = Role(
             id=role_id,
             tenant_id=tenant_id,
-            code=role_data['code'],
-            name=role_data['name'],
-            description=role_data['description'],
-            role_type=role_data['role_type'],
+            code=role_data["code"],
+            name=role_data["name"],
+            description=role_data["description"],
+            role_type=role_data["role_type"],
             is_active=True,
             is_system=False,
-            created_at=datetime.utcnow()
+            created_at=datetime.utcnow(),
         )
         db.add(role)
         db.flush()
 
         # Assign permissions to role
-        for perm_code in role_data['permissions']:
+        for perm_code in role_data["permissions"]:
             permission = get_or_create_permission(db, perm_code)
             if permission:
                 role_perm = RolePermission(
-                    id=create_id(),
-                    role_id=role_id,
-                    permission_id=permission.id,
-                    created_at=datetime.utcnow()
+                    id=create_id(), role_id=role_id, permission_id=permission.id, created_at=datetime.utcnow()
                 )
                 db.add(role_perm)
 
-        created_roles[role_data['code']] = role
+        created_roles[role_data["code"]] = role
         print(f"    ✓ Created role: {role_data['name']} ({len(role_data['permissions'])} permissions)")
 
     db.flush()
@@ -477,20 +470,17 @@ def create_roles_for_tenant(db: Session, tenant_id: str):
 
 def create_groups_for_tenant(db: Session, tenant_id: str, company_id: str = None):
     """Create default groups for a tenant."""
-    print(f"\n  Creating groups for tenant...")
+    print("\n  Creating groups for tenant...")
 
     created_groups = {}
 
     for group_data in DEFAULT_GROUPS:
         # Check if group exists
-        existing = db.query(Group).filter(
-            Group.tenant_id == tenant_id,
-            Group.code == group_data['code']
-        ).first()
+        existing = db.query(Group).filter(Group.tenant_id == tenant_id, Group.code == group_data["code"]).first()
 
         if existing:
             print(f"    ✓ Group exists: {group_data['name']}")
-            created_groups[group_data['code']] = existing
+            created_groups[group_data["code"]] = existing
             continue
 
         # Create group
@@ -499,17 +489,17 @@ def create_groups_for_tenant(db: Session, tenant_id: str, company_id: str = None
             id=group_id,
             tenant_id=tenant_id,
             company_id=company_id,  # Can be tenant-wide (None) or company-specific
-            code=group_data['code'],
-            name=group_data['name'],
-            description=group_data['description'],
-            group_type=group_data['group_type'],
+            code=group_data["code"],
+            name=group_data["name"],
+            description=group_data["description"],
+            group_type=group_data["group_type"],
             is_active=True,
-            created_at=datetime.utcnow()
+            created_at=datetime.utcnow(),
         )
         db.add(group)
         db.flush()
 
-        created_groups[group_data['code']] = group
+        created_groups[group_data["code"]] = group
         print(f"    ✓ Created group: {group_data['name']} ({group_data['group_type']})")
 
     db.flush()
@@ -518,34 +508,26 @@ def create_groups_for_tenant(db: Session, tenant_id: str, company_id: str = None
 
 def assign_roles_to_groups(db: Session, groups: dict, roles: dict):
     """Assign roles to groups based on DEFAULT_GROUPS configuration."""
-    print(f"\n  Assigning roles to groups...")
+    print("\n  Assigning roles to groups...")
 
     for group_data in DEFAULT_GROUPS:
-        group = groups.get(group_data['code'])
+        group = groups.get(group_data["code"])
         if not group:
             continue
 
-        for role_code in group_data['roles']:
+        for role_code in group_data["roles"]:
             role = roles.get(role_code)
             if not role:
                 continue
 
             # Check if assignment exists
-            existing = db.query(GroupRole).filter(
-                GroupRole.group_id == group.id,
-                GroupRole.role_id == role.id
-            ).first()
+            existing = db.query(GroupRole).filter(GroupRole.group_id == group.id, GroupRole.role_id == role.id).first()
 
             if existing:
                 continue
 
             # Create assignment
-            group_role = GroupRole(
-                id=create_id(),
-                group_id=group.id,
-                role_id=role.id,
-                created_at=datetime.utcnow()
-            )
+            group_role = GroupRole(id=create_id(), group_id=group.id, role_id=role.id, created_at=datetime.utcnow())
             db.add(group_role)
             print(f"    ✓ Assigned role '{role.name}' to group '{group.name}'")
 
@@ -557,7 +539,7 @@ def assign_users_to_groups(db: Session, tenant_id: str, groups: dict):
     Assign existing users to appropriate groups based on their email or role.
     This is a smart assignment based on common patterns.
     """
-    print(f"\n  Assigning users to groups...")
+    print("\n  Assigning users to groups...")
 
     users = db.query(User).filter(User.tenant_id == tenant_id).all()
 
@@ -567,27 +549,27 @@ def assign_users_to_groups(db: Session, tenant_id: str, groups: dict):
 
         # Smart group assignment based on email patterns.
         # Patients first so portal accounts never land in a staff/admin group.
-        if 'patient' in email:
-            assigned_groups.append('patients')
-        elif any(keyword in email for keyword in ['admin', 'ceo', 'cto', 'cfo']):
-            assigned_groups.append('administrators')
-        elif any(keyword in email for keyword in ['manager', 'director', 'head', 'lead']):
-            assigned_groups.append('managers')
-        elif any(keyword in email for keyword in ['hr', 'people']):
-            assigned_groups.append('hr_team')
-        elif any(keyword in email for keyword in ['finance', 'accounting', 'accountant']):
-            assigned_groups.append('finance_team')
-        elif any(keyword in email for keyword in ['it', 'tech', 'support']):
-            assigned_groups.append('it_support')
-        elif any(keyword in email for keyword in ['dev', 'engineer', 'eng']):
-            assigned_groups.append('engineering')
-        elif any(keyword in email for keyword in ['sales']):
-            assigned_groups.append('sales_team')
-        elif any(keyword in email for keyword in ['marketing', 'marketer']):
-            assigned_groups.append('marketing_team')
+        if "patient" in email:
+            assigned_groups.append("patients")
+        elif any(keyword in email for keyword in ["admin", "ceo", "cto", "cfo"]):
+            assigned_groups.append("administrators")
+        elif any(keyword in email for keyword in ["manager", "director", "head", "lead"]):
+            assigned_groups.append("managers")
+        elif any(keyword in email for keyword in ["hr", "people"]):
+            assigned_groups.append("hr_team")
+        elif any(keyword in email for keyword in ["finance", "accounting", "accountant"]):
+            assigned_groups.append("finance_team")
+        elif any(keyword in email for keyword in ["it", "tech", "support"]):
+            assigned_groups.append("it_support")
+        elif any(keyword in email for keyword in ["dev", "engineer", "eng"]):
+            assigned_groups.append("engineering")
+        elif any(keyword in email for keyword in ["sales"]):
+            assigned_groups.append("sales_team")
+        elif any(keyword in email for keyword in ["marketing", "marketer"]):
+            assigned_groups.append("marketing_team")
         else:
             # Default to employees group
-            assigned_groups.append('employees')
+            assigned_groups.append("employees")
 
         # Assign to groups
         for group_code in assigned_groups:
@@ -596,21 +578,13 @@ def assign_users_to_groups(db: Session, tenant_id: str, groups: dict):
                 continue
 
             # Check if already assigned
-            existing = db.query(UserGroup).filter(
-                UserGroup.user_id == user.id,
-                UserGroup.group_id == group.id
-            ).first()
+            existing = db.query(UserGroup).filter(UserGroup.user_id == user.id, UserGroup.group_id == group.id).first()
 
             if existing:
                 continue
 
             # Create assignment
-            user_group = UserGroup(
-                id=create_id(),
-                user_id=user.id,
-                group_id=group.id,
-                created_at=datetime.utcnow()
-            )
+            user_group = UserGroup(id=create_id(), user_id=user.id, group_id=group.id, created_at=datetime.utcnow())
             db.add(user_group)
             print(f"    ✓ Added '{user.email}' to group '{group.name}'")
 
@@ -664,6 +638,7 @@ def seed_all_tenants(db: Session):
         except Exception as e:
             print(f"\n❌ Error setting up RBAC for {tenant.name}: {str(e)}")
             import traceback
+
             traceback.print_exc()
             db.rollback()
             continue
@@ -699,11 +674,12 @@ def print_summary(db: Session):
 # MAIN EXECUTION
 # ============================================================================
 
+
 def main():
     """Main seeding function."""
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("RBAC SETUP WITH GROUP-BASED ACCESS CONTROL")
-    print("="*70)
+    print("=" * 70)
     print("\nThis will:")
     print("  1. Create default roles for each tenant")
     print("  2. Create default groups (Administrators, Managers, etc.)")
@@ -711,10 +687,10 @@ def main():
     print("  4. Assign existing users to appropriate groups")
     print()
     print(RECOMMENDED_GROUPS)
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
 
     response = input("\nContinue with RBAC setup? (yes/no): ").strip().lower()
-    if response != 'yes':
+    if response != "yes":
         print("Aborted.")
         return
 
@@ -737,6 +713,7 @@ def main():
     except Exception as e:
         print(f"\n❌ RBAC setup failed: {str(e)}")
         import traceback
+
         traceback.print_exc()
         db.rollback()
         raise

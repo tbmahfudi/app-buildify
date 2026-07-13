@@ -11,6 +11,7 @@ class Tenant(Base):
     A tenant represents a customer/organization that can have multiple companies.
     All data is isolated at the tenant level.
     """
+
     __tablename__ = "tenants"
 
     # Primary key

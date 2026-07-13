@@ -1,31 +1,25 @@
+import json
+import uuid
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-import uuid
-import json
 
-from app.core.dependencies import get_db, get_current_user, has_permission
-from app.models.user import User
-from app.models.settings import UserSettings, TenantSettings
-from app.schemas.settings import (
-    UserSettingsResponse, UserSettingsUpdate,
-    TenantSettingsResponse, TenantSettingsUpdate
-)
 from app.core.audit import create_audit_log
+from app.core.dependencies import get_current_user, get_db, has_permission
+from app.models.settings import TenantSettings, UserSettings
+from app.models.user import User
+from app.schemas.settings import TenantSettingsResponse, TenantSettingsUpdate, UserSettingsResponse, UserSettingsUpdate
 
 router = APIRouter(prefix="/api/v1/settings", tags=["settings"])
 
 # ============= USER SETTINGS =============
 
+
 @router.get("/user", response_model=UserSettingsResponse)
-def get_user_settings(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("settings:read:own"))
-):
+def get_user_settings(db: Session = Depends(get_db), current_user: User = Depends(has_permission("settings:read:own"))):
     """Get current user's settings - requires settings:read:own"""
-    settings = db.query(UserSettings).filter(
-        UserSettings.user_id == str(current_user.id)
-    ).first()
-    
+    settings = db.query(UserSettings).filter(UserSettings.user_id == str(current_user.id)).first()
+
     if not settings:
         # Create default settings
         settings = UserSettings(
@@ -34,12 +28,12 @@ def get_user_settings(
             theme="light",
             language="en",
             timezone="UTC",
-            density="normal"
+            density="normal",
         )
         db.add(settings)
         db.commit()
         db.refresh(settings)
-    
+
     # Parse preferences JSON
     preferences = None
     if settings.preferences:
@@ -57,20 +51,19 @@ def get_user_settings(
         density=settings.density,
         preferences=preferences,
         created_at=settings.created_at,
-        updated_at=settings.updated_at
+        updated_at=settings.updated_at,
     )
+
 
 @router.put("/user", response_model=UserSettingsResponse)
 def update_user_settings(
     updates: UserSettingsUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("settings:update:own"))
+    current_user: User = Depends(has_permission("settings:update:own")),
 ):
     """Update current user's settings - requires settings:update:own"""
-    settings = db.query(UserSettings).filter(
-        UserSettings.user_id == str(current_user.id)
-    ).first()
-    
+    settings = db.query(UserSettings).filter(UserSettings.user_id == str(current_user.id)).first()
+
     if not settings:
         # Create new settings
         settings = UserSettings(
@@ -80,7 +73,7 @@ def update_user_settings(
             language=updates.language or "en",
             timezone=updates.timezone or "UTC",
             density=updates.density or "normal",
-            preferences=json.dumps(updates.preferences) if updates.preferences else None
+            preferences=json.dumps(updates.preferences) if updates.preferences else None,
         )
         db.add(settings)
     else:
@@ -95,10 +88,10 @@ def update_user_settings(
             settings.density = updates.density
         if updates.preferences is not None:
             settings.preferences = json.dumps(updates.preferences)
-    
+
     db.commit()
     db.refresh(settings)
-    
+
     # Audit
     create_audit_log(
         db=db,
@@ -106,9 +99,9 @@ def update_user_settings(
         user=current_user,
         entity_type="user_settings",
         entity_id=str(settings.id),
-        status="success"
+        status="success",
     )
-    
+
     preferences = None
     if settings.preferences:
         try:
@@ -125,16 +118,18 @@ def update_user_settings(
         density=settings.density,
         preferences=preferences,
         created_at=settings.created_at,
-        updated_at=settings.updated_at
+        updated_at=settings.updated_at,
     )
 
+
 # ============= TENANT SETTINGS =============
+
 
 @router.get("/tenant", response_model=TenantSettingsResponse)
 def get_tenant_settings(
     tenant_id: str = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("settings:read:tenant"))
+    current_user: User = Depends(has_permission("settings:read:tenant")),
 ):
     """Get tenant settings (uses current user's tenant if not specified) - requires settings:read:tenant"""
 
@@ -155,27 +150,22 @@ def get_tenant_settings(
             settings=None,
             created_at=None,
             updated_at=None,
-            updated_by=None
+            updated_by=None,
         )
 
     # Check permissions
     if tenant_id and str(tenant_id) != str(current_user.tenant_id) and not current_user.is_superuser:
         raise HTTPException(status_code=403, detail="Cannot access other tenant's settings")
-    
-    settings = db.query(TenantSettings).filter(
-        TenantSettings.tenant_id == target_tenant  # tenant_scope
-    ).first()
-    
+
+    settings = db.query(TenantSettings).filter(TenantSettings.tenant_id == target_tenant).first()  # tenant_scope
+
     if not settings:
         # Create default settings
-        settings = TenantSettings(
-            id=str(uuid.uuid4()),
-            tenant_id=target_tenant
-        )
+        settings = TenantSettings(id=str(uuid.uuid4()), tenant_id=target_tenant)
         db.add(settings)
         db.commit()
         db.refresh(settings)
-    
+
     # Parse JSON fields
     theme_config = json.loads(settings.theme_config) if settings.theme_config else None
     enabled_features = json.loads(settings.enabled_features) if settings.enabled_features else None
@@ -193,18 +183,19 @@ def get_tenant_settings(
         settings=tenant_settings,
         created_at=settings.created_at,
         updated_at=settings.updated_at,
-        updated_by=settings.updated_by
+        updated_by=settings.updated_by,
     )
+
 
 @router.put("/tenant", response_model=TenantSettingsResponse)
 def update_tenant_settings(
     updates: TenantSettingsUpdate,
     tenant_id: str = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("settings:update:tenant"))
+    current_user: User = Depends(has_permission("settings:update:tenant")),
 ):
     """Update tenant settings - requires settings:update:tenant"""
-    
+
     # Determine tenant_id — always resolve to str so VARCHAR filter works (DEF-025)
     target_tenant = tenant_id or (str(current_user.tenant_id) if current_user.tenant_id else None)
 
@@ -214,11 +205,9 @@ def update_tenant_settings(
     # Check permissions — use str() on both sides to handle UUID vs str (DEF-026)
     if tenant_id and str(tenant_id) != str(current_user.tenant_id) and not current_user.is_superuser:
         raise HTTPException(status_code=403, detail="Cannot modify other tenant's settings")
-    
-    settings = db.query(TenantSettings).filter(
-        TenantSettings.tenant_id == target_tenant  # tenant_scope
-    ).first()
-    
+
+    settings = db.query(TenantSettings).filter(TenantSettings.tenant_id == target_tenant).first()  # tenant_scope
+
     if not settings:
         # Create new
         settings = TenantSettings(
@@ -231,7 +220,7 @@ def update_tenant_settings(
             theme_config=json.dumps(updates.theme_config) if updates.theme_config else None,
             enabled_features=json.dumps(updates.enabled_features) if updates.enabled_features else None,
             settings=json.dumps(updates.settings) if updates.settings else None,
-            updated_by=str(current_user.id)
+            updated_by=str(current_user.id),
         )
         db.add(settings)
     else:
@@ -250,12 +239,12 @@ def update_tenant_settings(
             settings.enabled_features = json.dumps(updates.enabled_features)
         if updates.settings is not None:
             settings.settings = json.dumps(updates.settings)
-        
+
         settings.updated_by = str(current_user.id)
-    
+
     db.commit()
     db.refresh(settings)
-    
+
     # Audit
     create_audit_log(
         db=db,
@@ -264,9 +253,9 @@ def update_tenant_settings(
         entity_type="tenant_settings",
         entity_id=str(settings.id),
         context_info={"tenant_id": target_tenant},
-        status="success"
+        status="success",
     )
-    
+
     # Parse for response
     theme_config = json.loads(settings.theme_config) if settings.theme_config else None
     enabled_features = json.loads(settings.enabled_features) if settings.enabled_features else None
@@ -284,7 +273,7 @@ def update_tenant_settings(
         settings=tenant_settings,
         created_at=settings.created_at,
         updated_at=settings.updated_at,
-        updated_by=settings.updated_by
+        updated_by=settings.updated_by,
     )
 
 
@@ -306,9 +295,12 @@ def list_email_templates(
 ):
     """List available email templates and any tenant overrides. Story 14.2.2"""
     from app.models.notification_config import NotificationConfig
-    nc = db.query(NotificationConfig).filter(
-        NotificationConfig.tenant_id == current_user.tenant_id  # tenant_scope
-    ).first()
+
+    nc = (
+        db.query(NotificationConfig)
+        .filter(NotificationConfig.tenant_id == current_user.tenant_id)  # tenant_scope
+        .first()
+    )
     overrides = {}
     if nc and getattr(nc, "email_template_overrides", None):
         overrides = nc.email_template_overrides or {}
@@ -333,12 +325,15 @@ def update_email_template(
 ):
     """Override subject/body for an email template per tenant. Story 14.2.2"""
     from app.models.notification_config import NotificationConfig
+
     if template_name not in AVAILABLE_EMAIL_TEMPLATES:
         raise HTTPException(status_code=404, detail=f"Template '{template_name}' not found")
 
-    nc = db.query(NotificationConfig).filter(
-        NotificationConfig.tenant_id == current_user.tenant_id  # tenant_scope
-    ).first()
+    nc = (
+        db.query(NotificationConfig)
+        .filter(NotificationConfig.tenant_id == current_user.tenant_id)  # tenant_scope
+        .first()
+    )
     if not nc:
         raise HTTPException(status_code=404, detail="Notification config not found for this tenant")
 

@@ -18,6 +18,6 @@ Usage:
 from .seed_complete_org import *
 from .seed_entity_metadata import *
 from .seed_financial_rbac import *
-from .seed_module_management_rbac import *
 from .seed_menu_items import *
 from .seed_menu_management_rbac import *
+from .seed_module_management_rbac import *

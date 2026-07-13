@@ -9,6 +9,7 @@ class PasswordResetToken(Base):
     Secure password reset tokens with expiration.
     Tokens are hashed before storage for security.
     """
+
     __tablename__ = "password_reset_tokens"
 
     # Primary key
@@ -43,6 +44,7 @@ class PasswordResetToken(Base):
     def is_valid(self) -> bool:
         """Check if token is still valid."""
         from datetime import datetime, timezone
+
         if self.used_at is not None:
             return False  # Already used
         return datetime.now(timezone.utc) < self.expires_at
@@ -51,4 +53,5 @@ class PasswordResetToken(Base):
     def is_expired(self) -> bool:
         """Check if token has expired."""
         from datetime import datetime, timezone
+
         return datetime.now(timezone.utc) >= self.expires_at

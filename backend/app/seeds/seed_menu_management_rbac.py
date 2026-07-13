@@ -10,12 +10,12 @@ Run: python -m app.seeds.seed_menu_management_rbac [TENANT_CODE]
 
 import uuid
 from datetime import datetime
-from sqlalchemy.orm import Session
+
 from app.core.db import SessionLocal
-from app.models.permission import Permission
-from app.models.role import Role
 from app.models.group import Group
-from app.models.rbac_junctions import RolePermission, GroupRole
+from app.models.permission import Permission
+from app.models.rbac_junctions import GroupRole, RolePermission
+from app.models.role import Role
 from app.models.tenant import Tenant
 
 
@@ -37,9 +37,9 @@ def seed_menu_management_rbac(tenant_code=None):
     db = SessionLocal()
 
     try:
-        print("\n" + "="*80)
+        print("\n" + "=" * 80)
         print("MENU MANAGEMENT RBAC SETUP")
-        print("="*80 + "\n")
+        print("=" * 80 + "\n")
 
         # ========================================================================
         # STEP 1: Verify Menu Permissions Exist
@@ -51,7 +51,7 @@ def seed_menu_management_rbac(tenant_code=None):
             "menu:create:tenant",
             "menu:update:tenant",
             "menu:delete:tenant",
-            "menu:manage:tenant"
+            "menu:manage:tenant",
         ]
 
         permission_map = {}
@@ -71,7 +71,7 @@ def seed_menu_management_rbac(tenant_code=None):
             print("\n💡 Solution:")
             print("   Run the menu items seed first to create permissions:")
             print("   python -m app.seeds.seed_menu_items")
-            print("\n" + "="*80 + "\n")
+            print("\n" + "=" * 80 + "\n")
             return 0
 
         print(f"\n✓ All {len(required_permissions)} menu permissions found")
@@ -83,9 +83,9 @@ def seed_menu_management_rbac(tenant_code=None):
         groups_created = 0
 
         if not tenant_code:
-            print("\n" + "="*80)
+            print("\n" + "=" * 80)
             print("ℹ️  NO TENANT SPECIFIED")
-            print("="*80)
+            print("=" * 80)
             print("\nTo create menu management roles and groups, provide a tenant code:")
             print("\nAvailable tenants:")
 
@@ -96,12 +96,12 @@ def seed_menu_management_rbac(tenant_code=None):
                 for tenant in tenants:
                     print(f"  • {tenant.name} (code: {tenant.code})")
 
-                print(f"\nUsage:")
-                print(f"  python -m app.seeds.seed_menu_management_rbac [TENANT_CODE]")
-                print(f"\nExample:")
+                print("\nUsage:")
+                print("  python -m app.seeds.seed_menu_management_rbac [TENANT_CODE]")
+                print("\nExample:")
                 print(f"  python -m app.seeds.seed_menu_management_rbac {tenants[0].code}")
 
-            print("\n" + "="*80 + "\n")
+            print("\n" + "=" * 80 + "\n")
             return 0
 
         print(f"\n👥 Step 2: Creating menu management roles and groups for tenant '{tenant_code}'...")
@@ -114,7 +114,7 @@ def seed_menu_management_rbac(tenant_code=None):
             tenants = db.query(Tenant).all()
             for t in tenants:
                 print(f"  • {t.name} (code: {t.code})")
-            print("\n" + "="*80 + "\n")
+            print("\n" + "=" * 80 + "\n")
             return 0
 
         print(f"  ✓ Found tenant: {tenant.name}")
@@ -129,25 +129,20 @@ def seed_menu_management_rbac(tenant_code=None):
                     "menu:create:tenant",
                     "menu:update:tenant",
                     "menu:delete:tenant",
-                    "menu:manage:tenant"
-                ]
+                    "menu:manage:tenant",
+                ],
             },
             "Menu Viewer": {
                 "code": "MENU_VIEWER",
                 "description": "View-only access to menu items",
-                "permissions": [
-                    "menu:read:tenant"
-                ]
-            }
+                "permissions": ["menu:read:tenant"],
+            },
         }
 
         role_map = {}
         for role_name, role_config in roles_config.items():
             # Check if role exists
-            role = db.query(Role).filter(
-                Role.code == role_config["code"],
-                Role.tenant_id == tenant.id
-            ).first()
+            role = db.query(Role).filter(Role.code == role_config["code"], Role.tenant_id == tenant.id).first()
 
             if not role:
                 role = Role(
@@ -156,7 +151,7 @@ def seed_menu_management_rbac(tenant_code=None):
                     description=role_config["description"],
                     tenant_id=tenant.id,
                     is_active=True,
-                    created_at=datetime.utcnow()
+                    created_at=datetime.utcnow(),
                 )
                 db.add(role)
                 db.flush()
@@ -170,17 +165,18 @@ def seed_menu_management_rbac(tenant_code=None):
                 perm = permission_map.get(perm_code)
                 if perm:
                     # Check if permission already assigned
-                    existing = db.query(RolePermission).filter(
-                        RolePermission.role_id == role.id,
-                        RolePermission.permission_id == perm.id
-                    ).first()
+                    existing = (
+                        db.query(RolePermission)
+                        .filter(RolePermission.role_id == role.id, RolePermission.permission_id == perm.id)
+                        .first()
+                    )
 
                     if not existing:
                         role_perm = RolePermission(
                             id=str(uuid.uuid4()),
                             role_id=str(role.id),
                             permission_id=str(perm.id),
-                            created_at=datetime.utcnow()
+                            created_at=datetime.utcnow(),
                         )
                         db.add(role_perm)
                         print(f"    ✓ Assigned permission: {perm_code}")
@@ -194,23 +190,27 @@ def seed_menu_management_rbac(tenant_code=None):
                 "code": "MENU_ADMINS",
                 "description": "Users who can manage menu items for the tenant",
                 "roles": ["Menu Administrator"],
-                "group_type": "team"
+                "group_type": "team",
             },
             "Menu Viewers": {
                 "code": "MENU_VIEWERS",
                 "description": "Users who can view menu items",
                 "roles": ["Menu Viewer"],
-                "group_type": "team"
-            }
+                "group_type": "team",
+            },
         }
 
         for group_name, group_config in groups_config.items():
             # Check if group exists
-            group = db.query(Group).filter(
-                Group.code == group_config["code"],
-                Group.tenant_id == tenant.id,
-                Group.company_id == None  # Tenant-wide group
-            ).first()
+            group = (
+                db.query(Group)
+                .filter(
+                    Group.code == group_config["code"],
+                    Group.tenant_id == tenant.id,
+                    Group.company_id == None,  # Tenant-wide group
+                )
+                .first()
+            )
 
             if not group:
                 group = Group(
@@ -221,7 +221,7 @@ def seed_menu_management_rbac(tenant_code=None):
                     company_id=None,  # Tenant-wide
                     group_type=group_config["group_type"],
                     is_active=True,
-                    created_at=datetime.utcnow()
+                    created_at=datetime.utcnow(),
                 )
                 db.add(group)
                 db.flush()
@@ -235,17 +235,16 @@ def seed_menu_management_rbac(tenant_code=None):
                 role = role_map.get(role_name)
                 if role:
                     # Check if role already assigned to group
-                    existing = db.query(GroupRole).filter(
-                        GroupRole.group_id == group.id,
-                        GroupRole.role_id == role.id
-                    ).first()
+                    existing = (
+                        db.query(GroupRole).filter(GroupRole.group_id == group.id, GroupRole.role_id == role.id).first()
+                    )
 
                     if not existing:
                         group_role = GroupRole(
                             id=str(uuid.uuid4()),
                             group_id=str(group.id),
                             role_id=str(role.id),
-                            created_at=datetime.utcnow()
+                            created_at=datetime.utcnow(),
                         )
                         db.add(group_role)
                         print(f"    ✓ Assigned role '{role_name}' to group '{group_name}'")
@@ -257,35 +256,35 @@ def seed_menu_management_rbac(tenant_code=None):
         # ========================================================================
         # SUMMARY
         # ========================================================================
-        print("\n" + "="*80)
+        print("\n" + "=" * 80)
         print("✅ MENU MANAGEMENT RBAC SETUP COMPLETE!")
-        print("="*80)
+        print("=" * 80)
 
-        print(f"\n📋 Menu Permissions:")
-        print(f"   • menu:read:tenant - View menu items")
-        print(f"   • menu:create:tenant - Create menu items")
-        print(f"   • menu:update:tenant - Update menu items")
-        print(f"   • menu:delete:tenant - Delete menu items")
-        print(f"   • menu:manage:tenant - Full menu management access")
+        print("\n📋 Menu Permissions:")
+        print("   • menu:read:tenant - View menu items")
+        print("   • menu:create:tenant - Create menu items")
+        print("   • menu:update:tenant - Update menu items")
+        print("   • menu:delete:tenant - Delete menu items")
+        print("   • menu:manage:tenant - Full menu management access")
 
         if tenant_code and (roles_created > 0 or groups_created > 0):
             print(f"\n👥 Roles and Groups Created for tenant '{tenant_code}':")
-            print(f"   • Menu Administrator role → Menu Administrators group")
-            print(f"     (Full menu management: create, update, delete, reorder)")
-            print(f"   • Menu Viewer role → Menu Viewers group")
-            print(f"     (View-only access)")
+            print("   • Menu Administrator role → Menu Administrators group")
+            print("     (Full menu management: create, update, delete, reorder)")
+            print("   • Menu Viewer role → Menu Viewers group")
+            print("     (View-only access)")
 
-        print(f"\n🎯 Next Steps:")
-        print(f"   1. Superusers automatically have all menu management permissions")
+        print("\n🎯 Next Steps:")
+        print("   1. Superusers automatically have all menu management permissions")
         if tenant_code and (groups_created > 0 or roles_created > 0):
-            print(f"   2. Add tenant admins to 'Menu Administrators' group for full menu management")
-            print(f"   3. Add users to 'Menu Viewers' group for view-only access")
-            print(f"   4. Access menu management at /api/v1/menu")
+            print("   2. Add tenant admins to 'Menu Administrators' group for full menu management")
+            print("   3. Add users to 'Menu Viewers' group for view-only access")
+            print("   4. Access menu management at /api/v1/menu")
         else:
-            print(f"   2. Roles and groups already exist - check group membership")
-            print(f"   3. Access menu management at /api/v1/menu")
+            print("   2. Roles and groups already exist - check group membership")
+            print("   3. Access menu management at /api/v1/menu")
 
-        print("\n" + "="*80 + "\n")
+        print("\n" + "=" * 80 + "\n")
 
         return roles_created + groups_created
 
@@ -293,6 +292,7 @@ def seed_menu_management_rbac(tenant_code=None):
         print(f"\n❌ ERROR: {e}")
         db.rollback()
         import traceback
+
         traceback.print_exc()
         return 0
     finally:

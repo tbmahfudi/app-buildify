@@ -17,6 +17,7 @@ def get_limiter_key(request):
     if auth_header and auth_header.startswith("Bearer "):
         try:
             from .auth import decode_token
+
             token = auth_header.replace("Bearer ", "")
             payload = decode_token(token)
             if payload and payload.get("sub"):

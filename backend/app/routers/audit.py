@@ -1,30 +1,29 @@
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
-from sqlalchemy import and_, cast, String
-from typing import List
-from uuid import UUID
 import json
+from uuid import UUID
 
-from app.core.dependencies import get_db, get_current_user, has_permission
-from app.models.user import User
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import String, cast
+from sqlalchemy.orm import Session
+
+from app.core.dependencies import get_db, has_permission
 from app.models.audit import AuditLog
-from app.schemas.audit import (
-    AuditLogResponse, AuditLogListRequest, AuditLogListResponse
-)
+from app.models.user import User
+from app.schemas.audit import AuditLogListRequest, AuditLogListResponse, AuditLogResponse
 
 router = APIRouter(prefix="/api/v1/audit", tags=["audit"])
+
 
 @router.post("/list", response_model=AuditLogListResponse)
 def list_audit_logs(
     request: AuditLogListRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("audit:read:tenant"))
+    current_user: User = Depends(has_permission("audit:read:tenant")),
 ):
     """List audit logs with filters - requires audit:read:tenant"""
-    
+
     # Base query
     query = db.query(AuditLog)
-    
+
     # Non-superusers can only see their own tenant's logs
     if not current_user.is_superuser and current_user.tenant_id:
         # AuditLog.tenant_id is Column(GUID) in the model but the live DB column is
@@ -32,42 +31,42 @@ def list_audit_logs(
         # `== str(...)` still binds ::UUID and Postgres rejects "character varying = uuid".
         # Cast the column to String so the comparison happens as text (DEF-020 pattern).
         query = query.filter(cast(AuditLog.tenant_id, String) == str(current_user.tenant_id))  # tenant_scope
-    
+
     # Apply filters
     if request.user_id:
         query = query.filter(AuditLog.user_id == request.user_id)
-    
+
     if request.action:
         query = query.filter(AuditLog.action == request.action)
-    
+
     if request.entity_type:
         query = query.filter(AuditLog.entity_type == request.entity_type)
-    
+
     if request.entity_id:
         query = query.filter(AuditLog.entity_id == request.entity_id)
-    
+
     if request.status:
         query = query.filter(AuditLog.status == request.status)
-    
+
     if request.start_date:
         query = query.filter(AuditLog.created_at >= request.start_date)
-    
+
     if request.end_date:
         query = query.filter(AuditLog.created_at <= request.end_date)
-    
+
     # Get total
     total = query.count()
-    
+
     # Order by created_at desc
     query = query.order_by(AuditLog.created_at.desc())
-    
+
     # Pagination
     offset = (request.page - 1) * request.page_size
     query = query.offset(offset).limit(request.page_size)
-    
+
     # Execute
     logs = query.all()
-    
+
     # Parse JSON fields
     result_logs = []
     for log in logs:
@@ -84,10 +83,10 @@ def list_audit_logs(
             "ip_address": log.ip_address,
             "status": log.status,
             "error_message": log.error_message,
-            "created_at": log.created_at
+            "created_at": log.created_at,
         }
         result_logs.append(AuditLogResponse(**log_dict))
-    
+
     # Calculate pagination flags
     has_next = (request.page * request.page_size) < total
     has_prev = request.page > 1
@@ -99,8 +98,9 @@ def list_audit_logs(
         page=request.page,
         page_size=request.page_size,
         has_next=has_next,
-        has_prev=has_prev
+        has_prev=has_prev,
     )
+
 
 def _get_audit_summary_impl(db: Session, current_user: User):
     """Implementation for audit statistics summary"""
@@ -116,39 +116,42 @@ def _get_audit_summary_impl(db: Session, current_user: User):
 
     # Top actions
     from sqlalchemy import func
-    top_actions = db.query(
-        AuditLog.action,
-        func.count(AuditLog.id).label('count')
-    ).group_by(AuditLog.action).order_by(func.count(AuditLog.id).desc()).limit(10).all()
+
+    top_actions = (
+        db.query(AuditLog.action, func.count(AuditLog.id).label("count"))
+        .group_by(AuditLog.action)
+        .order_by(func.count(AuditLog.id).desc())
+        .limit(10)
+        .all()
+    )
 
     return {
         "total_logs": total,
         "success_count": success,
         "failed_count": failed,
-        "top_actions": [{"action": a[0], "count": a[1]} for a in top_actions]
+        "top_actions": [{"action": a[0], "count": a[1]} for a in top_actions],
     }
+
 
 @router.get("/summary")
 def get_audit_summary_short(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("audit:summary:read:tenant"))
+    db: Session = Depends(get_db), current_user: User = Depends(has_permission("audit:summary:read:tenant"))
 ):
     """Get audit statistics summary (short path) - requires audit:summary:read:tenant"""
     return _get_audit_summary_impl(db, current_user)
 
+
 @router.get("/stats/summary")
 def get_audit_summary(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("audit:summary:read:tenant"))
+    db: Session = Depends(get_db), current_user: User = Depends(has_permission("audit:summary:read:tenant"))
 ):
     """Get audit statistics summary - requires audit:summary:read:tenant"""
     return _get_audit_summary_impl(db, current_user)
 
+
 @router.get("/{log_id}", response_model=AuditLogResponse)
 def get_audit_log(
-    log_id: UUID,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("audit:read:tenant"))
+    log_id: UUID, db: Session = Depends(get_db), current_user: User = Depends(has_permission("audit:read:tenant"))
 ):
     """Get a specific audit log - requires audit:read:tenant"""
     log = db.query(AuditLog).filter(AuditLog.id == str(log_id)).first()
@@ -174,5 +177,5 @@ def get_audit_log(
         ip_address=log.ip_address,
         status=log.status,
         error_message=log.error_message,
-        created_at=log.created_at
+        created_at=log.created_at,
     )

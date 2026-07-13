@@ -5,26 +5,26 @@ Business logic for the Automation System feature.
 Handles trigger detection and action execution.
 """
 
-from typing import List, Optional
-from uuid import UUID
 from datetime import datetime
+from typing import Optional
+from uuid import UUID
 
-from sqlalchemy.orm import Session
 from fastapi import HTTPException, status
+from sqlalchemy.orm import Session
 
+from app.core.scope import apply_tenant_scope
 from app.models.automation import (
-    AutomationRule,
-    AutomationExecution,
     ActionTemplate,
+    AutomationExecution,
+    AutomationRule,
     WebhookConfig,
 )
-from app.core.scope import apply_tenant_scope
 from app.schemas.automation import (
     AutomationRuleCreate,
     AutomationRuleUpdate,
+    AutomationTestRequest,
     WebhookConfigCreate,
     WebhookConfigUpdate,
-    AutomationTestRequest,
 )
 
 
@@ -42,8 +42,7 @@ class AutomationService:
         """Create a new automation rule"""
         # Check if rule name already exists
         existing_q = self.db.query(AutomationRule).filter(
-            AutomationRule.name == rule_data.name,
-            AutomationRule.is_deleted == False
+            AutomationRule.name == rule_data.name, AutomationRule.is_deleted == False
         )
         existing_q = apply_tenant_scope(existing_q, AutomationRule, self.current_user)
         existing = existing_q.first()
@@ -51,14 +50,14 @@ class AutomationService:
         if existing:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Automation rule with name '{rule_data.name}' already exists"
+                detail=f"Automation rule with name '{rule_data.name}' already exists",
             )
 
         rule = AutomationRule(
             **rule_data.model_dump(),
             tenant_id=self.tenant_id,
             created_by=self.current_user.id,
-            updated_by=self.current_user.id
+            updated_by=self.current_user.id,
         )
 
         self.db.add(rule)
@@ -73,21 +72,22 @@ class AutomationService:
         trigger_type: Optional[str] = None,
         category: Optional[str] = None,
         is_active: Optional[bool] = None,
-        include_platform: bool = True
+        include_platform: bool = True,
     ):
         """List all automation rules (tenant-specific and optionally platform-level)"""
         from sqlalchemy import or_
 
         # Build tenant filter: include current tenant and optionally platform-level (tenant_id=NULL)
-        query = self.db.query(AutomationRule).filter(
-            AutomationRule.is_deleted == False
-        )
+        query = self.db.query(AutomationRule).filter(AutomationRule.is_deleted == False)
         if include_platform:
             _tid = self.current_user.tenant_id  # tenant_scope: or_() platform-include
-            query = query.filter(or_(
-                AutomationRule.tenant_id == None,  # tenant-scope-ok (platform-level None check — or_() intentional cross-scope)
-                AutomationRule.tenant_id == _tid  # tenant-scope-ok (or_() platform-include branch)
-            ))
+            query = query.filter(
+                or_(
+                    AutomationRule.tenant_id
+                    == None,  # tenant-scope-ok (platform-level None check — or_() intentional cross-scope)
+                    AutomationRule.tenant_id == _tid,  # tenant-scope-ok (or_() platform-include branch)
+                )
+            )
         else:
             query = apply_tenant_scope(query, AutomationRule, self.current_user)
 
@@ -107,25 +107,22 @@ class AutomationService:
         from sqlalchemy import or_
 
         # Build tenant filter
-        rule_q = self.db.query(AutomationRule).filter(
-            AutomationRule.id == rule_id,
-            AutomationRule.is_deleted == False
-        )
+        rule_q = self.db.query(AutomationRule).filter(AutomationRule.id == rule_id, AutomationRule.is_deleted == False)
         if include_platform:
             _tid = self.current_user.tenant_id  # tenant_scope: or_() platform-include
-            rule_q = rule_q.filter(or_(
-                AutomationRule.tenant_id == None,  # tenant-scope-ok (platform-level None check — or_() intentional cross-scope)
-                AutomationRule.tenant_id == _tid  # tenant-scope-ok (or_() platform-include branch)
-            ))
+            rule_q = rule_q.filter(
+                or_(
+                    AutomationRule.tenant_id
+                    == None,  # tenant-scope-ok (platform-level None check — or_() intentional cross-scope)
+                    AutomationRule.tenant_id == _tid,  # tenant-scope-ok (or_() platform-include branch)
+                )
+            )
         else:
             rule_q = apply_tenant_scope(rule_q, AutomationRule, self.current_user)
         rule = rule_q.first()
 
         if not rule:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Automation rule not found"
-            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Automation rule not found")
 
         return rule
 
@@ -172,19 +169,14 @@ class AutomationService:
         rule = await self.get_rule(rule_id)
 
         # Evaluate conditions
-        conditions_met = await self._evaluate_conditions(
-            rule.conditions,
-            test_request.test_data
-        )
+        conditions_met = await self._evaluate_conditions(rule.conditions, test_request.test_data)
 
         # Preview actions
         actions_preview = []
         for action in rule.actions:
-            actions_preview.append({
-                "type": action.get("type"),
-                "config": action.get("config"),
-                "will_execute": conditions_met
-            })
+            actions_preview.append(
+                {"type": action.get("type"), "config": action.get("config"), "will_execute": conditions_met}
+            )
 
         return {
             "success": True,
@@ -193,17 +185,12 @@ class AutomationService:
             "actions_preview": actions_preview,
             "estimated_duration_ms": 100,
             "warnings": [],
-            "errors": []
+            "errors": [],
         }
 
     # ==================== Automation Execution Methods ====================
 
-    async def list_executions(
-        self,
-        rule_id: Optional[UUID] = None,
-        status: Optional[str] = None,
-        limit: int = 50
-    ):
+    async def list_executions(self, rule_id: Optional[UUID] = None, status: Optional[str] = None, limit: int = 50):
         """List automation executions"""
         query = self.db.query(AutomationExecution)
         query = apply_tenant_scope(query, AutomationExecution, self.current_user)
@@ -217,17 +204,12 @@ class AutomationService:
 
     async def get_execution(self, execution_id: UUID):
         """Get automation execution by ID"""
-        exec_q = self.db.query(AutomationExecution).filter(
-            AutomationExecution.id == execution_id
-        )
+        exec_q = self.db.query(AutomationExecution).filter(AutomationExecution.id == execution_id)
         exec_q = apply_tenant_scope(exec_q, AutomationExecution, self.current_user)
         execution = exec_q.first()
 
         if not execution:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Automation execution not found"
-            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Automation execution not found")
 
         return execution
 
@@ -236,10 +218,7 @@ class AutomationService:
         rule = await self.get_rule(rule_id)
 
         if not rule.is_active:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Cannot execute inactive rule"
-            )
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot execute inactive rule")
 
         # Create execution record
         execution = AutomationExecution(
@@ -248,7 +227,7 @@ class AutomationService:
             trigger_type="manual",
             triggered_by_user_id=self.current_user.id,
             context_data=context_data,
-            total_actions=len(rule.actions)
+            total_actions=len(rule.actions),
         )
 
         self.db.add(execution)
@@ -262,10 +241,7 @@ class AutomationService:
             return execution
 
         # Evaluate conditions
-        conditions_met = await self._evaluate_conditions(
-            rule.conditions,
-            context_data
-        )
+        conditions_met = await self._evaluate_conditions(rule.conditions, context_data)
 
         execution.conditions_met = conditions_met
         execution.status = "running"
@@ -285,10 +261,7 @@ class AutomationService:
                 action_results.append(result)
                 execution.completed_actions += 1
             except Exception as e:
-                action_results.append({
-                    "success": False,
-                    "error": str(e)
-                })
+                action_results.append({"success": False, "error": str(e)})
                 execution.failed_actions += 1
 
         execution.action_results = action_results
@@ -309,12 +282,16 @@ class AutomationService:
     async def list_action_templates(self):
         """List all available action templates"""
         _tid = self.current_user.tenant_id  # tenant_scope: or_() system template branch
-        return self.db.query(ActionTemplate).filter(
-            (ActionTemplate.tenant_id == _tid) |  # tenant-scope-ok (or_() platform-include branch)
-            (ActionTemplate.is_system == True),
-            ActionTemplate.is_deleted == False,
-            ActionTemplate.is_active == True
-        ).all()
+        return (
+            self.db.query(ActionTemplate)
+            .filter(
+                (ActionTemplate.tenant_id == _tid)  # tenant-scope-ok (or_() platform-include branch)
+                | (ActionTemplate.is_system == True),
+                ActionTemplate.is_deleted == False,
+                ActionTemplate.is_active == True,
+            )
+            .all()
+        )
 
     # ==================== Webhook Config Methods ====================
 
@@ -324,7 +301,7 @@ class AutomationService:
             **webhook_data.model_dump(),
             tenant_id=self.tenant_id,
             created_by=self.current_user.id,
-            updated_by=self.current_user.id
+            updated_by=self.current_user.id,
         )
 
         self.db.add(webhook)
@@ -335,9 +312,7 @@ class AutomationService:
 
     async def list_webhooks(self, webhook_type: Optional[str] = None):
         """List webhook configurations"""
-        query = self.db.query(WebhookConfig).filter(
-            WebhookConfig.is_deleted == False
-        )
+        query = self.db.query(WebhookConfig).filter(WebhookConfig.is_deleted == False)
         query = apply_tenant_scope(query, WebhookConfig, self.current_user)
 
         if webhook_type:
@@ -347,18 +322,12 @@ class AutomationService:
 
     async def get_webhook(self, webhook_id: UUID):
         """Get webhook configuration by ID"""
-        wh_q = self.db.query(WebhookConfig).filter(
-            WebhookConfig.id == webhook_id,
-            WebhookConfig.is_deleted == False
-        )
+        wh_q = self.db.query(WebhookConfig).filter(WebhookConfig.id == webhook_id, WebhookConfig.is_deleted == False)
         wh_q = apply_tenant_scope(wh_q, WebhookConfig, self.current_user)
         webhook = wh_q.first()
 
         if not webhook:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Webhook configuration not found"
-            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Webhook configuration not found")
 
         return webhook
 
@@ -411,8 +380,4 @@ class AutomationService:
         # - create_record
         # - etc.
 
-        return {
-            "success": True,
-            "action_type": action_type,
-            "message": f"Action {action_type} executed"
-        }
+        return {"success": True, "action_type": action_type, "message": f"Action {action_type} executed"}

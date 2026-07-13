@@ -2,6 +2,7 @@
 backend/app/core/tenant/scope.py
 Centralized tenant scope helper for Epic 22.
 """
+
 from __future__ import annotations
 
 import inspect
@@ -15,9 +16,7 @@ from sqlalchemy.orm import Query
 
 logger = logging.getLogger(__name__)
 
-_current_tenant_id: ContextVar[UUID | None] = ContextVar(
-    "_current_tenant_id", default=None
-)
+_current_tenant_id: ContextVar[UUID | None] = ContextVar("_current_tenant_id", default=None)
 
 
 class TenantScopeNotSetError(Exception):
@@ -85,13 +84,9 @@ def with_admin_cross_tenant_scope(
         ValueError:      if admin_reason is empty or None.
     """
     if not getattr(user, "is_superuser", False):
-        raise PermissionError(
-            "with_admin_cross_tenant_scope() requires a superuser account."
-        )
+        raise PermissionError("with_admin_cross_tenant_scope() requires a superuser account.")
     if not admin_reason:
-        raise ValueError(
-            "admin_reason is required for cross-tenant scope."
-        )
+        raise ValueError("admin_reason is required for cross-tenant scope.")
 
     caller_frame = inspect.stack()[2]
     caller_info = f"{caller_frame.filename}:{caller_frame.lineno} in {caller_frame.function}"
@@ -107,9 +102,7 @@ def with_admin_cross_tenant_scope(
         )
 
     token = _current_tenant_id.set("__superuser__")  # type: ignore[arg-type]
-    logger.info(
-        "tenant_scope.cross_tenant_enter reason=%r caller=%s", admin_reason, caller_info
-    )
+    logger.info("tenant_scope.cross_tenant_enter reason=%r caller=%s", admin_reason, caller_info)
     try:
         yield
     finally:
@@ -142,9 +135,7 @@ def apply_tenant_scope(query: Query, model, user) -> Query:
         return query
     tenant_id = getattr(user, "tenant_id", None)
     if tenant_id is None:
-        raise TenantScopeNotSetError(
-            f"User has no tenant_id when querying {model.__name__}"
-        )
+        raise TenantScopeNotSetError(f"User has no tenant_id when querying {model.__name__}")
     return query.filter(model.tenant_id == tenant_id)  # noqa: tenant-scope-ok
 
 
@@ -157,9 +148,7 @@ def apply_tenant_scope_by_id(query: Query, model, tenant_id) -> Query:
     if not getattr(model, "__tenant_scoped__", False):
         return query
     if tenant_id is None:
-        raise TenantScopeNotSetError(
-            f"tenant_id is None when querying {model.__name__}"
-        )
+        raise TenantScopeNotSetError(f"tenant_id is None when querying {model.__name__}")
     return query.filter(model.tenant_id == tenant_id)  # noqa: tenant-scope-ok
 
 

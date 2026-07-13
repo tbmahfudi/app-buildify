@@ -9,47 +9,46 @@ Provides REST API for managing modules:
 - Update module configuration
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Header, status, Request
-from sqlalchemy.orm import Session
+import logging
 from typing import List
 
-from app.core.dependencies import get_db, get_current_user, require_superuser
-from app.core.module_system.registry import ModuleRegistryService
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
+from sqlalchemy.orm import Session
+
 from app.core.audit import create_audit_log
-from app.models.user import User
+from app.core.dependencies import get_current_user, get_db, require_superuser
+from app.core.module_system.registry import ModuleRegistryService
 from app.models.module_registry import ModuleRegistry, TenantModule
+from app.models.user import User
 from app.schemas.module import (
-    ModuleListItem,
-    ModuleInfo,
-    ModuleInstallRequest,
-    ModuleUninstallRequest,
-    ModuleEnableRequest,
-    ModuleDisableRequest,
-    ModuleConfigurationUpdate,
-    ModuleOperationResponse,
+    ActivationPreviewDependency,
+    ActivationPreviewMenuItem,
+    ActivationPreviewPermission,
+    ActivationPreviewResponse,
+    AllTenantsModulesResponse,
     AvailableModulesResponse,
     EnabledModulesResponse,
-    AllTenantsModulesResponse,
-    TenantModuleInfo,
-    TenantModuleInfoWithTenant,
-    ModuleManifest,
-    ModuleRegistrationRequest,
-    ModuleRegistrationResponse,
+    ModuleConfigurationUpdate,
+    ModuleDeactivateAllResponse,
+    ModuleDisableRequest,
+    ModuleDisableResponse,
+    ModuleEnableRequest,
+    ModuleEnableResponse,
     ModuleHeartbeatRequest,
     ModuleHeartbeatResponse,
-    ActivationPreviewPermission,
-    ActivationPreviewMenuItem,
-    ActivationPreviewDependency,
-    ActivationPreviewResponse,
+    ModuleInfo,
+    ModuleInstallRequest,
+    ModuleListItem,
     ModuleListItemV2,
+    ModuleOperationResponse,
+    ModuleRegistrationRequest,
+    ModuleRegistrationResponse,
     ModulesListResponse,
-    ModuleEnableResponse,
-    ModuleDisableResponse,
-    ModuleDeactivateAllResponse,
+    ModuleUninstallRequest,
     TenantDBStatusResponse,
+    TenantModuleInfo,
+    TenantModuleInfoWithTenant,
 )
-from pathlib import Path
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -65,16 +64,13 @@ def get_module_registry() -> ModuleRegistryService:
     if module_registry is None:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail={"code": "service_unavailable", "message": "Module system not initialized", "detail": None}
+            detail={"code": "service_unavailable", "message": "Module system not initialized", "detail": None},
         )
     return module_registry
 
 
 @router.get("/available", response_model=AvailableModulesResponse)
-async def list_available_modules(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
+async def list_available_modules(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """
     List all available modules with their installation status.
 
@@ -98,26 +94,28 @@ async def list_available_modules(
             )
             for m in modules
         ],
-        total=len(modules)
+        total=len(modules),
     )
 
 
 @router.get("/enabled", response_model=EnabledModulesResponse)
-async def list_enabled_modules(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
+async def list_enabled_modules(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """
     List modules enabled for the current user's tenant.
 
     Returns:
         List of enabled modules with configuration
     """
-    tenant_modules = db.query(TenantModule).join(ModuleRegistry).filter(
-        TenantModule.tenant_id == current_user.tenant_id,  # tenant_scope
-        TenantModule.is_enabled == True,
-        ModuleRegistry.is_installed == True
-    ).all()
+    tenant_modules = (
+        db.query(TenantModule)
+        .join(ModuleRegistry)
+        .filter(
+            TenantModule.tenant_id == current_user.tenant_id,  # tenant_scope
+            TenantModule.is_enabled == True,
+            ModuleRegistry.is_installed == True,
+        )
+        .all()
+    )
 
     return EnabledModulesResponse(
         modules=[
@@ -133,14 +131,13 @@ async def list_enabled_modules(
             )
             for tm in tenant_modules
         ],
-        total=len(tenant_modules)
+        total=len(tenant_modules),
     )
 
 
 @router.get("/enabled/names", response_model=List[str])
 async def list_enabled_module_names(
-    current_user: User = Depends(get_current_user),
-    registry: ModuleRegistryService = Depends(get_module_registry)
+    current_user: User = Depends(get_current_user), registry: ModuleRegistryService = Depends(get_module_registry)
 ):
     """
     Get list of enabled module names for current tenant.
@@ -154,10 +151,7 @@ async def list_enabled_module_names(
 
 
 @router.get("/enabled/all-tenants", response_model=AllTenantsModulesResponse)
-async def list_all_tenants_modules(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(require_superuser)
-):
+async def list_all_tenants_modules(db: Session = Depends(get_db), current_user: User = Depends(require_superuser)):
     """
     List all enabled modules across all tenants (superuser only).
 
@@ -170,14 +164,13 @@ async def list_all_tenants_modules(
     from app.models.tenant import Tenant
 
     # Get all enabled modules with tenant information
-    tenant_modules = db.query(TenantModule, Tenant).join(
-        ModuleRegistry, TenantModule.module_id == ModuleRegistry.id
-    ).join(
-        Tenant, TenantModule.tenant_id == Tenant.id  # tenant_scope
-    ).filter(
-        TenantModule.is_enabled == True,
-        ModuleRegistry.is_installed == True
-    ).all()
+    tenant_modules = (
+        db.query(TenantModule, Tenant)
+        .join(ModuleRegistry, TenantModule.module_id == ModuleRegistry.id)
+        .join(Tenant, TenantModule.tenant_id == Tenant.id)  # tenant_scope
+        .filter(TenantModule.is_enabled == True, ModuleRegistry.is_installed == True)
+        .all()
+    )
 
     return AllTenantsModulesResponse(
         modules=[
@@ -192,19 +185,17 @@ async def list_all_tenants_modules(
                 last_used_at=tm.last_used_at,
                 tenant_id=str(tenant.id),
                 tenant_name=tenant.name,
-                tenant_code=tenant.code
+                tenant_code=tenant.code,
             )
             for tm, tenant in tenant_modules
         ],
-        total=len(tenant_modules)
+        total=len(tenant_modules),
     )
 
 
 @router.get("/{module_name}", response_model=ModuleInfo)
 async def get_module_info(
-    module_name: str,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    module_name: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
     """
     Get detailed information about a specific module.
@@ -215,14 +206,12 @@ async def get_module_info(
     Returns:
         Detailed module information
     """
-    module = db.query(ModuleRegistry).filter(
-        ModuleRegistry.name == module_name
-    ).first()
+    module = db.query(ModuleRegistry).filter(ModuleRegistry.name == module_name).first()
 
     if not module:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail={"code": "not_found", "message": f"Module '{module_name}' not found", "detail": None}
+            detail={"code": "not_found", "message": f"Module '{module_name}' not found", "detail": None},
         )
 
     return ModuleInfo(
@@ -247,9 +236,7 @@ async def get_module_info(
 
 @router.get("/{module_name}/manifest")
 async def get_module_manifest(
-    module_name: str,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    module_name: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
     """
     Get full manifest for a module.
@@ -265,20 +252,18 @@ async def get_module_manifest(
     """
     import httpx
 
-    module = db.query(ModuleRegistry).filter(
-        ModuleRegistry.name == module_name
-    ).first()
+    module = db.query(ModuleRegistry).filter(ModuleRegistry.name == module_name).first()
 
     if not module:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail={"code": "not_found", "message": f"Module '{module_name}' not found", "detail": None}
+            detail={"code": "not_found", "message": f"Module '{module_name}' not found", "detail": None},
         )
 
     # Get backend service URL from module's manifest (stored in database)
     backend_service_url = None
     if module.manifest and isinstance(module.manifest, dict):
-        backend_service_url = module.manifest.get('backend_service_url')
+        backend_service_url = module.manifest.get("backend_service_url")
 
     # Try to fetch manifest from module backend service if URL is available
     if backend_service_url:
@@ -291,9 +276,7 @@ async def get_module_manifest(
                 if response.status_code == 200:
                     return response.json()
                 else:
-                    logger.warning(
-                        f"Failed to fetch manifest from {manifest_url}: {response.status_code}"
-                    )
+                    logger.warning(f"Failed to fetch manifest from {manifest_url}: {response.status_code}")
         except Exception as e:
             logger.warning(f"Error fetching manifest from module service: {e}")
     else:
@@ -305,7 +288,11 @@ async def get_module_manifest(
 
     raise HTTPException(
         status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-        detail={"code": "service_unavailable", "message": f"Module manifest not available for '{module_name}'", "detail": None}
+        detail={
+            "code": "service_unavailable",
+            "message": f"Module manifest not available for '{module_name}'",
+            "detail": None,
+        },
     )
 
 
@@ -315,7 +302,7 @@ async def install_module(
     http_request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_superuser),
-    registry: ModuleRegistryService = Depends(get_module_registry)
+    registry: ModuleRegistryService = Depends(get_module_registry),
 ):
     """
     Install a module platform-wide.
@@ -340,11 +327,11 @@ async def install_module(
             entity_id=request_data.module_name,
             request=http_request,
             status="failure",
-            error_message=error
+            error_message=error,
         )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail={"code": "module_install_error", "message": error, "detail": None}
+            detail={"code": "module_install_error", "message": error, "detail": None},
         )
 
     # Audit successful installation
@@ -355,13 +342,13 @@ async def install_module(
         entity_type="module",
         entity_id=request_data.module_name,
         request=http_request,
-        status="success"
+        status="success",
     )
 
     return ModuleOperationResponse(
         success=True,
         message=f"Module '{request_data.module_name}' installed successfully",
-        module_name=request_data.module_name
+        module_name=request_data.module_name,
     )
 
 
@@ -371,7 +358,7 @@ async def uninstall_module(
     http_request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_superuser),
-    registry: ModuleRegistryService = Depends(get_module_registry)
+    registry: ModuleRegistryService = Depends(get_module_registry),
 ):
     """
     Uninstall a module platform-wide.
@@ -396,11 +383,11 @@ async def uninstall_module(
             entity_id=request_data.module_name,
             request=http_request,
             status="failure",
-            error_message=error
+            error_message=error,
         )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail={"code": "module_uninstall_error", "message": error, "detail": None}
+            detail={"code": "module_uninstall_error", "message": error, "detail": None},
         )
 
     # Audit successful uninstallation
@@ -411,13 +398,13 @@ async def uninstall_module(
         entity_type="module",
         entity_id=request_data.module_name,
         request=http_request,
-        status="success"
+        status="success",
     )
 
     return ModuleOperationResponse(
         success=True,
         message=f"Module '{request_data.module_name}' uninstalled successfully",
-        module_name=request_data.module_name
+        module_name=request_data.module_name,
     )
 
 
@@ -427,7 +414,7 @@ async def enable_module(
     http_request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    registry: ModuleRegistryService = Depends(get_module_registry)
+    registry: ModuleRegistryService = Depends(get_module_registry),
 ):
     """
     Enable a module for a tenant.
@@ -450,7 +437,11 @@ async def enable_module(
         if not current_user.is_superuser:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail={"code": "module_enable_error", "message": "Only superusers can enable modules for other tenants", "detail": None}
+                detail={
+                    "code": "module_enable_error",
+                    "message": "Only superusers can enable modules for other tenants",
+                    "detail": None,
+                },
             )
     else:
         # Use current user's tenant
@@ -459,18 +450,20 @@ async def enable_module(
     # Verify tenant exists if enabling for a different tenant
     if target_tenant_id != current_user.tenant_id:
         from app.models.tenant import Tenant
+
         tenant = db.query(Tenant).filter(Tenant.id == target_tenant_id).first()
         if not tenant:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail={"code": "not_found", "message": f"Tenant with ID '{target_tenant_id}' not found", "detail": None}
+                detail={
+                    "code": "not_found",
+                    "message": f"Tenant with ID '{target_tenant_id}' not found",
+                    "detail": None,
+                },
             )
 
     success, error = registry.enable_module_for_tenant(
-        request_data.module_name,
-        target_tenant_id,
-        current_user.id,
-        request_data.configuration
+        request_data.module_name, target_tenant_id, current_user.id, request_data.configuration
     )
 
     if not success:
@@ -484,11 +477,11 @@ async def enable_module(
             context_info={"tenant_id": target_tenant_id},
             request=http_request,
             status="failure",
-            error_message=error
+            error_message=error,
         )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail={"code": "module_enable_error", "message": error, "detail": None}
+            detail={"code": "module_enable_error", "message": error, "detail": None},
         )
 
     # Audit successful enable
@@ -500,7 +493,7 @@ async def enable_module(
         entity_id=request_data.module_name,
         context_info={"tenant_id": target_tenant_id},
         request=http_request,
-        status="success"
+        status="success",
     )
 
     # T-23.014: call post_enable hook after ModuleActivation is created
@@ -531,7 +524,7 @@ async def enable_module(
     return ModuleOperationResponse(
         success=True,
         message=f"Module '{request_data.module_name}' enabled for tenant",
-        module_name=request_data.module_name
+        module_name=request_data.module_name,
     )
 
 
@@ -541,7 +534,7 @@ async def disable_module(
     http_request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    registry: ModuleRegistryService = Depends(get_module_registry)
+    registry: ModuleRegistryService = Depends(get_module_registry),
 ):
     """
     Disable a module for current tenant.
@@ -555,9 +548,7 @@ async def disable_module(
     # TODO: Add permission check
 
     success, error = registry.disable_module_for_tenant(
-        request_data.module_name,
-        current_user.tenant_id,
-        current_user.id
+        request_data.module_name, current_user.tenant_id, current_user.id
     )
 
     if not success:
@@ -571,11 +562,11 @@ async def disable_module(
             context_info={"tenant_id": current_user.tenant_id},
             request=http_request,
             status="failure",
-            error_message=error
+            error_message=error,
         )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail={"code": "module_disable_error", "message": error, "detail": None}
+            detail={"code": "module_disable_error", "message": error, "detail": None},
         )
 
     # Audit successful disable
@@ -587,13 +578,13 @@ async def disable_module(
         entity_id=request_data.module_name,
         context_info={"tenant_id": current_user.tenant_id},
         request=http_request,
-        status="success"
+        status="success",
     )
 
     return ModuleOperationResponse(
         success=True,
         message=f"Module '{request_data.module_name}' disabled for tenant",
-        module_name=request_data.module_name
+        module_name=request_data.module_name,
     )
 
 
@@ -603,7 +594,7 @@ async def update_module_configuration(
     request: ModuleConfigurationUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    registry: ModuleRegistryService = Depends(get_module_registry)
+    registry: ModuleRegistryService = Depends(get_module_registry),
 ):
     """
     Update module configuration for current tenant.
@@ -616,26 +607,31 @@ async def update_module_configuration(
         Operation result
     """
     # Get module
-    module_entry = db.query(ModuleRegistry).filter(
-        ModuleRegistry.name == module_name
-    ).first()
+    module_entry = db.query(ModuleRegistry).filter(ModuleRegistry.name == module_name).first()
 
     if not module_entry:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail={"code": "not_found", "message": f"Module '{module_name}' not found", "detail": None}
+            detail={"code": "not_found", "message": f"Module '{module_name}' not found", "detail": None},
         )
 
     # Get tenant module
-    tenant_module = db.query(TenantModule).filter(
-        TenantModule.tenant_id == current_user.tenant_id,  # tenant_scope
-        TenantModule.module_id == module_entry.id
-    ).first()
+    tenant_module = (
+        db.query(TenantModule)
+        .filter(
+            TenantModule.tenant_id == current_user.tenant_id, TenantModule.module_id == module_entry.id  # tenant_scope
+        )
+        .first()
+    )
 
     if not tenant_module or not tenant_module.is_enabled:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail={"code": "module_configure_error", "message": f"Module '{module_name}' is not enabled for this tenant", "detail": None}
+            detail={
+                "code": "module_configure_error",
+                "message": f"Module '{module_name}' is not enabled for this tenant",
+                "detail": None,
+            },
         )
 
     # Validate configuration
@@ -645,7 +641,7 @@ async def update_module_configuration(
         if not is_valid:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail={"code": "module_configure_error", "message": f"Invalid configuration: {error}", "detail": None}
+                detail={"code": "module_configure_error", "message": f"Invalid configuration: {error}", "detail": None},
             )
 
     # Update configuration
@@ -654,17 +650,12 @@ async def update_module_configuration(
     db.commit()
 
     return ModuleOperationResponse(
-        success=True,
-        message=f"Configuration updated for module '{module_name}'",
-        module_name=module_name
+        success=True, message=f"Configuration updated for module '{module_name}'", module_name=module_name
     )
 
 
 @router.post("/register", response_model=ModuleRegistrationResponse)
-async def register_module(
-    request_data: ModuleRegistrationRequest,
-    db: Session = Depends(get_db)
-):
+async def register_module(request_data: ModuleRegistrationRequest, db: Session = Depends(get_db)):
     """
     Register a module with the core platform.
 
@@ -686,18 +677,24 @@ async def register_module(
     try:
         # Extract module information from manifest
         manifest = request_data.manifest
-        module_name = manifest.get('name')
+        module_name = manifest.get("name")
 
         if not module_name:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail={"code": "module_register_error", "message": "Module manifest must contain 'name' field", "detail": None}
+                detail={
+                    "code": "module_register_error",
+                    "message": "Module manifest must contain 'name' field",
+                    "detail": None,
+                },
             )
 
         # T-23.007: validate manifest against JSON Schema before registration
         try:
-            from app.core.module_system.loader import ModuleLoader
             from pathlib import Path as _Path
+
+            from app.core.module_system.loader import ModuleLoader
+
             _loader = ModuleLoader(_Path("/tmp"))
             _ok, _err = _loader.validate_manifest(manifest)
             if not _ok:
@@ -714,32 +711,30 @@ async def register_module(
         except Exception as _ve:
             logger.warning(f"Manifest schema validation error: {_ve}")
 
-                # Add backend_service_url to manifest if not present
-        if 'backend_service_url' not in manifest:
-            manifest['backend_service_url'] = request_data.backend_service_url
+            # Add backend_service_url to manifest if not present
+        if "backend_service_url" not in manifest:
+            manifest["backend_service_url"] = request_data.backend_service_url
 
         # Check if module already exists
-        existing_module = db.query(ModuleRegistry).filter(
-            ModuleRegistry.name == module_name
-        ).first()
+        existing_module = db.query(ModuleRegistry).filter(ModuleRegistry.name == module_name).first()
 
         if existing_module:
             # Update existing module
-            existing_module.display_name = manifest.get('display_name', module_name)
-            existing_module.version = manifest.get('version', '1.0.0')
-            existing_module.description = manifest.get('description')
-            existing_module.category = manifest.get('category')
-            existing_module.tags = manifest.get('tags')
-            existing_module.author = manifest.get('author')
-            existing_module.license = manifest.get('license')
+            existing_module.display_name = manifest.get("display_name", module_name)
+            existing_module.version = manifest.get("version", "1.0.0")
+            existing_module.description = manifest.get("description")
+            existing_module.category = manifest.get("category")
+            existing_module.tags = manifest.get("tags")
+            existing_module.author = manifest.get("author")
+            existing_module.license = manifest.get("license")
             existing_module.manifest = manifest
-            existing_module.dependencies_json = manifest.get('dependencies')
-            existing_module.subscription_tier = manifest.get('subscription_tier')
-            existing_module.api_prefix = manifest.get('api', {}).get('prefix')
-            existing_module.status = manifest.get('status', 'available')
-            existing_module.homepage = manifest.get('homepage')
-            existing_module.repository = manifest.get('repository')
-            existing_module.support_email = manifest.get('support_email')
+            existing_module.dependencies_json = manifest.get("dependencies")
+            existing_module.subscription_tier = manifest.get("subscription_tier")
+            existing_module.api_prefix = manifest.get("api", {}).get("prefix")
+            existing_module.status = manifest.get("status", "available")
+            existing_module.homepage = manifest.get("homepage")
+            existing_module.repository = manifest.get("repository")
+            existing_module.support_email = manifest.get("support_email")
             existing_module.updated_at = datetime.utcnow()
 
             # Mark as installed if not already
@@ -759,7 +754,7 @@ async def register_module(
                     entity_type="module",
                     entity_id=str(existing_module.id),
                     context_info={"module_name": module_name, "version": existing_module.version},
-                    status="success"
+                    status="success",
                 )
 
             logger.info(f"Module '{module_name}' re-registered and updated")
@@ -769,7 +764,7 @@ async def register_module(
                 message=f"Module '{module_name}' re-registered successfully",
                 module_name=module_name,
                 registered_at=datetime.utcnow(),
-                should_install=False
+                should_install=False,
             )
         else:
             # Create new module entry
@@ -778,26 +773,26 @@ async def register_module(
             new_module = ModuleRegistry(
                 id=generate_uuid(),
                 name=module_name,
-                display_name=manifest.get('display_name', module_name),
-                module_type='code',
-                version=manifest.get('version', '1.0.0'),
-                description=manifest.get('description'),
-                category=manifest.get('category'),
-                tags=manifest.get('tags'),
-                author=manifest.get('author'),
-                license=manifest.get('license'),
+                display_name=manifest.get("display_name", module_name),
+                module_type="code",
+                version=manifest.get("version", "1.0.0"),
+                description=manifest.get("description"),
+                category=manifest.get("category"),
+                tags=manifest.get("tags"),
+                author=manifest.get("author"),
+                license=manifest.get("license"),
                 is_installed=True,
-                is_core=manifest.get('is_core', False),
+                is_core=manifest.get("is_core", False),
                 installed_at=datetime.utcnow(),
                 manifest=manifest,
-                configuration=manifest.get('configuration'),
-                dependencies_json=manifest.get('dependencies'),
-                subscription_tier=manifest.get('subscription_tier'),
-                api_prefix=manifest.get('api', {}).get('prefix'),
-                status=manifest.get('status', 'available'),
-                homepage=manifest.get('homepage'),
-                repository=manifest.get('repository'),
-                support_email=manifest.get('support_email')
+                configuration=manifest.get("configuration"),
+                dependencies_json=manifest.get("dependencies"),
+                subscription_tier=manifest.get("subscription_tier"),
+                api_prefix=manifest.get("api", {}).get("prefix"),
+                status=manifest.get("status", "available"),
+                homepage=manifest.get("homepage"),
+                repository=manifest.get("repository"),
+                support_email=manifest.get("support_email"),
             )
 
             db.add(new_module)
@@ -806,9 +801,10 @@ async def register_module(
 
             # T-23.014: call post_install hook if a BaseModule class exists
             try:
-                import importlib, sys as _sys
                 from pathlib import Path as _Path
+
                 from app.core.module_system.loader import ModuleLoader
+
                 _modules_root = _Path(__file__).parent.parent.parent / "modules"
                 _loader = ModuleLoader(_modules_root)
                 _instance = _loader.load_module(module_name)
@@ -829,7 +825,7 @@ async def register_module(
                 entity_type="module",
                 entity_id=str(new_module.id),
                 context_info={"module_name": module_name, "version": new_module.version},
-                status="success"
+                status="success",
             )
 
             logger.info(f"Module '{module_name}' registered successfully (new)")
@@ -839,7 +835,7 @@ async def register_module(
                 message=f"Module '{module_name}' registered successfully",
                 module_name=module_name,
                 registered_at=datetime.utcnow(),
-                should_install=True
+                should_install=True,
             )
 
     except HTTPException:
@@ -848,16 +844,12 @@ async def register_module(
         logger.error(f"Error registering module: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail={"code": "module_register_error", "message": f"Error registering module: {str(e)}", "detail": None}
+            detail={"code": "module_register_error", "message": f"Error registering module: {str(e)}", "detail": None},
         )
 
 
 @router.post("/{module_name}/heartbeat", response_model=ModuleHeartbeatResponse)
-async def module_heartbeat(
-    module_name: str,
-    request_data: ModuleHeartbeatRequest,
-    db: Session = Depends(get_db)
-):
+async def module_heartbeat(module_name: str, request_data: ModuleHeartbeatRequest, db: Session = Depends(get_db)):
     """
     Receive heartbeat from a module.
 
@@ -876,14 +868,12 @@ async def module_heartbeat(
     from datetime import datetime
 
     try:
-        module = db.query(ModuleRegistry).filter(
-            ModuleRegistry.name == module_name
-        ).first()
+        module = db.query(ModuleRegistry).filter(ModuleRegistry.name == module_name).first()
 
         if not module:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail={"code": "not_found", "message": f"Module '{module_name}' not found", "detail": None}
+                detail={"code": "not_found", "message": f"Module '{module_name}' not found", "detail": None},
             )
 
         # Update last seen timestamp
@@ -900,19 +890,20 @@ async def module_heartbeat(
         # it into module.status would violate the ck_modules_status CHECK
         # constraint (draft/active/deprecated/archived/available/stable/beta).
         _VALID_MODULE_STATUSES = {
-            "draft", "active", "deprecated", "archived",
-            "available", "stable", "beta",
+            "draft",
+            "active",
+            "deprecated",
+            "archived",
+            "available",
+            "stable",
+            "beta",
         }
         if request_data.status and request_data.status in _VALID_MODULE_STATUSES:
             module.status = request_data.status
 
         db.commit()
 
-        return ModuleHeartbeatResponse(
-            success=True,
-            message="Heartbeat received",
-            last_seen=module.updated_at
-        )
+        return ModuleHeartbeatResponse(success=True, message="Heartbeat received", last_seen=module.updated_at)
 
     except HTTPException:
         raise
@@ -920,14 +911,17 @@ async def module_heartbeat(
         logger.error(f"Error processing heartbeat from '{module_name}': {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail={"code": "module_heartbeat_error", "message": f"Error processing heartbeat: {str(e)}", "detail": None}
+            detail={
+                "code": "module_heartbeat_error",
+                "message": f"Error processing heartbeat: {str(e)}",
+                "detail": None,
+            },
         )
 
 
 @router.post("/sync", response_model=ModuleOperationResponse)
 async def sync_modules(
-    current_user: User = Depends(require_superuser),
-    registry: ModuleRegistryService = Depends(get_module_registry)
+    current_user: User = Depends(require_superuser), registry: ModuleRegistryService = Depends(get_module_registry)
 ):
     """
     Sync modules from filesystem with database.
@@ -940,15 +934,12 @@ async def sync_modules(
     """
     try:
         registry.sync_modules()
-        return ModuleOperationResponse(
-            success=True,
-            message="Modules synced successfully"
-        )
+        return ModuleOperationResponse(success=True, message="Modules synced successfully")
     except Exception as e:
         logger.error(f"Error syncing modules: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail={"code": "module_sync_error", "message": f"Error syncing modules: {str(e)}", "detail": None}
+            detail={"code": "module_sync_error", "message": f"Error syncing modules: {str(e)}", "detail": None},
         )
 
 
@@ -970,7 +961,7 @@ async def get_provisioning_status(
     """
     try:
         result = db.execute(
-            __import__('sqlalchemy').text(
+            __import__("sqlalchemy").text(
                 "SELECT status, db_name, error_message "
                 "FROM tenant_module_databases "
                 "WHERE tenant_id = :tenant_id AND module_id = :module_id "
@@ -992,7 +983,6 @@ async def get_provisioning_status(
     }
 
 
-
 @_modules_v1_router.get(
     "/{module_id}/tenant-db-status",
     response_model=TenantDBStatusResponse,
@@ -1012,8 +1002,10 @@ async def get_tenant_db_status(
 
     T-22.017 -- Story 22.4.4 backend AC.
     """
-    from app.models.tenant_module_database import TenantModuleDatabase as _TMD
     from uuid import UUID as _UUID
+
+    from app.models.tenant_module_database import TenantModuleDatabase as _TMD
+
     try:
         _mod_uuid = _UUID(module_id)
     except (ValueError, AttributeError):
@@ -1022,11 +1014,7 @@ async def get_tenant_db_status(
             detail={"code": "not_found", "message": f"Module '{module_id}' not found", "detail": None},
         )
 
-    row = (
-        db.query(_TMD)
-        .filter_by(tenant_id=current_user.tenant_id, module_id=_mod_uuid)
-        .one_or_none()
-    )
+    row = db.query(_TMD).filter_by(tenant_id=current_user.tenant_id, module_id=_mod_uuid).one_or_none()
     if row is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -1127,11 +1115,15 @@ async def get_activation_preview(
             dep_display = dep_name
         else:
             # Check if a TenantModule activation exists for this tenant
-            activation = db.query(TenantModule).filter(
-                TenantModule.module_id == dep_module.id,
-                TenantModule.tenant_id == current_user.tenant_id,
-                TenantModule.is_enabled == True,
-            ).first()
+            activation = (
+                db.query(TenantModule)
+                .filter(
+                    TenantModule.module_id == dep_module.id,
+                    TenantModule.tenant_id == current_user.tenant_id,
+                    TenantModule.is_enabled == True,
+                )
+                .first()
+            )
             dep_status = "active" if activation is not None else "inactive"
             dep_display = dep_module.display_name or dep_name
 
@@ -1148,11 +1140,8 @@ async def get_activation_preview(
     _preview_db_status = None
     try:
         from app.models.tenant_module_database import TenantModuleDatabase as _TMD
-        _tmd_preview = (
-            db.query(_TMD)
-            .filter_by(tenant_id=current_user.tenant_id, module_id=module_id)
-            .one_or_none()
-        )
+
+        _tmd_preview = db.query(_TMD).filter_by(tenant_id=current_user.tenant_id, module_id=module_id).one_or_none()
         _preview_db_status = _tmd_preview.status if _tmd_preview is not None else "not_provisioned"
     except Exception as _preview_err:
         logger.warning(f"[T-22.016] tenant_db_status query failed: {_preview_err}")
@@ -1189,8 +1178,9 @@ async def validate_manifest_endpoint(
 
     T-23.007 — Story 23.2.1 backend AC.
     """
-    from app.core.module_system.loader import ModuleLoader
     from pathlib import Path as _Path
+
+    from app.core.module_system.loader import ModuleLoader
 
     manifest = request_data.get("manifest")
     if manifest is None or not isinstance(manifest, dict):
@@ -1220,6 +1210,7 @@ async def validate_manifest_endpoint(
 
 
 # ── T-23.018 — GET /api/v1/modules — tenant-scoped module list ──────────────
+
 
 @_modules_v1_router.get(
     "",
@@ -1303,6 +1294,7 @@ async def list_modules_v1(
 
 # ── T-23.020 — POST /api/v1/modules/{module_id}/enable ──────────────────────
 
+
 @_modules_v1_router.post(
     "/{module_id}/enable",
     response_model=ModuleEnableResponse,
@@ -1334,10 +1326,11 @@ async def enable_module_v1(
 
     T-23.020 -- Story 23.4.2 backend AC.
     """
-    from uuid import UUID
     from datetime import datetime, timezone
-    from app.models.nocode_module import Module, ModuleActivation, ModuleDependency
+    from uuid import UUID
+
     from app.models.menu_item import MenuItem
+    from app.models.nocode_module import Module, ModuleActivation, ModuleDependency
     from app.models.permission import Permission
 
     # 1. Lookup module
@@ -1419,10 +1412,12 @@ async def enable_module_v1(
         for dep in structured_deps:
             if dep.depends_on_module_id not in active_dep_ids:
                 dep_mod = dep.depends_on_module
-                missing.append({
-                    "name": dep_mod.name if dep_mod else str(dep.depends_on_module_id),
-                    "id": str(dep.depends_on_module_id),
-                })
+                missing.append(
+                    {
+                        "name": dep_mod.name if dep_mod else str(dep.depends_on_module_id),
+                        "id": str(dep.depends_on_module_id),
+                    }
+                )
         manifest_dep_map = {dm.id: dm for dm in manifest_dep_modules}
         for mid, dm in manifest_dep_map.items():
             if mid not in active_dep_ids and not any(m["id"] == str(mid) for m in missing):
@@ -1510,9 +1505,9 @@ async def enable_module_v1(
     #    raw grant only affects this tenant. Permissions are collected from both
     #    manifest.permissions and the per-route `permission` fields (the latter is
     #    how vertical modules like healthcare declare them).
-    from app.models.role import Role
-    from app.models.rbac_junctions import RolePermission
     from app.models.base import generate_uuid
+    from app.models.rbac_junctions import RolePermission
+    from app.models.role import Role
 
     raw_perms = list(manifest.get("permissions") or module.permissions or [])
     for _route in manifest.get("routes", []) or []:
@@ -1566,16 +1561,22 @@ async def enable_module_v1(
 
             # Grant to each admin/staff role (group-chain resolution picks it up).
             for _role in grant_roles:
-                has_rp = db.query(RolePermission).filter(
-                    RolePermission.role_id == _role.id,
-                    RolePermission.permission_id == perm.id,
-                ).first()
+                has_rp = (
+                    db.query(RolePermission)
+                    .filter(
+                        RolePermission.role_id == _role.id,
+                        RolePermission.permission_id == perm.id,
+                    )
+                    .first()
+                )
                 if has_rp is None:
-                    db.add(RolePermission(
-                        id=generate_uuid(),
-                        role_id=_role.id,
-                        permission_id=perm.id,
-                    ))
+                    db.add(
+                        RolePermission(
+                            id=generate_uuid(),
+                            role_id=_role.id,
+                            permission_id=perm.id,
+                        )
+                    )
             permissions_added.append(perm_code)
     except Exception as _perm_err:
         logger.warning(f"permission seed/grant skipped for module '{module.name}': {_perm_err}")
@@ -1589,11 +1590,8 @@ async def enable_module_v1(
         try:
             from app.core.tenant.module_db_provisioner import ModuleDBProvisioner
             from app.models.tenant_module_database import TenantModuleDatabase as _TMD
-            _existing = (
-                db.query(_TMD)
-                .filter_by(tenant_id=tenant_id, module_id=module_uuid)
-                .one_or_none()
-            )
+
+            _existing = db.query(_TMD).filter_by(tenant_id=tenant_id, module_id=module_uuid).one_or_none()
             if _existing is None or _existing.status == "failed":
                 _connection_secret_ref = await ModuleDBProvisioner().provision(tenant_id, module.name)
                 _tenant_db_status = "provisioning"
@@ -1625,8 +1623,10 @@ async def enable_module_v1(
 
     # 8. post_enable hook (non-fatal)
     try:
-        from app.core.module_system.loader import ModuleLoader
         from pathlib import Path as _Path
+
+        from app.core.module_system.loader import ModuleLoader
+
         _loader = ModuleLoader(_Path("/opt/buildify/modules"))
         _instance = _loader.get_module(module.name) or _loader.load_module(module.name)
         if _instance is not None:
@@ -1689,10 +1689,11 @@ async def disable_module_v1(
 
     T-23.022 -- Story 23.4.3 backend AC.
     """
-    from uuid import UUID
     from datetime import datetime, timezone
-    from app.models.nocode_module import Module, ModuleActivation
+    from uuid import UUID
+
     from app.models.menu_item import MenuItem
+    from app.models.nocode_module import Module, ModuleActivation
     from app.models.permission import Permission
 
     # 1. Lookup module
@@ -1750,10 +1751,7 @@ async def disable_module_v1(
         other_deps = other_manifest.get("dependencies") or []
         if isinstance(other_deps, dict):
             other_deps = other_deps.get("required", [])
-        dep_names = [
-            (d if isinstance(d, str) else d.get("name") or "")
-            for d in other_deps
-        ]
+        dep_names = [(d if isinstance(d, str) else d.get("name") or "") for d in other_deps]
         if module.name in dep_names:
             dependents.append({"name": other_module.name, "id": str(other_module.id)})
 
@@ -1788,7 +1786,7 @@ async def disable_module_v1(
         activation.enabled_by_user_id = None
 
     # 5. Deactivate menu items owned by this module for this tenant
-    tenant_prefix = f"{module.name}_"
+    f"{module.name}_"
     tenant_suffix = f"_{str(tenant_id)[:8]}"
     menu_items_deactivated: list = []
     try:
@@ -1840,11 +1838,13 @@ async def disable_module_v1(
     permissions_deactivated: list = []
     try:
         if perm_codes:
-            from app.models.role import Role
             from app.models.rbac_junctions import RolePermission
+            from app.models.role import Role
+
             # Revoke from the same admin/staff roles the enable grant targets.
             grant_role_ids = [
-                r.id for r in db.query(Role)
+                r.id
+                for r in db.query(Role)
                 .filter(
                     Role.code.in_(("tenant_admin", "manager", "employee")),
                     Role.tenant_id == tenant_id,
@@ -1852,10 +1852,7 @@ async def disable_module_v1(
                 .all()
             ]
             if grant_role_ids:
-                perm_ids = [
-                    p.id for p in db.query(Permission)
-                    .filter(Permission.code.in_(perm_codes)).all()
-                ]
+                perm_ids = [p.id for p in db.query(Permission).filter(Permission.code.in_(perm_codes)).all()]
                 if perm_ids:
                     revoked = (
                         db.query(RolePermission)
@@ -1877,17 +1874,12 @@ async def disable_module_v1(
     try:
         from app.core.tenant.module_db_provisioner import ModuleDBProvisioner
         from app.models.tenant_module_database import TenantModuleDatabase as _TMD
-        _tmd_row = (
-            db.query(_TMD)
-            .filter_by(tenant_id=tenant_id, module_id=module_uuid)
-            .one_or_none()
-        )
+
+        _tmd_row = db.query(_TMD).filter_by(tenant_id=tenant_id, module_id=module_uuid).one_or_none()
         if _tmd_row is not None and _tmd_row.status == "ready":
             await ModuleDBProvisioner().deprovision(tenant_id, module.name)
     except Exception as _deprov_err:
-        logger.warning(
-            f"[T-22.015] deprovision failed for module='{module.name}' tenant='{tenant_id}': {_deprov_err}"
-        )
+        logger.warning(f"[T-22.015] deprovision failed for module='{module.name}' tenant='{tenant_id}': {_deprov_err}")
 
     # 8. Audit log
     create_audit_log(
@@ -1916,6 +1908,7 @@ async def disable_module_v1(
 # ---------------------------------------------------------------------------
 # T-23.024 — POST /api/v1/modules/admin/{module_id}/deactivate-all
 # ---------------------------------------------------------------------------
+
 
 @_modules_v1_router.post(
     "/admin/{module_id}/deactivate-all",
@@ -1948,8 +1941,9 @@ async def deactivate_module_all_tenants(
 
     T-23.024 -- Story 23.5.1 backend AC phase 1.
     """
-    from uuid import UUID
     from datetime import datetime, timezone
+    from uuid import UUID
+
     from app.models.nocode_module import Module, ModuleActivation
 
     # 1. Lookup module
@@ -2045,6 +2039,7 @@ async def deactivate_module_all_tenants(
 # T-23.025 — DELETE /api/v1/modules/admin/{module_id}
 # ---------------------------------------------------------------------------
 
+
 @_modules_v1_router.delete(
     "/admin/{module_id}",
     summary="Uninstall a module (superadmin only, X-Confirm-Uninstall: true required)",
@@ -2083,8 +2078,9 @@ async def uninstall_module_v1(
     """
     import subprocess
     from uuid import UUID
-    from app.models.nocode_module import Module, ModuleActivation
+
     from app.models.menu_item import MenuItem
+    from app.models.nocode_module import Module, ModuleActivation
     from app.models.permission import Permission
 
     # 1. Header check
@@ -2131,11 +2127,10 @@ async def uninstall_module_v1(
     # cleanup_tenant_module_dbs is imported at call time to avoid circular import
     # and to keep the script runnable standalone outside the FastAPI stack.
     try:
-        import sys as _sys
         import os as _os
-        _scripts_dir = _os.path.join(
-            _os.path.dirname(__file__), "..", "..", "..", "..", "scripts"
-        )
+        import sys as _sys
+
+        _scripts_dir = _os.path.join(_os.path.dirname(__file__), "..", "..", "..", "..", "scripts")
         _scripts_dir = _os.path.normpath(_scripts_dir)
         if _scripts_dir not in _sys.path:
             _sys.path.insert(0, _scripts_dir)
@@ -2146,9 +2141,7 @@ async def uninstall_module_v1(
         # of tenant IDs from the query here before the deletions happen.
         _tenant_ids_to_clean = [
             str(act.tenant_id)
-            for act in db.query(ModuleActivation)
-            .filter(ModuleActivation.module_id == module_uuid)
-            .all()
+            for act in db.query(ModuleActivation).filter(ModuleActivation.module_id == module_uuid).all()
         ]
         _cleanup_errors = []
         for _tid in _tenant_ids_to_clean:
@@ -2159,9 +2152,7 @@ async def uninstall_module_v1(
                 )
             except Exception as _ce:
                 _cleanup_errors.append((_tid, _ce))
-                logger.error(
-                    f"[T-23.025] cleanup_tenant_module_dbs failed for tenant={_tid}: {_ce}"
-                )
+                logger.error(f"[T-23.025] cleanup_tenant_module_dbs failed for tenant={_tid}: {_ce}")
         if _cleanup_errors:
             logger.warning(
                 f"[T-23.025] {len(_cleanup_errors)} tenant(s) had cleanup errors for module {module_name}; proceeding"
@@ -2170,11 +2161,7 @@ async def uninstall_module_v1(
         logger.warning(f"[T-23.025] cleanup_tenant_module_dbs script not importable: {_imp_err}; skipping")
 
     # 5. Remove all ModuleActivation rows for this module (including disabled ones)
-    activations_to_delete = (
-        db.query(ModuleActivation)
-        .filter(ModuleActivation.module_id == module_uuid)
-        .all()
-    )
+    activations_to_delete = db.query(ModuleActivation).filter(ModuleActivation.module_id == module_uuid).all()
     activation_count = len(activations_to_delete)
     for act in activations_to_delete:
         db.delete(act)
@@ -2196,18 +2183,10 @@ async def uninstall_module_v1(
     # 7. Delete MenuItem rows owned by this module (all tenants)
     menu_items_removed: list = []
     try:
-        owned_items = (
-            db.query(MenuItem)
-            .filter(MenuItem.module_code == module_name)
-            .all()
-        )
+        owned_items = db.query(MenuItem).filter(MenuItem.module_code == module_name).all()
         if not owned_items:
             # Fallback: match by code pattern
-            owned_items = (
-                db.query(MenuItem)
-                .filter(MenuItem.code.like(f"{module_name}_%"))
-                .all()
-            )
+            owned_items = db.query(MenuItem).filter(MenuItem.code.like(f"{module_name}_%")).all()
         for mi in owned_items:
             menu_items_removed.append(mi.code)
             db.delete(mi)
@@ -2230,9 +2209,7 @@ async def uninstall_module_v1(
         if result.returncode == 0:
             logger.info(f"[T-23.025] Removed module files: /app/modules/{module_name}")
         else:
-            logger.warning(
-                f"[T-23.025] Failed to remove module files for {module_name}: {result.stderr.strip()}"
-            )
+            logger.warning(f"[T-23.025] Failed to remove module files for {module_name}: {result.stderr.strip()}")
     except Exception as _fs_err:
         logger.warning(f"[T-23.025] Module file removal failed for {module_name} (non-fatal): {_fs_err}")
 

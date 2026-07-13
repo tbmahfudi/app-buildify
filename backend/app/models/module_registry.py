@@ -8,6 +8,7 @@ This file re-exports the aliases so that existing imports continue to work:
     from app.models.module_registry import ModuleRegistry, TenantModule
 """
 
-from .nocode_module import Module as ModuleRegistry, ModuleActivation as TenantModule
+from .nocode_module import Module as ModuleRegistry
+from .nocode_module import ModuleActivation as TenantModule
 
 __all__ = ["ModuleRegistry", "TenantModule"]

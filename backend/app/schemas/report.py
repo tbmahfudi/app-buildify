@@ -1,15 +1,18 @@
 """
 Report schemas for request/response validation.
 """
-from pydantic import BaseModel, Field, validator
-from typing import Optional, List, Dict, Any
+
 from datetime import datetime
 from enum import Enum
+from typing import Any, Dict, List, Optional
 from uuid import UUID
+
+from pydantic import BaseModel, Field
 
 
 class ParameterType(str, Enum):
     """Parameter types."""
+
     STRING = "string"
     INTEGER = "integer"
     DECIMAL = "decimal"
@@ -22,6 +25,7 @@ class ParameterType(str, Enum):
 
 class ExportFormat(str, Enum):
     """Export formats."""
+
     PDF = "pdf"
     EXCEL_FORMATTED = "excel_formatted"
     EXCEL_RAW = "excel_raw"
@@ -40,15 +44,17 @@ class ReportType(str, Enum):
     - metric   : single KPI card(s) — one or a few key numbers
     - chart    : chart is the primary output (bar, line, pie, …)
     """
-    TABULAR  = "tabular"
-    SUMMARY  = "summary"
+
+    TABULAR = "tabular"
+    SUMMARY = "summary"
     CROSSTAB = "crosstab"
-    METRIC   = "metric"
-    CHART    = "chart"
+    METRIC = "metric"
+    CHART = "chart"
 
 
 class AggregationType(str, Enum):
     """Aggregation types."""
+
     SUM = "sum"
     AVG = "avg"
     COUNT = "count"
@@ -59,8 +65,10 @@ class AggregationType(str, Enum):
 
 # Parameter Schemas
 
+
 class LookupConfig(BaseModel):
     """Configuration for lookup parameters."""
+
     entity: str = Field(..., description="Entity/table to lookup from")
     display_field: str = Field(..., description="Field to display to users")
     value_field: str = Field(..., description="Field value to use")
@@ -71,6 +79,7 @@ class LookupConfig(BaseModel):
 
 class ValidationRule(BaseModel):
     """Validation rule for parameters."""
+
     rule_type: str = Field(..., description="Type of validation (min, max, regex, etc.)")
     value: Any = Field(..., description="Validation value")
     error_message: Optional[str] = Field(None, description="Custom error message")
@@ -78,6 +87,7 @@ class ValidationRule(BaseModel):
 
 class ReportParameter(BaseModel):
     """Report parameter definition."""
+
     name: str = Field(..., description="Parameter name (used in queries)")
     label: str = Field(..., description="Display label")
     parameter_type: ParameterType = Field(..., description="Parameter type")
@@ -91,8 +101,10 @@ class ReportParameter(BaseModel):
 
 # Column Schemas
 
+
 class ColumnConfig(BaseModel):
     """Column configuration for report."""
+
     name: str = Field(..., description="Column name/field")
     label: str = Field(..., description="Display label")
     data_type: str = Field("string", description="Data type")
@@ -107,6 +119,7 @@ class ColumnConfig(BaseModel):
 
 class ConditionalFormat(BaseModel):
     """Conditional formatting rule."""
+
     condition: str = Field(..., description="Condition expression")
     style: Dict[str, Any] = Field(..., description="CSS styles to apply")
     applies_to: List[str] = Field(..., description="Column names to apply to")
@@ -114,8 +127,10 @@ class ConditionalFormat(BaseModel):
 
 # Query Schemas
 
+
 class JoinConfig(BaseModel):
     """Join configuration."""
+
     entity: str = Field(..., description="Entity to join")
     join_type: str = Field("inner", description="Join type (inner, left, right, outer)")
     on_condition: str = Field(..., description="Join condition")
@@ -124,6 +139,7 @@ class JoinConfig(BaseModel):
 
 class FilterCondition(BaseModel):
     """Filter condition."""
+
     field: str = Field(..., description="Field name")
     operator: str = Field(..., description="Operator (eq, ne, gt, lt, like, in, etc.)")
     value: Any = Field(..., description="Filter value")
@@ -132,9 +148,10 @@ class FilterCondition(BaseModel):
 
 class FilterGroup(BaseModel):
     """Group of filter conditions."""
+
     logic: str = Field("AND", description="Logic operator (AND, OR)")
     conditions: List[FilterCondition] = Field(..., description="Filter conditions")
-    groups: Optional[List['FilterGroup']] = Field(None, description="Nested filter groups")
+    groups: Optional[List["FilterGroup"]] = Field(None, description="Nested filter groups")
 
 
 # Support recursive model
@@ -143,6 +160,7 @@ FilterGroup.model_rebuild()
 
 class QueryConfig(BaseModel):
     """Query configuration."""
+
     joins: Optional[List[JoinConfig]] = Field(None, description="Join configurations")
     filters: Optional[FilterGroup] = Field(None, description="Filter configuration")
     group_by: Optional[List[str]] = Field(None, description="Group by fields")
@@ -151,6 +169,7 @@ class QueryConfig(BaseModel):
 
 
 # Visualization Schemas
+
 
 class ChartConfig(BaseModel):
     """
@@ -164,6 +183,7 @@ class ChartConfig(BaseModel):
     Distribution: scatter, bubble, heatmap
     KPI         : gauge, metric_card
     """
+
     chart_type: Optional[str] = Field(None, description="Chart type identifier (see docstring)")
     x_axis: Optional[str] = Field(None, description="Category / time-axis field name")
     y_axis: Optional[List[str]] = Field(None, description="Measure field name(s)")
@@ -179,8 +199,10 @@ class ChartConfig(BaseModel):
 
 # Report Definition Schemas
 
+
 class ReportDefinitionBase(BaseModel):
     """Base report definition schema."""
+
     name: str = Field(..., min_length=1, max_length=255)
     title: Optional[str] = Field(None, description="Display title shown to users")
     description: Optional[str] = None
@@ -210,11 +232,11 @@ class ReportDefinitionBase(BaseModel):
 
 class ReportDefinitionCreate(ReportDefinitionBase):
     """Create report definition schema."""
-    pass
 
 
 class ReportDefinitionUpdate(BaseModel):
     """Update report definition schema."""
+
     name: Optional[str] = Field(None, min_length=1, max_length=255)
     title: Optional[str] = None
     description: Optional[str] = None
@@ -241,6 +263,7 @@ class ReportDefinitionUpdate(BaseModel):
 
 class ReportDefinitionResponse(ReportDefinitionBase):
     """Report definition response schema."""
+
     id: UUID
     tenant_id: UUID
     created_by: UUID
@@ -255,6 +278,7 @@ class ReportDefinitionResponse(ReportDefinitionBase):
 
 # Report Execution Schemas
 
+
 class ReportPreviewRequest(BaseModel):
     """Ad-hoc report preview request — no saved report ID required.
 
@@ -262,16 +286,21 @@ class ReportPreviewRequest(BaseModel):
     report-designer format (data_source / columns) so the frontend can POST its
     live reportData object directly.
     """
+
     # Legacy flat fields
     base_entity: Optional[str] = Field(None, description="Primary entity/table to query (flat format)")
     columns_config: Optional[List[Dict[str, Any]]] = Field(None, description="Column definitions (flat format)")
     query_config: Optional[Dict[str, Any]] = Field(None, description="Filters, order, group-by config")
-    parameters: Optional[Any] = Field(None, description="Parameter values dict or parameter definition list — both accepted")
+    parameters: Optional[Any] = Field(
+        None, description="Parameter values dict or parameter definition list — both accepted"
+    )
     limit: int = Field(10, ge=1, le=500, description="Maximum rows to return")
 
     # Report-designer format (frontend sends the full reportData object)
     data_source: Optional[Dict[str, Any]] = Field(None, description="Nested data source config from report designer")
-    columns: Optional[List[Dict[str, Any]]] = Field(None, description="Column list from report designer (uses 'alias' as label)")
+    columns: Optional[List[Dict[str, Any]]] = Field(
+        None, description="Column list from report designer (uses 'alias' as label)"
+    )
 
     class Config:
         extra = "allow"  # absorb any other top-level reportData fields without error
@@ -279,6 +308,7 @@ class ReportPreviewRequest(BaseModel):
 
 class ReportPreviewResponse(BaseModel):
     """Ad-hoc report preview response."""
+
     data: List[Dict[str, Any]]
     columns: List[str]
     row_count: int
@@ -286,6 +316,7 @@ class ReportPreviewResponse(BaseModel):
 
 class ReportExecutionRequest(BaseModel):
     """Report execution request."""
+
     report_definition_id: UUID
     parameters: Optional[Dict[str, Any]] = Field(None, description="Parameter values")
     export_format: Optional[ExportFormat] = None
@@ -294,6 +325,7 @@ class ReportExecutionRequest(BaseModel):
 
 class ReportExecutionResponse(BaseModel):
     """Report execution response."""
+
     id: UUID
     report_definition_id: UUID
     status: str
@@ -313,8 +345,10 @@ class ReportExecutionResponse(BaseModel):
 
 # Report Schedule Schemas
 
+
 class ReportScheduleBase(BaseModel):
     """Base report schedule schema."""
+
     report_definition_id: UUID
     name: str = Field(..., min_length=1, max_length=255)
     is_active: bool = True
@@ -329,11 +363,11 @@ class ReportScheduleBase(BaseModel):
 
 class ReportScheduleCreate(ReportScheduleBase):
     """Create report schedule schema."""
-    pass
 
 
 class ReportScheduleUpdate(BaseModel):
     """Update report schedule schema."""
+
     name: Optional[str] = Field(None, min_length=1, max_length=255)
     is_active: Optional[bool] = None
     cron_expression: Optional[str] = None
@@ -347,6 +381,7 @@ class ReportScheduleUpdate(BaseModel):
 
 class ReportScheduleResponse(ReportScheduleBase):
     """Report schedule response schema."""
+
     id: UUID
     tenant_id: UUID
     created_by: UUID
@@ -361,8 +396,10 @@ class ReportScheduleResponse(ReportScheduleBase):
 
 # Report Template Schemas
 
+
 class ReportTemplateResponse(BaseModel):
     """Report template response schema."""
+
     id: UUID
     name: str
     description: Optional[str]
@@ -380,8 +417,10 @@ class ReportTemplateResponse(BaseModel):
 
 # Lookup Data Schemas
 
+
 class LookupDataRequest(BaseModel):
     """Request for lookup data."""
+
     entity: str
     display_field: str
     value_field: str
@@ -393,16 +432,19 @@ class LookupDataRequest(BaseModel):
 
 class LookupDataItem(BaseModel):
     """Lookup data item."""
+
     label: str
     value: Any
 
 
 class LookupDataResponse(BaseModel):
     """Lookup data response."""
+
     items: List[LookupDataItem]
     total_count: int
 
 
 class JoinSuggestionsRequest(BaseModel):
     """Request body for join suggestions."""
+
     entities: List[str] = Field(..., description="List of entity names to derive join suggestions for")

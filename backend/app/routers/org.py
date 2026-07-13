@@ -1,5 +1,4 @@
 import logging
-from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
@@ -11,11 +10,9 @@ from app.core.crud_helpers import (
     get_entity_by_id,
     validate_parent_exists,
 )
-from app.core.dependencies import get_current_user, get_db, has_role, has_permission
+from app.core.dependencies import get_db, has_permission
 from app.core.exceptions_helpers import (
-    duplicate_exception,
     not_found_exception,
-    permission_denied_exception,
     relationship_violation_exception,
 )
 from app.core.response_builders import build_list_response
@@ -27,7 +24,6 @@ from app.models.rbac_junctions import GroupRole, UserGroup, UserRole
 from app.models.role import Role
 from app.models.tenant import Tenant
 from app.models.user import User
-from app.schemas.auth import UserResponse
 from app.schemas.org import (
     BranchCreate,
     BranchListResponse,
@@ -52,13 +48,14 @@ logger = logging.getLogger(__name__)
 
 # ============= COMPANIES =============
 
+
 @router.get("/companies", response_model=CompanyListResponse)
 def list_companies(
     tenant_id: str = None,
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("companies:read:tenant"))
+    current_user: User = Depends(has_permission("companies:read:tenant")),
 ):
     """
     List all companies with pagination.
@@ -92,11 +89,12 @@ def list_companies(
         query = query.filter(Company.tenant_id == tenant_id)  # tenant_scope
     return build_list_response(query, skip, limit)
 
+
 @router.get("/companies/{company_id}", response_model=CompanyResponse)
 def get_company(
     company_id: str,
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("companies:read:tenant"))
+    current_user: User = Depends(has_permission("companies:read:tenant")),
 ):
     """
     Get a specific company by ID.
@@ -126,12 +124,13 @@ def get_company(
     """
     return get_entity_by_id(db, Company, company_id, "Company")
 
+
 @router.post("/companies", response_model=CompanyResponse, status_code=status.HTTP_201_CREATED)
 def create_company(
     company: CompanyCreate,
     request: Request,
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("companies:create:tenant"))
+    current_user: User = Depends(has_permission("companies:create:tenant")),
 ):
     """
     Create a new company (admin only).
@@ -184,10 +183,11 @@ def create_company(
     if db_company.tenant_id:
         tenant = db.query(Tenant).filter(Tenant.id == db_company.tenant_id).first()
         if tenant:
-            tenant.current_companies = db.query(Company).filter(
-                Company.tenant_id == tenant.id,  # tenant_scope
-                Company.deleted_at.is_(None)
-            ).count()
+            tenant.current_companies = (
+                db.query(Company)
+                .filter(Company.tenant_id == tenant.id, Company.deleted_at.is_(None))  # tenant_scope
+                .count()
+            )
             db.commit()
             db.refresh(tenant)
 
@@ -200,10 +200,11 @@ def create_company(
         entity_id=str(db_company.id),
         changes={"name": company.name, "code": company.code},
         request=request,
-        status="success"
+        status="success",
     )
 
     return db_company
+
 
 @router.put("/companies/{company_id}", response_model=CompanyResponse)
 def update_company(
@@ -211,7 +212,7 @@ def update_company(
     company: CompanyUpdate,
     request: Request,
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("companies:update:tenant"))
+    current_user: User = Depends(has_permission("companies:update:tenant")),
 ):
     """Update a company (admin only)"""
     db_company = get_entity_by_id(db, Company, company_id, "Company")
@@ -243,17 +244,18 @@ def update_company(
         entity_id=company_id,
         changes=compute_diff(before, after),
         request=request,
-        status="success"
+        status="success",
     )
 
     return db_company
+
 
 @router.delete("/companies/{company_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_company(
     company_id: str,
     request: Request,
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("companies:delete:tenant"))
+    current_user: User = Depends(has_permission("companies:delete:tenant")),
 ):
     """Delete a company (admin only)"""
     db_company = get_entity_by_id(db, Company, company_id, "Company")
@@ -268,10 +270,11 @@ def delete_company(
     if tenant_id:
         tenant = db.query(Tenant).filter(Tenant.id == tenant_id).first()
         if tenant:
-            tenant.current_companies = db.query(Company).filter(
-                Company.tenant_id == tenant.id,  # tenant_scope
-                Company.deleted_at.is_(None)
-            ).count()
+            tenant.current_companies = (
+                db.query(Company)
+                .filter(Company.tenant_id == tenant.id, Company.deleted_at.is_(None))  # tenant_scope
+                .count()
+            )
             db.commit()
             db.refresh(tenant)
 
@@ -284,12 +287,14 @@ def delete_company(
         entity_id=company_id,
         context_info={"name": company_name},
         request=request,
-        status="success"
+        status="success",
     )
 
     return None
 
+
 # ============= BRANCHES =============
+
 
 @router.get("/branches", response_model=BranchListResponse)
 def list_branches(
@@ -298,7 +303,7 @@ def list_branches(
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("branches:read:company"))
+    current_user: User = Depends(has_permission("branches:read:company")),
 ):
     """List branches, optionally filtered by tenant and/or company"""
     query = db.query(Branch)
@@ -308,21 +313,21 @@ def list_branches(
         query = query.filter(Branch.company_id == company_id)
     return build_list_response(query, skip, limit)
 
+
 @router.get("/branches/{branch_id}", response_model=BranchResponse)
 def get_branch(
-    branch_id: str,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("branches:read:company"))
+    branch_id: str, db: Session = Depends(get_db), current_user: User = Depends(has_permission("branches:read:company"))
 ):
     """Get a specific branch"""
     return get_entity_by_id(db, Branch, branch_id, "Branch")
+
 
 @router.post("/branches", response_model=BranchResponse, status_code=status.HTTP_201_CREATED)
 def create_branch(
     branch: BranchCreate,
     request: Request,
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("branches:create:company"))
+    current_user: User = Depends(has_permission("branches:create:company")),
 ):
     """Create a new branch"""
     # Verify company exists and get tenant_id from it
@@ -333,7 +338,7 @@ def create_branch(
 
     # Create branch with tenant_id from parent company
     branch_data = branch.dict()
-    branch_data['tenant_id'] = company.tenant_id
+    branch_data["tenant_id"] = company.tenant_id
     db_branch = create_entity_with_uuid(db, Branch, branch_data)
 
     # Audit branch creation
@@ -345,10 +350,11 @@ def create_branch(
         entity_id=str(db_branch.id),
         changes={"name": branch.name, "code": branch.code, "company_id": branch.company_id},
         request=request,
-        status="success"
+        status="success",
     )
 
     return db_branch
+
 
 @router.put("/branches/{branch_id}", response_model=BranchResponse)
 def update_branch(
@@ -356,7 +362,7 @@ def update_branch(
     branch: BranchUpdate,
     request: Request,
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("branches:update:company"))
+    current_user: User = Depends(has_permission("branches:update:company")),
 ):
     """Update a branch"""
     db_branch = get_entity_by_id(db, Branch, branch_id, "Branch")
@@ -388,17 +394,18 @@ def update_branch(
         entity_id=branch_id,
         changes=compute_diff(before, after),
         request=request,
-        status="success"
+        status="success",
     )
 
     return db_branch
+
 
 @router.delete("/branches/{branch_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_branch(
     branch_id: str,
     request: Request,
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("branches:delete:company"))
+    current_user: User = Depends(has_permission("branches:delete:company")),
 ):
     """Delete a branch"""
     db_branch = get_entity_by_id(db, Branch, branch_id, "Branch")
@@ -417,12 +424,14 @@ def delete_branch(
         entity_id=branch_id,
         context_info={"name": branch_name},
         request=request,
-        status="success"
+        status="success",
     )
 
     return None
 
+
 # ============= DEPARTMENTS =============
+
 
 @router.get("/departments", response_model=DepartmentListResponse)
 def list_departments(
@@ -432,7 +441,7 @@ def list_departments(
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("departments:read:branch"))
+    current_user: User = Depends(has_permission("departments:read:branch")),
 ):
     """List departments, optionally filtered by tenant, company, and/or branch"""
     query = db.query(Department)
@@ -444,21 +453,23 @@ def list_departments(
         query = query.filter(Department.branch_id == branch_id)
     return build_list_response(query, skip, limit)
 
+
 @router.get("/departments/{department_id}", response_model=DepartmentResponse)
 def get_department(
     department_id: str,
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("departments:read:branch"))
+    current_user: User = Depends(has_permission("departments:read:branch")),
 ):
     """Get a specific department"""
     return get_entity_by_id(db, Department, department_id, "Department")
+
 
 @router.post("/departments", response_model=DepartmentResponse, status_code=status.HTTP_201_CREATED)
 def create_department(
     department: DepartmentCreate,
     request: Request,
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("departments:create:branch"))
+    current_user: User = Depends(has_permission("departments:create:branch")),
 ):
     """Create a new department"""
     # Verify company exists and get tenant_id from it
@@ -476,7 +487,7 @@ def create_department(
 
     # Create department with tenant_id from parent company
     dept_data = department.dict()
-    dept_data['tenant_id'] = company.tenant_id
+    dept_data["tenant_id"] = company.tenant_id
     db_dept = create_entity_with_uuid(db, Department, dept_data)
 
     # Audit department creation
@@ -486,12 +497,18 @@ def create_department(
         user=current_user,
         entity_type="department",
         entity_id=str(db_dept.id),
-        changes={"name": department.name, "code": department.code, "company_id": department.company_id, "branch_id": department.branch_id},
+        changes={
+            "name": department.name,
+            "code": department.code,
+            "company_id": department.company_id,
+            "branch_id": department.branch_id,
+        },
         request=request,
-        status="success"
+        status="success",
     )
 
     return db_dept
+
 
 @router.put("/departments/{department_id}", response_model=DepartmentResponse)
 def update_department(
@@ -499,7 +516,7 @@ def update_department(
     department: DepartmentUpdate,
     request: Request,
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("departments:update:branch"))
+    current_user: User = Depends(has_permission("departments:update:branch")),
 ):
     """Update a department"""
     db_dept = get_entity_by_id(db, Department, department_id, "Department")
@@ -540,17 +557,18 @@ def update_department(
         entity_id=department_id,
         changes=compute_diff(before, after),
         request=request,
-        status="success"
+        status="success",
     )
 
     return db_dept
+
 
 @router.delete("/departments/{department_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_department(
     department_id: str,
     request: Request,
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("departments:delete:branch"))
+    current_user: User = Depends(has_permission("departments:delete:branch")),
 ):
     """Delete a department"""
     db_dept = get_entity_by_id(db, Department, department_id, "Department")
@@ -569,7 +587,7 @@ def delete_department(
         entity_id=department_id,
         context_info={"name": dept_name},
         request=request,
-        status="success"
+        status="success",
     )
 
     return None
@@ -577,12 +595,13 @@ def delete_department(
 
 # ============= TENANTS =============
 
+
 @router.get("/tenants", response_model=TenantListResponse)
 def list_tenants(
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("tenants:read:all"))
+    current_user: User = Depends(has_permission("tenants:read:all")),
 ):
     """List all tenants - requires tenants:read:all permission"""
     from app.models.tenant import Tenant
@@ -616,33 +635,29 @@ def list_tenants(
                 "logo_url": t.logo_url,
                 "primary_color": t.primary_color,
                 "created_at": t.created_at,
-                "updated_at": t.updated_at
+                "updated_at": t.updated_at,
             }
             for t in result["items"]
         ],
-        "total": result["total"]
+        "total": result["total"],
     }
 
 
 @router.get("/tenants/{tenant_id}", response_model=TenantResponse)
 def get_tenant(
-    tenant_id: str,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("tenants:read:all"))
+    tenant_id: str, db: Session = Depends(get_db), current_user: User = Depends(has_permission("tenants:read:all"))
 ):
     """Get a specific tenant - requires tenants:read:all permission"""
-    from app.models.tenant import Tenant
     from uuid import UUID
+
+    from app.models.tenant import Tenant
 
     try:
         tenant_uuid = UUID(tenant_id)
     except ValueError:
         raise not_found_exception("Tenant")
 
-    tenant = db.query(Tenant).filter(
-        Tenant.id == tenant_uuid,
-        Tenant.deleted_at.is_(None)
-    ).first()
+    tenant = db.query(Tenant).filter(Tenant.id == tenant_uuid, Tenant.deleted_at.is_(None)).first()
 
     if not tenant:
         raise not_found_exception("Tenant")
@@ -670,7 +685,7 @@ def get_tenant(
         "logo_url": tenant.logo_url,
         "primary_color": tenant.primary_color,
         "created_at": tenant.created_at,
-        "updated_at": tenant.updated_at
+        "updated_at": tenant.updated_at,
     }
 
 
@@ -678,7 +693,7 @@ def get_tenant(
 def create_tenant(
     tenant: TenantCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("tenants:create:all"))
+    current_user: User = Depends(has_permission("tenants:create:all")),
 ):
     """Create a new tenant - requires tenants:create:all permission"""
     from app.models.tenant import Tenant
@@ -686,10 +701,7 @@ def create_tenant(
     # Check if code already exists
     existing = db.query(Tenant).filter(Tenant.code == tenant.code).first()
     if existing:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Tenant with code '{tenant.code}' already exists"
-        )
+        raise HTTPException(status_code=400, detail=f"Tenant with code '{tenant.code}' already exists")
 
     # Create new tenant
     new_tenant = Tenant(
@@ -707,7 +719,7 @@ def create_tenant(
         contact_email=tenant.contact_email,
         contact_phone=tenant.contact_phone,
         logo_url=tenant.logo_url,
-        primary_color=tenant.primary_color
+        primary_color=tenant.primary_color,
     )
 
     db.add(new_tenant)
@@ -737,7 +749,7 @@ def create_tenant(
         "logo_url": new_tenant.logo_url,
         "primary_color": new_tenant.primary_color,
         "created_at": new_tenant.created_at,
-        "updated_at": new_tenant.updated_at
+        "updated_at": new_tenant.updated_at,
     }
 
 
@@ -746,21 +758,19 @@ def update_tenant(
     tenant_id: str,
     tenant_update: TenantUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("tenants:update:all"))
+    current_user: User = Depends(has_permission("tenants:update:all")),
 ):
     """Update a tenant - requires tenants:update:all permission"""
-    from app.models.tenant import Tenant
     from uuid import UUID
+
+    from app.models.tenant import Tenant
 
     try:
         tenant_uuid = UUID(tenant_id)
     except ValueError:
         raise not_found_exception("Tenant")
 
-    tenant = db.query(Tenant).filter(
-        Tenant.id == tenant_uuid,
-        Tenant.deleted_at.is_(None)
-    ).first()
+    tenant = db.query(Tenant).filter(Tenant.id == tenant_uuid, Tenant.deleted_at.is_(None)).first()
 
     if not tenant:
         raise not_found_exception("Tenant")
@@ -769,10 +779,7 @@ def update_tenant(
     if tenant_update.code and tenant_update.code != tenant.code:
         existing = db.query(Tenant).filter(Tenant.code == tenant_update.code).first()
         if existing:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Tenant with code '{tenant_update.code}' already exists"
-            )
+            raise HTTPException(status_code=400, detail=f"Tenant with code '{tenant_update.code}' already exists")
 
     # Update fields
     update_data = tenant_update.model_dump(exclude_unset=True)
@@ -805,30 +812,26 @@ def update_tenant(
         "logo_url": tenant.logo_url,
         "primary_color": tenant.primary_color,
         "created_at": tenant.created_at,
-        "updated_at": tenant.updated_at
+        "updated_at": tenant.updated_at,
     }
 
 
 @router.delete("/tenants/{tenant_id}", status_code=204)
 def delete_tenant(
-    tenant_id: str,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("tenants:delete:all"))
+    tenant_id: str, db: Session = Depends(get_db), current_user: User = Depends(has_permission("tenants:delete:all"))
 ):
     """Delete a tenant (soft delete) - requires tenants:delete:all permission"""
-    from app.models.tenant import Tenant
-    from uuid import UUID
     from datetime import datetime
+    from uuid import UUID
+
+    from app.models.tenant import Tenant
 
     try:
         tenant_uuid = UUID(tenant_id)
     except ValueError:
         raise not_found_exception("Tenant")
 
-    tenant = db.query(Tenant).filter(
-        Tenant.id == tenant_uuid,
-        Tenant.deleted_at.is_(None)
-    ).first()
+    tenant = db.query(Tenant).filter(Tenant.id == tenant_uuid, Tenant.deleted_at.is_(None)).first()
 
     if not tenant:
         raise not_found_exception("Tenant")
@@ -842,13 +845,14 @@ def delete_tenant(
 
 # ============= USERS =============
 
+
 @router.get("/users")
 def list_users(
     skip: int = 0,
     limit: int = 100,
     include_roles: bool = True,
     db: Session = Depends(get_db),
-    current_user: User = Depends(has_permission("users:read:tenant"))
+    current_user: User = Depends(has_permission("users:read:tenant")),
 ):
     """List all users - requires users:read:tenant permission"""
     from sqlalchemy.orm import joinedload
@@ -858,7 +862,10 @@ def list_users(
     # Eager load groups if requested
     if include_roles:
         query = query.options(
-            joinedload(User.user_groups).joinedload(UserGroup.group).joinedload(Group.group_roles).joinedload(GroupRole.role)
+            joinedload(User.user_groups)
+            .joinedload(UserGroup.group)
+            .joinedload(Group.group_roles)
+            .joinedload(GroupRole.role)
         )
 
     # Filter by tenant for non-superusers
@@ -881,7 +888,7 @@ def list_users(
             "is_active": u.is_active,
             "is_superuser": u.is_superuser,
             "tenant_id": str(u.tenant_id) if u.tenant_id else None,
-            "created_at": u.created_at.isoformat() if u.created_at else None
+            "created_at": u.created_at.isoformat() if u.created_at else None,
         }
 
         # Add roles and groups if requested
@@ -892,23 +899,22 @@ def list_users(
                 if ug.group and ug.group.is_active:
                     for gr in ug.group.group_roles:
                         if gr.role and gr.role.is_active:
-                            roles_via_groups.append({
-                                "id": str(gr.role.id),
-                                "name": gr.role.name,
-                                "code": gr.role.code,
-                                "group_id": str(ug.group.id),
-                                "group_name": ug.group.name,
-                                "group_code": ug.group.code
-                            })
+                            roles_via_groups.append(
+                                {
+                                    "id": str(gr.role.id),
+                                    "name": gr.role.name,
+                                    "code": gr.role.code,
+                                    "group_id": str(ug.group.id),
+                                    "group_name": ug.group.name,
+                                    "group_code": ug.group.code,
+                                }
+                            )
 
             # Get groups
             groups = [
-                {
-                    "id": str(ug.group.id),
-                    "name": ug.group.name,
-                    "code": ug.group.code
-                }
-                for ug in u.user_groups if ug.group and ug.group.is_active
+                {"id": str(ug.group.id), "name": ug.group.name, "code": ug.group.code}
+                for ug in u.user_groups
+                if ug.group and ug.group.is_active
             ]
 
             user_data["roles"] = roles_via_groups
@@ -916,10 +922,7 @@ def list_users(
 
         items.append(user_data)
 
-    return {
-        "items": items,
-        "total": result["total"]
-    }
+    return {"items": items, "total": result["total"]}
 
 
 @router.post("/users", status_code=201)
@@ -930,9 +933,10 @@ def create_user(
     http_request: Request = None,
 ):
     """Create a new user. Story 3.1.1"""
-    from app.core.auth import get_password_hash
-    from app.core.audit import create_audit_log
     import uuid
+
+    from app.core.audit import create_audit_log
+    from app.core.auth import get_password_hash
 
     email = (payload.get("email") or "").strip().lower()
     full_name = payload.get("full_name") or ""
@@ -950,10 +954,14 @@ def create_user(
     else:
         raise HTTPException(status_code=400, detail="tenant_id required for superadmin")
 
-    existing = db.query(User).filter(
-        User.email == email,
-        User.tenant_id == effective_tenant_id,  # tenant_scope
-    ).first()
+    existing = (
+        db.query(User)
+        .filter(
+            User.email == email,
+            User.tenant_id == effective_tenant_id,  # tenant_scope
+        )
+        .first()
+    )
     if existing:
         raise HTTPException(status_code=409, detail=f"Email '{email}' already exists in this tenant")
 
@@ -979,10 +987,16 @@ def create_user(
     db.commit()
     db.refresh(user)
 
-    create_audit_log(db=db, action="user_created", user=current_user,
-                     entity_type="user", entity_id=str(user.id),
-                     context_info={"email": email, "tenant_id": str(effective_tenant_id)},
-                     request=http_request, status="success")
+    create_audit_log(
+        db=db,
+        action="user_created",
+        user=current_user,
+        entity_type="user",
+        entity_id=str(user.id),
+        context_info={"email": email, "tenant_id": str(effective_tenant_id)},
+        request=http_request,
+        status="success",
+    )
 
     return {
         "id": str(user.id),
@@ -1003,9 +1017,10 @@ def admin_reset_user_password(
     http_request: Request = None,
 ):
     """Admin-initiated password reset. Story 3.1.4"""
-    from app.core.auth import get_password_hash
+    import secrets
+
     from app.core.audit import create_audit_log
-    import uuid, secrets
+    from app.core.auth import get_password_hash
 
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
@@ -1027,10 +1042,16 @@ def admin_reset_user_password(
         user.must_change_password = True
     db.commit()
 
-    create_audit_log(db=db, action="admin_password_reset", user=current_user,
-                     entity_type="user", entity_id=str(user.id),
-                     context_info={"temporary": temporary},
-                     request=http_request, status="success")
+    create_audit_log(
+        db=db,
+        action="admin_password_reset",
+        user=current_user,
+        entity_type="user",
+        entity_id=str(user.id),
+        context_info={"temporary": temporary},
+        request=http_request,
+        status="success",
+    )
 
     result = {"message": "Password reset successfully", "user_id": str(user.id)}
     if temporary:

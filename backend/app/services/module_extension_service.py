@@ -7,20 +7,16 @@ Service layer for managing module extensions (Phase 4 Priority 3):
 - Menu extensions: Add menu items to other modules' menus
 """
 
-from typing import List, Optional, Tuple, Dict, Any
-from sqlalchemy.orm import Session
-from sqlalchemy import text
 import re
+from typing import List, Optional, Tuple
+
+from sqlalchemy import text
+from sqlalchemy.orm import Session
 
 from app.core.logging_config import get_logger
-from app.models.module_extension import (
-    ModuleEntityExtension,
-    ModuleScreenExtension,
-    ModuleMenuExtension
-)
-from app.models.nocode_module import NocodeModule
 from app.models.data_model import EntityDefinition
-
+from app.models.module_extension import ModuleEntityExtension, ModuleMenuExtension, ModuleScreenExtension
+from app.models.nocode_module import NocodeModule
 
 logger = get_logger(__name__)
 
@@ -49,10 +45,7 @@ class ModuleExtensionService:
     # ===== Entity Extensions =====
 
     def create_entity_extension(
-        self,
-        extending_module_id: str,
-        target_entity_id: str,
-        extension_fields: List[dict]
+        self, extending_module_id: str, target_entity_id: str, extension_fields: List[dict]
     ) -> Tuple[bool, str, Optional[dict]]:
         """
         Create entity extension.
@@ -89,17 +82,13 @@ class ModuleExtensionService:
             )
         """
         # Get extending module
-        extending_module = self.db.query(NocodeModule).filter(
-            NocodeModule.id == extending_module_id
-        ).first()
+        extending_module = self.db.query(NocodeModule).filter(NocodeModule.id == extending_module_id).first()
 
         if not extending_module:
             return False, "Extending module not found", None
 
         # Get target entity
-        target_entity = self.db.query(EntityDefinition).filter(
-            EntityDefinition.id == target_entity_id
-        ).first()
+        target_entity = self.db.query(EntityDefinition).filter(EntityDefinition.id == target_entity_id).first()
 
         if not target_entity:
             return False, "Target entity not found", None
@@ -108,15 +97,17 @@ class ModuleExtensionService:
         if not target_entity.module_id:
             return False, "Target entity does not belong to any module", None
 
-        target_module = self.db.query(NocodeModule).filter(
-            NocodeModule.id == target_entity.module_id
-        ).first()
+        target_module = self.db.query(NocodeModule).filter(NocodeModule.id == target_entity.module_id).first()
 
         # Check if extension already exists
-        existing = self.db.query(ModuleEntityExtension).filter(
-            ModuleEntityExtension.extending_module_id == extending_module_id,
-            ModuleEntityExtension.target_entity_id == target_entity_id
-        ).first()
+        existing = (
+            self.db.query(ModuleEntityExtension)
+            .filter(
+                ModuleEntityExtension.extending_module_id == extending_module_id,
+                ModuleEntityExtension.target_entity_id == target_entity_id,
+            )
+            .first()
+        )
 
         if existing:
             return False, f"Extension already exists from {extending_module.name} to {target_entity.name}", None
@@ -124,9 +115,7 @@ class ModuleExtensionService:
         # Generate extension table name
         # Format: {extending_prefix}_{target_prefix}_{target_entity}_ext
         extension_table = self._generate_extension_table_name(
-            extending_module.table_prefix,
-            target_module.table_prefix,
-            target_entity.table_name
+            extending_module.table_prefix, target_module.table_prefix, target_entity.table_name
         )
 
         # Validate extension fields
@@ -142,7 +131,7 @@ class ModuleExtensionService:
             extension_table=extension_table,
             extension_fields=extension_fields,
             is_active=True,
-            created_by=self.current_user.id
+            created_by=self.current_user.id,
         )
 
         self.db.add(extension)
@@ -152,23 +141,21 @@ class ModuleExtensionService:
         logger.info(
             f"Created entity extension: {extending_module.name} → {target_entity.name}",
             extra={
-                'extending_module': extending_module.name,
-                'target_entity': target_entity.name,
-                'extension_table': extension_table,
-                'field_count': len(extension_fields)
-            }
+                "extending_module": extending_module.name,
+                "target_entity": target_entity.name,
+                "extension_table": extension_table,
+                "field_count": len(extension_fields),
+            },
         )
 
-        return True, "Entity extension created successfully", {
-            'id': str(extension.id),
-            'extension_table': extension_table,
-            'field_count': len(extension_fields)
-        }
+        return (
+            True,
+            "Entity extension created successfully",
+            {"id": str(extension.id), "extension_table": extension_table, "field_count": len(extension_fields)},
+        )
 
     def list_entity_extensions(
-        self,
-        target_entity_id: Optional[str] = None,
-        extending_module_id: Optional[str] = None
+        self, target_entity_id: Optional[str] = None, extending_module_id: Optional[str] = None
     ) -> List[dict]:
         """
         List entity extensions.
@@ -192,30 +179,26 @@ class ModuleExtensionService:
 
         return [
             {
-                'id': str(ext.id),
-                'extending_module': {
-                    'id': str(ext.extending_module.id),
-                    'name': ext.extending_module.name,
-                    'display_name': ext.extending_module.display_name
+                "id": str(ext.id),
+                "extending_module": {
+                    "id": str(ext.extending_module.id),
+                    "name": ext.extending_module.name,
+                    "display_name": ext.extending_module.display_name,
                 },
-                'target_entity': {
-                    'id': str(ext.target_entity.id),
-                    'name': ext.target_entity.name,
-                    'label': ext.target_entity.label
+                "target_entity": {
+                    "id": str(ext.target_entity.id),
+                    "name": ext.target_entity.name,
+                    "label": ext.target_entity.label,
                 },
-                'extension_table': ext.extension_table,
-                'extension_fields': ext.extension_fields,
-                'is_active': ext.is_active,
-                'created_at': ext.created_at.isoformat() if ext.created_at else None
+                "extension_table": ext.extension_table,
+                "extension_fields": ext.extension_fields,
+                "is_active": ext.is_active,
+                "created_at": ext.created_at.isoformat() if ext.created_at else None,
             }
             for ext in extensions
         ]
 
-    def get_entity_with_extensions(
-        self,
-        entity_name: str,
-        record_id: str
-    ) -> Optional[dict]:
+    def get_entity_with_extensions(self, entity_name: str, record_id: str) -> Optional[dict]:
         """
         Get entity record with all extension data.
 
@@ -243,9 +226,7 @@ class ModuleExtensionService:
             }
         """
         # Get entity definition
-        entity = self.db.query(EntityDefinition).filter(
-            EntityDefinition.name == entity_name
-        ).first()
+        entity = self.db.query(EntityDefinition).filter(EntityDefinition.name == entity_name).first()
 
         if not entity:
             return None
@@ -258,11 +239,7 @@ class ModuleExtensionService:
         """
 
         base_result = self.db.execute(
-            text(base_query),
-            {
-                'record_id': record_id,
-                'tenant_id': str(self.current_user.tenant_id)
-            }
+            text(base_query), {"record_id": record_id, "tenant_id": str(self.current_user.tenant_id)}
         ).first()
 
         if not base_result:
@@ -272,21 +249,20 @@ class ModuleExtensionService:
         record = dict(base_result._mapping)
 
         # Get all active extensions for this entity
-        extensions = self.db.query(ModuleEntityExtension).join(
-            NocodeModule,
-            ModuleEntityExtension.extending_module_id == NocodeModule.id
-        ).filter(
-            ModuleEntityExtension.target_entity_id == entity.id,
-            ModuleEntityExtension.is_active == True,
-            NocodeModule.status == 'active'
-        ).all()
+        extensions = (
+            self.db.query(ModuleEntityExtension)
+            .join(NocodeModule, ModuleEntityExtension.extending_module_id == NocodeModule.id)
+            .filter(
+                ModuleEntityExtension.target_entity_id == entity.id,
+                ModuleEntityExtension.is_active == True,
+                NocodeModule.status == "active",
+            )
+            .all()
+        )
 
         # Join extension data
         for ext in extensions:
-            ext_data = self._get_extension_data(
-                ext.extension_table,
-                record_id
-            )
+            ext_data = self._get_extension_data(ext.extension_table, record_id)
             if ext_data:
                 # Add extension data with prefix
                 ext_key = f"{ext.extending_module.table_prefix}_ext"
@@ -304,7 +280,7 @@ class ModuleExtensionService:
         extension_type: str,
         extension_config: dict,
         position: int = 999,
-        required_permission: Optional[str] = None
+        required_permission: Optional[str] = None,
     ) -> Tuple[bool, str, Optional[dict]]:
         """
         Create screen extension.
@@ -338,18 +314,14 @@ class ModuleExtensionService:
             )
         """
         # Validate extension_type
-        valid_types = ['tab', 'section', 'widget', 'action']
+        valid_types = ["tab", "section", "widget", "action"]
         if extension_type not in valid_types:
             return False, f"Invalid extension_type. Must be one of: {', '.join(valid_types)}", None
 
         # Validate modules exist
-        extending_module = self.db.query(NocodeModule).filter(
-            NocodeModule.id == extending_module_id
-        ).first()
+        extending_module = self.db.query(NocodeModule).filter(NocodeModule.id == extending_module_id).first()
 
-        target_module = self.db.query(NocodeModule).filter(
-            NocodeModule.id == target_module_id
-        ).first()
+        target_module = self.db.query(NocodeModule).filter(NocodeModule.id == target_module_id).first()
 
         if not extending_module:
             return False, "Extending module not found", None
@@ -367,7 +339,7 @@ class ModuleExtensionService:
             position=position,
             required_permission=required_permission,
             is_active=True,
-            created_by=self.current_user.id
+            created_by=self.current_user.id,
         )
 
         self.db.add(extension)
@@ -377,22 +349,20 @@ class ModuleExtensionService:
         logger.info(
             f"Created screen extension: {extending_module.name} → {target_module.name}.{target_screen}",
             extra={
-                'extending_module': extending_module.name,
-                'target_screen': target_screen,
-                'extension_type': extension_type
-            }
+                "extending_module": extending_module.name,
+                "target_screen": target_screen,
+                "extension_type": extension_type,
+            },
         )
 
-        return True, "Screen extension created successfully", {
-            'id': str(extension.id),
-            'extension_type': extension_type,
-            'target_screen': target_screen
-        }
+        return (
+            True,
+            "Screen extension created successfully",
+            {"id": str(extension.id), "extension_type": extension_type, "target_screen": target_screen},
+        )
 
     def list_screen_extensions(
-        self,
-        target_screen: Optional[str] = None,
-        target_module_id: Optional[str] = None
+        self, target_screen: Optional[str] = None, target_module_id: Optional[str] = None
     ) -> List[dict]:
         """
         List screen extensions.
@@ -404,9 +374,7 @@ class ModuleExtensionService:
         Returns:
             List of screen extensions ordered by position
         """
-        query = self.db.query(ModuleScreenExtension).filter(
-            ModuleScreenExtension.is_active == True
-        )
+        query = self.db.query(ModuleScreenExtension).filter(ModuleScreenExtension.is_active == True)
 
         if target_screen:
             query = query.filter(ModuleScreenExtension.target_screen == target_screen)
@@ -419,17 +387,17 @@ class ModuleExtensionService:
 
         return [
             {
-                'id': str(ext.id),
-                'extending_module': {
-                    'id': str(ext.extending_module.id),
-                    'name': ext.extending_module.name,
-                    'display_name': ext.extending_module.display_name
+                "id": str(ext.id),
+                "extending_module": {
+                    "id": str(ext.extending_module.id),
+                    "name": ext.extending_module.name,
+                    "display_name": ext.extending_module.display_name,
                 },
-                'target_screen': ext.target_screen,
-                'extension_type': ext.extension_type,
-                'extension_config': ext.extension_config,
-                'position': ext.position,
-                'required_permission': ext.required_permission
+                "target_screen": ext.target_screen,
+                "extension_type": ext.extension_type,
+                "extension_config": ext.extension_config,
+                "position": ext.position,
+                "required_permission": ext.required_permission,
             }
             for ext in extensions
         ]
@@ -443,7 +411,7 @@ class ModuleExtensionService:
         target_module_id: Optional[str] = None,
         target_menu_item: Optional[str] = None,
         position: int = 999,
-        required_permission: Optional[str] = None
+        required_permission: Optional[str] = None,
     ) -> Tuple[bool, str, Optional[dict]]:
         """
         Create menu extension.
@@ -482,18 +450,14 @@ class ModuleExtensionService:
             )
         """
         # Validate extending module exists
-        extending_module = self.db.query(NocodeModule).filter(
-            NocodeModule.id == extending_module_id
-        ).first()
+        extending_module = self.db.query(NocodeModule).filter(NocodeModule.id == extending_module_id).first()
 
         if not extending_module:
             return False, "Extending module not found", None
 
         # Validate target module if specified
         if target_module_id:
-            target_module = self.db.query(NocodeModule).filter(
-                NocodeModule.id == target_module_id
-            ).first()
+            target_module = self.db.query(NocodeModule).filter(NocodeModule.id == target_module_id).first()
 
             if not target_module:
                 return False, "Target module not found", None
@@ -507,7 +471,7 @@ class ModuleExtensionService:
             position=position,
             required_permission=required_permission,
             is_active=True,
-            created_by=self.current_user.id
+            created_by=self.current_user.id,
         )
 
         self.db.add(extension)
@@ -516,21 +480,16 @@ class ModuleExtensionService:
 
         logger.info(
             f"Created menu extension: {extending_module.name}",
-            extra={
-                'extending_module': extending_module.name,
-                'target_menu_item': target_menu_item or 'root'
-            }
+            extra={"extending_module": extending_module.name, "target_menu_item": target_menu_item or "root"},
         )
 
-        return True, "Menu extension created successfully", {
-            'id': str(extension.id),
-            'target_menu_item': target_menu_item or 'root'
-        }
+        return (
+            True,
+            "Menu extension created successfully",
+            {"id": str(extension.id), "target_menu_item": target_menu_item or "root"},
+        )
 
-    def list_menu_extensions(
-        self,
-        target_module_id: Optional[str] = None
-    ) -> List[dict]:
+    def list_menu_extensions(self, target_module_id: Optional[str] = None) -> List[dict]:
         """
         List menu extensions.
 
@@ -540,9 +499,7 @@ class ModuleExtensionService:
         Returns:
             List of menu extensions ordered by position
         """
-        query = self.db.query(ModuleMenuExtension).filter(
-            ModuleMenuExtension.is_active == True
-        )
+        query = self.db.query(ModuleMenuExtension).filter(ModuleMenuExtension.is_active == True)
 
         if target_module_id:
             query = query.filter(ModuleMenuExtension.target_module_id == target_module_id)
@@ -552,28 +509,23 @@ class ModuleExtensionService:
 
         return [
             {
-                'id': str(ext.id),
-                'extending_module': {
-                    'id': str(ext.extending_module.id),
-                    'name': ext.extending_module.name,
-                    'display_name': ext.extending_module.display_name
+                "id": str(ext.id),
+                "extending_module": {
+                    "id": str(ext.extending_module.id),
+                    "name": ext.extending_module.name,
+                    "display_name": ext.extending_module.display_name,
                 },
-                'target_menu_item': ext.target_menu_item,
-                'menu_config': ext.menu_config,
-                'position': ext.position,
-                'required_permission': ext.required_permission
+                "target_menu_item": ext.target_menu_item,
+                "menu_config": ext.menu_config,
+                "position": ext.position,
+                "required_permission": ext.required_permission,
             }
             for ext in extensions
         ]
 
     # ===== Helper Methods =====
 
-    def _generate_extension_table_name(
-        self,
-        extending_prefix: str,
-        target_prefix: str,
-        target_table: str
-    ) -> str:
+    def _generate_extension_table_name(self, extending_prefix: str, target_prefix: str, target_table: str) -> str:
         """
         Generate extension table name.
 
@@ -584,7 +536,7 @@ class ModuleExtensionService:
         """
         # Remove target prefix from table name if present
         if target_table.startswith(f"{target_prefix}_"):
-            entity_name = target_table[len(target_prefix) + 1:]
+            entity_name = target_table[len(target_prefix) + 1 :]
         else:
             entity_name = target_table
 
@@ -605,28 +557,27 @@ class ModuleExtensionService:
 
         for field in fields:
             # Required fields
-            if 'name' not in field:
+            if "name" not in field:
                 return False, "Field name is required"
 
-            if 'type' not in field:
+            if "type" not in field:
                 return False, f"Field type is required for field '{field['name']}'"
 
             # Validate field name (lowercase, alphanumeric, underscore)
-            if not re.match(r'^[a-z][a-z0-9_]*$', field['name']):
-                return False, f"Invalid field name: {field['name']}. Must start with letter, lowercase, alphanumeric and underscore only"
+            if not re.match(r"^[a-z][a-z0-9_]*$", field["name"]):
+                return (
+                    False,
+                    f"Invalid field name: {field['name']}. Must start with letter, lowercase, alphanumeric and underscore only",
+                )
 
             # Validate field type
-            valid_types = ['string', 'text', 'integer', 'decimal', 'boolean', 'date', 'datetime', 'json']
-            if field['type'] not in valid_types:
+            valid_types = ["string", "text", "integer", "decimal", "boolean", "date", "datetime", "json"]
+            if field["type"] not in valid_types:
                 return False, f"Invalid field type: {field['type']}. Must be one of: {', '.join(valid_types)}"
 
         return True, "Valid"
 
-    def _get_extension_data(
-        self,
-        extension_table: str,
-        record_id: str
-    ) -> Optional[dict]:
+    def _get_extension_data(self, extension_table: str, record_id: str) -> Optional[dict]:
         """
         Get data from extension table.
 
@@ -648,11 +599,7 @@ class ModuleExtensionService:
 
         try:
             result = self.db.execute(
-                text(query),
-                {
-                    'record_id': record_id,
-                    'tenant_id': str(self.current_user.tenant_id)
-                }
+                text(query), {"record_id": record_id, "tenant_id": str(self.current_user.tenant_id)}
             ).first()
 
             if not result:

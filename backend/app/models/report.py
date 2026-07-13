@@ -1,12 +1,11 @@
 """
 Report models for the reporting system.
 """
+
 import enum
 from datetime import datetime
 
-from sqlalchemy import JSON, Boolean, Column, DateTime
-from sqlalchemy import Enum as SQLEnum
-from sqlalchemy import ForeignKey, Integer, String, Text
+from sqlalchemy import JSON, Boolean, Column, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
 
 from app.models import Base
@@ -15,6 +14,7 @@ from app.models.base import GUID
 
 class ParameterType(str, enum.Enum):
     """Parameter types for report parameters."""
+
     STRING = "string"
     INTEGER = "integer"
     DECIMAL = "decimal"
@@ -27,6 +27,7 @@ class ParameterType(str, enum.Enum):
 
 class ExportFormat(str, enum.Enum):
     """Export formats for reports."""
+
     PDF = "pdf"
     EXCEL_FORMATTED = "excel_formatted"
     EXCEL_RAW = "excel_raw"
@@ -37,15 +38,17 @@ class ExportFormat(str, enum.Enum):
 
 class ReportType(str, enum.Enum):
     """Report output types."""
-    TABULAR  = "tabular"
-    SUMMARY  = "summary"
+
+    TABULAR = "tabular"
+    SUMMARY = "summary"
     CROSSTAB = "crosstab"
-    METRIC   = "metric"
-    CHART    = "chart"
+    METRIC = "metric"
+    CHART = "chart"
 
 
 class AggregationType(str, enum.Enum):
     """Aggregation types for report columns."""
+
     SUM = "sum"
     AVG = "avg"
     COUNT = "count"
@@ -56,6 +59,7 @@ class AggregationType(str, enum.Enum):
 
 class ReportDefinition(Base):
     """Report definition model."""
+
     __tablename__ = "report_definitions"
     __tenant_scoped__ = True
 
@@ -109,6 +113,7 @@ class ReportDefinition(Base):
 
 class ReportExecution(Base):
     """Report execution history."""
+
     __tablename__ = "report_executions"
     __tenant_scoped__ = True
 
@@ -138,6 +143,7 @@ class ReportExecution(Base):
 
 class ReportSchedule(Base):
     """Report scheduling configuration."""
+
     __tablename__ = "report_schedules"
     __tenant_scoped__ = True
 
@@ -175,6 +181,7 @@ class ReportSchedule(Base):
 
 class ReportTemplate(Base):
     """Pre-built report templates."""
+
     __tablename__ = "report_templates"
 
     id = Column(GUID, primary_key=True, index=True)
@@ -200,6 +207,7 @@ class ReportTemplate(Base):
 
 class ReportCache(Base):
     """Cache for report results."""
+
     __tablename__ = "report_cache"
     __tenant_scoped__ = True
 

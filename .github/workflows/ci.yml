@@ -18,12 +18,18 @@ jobs:
           python-version: "3.11"
       - name: Install dependencies
         run: pip install flake8 black isort
+      # Run from backend/ so all three tools pick up backend/setup.cfg +
+      # backend/pyproject.toml (line length, ignores, isort black profile,
+      # alembic exclusion). Keep them in sync there, not as inline flags.
       - name: Run flake8
-        run: flake8 backend/app --max-line-length=120 --extend-ignore=E203,W503
+        working-directory: backend
+        run: flake8 app
       - name: Run black (check)
-        run: black --check backend/app
+        working-directory: backend
+        run: black --check app
       - name: Run isort (check)
-        run: isort --check-only backend/app
+        working-directory: backend
+        run: isort --check-only app
 
   tenant-scope-gate:
     name: Tenant Scope Gate

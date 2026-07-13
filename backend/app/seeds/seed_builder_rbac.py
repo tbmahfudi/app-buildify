@@ -12,14 +12,14 @@ This creates:
 Run: python -m app.seeds.seed_builder_rbac
 """
 
-from sqlalchemy.orm import Session
 from sqlalchemy import and_
-from app.core.db import SessionLocal
-from app.models.permission import Permission
-from app.models.role import Role
-from app.models.group import Group
-from app.models.rbac_junctions import RolePermission, GroupRole
+from sqlalchemy.orm import Session
 
+from app.core.db import SessionLocal
+from app.models.group import Group
+from app.models.permission import Permission
+from app.models.rbac_junctions import GroupRole, RolePermission
+from app.models.role import Role
 
 # ============================================================================
 # UI BUILDER PERMISSIONS
@@ -33,7 +33,7 @@ BUILDER_PERMISSIONS = [
         "category": "builder",
         "resource": "builder",
         "action": "design",
-        "scope": "tenant"
+        "scope": "tenant",
     },
     {
         "code": "builder:pages:read:tenant",
@@ -42,7 +42,7 @@ BUILDER_PERMISSIONS = [
         "category": "builder",
         "resource": "pages",
         "action": "read",
-        "scope": "tenant"
+        "scope": "tenant",
     },
     {
         "code": "builder:pages:create:tenant",
@@ -51,7 +51,7 @@ BUILDER_PERMISSIONS = [
         "category": "builder",
         "resource": "pages",
         "action": "create",
-        "scope": "tenant"
+        "scope": "tenant",
     },
     {
         "code": "builder:pages:edit:tenant",
@@ -60,7 +60,7 @@ BUILDER_PERMISSIONS = [
         "category": "builder",
         "resource": "pages",
         "action": "edit",
-        "scope": "tenant"
+        "scope": "tenant",
     },
     {
         "code": "builder:pages:delete:tenant",
@@ -69,7 +69,7 @@ BUILDER_PERMISSIONS = [
         "category": "builder",
         "resource": "pages",
         "action": "delete",
-        "scope": "tenant"
+        "scope": "tenant",
     },
     {
         "code": "builder:publish:tenant",
@@ -78,7 +78,7 @@ BUILDER_PERMISSIONS = [
         "category": "builder",
         "resource": "builder",
         "action": "publish",
-        "scope": "tenant"
+        "scope": "tenant",
     },
     {
         "code": "builder:manage-permissions:tenant",
@@ -87,7 +87,7 @@ BUILDER_PERMISSIONS = [
         "category": "builder",
         "resource": "permissions",
         "action": "manage",
-        "scope": "tenant"
+        "scope": "tenant",
     },
     {
         "code": "builder:manage-menus:tenant",
@@ -96,8 +96,8 @@ BUILDER_PERMISSIONS = [
         "category": "builder",
         "resource": "menus",
         "action": "manage",
-        "scope": "tenant"
-    }
+        "scope": "tenant",
+    },
 ]
 
 
@@ -128,7 +128,7 @@ def seed_builder_permissions(db: Session):
             action=perm_data["action"],
             scope=perm_data["scope"],
             is_active=True,
-            is_system=True  # System permission, can't be deleted
+            is_system=True,  # System permission, can't be deleted
         )
 
         db.add(permission)
@@ -162,7 +162,7 @@ def seed_builder_role(db: Session):
             description="Full access to UI Builder - design, manage, and publish pages",
             role_type="system",
             is_active=True,
-            is_system=True
+            is_system=True,
         )
 
         db.add(role)
@@ -183,22 +183,18 @@ def seed_builder_role(db: Session):
             continue
 
         # Check if already assigned
-        existing = db.query(RolePermission).filter(
-            and_(
-                RolePermission.role_id == role.id,
-                RolePermission.permission_id == permission.id
-            )
-        ).first()
+        existing = (
+            db.query(RolePermission)
+            .filter(and_(RolePermission.role_id == role.id, RolePermission.permission_id == permission.id))
+            .first()
+        )
 
         if existing:
             existing_count += 1
             continue
 
         # Assign permission to role (ID auto-generated)
-        role_perm = RolePermission(
-            role_id=role.id,
-            permission_id=permission.id
-        )
+        role_perm = RolePermission(role_id=role.id, permission_id=permission.id)
 
         db.add(role_perm)
         print(f"    ✅ {permission.code}")
@@ -225,22 +221,16 @@ def assign_role_to_admin_group(db: Session, role: Role):
         return
 
     # Check if already assigned
-    existing = db.query(GroupRole).filter(
-        and_(
-            GroupRole.group_id == admin_group.id,
-            GroupRole.role_id == role.id
-        )
-    ).first()
+    existing = (
+        db.query(GroupRole).filter(and_(GroupRole.group_id == admin_group.id, GroupRole.role_id == role.id)).first()
+    )
 
     if existing:
         print(f"  ⏭️  Role already assigned to '{admin_group.name}' group")
         return
 
     # Assign role to group (ID auto-generated)
-    group_role = GroupRole(
-        group_id=admin_group.id,
-        role_id=role.id
-    )
+    group_role = GroupRole(group_id=admin_group.id, role_id=role.id)
 
     db.add(group_role)
     db.commit()
