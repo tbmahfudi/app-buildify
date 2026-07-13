@@ -19,6 +19,25 @@ depends_on = None
 
 
 def upgrade() -> None:
+    # Ensure the application roles exist before granting to them. A fresh
+    # database has no pre-provisioned roles, so the GRANT/REVOKE below would
+    # otherwise abort the whole migration (GH#678). Idempotent: a no-op when
+    # the roles already exist (real deployments provision them out of band).
+    op.execute(
+        """
+        DO $$
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'app_user') THEN
+                CREATE ROLE app_user NOLOGIN;
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'app_readonly_role') THEN
+                CREATE ROLE app_readonly_role NOLOGIN;
+            END IF;
+        END
+        $$;
+        """
+    )
+
     # Revoke UPDATE and DELETE from application roles
     op.execute("REVOKE UPDATE, DELETE ON hc_audit_log FROM app_user;")
     op.execute("REVOKE UPDATE, DELETE ON hc_audit_log FROM app_readonly_role;")

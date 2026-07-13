@@ -6,6 +6,8 @@ Comprehensive seeding covering all organizational scenarios with proper multi-te
 Run: python -m app.seeds.seed_complete_org
 """
 
+import os
+import sys
 import uuid
 from datetime import datetime
 
@@ -648,8 +650,19 @@ def main():
     print("  • Financial Services")
     print("\n" + "=" * 70)
 
-    response = input("\nDo you want to clear existing data? (yes/no): ").strip().lower()
-    clear_data = response == "yes"
+    # Decide whether to clear without requiring an interactive TTY (GH#678):
+    #   1. SEED_CLEAR env var, if set, wins (SEED_CLEAR=1/true/yes -> clear).
+    #   2. Otherwise prompt only when attached to a real TTY.
+    #   3. Non-interactive with no env var -> do NOT clear (safe default).
+    seed_clear_env = os.getenv("SEED_CLEAR")
+    if seed_clear_env is not None:
+        clear_data = seed_clear_env.strip().lower() in ("1", "true", "yes", "y")
+    elif sys.stdin is not None and sys.stdin.isatty():
+        response = input("\nDo you want to clear existing data? (yes/no): ").strip().lower()
+        clear_data = response == "yes"
+    else:
+        print("\nNon-interactive run and SEED_CLEAR unset — keeping existing data.")
+        clear_data = False
 
     db = SessionLocal()
 
