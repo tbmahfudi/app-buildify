@@ -18,8 +18,18 @@ def hash_password(password: str) -> str:
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verify a password against its hash"""
-    return pwd_context.verify(plain_password, hashed_password)
+    """Verify a password against its hash.
+
+    A malformed/unparseable stored hash is treated as a failed verification
+    (returns False) rather than propagating an exception, so callers such as
+    login never surface a 500 for a corrupt hash (GH#673).
+    """
+    try:
+        return pwd_context.verify(plain_password, hashed_password)
+    except (ValueError, TypeError):
+        # passlib raises UnknownHashError (a ValueError subclass) for an
+        # unrecognizable hash, and TypeError if the stored value is not a str.
+        return False
 
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
