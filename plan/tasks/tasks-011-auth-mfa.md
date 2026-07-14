@@ -12,25 +12,37 @@ Derived from [ADR-011](../architecture/adr-011-user-password-primary-otp-mfa.md)
 (Accepted) and [sec-review-011](../architecture/sec-review-011-auth-mfa.md). Each build
 PR is re-reviewed by D3 against R1–R11.
 
-## Sprint 1 — restore self-registration (unblocks GH#672)
+> **Flow decision (2026-07-14, stakeholder):** registration is **verify-email, no
+> auto-login**. `register` always returns `202 "if this email is new, we've sent an
+> activation link"` — identical for new vs. existing email, so nothing leaks (**R1**).
+> The patient activates via the emailed link, then logs in normally. No portal token is
+> issued at register time.
 
-### S1 — Platform account-creation service  `[C2]`
-- Add a platform service (e.g. `app/services/account_service.py` or extend the auth
-  service) that creates a `User(role="patient")` with policy-validated password.
-- Reuse `app.core.auth.hash_password` + `password_validator.py` (**R2**).
-- Enumeration-safe: no distinct existence signal, uniform timing (**R1**).
-- `must_set_password=false` for self-signup; audit the creation (**R10**).
-- Unit + integration tests incl. weak-password reject, duplicate handled generically.
-- **DoD:** service creates a login-capable patient user; tests green; no 5xx on bad input (ties GH#673).
+### S1 — Platform account-creation service  `[C2]`  ✅ DONE (PR pending)
+- `app/services/account_service.py`: `create_patient_account(...)` creates a login-capable
+  `User` (patient semantics), policy-validated password, `is_active=true`,
+  `is_verified=false`, `must_set_password=false`.
+- Reuses `app.core.auth.hash_password` + `PasswordValidator` policy (**R2**); duplicate
+  email/username raises `AccountExistsError` for the caller to keep generic (**R1**);
+  savepoint-isolated insert; no 5xx on bad input (ties GH#673).
+- 5 unit tests green (weak-pw reject, dup→AccountExists, normalized/hashed fields).
 
-### S2 — `POST /api/v1/patients/register` (password path)  `[C4 + platform seam]`
-- Extend `modules/healthcare/backend/routes_patient_auth.py`: new/updated register that
-  calls S1, then creates + links `hc_patients.user_id`, then mints a portal token via
-  the existing `from-platform` seam (ADR-HC-009 §D6).
+### S2 — `POST /api/v1/patients/register` (verify-email path)  `[C4 + platform seam]`
+- Extend `modules/healthcare/backend/routes_patient_auth.py`: register calls S1, creates +
+  links `hc_patients.user_id`, generates an **activation token**, sends the activation
+  email (SMTP worker), returns **202** generic (no token). Success and `AccountExistsError`
+  return the *same* 202 (**R1**).
 - Captcha required (**R3**); tenant self-service gate, **default OFF** (**R4**).
 - Add `email`/`username`/`password` to `PatientRegisterRequest`; keep OTP route paths.
-- **DoD:** with OTP disabled, a new patient can self-register + immediately hold a portal
-  session; e2e covers success, weak password, self-service-off (403), duplicate (generic).
+
+### S2b — Account activation + login gate  `[C2 + C4]`
+- Activation endpoint consumes the token → sets `users.is_verified=true`.
+- Platform login (and the `from-platform` seam) reject an unverified patient user until
+  activated. Tokens single-use, TTL'd, rate-limited.
+- **DoD (S2+S2b):** with OTP disabled, a new patient self-registers → gets an activation
+  email → activates → logs in → holds a portal session. e2e covers: register 202 generic
+  for both new+duplicate, weak password 422, self-service-off 403, activate happy-path,
+  login-before-activation rejected.
 
 ## Sprint 2 — MFA
 
