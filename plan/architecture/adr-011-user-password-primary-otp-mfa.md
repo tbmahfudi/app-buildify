@@ -2,16 +2,16 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Proposed — team-reviewed (D3 + A3), awaiting final stakeholder accept |
+| **Status** | **Accepted** (stakeholder, 2026-07-14) |
 | **Date** | 2026-07-14 |
-| **Deciders** | B1 (Architect, proposer); D3 (Security) — reviewed, see [sec-review-011](sec-review-011-auth-mfa.md); A3 (Product Owner) — recommendations below; **final human accept: pending** |
+| **Deciders** | B1 (Architect, proposer); D3 (Security) — reviewed, see [sec-review-011](sec-review-011-auth-mfa.md); A3 (Product Owner) — resolutions below; **Stakeholder — accepted 2026-07-14** |
 | **Supersedes** | Revises the auth-method framing of ADR-HC-009 (§D6 "OTP optional login option"); builds on ADR-009 (OTP as a Platform Service) |
-| **Tracking** | GH#672 (originally "password self-registration"), GH#673 (login hardening, already shipped) |
+| **Tracking** | GH#672 (originally "password self-registration"), GH#673 (login hardening, already shipped); tasks in [tasks-011](../tasks/tasks-011-auth-mfa.md) |
 
-> **This ADR is a design proposal, not yet an accepted decision.** The team review is
-> complete (D3 security requirements + A3 product resolutions below); it now needs a
-> **final stakeholder accept** to flip Status → `Accepted`. Do not begin C-stage build
-> until then.
+> **Accepted.** Team review complete (D3 security requirements R1–R11 + A3 product
+> resolutions below) and stakeholder-accepted 2026-07-14. C-stage build proceeds per
+> [tasks-011](../tasks/tasks-011-auth-mfa.md); D3 re-reviews each build PR against
+> sec-review-011.
 
 ---
 
