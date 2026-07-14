@@ -10,7 +10,9 @@ T-HC-021  POST /api/v1/patients/auth/otp/send         (PUBLIC)
 """
 from __future__ import annotations
 
+import logging
 import os
+import secrets
 from datetime import datetime
 from typing import Optional
 
@@ -20,6 +22,12 @@ from sqlalchemy.orm import Session
 
 from modules.sdk.dependencies import tenant_scoped_session
 from app.core.dependencies import get_db as _platform_get_db
+from app.core.security_config import SecurityConfigService
+from app.services.account_service import (
+    AccountExistsError,
+    WeakPasswordError,
+    create_patient_account,
+)
 
 def _get_public_db():
     """Plain unauthenticated DB session for public endpoints."""
@@ -27,14 +35,16 @@ def _get_public_db():
 
 from modules.healthcare.models import HCPatient, HCPatientConsent, HCPatientRelationship
 from modules.healthcare.schemas.patient_auth import (
+    ActivateRequest,
+    ActivateResponse,
     OTPSendRequest,
     OTPSendResponse,
     OTPVerifyRequest,
     OTPVerifyResponse,
     PatientRegisterRequest,
-    PatientRegisterResponse,
     PatientTokenRequest,
     PatientTokenResponse,
+    RegisterAcceptedResponse,
 )
 from modules.healthcare.sdk.captcha import require_captcha
 from modules.healthcare.sdk.otp import generate_otp, verify_otp, COOLDOWN_TTL
@@ -121,85 +131,118 @@ def _require_otp_enabled() -> None:
 
 
 # ---------------------------------------------------------------------------
+# ADR-011 — password self-registration (verify-email, no auto-login)
+# ---------------------------------------------------------------------------
+
+_ACTIVATION_TTL = 24 * 3600  # 24h to click the activation link
+_REGISTER_ACCEPTED_MSG = (
+    "If this email is not already registered, we've sent an activation link. "
+    "Please check your inbox to finish creating your account."
+)
+
+
+def _activation_key(token: str) -> str:
+    return f"patient_activation:{token}"
+
+
+def _self_service_enabled(db: Session, tenant_id: Optional[str]) -> bool:
+    """Whether open patient self-registration is enabled for this tenant.
+
+    Default OFF (sec-review-011 R4): a tenant must explicitly turn on
+    `patient_self_registration_enabled`. Fail closed if config is unavailable.
+    """
+    try:
+        val = SecurityConfigService(db).get_config("patient_self_registration_enabled", tenant_id)
+        return str(val).strip().lower() in ("1", "true", "yes", "on") if val is not None else False
+    except Exception:  # pragma: no cover - defensive: config error must not open the gate
+        return False
+
+
+def _dispatch_activation_email(email: str, token: str) -> None:
+    """Send the account-activation link.
+
+    Mirrors the OTP dispatch stub: in dev this logs the event (the token is never
+    logged — it's an authentication secret); production wires the SMTP worker
+    (ADR-002-smtp) here. The activation URL embeds the opaque token.
+    """
+    logging.getLogger(__name__).info("activation email dispatched", extra={"event": "patient.activation_sent"})
+
+
+# ---------------------------------------------------------------------------
 # T-HC-020 — Patient registration
 # ---------------------------------------------------------------------------
 
 @router.post(
     "/api/v1/patients/register",
-    response_model=PatientRegisterResponse,
-    status_code=status.HTTP_201_CREATED,
-    summary="Register a new patient (public)",
+    response_model=RegisterAcceptedResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+    summary="Register a new patient with email + password (public, verify-email)",
 )
 async def patient_register(
     payload: PatientRegisterRequest,
     request: Request,
-    response: Response,
     _captcha=Depends(require_captcha),
     db: Session = Depends(_get_public_db),
-) -> PatientRegisterResponse:
+) -> RegisterAcceptedResponse:
     """
-    Register a new patient.
+    Register a new patient with email + password (ADR-011, verify-email flow).
 
-    Prerequisites:
-      - Valid hCaptcha token (header X-Captcha-Token)
-      - OTP already verified (Redis key otp_verified:{phone} exists)
-      - consent_accepted must be True
-
-    Flow:
-      1. Check OTP verified
-      2. Validate consent
-      3. Check phone uniqueness
-      4. Create hc_patients row (PHI encrypted)
-      5. Record hc_patient_consents
-      6. Emit audit
-      7. Issue JWT + HttpOnly refresh cookie
-      8. Delete otp_verified key
+    captcha -> consent -> tenant self-service gate -> create the platform account
+    (S1) -> create + link the hc_patients PHI row -> issue an activation token +
+    email. Always returns the SAME 202 whether the email is new or already
+    registered (sec-review-011 R1 — no enumeration). No portal token is issued at
+    registration; the patient activates via the emailed link, then logs in.
     """
     ip = request.client.host if request.client else "unknown"
     ua = request.headers.get("user-agent", "")
 
-    # Step 1 — OTP gate
-    _require_otp_verified(payload.phone)
-
-    # Step 2 — Consent gate
+    # Consent gate (the registrant's own submission — safe to be specific).
     if not payload.consent_accepted:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="Consent must be accepted to register.",
         )
 
-    # Step 3 — Phone uniqueness (consistent error to avoid enumeration)
-    # hc_patients.phone is encrypted so we cannot WHERE on it directly.
-    # The platform must maintain a hashed phone index; here we use a stub
-    # lookup via the phone_hash auxiliary column if present, otherwise skip.
-    phone_hash_row = db.execute(
-        text(
-            "SELECT id FROM hc_patients "
-            "WHERE phone_hash = :ph AND deleted_at IS NULL "
-            "LIMIT 1"
-        ),
-        {"ph": _hash_phone(payload.phone)},
-    ).fetchone()
-
-    if phone_hash_row:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Registration failed. Please contact support if you believe this is an error.",
-        )
-
-    # Step 4 — Create patient (PHI columns transparently encrypted by EncryptedPHIType)
-    # Resolve the registration Company + hc tenant (ADR-HC-010): under the shared SaaS
-    # tenant, company_id is the NOT NULL isolation key. Prefer an explicit app.company_id
-    # GUC (future portal, schema-hc-04 §C); otherwise map the registration tenant → SAAS
-    # Company via the migration map so existing per-clinic portal contexts keep working.
-    # (Full slug→Company onboarding is Phase 5 / epic-20.)
+    # Resolve the registration scope (ADR-HC-010): tenant_id + company_id.
     tenant_row = db.execute(text("SELECT current_setting('app.tenant_id', true)")).fetchone()
     reg_tenant: str = tenant_row[0] if tenant_row and tenant_row[0] else "global"
     tenant_id, company_id = _resolve_registration_scope(db, reg_tenant)
 
+    # Self-service gate — default OFF per tenant (sec-review-011 R4).
+    if not _self_service_enabled(db, tenant_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Self-registration is not enabled. Please contact your clinic to be invited.",
+        )
+
+    # Create the platform account (credential lives on the platform users table).
+    #  - WeakPasswordError: the registrant's own password -> specific 422.
+    #  - AccountExistsError: fall through to the SAME generic 202 (no enumeration).
+    try:
+        user = create_patient_account(
+            db,
+            tenant_id=tenant_id,
+            email=payload.email,
+            password=payload.password,
+            full_name=payload.full_name,
+            username=payload.username,
+            phone=payload.phone,
+            default_company_id=company_id,
+        )
+    except WeakPasswordError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"message": "Password does not meet requirements.", "errors": exc.errors},
+        )
+    except AccountExistsError:
+        db.rollback()
+        return RegisterAcceptedResponse(message=_REGISTER_ACCEPTED_MSG)
+
+    # Create the PHI patient row, linked to the platform account (hc_patients.user_id).
     patient = HCPatient(
         tenant_id=tenant_id,
         company_id=company_id,
+        user_id=str(user.id),
         full_name=payload.full_name,
         date_of_birth=payload.date_of_birth,
         phone=payload.phone,
@@ -213,10 +256,8 @@ async def patient_register(
     )
     db.add(patient)
     db.flush()
-
     patient_id = str(patient.id)
 
-    # Step 5 — Consent record
     consent = HCPatientConsent(
         tenant_id=tenant_id,
         company_id=company_id,
@@ -230,9 +271,7 @@ async def patient_register(
         purpose_description="Patient data processing consent",
     )
     db.add(consent)
-    db.flush()
 
-    # Step 6 — Audit
     write_event_audit(
         db=db,
         actor_id=patient_id,
@@ -247,31 +286,43 @@ async def patient_register(
 
     db.commit()
 
-    # Step 7 — Issue tokens
-    access_token = create_patient_access_token(
-        patient_id=patient_id, phone=payload.phone, tenant_id=tenant_id, company_id=company_id)
-    refresh_token = create_patient_refresh_token(
-        patient_id=patient_id, tenant_id=tenant_id, company_id=company_id)
+    # Issue a single-use activation token (Redis, TTL) and email the link.
+    token = secrets.token_urlsafe(32)
+    _get_redis().set(_activation_key(token), str(user.id), ex=_ACTIVATION_TTL)
+    _dispatch_activation_email(user.email, token)
 
-    response.set_cookie(
-        key="patient_refresh_token",
-        value=refresh_token,
-        httponly=True,
-        secure=True,
-        samesite="strict",
-        max_age=7 * 24 * 3600,
-        path="/api/v1/patients/auth",
-    )
+    return RegisterAcceptedResponse(message=_REGISTER_ACCEPTED_MSG)
 
-    # Step 8 — Clear OTP verified key
+
+@router.post(
+    "/api/v1/patients/activate",
+    response_model=ActivateResponse,
+    summary="Activate a patient account via the emailed token (public)",
+)
+async def patient_activate(
+    payload: ActivateRequest,
+    db: Session = Depends(_get_public_db),
+) -> ActivateResponse:
+    """Consume a single-use activation token and mark the platform user verified.
+
+    Generic error on any invalid/expired/used token (no enumeration).
+    """
     r = _get_redis()
-    r.delete(_otp_verified_key(payload.phone))
+    key = _activation_key(payload.token)
+    user_id = r.get(key)
+    if user_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired activation link.",
+        )
+    if isinstance(user_id, bytes):
+        user_id = user_id.decode()
 
-    return PatientRegisterResponse(
-        access_token=access_token,
-        patient_id=patient_id,
-        message="Registration successful.",
-    )
+    db.execute(text("UPDATE users SET is_verified = true WHERE id = :uid"), {"uid": user_id})
+    db.commit()
+    r.delete(key)  # single-use
+
+    return ActivateResponse(activated=True, message="Account activated. You can now sign in.")
 
 
 # ---------------------------------------------------------------------------
@@ -525,6 +576,17 @@ async def patient_session_from_platform(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token missing subject.",
+        )
+
+    # Activation gate (ADR-011): a patient who registered via email+password must
+    # activate before a portal session is granted.
+    verified_row = db.execute(
+        text("SELECT is_verified FROM users WHERE id = :uid"), {"uid": user_id}
+    ).fetchone()
+    if verified_row is not None and not verified_row[0]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Please activate your account via the link we emailed you before signing in.",
         )
 
     # Household model (ADR-HC-009 v2): the account holder may act for a set of
