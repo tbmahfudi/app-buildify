@@ -50,11 +50,25 @@ PR is re-reviewed by D3 against R1–R11.
 - Table: `type ∈ {phone_otp,email_otp}`, `target`, `verified_at`, `is_active`, FK user.
 - **PG + MySQL parity** (cf. GH#669). Column shaped to admit TOTP later.
 
-### S4 — MFA enroll / challenge / verify / disable  `[C2]`
+### S4 — MFA enroll / challenge / verify / disable  `[C2]`  ✅ DONE
 - Platform endpoints; add **email** OTP channel to the ADR-009 OTP service (SMTP worker,
   ADR-002-smtp). Prove ownership before activation (**R5**); rate/cost caps, separate
   buckets per channel + `purpose="mfa"` (**R6–R7**); revoke sessions+devices on
   credential change (**R8**); audit (**R10**).
+- **Shipped** (`feat/011-s4-mfa-endpoints`): `app/routers/mfa.py` +
+  `app/services/mfa_service.py` (`GET/POST /mfa/factors`, `.../verify`, `.../resend`,
+  `DELETE`); factor `is_active` only after a verified OTP round-trip (**R5**). OTP service
+  (`app/routers/otp.py`) made channel-aware: **email** channel via SMTP (ADR-002-smtp,
+  MailHog in dev), `purpose="mfa"`, per-(channel,target) daily cap + separate buckets
+  (**R6**), attempt lockout preserved (**R7**), codes never logged. Audit on
+  enroll/verify/disable (**R10**). **R8**: `change-password` / `reset-password-confirm`
+  now revoke all *other* sessions + a trusted-device seam (`revoke_all_trusted_devices`,
+  no-op until S5's "remember device" storage lands — flagged for D3). Also fixed
+  pre-existing drift that 500'd the whole password/reset flow: `PasswordValidator(db,…)`
+  → `PasswordValidator(load_password_policy(…))`, and `NotificationService(db)` (async-only)
+  → direct sync `NotificationQueue` insert (`_queue_email`). Tests: `tests/unit/
+  test_mfa_service.py`, `tests/unit/test_otp_channels.py`, `tests/e2e/test_mfa.py`
+  (happy path verified live). **D3 re-review pending** against sec-review-011.
 
 ### S5 — Frontend  `[C3]`
 - Email+password signup; post-signup "add MFA" flow; retain `/patient/claim-account`

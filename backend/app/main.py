@@ -36,6 +36,7 @@ from app.routers import (
     nocode_modules,
     org,
 )
+from app.routers import mfa as mfa_router
 from app.routers import otp as otp_router
 from app.routers import public as public_router
 from app.routers import (
@@ -357,18 +358,7 @@ app.include_router(module_extensions.router)
 # Platform services
 app.include_router(otp_router.router)
 app.include_router(public_router.router)
-
-# Platform services
-app.include_router(otp_router.router)
-app.include_router(public_router.router)
-
-# Platform services
-app.include_router(otp_router.router)
-app.include_router(public_router.router)
-
-# Platform services
-app.include_router(otp_router.router)
-app.include_router(public_router.router)
+app.include_router(mfa_router.router)
 
 
 @app.get("/")
