@@ -60,13 +60,21 @@ GET_ENDPOINTS = _discover_get_endpoints()
 # Each is a tracked defect (see tests/test-reports/test-report-e2e-api.md);
 # xfail keeps the run honest without masking the regression.
 # DEF-001 (GET /org/companies 500) fixed 2026-06-16 — removed from this map.
-KNOWN_5XX: dict[str, str] = {
-    # GH#668 — pre-existing, data-dependent 500s (strict xfail: fixing them flips
-    # this to XPASS and fails the run, prompting removal from this map).
-    "/api/v1/dashboards": "GH#668: GET /dashboards 500 (dashboard serialization, DEF-019 lineage)",
-    "/api/v1/reports/definitions": "GH#668: GET /reports/definitions 500 (invalid seeded report_type, DEF-013 lineage)",
-    # GH#679 / DEF-010: filesystem module loader vestigial -> 503 "Module system not initialized".
-    "/api/v1/module-registry/enabled/names": "GH#679: module loader not initialized (503)",
+# Value is (reason, strict). strict=True: a reliable 5xx — fixing it flips the
+# test to XPASS(strict) and fails the run, prompting removal from this map.
+# strict=False: a *non-deterministic* 5xx that may pass on some runs, so tolerate
+# both xfail and xpass (an XPASS must not fail the build).
+KNOWN_5XX: dict[str, tuple[str, bool]] = {
+    # GH#668 — pre-existing, data-dependent 500s (reliably 5xx -> strict).
+    "/api/v1/dashboards": ("GH#668: GET /dashboards 500 (dashboard serialization, DEF-019 lineage)", True),
+    "/api/v1/reports/definitions": (
+        "GH#668: GET /reports/definitions 500 (invalid seeded report_type, DEF-013 lineage)",
+        True,
+    ),
+    # GH#679 / DEF-010: the vestigial filesystem module loader intermittently
+    # returns 503 "Module system not initialized" depending on startup timing —
+    # non-strict, since it XPASSes whenever the loader happens to be up.
+    "/api/v1/module-registry/enabled/names": ("GH#679: module loader intermittently not initialized (503)", False),
 }
 
 
@@ -78,7 +86,11 @@ def _relpath(full_path: str) -> str:
 def _authed_params():
     out = []
     for p in GET_ENDPOINTS:
-        marks = [pytest.mark.xfail(reason=KNOWN_5XX[p], strict=True)] if p in KNOWN_5XX else []
+        if p in KNOWN_5XX:
+            reason, strict = KNOWN_5XX[p]
+            marks = [pytest.mark.xfail(reason=reason, strict=strict)]
+        else:
+            marks = []
         out.append(pytest.param(p, marks=marks))
     return out
 

@@ -7,14 +7,15 @@ startup) converges on a single head again:
 
 No schema changes — merge only.
 
-Revision ID: pg_merge_username_and_tmd_constraints
+Revision ID: pg_merge_username_tmd
 Revises: pg_add_user_username_login, pg_tenant_module_db_constraints
 Create Date: 2026-07-10
+
+Note: revision id kept <= 32 chars so it fits alembic_version.version_num
+(default varchar(32)); the original 37-char id broke fresh-DB upgrades (GH#678).
 """
-from alembic import op
 
-
-revision = 'pg_merge_username_and_tmd_constraints'
+revision = 'pg_merge_username_tmd'
 down_revision = ('pg_add_user_username_login', 'pg_tenant_module_db_constraints')
 branch_labels = None
 depends_on = None

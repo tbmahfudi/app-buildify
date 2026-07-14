@@ -306,6 +306,21 @@ def upgrade() -> None:
     # ------------------------------------------------------------------
     # Grants
     # ------------------------------------------------------------------
+    # Ensure application roles exist on a fresh DB before granting (GH#678).
+    op.execute(
+        """
+        DO $$
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'app_user') THEN
+                CREATE ROLE app_user NOLOGIN;
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'app_readonly_role') THEN
+                CREATE ROLE app_readonly_role NOLOGIN;
+            END IF;
+        END
+        $$;
+        """
+    )
     for table in (
         "hcp_medications",
         "hcp_drug_interactions",
