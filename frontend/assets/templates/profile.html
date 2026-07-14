@@ -231,6 +231,58 @@
           </div>
         </form>
       </div>
+
+      <!-- Two-Factor Authentication (MFA) Card -->
+      <div class="bg-white rounded-lg shadow-sm p-6 mt-6">
+        <div class="flex items-center gap-2 mb-2">
+          <i class="ph ph-lock-key text-purple-600 text-lg"></i>
+          <h3 class="text-lg font-semibold text-gray-900">Two-Factor Authentication</h3>
+        </div>
+        <p class="text-sm text-gray-500 mb-6">Add an extra layer of security with a one-time code sent to your email or phone when you enroll a method.</p>
+
+        <!-- Enrolled factors -->
+        <div id="mfa-list" class="space-y-3 mb-6">
+          <p class="text-sm text-gray-400">Loading…</p>
+        </div>
+
+        <!-- Enroll a new factor -->
+        <div class="border-t border-gray-100 pt-5">
+          <p class="text-sm font-medium text-gray-700 mb-3">Add a method</p>
+          <div class="flex flex-col sm:flex-row gap-3">
+            <select id="mfa-type" class="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+              <option value="email_otp">Email</option>
+              <option value="phone_otp">Phone (SMS)</option>
+            </select>
+            <input id="mfa-target" type="text" autocomplete="off" placeholder="you@example.com"
+              class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent" />
+            <button id="mfa-send-btn" type="button"
+              class="px-5 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition font-medium flex items-center justify-center gap-2 whitespace-nowrap">
+              <i class="ph ph-paper-plane-tilt"></i> Send code
+            </button>
+          </div>
+
+          <!-- Verify step (revealed after a code is sent) -->
+          <div id="mfa-verify" class="hidden mt-4 bg-purple-50 border border-purple-200 rounded-lg p-4">
+            <p class="text-sm text-purple-900 mb-3">Enter the 6-digit code sent to <span id="mfa-verify-target" class="font-semibold"></span>.</p>
+            <div class="flex flex-col sm:flex-row gap-3 items-start">
+              <input id="mfa-code" type="text" inputmode="numeric" maxlength="6" placeholder="123456"
+                class="w-32 px-4 py-2 border border-gray-300 rounded-lg tracking-widest text-center focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent" />
+              <button id="mfa-verify-btn" type="button"
+                class="px-5 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium flex items-center justify-center gap-2">
+                <i class="ph ph-check"></i> Verify &amp; activate
+              </button>
+              <button id="mfa-resend-btn" type="button"
+                class="px-4 py-2 text-purple-700 hover:bg-purple-100 rounded-lg transition font-medium">
+                Resend
+              </button>
+              <button id="mfa-cancel-btn" type="button"
+                class="px-4 py-2 text-gray-500 hover:bg-gray-100 rounded-lg transition font-medium">
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Right Column (1/3 width) -->
