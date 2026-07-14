@@ -532,30 +532,6 @@ class IndexDefinitionResponse(IndexDefinitionBase):
 # ==================== Migration Schemas ====================
 
 
-class MigrationResponse(BaseModel):
-    """Schema for migration response"""
-
-    id: UUID
-    entity_id: UUID
-    tenant_id: Optional[UUID]  # NULL for platform-level migrations
-    migration_name: str
-    migration_type: str
-    from_version: Optional[int]
-    to_version: int
-    up_script: str
-    down_script: Optional[str]
-    status: str
-    executed_at: Optional[datetime]
-    execution_time_ms: Optional[int]
-    error_message: Optional[str]
-    changes: Optional[Dict[str, Any]]
-    created_at: datetime
-    created_by: Optional[UUID]
-
-    class Config:
-        from_attributes = True
-
-
 class SchemaPreviewResponse(BaseModel):
     """Schema for schema preview"""
 
@@ -563,13 +539,6 @@ class SchemaPreviewResponse(BaseModel):
     affected_tables: List[str]
     warnings: List[str] = Field(default_factory=list)
     estimated_impact: str
-
-
-class PublishEntityRequest(BaseModel):
-    """Schema for publishing an entity"""
-
-    apply_migration: bool = True
-    backup_data: bool = True
 
 
 class PublishEntityResponse(BaseModel):

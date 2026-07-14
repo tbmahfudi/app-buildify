@@ -45,6 +45,26 @@ def test_verify_password_wrong():
     assert verify_password("wrong", h) is False
 
 
+@pytest.mark.parametrize(
+    "bad_hash",
+    [
+        "not-a-bcrypt-hash",           # unparseable garbage
+        "",                            # empty stored hash
+        "$2b$notbcrypt",               # bcrypt-looking but malformed
+        "plaintext-password",          # legacy/unhashed value
+    ],
+)
+def test_verify_password_malformed_hash_returns_false(bad_hash):
+    # GH#673: a corrupt/unparseable stored hash must fail verification
+    # (return False), never raise — otherwise login 500s.
+    assert verify_password("anything", bad_hash) is False
+
+
+def test_verify_password_non_string_hash_returns_false():
+    # GH#673: a non-string stored hash (e.g. None) must not raise.
+    assert verify_password("anything", None) is False
+
+
 def test_hash_is_unique_per_call():
     h1 = hash_password("same")
     h2 = hash_password("same")
