@@ -533,6 +533,7 @@ async function mfaSendCode() {
       mfaPending = { factorId: body.factor_id, target };
       showMfaVerify(target);
       showAlert('Verification code sent.', 'success');
+      loadMfaFactors(); // surface the new Pending factor immediately
     } else if (res.status === 409) {
       showAlert('That method is already enrolled and active.', 'warning');
       loadMfaFactors();
