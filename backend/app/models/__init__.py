@@ -133,6 +133,7 @@ from .tenant_module_database import TenantModuleDatabase
 # Token revocation
 from .token_blacklist import TokenBlacklist
 from .user import User
+from .user_mfa_factor import UserMFAFactor
 
 # Multi-company access
 from .user_company_access import UserCompanyAccess
@@ -159,6 +160,7 @@ __all__ = [
     "Branch",
     "Department",
     "User",
+    "UserMFAFactor",
     # Multi-company access
     "UserCompanyAccess",
     # RBAC
