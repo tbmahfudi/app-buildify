@@ -200,6 +200,18 @@ class SessionManager:
         self.db.commit()
         return revoked_count
 
+    def revoke_all_trusted_devices(self, user: User, reason: Optional[str] = None) -> int:
+        """Revoke every "remember this device" trust for a user (sec-review-011 R8).
+
+        On a credential change we must invalidate trusted devices alongside active
+        sessions (ADR-HC-009 §D4). Trusted-device storage does not exist yet — the
+        "remember this device" surface lands with the S5 MFA frontend — so this is
+        a deliberate no-op seam: both credential-change paths already call it, so
+        wiring it up later is a one-function change with no caller edits. Returns
+        the number of trusts revoked (0 until then).
+        """
+        return 0
+
     def update_activity(self, jti: str) -> bool:
         """
         Update last activity timestamp for a session.
