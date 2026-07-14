@@ -19,17 +19,18 @@ from app.core.auth import (
 from app.core.config import ACCESS_TOKEN_EXPIRE_MIN
 from app.core.dependencies import get_current_user, get_db
 from app.core.lockout_manager import LockoutManager
-from app.core.notification_service import NotificationService
 from app.core.password_history import PasswordHistoryService
 from app.core.password_validator import PasswordValidator
 
 # Import security services
 from app.core.security_config import SecurityConfigService
 from app.core.session_manager import SessionManager
+from app.services.account_service import load_password_policy
 from app.models.branch import Branch
 from app.models.company import Company
 from app.models.department import Department
 from app.models.login_attempt import LoginAttempt
+from app.models.notification_queue import NotificationQueue
 from app.models.password_reset_token import PasswordResetToken
 from app.models.tenant import Tenant
 from app.models.token_blacklist import TokenBlacklist
@@ -52,6 +53,33 @@ security = HTTPBearer()
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 # Set up logger at the top of your file
 logger = logging.getLogger(__name__)
+
+
+def _queue_email(db, *, tenant_id, user_id, notification_type, recipient, subject, message):
+    """Best-effort enqueue of an email notification for the SMTP worker to deliver.
+
+    ``NotificationService`` is async/AsyncSession-only; these auth endpoints are
+    sync, so we insert the queue row directly (the worker picks up ``pending``
+    rows). Never raises — a notification failure must not fail the credential
+    action that triggered it.
+    """
+    try:
+        db.add(
+            NotificationQueue(
+                tenant_id=tenant_id,
+                user_id=user_id,
+                notification_type=notification_type,
+                delivery_method="email",
+                recipient=recipient,
+                subject=subject,
+                message=message,
+                priority=3,
+            )
+        )
+        db.commit()
+    except Exception as e:  # noqa: BLE001 - best-effort; log and move on
+        db.rollback()
+        logger.warning("Failed to queue %s email for user %s: %s", notification_type, user_id, e)
 
 
 @router.post("/login", response_model=TokenResponse)
@@ -574,15 +602,18 @@ def change_password(
 
     # Initialize security services
     security_config = SecurityConfigService(db)
-    password_validator = PasswordValidator(db, current_user.tenant_id)
+    password_validator = PasswordValidator(load_password_policy(db, current_user.tenant_id))
     password_history_service = PasswordHistoryService(db)
-    notification_service = NotificationService(db)
     session_manager = SessionManager(db)
 
-    # Validate new password against policy
-    validation_result = password_validator.validate_password(password=password_data.new_password, user=current_user)
+    # Validate new password against policy strength (history is checked separately below)
+    is_valid, validation_errors = password_validator.validate_strength(
+        password_data.new_password,
+        user_email=current_user.email,
+        user_name=current_user.full_name,
+    )
 
-    if not validation_result["is_valid"]:
+    if not is_valid:
         # Audit failed password change
         create_audit_log(
             db=db,
@@ -592,11 +623,11 @@ def change_password(
             entity_id=str(current_user.id),
             request=request,
             status="failure",
-            error_message=f"Password validation failed: {', '.join(validation_result['errors'])}",
+            error_message=f"Password validation failed: {', '.join(validation_errors)}",
         )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Password does not meet requirements: {', '.join(validation_result['errors'])}",
+            detail=f"Password does not meet requirements: {', '.join(validation_errors)}",
         )
 
     # Check password history
@@ -656,41 +687,33 @@ def change_password(
 
         logger.info(f"User {current_user.id} changed their password")
 
-        # Queue notification
+        # Best-effort "password changed" security email.
+        _queue_email(
+            db,
+            tenant_id=current_user.tenant_id,
+            user_id=str(current_user.id),
+            notification_type="password_changed",
+            recipient=current_user.email,
+            subject="Password Changed",
+            message="Your password has been successfully changed.",
+        )
+
+        # R8 — a credential change unconditionally revokes all *other* sessions and
+        # all trusted devices. The current session survives (the user just proved the
+        # old password on it); every other session/device is invalidated.
         try:
-            notification_service.queue_notification(
-                tenant_id=current_user.tenant_id,
-                user_id=str(current_user.id),
-                notification_type="password_changed",
-                recipient=current_user.email,
-                subject="Password Changed",
-                message="Your password has been successfully changed.",
-                template_data={
-                    "user_name": current_user.full_name or current_user.email,
-                    "change_time": datetime.utcnow().isoformat(),
-                },
+            auth_header = request.headers.get("Authorization", "")
+            current_jti = None
+            if auth_header.startswith("Bearer "):
+                token_payload = decode_token(auth_header[7:])
+                current_jti = token_payload.get("jti") if token_payload else None
+            session_manager.revoke_all_user_sessions(
+                user=current_user, except_jti=current_jti, reason="Password changed"
             )
+            session_manager.revoke_all_trusted_devices(current_user, reason="Password changed")
+            logger.info(f"Revoked other sessions + trusted devices for user {current_user.id} after password change")
         except Exception as e:
-            logger.warning(f"Failed to queue password change notification for user {current_user.id}: {e}")
-
-        # Terminate other sessions if policy requires it
-        terminate_sessions = security_config.get_config("session_terminate_on_password_change", current_user.tenant_id)
-        if terminate_sessions:
-            try:
-                # Get current session JTI from request token
-                auth_header = request.headers.get("Authorization", "")
-                if auth_header.startswith("Bearer "):
-                    token = auth_header[7:]
-                    token_payload = decode_token(token)
-                    current_jti = token_payload.get("jti") if token_payload else None
-
-                    # Revoke all sessions except current one
-                    session_manager.revoke_all_user_sessions(
-                        user=current_user, except_jti=current_jti, reason="Password changed"
-                    )
-                    logger.info(f"Revoked all other sessions for user {current_user.id} after password change")
-            except Exception as e:
-                logger.warning(f"Failed to revoke sessions for user {current_user.id}: {e}")
+            logger.warning(f"Failed to revoke sessions/devices for user {current_user.id}: {e}")
 
     except Exception as e:
         db.rollback()
@@ -713,7 +736,6 @@ def reset_password_request(reset_data: PasswordResetRequest, request: Request, d
     # But only actually send email if user exists
     if user:
         security_config = SecurityConfigService(db)
-        notification_service = NotificationService(db)
 
         # Check if user account is active
         if not user.is_active:
@@ -762,27 +784,18 @@ def reset_password_request(reset_data: PasswordResetRequest, request: Request, d
         db.add(token_record)
         db.commit()
 
-        # Queue notification
-        try:
-            # In production, this would be a proper reset link
-            reset_link = f"https://yourapp.com/reset-password?token={reset_token}"
-
-            notification_service.queue_notification(
-                tenant_id=user.tenant_id,
-                user_id=str(user.id),
-                notification_type="password_reset",
-                recipient=user.email,
-                subject="Password Reset Request",
-                message=f"Click the link to reset your password: {reset_link}",
-                template_data={
-                    "user_name": user.full_name or user.email,
-                    "reset_link": reset_link,
-                    "expires_hours": token_expire_hours,
-                },
-            )
-            logger.info(f"Password reset email queued for user: {user.id}")
-        except Exception as e:
-            logger.error(f"Failed to queue password reset notification for user {user.id}: {e}")
+        # Queue the reset-link email (best-effort; worker delivers via SMTP).
+        # In production this would be a tenant-configured front-end URL.
+        reset_link = f"https://yourapp.com/reset-password?token={reset_token}"
+        _queue_email(
+            db,
+            tenant_id=user.tenant_id,
+            user_id=str(user.id),
+            notification_type="password_reset",
+            recipient=user.email,
+            subject="Password Reset Request",
+            message=f"Click the link to reset your password: {reset_link}",
+        )
 
         # Audit password reset request
         create_audit_log(
@@ -831,18 +844,19 @@ def reset_password_confirm(reset_data: PasswordResetConfirm, request: Request, d
 
     # Initialize security services
     security_config = SecurityConfigService(db)
-    password_validator = PasswordValidator(db, user.tenant_id)
+    password_validator = PasswordValidator(load_password_policy(db, user.tenant_id))
     password_history_service = PasswordHistoryService(db)
-    notification_service = NotificationService(db)
     session_manager = SessionManager(db)
 
-    # Validate new password against policy
-    validation_result = password_validator.validate_password(password=reset_data.new_password, user=user)
+    # Validate new password against policy strength (history is checked separately below)
+    is_valid, validation_errors = password_validator.validate_strength(
+        reset_data.new_password, user_email=user.email, user_name=user.full_name
+    )
 
-    if not validation_result["is_valid"]:
+    if not is_valid:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Password does not meet requirements: {', '.join(validation_result['errors'])}",
+            detail=f"Password does not meet requirements: {', '.join(validation_errors)}",
         )
 
     # Check password history
@@ -897,26 +911,24 @@ def reset_password_confirm(reset_data: PasswordResetConfirm, request: Request, d
 
         logger.info(f"User {user.id} successfully reset their password")
 
-        # Queue notification
-        try:
-            notification_service.queue_notification(
-                tenant_id=user.tenant_id,
-                user_id=str(user.id),
-                notification_type="password_changed",
-                recipient=user.email,
-                subject="Password Reset Successful",
-                message="Your password has been successfully reset.",
-                template_data={"user_name": user.full_name or user.email, "reset_time": datetime.utcnow().isoformat()},
-            )
-        except Exception as e:
-            logger.warning(f"Failed to queue password reset notification for user {user.id}: {e}")
+        # Best-effort "password reset" confirmation email.
+        _queue_email(
+            db,
+            tenant_id=user.tenant_id,
+            user_id=str(user.id),
+            notification_type="password_changed",
+            recipient=user.email,
+            subject="Password Reset Successful",
+            message="Your password has been successfully reset.",
+        )
 
-        # Revoke all user sessions for security
+        # R8 — a password reset revokes all sessions and all trusted devices.
         try:
             session_manager.revoke_all_user_sessions(user=user, reason="Password reset")
-            logger.info(f"Revoked all sessions for user {user.id} after password reset")
+            session_manager.revoke_all_trusted_devices(user, reason="Password reset")
+            logger.info(f"Revoked all sessions + trusted devices for user {user.id} after password reset")
         except Exception as e:
-            logger.warning(f"Failed to revoke sessions for user {user.id}: {e}")
+            logger.warning(f"Failed to revoke sessions/devices for user {user.id}: {e}")
 
     except Exception as e:
         db.rollback()
