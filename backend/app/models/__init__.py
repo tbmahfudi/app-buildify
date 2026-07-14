@@ -133,10 +133,10 @@ from .tenant_module_database import TenantModuleDatabase
 # Token revocation
 from .token_blacklist import TokenBlacklist
 from .user import User
-from .user_mfa_factor import UserMFAFactor
 
 # Multi-company access
 from .user_company_access import UserCompanyAccess
+from .user_mfa_factor import UserMFAFactor
 from .user_session import UserSession
 
 # No-Code Platform - Workflow Designer

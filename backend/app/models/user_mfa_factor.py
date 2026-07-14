@@ -29,9 +29,7 @@ class UserMFAFactor(Base):
     created_at = Column(DateTime, server_default=func.now(), nullable=False)
     updated_at = Column(DateTime, onupdate=func.now())
 
-    __table_args__ = (
-        UniqueConstraint("user_id", "factor_type", "target", name="uq_user_mfa_factor"),
-    )
+    __table_args__ = (UniqueConstraint("user_id", "factor_type", "target", name="uq_user_mfa_factor"),)
 
     def __repr__(self):
         return f"<UserMFAFactor id={self.id} user={self.user_id} type={self.factor_type} active={self.is_active}>"

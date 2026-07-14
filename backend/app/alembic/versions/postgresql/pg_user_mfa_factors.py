@@ -10,8 +10,9 @@ only the factor type, delivery target, and verification state. MySQL parity is
 deferred to GH#669 (the MySQL tree has multiple unmerged heads; adding one there
 now would create another).
 """
-from alembic import op
+
 import sqlalchemy as sa
+from alembic import op
 from sqlalchemy.dialects.postgresql import UUID
 
 revision = "pg_user_mfa_factors"
@@ -31,9 +32,7 @@ def upgrade() -> None:
         sa.Column("verified_at", sa.DateTime(), nullable=True),
         sa.Column("created_at", sa.DateTime(), nullable=False, server_default=sa.text("NOW()")),
         sa.Column("updated_at", sa.DateTime(), nullable=True),
-        sa.ForeignKeyConstraint(
-            ["user_id"], ["users.id"], name="fk_user_mfa_factors_user_id", ondelete="CASCADE"
-        ),
+        sa.ForeignKeyConstraint(["user_id"], ["users.id"], name="fk_user_mfa_factors_user_id", ondelete="CASCADE"),
         sa.UniqueConstraint("user_id", "factor_type", "target", name="uq_user_mfa_factor"),
     )
     op.create_index("idx_user_mfa_factors_user", "user_mfa_factors", ["user_id"])
