@@ -37,8 +37,11 @@ OTP_TTL = 600  # 10 min
 COOLDOWN_TTL = 60  # 1 min between resends
 MAX_ATTEMPTS = 5
 TOKEN_TTL = 300  # 5 min one-time token
-# R6: hard daily cap per (channel, target) to bound SMS/email spend.
-DAILY_CAP = int(os.environ.get("OTP_DAILY_CAP", "10"))
+# R6: hard daily caps to bound SMS/email spend + enrollment abuse. Separate
+# buckets per delivery target, per account, and per source IP.
+DAILY_CAP = int(os.environ.get("OTP_DAILY_CAP", "10"))  # per target
+ACCOUNT_DAILY_CAP = int(os.environ.get("OTP_ACCOUNT_DAILY_CAP", "20"))  # per account
+IP_DAILY_CAP = int(os.environ.get("OTP_IP_DAILY_CAP", "30"))  # per source IP
 DAILY_TTL = 24 * 3600
 
 
@@ -77,23 +80,44 @@ def _cooldown_key(purpose: str, channel: str, tenant_code: str, target: str) -> 
     return f"otp:cooldown:{purpose}:{channel}:{tenant_code}:{target}"
 
 
-def _daily_key(channel: str, target: str) -> str:
-    # Spend cap is per delivery target regardless of purpose/tenant (R6).
-    return f"otp:daily:{channel}:{target}"
+def _daily_key(scope: str, ident: str) -> str:
+    # Per-scope daily spend counter (R6). scope in {"target", "acct", "ip"}.
+    return f"otp:daily:{scope}:{ident}"
+
+
+def _over_daily_cap(r, scope: str, ident: str, cap: int) -> bool:
+    return int(r.get(_daily_key(scope, ident)) or 0) >= cap
+
+
+def _bump_daily(r, scope: str, ident: str) -> None:
+    # Increment the counter; set the 24h window TTL only when first created.
+    if r.incr(_daily_key(scope, ident)) == 1:
+        r.expire(_daily_key(scope, ident), DAILY_TTL)
 
 
 def _token_key(token: str) -> str:
     return f"otp:token:{token}"
 
 
-def send_otp(*, channel: str, target: str, purpose: str, tenant_code: str) -> int:
+def send_otp(
+    *,
+    channel: str,
+    target: str,
+    purpose: str,
+    tenant_code: str,
+    account_id: Optional[str] = None,
+    ip: Optional[str] = None,
+) -> int:
     """Generate + dispatch a one-time code to ``target`` over ``channel``.
 
     Importable core used by both the HTTP endpoints and the platform MFA router
-    (ADR-011 S4). Enforces the resend cooldown and the per-target daily cap
-    (sec-review-011 R6), stores the code in Redis with an attempt counter (R7),
-    and fires the message off-thread. Raises ``HTTPException`` (400/429) on
-    invalid input or when a limit is hit. Returns the resend cooldown in seconds.
+    (ADR-011 S4). Enforces the resend cooldown and the daily caps
+    (sec-review-011 R6) — separate buckets per **target**, per **account**, and
+    per source **IP** when those are supplied — stores the code in Redis with an
+    attempt counter (R7), and fires the message off-thread. The account/IP caps
+    are what stop an authenticated caller from fanning codes out to many
+    arbitrary targets (spam / cost-amplification). Raises ``HTTPException``
+    (400/429) on invalid input or a limit hit. Returns the resend cooldown (s).
     """
     if purpose not in ALLOWED_PURPOSES:
         raise HTTPException(status_code=400, detail=f"Unknown purpose '{purpose}'")
@@ -106,10 +130,15 @@ def send_otp(*, channel: str, target: str, purpose: str, tenant_code: str) -> in
         ttl = r.ttl(cooldown_key)
         raise HTTPException(status_code=429, detail=f"Please wait {ttl}s before requesting another OTP")
 
-    # R6 — hard daily cap per target/channel to bound cost. Checked before minting.
-    daily_key = _daily_key(channel, target)
-    if int(r.get(daily_key) or 0) >= DAILY_CAP:
-        raise HTTPException(status_code=429, detail="Daily verification-code limit reached; try again tomorrow")
+    # R6 — hard daily caps, checked before minting. Separate buckets so one axis
+    # can't deplete another: per target, per account, per source IP.
+    over = HTTPException(status_code=429, detail="Daily verification-code limit reached; try again tomorrow")
+    if _over_daily_cap(r, "target", f"{channel}:{target}", DAILY_CAP):
+        raise over
+    if account_id and _over_daily_cap(r, "acct", str(account_id), ACCOUNT_DAILY_CAP):
+        raise over
+    if ip and _over_daily_cap(r, "ip", str(ip), IP_DAILY_CAP):
+        raise over
 
     code = f"{random.randint(0, 999999):06d}"
     code_key = _code_key(purpose, channel, tenant_code, target)
@@ -119,11 +148,13 @@ def send_otp(*, channel: str, target: str, purpose: str, tenant_code: str) -> in
     pipe.set(code_key, code, ex=OTP_TTL)
     pipe.set(cooldown_key, "1", ex=COOLDOWN_TTL)
     pipe.delete(attempts_key)
-    pipe.incr(daily_key)
     pipe.execute()
-    # Set the day-window TTL only when the counter was first created.
-    if int(r.get(daily_key) or 0) == 1:
-        r.expire(daily_key, DAILY_TTL)
+
+    _bump_daily(r, "target", f"{channel}:{target}")
+    if account_id:
+        _bump_daily(r, "acct", str(account_id))
+    if ip:
+        _bump_daily(r, "ip", str(ip))
 
     _dispatch(channel, target, code, purpose)
     # R7 — never log the code or the raw target.

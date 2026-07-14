@@ -109,11 +109,40 @@ def test_cooldown_blocks_immediate_resend(fake):
 def test_daily_cap_blocks_after_limit(fake, monkeypatch):
     r, _ = fake
     monkeypatch.setattr(otp, "DAILY_CAP", 2)
-    # Pre-load the daily counter to the cap; a fresh send must be refused.
-    r.store[otp._daily_key("email", "a@b.com")] = "2"
+    # Pre-load the per-target daily counter to the cap; a fresh send must be refused.
+    r.store[otp._daily_key("target", "email:a@b.com")] = "2"
     with pytest.raises(HTTPException) as ei:
         otp.send_otp(channel="email", target="a@b.com", purpose="mfa", tenant_code="t1")
     assert ei.value.status_code == 429
+
+
+def test_account_cap_blocks_fanout_to_many_targets(fake, monkeypatch):
+    """R6 — one account can't fan codes out to unlimited arbitrary targets."""
+    r, _ = fake
+    monkeypatch.setattr(otp, "ACCOUNT_DAILY_CAP", 3)
+    r.store[otp._daily_key("acct", "user-1")] = "3"  # account already at its cap
+    with pytest.raises(HTTPException) as ei:
+        otp.send_otp(
+            channel="email", target="fresh-target@b.com", purpose="mfa", tenant_code="t1", account_id="user-1"
+        )
+    assert ei.value.status_code == 429
+
+
+def test_ip_cap_blocks_after_limit(fake, monkeypatch):
+    r, _ = fake
+    monkeypatch.setattr(otp, "IP_DAILY_CAP", 2)
+    r.store[otp._daily_key("ip", "9.9.9.9")] = "2"
+    with pytest.raises(HTTPException) as ei:
+        otp.send_otp(channel="email", target="x@b.com", purpose="mfa", tenant_code="t1", ip="9.9.9.9")
+    assert ei.value.status_code == 429
+
+
+def test_account_and_ip_counters_bumped_on_send(fake):
+    r, _ = fake
+    otp.send_otp(channel="email", target="x@b.com", purpose="mfa", tenant_code="t1", account_id="u9", ip="1.2.3.4")
+    assert r.get(otp._daily_key("acct", "u9")) == "1"
+    assert r.get(otp._daily_key("ip", "1.2.3.4")) == "1"
+    assert r.get(otp._daily_key("target", "email:x@b.com")) == "1"
 
 
 def test_channels_have_separate_buckets(fake):

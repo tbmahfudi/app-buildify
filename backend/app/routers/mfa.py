@@ -58,6 +58,10 @@ def _tenant_code(user: User) -> str:
     return str(user.tenant_id) if user.tenant_id else "platform"
 
 
+def _client_ip(request: Request) -> Optional[str]:
+    return request.client.host if request.client else None
+
+
 @router.get("/factors", response_model=List[MFAFactorResponse])
 def list_mfa_factors(
     current_user: User = Depends(get_current_user),
@@ -93,6 +97,8 @@ def enroll_mfa_factor(
         target=factor.target,
         purpose="mfa",
         tenant_code=_tenant_code(current_user),
+        account_id=str(current_user.id),
+        ip=_client_ip(request),
     )
 
     create_audit_log(
@@ -126,7 +132,21 @@ def resend_mfa_code(
 
     channel = mfa_service.channel_for_factor(factor.factor_type)
     resend_after = otp.send_otp(
-        channel=channel, target=factor.target, purpose="mfa", tenant_code=_tenant_code(current_user)
+        channel=channel,
+        target=factor.target,
+        purpose="mfa",
+        tenant_code=_tenant_code(current_user),
+        account_id=str(current_user.id),
+        ip=_client_ip(request),
+    )
+    create_audit_log(
+        db=db,
+        action="mfa_resend",
+        user=current_user,
+        entity_type="user_mfa_factor",
+        entity_id=str(factor.id),
+        request=request,
+        status="success",
     )
     return MFAEnrollResponse(
         factor_id=str(factor.id), message="Verification code re-sent", resend_after=resend_after
