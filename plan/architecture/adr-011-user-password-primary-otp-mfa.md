@@ -2,15 +2,16 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Proposed (awaiting team review) |
+| **Status** | Proposed — team-reviewed (D3 + A3), awaiting final stakeholder accept |
 | **Date** | 2026-07-14 |
-| **Deciders** | _pending_ — proposed by B1 (Software Architect); needs D3 (Security), A3 (Product Owner), and healthcare module owner sign-off |
+| **Deciders** | B1 (Architect, proposer); D3 (Security) — reviewed, see [sec-review-011](sec-review-011-auth-mfa.md); A3 (Product Owner) — recommendations below; **final human accept: pending** |
 | **Supersedes** | Revises the auth-method framing of ADR-HC-009 (§D6 "OTP optional login option"); builds on ADR-009 (OTP as a Platform Service) |
 | **Tracking** | GH#672 (originally "password self-registration"), GH#673 (login hardening, already shipped) |
 
-> **This ADR is a design proposal, not an accepted decision.** It exists to be
-> reviewed *before* any implementation, because the change touches platform-wide
-> authentication. Do not begin C-stage build until Status is `Accepted`.
+> **This ADR is a design proposal, not yet an accepted decision.** The team review is
+> complete (D3 security requirements + A3 product resolutions below); it now needs a
+> **final stakeholder accept** to flip Status → `Accepted`. Do not begin C-stage build
+> until then.
 
 ---
 
@@ -84,23 +85,47 @@ users set a password on next login. No patient is stranded.
 
 ---
 
-## Open questions for review
+## Open questions — recommended resolutions (A3 product + D3 security)
 
-1. **Scope of "all users."** Does password-primary + OTP-MFA apply to *staff/platform*
-   users too, or only patients in this iteration? (Staff already password-login; the
-   MFA-enrollment piece is the new shared part.)
-2. **Registration endpoint ownership.** One platform `POST /api/v1/auth/register` that
-   both staff-invite and patient-self-signup reuse, vs. a patient-specific
-   `POST /api/v1/patients/register` that internally calls platform account creation?
-3. **Self-service vs. invite.** Is *open* self-registration (anyone can create a
-   patient account) acceptable tenant-wide, or must it be tenant-gated / captcha-only /
-   invite-only per deployment? (Enumeration + spam surface.)
-4. **Email OTP delivery.** Reuse the SMTP worker (ADR-002-smtp) for email OTP, or a
-   separate transactional channel? Rate-limit shared with phone OTP or separate?
-5. **MFA data model.** Single `user_mfa_factors` table (type ∈ {phone,email,totp?}) vs.
-   columns on `users`. Is TOTP/authenticator-app in scope now or later?
-6. **`HC_PATIENT_OTP_ENABLED` retirement.** Confirm we replace the env flag with
-   per-user MFA state, and the migration path for deployments currently relying on it.
+These are the team's recommended answers; the stakeholder confirms or overrides at accept.
+
+1. **Scope of "all users."** → **Patients-only for iteration 1**, but build the MFA
+   subsystem as a *shared platform capability* so staff adopt it next with no rework.
+   Rationale: bounded blast radius; patients are the #672 driver; staff already
+   password-login.
+2. **Registration endpoint ownership.** → **One platform account-creation service**,
+   fronted by a patient-facing `POST /api/v1/patients/register` that calls it. Keeps the
+   public patient contract stable while all credential logic lives platform-side.
+3. **Self-service vs. invite.** → **Tenant setting, default OFF** (invite/staff-created
+   only); captcha always required when self-service is on. Backs D3-**R4**. This is the
+   main enumeration/spam control.
+4. **Email OTP delivery.** → **Reuse the SMTP worker** (ADR-002-smtp); **separate**
+   rate-limit bucket per channel + `purpose="mfa"` (D3-**R6**).
+5. **MFA data model.** → New **`user_mfa_factors`** table (`type ∈ {phone_otp,
+   email_otp}`, `target`, `verified_at`, `is_active`). **TOTP/authenticator-app deferred**
+   — design the table to admit it later.
+6. **`HC_PATIENT_OTP_ENABLED` retirement.** → Replace with **per-user MFA enrollment
+   state**; keep the env var as a temporary **kill-switch** during migration, remove
+   after the D7 backfill completes.
+
+## A3 — proposed epic / story slate (build only after accept)
+
+Epic: *Platform-native password auth + optional OTP MFA (patients-first)*.
+
+1. **S1 — Platform account-creation service** (role=patient), password-policy reuse,
+   enumeration-safe (D3 R1–R2). +`must_set_password=false` for self-signup.
+2. **S2 — `POST /api/v1/patients/register`** delegates to S1, creates+links
+   `hc_patients.user_id`, mints token via `from-platform` seam. Captcha (R3), tenant
+   self-service gate (R4).
+3. **S3 — `user_mfa_factors` migration** (PG + MySQL parity, cf. GH#669).
+4. **S4 — MFA enroll/challenge/verify/disable** endpoints; email-OTP channel on the
+   platform OTP service; rate limits (R5–R7); revoke-on-change (R8); audit (R10).
+5. **S5 — Frontend:** email+password signup; post-signup "add MFA" flow; retain
+   `/patient/claim-account` for legacy D7 users.
+6. **S6 — Retire module OTP-as-primary**; repoint to platform MFA; kill-switch cleanup.
+
+**Sequencing:** S1→S2 unblock #672's core (self-registration works). S3→S4→S5 deliver
+MFA. S6 last. D3 re-reviews S1/S2 and S4 build PRs against sec-review-011.
 
 ---
 
