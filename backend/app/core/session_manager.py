@@ -17,6 +17,7 @@ from app.core.config import ACCESS_TOKEN_EXPIRE_MIN
 from app.core.security_config import SecurityConfigService
 from app.models.user import User
 from app.models.user_session import UserSession
+from app.services import trusted_device_service
 
 
 class SessionManager:
@@ -204,13 +205,11 @@ class SessionManager:
         """Revoke every "remember this device" trust for a user (sec-review-011 R8).
 
         On a credential change we must invalidate trusted devices alongside active
-        sessions (ADR-HC-009 §D4). Trusted-device storage does not exist yet — the
-        "remember this device" surface lands with the S5 MFA frontend — so this is
-        a deliberate no-op seam: both credential-change paths already call it, so
-        wiring it up later is a one-function change with no caller edits. Returns
-        the number of trusts revoked (0 until then).
+        sessions (ADR-HC-009 §D4): a remembered browser skips MFA, so leaving one
+        live after a password reset would hand an attacker exactly what the reset
+        was meant to take away. Returns the number of trusts revoked.
         """
-        return 0
+        return trusted_device_service.revoke_all(self.db, user)
 
     def update_activity(self, jti: str) -> bool:
         """
