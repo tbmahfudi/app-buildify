@@ -78,14 +78,63 @@ PR is re-reviewed by D3 against R1–R11.
   list factors, enroll phone/email → send OTP → verify & activate → remove, against the
   S4 `/api/v1/mfa/*` endpoints. Target-escaped, busy-guards, reuses `apiFetch`/`showAlert`.
 - **Deferred:** public email+password *signup* UX is blocked on the register-202 happy
-  path (needs resolved `app.company_id` Company context — Phase 5 / epic-20). Legacy D7
-  `/patient/claim-account` already exists (ADR-HC-009 D7).
+  path (needs resolved `app.company_id` Company context — Phase 5 / epic-20).
+- **Correction (2026-07-15):** an earlier revision of this line claimed "Legacy D7
+  `/patient/claim-account` already exists". **It does not.** There is no such route in
+  the codebase (`POST /api/v1/patients/claim-account` → 404, no matching source), and no
+  D7 backfill has run. See S6 below.
+
+### S5b — MFA challenge at login + trusted devices  `[C2 + C3]`  ✅ DONE
+Not in the original slate — opened because S4 shipped MFA **enrolled but unenforced**.
+`auth.py` had no MFA code path at all: a user could activate a factor, see it as *Active*
+in the S5 card, and still sign in with a password alone. The S4 story title said
+"enroll / **challenge** / verify / disable"; the challenge half was never built.
+
+- **D3 challenge** (`app/services/mfa_challenge_service.py`, `auth.py`): `POST /auth/login`
+  returns **202** `{mfa_required, mfa_token, methods, sent_to}` for a user with an active
+  factor and dispatches an OTP; new `POST /auth/mfa/verify` trades `{mfa_token, code,
+  remember_device?}` for real tokens. Challenge JWT is `type="mfa_challenge"` (never
+  accepted as an access token), 5-min TTL, single-use — burned on **success** only, since
+  guess-limiting is the OTP attempt lockout's job (R7/R9) and burning on a typo would cost
+  a second SMS (R6).
+- **D4 trusted devices** (`user_trusted_devices` + `app/services/trusted_device_service.py`):
+  `remember_device` mints a high-entropy secret, stores only its **HMAC**, and returns the
+  raw secret in an HttpOnly/SameSite=Lax cookie; a match suppresses the challenge for 30
+  days. `GET/DELETE /api/v1/mfa/devices` for the security screen.
+- **R8 closed for real.** `revoke_all_trusted_devices` shipped in S4 as a documented no-op
+  seam; it now revokes. Verified live: password change → 0 live trusts, cookie no longer
+  skips MFA. Also revoked on MFA disable (D4).
+- **Frontend:** login code step + remember-device + resend/cancel; remembered-devices list
+  on the profile card. `api.js login()` now returns `{mfaRequired}` — `res.ok` is **true**
+  for a 202, so the old code stored `undefined` tokens and "succeeded" silently.
+- **Also fixed:** `POST /org/users` + `/org/users/{id}/reset-password` always 500'd
+  (`get_password_hash` → `hash_password`); OTP resend cooldown blocked MFA logins.
+- Tests: 33 unit + 15 backend e2e + 5 Playwright. Full e2e 732 passed / 0 errors.
 
 ## Sprint 3 — cleanup
 
-### S6 — Retire module OTP-as-primary  `[C4]`
+### S6 — Retire module OTP-as-primary  `[C4]`  ⛔ BLOCKED — precondition unmet
 - Repoint module OTP to the platform MFA service; remove `HC_PATIENT_OTP_ENABLED` after
   the D7 backfill; kill-switch cleanup.
+- **Blocked (verified 2026-07-15).** A3-Q6 gates removal on the D7 backfill completing.
+  It has not:
+  - `SELECT count(*) FROM users WHERE must_set_password` → **0** — the backfill has never run.
+  - **4 of 7** `hc_patients` rows have a phone and a **NULL `user_id`** — legacy OTP-only
+    patients with no platform account to log into.
+  - `/patient/claim-account`, the interstitial D7 relies on to let them set a password,
+    **does not exist** (404, no source).
+- Those patients are *already* unable to sign in (the OTP routes 403 by default), so
+  deleting the flag would not break a working flow — but the flag is the documented
+  "temporary kill-switch **during** migration", and flipping it on is currently the only
+  way to let a legacy patient authenticate at all. Removing it before the migration exists
+  destroys the migration path rather than completing it.
+- **Unblocks S6:** (1) build the D7 backfill (platform `User` per legacy patient,
+  placeholder hash, `must_set_password=true`), (2) build `/patient/claim-account`,
+  (3) run the backfill, then (4) delete the routes + flag. Steps 1–3 are ADR-HC-009 D7
+  work, not ADR-011.
+- Note the module still carries its **own** OTP implementation (`modules/healthcare/sdk/
+  otp.py`) alongside the platform service, contrary to ADR-009. Consolidating those is the
+  "repoint" half and is *not* blocked by D7 — it can proceed independently.
 
 ## Gate
 D3 re-reviews S1/S2 and S4 build PRs against sec-review-011. D1 owns enumeration/timing +
