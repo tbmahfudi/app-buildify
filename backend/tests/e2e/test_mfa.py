@@ -30,7 +30,7 @@ def _cleanup(client):
 
 
 @pytest.fixture
-def mfa_client(user):
+def mfa_client(user, otp_quota_reset):
     _cleanup(user)
     yield user
     _cleanup(user)

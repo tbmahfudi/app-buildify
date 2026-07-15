@@ -158,6 +158,41 @@ def user():
         yield c
 
 
+@pytest.fixture
+def otp_quota_reset():
+    """Clear the OTP daily counters (sec-review-011 R6) around an OTP-heavy test.
+
+    The caps are per target, per account, and **per source IP** — and every e2e
+    test reaches the API from the same address, so the whole suite shares one
+    30/day IP bucket. Once it is spent, tests that have nothing to do with rate
+    limiting start failing on 429. That is the suite rate-limiting *itself*, not
+    a defect, so OTP-driven fixtures reset the counters instead of the product
+    loosening a control that exists to bound SMS/email spend.
+
+    The caps themselves are covered directly in tests/unit/test_otp_channels.py.
+    No-op if Redis is not reachable — the OTP tests skip in that case anyway.
+    """
+
+    def _reset():
+        try:
+            import redis
+        except ImportError:  # pragma: no cover
+            return
+        try:
+            r = redis.from_url(
+                os.environ.get("E2E_REDIS_URL", "redis://localhost:6379/0"), decode_responses=True
+            )
+            keys = list(r.scan_iter(match="otp:daily:*"))
+            if keys:
+                r.delete(*keys)
+        except Exception:  # noqa: BLE001 — best-effort test hygiene
+            return
+
+    _reset()
+    yield _reset
+    _reset()
+
+
 # --------------------------------------------------------------------------- #
 # Helpers
 # --------------------------------------------------------------------------- #
