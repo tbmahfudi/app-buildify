@@ -27,9 +27,6 @@ from app.core.password_validator import PasswordValidator
 # Import security services
 from app.core.security_config import SecurityConfigService
 from app.core.session_manager import SessionManager
-from app.routers import otp as otp_router
-from app.services import mfa_challenge_service, mfa_service, trusted_device_service
-from app.services.account_service import load_password_policy
 from app.models.branch import Branch
 from app.models.company import Company
 from app.models.department import Department
@@ -40,6 +37,7 @@ from app.models.tenant import Tenant
 from app.models.token_blacklist import TokenBlacklist
 from app.models.user import User
 from app.models.user_session import UserSession
+from app.routers import otp as otp_router
 from app.schemas.auth import (
     LoginRequest,
     PasswordChangeRequest,
@@ -51,6 +49,8 @@ from app.schemas.auth import (
     UserResponse,
 )
 from app.schemas.security import PasswordPolicyRequirements
+from app.services import mfa_challenge_service, mfa_service, trusted_device_service
+from app.services.account_service import load_password_policy
 
 security = HTTPBearer()
 
@@ -391,14 +391,10 @@ def login(credentials: LoginRequest, request: Request, db: Session = Depends(get
     # decremented twice (once per leg).
     if mfa_service.has_active_factor(db, user.id):
         # ...unless this browser was remembered (D4), which suppresses the challenge.
-        trusted = trusted_device_service.is_trusted(
-            db, user, request.cookies.get(trusted_device_service.COOKIE_NAME)
-        )
+        trusted = trusted_device_service.is_trusted(db, user, request.cookies.get(trusted_device_service.COOKIE_NAME))
         if not trusted:
             try:
-                mfa_token, factors, dispatched = mfa_challenge_service.create_challenge(
-                    db, user, ip=ip_address
-                )
+                mfa_token, factors, dispatched = mfa_challenge_service.create_challenge(db, user, ip=ip_address)
             except HTTPException:
                 raise  # rate-limit/cooldown from the OTP service — surface as-is
             except Exception as e:  # noqa: BLE001
@@ -423,9 +419,7 @@ def login(credentials: LoginRequest, request: Request, db: Session = Depends(get
                     "mfa_required": True,
                     "mfa_token": mfa_token,
                     "methods": [f.factor_type for f in factors],
-                    "sent_to": mfa_challenge_service.mask_target(
-                        dispatched.factor_type, dispatched.target
-                    ),
+                    "sent_to": mfa_challenge_service.mask_target(dispatched.factor_type, dispatched.target),
                 },
             )
 

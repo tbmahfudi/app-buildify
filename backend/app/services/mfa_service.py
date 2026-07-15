@@ -51,9 +51,7 @@ def channel_for_factor(factor_type: str) -> str:
     try:
         return _FACTOR_CHANNEL[factor_type]
     except KeyError:
-        raise InvalidFactorError(
-            f"Unsupported factor_type '{factor_type}'; expected one of {sorted(_FACTOR_CHANNEL)}"
-        )
+        raise InvalidFactorError(f"Unsupported factor_type '{factor_type}'; expected one of {sorted(_FACTOR_CHANNEL)}")
 
 
 def normalize_target(factor_type: str, target: str) -> str:

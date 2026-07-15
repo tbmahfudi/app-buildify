@@ -70,17 +70,32 @@ def _label_from_user_agent(user_agent: Optional[str]) -> Optional[str]:
         return None
     ua = user_agent.lower()
     browser = next(
-        (name for token, name in (
-            ("edg/", "Edge"), ("opr/", "Opera"), ("chrome", "Chrome"),
-            ("firefox", "Firefox"), ("safari", "Safari"),
-        ) if token in ua),
+        (
+            name
+            for token, name in (
+                ("edg/", "Edge"),
+                ("opr/", "Opera"),
+                ("chrome", "Chrome"),
+                ("firefox", "Firefox"),
+                ("safari", "Safari"),
+            )
+            if token in ua
+        ),
         "Browser",
     )
     os_name = next(
-        (name for token, name in (
-            ("windows", "Windows"), ("android", "Android"), ("iphone", "iOS"),
-            ("ipad", "iOS"), ("mac os", "macOS"), ("linux", "Linux"),
-        ) if token in ua),
+        (
+            name
+            for token, name in (
+                ("windows", "Windows"),
+                ("android", "Android"),
+                ("iphone", "iOS"),
+                ("ipad", "iOS"),
+                ("mac os", "macOS"),
+                ("linux", "Linux"),
+            )
+            if token in ua
+        ),
         None,
     )
     return f"{browser} on {os_name}" if os_name else browser

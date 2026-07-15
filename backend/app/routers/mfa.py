@@ -107,9 +107,7 @@ def enroll_mfa_factor(
     except mfa_service.InvalidFactorError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except mfa_service.AlreadyEnrolledError:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT, detail="This factor is already enrolled and active"
-        )
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="This factor is already enrolled and active")
 
     # Ownership is only proven by the send->verify round-trip; the row stays
     # inactive until POST /factors/{id}/verify succeeds.
@@ -132,9 +130,7 @@ def enroll_mfa_factor(
         request=request,
         status="success",
     )
-    return MFAEnrollResponse(
-        factor_id=str(factor.id), message="Verification code sent", resend_after=resend_after
-    )
+    return MFAEnrollResponse(factor_id=str(factor.id), message="Verification code sent", resend_after=resend_after)
 
 
 @router.post("/factors/{factor_id}/resend", response_model=MFAEnrollResponse)
@@ -169,9 +165,7 @@ def resend_mfa_code(
         request=request,
         status="success",
     )
-    return MFAEnrollResponse(
-        factor_id=str(factor.id), message="Verification code re-sent", resend_after=resend_after
-    )
+    return MFAEnrollResponse(factor_id=str(factor.id), message="Verification code re-sent", resend_after=resend_after)
 
 
 @router.post("/factors/{factor_id}/verify", response_model=MFAFactorResponse)

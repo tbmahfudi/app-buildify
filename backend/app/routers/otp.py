@@ -240,9 +240,7 @@ def verify_otp(*, channel: str, target: str, purpose: str, tenant_code: str, cod
 
 @router.post("/send", response_model=OtpSendResponse)
 async def send_otp_endpoint(body: OtpSendRequest):
-    resend_after = send_otp(
-        channel="phone", target=body.phone, purpose=body.purpose, tenant_code=body.tenant_code
-    )
+    resend_after = send_otp(channel="phone", target=body.phone, purpose=body.purpose, tenant_code=body.tenant_code)
     return OtpSendResponse(message="OTP sent", resend_after=resend_after)
 
 
