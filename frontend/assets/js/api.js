@@ -145,23 +145,75 @@ async function apiFetch(path, opts = {}) {
 function setApiBase(base) {
   apiBase = normalizeBase(base);
 }
+/**
+ * Log in with a password.
+ *
+ * Returns either a completed login, or an MFA challenge that the caller must
+ * finish with verifyMfaLogin() (ADR-HC-009 D3):
+ *
+ *   { mfaRequired: false }                                  -> signed in
+ *   { mfaRequired: true, mfaToken, methods, sentTo }        -> needs a code
+ *
+ * Note 202 is checked *before* res.ok, which is true for it — a challenge is a
+ * successful request, just not a completed login.
+ */
 async function login(email, password, tenant) {
   const res = await fetch(withBase('/auth/login'), {
     method: "POST",
     headers: { "Content-Type": "application/json", ...(tenant ? {"X-Tenant-Id": tenant} : {}) },
     body: JSON.stringify({ email, password })
   });
+
+  if (res.status === 202) {
+    const j = await res.json();
+    return { mfaRequired: true, mfaToken: j.mfa_token, methods: j.methods || [], sentTo: j.sent_to, tenant };
+  }
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || "Login failed");
+    throw new Error(errorText(err) || "Login failed");
+  }
+
+  const j = await res.json();
+  finishLogin(j, tenant);
+  return { mfaRequired: false, ...j };
+}
+
+/**
+ * Second leg of an MFA login: trade the challenge token + code for real tokens.
+ * `rememberDevice` asks the server to remember this browser (D4) so the next
+ * login skips the challenge; the trust rides in an HttpOnly cookie that this
+ * code deliberately cannot read.
+ */
+async function verifyMfaLogin(mfaToken, code, { rememberDevice = false, tenant = null } = {}) {
+  const res = await fetch(withBase('/auth/mfa/verify'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...(tenant ? { 'X-Tenant-Id': tenant } : {}) },
+    body: JSON.stringify({ mfa_token: mfaToken, code, remember_device: !!rememberDevice })
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(errorText(err) || 'Verification failed');
   }
   const j = await res.json();
-  tokens.access = j.access_token;
-  tokens.refresh = j.refresh_token;
+  finishLogin(j, tenant);
+  return j;
+}
+
+/** FastAPI surfaces errors as a string detail or a [{msg}] list. */
+function errorText(err) {
+  if (!err) return '';
+  if (typeof err.detail === 'string') return err.detail;
+  if (Array.isArray(err.detail)) return err.detail.map((d) => d.msg || d.message).filter(Boolean).join(', ');
+  if (err.detail && typeof err.detail === 'object') return err.detail.message || '';
+  return err.message || '';
+}
+
+function finishLogin(payload, tenant) {
+  tokens.access = payload.access_token;
+  tokens.refresh = payload.refresh_token;
   saveTokens();
   touchActivity();
   setTenant(tenant || null);
-  return j;
 }
 function logout() {
   clearTokens();
@@ -217,4 +269,4 @@ async function initIdleTimeout() {
 
 loadTokens();
 initIdleTimeout();
-export { apiFetch, login, logout, tokens, setTenant, tenantId, setApiBase, getAuthToken, requestPasswordReset, confirmPasswordReset };
+export { apiFetch, login, verifyMfaLogin, logout, tokens, setTenant, tenantId, setApiBase, getAuthToken, requestPasswordReset, confirmPasswordReset };

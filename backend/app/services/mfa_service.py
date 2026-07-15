@@ -51,9 +51,7 @@ def channel_for_factor(factor_type: str) -> str:
     try:
         return _FACTOR_CHANNEL[factor_type]
     except KeyError:
-        raise InvalidFactorError(
-            f"Unsupported factor_type '{factor_type}'; expected one of {sorted(_FACTOR_CHANNEL)}"
-        )
+        raise InvalidFactorError(f"Unsupported factor_type '{factor_type}'; expected one of {sorted(_FACTOR_CHANNEL)}")
 
 
 def normalize_target(factor_type: str, target: str) -> str:
@@ -86,6 +84,30 @@ def list_factors(db: Session, user_id: str) -> List[UserMFAFactor]:
         .filter(UserMFAFactor.user_id == str(user_id))
         .order_by(UserMFAFactor.created_at.desc())
         .all()
+    )
+
+
+def list_active_factors(db: Session, user_id: str) -> List[UserMFAFactor]:
+    """Only the *verified* factors — i.e. the ones that can answer a login challenge.
+
+    Ordered oldest-first so the factor a user enrolled first is the one we
+    challenge by default; that ordering is stable across logins.
+    """
+    return (
+        db.query(UserMFAFactor)
+        .filter(UserMFAFactor.user_id == str(user_id), UserMFAFactor.is_active.is_(True))
+        .order_by(UserMFAFactor.created_at.asc())
+        .all()
+    )
+
+
+def has_active_factor(db: Session, user_id: str) -> bool:
+    """True when the user has MFA switched on (an activated factor exists)."""
+    return (
+        db.query(UserMFAFactor.id)
+        .filter(UserMFAFactor.user_id == str(user_id), UserMFAFactor.is_active.is_(True))
+        .first()
+        is not None
     )
 
 

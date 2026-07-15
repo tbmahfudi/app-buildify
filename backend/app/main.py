@@ -30,13 +30,15 @@ from app.routers import (
     lookups,
     menu,
     metadata,
+)
+from app.routers import mfa as mfa_router
+from app.routers import (
     module_extensions,
     modules,
     modules_lifecycle,
     nocode_modules,
     org,
 )
-from app.routers import mfa as mfa_router
 from app.routers import otp as otp_router
 from app.routers import public as public_router
 from app.routers import (

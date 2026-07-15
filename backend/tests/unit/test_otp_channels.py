@@ -106,6 +106,59 @@ def test_cooldown_blocks_immediate_resend(fake):
     assert ei.value.status_code == 429
 
 
+def test_cooldown_raises_the_distinguishable_error(fake):
+    """The login challenge has to tell a cooldown apart from a hard daily cap:
+    one means "a code is already on its way", the other is a real refusal."""
+    otp.send_otp(channel="email", target="a@b.com", purpose="mfa", tenant_code="t1")
+    with pytest.raises(otp.OTPCooldownError):
+        otp.send_otp(channel="email", target="a@b.com", purpose="mfa", tenant_code="t1")
+
+
+def test_daily_cap_is_not_a_cooldown_error(fake, monkeypatch):
+    """A cap must NOT be catchable as a cooldown, or the challenge would wave it through."""
+    r, _ = fake
+    monkeypatch.setattr(otp, "DAILY_CAP", 1)
+    r.store[otp._daily_key("target", "email:a@b.com")] = "1"
+    with pytest.raises(HTTPException) as ei:
+        otp.send_otp(channel="email", target="a@b.com", purpose="mfa", tenant_code="t1")
+    assert ei.value.status_code == 429
+    assert not isinstance(ei.value, otp.OTPCooldownError)
+
+
+def test_consuming_a_code_clears_its_cooldown(fake):
+    """Otherwise enroll->login breaks: the enrollment code gets consumed while its
+    cooldown keeps ticking, leaving a cooldown with no code behind it."""
+    r, _ = fake
+    otp.send_otp(channel="email", target="a@b.com", purpose="mfa", tenant_code="t1")
+    code = r.get(otp._code_key("mfa", "email", "t1", "a@b.com"))
+    assert r.exists(otp._cooldown_key("mfa", "email", "t1", "a@b.com")) == 1
+
+    otp.verify_otp(channel="email", target="a@b.com", purpose="mfa", tenant_code="t1", code=code)
+
+    assert r.exists(otp._cooldown_key("mfa", "email", "t1", "a@b.com")) == 0
+    # ...so the next legitimate send goes straight through.
+    otp.send_otp(channel="email", target="a@b.com", purpose="mfa", tenant_code="t1")
+
+
+def test_wrong_code_does_not_clear_the_cooldown(fake):
+    r, _ = fake
+    otp.send_otp(channel="email", target="a@b.com", purpose="mfa", tenant_code="t1")
+    with pytest.raises(HTTPException):
+        otp.verify_otp(channel="email", target="a@b.com", purpose="mfa", tenant_code="t1", code="000000")
+    assert r.exists(otp._cooldown_key("mfa", "email", "t1", "a@b.com")) == 1
+
+
+def test_has_live_code_tracks_the_code_not_the_cooldown(fake):
+    r, _ = fake
+    assert otp.has_live_code(channel="email", target="a@b.com", purpose="mfa", tenant_code="t1") is False
+    otp.send_otp(channel="email", target="a@b.com", purpose="mfa", tenant_code="t1")
+    assert otp.has_live_code(channel="email", target="a@b.com", purpose="mfa", tenant_code="t1") is True
+
+    code = r.get(otp._code_key("mfa", "email", "t1", "a@b.com"))
+    otp.verify_otp(channel="email", target="a@b.com", purpose="mfa", tenant_code="t1", code=code)
+    assert otp.has_live_code(channel="email", target="a@b.com", purpose="mfa", tenant_code="t1") is False
+
+
 def test_daily_cap_blocks_after_limit(fake, monkeypatch):
     r, _ = fake
     monkeypatch.setattr(otp, "DAILY_CAP", 2)

@@ -138,6 +138,7 @@ from .user import User
 from .user_company_access import UserCompanyAccess
 from .user_mfa_factor import UserMFAFactor
 from .user_session import UserSession
+from .user_trusted_device import UserTrustedDevice
 
 # No-Code Platform - Workflow Designer
 from .workflow import (
@@ -161,6 +162,7 @@ __all__ = [
     "Department",
     "User",
     "UserMFAFactor",
+    "UserTrustedDevice",
     # Multi-company access
     "UserCompanyAccess",
     # RBAC

@@ -465,6 +465,81 @@ function initMfaPanel(firstInit) {
     });
   }
   loadMfaFactors();
+  loadTrustedDevices();
+}
+
+async function loadTrustedDevices() {
+  const section = document.getElementById('trusted-devices-section');
+  const list = document.getElementById('trusted-devices-list');
+  if (!section || !list) return;
+
+  try {
+    const res = await apiFetch('/mfa/devices');
+    if (!res.ok) {
+      section.classList.add('hidden');
+      return;
+    }
+    renderTrustedDevices((await res.json()) || []);
+  } catch (_) {
+    section.classList.add('hidden');
+  }
+}
+
+function renderTrustedDevices(devices) {
+  const section = document.getElementById('trusted-devices-section');
+  const list = document.getElementById('trusted-devices-list');
+  if (!section || !list) return;
+
+  // Nothing remembered — keep the card focused on enrollment.
+  if (!devices.length) {
+    section.classList.add('hidden');
+    list.innerHTML = '';
+    return;
+  }
+  section.classList.remove('hidden');
+
+  list.innerHTML = devices.map((d) => `
+      <div class="flex items-center justify-between gap-3 border border-gray-200 rounded-lg px-4 py-3">
+        <div class="flex items-center gap-3 min-w-0">
+          <i class="ph ph-desktop text-purple-600 text-xl"></i>
+          <div class="min-w-0">
+            <p class="text-sm font-medium text-gray-900 truncate">${escapeHtml(d.label || 'Unknown device')}</p>
+            <p class="text-xs text-gray-500">
+              Last used ${formatDeviceDate(d.last_used_at)} · Expires ${formatDeviceDate(d.expires_at)}
+            </p>
+          </div>
+        </div>
+        <button type="button" data-device-remove="${escapeHtml(d.id)}"
+          class="px-3 py-1.5 text-red-600 hover:bg-red-50 rounded-lg transition text-sm font-medium flex items-center gap-1 whitespace-nowrap">
+          <i class="ph ph-trash"></i> Remove
+        </button>
+      </div>`).join('');
+
+  list.querySelectorAll('[data-device-remove]').forEach((btn) => {
+    btn.addEventListener('click', () => trustedDeviceRemove(btn.getAttribute('data-device-remove')));
+  });
+}
+
+function formatDeviceDate(value) {
+  if (!value) return 'never';
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? 'unknown' : d.toLocaleDateString();
+}
+
+async function trustedDeviceRemove(deviceId) {
+  if (!deviceId) return;
+  try {
+    const res = await apiFetch(`/mfa/devices/${deviceId}`, { method: 'DELETE' });
+    if (res.ok) {
+      showAlert('Device removed. It will be asked for a code next time.', 'success');
+      loadTrustedDevices();
+    } else {
+      const body = await safeJson(res);
+      showAlert((body && body.detail) || 'Could not remove that device.', 'danger');
+    }
+  } catch (_) {
+    showAlert('Could not remove that device.', 'danger');
+  }
 }
 
 async function loadMfaFactors() {
@@ -599,6 +674,9 @@ async function mfaRemove(factorId) {
       showAlert('Method removed.', 'success');
       if (mfaPending && mfaPending.factorId === factorId) mfaCancel();
       loadMfaFactors();
+      // Removing a factor also revokes trusted devices server-side (D4), so the
+      // list on screen would otherwise still show devices that no longer exist.
+      loadTrustedDevices();
     } else {
       const body = await safeJson(res);
       showAlert((body && body.detail) || 'Could not remove the method.', 'danger');
