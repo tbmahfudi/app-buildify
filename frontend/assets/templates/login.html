@@ -331,6 +331,60 @@
       </div>
 
 
+      <!-- Two-Factor Challenge View (ADR-HC-009 D3) — shown when login returns 202 -->
+      <div id="mfa-view" class="hidden bg-white/80 backdrop-blur-lg rounded-2xl shadow-2xl p-8 border border-white/20">
+        <div class="text-center mb-6">
+          <div class="inline-flex items-center justify-center w-14 h-14 bg-blue-100 rounded-full mb-3">
+            <i class="ph ph-shield-check text-3xl text-blue-600"></i>
+          </div>
+          <h2 class="text-2xl font-bold text-gray-900">Two-factor verification</h2>
+          <p class="text-sm text-gray-500 mt-2">
+            We sent a code to <strong id="mfa-sent-to" class="text-gray-700"></strong>
+          </p>
+        </div>
+
+        <form id="mfa-form" class="space-y-5" aria-label="Two-factor verification form">
+          <div>
+            <label for="mfa-code" class="block text-sm font-medium text-gray-700 mb-2">
+              Verification code
+            </label>
+            <input
+              id="mfa-code"
+              type="text"
+              inputmode="numeric"
+              autocomplete="one-time-code"
+              maxlength="6"
+              required
+              placeholder="000000"
+              class="w-full px-4 py-3 border border-gray-300 rounded-lg text-center text-2xl tracking-[0.5em] font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition">
+          </div>
+
+          <label class="flex items-center gap-3 text-sm text-gray-700 cursor-pointer">
+            <input id="mfa-remember" type="checkbox"
+                   class="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+            <span>Remember this device for 30 days</span>
+          </label>
+
+          <div id="mfa-error" class="hidden p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg" role="alert" aria-live="assertive">
+            <div class="flex items-start gap-3">
+              <i class="ph ph-warning-circle flex-shrink-0 mt-0.5" aria-hidden="true"></i>
+              <span id="mfa-error-message"></span>
+            </div>
+          </div>
+
+          <button type="submit" id="mfa-verify-btn"
+                  class="w-full px-4 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold rounded-lg hover:from-blue-700 hover:to-indigo-700 shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed">
+            <span id="mfa-verify-text">Verify</span>
+            <i class="ph ph-arrow-right" id="mfa-verify-icon"></i>
+          </button>
+        </form>
+
+        <div class="flex items-center justify-between mt-6 text-sm">
+          <button type="button" id="mfa-resend" class="text-blue-600 hover:underline">Resend code</button>
+          <button type="button" id="mfa-cancel" class="text-gray-500 hover:underline">Back to sign in</button>
+        </div>
+      </div>
+
       <!-- Reset Password — Request View -->
       <div id="reset-request-view" class="hidden bg-white/80 backdrop-blur-lg rounded-2xl shadow-2xl p-8 border border-white/20" role="main">
         <h2 class="text-2xl font-bold text-center mb-2 text-gray-900">Reset your password</h2>
@@ -430,7 +484,7 @@
   </div>
 
   <script type="module">
-    import { login, requestPasswordReset, confirmPasswordReset, getAuthToken } from '../js/api.js';
+    import { login, verifyMfaLogin, requestPasswordReset, confirmPasswordReset, getAuthToken } from '../js/api.js';
     import PasswordStrengthIndicator from '../js/password-strength-indicator.js';
 
     /**
@@ -498,20 +552,28 @@
       buttonIcon.className = 'ph ph-arrows-clockwise animate-spin';
       
       try {
-        await login(email, password, tenant);
-        
+        const result = await login(email, password, tenant);
+
+        // A user with MFA on is not signed in yet — the password only bought a
+        // challenge. Hand off to the code step instead of redirecting.
+        if (result.mfaRequired) {
+          showMfaChallenge(result, { email, password, tenant });
+          resetLoginButton();
+          return;
+        }
+
         // Success - show success state briefly
         buttonText.textContent = 'Success!';
         buttonIcon.className = 'ph ph-check';
         loginButton.className = loginButton.className.replace('from-blue-600 to-indigo-600', 'from-green-600 to-green-600');
-        
+
         // Redirect after brief delay — patients go to the healthcare portal,
         // everyone else to the staff SPA.
         setTimeout(async () => {
           if (await routePatientToPortal()) return;
           window.location.href = '/';
         }, 500);
-        
+
       } catch (error) {
         // Reset button state
         loginButton.disabled = false;
@@ -527,6 +589,111 @@
         setTimeout(() => form.classList.remove('animate-shake'), 500);
       }
     });
+
+    // ── Two-factor challenge (ADR-HC-009 D3) ────────────────────────────────
+    const mfaView       = document.getElementById('mfa-view');
+    const mfaForm       = document.getElementById('mfa-form');
+    const mfaCodeInput  = document.getElementById('mfa-code');
+    const mfaRemember   = document.getElementById('mfa-remember');
+    const mfaSentTo     = document.getElementById('mfa-sent-to');
+    const mfaErrorDiv   = document.getElementById('mfa-error');
+    const mfaErrorMsg   = document.getElementById('mfa-error-message');
+    const mfaVerifyBtn  = document.getElementById('mfa-verify-btn');
+    const mfaVerifyText = document.getElementById('mfa-verify-text');
+    const mfaVerifyIcon = document.getElementById('mfa-verify-icon');
+
+    // Held only for the life of the challenge. The password is kept so "Resend"
+    // can ask for a new one; it never leaves this page and is dropped on exit.
+    let _challenge = null;
+
+    function resetLoginButton() {
+      loginButton.disabled = false;
+      buttonText.textContent = 'Sign In';
+      buttonIcon.className = 'ph ph-arrow-right';
+    }
+
+    function showMfaChallenge(result, creds) {
+      _challenge = { mfaToken: result.mfaToken, creds };
+      mfaSentTo.textContent = result.sentTo || 'your registered contact';
+      mfaCodeInput.value = '';
+      mfaErrorDiv.classList.add('hidden');
+      loginCard.classList.add('hidden');
+      mfaView.classList.remove('hidden');
+      mfaCodeInput.focus();
+    }
+
+    function exitMfaChallenge() {
+      _challenge = null;
+      mfaView.classList.add('hidden');
+      loginCard.classList.remove('hidden');
+      document.getElementById('password').value = '';
+    }
+
+    function setMfaBusy(busy, label) {
+      mfaVerifyBtn.disabled = busy;
+      mfaCodeInput.disabled = busy;
+      mfaVerifyText.textContent = busy ? (label || 'Verifying…') : 'Verify';
+      mfaVerifyIcon.className = busy ? 'ph ph-arrows-clockwise animate-spin' : 'ph ph-arrow-right';
+    }
+
+    function showMfaError(message) {
+      mfaErrorMsg.textContent = message;
+      mfaErrorDiv.classList.remove('hidden');
+      mfaForm.classList.add('animate-shake');
+      setTimeout(() => mfaForm.classList.remove('animate-shake'), 500);
+    }
+
+    mfaForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!_challenge) return;
+
+      const code = mfaCodeInput.value.trim();
+      if (!code) return;
+
+      mfaErrorDiv.classList.add('hidden');
+      setMfaBusy(true);
+
+      try {
+        await verifyMfaLogin(_challenge.mfaToken, code, {
+          rememberDevice: mfaRemember.checked,
+          tenant: _challenge.creds.tenant,
+        });
+        _challenge = null;
+        mfaVerifyText.textContent = 'Success!';
+        mfaVerifyIcon.className = 'ph ph-check';
+        if (await routePatientToPortal()) return;
+        window.location.href = '/';
+      } catch (error) {
+        setMfaBusy(false);
+        showMfaError(error.message || 'That code was not accepted.');
+        mfaCodeInput.select();
+      }
+    });
+
+    // Re-running login mints a fresh challenge. Within the send cooldown the
+    // server reuses the code already in flight rather than refusing, so this
+    // never leaves the user stuck.
+    document.getElementById('mfa-resend').addEventListener('click', async () => {
+      if (!_challenge) return;
+      const { email, password, tenant } = _challenge.creds;
+      mfaErrorDiv.classList.add('hidden');
+      setMfaBusy(true, 'Sending…');
+      try {
+        const result = await login(email, password, tenant);
+        if (result.mfaRequired) {
+          _challenge.mfaToken = result.mfaToken;
+          mfaSentTo.textContent = result.sentTo || 'your registered contact';
+          mfaCodeInput.value = '';
+          mfaCodeInput.focus();
+        }
+      } catch (error) {
+        showMfaError(error.message || 'Could not resend the code.');
+      } finally {
+        setMfaBusy(false);
+      }
+    });
+
+    document.getElementById('mfa-cancel').addEventListener('click', exitMfaChallenge);
 
     // Fill credentials helper (module-scoped, not global)
     function fillCredentials(email, password) {
@@ -555,7 +722,10 @@
     function showView(hash) {
       const isRequest = hash === 'reset-password';
       const isConfirm = hash === 'reset-password-confirm';
-      loginCard.classList.toggle('hidden', isRequest || isConfirm);
+      // Navigating away abandons any in-flight MFA challenge, so drop it rather
+      // than leaving the code step stacked behind the reset views.
+      if ((isRequest || isConfirm) && _challenge) exitMfaChallenge();
+      loginCard.classList.toggle('hidden', isRequest || isConfirm || !!_challenge);
       requestView.classList.toggle('hidden', !isRequest);
       confirmView.classList.toggle('hidden', !isConfirm);
       if (isConfirm) {
