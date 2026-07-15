@@ -45,6 +45,24 @@ IP_DAILY_CAP = int(os.environ.get("OTP_IP_DAILY_CAP", "30"))  # per source IP
 DAILY_TTL = 24 * 3600
 
 
+class OTPCooldownError(HTTPException):
+    """A code was sent to this target moments ago; the previous one is still valid.
+
+    Subclasses ``HTTPException`` so existing callers that simply let it propagate
+    keep returning exactly the same 429 as before. It exists so a caller that can
+    *use* the in-flight code — the login challenge, which must not refuse a login
+    just because a code was already sent — can catch this specifically and tell it
+    apart from a hard daily cap, which is a genuine refusal.
+
+    Safe by construction: ``COOLDOWN_TTL`` (60s) is far inside ``OTP_TTL`` (600s),
+    so whenever this is raised the earlier code is guaranteed to still be live.
+    """
+
+    def __init__(self, ttl: int):
+        super().__init__(status_code=429, detail=f"Please wait {ttl}s before requesting another OTP")
+        self.retry_after = ttl
+
+
 class OtpSendRequest(BaseModel):
     phone: str
     purpose: str
@@ -127,8 +145,7 @@ def send_otp(
     r = get_redis()
     cooldown_key = _cooldown_key(purpose, channel, tenant_code, target)
     if r.exists(cooldown_key):
-        ttl = r.ttl(cooldown_key)
-        raise HTTPException(status_code=429, detail=f"Please wait {ttl}s before requesting another OTP")
+        raise OTPCooldownError(r.ttl(cooldown_key))
 
     # R6 — hard daily caps, checked before minting. Separate buckets so one axis
     # can't deplete another: per target, per account, per source IP.
@@ -160,6 +177,15 @@ def send_otp(
     # R7 — never log the code or the raw target.
     logger.info("OTP sent purpose=%s channel=%s tenant=%s", purpose, channel, tenant_code)
     return COOLDOWN_TTL
+
+
+def has_live_code(*, channel: str, target: str, purpose: str, tenant_code: str) -> bool:
+    """True if an unconsumed code is currently outstanding for this target.
+
+    Lets the login challenge decide whether a resend cooldown means "a usable code
+    is already on its way" or "we genuinely cannot help you right now".
+    """
+    return bool(get_redis().exists(_code_key(purpose, channel, tenant_code, target)))
 
 
 def verify_otp(*, channel: str, target: str, purpose: str, tenant_code: str, code: str) -> str:
@@ -195,6 +221,13 @@ def verify_otp(*, channel: str, target: str, purpose: str, tenant_code: str, cod
     # Correct -- consume code, issue one-time token
     r.delete(code_key)
     r.delete(attempts_key)
+    # Clear the resend cooldown too. It throttles *sends* to a target; once the user
+    # has proven they received this code and used it, throttling the next legitimate
+    # send serves no purpose and actively breaks enroll->login (the enrollment code
+    # is consumed here, so the login challenge moments later must be free to send a
+    # fresh one). It also keeps the invariant the login challenge relies on: a live
+    # cooldown implies a live, unconsumed code.
+    r.delete(_cooldown_key(purpose, channel, tenant_code, target))
 
     token = str(uuid.uuid4())
     token_key = _token_key(token)

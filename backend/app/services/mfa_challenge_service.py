@@ -97,14 +97,33 @@ def create_challenge(
 
     # Reuses the S4 OTP service: purpose="mfa" keeps this in its own rate-limit
     # bucket, and the per-target/account/IP daily caps (R6) apply unchanged.
-    otp.send_otp(
-        channel=channel,
-        target=target_factor.target,
-        purpose="mfa",
-        tenant_code=str(user.tenant_id) if user.tenant_id else "platform",
-        account_id=str(user.id),
-        ip=ip,
-    )
+    try:
+        otp.send_otp(
+            channel=channel,
+            target=target_factor.target,
+            purpose="mfa",
+            tenant_code=str(user.tenant_id) if user.tenant_id else "platform",
+            account_id=str(user.id),
+            ip=ip,
+        )
+    except otp.OTPCooldownError:
+        # A code went to this target seconds ago — typically the user retried the
+        # login. Rather than refuse (a 429 here would lock a legitimate user out of
+        # signing in for the whole cooldown window), challenge with the code that is
+        # already in flight. A hard daily cap (R6) is a real refusal and still
+        # propagates.
+        #
+        # Only safe while that code is actually still outstanding; if it was already
+        # consumed there is nothing for the user to type, so surface the 429 instead
+        # of handing back a challenge that cannot be answered.
+        if not otp.has_live_code(
+            channel=channel,
+            target=target_factor.target,
+            purpose="mfa",
+            tenant_code=str(user.tenant_id) if user.tenant_id else "platform",
+        ):
+            raise
+        logger.info("MFA challenge reusing in-flight code for user %s", user.id)
 
     jti = str(uuid.uuid4())
     now = datetime.utcnow()
