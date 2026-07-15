@@ -89,6 +89,30 @@ def list_factors(db: Session, user_id: str) -> List[UserMFAFactor]:
     )
 
 
+def list_active_factors(db: Session, user_id: str) -> List[UserMFAFactor]:
+    """Only the *verified* factors — i.e. the ones that can answer a login challenge.
+
+    Ordered oldest-first so the factor a user enrolled first is the one we
+    challenge by default; that ordering is stable across logins.
+    """
+    return (
+        db.query(UserMFAFactor)
+        .filter(UserMFAFactor.user_id == str(user_id), UserMFAFactor.is_active.is_(True))
+        .order_by(UserMFAFactor.created_at.asc())
+        .all()
+    )
+
+
+def has_active_factor(db: Session, user_id: str) -> bool:
+    """True when the user has MFA switched on (an activated factor exists)."""
+    return (
+        db.query(UserMFAFactor.id)
+        .filter(UserMFAFactor.user_id == str(user_id), UserMFAFactor.is_active.is_(True))
+        .first()
+        is not None
+    )
+
+
 def get_factor(db: Session, user_id: str, factor_id: str) -> Optional[UserMFAFactor]:
     """Fetch one factor, scoped to its owner (never leak another user's factor)."""
     return (

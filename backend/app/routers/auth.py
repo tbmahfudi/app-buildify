@@ -3,8 +3,10 @@ import secrets
 from datetime import datetime, timedelta
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from pydantic import BaseModel
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
@@ -16,7 +18,7 @@ from app.core.auth import (
     hash_password,
     verify_password,
 )
-from app.core.config import ACCESS_TOKEN_EXPIRE_MIN
+from app.core.config import ACCESS_TOKEN_EXPIRE_MIN, settings
 from app.core.dependencies import get_current_user, get_db
 from app.core.lockout_manager import LockoutManager
 from app.core.password_history import PasswordHistoryService
@@ -25,6 +27,8 @@ from app.core.password_validator import PasswordValidator
 # Import security services
 from app.core.security_config import SecurityConfigService
 from app.core.session_manager import SessionManager
+from app.routers import otp as otp_router
+from app.services import mfa_challenge_service, mfa_service, trusted_device_service
 from app.services.account_service import load_password_policy
 from app.models.branch import Branch
 from app.models.company import Company
@@ -82,7 +86,165 @@ def _queue_email(db, *, tenant_id, user_id, notification_type, recipient, subjec
         logger.warning("Failed to queue %s email for user %s: %s", notification_type, user_id, e)
 
 
-@router.post("/login", response_model=TokenResponse)
+class MFALoginVerifyRequest(BaseModel):
+    """Second leg of an MFA login (ADR-HC-009 D3)."""
+
+    mfa_token: str
+    code: str
+    remember_device: bool = False
+
+
+def _set_trusted_device_cookie(response: Response, raw_secret: str, *, db, user) -> None:
+    """Put the device secret in the browser as an HttpOnly cookie (ADR-HC-009 D4).
+
+    HttpOnly so script cannot read it (a stolen secret skips MFA); SameSite=Lax so it
+    is not sent on cross-site requests; Secure everywhere except local dev, where the
+    stack is served over plain http and a Secure cookie would simply never come back.
+    """
+    response.set_cookie(
+        key=trusted_device_service.COOKIE_NAME,
+        value=raw_secret,
+        # Same window as the DB row, so the cookie and the trust expire together.
+        max_age=trusted_device_service.window_days(db, user) * 24 * 60 * 60,
+        httponly=True,
+        secure=settings.ENVIRONMENT != "development",
+        samesite="lax",
+        path="/",
+    )
+
+
+def _check_password_expiry(db, user, *, identifier, ip_address, user_agent):
+    """Enforce password expiry, consuming a grace login if the policy allows one.
+
+    Returns ``(password_expired, grace_login_allowed)`` or raises 403 when the
+    password is expired with no grace left.
+
+    Shared by ``login`` and ``mfa_login_verify`` so it runs exactly once per
+    successful login: for an MFA user the first leg only issues a challenge, so the
+    check — and any grace decrement — belongs on whichever leg actually mints tokens.
+    """
+    security_config = SecurityConfigService(db)
+    password_expired = False
+    grace_login_allowed = False
+
+    if user.password_expires_at and user.password_expires_at < datetime.utcnow():
+        password_expired = True
+        grace_logins = security_config.get_config("password_grace_logins", user.tenant_id)
+        if grace_logins and user.grace_logins_remaining and user.grace_logins_remaining > 0:
+            grace_login_allowed = True
+            user.grace_logins_remaining -= 1
+        else:
+            db.add(
+                LoginAttempt(
+                    user_id=str(user.id),
+                    email=identifier,
+                    ip_address=ip_address,
+                    user_agent=user_agent,
+                    success=False,
+                    failure_reason="Password expired",
+                )
+            )
+            db.commit()
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN, detail="Password has expired. Please reset your password."
+            )
+
+    return password_expired, grace_login_allowed
+
+
+def _issue_login_tokens(
+    db,
+    user,
+    request,
+    *,
+    identifier,
+    ip_address,
+    user_agent,
+    password_expired=False,
+    grace_login_allowed=False,
+) -> TokenResponse:
+    """Mint access/refresh tokens and record the successful login.
+
+    The tail of a successful login, shared by the password-only path and the
+    MFA-verified path so both produce an identical session, audit trail, and
+    login-attempt record.
+    """
+    session_manager = SessionManager(db)
+    lockout_manager = LockoutManager(db)
+
+    permissions = list(user.get_permissions()) if hasattr(user, "get_permissions") else []
+    token_data = {
+        "sub": str(user.id),
+        "email": user.email,
+        "tenant_id": str(user.tenant_id) if user.tenant_id else None,
+        "permissions": permissions,
+    }
+
+    access_token = create_access_token(token_data)
+    refresh_token = create_refresh_token({"sub": str(user.id)})
+
+    access_token_payload = decode_token(access_token)
+    jti = access_token_payload.get("jti") if access_token_payload else None
+
+    if jti:
+        try:
+            session_manager.create_session(user=user, jti=jti, ip_address=ip_address, user_agent=user_agent)
+        except Exception as e:
+            logger.warning(f"Failed to create session for user {user.id}: {e}")
+            # Continue with login even if session creation fails
+
+    db.add(
+        LoginAttempt(
+            user_id=str(user.id),
+            email=identifier,
+            ip_address=ip_address,
+            user_agent=user_agent,
+            success=True,
+            failure_reason=None,
+        )
+    )
+
+    lockout_manager.reset_failed_attempts(user)
+
+    try:
+        user.last_login = datetime.utcnow()
+        db.commit()
+        logger.info(f"Successfully updated last_login for user {user.id}")
+    except Exception as e:
+        logger.error(f"Error updating last_login for user {user.id}: {e}")
+        db.rollback()
+        db.commit()  # Commit the login attempt even if last_login fails
+
+    create_audit_log(
+        db=db, action="login", user=user, entity_type="user", entity_id=str(user.id), request=request, status="success"
+    )
+
+    if password_expired and grace_login_allowed:
+        logger.info(
+            f"User {user.id} logged in with expired password. Grace logins remaining: {user.grace_logins_remaining}"
+        )
+
+    return TokenResponse(
+        access_token=access_token,
+        refresh_token=refresh_token,
+        expires_in=ACCESS_TOKEN_EXPIRE_MIN * 60,
+    )
+
+
+@router.post(
+    "/login",
+    response_model=None,
+    responses={
+        200: {"model": TokenResponse, "description": "Authenticated; tokens issued."},
+        202: {
+            "description": (
+                "Password accepted but a second factor is required (ADR-HC-009 D3). "
+                "Returns `{mfa_required, mfa_token, methods, sent_to}`; exchange the "
+                "`mfa_token` plus the OTP code at `POST /api/v1/auth/mfa/verify`."
+            )
+        },
+    },
+)
 def login(credentials: LoginRequest, request: Request, db: Session = Depends(get_db)):
     """
     Login endpoint - authenticates user and returns JWT tokens.
@@ -222,103 +384,165 @@ def login(credentials: LoginRequest, request: Request, db: Session = Depends(get
 
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Inactive user")
 
-    # Check password expiration
-    security_config = SecurityConfigService(db)
-    password_expired = False
-    grace_login_allowed = False
+    # MFA gate (ADR-HC-009 D3). The password is correct, but a user with a second
+    # factor is not logged in yet: hand back a challenge instead of tokens. Placed
+    # before the password-expiry check so an MFA login runs that check exactly once,
+    # on the leg that actually mints tokens — otherwise a grace login would be
+    # decremented twice (once per leg).
+    if mfa_service.has_active_factor(db, user.id):
+        # ...unless this browser was remembered (D4), which suppresses the challenge.
+        trusted = trusted_device_service.is_trusted(
+            db, user, request.cookies.get(trusted_device_service.COOKIE_NAME)
+        )
+        if not trusted:
+            try:
+                mfa_token, factors, dispatched = mfa_challenge_service.create_challenge(
+                    db, user, ip=ip_address
+                )
+            except HTTPException:
+                raise  # rate-limit/cooldown from the OTP service — surface as-is
+            except Exception as e:  # noqa: BLE001
+                logger.error(f"Failed to create MFA challenge for user {user.id}: {e}")
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail="Could not send your verification code. Please try again.",
+                )
 
-    if user.password_expires_at and user.password_expires_at < datetime.utcnow():
-        password_expired = True
-        # Check if grace logins are allowed
-        grace_logins = security_config.get_config("password_grace_logins", user.tenant_id)
-        if grace_logins and user.grace_logins_remaining and user.grace_logins_remaining > 0:
-            grace_login_allowed = True
-            user.grace_logins_remaining -= 1
-        else:
-            # Record failed login attempt due to password expiration
-            login_attempt = LoginAttempt(
-                user_id=str(user.id),
-                email=credentials.email,
-                ip_address=ip_address,
-                user_agent=user_agent,
-                success=False,
-                failure_reason="Password expired",
+            create_audit_log(
+                db=db,
+                action="mfa_challenge",
+                user=user,
+                entity_type="user",
+                entity_id=str(user.id),
+                request=request,
+                status="success",
             )
-            db.add(login_attempt)
-            db.commit()
-
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN, detail="Password has expired. Please reset your password."
+            return JSONResponse(
+                status_code=status.HTTP_202_ACCEPTED,
+                content={
+                    "mfa_required": True,
+                    "mfa_token": mfa_token,
+                    "methods": [f.factor_type for f in factors],
+                    "sent_to": mfa_challenge_service.mask_target(
+                        dispatched.factor_type, dispatched.target
+                    ),
+                },
             )
 
-    # Get user permissions from RBAC system
-    permissions = list(user.get_permissions()) if hasattr(user, "get_permissions") else []
+    password_expired, grace_login_allowed = _check_password_expiry(
+        db, user, identifier=credentials.email, ip_address=ip_address, user_agent=user_agent
+    )
 
-    # Create tokens with user context
-    token_data = {
-        "sub": str(user.id),
-        "email": user.email,
-        "tenant_id": str(user.tenant_id) if user.tenant_id else None,
-        "permissions": permissions,
-    }
-
-    access_token = create_access_token(token_data)
-    refresh_token = create_refresh_token({"sub": str(user.id)})
-
-    # Decode token to get JTI for session tracking
-    access_token_payload = decode_token(access_token)
-    jti = access_token_payload.get("jti") if access_token_payload else None
-
-    # Create user session
-    if jti:
-        try:
-            session_manager.create_session(user=user, jti=jti, ip_address=ip_address, user_agent=user_agent)
-        except Exception as e:
-            logger.warning(f"Failed to create session for user {user.id}: {e}")
-            # Continue with login even if session creation fails
-
-    # Record successful login attempt
-    login_attempt = LoginAttempt(
-        user_id=str(user.id),
-        email=credentials.email,
+    return _issue_login_tokens(
+        db,
+        user,
+        request,
+        identifier=credentials.email,
         ip_address=ip_address,
         user_agent=user_agent,
-        success=True,
-        failure_reason=None,
+        password_expired=password_expired,
+        grace_login_allowed=grace_login_allowed,
     )
-    db.add(login_attempt)
 
-    # Reset failed login attempts on successful login
-    lockout_manager.reset_failed_attempts(user)
 
-    # Update last login
+@router.post("/mfa/verify", response_model=None)
+def mfa_login_verify(
+    body: MFALoginVerifyRequest,
+    request: Request,
+    response: Response,
+    db: Session = Depends(get_db),
+):
+    """Second leg of an MFA login: trade a challenge token + OTP code for real tokens.
+
+    Unauthenticated by design — the ``mfa_token`` from ``POST /auth/login`` *is* the
+    credential here, and it only exists because a password already checked out.
+    """
+    ip_address = request.client.host if request.client else None
+    user_agent = request.headers.get("User-Agent")
+
     try:
-        user.last_login = datetime.utcnow()
-        db.commit()
-        logger.info(f"Successfully updated last_login for user {user.id}")
-    except Exception as e:
-        logger.error(f"Error updating last_login for user {user.id}: {e}")
-        db.rollback()
-        db.commit()  # Commit the login attempt even if last_login fails
-
-    # Audit successful login
-    create_audit_log(
-        db=db, action="login", user=user, entity_type="user", entity_id=str(user.id), request=request, status="success"
-    )
-
-    # If password expired but grace login allowed, include warning in response
-    response_data = {
-        "access_token": access_token,
-        "refresh_token": refresh_token,
-        "expires_in": ACCESS_TOKEN_EXPIRE_MIN * 60,
-    }
-
-    if password_expired and grace_login_allowed:
-        logger.info(
-            f"User {user.id} logged in with expired password. Grace logins remaining: {user.grace_logins_remaining}"
+        user_id, factor_id, jti = mfa_challenge_service.validate_challenge(body.mfa_token)
+    except mfa_challenge_service.ChallengeError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired challenge. Please sign in again.",
         )
 
-    return TokenResponse(**response_data)
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user or not user.is_active:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired challenge")
+
+    factor = mfa_service.get_factor(db, user.id, factor_id)
+    if factor is None or not factor.is_active:
+        # The factor was removed (or de-activated) between the two legs.
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired challenge")
+
+    # Guess-limiting lives in the OTP service's attempt counter (R7/R9); a wrong code
+    # raises from here and does NOT spend the challenge, so a typo costs a retry, not
+    # another SMS.
+    try:
+        otp_router.verify_otp(
+            channel=mfa_service.channel_for_factor(factor.factor_type),
+            target=factor.target,
+            purpose="mfa",
+            tenant_code=str(user.tenant_id) if user.tenant_id else "platform",
+            code=body.code,
+        )
+    except HTTPException:
+        create_audit_log(
+            db=db,
+            action="mfa_login_verify",
+            user=user,
+            entity_type="user",
+            entity_id=str(user.id),
+            request=request,
+            status="failure",
+        )
+        raise
+
+    # Correct code — spend the challenge so it cannot be replayed for a second session.
+    if not mfa_challenge_service.burn_challenge(jti):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired challenge")
+
+    password_expired, grace_login_allowed = _check_password_expiry(
+        db, user, identifier=user.email, ip_address=ip_address, user_agent=user_agent
+    )
+
+    tokens = _issue_login_tokens(
+        db,
+        user,
+        request,
+        identifier=user.email,
+        ip_address=ip_address,
+        user_agent=user_agent,
+        password_expired=password_expired,
+        grace_login_allowed=grace_login_allowed,
+    )
+
+    create_audit_log(
+        db=db,
+        action="mfa_login_verify",
+        user=user,
+        entity_type="user",
+        entity_id=str(user.id),
+        request=request,
+        status="success",
+    )
+
+    if body.remember_device:
+        raw_secret = trusted_device_service.remember_device(db, user, user_agent=user_agent)
+        _set_trusted_device_cookie(response, raw_secret, db=db, user=user)
+        create_audit_log(
+            db=db,
+            action="trusted_device_add",
+            user=user,
+            entity_type="user",
+            entity_id=str(user.id),
+            request=request,
+            status="success",
+        )
+
+    return tokens
 
 
 @router.get("/config")
