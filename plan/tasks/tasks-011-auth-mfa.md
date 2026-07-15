@@ -70,9 +70,16 @@ PR is re-reviewed by D3 against R1–R11.
   test_mfa_service.py`, `tests/unit/test_otp_channels.py`, `tests/e2e/test_mfa.py`
   (happy path verified live). **D3 re-review pending** against sec-review-011.
 
-### S5 — Frontend  `[C3]`
+### S5 — Frontend  `[C3]`  🟡 PARTIAL
 - Email+password signup; post-signup "add MFA" flow; retain `/patient/claim-account`
   for legacy D7 users.
+- **Shipped — "add MFA" flow:** Two-Factor Authentication card on the profile page
+  (`frontend/assets/templates/profile.html` + `frontend/assets/js/profile-page.js`):
+  list factors, enroll phone/email → send OTP → verify & activate → remove, against the
+  S4 `/api/v1/mfa/*` endpoints. Target-escaped, busy-guards, reuses `apiFetch`/`showAlert`.
+- **Deferred:** public email+password *signup* UX is blocked on the register-202 happy
+  path (needs resolved `app.company_id` Company context — Phase 5 / epic-20). Legacy D7
+  `/patient/claim-account` already exists (ADR-HC-009 D7).
 
 ## Sprint 3 — cleanup
 

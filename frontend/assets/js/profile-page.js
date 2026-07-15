@@ -61,6 +61,9 @@ async function initProfilePageWithForms(profileForm, passwordForm) {
   } else {
     console.log('Profile: Forms already initialized, data refreshed');
   }
+
+  // Two-Factor Authentication panel (ADR-011 S5)
+  initMfaPanel(firstInit);
 }
 
 /**
@@ -437,4 +440,197 @@ async function safeJson(response) {
   } catch (_) {
     return null;
   }
+}
+
+// ---------------------------------------------------------------------------
+// Two-Factor Authentication (ADR-011 S5) — enroll / verify / remove MFA factors.
+// Talks to the platform /api/v1/mfa/* endpoints (S4).
+// ---------------------------------------------------------------------------
+
+let mfaPending = null; // { factorId, target } while a code is awaiting verification
+
+function initMfaPanel(firstInit) {
+  const list = document.getElementById('mfa-list');
+  if (!list) return; // template without the MFA card — nothing to do
+
+  if (firstInit) {
+    document.getElementById('mfa-send-btn')?.addEventListener('click', mfaSendCode);
+    document.getElementById('mfa-verify-btn')?.addEventListener('click', mfaVerifyCode);
+    document.getElementById('mfa-resend-btn')?.addEventListener('click', mfaResendCode);
+    document.getElementById('mfa-cancel-btn')?.addEventListener('click', mfaCancel);
+    const typeSel = document.getElementById('mfa-type');
+    typeSel?.addEventListener('change', () => {
+      const t = document.getElementById('mfa-target');
+      if (t) t.placeholder = typeSel.value === 'phone_otp' ? '+15551234567' : 'you@example.com';
+    });
+  }
+  loadMfaFactors();
+}
+
+async function loadMfaFactors() {
+  const list = document.getElementById('mfa-list');
+  if (!list) return;
+  try {
+    const res = await apiFetch('/mfa/factors');
+    if (!res.ok) {
+      list.innerHTML = '<p class="text-sm text-gray-400">Could not load methods.</p>';
+      return;
+    }
+    renderMfaFactors((await res.json()) || []);
+  } catch (_) {
+    list.innerHTML = '<p class="text-sm text-gray-400">Could not load methods.</p>';
+  }
+}
+
+function renderMfaFactors(factors) {
+  const list = document.getElementById('mfa-list');
+  if (!list) return;
+  if (!factors.length) {
+    list.innerHTML = '<p class="text-sm text-gray-400">No methods enrolled yet.</p>';
+    return;
+  }
+  list.innerHTML = factors.map((f) => {
+    const isEmail = f.factor_type === 'email_otp';
+    const icon = isEmail ? 'ph-envelope-simple' : 'ph-device-mobile';
+    const label = isEmail ? 'Email' : 'Phone';
+    const badge = f.is_active
+      ? '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700">Active</span>'
+      : '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-700">Pending</span>';
+    return `
+      <div class="flex items-center justify-between gap-3 border border-gray-200 rounded-lg px-4 py-3">
+        <div class="flex items-center gap-3 min-w-0">
+          <i class="ph ${icon} text-purple-600 text-xl"></i>
+          <div class="min-w-0">
+            <p class="text-sm font-medium text-gray-900 truncate">${label} · ${escapeHtml(f.target)}</p>
+            <div class="mt-0.5">${badge}</div>
+          </div>
+        </div>
+        <button type="button" data-mfa-remove="${escapeHtml(f.id)}"
+          class="px-3 py-1.5 text-red-600 hover:bg-red-50 rounded-lg transition text-sm font-medium flex items-center gap-1 whitespace-nowrap">
+          <i class="ph ph-trash"></i> Remove
+        </button>
+      </div>`;
+  }).join('');
+  list.querySelectorAll('[data-mfa-remove]').forEach((btn) => {
+    btn.addEventListener('click', () => mfaRemove(btn.getAttribute('data-mfa-remove')));
+  });
+}
+
+async function mfaSendCode() {
+  const factorType = document.getElementById('mfa-type')?.value || 'email_otp';
+  const target = getInputValue('mfa-target');
+  if (!target) { showAlert('Enter an email or phone number.', 'warning'); return; }
+
+  const btn = document.getElementById('mfa-send-btn');
+  setBusy(btn, true);
+  try {
+    const res = await apiFetch('/mfa/factors', {
+      method: 'POST',
+      body: JSON.stringify({ factor_type: factorType, target }),
+    });
+    const body = await safeJson(res);
+    if (res.ok) {
+      mfaPending = { factorId: body.factor_id, target };
+      showMfaVerify(target);
+      showAlert('Verification code sent.', 'success');
+      loadMfaFactors(); // surface the new Pending factor immediately
+    } else if (res.status === 409) {
+      showAlert('That method is already enrolled and active.', 'warning');
+      loadMfaFactors();
+    } else {
+      showAlert((body && body.detail) || 'Could not send the code.', 'danger');
+    }
+  } catch (_) {
+    showAlert('Could not send the code.', 'danger');
+  } finally {
+    setBusy(btn, false);
+  }
+}
+
+async function mfaVerifyCode() {
+  if (!mfaPending) return;
+  const code = getInputValue('mfa-code');
+  if (!code) { showAlert('Enter the code.', 'warning'); return; }
+
+  const btn = document.getElementById('mfa-verify-btn');
+  setBusy(btn, true);
+  try {
+    const res = await apiFetch(`/mfa/factors/${mfaPending.factorId}/verify`, {
+      method: 'POST',
+      body: JSON.stringify({ code }),
+    });
+    const body = await safeJson(res);
+    if (res.ok) {
+      showAlert('Two-factor method activated.', 'success');
+      mfaCancel();
+      setInputValue('mfa-target', '');
+      loadMfaFactors();
+    } else {
+      showAlert((body && body.detail) || 'Incorrect or expired code.', 'danger');
+    }
+  } catch (_) {
+    showAlert('Could not verify the code.', 'danger');
+  } finally {
+    setBusy(btn, false);
+  }
+}
+
+async function mfaResendCode() {
+  if (!mfaPending) return;
+  const btn = document.getElementById('mfa-resend-btn');
+  setBusy(btn, true);
+  try {
+    const res = await apiFetch(`/mfa/factors/${mfaPending.factorId}/resend`, { method: 'POST' });
+    const body = await safeJson(res);
+    showAlert(res.ok ? 'A new code is on its way.' : ((body && body.detail) || 'Could not resend the code.'),
+      res.ok ? 'success' : 'danger');
+  } catch (_) {
+    showAlert('Could not resend the code.', 'danger');
+  } finally {
+    setBusy(btn, false);
+  }
+}
+
+async function mfaRemove(factorId) {
+  if (!factorId) return;
+  try {
+    const res = await apiFetch(`/mfa/factors/${factorId}`, { method: 'DELETE' });
+    if (res.ok) {
+      showAlert('Method removed.', 'success');
+      if (mfaPending && mfaPending.factorId === factorId) mfaCancel();
+      loadMfaFactors();
+    } else {
+      const body = await safeJson(res);
+      showAlert((body && body.detail) || 'Could not remove the method.', 'danger');
+    }
+  } catch (_) {
+    showAlert('Could not remove the method.', 'danger');
+  }
+}
+
+function showMfaVerify(target) {
+  const box = document.getElementById('mfa-verify');
+  setTextContent('mfa-verify-target', target);
+  if (box) box.classList.remove('hidden');
+  const codeEl = document.getElementById('mfa-code');
+  if (codeEl) { codeEl.value = ''; codeEl.focus(); }
+}
+
+function mfaCancel() {
+  mfaPending = null;
+  document.getElementById('mfa-verify')?.classList.add('hidden');
+  setInputValue('mfa-code', '');
+}
+
+function setBusy(btn, busy) {
+  if (!btn) return;
+  btn.disabled = busy;
+  btn.classList.toggle('opacity-60', busy);
+  btn.classList.toggle('cursor-not-allowed', busy);
+}
+
+function escapeHtml(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, (c) => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+  ));
 }
