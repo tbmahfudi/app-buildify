@@ -65,12 +65,9 @@ GET_ENDPOINTS = _discover_get_endpoints()
 # strict=False: a *non-deterministic* 5xx that may pass on some runs, so tolerate
 # both xfail and xpass (an XPASS must not fail the build).
 KNOWN_5XX: dict[str, tuple[str, bool]] = {
-    # GH#668 — pre-existing, data-dependent 500s (reliably 5xx -> strict).
-    "/api/v1/dashboards": ("GH#668: GET /dashboards 500 (dashboard serialization, DEF-019 lineage)", True),
-    "/api/v1/reports/definitions": (
-        "GH#668: GET /reports/definitions 500 (invalid seeded report_type, DEF-013 lineage)",
-        True,
-    ),
+    # GH#668 (GET /dashboards, GET /reports/definitions) fixed 2026-07-15 — the 500s
+    # were a NULL-tenant handler bug (superadmin has tenant_id=None), not bad seed
+    # data: the list services now mirror apply_tenant_scope()'s superuser no-op.
     # GH#679 / DEF-010: the vestigial filesystem module loader intermittently
     # returns 503 "Module system not initialized" depending on startup timing —
     # non-strict, since it XPASSes whenever the loader happens to be up.
