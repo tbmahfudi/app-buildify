@@ -936,7 +936,7 @@ def create_user(
     import uuid
 
     from app.core.audit import create_audit_log
-    from app.core.auth import get_password_hash
+    from app.core.auth import hash_password
 
     email = (payload.get("email") or "").strip().lower()
     full_name = payload.get("full_name") or ""
@@ -969,7 +969,7 @@ def create_user(
         id=uuid.uuid4(),
         email=email,
         full_name=full_name,
-        hashed_password=get_password_hash(password),
+        hashed_password=hash_password(password),
         tenant_id=effective_tenant_id,
         is_active=True,
         is_superuser=False,
@@ -1020,7 +1020,7 @@ def admin_reset_user_password(
     import secrets
 
     from app.core.audit import create_audit_log
-    from app.core.auth import get_password_hash
+    from app.core.auth import hash_password
 
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
@@ -1037,7 +1037,7 @@ def admin_reset_user_password(
     else:
         temporary = False
 
-    user.hashed_password = get_password_hash(new_password)
+    user.hashed_password = hash_password(new_password)
     if hasattr(user, "must_change_password"):
         user.must_change_password = True
     db.commit()
