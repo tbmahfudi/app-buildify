@@ -100,10 +100,14 @@ class DashboardService:
         favorites_only: bool = False,
         skip: int = 0,
         limit: int = 100,
+        is_superuser: bool = False,
     ) -> List[Dashboard]:
         """List dashboards with filtering."""
         query = db.query(Dashboard).filter(Dashboard.is_active == True)
-        query = apply_tenant_scope_by_id(query, Dashboard, tenant_id)
+        # A platform superuser has no tenant_id; mirror apply_tenant_scope()'s
+        # superuser no-op (cross-tenant view) instead of raising on a None tenant.
+        if not is_superuser:
+            query = apply_tenant_scope_by_id(query, Dashboard, tenant_id)
 
         if category:
             query = query.filter(Dashboard.category == category)

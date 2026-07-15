@@ -75,6 +75,7 @@ def list_dashboards(
         favorites_only=favorites_only,
         skip=skip,
         limit=limit,
+        is_superuser=bool(getattr(current_user, "is_superuser", False)),
     )
 
     # Convert to summary format

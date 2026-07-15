@@ -144,11 +144,14 @@ class ReportService:
         category: Optional[str] = None,
         skip: int = 0,
         limit: int = 100,
+        is_superuser: bool = False,
     ) -> List[ReportDefinition]:
         """List report definitions."""
-        query = apply_tenant_scope_by_id(db.query(ReportDefinition), ReportDefinition, tenant_id).filter(
-            ReportDefinition.is_active == True
-        )
+        query = db.query(ReportDefinition).filter(ReportDefinition.is_active == True)
+        # A platform superuser has no tenant_id; mirror apply_tenant_scope()'s
+        # superuser no-op (cross-tenant view) instead of raising on a None tenant.
+        if not is_superuser:
+            query = apply_tenant_scope_by_id(query, ReportDefinition, tenant_id)
 
         if category:
             query = query.filter(ReportDefinition.category == category)

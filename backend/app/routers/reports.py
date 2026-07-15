@@ -194,7 +194,13 @@ def list_report_definitions(
     Requires permission: reports:read:tenant
     """
     reports = ReportService.list_report_definitions(
-        db=db, tenant_id=current_user.tenant_id, user_id=current_user.id, category=category, skip=skip, limit=limit
+        db=db,
+        tenant_id=current_user.tenant_id,
+        user_id=current_user.id,
+        category=category,
+        skip=skip,
+        limit=limit,
+        is_superuser=bool(getattr(current_user, "is_superuser", False)),
     )
     return reports
 
