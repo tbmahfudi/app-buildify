@@ -57,7 +57,6 @@ test.describe('MFA login challenge', () => {
       data: { email, full_name: 'Playwright MFA', password: PASSWORD, tenant_id: tenantId },
     });
     expect(created.ok(), `create user: ${created.status()} ${await created.text()}`).toBeTruthy();
-    const userId = (await created.json()).id;
 
     // Enroll + activate an email factor as that user.
     const loginRes = await request.post(`${API}/auth/login`, { data: { email, password: PASSWORD } });
@@ -77,14 +76,19 @@ test.describe('MFA login challenge', () => {
     });
     expect(verified.ok(), `activate: ${verified.status()} ${await verified.text()}`).toBeTruthy();
 
-    user = { email, target, userId, suToken: token };
+    user = { email, target, userAuth };
   });
 
   test.afterEach(async ({ request }) => {
-    if (user?.userId) {
-      await request.delete(`${API}/org/users/${user.userId}`, {
-        headers: { Authorization: `Bearer ${user.suToken}` },
-      });
+    // The platform has no delete-user endpoint, so the throwaway account row stays
+    // behind. Strip its factors instead — that is what matters, since an account
+    // left holding an active factor can no longer log in with a password alone.
+    // Removing a factor also revokes that user's trusted devices (D4).
+    if (!user?.userAuth) return;
+    const listed = await request.get(`${API}/mfa/factors`, { headers: user.userAuth });
+    if (!listed.ok()) return;
+    for (const f of await listed.json()) {
+      await request.delete(`${API}/mfa/factors/${f.id}`, { headers: user.userAuth });
     }
   });
 

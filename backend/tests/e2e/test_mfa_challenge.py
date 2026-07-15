@@ -76,7 +76,6 @@ def mfa_user(su, otp_quota_reset):
     )
     if created.status_code not in (200, 201):
         pytest.skip(f"could not create throwaway user: {created.status_code} {created.text[:200]}")
-    user_id = created.json().get("id")
 
     client = httpx.Client(base_url=API, timeout=TIMEOUT)
     token = login_raw({"email": email, "password": PASSWORD})["access_token"]
@@ -93,9 +92,18 @@ def mfa_user(su, otp_quota_reset):
     try:
         yield email, PASSWORD, target, client
     finally:
+        # The platform has no delete-user endpoint, so the throwaway account row
+        # itself cannot be removed over the API — it is left behind deliberately
+        # rather than pretending a DELETE worked. What matters is stripping its
+        # factors: an account holding an active factor is one that can no longer
+        # log in with a password alone. Removing a factor also revokes that
+        # user's trusted devices (D4), so this cleans both.
+        try:
+            for f in client.get("/mfa/factors").json():
+                client.delete(f"/mfa/factors/{f['id']}")
+        except Exception:  # noqa: BLE001 — teardown must not mask a test failure
+            pass
         client.close()
-        if user_id:
-            su.delete(f"/org/users/{user_id}")
 
 
 def _login(email, password, cookies=None):
