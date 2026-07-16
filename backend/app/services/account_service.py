@@ -78,25 +78,13 @@ def load_password_policy(db: Session, tenant_id: Optional[str]) -> PasswordPolic
 def _resolve_end_user_group(db: Session, module_name: str):
     """Resolve a shared_saas module's declared end-user group, or raise (ADR-012 D5).
 
-    Imported lazily and read from the module's manifest on disk so the platform account
-    primitive does not take a hard dependency on the module registry at import time.
+    Imported lazily so this platform primitive takes no import-time dependency on the
+    module registry. The manifest is loaded DB-first: the module service that actually
+    calls register (healthcare, :9002) cannot see the modules directory at all.
     """
-    import json
-    import os
-    from pathlib import Path
+    from app.services.module_rbac_service import load_module_manifest, resolve_end_user_group
 
-    from app.services.module_rbac_service import EndUserRBACNotProvisioned, resolve_end_user_group
-
-    modules_root = Path(
-        os.environ.get("MODULES_ROOT")
-        or (Path("/modules") if Path("/modules").is_dir() else Path(__file__).resolve().parents[3] / "modules")
-    )
-    manifest_path = modules_root / module_name / "manifest.json"
-    if not manifest_path.is_file():
-        raise EndUserRBACNotProvisioned(f"manifest for module '{module_name}' not found at {manifest_path}")
-    with open(manifest_path, "r", encoding="utf-8") as f:
-        manifest = json.load(f)
-    return resolve_end_user_group(db, manifest)
+    return resolve_end_user_group(db, load_module_manifest(db, module_name))
 
 
 def create_patient_account(

@@ -25,9 +25,13 @@ Two rules shape the code below:
 
 from __future__ import annotations
 
+import json
 import logging
+import os
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.core.module_system.tenancy import (
@@ -49,6 +53,51 @@ class EndUserRBACNotProvisioned(RuntimeError):
     Raised instead of creating an end user with no role. Recoverable by running
     ``seed_module_rbac`` for the module.
     """
+
+
+def load_module_manifest(db: Session, module_name: str) -> Dict[str, Any]:
+    """Load a module's manifest, DB first and disk second.
+
+    **The DB is the primary source because not every service can see the modules
+    directory.** The healthcare service mounts only ``modules/healthcare/backend`` (as
+    ``/app/modules/healthcare``), so ``manifest.json`` — which lives one level *above*
+    ``backend/`` — is not in that container at all; there is no ``/modules`` root there
+    either. Since ``POST /patients/register`` runs in that service, reading the manifest
+    off disk would fail there and 500 every registration.
+
+    ``modules.manifest`` (JSON) is written by ``registry.sync_manifests_from_disk()``,
+    which the platform runs at backend startup (``app/main.py:119``), and both services
+    share the database. Disk stays as a fallback for contexts that have it (the backend
+    container, the seed command) and for a module not yet synced.
+
+    Consequence worth knowing: a manifest change reaches the DB when the **backend**
+    restarts and re-syncs. A module service reading a stale declaration is possible; the
+    group must still exist to be resolved, so the failure mode is a loud raise, not a
+    silently wrong grant.
+    """
+    try:
+        row = db.execute(text("SELECT manifest FROM modules WHERE name = :n LIMIT 1"), {"n": module_name}).fetchone()
+        if row and row[0]:
+            manifest = row[0] if isinstance(row[0], dict) else json.loads(row[0])
+            if isinstance(manifest, dict) and manifest:
+                return manifest
+    except Exception as exc:  # noqa: BLE001 — fall through to disk
+        logger.warning("Could not read manifest for '%s' from the DB: %s", module_name, exc)
+
+    modules_root = Path(
+        os.environ.get("MODULES_ROOT")
+        or (Path("/modules") if Path("/modules").is_dir() else Path(__file__).resolve().parents[3] / "modules")
+    )
+    manifest_path = modules_root / module_name / "manifest.json"
+    if manifest_path.is_file():
+        with open(manifest_path, "r", encoding="utf-8") as f:
+            return json.load(f)
+
+    raise EndUserRBACNotProvisioned(
+        f"no manifest for module '{module_name}': not in the modules table and not at "
+        f"{manifest_path}. If the module was just changed, restart the backend so "
+        f"sync_manifests_from_disk() refreshes the DB copy."
+    )
 
 
 def _get_or_create_permission(db: Session, code: str, module_name: str) -> Permission:

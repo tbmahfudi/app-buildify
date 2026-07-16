@@ -201,10 +201,47 @@ def _prime_shared_tenant() -> None:
         try:
             tid = resolve_shared_tenant_id(db)
             logger.info("hc shared tenant primed: %s", tid)
+            _check_end_user_rbac(db)
         finally:
             db.close()
     except Exception as exc:  # pragma: no cover — defensive; helper falls back lazily
         logger.warning("Could not prime hc shared tenant id at startup: %s", exc)
+
+
+def _check_end_user_rbac(db) -> None:
+    """Warn loudly at boot if this module's end-user RBAC was never provisioned.
+
+    Read-only on purpose. Account creation resolves-or-fails (ADR-012 D5), so a missing
+    group turns patient registration into a 500 — correct (it beats silently minting
+    role-less patients) but a miserable way to find out. This surfaces it at startup, when
+    an operator can act, instead of on a stranger's first registration.
+
+    Provisioning stays an explicit admin action (ADR-012 Resolution Q2); this never writes.
+
+    Note the manifest is loaded DB-first: this container mounts only
+    modules/healthcare/backend, so manifest.json (which lives above it) is not here at all.
+    """
+    try:
+        from app.core.module_system.tenancy import is_shared_saas
+        from app.services.module_rbac_service import (
+            EndUserRBACNotProvisioned,
+            load_module_manifest,
+            resolve_end_user_group,
+        )
+
+        manifest = load_module_manifest(db, MODULE_NAME)
+        if not is_shared_saas(manifest):
+            return
+        group = resolve_end_user_group(db, manifest)
+        logger.info("hc end-user RBAC present: group=%s (%s)", group.code, group.id)
+    except EndUserRBACNotProvisioned as exc:
+        logger.error(
+            "hc end-user RBAC NOT provisioned -- patient registration will fail. "
+            "Run: python3 /app/scripts/seed_module_rbac.py healthcare  (%s)",
+            exc,
+        )
+    except Exception as exc:  # pragma: no cover — a diagnostic must never break boot
+        logger.warning("Could not check hc end-user RBAC at startup: %s", exc)
 
 
 if __name__ == "__main__":
