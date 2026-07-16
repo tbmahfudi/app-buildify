@@ -1,7 +1,7 @@
 ---
 id: adr-012
 type: adr
-status: Proposed
+status: Accepted
 producer: C1 (Tech Lead)
 upstream: [adr-hc-010, adr-hc-009, adr-011, adr-005, adr-010-public-portal-framework]
 created: 2026-07-16
@@ -11,15 +11,15 @@ created: 2026-07-16
 
 ## Status
 
-**Proposed — design review. Do not merge as accepted.**
+**Accepted — 2026-07-17.**
 
 Opened because the D7 patient backfill (ADR-HC-009) cannot be built as written: the
 decision it depends on was invalidated by ADR-HC-010, and the replacement is a
 **platform** concern, not a healthcare one.
 
-**Review round 1 (2026-07-17):** all five open questions answered — see *Review round 1 —
-resolutions*. Q2 **reversed** the original install-hook recommendation; Q4 and Q5 revised D3
-and D6. Awaiting confirmation of the Q1/Q2 resolutions, then acceptance.
+**Review round 1 (2026-07-17):** all five open questions answered and accepted — see
+*Review round 1 — resolutions*. Q2 **reversed** the original install-hook recommendation;
+Q4 and Q5 revised D3 and D6. D1–D6 as written below are binding.
 
 ## Amends / supersedes
 
