@@ -23,6 +23,9 @@ from sqlalchemy.orm import Session
 from modules.sdk.dependencies import tenant_scoped_session
 from app.core.dependencies import get_db as _platform_get_db
 from app.core.security_config import SecurityConfigService
+from app.routers.otp import COOLDOWN_TTL
+from app.routers.otp import send_otp as _platform_send_otp
+from app.routers.otp import verify_otp as _platform_verify_otp
 from app.services.account_service import (
     AccountExistsError,
     WeakPasswordError,
@@ -47,7 +50,6 @@ from modules.healthcare.schemas.patient_auth import (
     RegisterAcceptedResponse,
 )
 from modules.healthcare.sdk.captcha import require_captcha
-from modules.healthcare.sdk.otp import generate_otp, verify_otp, COOLDOWN_TTL
 from modules.healthcare.sdk.patient_tokens import (
     create_patient_access_token,
     create_patient_refresh_token,
@@ -58,6 +60,19 @@ from modules.healthcare.sdk.phi_audit import write_event_audit
 router = APIRouter(tags=["healthcare-patient-auth"])
 
 _OTP_VERIFIED_TTL = 900  # 15 minutes
+
+# tasks-011 S6a — patient phone OTP runs on the PLATFORM OTP service
+# (app.routers.otp), not a module-local implementation (ADR-009: OTP is a platform
+# service). Send and verify must address the same Redis bucket, so the purpose and
+# scope are fixed here rather than taken from the request.
+_OTP_PURPOSE = "patient_login"
+_OTP_CHANNEL = "phone"
+# The platform keys codes by (purpose, channel, tenant_code, target). These endpoints
+# take only a phone on purpose — resolving a patient's tenant before they have
+# authenticated would turn the endpoint into an enumeration oracle — so the module
+# uses one fixed scope. This is only a key namespace, and it widens no budget: the
+# R6 daily caps are keyed on the target and the source IP, never on tenant_code.
+_OTP_SCOPE = "healthcare"
 
 
 def _resolve_registration_scope(db: Session, reg_tenant: str) -> tuple[str, Optional[str]]:
@@ -128,6 +143,31 @@ def _require_otp_enabled() -> None:
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Phone/OTP login is disabled. Please sign in with your email or username and password.",
         )
+
+
+def _verify_patient_otp(phone: str, code: str, *, failure_status: int, failure_detail: str) -> None:
+    """Verify a patient's phone code against the platform OTP service (S6a).
+
+    Consumes the code on success. Translates the platform's failure shape back to
+    this module's existing public contract: the attempt lockout (R7) stays a 429,
+    while an incorrect or expired code — which the platform reports as 400 — keeps
+    the status this endpoint has always returned. Changing those statuses would be
+    a breaking change for the portal without making anything safer; the messages
+    stay generic either way, so nothing is revealed about whether the phone is
+    registered.
+    """
+    try:
+        _platform_verify_otp(
+            channel=_OTP_CHANNEL,
+            target=phone,
+            purpose=_OTP_PURPOSE,
+            tenant_code=_OTP_SCOPE,
+            code=code,
+        )
+    except HTTPException as exc:
+        if exc.status_code == status.HTTP_429_TOO_MANY_REQUESTS:
+            raise
+        raise HTTPException(status_code=failure_status, detail=failure_detail) from None
 
 
 # ---------------------------------------------------------------------------
@@ -336,23 +376,23 @@ async def patient_activate(
 )
 async def otp_send(
     payload: OTPSendRequest,
+    request: Request,
     _captcha=Depends(require_captcha),
 ) -> OTPSendResponse:
     """Generate and send a 6-digit OTP to the given phone number."""
     _require_otp_enabled()
-    try:
-        code = generate_otp(payload.phone)
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail=str(exc),
-        )
-
-    # In production: dispatch code via SMS gateway here.
-    # OTP value is not logged to avoid leaking a live authentication secret.
-    import logging
-    logging.getLogger(__name__).info("OTP dispatched", extra={"event": "otp.sent"})
-
+    # Platform OTP service (S6a): mints, applies the resend cooldown *and* the R6
+    # per-target/per-IP daily caps, and dispatches. Both a cooldown and a spent cap
+    # raise 429 — the same status this endpoint already returned for "too frequent" —
+    # so the outward contract is unchanged. The cap is new behaviour: the module
+    # implementation this replaces had no daily limit at all.
+    _platform_send_otp(
+        channel=_OTP_CHANNEL,
+        target=payload.phone,
+        purpose=_OTP_PURPOSE,
+        tenant_code=_OTP_SCOPE,
+        ip=request.client.host if request.client else None,
+    )
     return OTPSendResponse(
         message="OTP sent successfully.",
         resend_after=COOLDOWN_TTL,
@@ -373,19 +413,12 @@ async def otp_verify(
 ) -> OTPVerifyResponse:
     """Verify the OTP; on success set Redis otp_verified:{phone} with 15-min TTL."""
     _require_otp_enabled()
-    try:
-        ok = verify_otp(payload.phone, payload.code)
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail=str(exc),
-        )
-
-    if not ok:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Verification failed. Please check your code and try again.",
-        )
+    _verify_patient_otp(
+        payload.phone,
+        payload.code,
+        failure_status=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        failure_detail="Verification failed. Please check your code and try again.",
+    )
 
     r = _get_redis()
     r.set(_otp_verified_key(payload.phone), "1", ex=_OTP_VERIFIED_TTL)
@@ -409,19 +442,12 @@ async def patient_token(
 ) -> PatientTokenResponse:
     """Authenticate returning patient via phone + OTP, return access token + refresh cookie."""
     _require_otp_enabled()
-    try:
-        ok = verify_otp(payload.phone, payload.code)
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail=str(exc),
-        )
-
-    if not ok:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authentication failed.",
-        )
+    _verify_patient_otp(
+        payload.phone,
+        payload.code,
+        failure_status=status.HTTP_401_UNAUTHORIZED,
+        failure_detail="Authentication failed.",
+    )
 
     # Lookup patient by phone hash
     row = db.execute(

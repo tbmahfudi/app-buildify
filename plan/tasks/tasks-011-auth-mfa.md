@@ -113,28 +113,60 @@ in the S5 card, and still sign in with a password alone. The S4 story title said
 
 ## Sprint 3 — cleanup
 
-### S6 — Retire module OTP-as-primary  `[C4]`  ⛔ BLOCKED — precondition unmet
-- Repoint module OTP to the platform MFA service; remove `HC_PATIENT_OTP_ENABLED` after
-  the D7 backfill; kill-switch cleanup.
+### S6 — Retire module OTP-as-primary  `[C4]`  🟡 PARTIAL — repoint done, flag removal still blocked
+
+S6 has two independent halves. The **repoint** is done; the **flag removal** stays blocked
+on D7.
+
+#### S6a — Repoint module OTP → platform OTP service  ✅ DONE
+- `routes_patient_auth.py` (`otp_send`, `otp_verify`, `patient_token`) now call the platform
+  `app.routers.otp` `send_otp`/`verify_otp` with `purpose="patient_login"`,
+  `channel="phone"`. The module's parallel implementation
+  (`modules/healthcare/backend/sdk/otp.py`, imported as `modules.healthcare.sdk.otp`) is
+  **deleted**. Public HTTP contract unchanged.
+- **This closed a real R6 hole.** The module implementation had **no daily cap of any kind**
+  — only a 60s resend cooldown — so with `HC_PATIENT_OTP_ENABLED=true` an attacker could
+  pump unbounded SMS at any phone. The platform service applies the per-target/account/IP
+  daily caps. It also adds purpose separation and tenant namespacing (the module keyed on a
+  bare `otp:{phone}`, global across tenants).
+
+#### S6b — Remove `HC_PATIENT_OTP_ENABLED`  ⛔ BLOCKED — precondition unmet
 - **Blocked (verified 2026-07-15).** A3-Q6 gates removal on the D7 backfill completing.
   It has not:
   - `SELECT count(*) FROM users WHERE must_set_password` → **0** — the backfill has never run.
-  - **4 of 7** `hc_patients` rows have a phone and a **NULL `user_id`** — legacy OTP-only
-    patients with no platform account to log into.
-  - `/patient/claim-account`, the interstitial D7 relies on to let them set a password,
-    **does not exist** (404, no source).
-- Those patients are *already* unable to sign in (the OTP routes 403 by default), so
-  deleting the flag would not break a working flow — but the flag is the documented
-  "temporary kill-switch **during** migration", and flipping it on is currently the only
-  way to let a legacy patient authenticate at all. Removing it before the migration exists
-  destroys the migration path rather than completing it.
-- **Unblocks S6:** (1) build the D7 backfill (platform `User` per legacy patient,
-  placeholder hash, `must_set_password=true`), (2) build `/patient/claim-account`,
-  (3) run the backfill, then (4) delete the routes + flag. Steps 1–3 are ADR-HC-009 D7
-  work, not ADR-011.
-- Note the module still carries its **own** OTP implementation (`modules/healthcare/sdk/
-  otp.py`) alongside the platform service, contrary to ADR-009. Consolidating those is the
-  "repoint" half and is *not* blocked by D7 — it can proceed independently.
+  - `/patient/claim-account`, the interstitial D7 relies on to let a legacy patient set a
+    password, **does not exist** (404, no source).
+- **Correction (2026-07-16) — an earlier revision of this section overstated the impact.**
+  It claimed "**4 of 7** `hc_patients` have a phone and a NULL `user_id` … legacy OTP-only
+  patients with no platform account", implying four real stranded patients. Checked against
+  the DB, that is wrong twice over:
+  - It is **3**, not 4. The fourth (`503ef94f`) is a **dependent child** with an `active`
+    `owner` relationship held by its parent. Under **V-D5** a managed dependent
+    *legitimately has no login of its own* — `hc_patients.user_id` is nullable **precisely**
+    for this case. It is not a backfill target; schema-hc-03 §M.1 scopes the backfill to
+    "every **self-owned** legacy patient lacking a login". Backfilling it would hand a minor
+    their own account, which **V-D10** says may only happen via the staff-mediated majority
+    transition.
+  - The remaining **3 are demo seed data** (`modules/healthcare/backend/seed_demo.py`,
+    MedCare), created deliberately as phone+OTP-only fixtures to exercise the OTP flow.
+    They are not real patients, and they are "stranded" only because the demo's own login
+    path is off by default.
+  - **So D7 is an S6b unblocker and genuinely-missing code — not a live patient-impact fix.**
+    There are currently **zero** real users affected.
+- The flag is still the documented "temporary kill-switch **during** migration", and it is
+  still the only route by which a legacy patient could authenticate, so removing it before
+  the migration exists still destroys the migration path. The reason to build D7 is to
+  finish the migration, not to rescue anyone today.
+- **Unblocks S6b:** (1) build the D7 backfill (platform `User` per **self-owned** legacy
+  patient, placeholder hash, `must_set_password=true`, link `user_id`, **plus** a
+  `relationship='self'`/`role='owner'` row per schema-hc-03 §M.1), (2) build
+  `/patient/claim-account`, (3) run the backfill, then (4) delete the routes + flag.
+  Steps 1–3 are ADR-HC-009 D7 work, not ADR-011. Note **V-D5 withdrew** the old D7 step 4
+  (`user_id` → NOT NULL + UNIQUE) — there is nothing to constrain.
+- **Also out of scope for the repoint, and D7-blocked:** D6's "route OTP-passwordless through
+  a platform token" — `patient_token` still mints a patient token **directly**, so those
+  sessions escape platform lockout/revoke-all. It cannot be fixed until legacy patients
+  *have* a platform user, i.e. until the backfill runs.
 
 ## Gate
 D3 re-reviews S1/S2 and S4 build PRs against sec-review-011. D1 owns enumeration/timing +

@@ -22,19 +22,28 @@ Demo patient phone numbers (all share consent/PHI shape via the module helpers):
     +6281100000003  Dewi Anggraini  (female)
 
 ================================  HOW TO LOG IN (dev)  ========================
-There is NO fixed/test OTP — `sdk/otp.py` generates a random 6-digit code stored
-in Redis under  otp:{phone}  with a 10-min TTL. The dev SMS gateway is a no-op
-(routes_patient_auth.otp_send does not return the code). So to log a seeded
-patient in via the real OTP flow in dev:
+There is NO fixed/test OTP — the PLATFORM OTP service (`app.routers.otp`, see
+tasks-011 S6a) generates a random 6-digit code stored in Redis with a 10-min TTL.
+The dev SMS gateway is a no-op (routes_patient_auth.otp_send does not return the
+code). Phone/OTP login is also OFF by default — set HC_PATIENT_OTP_ENABLED=true or
+every route below answers 403. So to log a seeded patient in via the real OTP flow
+in dev:
 
   1. POST /api/v1/patients/auth/otp/send   {"phone": "+6281100000001"}
        header  X-Captcha-Token: test      (HCAPTCHA_SECRET_KEY=test accepts any)
   2. Read the generated code straight from Redis (dev only)::
-         docker exec app_buildify_redis redis-cli get "otp:+6281100000001"
-     (this container's REDIS_URL points at the shared redis service)
+         docker exec app_buildify_redis redis-cli get \
+             "otp:code:patient_login:phone:healthcare:+6281100000001"
+     (this container's REDIS_URL points at the shared redis service. The key is
+      otp:code:{purpose}:{channel}:{scope}:{target} — the platform namespaces codes
+      per purpose so one flow cannot consume or deplete another's.)
   3. POST /api/v1/patients/auth/token      {"phone":"+6281100000001","code":"<code>"}
        -> returns {access_token, patient_id}. The token carries tenant_id =
           MedCare, so all /api/v1/patients/me/* routes resolve the seeded data.
+
+Do NOT insert an /auth/otp/verify call between 1 and 3: it consumes the same code,
+so the /auth/token step would then fail. (That endpoint is vestigial — the register
+flow it once gated is now email+password, ADR-011 S2.)
 
 The login lookup is `WHERE phone_hash = _hash_phone(phone)` — this script writes
 that same hash (HMAC-SHA256, key = env PHONE_HASH_KEY, default
