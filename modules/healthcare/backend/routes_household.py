@@ -18,16 +18,21 @@ Endpoints:
 from __future__ import annotations
 from modules.healthcare.sdk.hc_tenant import hc_shared_tenant_id
 
+import json
+import logging
+import secrets
 from datetime import datetime
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from pydantic import BaseModel, Field
-from sqlalchemy import text
+from sqlalchemy import func, text
 from sqlalchemy.orm import Session
 
+from app.models.user import User as _User
 from modules.sdk.dependencies import get_current_user
 from modules.healthcare.models import HCPatient, HCPatientConsent
+from modules.healthcare.schemas.patient_auth import StaffLinkRequest, StaffLinkResponse
 from modules.healthcare.sdk.patient_auth import (
     PatientTokenData,
     get_current_patient,
@@ -39,11 +44,36 @@ from modules.healthcare.sdk.patient_tokens import (
 )
 from modules.healthcare.sdk.hc_permissions import HCRole, get_caller_hc_role
 from modules.healthcare.sdk.phi_audit import write_phi_read_audit, write_event_audit
-from modules.healthcare.routes_patient_auth import _resolve_active_patient
+from modules.healthcare.routes_patient_auth import _get_redis, _resolve_active_patient
 
 router = APIRouter()
 
 _STAFF_APPROVER_ROLES = {HCRole.clinic_owner, HCRole.branch_manager}
+
+# Staff-mediated link confirmation (ADR-HC-009 V-D10). Same 24h window as the register
+# activation link — it is the same kind of thing: a one-shot proof that someone controls a
+# mailbox.
+_STAFF_LINK_TTL = 24 * 3600
+
+
+def _staff_link_key(token: str) -> str:
+    return f"patient_staff_link:{token}"
+
+
+def _dispatch_staff_link_email(email: str, token: Optional[str], forced: bool) -> None:
+    """Send the confirmation link, or the after-the-fact notice for a forced link.
+
+    Mirrors the OTP/activation dispatch stubs: dev logs the event, production wires the SMTP
+    worker here (ADR-002-smtp). The token is never logged — it is an authentication secret.
+
+    The notification on a FORCED link is not a courtesy, it is the control: staff can attach
+    an address without the holder's consent, so the holder must at least be told it happened
+    and be able to raise it with the clinic.
+    """
+    logging.getLogger(__name__).info(
+        "staff link email dispatched",
+        extra={"event": "patient.staff_link_forced" if forced else "patient.staff_link_confirmation_sent"},
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -393,6 +423,172 @@ def _require_clinic_staff(branch_id: str, db: Session, current_user) -> HCRole:
     if role is None or role not in _STAFF_APPROVER_ROLES:
         raise HTTPException(status_code=403, detail="Requires clinic owner or branch manager.")
     return role
+
+
+@router.post("/api/v1/patients/branches/{branch_id}/household/staff-link",
+             response_model=StaffLinkResponse,
+             summary="Staff-mediated recovery: put a real email on a backfilled patient account")
+async def staff_link_account(
+    branch_id: str,
+    body: StaffLinkRequest,
+    request: Request,
+    db: Session = Depends(get_patient_db),
+    current_user=Depends(get_current_user),
+) -> StaffLinkResponse:
+    """Recover a legacy patient who cannot claim their own account (ADR-HC-009 V-D10).
+
+    The D7 backfill gives a legacy patient a platform account with an unusable password and
+    a synthetic, non-deliverable ``@patients.invalid`` address. Normally they claim it by
+    phone+OTP (18.9.1). When that is impossible — OTP disabled or retired (S6b/#692), phone
+    changed, code never arrives — there is no self-service way in. That is what staff are
+    for: they verify identity at the desk against ID, the way clinics always have. This
+    endpoint only records the outcome.
+
+    Deliberately narrow. It does **not** set a password, does **not** create an account, and
+    does **not** create a second owner. It writes ONE field — the real email — onto the
+    account the patient already has. Everything after that is stock platform machinery: the
+    ordinary password-reset flow lifts ``must_set_password`` (``app/routers/auth.py``), so
+    recovery needs no OTP and no bespoke credential path.
+
+    Two modes, both audited with a mandatory reason:
+
+    * ``confirm`` (default) — email the person a link; the address is written only when they
+      click, which proves they control the mailbox.
+    * ``force`` — write it now and notify. For when the person cannot receive the
+      confirmation, which is precisely the case recovery exists for. Staff's desk-side ID
+      check is the proof; the audit row is the accountability.
+    """
+    _require_clinic_staff(branch_id, db, current_user)
+
+    # Company is the isolation key under the shared SaaS tenant (ADR-HC-010 D1/D2), so the
+    # fence is the branch's Company — not the tenant, which every clinic now shares. Without
+    # this, staff at one clinic could reach any patient in the platform.
+    branch_company = db.execute(
+        text(
+            "SELECT platform_company_id FROM hc_branches "
+            "WHERE id = :bid AND tenant_id = :tid LIMIT 1"
+        ),
+        {"bid": branch_id, "tid": hc_shared_tenant_id()},
+    ).fetchone()
+    if branch_company is None or not branch_company[0]:
+        raise HTTPException(status_code=404, detail="Branch not found.")
+
+    target = (
+        db.query(HCPatient)
+        .filter(
+            HCPatient.id == body.patient_id,
+            HCPatient.tenant_id == hc_shared_tenant_id(),
+            HCPatient.deleted_at.is_(None),
+        )
+        .first()
+    )
+    if target is None or str(target.company_id) != str(branch_company[0]):
+        raise HTTPException(status_code=404, detail="Patient not found at this clinic.")
+
+    if not target.user_id:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "This patient has no platform account to link. Run the D7 backfill "
+                "(backfill_patient_accounts.py) first."
+            ),
+        )
+
+    user = db.query(_User).filter(_User.id == str(target.user_id)).first()
+    if user is None:
+        raise HTTPException(status_code=409, detail="This patient's account is missing.")
+
+    # THE guard on this endpoint. Once a patient has claimed their account, its email is
+    # theirs — letting staff repoint it would be account takeover by staff, dressed as
+    # recovery. Recovery is only for accounts nobody has ever authenticated to.
+    if not getattr(user, "must_set_password", False):
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "This account has already been set up by the patient and cannot be "
+                "re-linked. Use the normal password-reset flow instead."
+            ),
+        )
+
+    email_norm = (body.email or "").strip().lower()
+    if not email_norm or "@" not in email_norm:
+        raise HTTPException(status_code=422, detail="A valid email address is required.")
+
+    taken = (
+        db.query(_User)
+        .filter(func.lower(_User.email) == email_norm, _User.id != user.id)
+        .first()
+    )
+    if taken is not None:
+        raise HTTPException(
+            status_code=409,
+            detail="That email already belongs to another account and cannot be linked here.",
+        )
+
+    staff_id = str(current_user.id)
+    audit_meta = {
+        "patient_id": str(target.id),
+        "user_id": str(user.id),
+        "mode": body.mode,
+        "reason": body.reason,
+        "branch_id": branch_id,
+    }
+
+    if body.mode == "force":
+        user.email = email_norm
+        # Self-asserted by staff, not proven by the holder — so the account stays
+        # unverified and the reset flow still has to reach that mailbox before anything
+        # trusts it. must_set_password stays True: this grants no credential.
+        user.is_verified = False
+        # Audit BEFORE the commit: write_event_audit only add()s + flush()es
+        # (sdk/phi_audit._write_audit), so auditing after a commit silently drops the row.
+        # For a forced link the audit IS the accountability control — it must be atomic
+        # with the change, not best-effort after it.
+        write_event_audit(
+            db=db, actor_id=staff_id, actor_type="staff",
+            event_type="patient.staff_link_forced",
+            entity_type="hc_patient", entity_id=str(target.id),
+            tenant_id=str(target.tenant_id), branch_id=branch_id,
+            ip=request.client.host if request.client else None,
+            ua=request.headers.get("user-agent"),
+            metadata=audit_meta,
+        )
+        db.commit()
+        # Notify only once it is durably done.
+        _dispatch_staff_link_email(email_norm, token=None, forced=True)
+        return StaffLinkResponse(
+            mode="force",
+            pending_confirmation=False,
+            message=(
+                "Email linked and a notification sent. The patient can now use "
+                "'forgot password' on that address to set their password."
+            ),
+        )
+
+    # confirm: write nothing yet. The click is what proves control of the mailbox, so the
+    # address only lands on the account when the token comes back.
+    token = secrets.token_urlsafe(32)
+    write_event_audit(
+        db=db, actor_id=staff_id, actor_type="staff",
+        event_type="patient.staff_link_confirmation_sent",
+        entity_type="hc_patient", entity_id=str(target.id),
+        tenant_id=str(target.tenant_id), branch_id=branch_id,
+        ip=request.client.host if request.client else None,
+        ua=request.headers.get("user-agent"),
+        metadata=audit_meta,
+    )
+    db.commit()  # write_event_audit only flushes; without this the row is dropped
+    _get_redis().setex(
+        _staff_link_key(token),
+        _STAFF_LINK_TTL,
+        json.dumps({"user_id": str(user.id), "email": email_norm, "patient_id": str(target.id)}),
+    )
+    _dispatch_staff_link_email(email_norm, token=token, forced=False)
+    return StaffLinkResponse(
+        mode="confirm",
+        pending_confirmation=True,
+        message="A confirmation link has been sent. The link is valid for 24 hours.",
+    )
 
 
 @router.get("/api/v1/patients/branches/{branch_id}/household/link-requests",
