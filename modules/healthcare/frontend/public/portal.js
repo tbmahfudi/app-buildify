@@ -267,6 +267,18 @@
       if (!res.ok) { toast(data.detail || 'Login failed', 'error'); return; }
       localStorage.setItem('hc_patient_token', data.access_token);
       patientToken = data.access_token;
+
+      // ADR-HC-009 D7 / epic-18 18.9.1: "on next OTP login ... if must_set_password, route
+      // the patient through a 'set a password' step". This account came from the legacy
+      // backfill and has no usable password yet — the OTP they just passed is the only
+      // thing that proves who they are, so claim now while we know it.
+      if (data.must_set_password) {
+        sessionStorage.setItem('access_token', data.access_token);
+        toast('One more step: choose a password', 'info');
+        window.location.href = '/portal/healthcare/patient/claim-account.html';
+        return;
+      }
+
       toast('Welcome back!', 'success');
       updateNavAuth();
       showPage('dashboard');

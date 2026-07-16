@@ -267,30 +267,6 @@ def login(credentials: LoginRequest, request: Request, db: Session = Depends(get
     else:
         user = db.query(User).filter(func.lower(User.username) == identifier.lower()).first()
 
-    # ADR-HC-009 D7: a backfilled/legacy account carries a placeholder credential and
-    # must set a real password before it can sign in. Signal the claim flow with a
-    # distinct 403 code so the portal routes to "set your password" instead of a
-    # generic wrong-password error. Checked before the credential test because the
-    # placeholder hash can never verify anyway — this makes the state actionable.
-    if user and getattr(user, "must_set_password", False):
-        create_audit_log(
-            db=db,
-            action="login",
-            user=user,
-            entity_type="user",
-            entity_id=str(user.id),
-            request=request,
-            status="failure",
-            error_message="must_set_password",
-        )
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail={
-                "code": "must_set_password",
-                "message": "You must set a password before signing in. Use 'Set your password' to claim your account.",
-            },
-        )
-
     # Record failed login attempt if user not found or password incorrect
     if not user or not verify_password(credentials.password, user.hashed_password):
         # Record failed login attempt
@@ -383,6 +359,41 @@ def login(credentials: LoginRequest, request: Request, db: Session = Depends(get
         )
 
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Inactive user")
+
+    # ADR-HC-009 D7 claim gate (GH#693). A legacy/backfilled account must set a real
+    # password before it can sign in.
+    #
+    # This check used to run BEFORE verify_password, which made it an enumeration
+    # oracle: any unauthenticated caller could tell a backfilled patient's email from
+    # an unknown one by the 403-vs-401, i.e. learn "this person is a patient here"
+    # from the login form alone. It now runs only once the password has been proven,
+    # so the response is identical to a stranger regardless of account state.
+    #
+    # The gate is kept rather than deleted: a backfilled account carries an unusable
+    # hash and can never get here (it fails verify_password → generic 401), but any
+    # account that has a working password AND the flag must still be stopped. Telling
+    # a caller who already proved the credential is not a leak.
+    #
+    # The claim prompt itself reaches patients on the authenticated OTP path, where
+    # epic-18 Story 18.9.1 specifies it: PatientTokenResponse.must_set_password.
+    if getattr(user, "must_set_password", False):
+        create_audit_log(
+            db=db,
+            action="login",
+            user=user,
+            entity_type="user",
+            entity_id=str(user.id),
+            request=request,
+            status="failure",
+            error_message="must_set_password",
+        )
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "code": "must_set_password",
+                "message": "You must set a password before signing in. Use 'Set your password' to claim your account.",
+            },
+        )
 
     # MFA gate (ADR-HC-009 D3). The password is correct, but a user with a second
     # factor is not logged in yet: hand back a challenge instead of tokens. Placed

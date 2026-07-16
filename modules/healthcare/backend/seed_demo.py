@@ -264,6 +264,86 @@ def _platform_user_id(db, email: str):
     return _scalar(db, "SELECT id FROM users WHERE email=:e LIMIT 1", e=email)
 
 
+def migrate_demo_patient_users(db, patients_cfg) -> int:
+    """Move the seeded demo patient users onto the current (SaaS) account shape.
+
+    **Dev/demo only — this function has no production counterpart, deliberately.**
+
+    ADR-012 D6 (revised): the `patient1..3@healthpoint.com` users are demo fixtures, not
+    live users, so re-pointing them is free — the "don't silently move real users between
+    tenants" objection does not apply to seed data. They predate ADR-HC-010 and still sit on
+    the old per-clinic HEALTHPOINT tenant with no Company and no group, which means they log
+    in but land in the staff SPA (`app.js:112` routes on `roles.includes('patient')`).
+
+    This gives them the same shape a real patient now gets:
+      * the shared SaaS tenant,
+      * `default_company_id` = their patient's Company,
+      * membership of the manifest-declared `patients` group (ADR-012 D4/D5).
+
+    **"No OTP" needs no special case**, and none is added here. MFA is opt-in per user
+    (`mfa_service.has_active_factor`, `app/routers/auth.py`), so a demo patient with a known
+    password and no enrolled factor simply signs in with the password — that is ADR-011's
+    ordinary behaviour, not an exception. Their seeded `password123` is untouched and
+    `must_set_password` stays False, so they never meet the claim flow. A per-account
+    "skip OTP" flag would be a login bypass one config mistake from production; there is no
+    reason to build one.
+
+    The production D7 backfill (`backfill_patient_accounts.py`) is the opposite shape by
+    design: unusable password, `must_set_password=True`, synthetic email, claim via OTP. No
+    known-password path exists in production code.
+    """
+    from app.core.module_system.tenancy import resolve_shared_tenant_id
+    from app.services.module_rbac_service import (
+        EndUserRBACNotProvisioned,
+        assign_end_user_group,
+        load_module_manifest,
+        resolve_end_user_group,
+    )
+    from app.models.user import User
+
+    emails = [s["user_link_email"] for s in patients_cfg if s.get("user_link_email")]
+    if not emails:
+        return 0
+
+    shared_tenant_id = resolve_shared_tenant_id(db, module="healthcare")
+    try:
+        group = resolve_end_user_group(db, load_module_manifest(db, "healthcare"))
+    except EndUserRBACNotProvisioned as exc:
+        print(f"  ⚠ end-user RBAC not provisioned ({exc}); "
+              f"run scripts/seed_module_rbac.py healthcare. Skipping user migration.")
+        return 0
+
+    migrated = 0
+    for email in emails:
+        user = db.query(User).filter(User.email == email).first()
+        if user is None:
+            print(f"  ⚠ no platform user {email}; skipping")
+            continue
+
+        company_id = _scalar(
+            db,
+            "SELECT company_id FROM hc_patients WHERE user_id = :uid LIMIT 1",
+            uid=str(user.id),
+        )
+
+        changed = False
+        if str(user.tenant_id) != str(shared_tenant_id):
+            user.tenant_id = shared_tenant_id
+            changed = True
+        if company_id and str(user.default_company_id or "") != str(company_id):
+            user.default_company_id = str(company_id)
+            changed = True
+        if assign_end_user_group(db, user, group):
+            changed = True
+
+        if changed:
+            migrated += 1
+            print(f"  ✓ {email} -> SAAS tenant + company + '{group.code}' group")
+
+    db.commit()
+    return migrated
+
+
 def get_or_create_patient(db, spec) -> str:
     phone_hash = _hash_phone(spec["phone"])
     # Resolve the optional platform-user link up front so we can also backfill
@@ -581,6 +661,11 @@ def run(config_key: str = "medcare") -> dict:
             counts["invoices"] += 1
 
         db.commit()
+
+        # ADR-012 D6 (revised): put the seeded demo patient users on the current SaaS
+        # account shape. Runs after the patients exist, since it reads their Company.
+        counts["users_migrated"] = migrate_demo_patient_users(db, patients_cfg)
+
         counts["branch_id"] = branch_id
         counts["tenant_id"] = TENANT_ID
         return counts

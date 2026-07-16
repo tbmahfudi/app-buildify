@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Set your password</title>
+  <link rel="stylesheet" href="/portal/healthcare/assets/portal.css">
+  <style>
+    .claim-wrap { max-width: 28rem; margin: 2rem auto; padding: 0 1rem; }
+    .claim-card { background:#fff; border:1px solid #e5e7eb; border-radius:.75rem; padding:1.5rem; }
+    .claim-card h1 { margin:0 0 .5rem; font-size:1.25rem; }
+    .claim-lede { color:#4b5563; font-size:.925rem; margin:0 0 1.25rem; line-height:1.5; }
+    .field { margin-bottom:1rem; }
+    .field label { display:block; font-size:.875rem; font-weight:600; margin-bottom:.35rem; }
+    .field input { width:100%; padding:.6rem .7rem; border:1px solid #d1d5db; border-radius:.5rem; font-size:1rem; }
+    .field .hint { font-size:.8rem; color:#6b7280; margin-top:.3rem; }
+    .btn { width:100%; padding:.7rem; border:0; border-radius:.5rem; background:#2563eb; color:#fff;
+           font-size:1rem; font-weight:600; cursor:pointer; }
+    .btn[disabled] { opacity:.6; cursor:not-allowed; }
+    .msg { padding:.7rem .8rem; border-radius:.5rem; font-size:.875rem; margin-bottom:1rem; display:none; }
+    .msg.error { background:#fef2f2; color:#991b1b; border:1px solid #fecaca; display:block; }
+    .msg.ok { background:#f0fdf4; color:#166534; border:1px solid #bbf7d0; display:block; }
+    .msg ul { margin:.4rem 0 0; padding-left:1.1rem; }
+  </style>
+</head>
+<body>
+  <main class="claim-wrap">
+    <div class="claim-card">
+      <h1 id="claim-title">Set your password</h1>
+      <p class="claim-lede" id="claim-lede">
+        Your clinic record has been moved to a new sign-in. Choose a password now and you can
+        sign in with it from next time — no code needed.
+      </p>
+
+      <div class="msg" id="claim-msg" role="alert" aria-live="polite"></div>
+
+      <form id="claim-form" novalidate>
+        <div class="field">
+          <label for="claim-email" id="claim-email-label">Email</label>
+          <input type="email" id="claim-email" name="email" autocomplete="email" inputmode="email">
+          <div class="hint" id="claim-email-hint">Used to sign in and to recover your account.</div>
+        </div>
+
+        <div class="field">
+          <label for="claim-password" id="claim-password-label">New password</label>
+          <input type="password" id="claim-password" name="password" autocomplete="new-password" required>
+        </div>
+
+        <div class="field">
+          <label for="claim-confirm" id="claim-confirm-label">Confirm password</label>
+          <input type="password" id="claim-confirm" name="confirm" autocomplete="new-password" required>
+        </div>
+
+        <button type="submit" class="btn" id="claim-submit">Save password</button>
+      </form>
+    </div>
+  </main>
+
+  <script src="/portal/healthcare/patient/_portal.js"></script>
+  <script src="/portal/healthcare/patient/claim-account.js"></script>
+</body>
+</html>
