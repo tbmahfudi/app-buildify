@@ -163,6 +163,14 @@ on D7.
   `/patient/claim-account`, (3) run the backfill, then (4) delete the routes + flag.
   Steps 1–3 are ADR-HC-009 D7 work, not ADR-011. Note **V-D5 withdrew** the old D7 step 4
   (`user_id` → NOT NULL + UNIQUE) — there is nothing to constrain.
+- **✅ D7's blocker is cleared: [ADR-012](../architecture/adr-012-module-saas-tenancy-and-end-user-rbac.md)
+  is Accepted (2026-07-17).** D7 step 2 said the backfill assigns the `patient` role +
+  `patients` group, but ADR-HC-010 moved every patient to the shared **SAAS** tenant and those
+  RBAC artifacts exist **only in the old per-clinic tenants** — so the step was unsatisfiable
+  as written. ADR-012 resolves it generically (module-declared tenancy + end-user RBAC
+  provisioned into the shared tenant) rather than hardcoding a healthcare answer, because
+  other modules may adopt SaaS mode too; **ADR-012 D5 supersedes D7 step 2**.
+  **Chain: ADR-012 ✅ → D7 backfill + `/patient/claim-account` (+ GH#693) → S6b (GH#692).**
 - **Also out of scope for the repoint, and D7-blocked:** D6's "route OTP-passwordless through
   a platform token" — `patient_token` still mints a patient token **directly**, so those
   sessions escape platform lockout/revoke-all. It cannot be fixed until legacy patients
