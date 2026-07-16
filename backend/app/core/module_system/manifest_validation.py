@@ -22,6 +22,8 @@ import json
 import os
 from typing import Any, List, Optional
 
+from .tenancy import validate_tenancy_block
+
 # Candidate locations for the canonical schema (first hit wins). Env override first.
 _SCHEMA_CANDIDATES = [
     os.environ.get("MODULE_MANIFEST_SCHEMA"),
@@ -76,6 +78,14 @@ def _minimal_checks(manifest: Any) -> List[str]:
     nav = manifest.get("navigation")
     if nav is not None and not isinstance(nav, dict):
         errors.append("'navigation' must be an object when present")
+
+    # ADR-012 D1. The canonical schema this module validates against
+    # (docs/modules/module-manifest.schema.json) is lenient by design
+    # (additionalProperties: true), so a malformed tenancy block would sail through it —
+    # and the namespace rule is a cross-field check no JSON Schema can express anyway.
+    # Both manifest-admitting paths must agree on it, so it runs here too (the strict
+    # register path calls the same function from loader.validate_manifest).
+    errors.extend(validate_tenancy_block(manifest))
 
     return errors
 

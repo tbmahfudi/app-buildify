@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 from .base_module import BaseModule
+from .tenancy import validate_tenancy_block
 
 logger = logging.getLogger(__name__)
 
@@ -328,10 +329,21 @@ class ModuleLoader:
         """
         import json as _json
 
+        # ADR-012 D1: the tenancy block's namespace rule is a cross-field check
+        # (permission codes vs. the manifest's own name), which JSON Schema cannot
+        # express. It is a hard failure, not a warning — it is the gate that stops a
+        # manifest granting its end users someone else's permissions, and registration
+        # is the path that admits a manifest. It runs BEFORE the jsonschema import guard
+        # on purpose: it is pure Python, so a deployment without jsonschema must still
+        # get the gate rather than silently skipping every check.
+        tenancy_errors = validate_tenancy_block(manifest)
+        if tenancy_errors:
+            return False, "; ".join(tenancy_errors)
+
         try:
             import jsonschema
         except ImportError:
-            logger.warning("jsonschema not installed -- manifest validation skipped")
+            logger.warning("jsonschema not installed -- manifest schema validation skipped")
             return True, None
 
         try:
@@ -339,6 +351,7 @@ class ModuleLoader:
             with open(schema_file) as _f:
                 schema = _json.load(_f)
             jsonschema.validate(instance=manifest, schema=schema)
+
             # Non-fatal contract warnings for the public_portal block
             # (ADR module-public-pages). These never block load; they surface
             # likely misconfigurations to module authors.

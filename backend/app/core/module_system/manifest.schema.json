@@ -394,6 +394,55 @@
       },
       "description": "Public/patient-facing static portal app served at /portal/{module}/ (ADR module-public-pages)."
     },
+    "tenancy": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "How this module is tenanted (ADR-012 D1). Absent == per_tenant, i.e. today's behaviour.",
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": [
+            "per_tenant",
+            "shared_saas"
+          ],
+          "default": "per_tenant",
+          "description": "per_tenant (default): module data is scoped per platform Tenant. shared_saas: the module's end users and data live in the ONE platform-wide shared SaaS tenant, with Company as the isolation boundary (ADR-HC-010, ADR-012 D2)."
+        },
+        "end_user_rbac": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "role",
+            "group"
+          ],
+          "description": "RBAC provisioned into the shared tenant for this module's end users (ADR-012 D4). Required when mode is shared_saas; meaningless otherwise. End-user accounts are auto-joined to the group, which carries the role (chain: User->Group->Role->Permission).",
+          "properties": {
+            "role": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]*$",
+              "maxLength": 50,
+              "description": "Role code granted to this module's end users (e.g. patient)."
+            },
+            "group": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]*$",
+              "maxLength": 50,
+              "description": "Group code end-user accounts are joined to (e.g. patients)."
+            },
+            "permissions": {
+              "type": "array",
+              "default": [],
+              "uniqueItems": true,
+              "description": "Permission codes granted to the role. MUST be namespaced to this module ('<name>:...') — enforced by the validator, since JSON Schema cannot compare against a sibling field. See ADR-012 Resolution Q1.",
+              "items": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_.:-]*$"
+              }
+            }
+          }
+        }
+      }
+    },
     "entry_point": {
       "type": "string",
       "description": "Module admin-SPA JS entry (e.g. module.js)."

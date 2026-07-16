@@ -4,6 +4,16 @@
   "version": "1.1.0",
   "description": "Two-sided healthcare platform: clinic staff portal + patient portal. Includes scheduling, billing, pharmacy, and laboratory sub-modules.",
   "entry_point": "module.js",
+  "tenancy": {
+    "mode": "shared_saas",
+    "end_user_rbac": {
+      "role": "patient",
+      "group": "patients",
+      "permissions": [
+        "healthcare:portal:access"
+      ]
+    }
+  },
   "routes": [
     {
       "path": "#/healthcare/dashboard",
