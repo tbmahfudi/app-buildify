@@ -17,12 +17,15 @@ from datetime import datetime
 from typing import Optional
 
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response, status
-from sqlalchemy import text
+from sqlalchemy import func, text
 from sqlalchemy.orm import Session
 
 from modules.sdk.dependencies import tenant_scoped_session
+from app.core.auth import hash_password
 from app.core.dependencies import get_db as _platform_get_db
+from app.core.password_validator import PasswordValidator
 from app.core.security_config import SecurityConfigService
+from app.models.user import User as _User
 from app.routers.otp import COOLDOWN_TTL
 from app.routers.otp import send_otp as _platform_send_otp
 from app.routers.otp import verify_otp as _platform_verify_otp
@@ -30,6 +33,7 @@ from app.services.account_service import (
     AccountExistsError,
     WeakPasswordError,
     create_patient_account,
+    load_password_policy,
 )
 
 def _get_public_db():
@@ -40,6 +44,8 @@ from modules.healthcare.models import HCPatient, HCPatientConsent, HCPatientRela
 from modules.healthcare.schemas.patient_auth import (
     ActivateRequest,
     ActivateResponse,
+    ClaimAccountRequest,
+    ClaimAccountResponse,
     OTPSendRequest,
     OTPSendResponse,
     OTPVerifyRequest,
@@ -50,6 +56,11 @@ from modules.healthcare.schemas.patient_auth import (
     RegisterAcceptedResponse,
 )
 from modules.healthcare.sdk.captcha import require_captcha
+from modules.healthcare.sdk.patient_auth import (
+    PatientTokenData,
+    get_current_patient,
+    get_patient_db,
+)
 from modules.healthcare.sdk.patient_tokens import (
     create_patient_access_token,
     create_patient_refresh_token,
@@ -456,7 +467,7 @@ async def patient_token(
     # Lookup patient by phone hash
     row = db.execute(
         text(
-            "SELECT id, tenant_id, company_id FROM hc_patients "
+            "SELECT id, tenant_id, company_id, user_id FROM hc_patients "
             "WHERE phone_hash = :ph AND status = 'active' AND deleted_at IS NULL "
             "LIMIT 1"
         ),
@@ -472,6 +483,18 @@ async def patient_token(
     patient_id = str(row[0])
     tenant_id = str(row[1]) if row[1] else None
     company_id = str(row[2]) if row[2] else None  # ADR-HC-010 D5 Company claim
+    account_user_id = str(row[3]) if row[3] else None
+
+    # ADR-HC-009 D7 / epic-18 18.9.1: tell an authenticated backfilled patient that they
+    # still owe us a password, so the portal can route them to claim-account. Safe here
+    # (the OTP already proved control of the phone) in a way it is not on /auth/login.
+    must_set_password = False
+    if account_user_id:
+        urow = db.execute(
+            text("SELECT must_set_password FROM users WHERE id = :uid LIMIT 1"),
+            {"uid": account_user_id},
+        ).fetchone()
+        must_set_password = bool(urow[0]) if urow else False
     access_token = create_patient_access_token(
         patient_id=patient_id, phone=payload.phone, tenant_id=tenant_id, company_id=company_id)
     refresh_token = create_patient_refresh_token(
@@ -491,6 +514,125 @@ async def patient_token(
         access_token=access_token,
         patient_id=patient_id,
         message="Login successful.",
+        must_set_password=must_set_password,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Account claim (ADR-HC-009 D7 / epic-18 Story 18.9.1)
+# ---------------------------------------------------------------------------
+
+
+@router.post(
+    "/api/v1/patients/auth/claim-account",
+    response_model=ClaimAccountResponse,
+    summary="Set the first password on a backfilled legacy account",
+    responses={
+        401: {"description": "Not an authenticated patient."},
+        409: {"description": "Nothing to claim, or the email is unavailable."},
+        422: {"description": "Password does not meet policy."},
+    },
+)
+async def claim_account(
+    payload: ClaimAccountRequest,
+    request: Request,
+    patient: PatientTokenData = Depends(get_current_patient),
+    db: Session = Depends(get_patient_db),
+) -> ClaimAccountResponse:
+    """Give a backfilled patient a real password (and optionally a real email).
+
+    Authority is the **patient token**, which is only minted by phone+OTP — so the caller
+    has already proved control of the phone on record. That is the whole reason the claim
+    entry point is OTP login rather than the password form (18.9.1): the backfill created
+    accounts nobody had ever authenticated to, and the phone is the only thing linking a
+    human to that record.
+
+    Deliberately NOT reachable unauthenticated, and it never reveals whether some *other*
+    account exists.
+    """
+    tenant_id = patient.require_tenant()
+
+    prow = db.execute(
+        text(
+            "SELECT user_id FROM hc_patients "
+            "WHERE id = :pid AND tenant_id = :tid AND status = 'active' AND deleted_at IS NULL "
+            "LIMIT 1"
+        ),
+        {"pid": patient.patient_id, "tid": tenant_id},
+    ).fetchone()
+    if prow is None or not prow[0]:
+        # No linked platform account => nothing to claim. Not an error the caller can act
+        # on, and not a state we should describe in detail.
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="This account cannot be claimed.",
+        )
+
+    user = db.query(_User).filter(_User.id == str(prow[0])).first()
+    if user is None or not getattr(user, "must_set_password", False):
+        # Already claimed (or never needed claiming). Idempotent-ish and uninformative:
+        # the caller is authenticated as this patient anyway.
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="This account has already been set up. Please sign in with your password.",
+        )
+
+    # Same policy as registration — one implementation, no re-invention (R2).
+    policy = load_password_policy(db, tenant_id)
+    is_valid, errors = PasswordValidator(policy).validate_strength(
+        payload.password, user_email=user.email, user_name=user.full_name or ""
+    )
+    if not is_valid:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"message": "Password does not meet requirements.", "errors": errors},
+        )
+
+    # Optional real email. The backfill seeds a synthetic, non-deliverable address, so for
+    # most claimants this is the first real one. users.email is UNIQUE: a collision here
+    # is reported as a plain conflict to a caller who is already authenticated as this
+    # patient — it tells them nothing about anyone else that they could not learn from the
+    # register form, and refusing silently would strand them on a synthetic address.
+    if payload.email:
+        email_norm = payload.email.strip().lower()
+        if email_norm and email_norm != (user.email or "").lower():
+            taken = (
+                db.query(_User)
+                .filter(func.lower(_User.email) == email_norm, _User.id != user.id)
+                .first()
+            )
+            if taken is not None:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="That email address is not available. Try another.",
+                )
+            user.email = email_norm
+            # A claimed-at-claim-time email is self-asserted, not proven. Keep the account
+            # unverified so the normal activation path still has to happen before anything
+            # trusts it (e.g. password reset).
+            user.is_verified = False
+
+    user.hashed_password = hash_password(payload.password)
+    user.must_set_password = False
+    user.password_changed_at = datetime.utcnow()
+    db.commit()
+
+    write_event_audit(
+        db=db,
+        actor_id=str(user.id),
+        actor_type="patient",
+        event_type="patient.account_claimed",
+        entity_type="hc_patient",
+        entity_id=patient.patient_id,
+        tenant_id=tenant_id,
+        ip=request.client.host if request.client else None,
+        ua=request.headers.get("user-agent"),
+        metadata={"email_updated": bool(payload.email)},
+    )
+
+    return ClaimAccountResponse(
+        claimed=True,
+        message="Your password is set. You can now sign in with it.",
     )
 
 

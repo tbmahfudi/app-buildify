@@ -235,6 +235,11 @@
         "title": "Patient login"
       },
       {
+        "path": "patient/claim-account.html",
+        "audience": "patient",
+        "title": "Set your password"
+      },
+      {
         "path": "#portal",
         "audience": "patient",
         "title": "My portal"
