@@ -258,6 +258,9 @@ async def patient_register(
     # Create the platform account (credential lives on the platform users table).
     #  - WeakPasswordError: the registrant's own password -> specific 422.
     #  - AccountExistsError: fall through to the SAME generic 202 (no enumeration).
+    # end_user_module joins the account to the manifest-declared 'patients' group in the
+    # shared tenant (ADR-012 D5). Without it the account has no 'patient' role and
+    # app.js:112 drops the patient in the staff SPA on their first password login.
     try:
         user = create_patient_account(
             db,
@@ -268,6 +271,7 @@ async def patient_register(
             username=payload.username,
             phone=payload.phone,
             default_company_id=company_id,
+            end_user_module="healthcare",
         )
     except WeakPasswordError as exc:
         raise HTTPException(

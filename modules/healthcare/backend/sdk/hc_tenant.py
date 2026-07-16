@@ -1,68 +1,55 @@
 """
-Healthcare SDK — shared-tenant resolution (SaaS tenancy migration, ADR-HC-010).
+Healthcare SDK — shared-tenant resolution.
 
-After migration-plan-saas-tenancy-01, ALL healthcare data lives on ONE shared
-platform Tenant (`tenants.code = 'SAAS'`); per-clinic isolation is by **Company**
-(`hc_patients.company_id`, the branch/owner Company GUC), not by tenant. The
-platform *staff user* still belongs to their original clinic tenant, so
-`current_user.tenant_id` no longer matches the (SAAS) tenant the hc rows carry.
+**Deprecated (ADR-012 D3).** This module is now a thin wrapper over the platform seam
+``app.core.module_system.tenancy``, which resolves the shared SaaS tenant for *any*
+module that declares ``tenancy.mode = shared_saas`` in its manifest — healthcare being
+the first. Tenancy is a platform concern, not a healthcare one; keeping the ``'SAAS'``
+constant here meant the next SaaS module would copy this file and re-solve it by hand.
 
-`hc_shared_tenant_id()` returns the single hc tenant id used for every healthcare
-query/insert/audit, decoupling the hc data layer from the platform user's tenant.
-It is resolved once (from `tenants.code='SAAS'`) and cached for the process.
+The wrapper exists rather than a delete because this module has ~100 call sites across 19
+files; delegating puts the constant in exactly one place (the platform) with zero
+call-site churn. It is removed with ADR-011 S6b via a mechanical import rewrite.
+
+**New code should import from the platform directly:**
+
+    from app.core.module_system.tenancy import shared_tenant_id
+    tid = shared_tenant_id(module="healthcare")
+
+Background: after migration-plan-saas-tenancy-01, ALL healthcare data lives on ONE shared
+platform Tenant (``tenants.code = 'SAAS'``); per-clinic isolation is by **Company**
+(``hc_patients.company_id``, the branch/owner Company GUC), not by tenant. The platform
+*staff user* still belongs to their original clinic tenant, so ``current_user.tenant_id``
+does not match the (SAAS) tenant the hc rows carry.
 """
 from __future__ import annotations
 
-import logging
-import os
-from typing import Optional
+from app.core.module_system.tenancy import resolve_shared_tenant_id as _platform_resolve
+from app.core.module_system.tenancy import set_shared_tenant_id as _platform_set
+from app.core.module_system.tenancy import shared_tenant_id as _platform_shared
 
-from sqlalchemy import text
-
-logger = logging.getLogger(__name__)
-
-# The migration provisions SAAS with this fixed id (saas_phase0_provision.sql); used
-# only as a last-resort fallback if the tenants row can't be read (e.g. early boot).
-_SAAS_FALLBACK_ID = os.environ.get("HC_SHARED_TENANT_ID", "5aa50000-0000-4000-8000-000000000001")
-_SAAS_TENANT_CODE = "SAAS"
-
-_cached_tenant_id: Optional[str] = None
+_MODULE = "healthcare"
 
 
 def set_shared_tenant_id(tenant_id: str) -> None:
-    """Prime the cache (called at healthcare service startup)."""
-    global _cached_tenant_id
-    _cached_tenant_id = str(tenant_id)
-    logger.info("hc shared tenant id set to %s", _cached_tenant_id)
+    """Prime the cache (called at healthcare service startup). Deprecated: see module docstring."""
+    _platform_set(tenant_id)
 
 
 def resolve_shared_tenant_id(db) -> str:
-    """Resolve + cache the SAAS tenant id from the DB, or fall back to the fixed id."""
-    global _cached_tenant_id
-    if _cached_tenant_id:
-        return _cached_tenant_id
-    try:
-        row = db.execute(
-            text("SELECT id FROM tenants WHERE code = :c LIMIT 1"), {"c": _SAAS_TENANT_CODE}
-        ).fetchone()
-        if row and row[0]:
-            _cached_tenant_id = str(row[0])
-            return _cached_tenant_id
-    except Exception as exc:  # pragma: no cover — defensive
-        logger.warning("Could not resolve SAAS tenant id from DB: %s", exc)
-    _cached_tenant_id = _SAAS_FALLBACK_ID
-    return _cached_tenant_id
+    """Resolve + cache the SAAS tenant id from the DB. Deprecated: see module docstring."""
+    return _platform_resolve(db, module=_MODULE)
 
 
 def hc_shared_tenant_id() -> str:
     """
     Return the single shared hc tenant id (the SAAS tenant).
 
-    Preferred call site is inside a session where the cache is already primed (by
-    the service-startup resolver or the branch/patient session dependency). Falls
-    back to the fixed provisioned id if the cache was never primed.
+    Deprecated: see module docstring. Preferred call site is inside a session where the
+    cache is already primed (by the service-startup resolver or the branch/patient session
+    dependency). Falls back to the fixed provisioned id if the cache was never primed.
     """
-    return _cached_tenant_id or _SAAS_FALLBACK_ID
+    return _platform_shared(module=_MODULE)
 
 
 __all__ = ["set_shared_tenant_id", "resolve_shared_tenant_id", "hc_shared_tenant_id"]

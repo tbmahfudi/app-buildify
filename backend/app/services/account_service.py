@@ -75,6 +75,30 @@ def load_password_policy(db: Session, tenant_id: Optional[str]) -> PasswordPolic
         return base
 
 
+def _resolve_end_user_group(db: Session, module_name: str):
+    """Resolve a shared_saas module's declared end-user group, or raise (ADR-012 D5).
+
+    Imported lazily and read from the module's manifest on disk so the platform account
+    primitive does not take a hard dependency on the module registry at import time.
+    """
+    import json
+    import os
+    from pathlib import Path
+
+    from app.services.module_rbac_service import EndUserRBACNotProvisioned, resolve_end_user_group
+
+    modules_root = Path(
+        os.environ.get("MODULES_ROOT")
+        or (Path("/modules") if Path("/modules").is_dir() else Path(__file__).resolve().parents[3] / "modules")
+    )
+    manifest_path = modules_root / module_name / "manifest.json"
+    if not manifest_path.is_file():
+        raise EndUserRBACNotProvisioned(f"manifest for module '{module_name}' not found at {manifest_path}")
+    with open(manifest_path, "r", encoding="utf-8") as f:
+        manifest = json.load(f)
+    return resolve_end_user_group(db, manifest)
+
+
 def create_patient_account(
     db: Session,
     *,
@@ -86,17 +110,29 @@ def create_patient_account(
     phone: Optional[str] = None,
     default_company_id: Optional[str] = None,
     policy: Optional[PasswordPolicyConfig] = None,
+    end_user_module: Optional[str] = None,
+    must_set_password: bool = False,
 ) -> User:
     """Create a login-capable platform ``User`` with ``role`` patient semantics.
 
     The returned user is active, has a policy-validated password, and is *not*
     email-verified yet (``is_verified=False``) — activation is a separate step
-    (ADR-011 register flow). ``must_set_password`` is False because the registrant
-    chose a password now (ADR-HC-009 D7 gate is only for legacy OTP backfills).
+    (ADR-011 register flow). ``must_set_password`` defaults to False because the
+    registrant chose a password now; the legacy D7 backfill passes True.
+
+    ``end_user_module`` names the ``shared_saas`` module whose declared end-user group this
+    account joins (ADR-012 D5). When given, the group is **resolved or the call fails** —
+    it is never created here (that is an admin action, and this path is reachable from an
+    unauthenticated register endpoint) and never skipped. Skipping is what shipped today:
+    an account with no ``patient`` role, which ``app.js:112`` then routes to the staff SPA
+    instead of the portal. Passing None keeps the account group-less, for callers that are
+    not end users of a shared_saas module.
 
     Raises:
         WeakPasswordError: password fails policy (surface to the registrant).
         AccountExistsError: email/username already taken (caller keeps generic).
+        EndUserRBACNotProvisioned: ``end_user_module``'s group is missing from the shared
+            tenant — run ``seed_module_rbac``. Deliberately fatal (ADR-012 D4).
         ValueError: missing required input.
     """
     email_norm = (email or "").strip().lower()
@@ -112,11 +148,17 @@ def create_patient_account(
     if not is_valid:
         raise WeakPasswordError(errors)
 
+    # Resolve the end-user group BEFORE inserting: if the module's RBAC was never
+    # provisioned we want to fail without having created a half-configured account.
+    group = None
+    if end_user_module:
+        group = _resolve_end_user_group(db, end_user_module)
+
     user = User(
         email=email_norm,
         username=(username.strip() if username else None),
         hashed_password=hash_password(password),
-        must_set_password=False,
+        must_set_password=must_set_password,
         is_active=True,
         is_verified=False,
         full_name=full_name.strip(),
@@ -134,5 +176,10 @@ def create_patient_account(
             db.flush()
     except IntegrityError:
         raise AccountExistsError(email_norm) from None
+
+    if group is not None:
+        from app.services.module_rbac_service import assign_end_user_group
+
+        assign_end_user_group(db, user, group)
 
     return user

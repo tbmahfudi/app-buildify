@@ -56,6 +56,21 @@ class HealthcareModule(BaseModule):
     def get_permissions(self) -> List[Dict[str, Any]]:
         return self.manifest.get("permissions", [])
 
+    def post_install(self, db_session) -> None:
+        """Provision the declared end-user RBAC into the shared tenant (ADR-012 D4).
+
+        Best-effort only. The platform swallows hook failures by design
+        (modules.py: "log but do NOT roll back -- hook failure is non-fatal"), so this
+        hook is a convenience, NOT the source of truth: that is
+        `python3 /app/scripts/seed_module_rbac.py healthcare`. Nothing downstream trusts
+        the hook to have run -- account creation resolves the group or fails loudly
+        (ADR-012 Resolution Q2).
+        """
+        super().post_install(db_session)
+        from app.services.module_rbac_service import provision_end_user_rbac
+
+        provision_end_user_rbac(db_session, self.manifest, commit=False)
+
     def get_models(self):
         from modules.healthcare import models  # noqa: F401
         return []
