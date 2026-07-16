@@ -1,13 +1,15 @@
 """
 Healthcare SDK — public surface re-exports.
 
+Patient OTP is **not** here: it is a platform service (`app.routers.otp`), per
+ADR-009 and tasks-011 S6a. The module-local `otp.py` this SDK used to re-export was
+a second implementation with no daily cap, and it is gone.
+
 Import from here in healthcare sub-module code::
 
     from modules.healthcare.sdk import (
         get_current_patient,
         has_patient_permission,
-        generate_otp,
-        verify_otp,
         verify_hcaptcha,
         require_captcha,
         resolve_locale,
@@ -29,13 +31,6 @@ from .patient_auth import (
     PatientTokenData,
     get_current_patient,
     has_patient_permission,
-)
-from .otp import (
-    generate_otp,
-    verify_otp,
-    OTP_TTL,
-    COOLDOWN_TTL,
-    MAX_ATTEMPTS,
 )
 from .captcha import (
     verify_hcaptcha,
@@ -73,12 +68,6 @@ __all__ = [
     "PatientTokenData",
     "get_current_patient",
     "has_patient_permission",
-    # otp
-    "generate_otp",
-    "verify_otp",
-    "OTP_TTL",
-    "COOLDOWN_TTL",
-    "MAX_ATTEMPTS",
     # captcha
     "verify_hcaptcha",
     "require_captcha",

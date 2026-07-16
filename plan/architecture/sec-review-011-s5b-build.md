@@ -87,8 +87,17 @@ trusting the invariant silently. No cap is relaxed by any of this.
 
 ## Cross-cutting note for the initiative
 
-**S6 must not proceed as written.** Its removal of `HC_PATIENT_OTP_ENABLED` is gated on the
-D7 backfill, which has not run: 0 users carry `must_set_password`, 4 of 7 `hc_patients` have
-a phone and a NULL `user_id`, and `/patient/claim-account` does not exist. The flag is the
-documented kill-switch *during* migration; deleting it before the migration exists removes
-those patients' only route to authenticating. See `tasks-011` S6.
+**S6's flag removal must not proceed as written.** Removing `HC_PATIENT_OTP_ENABLED` is gated
+on the D7 backfill, which has not run: 0 users carry `must_set_password`, and
+`/patient/claim-account` does not exist. The flag is the documented kill-switch *during*
+migration; deleting it before the migration exists removes the migration path. See
+`tasks-011` S6b.
+
+> **Correction (2026-07-16).** This section originally added "4 of 7 `hc_patients` have a
+> phone and a NULL `user_id`" as impact evidence. That figure is wrong and overstated the
+> urgency: one of the four is a **dependent child** whose NULL `user_id` is correct by
+> design (**V-D5** — a managed dependent has no login; authority flows through
+> `hc_patient_relationships`), and the other three are **demo seed fixtures**
+> (`seed_demo.py`) created deliberately as phone+OTP-only. **No real user is affected.**
+> D7 is an S6b unblocker, not a live-impact fix. The security argument for not deleting the
+> flag early is unchanged — it rests on the migration path, not on user impact.
