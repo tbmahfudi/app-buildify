@@ -10,6 +10,7 @@ T-HC-021  POST /api/v1/patients/auth/otp/send         (PUBLIC)
 """
 from __future__ import annotations
 
+import json
 import logging
 import os
 import secrets
@@ -54,6 +55,8 @@ from modules.healthcare.schemas.patient_auth import (
     PatientTokenRequest,
     PatientTokenResponse,
     RegisterAcceptedResponse,
+    StaffLinkConfirmRequest,
+    StaffLinkConfirmResponse,
 )
 from modules.healthcare.sdk.captcha import require_captcha
 from modules.healthcare.sdk.patient_auth import (
@@ -518,6 +521,101 @@ async def patient_token(
     )
 
 
+@router.post(
+    "/api/v1/patients/auth/staff-link/confirm",
+    response_model=StaffLinkConfirmResponse,
+    summary="Confirm a staff-initiated account link via the emailed token (public)",
+)
+async def staff_link_confirm(
+    payload: StaffLinkConfirmRequest,
+    db: Session = Depends(_get_public_db),
+) -> StaffLinkConfirmResponse:
+    """Consume a single-use staff-link token and write the real email onto the account.
+
+    Public by design: the token IS the credential. Clicking it is what proves the holder
+    controls that mailbox — which is the whole difference between ``confirm`` mode and
+    ``force`` mode (see routes_household.staff_link_account, ADR-HC-009 V-D10).
+
+    Grants no credential: ``must_set_password`` stays True, so the holder still has to go
+    through the platform's ordinary password-reset flow, which is what actually lifts the
+    gate. All this does is make that flow reachable at an address they demonstrably own.
+
+    Generic error on any invalid/expired/used token (no enumeration).
+    """
+    r = _get_redis()
+    key = f"patient_staff_link:{payload.token}"
+    raw = r.get(key)
+    if raw is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This link is invalid or has expired. Please ask the clinic to resend it.",
+        )
+
+    try:
+        data = json.loads(raw)
+        user_id = data["user_id"]
+        email_norm = data["email"]
+        patient_id = data.get("patient_id")
+    except Exception:  # noqa: BLE001 — a malformed payload is a broken token
+        r.delete(key)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This link is invalid or has expired. Please ask the clinic to resend it.",
+        )
+
+    user = db.query(_User).filter(_User.id == str(user_id)).first()
+    if user is None or not getattr(user, "must_set_password", False):
+        # Claimed (or gone) since the link was sent — the address is theirs now, so this
+        # token must not repoint it. Burn the token either way.
+        r.delete(key)
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="This account has already been set up. Please sign in or reset your password.",
+        )
+
+    # Re-check at redemption, not just at issue: another account may have taken the address
+    # during the 24h window.
+    taken = (
+        db.query(_User)
+        .filter(func.lower(_User.email) == email_norm, _User.id != user.id)
+        .first()
+    )
+    if taken is not None:
+        r.delete(key)
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="That email is no longer available. Please contact the clinic.",
+        )
+
+    user.email = email_norm
+    # They just proved control of the mailbox by clicking, so this address IS verified —
+    # unlike the force path, where staff asserted it on their behalf.
+    user.is_verified = True
+
+    # Audit before the commit — write_event_audit only flushes (see claim_account).
+    write_event_audit(
+        db=db,
+        actor_id=str(user.id),
+        actor_type="patient",
+        event_type="patient.staff_link_confirmed",
+        entity_type="hc_patient",
+        entity_id=str(patient_id) if patient_id else str(user.id),
+        tenant_id=str(user.tenant_id),
+        metadata={"user_id": str(user.id)},
+    )
+    db.commit()
+
+    r.delete(key)  # single use
+
+    return StaffLinkConfirmResponse(
+        confirmed=True,
+        message=(
+            "Your email is linked. Use 'forgot password' on this address to set your "
+            "password and sign in."
+        ),
+    )
+
+
 # ---------------------------------------------------------------------------
 # Account claim (ADR-HC-009 D7 / epic-18 Story 18.9.1)
 # ---------------------------------------------------------------------------
@@ -615,8 +713,11 @@ async def claim_account(
     user.hashed_password = hash_password(payload.password)
     user.must_set_password = False
     user.password_changed_at = datetime.utcnow()
-    db.commit()
 
+    # Audit BEFORE the commit, not after. write_event_audit only add()s + flush()es
+    # (sdk/phi_audit._write_audit) — it does not commit — so auditing after db.commit()
+    # silently drops the row when the session closes. Ordering it here also makes the
+    # audit atomic with the change it records: they land together or not at all.
     write_event_audit(
         db=db,
         actor_id=str(user.id),
@@ -629,6 +730,7 @@ async def claim_account(
         ua=request.headers.get("user-agent"),
         metadata={"email_updated": bool(payload.email)},
     )
+    db.commit()
 
     return ClaimAccountResponse(
         claimed=True,

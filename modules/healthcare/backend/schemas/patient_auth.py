@@ -1,8 +1,8 @@
 """Pydantic v2 schemas for patient auth (T-HC-020, T-HC-021)."""
 from __future__ import annotations
 
-from typing import Optional
-from pydantic import BaseModel, ConfigDict
+from typing import Literal, Optional
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class PatientRegisterRequest(BaseModel):
@@ -108,4 +108,51 @@ class ClaimAccountRequest(BaseModel):
 class ClaimAccountResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     claimed: bool
+    message: str
+
+
+class StaffLinkRequest(BaseModel):
+    """Staff-mediated recovery: put a real email on a backfilled account (ADR-HC-009 V-D10).
+
+    Recovery exists because a backfilled patient who never claimed has an unusable password
+    AND a synthetic, non-deliverable ``@patients.invalid`` address — so no self-service route
+    back in. Staff verify identity the way clinics always have (at the desk, against ID);
+    this endpoint only records the outcome.
+
+    It deliberately does NOT set a password or create an account. Once the real email is on
+    the account, the platform's ordinary password-reset flow takes over and clears
+    ``must_set_password`` (``app/routers/auth.py``) — so recovery needs no OTP and no new
+    credential path.
+    """
+
+    model_config = ConfigDict(from_attributes=True)
+    patient_id: str
+    email: str
+    # confirm: email the person a link; the address is only written when they click it, which
+    #          proves they control the mailbox.
+    # force:   write it now and notify. For when the person cannot receive the confirmation
+    #          (wrong address on file, no access) — which is the case recovery exists for.
+    mode: Literal["confirm", "force"] = "confirm"
+    # Required for BOTH modes, not just force. This grants access to someone's medical
+    # records on staff say-so; the reason is what makes the audit trail answer "why".
+    reason: str = Field(min_length=5, max_length=500)
+
+
+class StaffLinkResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    mode: str
+    pending_confirmation: bool
+    message: str
+
+
+class StaffLinkConfirmRequest(BaseModel):
+    """Consume the emailed staff-link token (public — the token IS the proof)."""
+
+    model_config = ConfigDict(from_attributes=True)
+    token: str
+
+
+class StaffLinkConfirmResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    confirmed: bool
     message: str
