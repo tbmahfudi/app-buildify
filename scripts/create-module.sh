@@ -279,6 +279,10 @@ cat > "${FRONTEND_BASE}/manifest.json" <<EOF
   "version": "1.0.0",
   "description": "${MODULE_DISPLAY} management user interface",
 
+  "module_type": "code",
+  "category": "vertical",
+  "api_prefix": "/api/v1/${MODULE_NAME}",
+
   "entry_point": "module.js",
 
   "routes": [
@@ -301,16 +305,7 @@ cat > "${FRONTEND_BASE}/manifest.json" <<EOF
     "dashboard_widgets": []
   },
 
-  "dependencies": {
-    "core_version": ">=1.0.0",
-    "required_modules": [],
-    "optional_modules": []
-  },
-
-  "assets": {
-    "css": [],
-    "icons": []
-  }
+  "dependencies": []
 }
 EOF
 

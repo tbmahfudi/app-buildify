@@ -51,23 +51,36 @@
       "type": "array",
       "default": [],
       "uniqueItems": true,
+      "description": "Permissions this module declares. Keyed by 'code' to match the permissions table, the canonical docs/modules/module-manifest.schema.json, and the reader in app/routers/modules.py.",
       "items": {
         "type": "object",
         "required": [
-          "name",
-          "description"
+          "code"
         ],
         "additionalProperties": false,
         "properties": {
-          "name": {
+          "code": {
             "type": "string",
             "pattern": "^[a-z][a-z0-9_.:-]*$",
-            "description": "Permission code (e.g. mymodule.read)"
+            "description": "Permission code, the stable identifier (e.g. mymodule:invoices:read:company)."
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 255,
+            "description": "Human-readable label. NOT the code — see 'code'."
           },
           "description": {
             "type": "string",
             "minLength": 1,
             "maxLength": 500
+          },
+          "category": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "scope": {
+            "type": "string",
+            "description": "Scope the permission is granted at (e.g. company, branch, global). The permissions table requires a scope, so a manifest must be able to express one."
           },
           "resource": {
             "type": "string"
@@ -188,7 +201,11 @@
       }
     },
     "dependencies": {
-      "type": "array",
+      "description": "Either a list of dependency objects, or { required: [...], optional: [...] } lists of module names. Both forms are accepted because app/routers/modules.py reads both; the array form is preferred for new modules.",
+      "type": [
+        "array",
+        "object"
+      ],
       "default": [],
       "items": {
         "type": "object",
@@ -210,6 +227,21 @@
             "type": "boolean",
             "default": false,
             "description": "If true, module works without this dep but gains features with it"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "properties": {
+        "required": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "optional": {
+          "type": "array",
+          "items": {
+            "type": "string"
           }
         }
       }
