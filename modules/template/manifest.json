@@ -4,6 +4,9 @@
   "version": "1.0.0",
   "description": "TODO: Describe what this module does",
   "author": "TODO: Your Name / Team",
+  "module_type": "code",
+  "category": "TODO: category",
+  "api_prefix": "/api/v1/TEMPLATE",
   "parent_module": null,
   "entry_point": "module.js",
   "deployment": {
@@ -38,10 +41,7 @@
     ],
     "dashboard_widgets": []
   },
-  "dependencies": {
-    "required": [],
-    "optional": []
-  },
+  "dependencies": [],
   "configuration": {
     "settings": []
   },
