@@ -6,6 +6,7 @@ from pathlib import Path
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from sqlalchemy import text
 
 from app.core.config import get_settings
 from app.core.db import SessionLocal
@@ -390,10 +391,12 @@ async def health_check(request: Request):
         "components": {},
     }
 
-    # Check database
+    # Check database. Must be text() — SQLAlchemy 2.x rejects a bare string and the
+    # except branch would then mark the DB unhealthy on every call (permanent 503),
+    # even though the database is fine.
     try:
         db = SessionLocal()
-        db.execute("SELECT 1")
+        db.execute(text("SELECT 1"))
         db.close()
         health_status["components"]["database"] = {"status": "healthy"}
     except Exception as e:
