@@ -474,7 +474,12 @@ class HCPatientConsent(Base):
 
     __table_args__ = (
         CheckConstraint(
-            "consent_type IN ('dpa_acceptance','data_processing','marketing')",
+            # 'clinic_dpa' is the clinic-level DPA acceptance recorded at signup
+            # (routes_clinic_signup) and checked by the billing require_dpa gate —
+            # distinct from the patient-level 'dpa_acceptance'. It was previously
+            # omitted here, which made every clinic_dpa insert (signup) and the
+            # billing gate un-satisfiable.
+            "consent_type IN ('dpa_acceptance','clinic_dpa','data_processing','marketing')",
             name="ck_hc_patient_consents_type",
         ),
         CheckConstraint("status IN ('active','revoked')", name="ck_hc_patient_consents_status"),

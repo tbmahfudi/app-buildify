@@ -30,7 +30,7 @@ from sqlalchemy.orm import Session
 from modules.healthcare.sdk.branch_scope import healthcare_branch_session
 from modules.healthcare.sdk.hc_permissions import HCRole, has_hc_permission
 from modules.healthcare.sdk.patient_auth import get_current_patient, get_patient_db
-from modules.sdk.dependencies import tenant_scoped_session
+from modules.sdk.dependencies import get_current_user, tenant_scoped_session
 from modules.healthcare.sdk.phi_audit import write_phi_read_audit, write_event_audit
 from modules.healthcare.schemas.pharmacy import (
     DispenseRequest,
@@ -69,8 +69,14 @@ def _now() -> datetime:
     return datetime.utcnow()
 
 
-def _tenant_id(current_user) -> str:
-    return hc_shared_tenant_id() if hasattr(current_user, "tenant_id") else ""
+def _tenant_id() -> str:
+    # Healthcare runs on the single shared SAAS tenant (ADR-HC-010); the caller's
+    # own platform tenant is irrelevant. Previously this took `current_user` and
+    # returned "" unless it had a `tenant_id` attr — but the endpoints passed the
+    # HCRole from has_hc_permission (which has no such attr), so every query
+    # filtered on tenant_id="" and returned nothing. Resolve the shared tenant
+    # unconditionally instead.
+    return hc_shared_tenant_id()
 
 
 def _get_medication_or_404(
@@ -235,11 +241,12 @@ def create_medication(
     branch_id: str,
     payload: MedicationCreate,
     db: Session = Depends(healthcare_branch_session),
-    current_user=Depends(
+    current_user=Depends(get_current_user),
+    _role=Depends(
         has_hc_permission([HCRole.pharmacist, HCRole.branch_manager, HCRole.clinic_owner])
     ),
 ):
-    tid = _tenant_id(current_user)
+    tid = _tenant_id()
     med_id = _new_id()
     now = _now()
 
@@ -286,11 +293,12 @@ def list_medications(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     db: Session = Depends(healthcare_branch_session),
-    current_user=Depends(
+    current_user=Depends(get_current_user),
+    _role=Depends(
         has_hc_permission([HCRole.pharmacist, HCRole.doctor, HCRole.branch_manager, HCRole.clinic_owner])
     ),
 ):
-    tid = _tenant_id(current_user)
+    tid = _tenant_id()
     where = ["tenant_id = :tid", "branch_id = :bid"]
     params: dict = {"tid": tid, "bid": branch_id}
 
@@ -335,11 +343,12 @@ def update_medication(
     med_id: str,
     payload: MedicationUpdate,
     db: Session = Depends(healthcare_branch_session),
-    current_user=Depends(
+    current_user=Depends(get_current_user),
+    _role=Depends(
         has_hc_permission([HCRole.pharmacist, HCRole.branch_manager, HCRole.clinic_owner])
     ),
 ):
-    tid = _tenant_id(current_user)
+    tid = _tenant_id()
     _get_medication_or_404(db, med_id, tid, branch_id)  # 404 guard
 
     fields = payload.model_dump(exclude_unset=True)
@@ -377,11 +386,12 @@ def adjust_stock(
     med_id: str,
     payload: StockAdjustRequest,
     db: Session = Depends(healthcare_branch_session),
-    current_user=Depends(
+    current_user=Depends(get_current_user),
+    _role=Depends(
         has_hc_permission([HCRole.pharmacist, HCRole.branch_manager, HCRole.clinic_owner])
     ),
 ):
-    tid = _tenant_id(current_user)
+    tid = _tenant_id()
 
     # CR-002 fix: use SELECT FOR UPDATE to check stock, then atomic DB arithmetic UPDATE
     # to prevent race condition between concurrent stock adjustments.
@@ -434,11 +444,12 @@ def check_interactions(
     branch_id: str,
     payload: DrugInteractionCheckRequest,
     db: Session = Depends(healthcare_branch_session),
-    current_user=Depends(
+    current_user=Depends(get_current_user),
+    _role=Depends(
         has_hc_permission([HCRole.doctor, HCRole.pharmacist, HCRole.clinic_owner])
     ),
 ):
-    tid = _tenant_id(current_user)
+    tid = _tenant_id()
     interactions = _check_interactions(db, payload.medication_ids, tid)
     return DrugInteractionCheckResponse(
         interactions=[DrugInteractionItem(**i) for i in interactions],
@@ -456,11 +467,12 @@ def add_interaction(
     branch_id: str,
     payload: DrugInteractionCreate,
     db: Session = Depends(healthcare_branch_session),
-    current_user=Depends(
+    current_user=Depends(get_current_user),
+    _role=Depends(
         has_hc_permission([HCRole.pharmacist, HCRole.branch_manager, HCRole.clinic_owner])
     ),
 ):
-    tid = _tenant_id(current_user)
+    tid = _tenant_id()
     # Canonical ordering to prevent duplicates
     a_id, b_id = sorted([payload.medication_a_id, payload.medication_b_id])
     interaction_id = _new_id()
@@ -512,9 +524,10 @@ def create_prescription(
     payload: PrescriptionCreate,
     force: bool = Query(False, description="Override severe interaction block"),
     db: Session = Depends(healthcare_branch_session),
-    current_user=Depends(has_hc_permission([HCRole.doctor, HCRole.clinic_owner])),
+    current_user=Depends(get_current_user),
+    _role=Depends(has_hc_permission([HCRole.doctor, HCRole.clinic_owner])),
 ):
-    tid = _tenant_id(current_user)
+    tid = _tenant_id()
 
     # Resolve encounter → patient_id, provider_id
     encounter = db.execute(
@@ -615,11 +628,12 @@ def list_prescriptions(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     db: Session = Depends(healthcare_branch_session),
-    current_user=Depends(
+    current_user=Depends(get_current_user),
+    _role=Depends(
         has_hc_permission([HCRole.pharmacist, HCRole.doctor, HCRole.branch_manager, HCRole.clinic_owner])
     ),
 ):
-    tid = _tenant_id(current_user)
+    tid = _tenant_id()
     where = ["tenant_id = :tid", "branch_id = :bid"]
     params: dict = {"tid": tid, "bid": branch_id}
 
@@ -668,11 +682,12 @@ def get_prescription(
     branch_id: str,
     prescription_id: str,
     db: Session = Depends(healthcare_branch_session),
-    current_user=Depends(
+    current_user=Depends(get_current_user),
+    _role=Depends(
         has_hc_permission([HCRole.pharmacist, HCRole.doctor, HCRole.clinic_owner])
     ),
 ):
-    tid = _tenant_id(current_user)
+    tid = _tenant_id()
     row = _get_prescription_or_404(db, prescription_id, tid, branch_id)
 
     write_phi_read_audit(
@@ -695,9 +710,10 @@ def dispense_prescription(
     prescription_id: str,
     payload: DispenseRequest,
     db: Session = Depends(healthcare_branch_session),
-    current_user=Depends(has_hc_permission([HCRole.pharmacist, HCRole.clinic_owner])),
+    current_user=Depends(get_current_user),
+    _role=Depends(has_hc_permission([HCRole.pharmacist, HCRole.clinic_owner])),
 ):
-    tid = _tenant_id(current_user)
+    tid = _tenant_id()
     prow = _get_prescription_or_404(db, prescription_id, tid, branch_id)
 
     if prow[6] == "cancelled":
@@ -853,11 +869,12 @@ def cancel_prescription(
     branch_id: str,
     prescription_id: str,
     db: Session = Depends(healthcare_branch_session),
-    current_user=Depends(
+    current_user=Depends(get_current_user),
+    _role=Depends(
         has_hc_permission([HCRole.doctor, HCRole.branch_manager, HCRole.clinic_owner])
     ),
 ):
-    tid = _tenant_id(current_user)
+    tid = _tenant_id()
     caller_id = str(current_user.id)
     row = _get_prescription_or_404(db, prescription_id, tid, branch_id)
 

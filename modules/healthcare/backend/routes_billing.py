@@ -28,9 +28,10 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response,
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from modules.sdk.dependencies import tenant_scoped_session
+from modules.sdk.dependencies import get_current_user, tenant_scoped_session
 from modules.healthcare.sdk.branch_scope import healthcare_branch_session
 from modules.healthcare.sdk.dpa_gate import require_dpa
+from modules.healthcare.sdk.hc_tenant import hc_shared_tenant_id
 from modules.healthcare.sdk.hc_permissions import HCRole, has_hc_permission
 from modules.healthcare.sdk.patient_auth import PatientTokenData, get_current_patient, get_patient_db
 from modules.healthcare.sdk.phi_audit import write_event_audit, write_phi_read_audit
@@ -66,7 +67,14 @@ _BPJS_HMAC_KEY = _BPJS_HMAC_KEY.encode()
 
 _BILLING_STAFF_ROLES = [HCRole.billing_staff, HCRole.branch_manager, HCRole.clinic_owner]
 _MANAGER_ROLES = [HCRole.branch_manager, HCRole.clinic_owner]
-_BILLING_WRITE_ROLES = [HCRole.billing_staff, HCRole.branch_manager]
+# clinic_owner included for consistency with every other healthcare write path
+# (pharmacy create_prescription, lab create_order, and this module's own
+# service-item create / invoice void all allow clinic_owner). Billing invoice
+# writes were the sole exception; an owner who can void and read invoices and
+# manage the catalog should be able to raise one, especially in single-operator
+# clinics. Company isolation is unaffected — has_hc_permission still resolves the
+# owner sentinel under the PR #700 company fence.
+_BILLING_WRITE_ROLES = [HCRole.billing_staff, HCRole.branch_manager, HCRole.clinic_owner]
 
 
 # ---------------------------------------------------------------------------
@@ -104,21 +112,17 @@ def _invoice_number(tenant_id: str) -> str:
 
 
 def _resolve_tenant(request: Request) -> str:
-    """Extract tenant_id from request state (set by platform middleware)."""
-    state = getattr(request.state, "tenant_id", None)
-    if state:
-        return str(state)
-    user = getattr(request.state, "user", None)
-    if user:
-        return str(getattr(user, "tenant_id", ""))
-    return ""
+    """Return the tenant that owns healthcare billing data — the single shared SAAS
+    tenant (ADR-HC-010), not the caller's platform tenant.
 
-
-def _resolve_actor_id(request: Request) -> str:
-    user = getattr(request.state, "user", None)
-    if user:
-        return str(getattr(user, "id", ""))
-    return ""
+    This previously read request.state.tenant_id (the platform middleware's value,
+    which in the healthcare service is the caller's own clinic tenant or unset). All
+    hcb_* rows live on the shared SAAS tenant, so every tenant-filtered query and
+    insert here must use it; the old value made service-item/invoice lists come back
+    empty and invoice creation reject its own seeded service items. Isolation between
+    clinics on the shared tenant is by Company, enforced by branch scope + the owner
+    company fence, not by this tenant id."""
+    return hc_shared_tenant_id()
 
 
 def _fetch_invoice(db: Session, invoice_id: str, branch_id: str, tenant_id: str) -> dict:
@@ -178,6 +182,7 @@ async def create_service_item(
     payload: ServiceItemCreate,
     request: Request,
     db: Session = Depends(healthcare_branch_session),
+    current_user=Depends(get_current_user),
     _role=Depends(has_hc_permission(_MANAGER_ROLES)),
     _dpa=Depends(require_dpa),
 ):
@@ -229,6 +234,7 @@ async def list_service_items(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     db: Session = Depends(healthcare_branch_session),
+    current_user=Depends(get_current_user),
     _role=Depends(has_hc_permission(_BILLING_STAFF_ROLES)),
 ):
     """List service items. Auth: billing_staff, branch_manager, clinic_owner."""
@@ -265,6 +271,7 @@ async def update_service_item(
     payload: ServiceItemUpdate,
     request: Request,
     db: Session = Depends(healthcare_branch_session),
+    current_user=Depends(get_current_user),
     _role=Depends(has_hc_permission(_MANAGER_ROLES)),
 ):
     """Update a service item. Code cannot be changed if used in invoice lines."""
@@ -315,12 +322,13 @@ async def create_invoice(
     payload: InvoiceCreate,
     request: Request,
     db: Session = Depends(healthcare_branch_session),
+    current_user=Depends(get_current_user),
     _role=Depends(has_hc_permission(_BILLING_WRITE_ROLES)),
     _dpa=Depends(require_dpa),
 ):
     """Create a draft invoice with auto-calculated subtotals. Auth: billing_staff, branch_manager."""
     tenant_id = _resolve_tenant(request)
-    actor_id = _resolve_actor_id(request)
+    actor_id = str(current_user.id)
 
     lines_data = []
     total = Decimal("0")
@@ -410,6 +418,7 @@ async def list_invoices(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     db: Session = Depends(healthcare_branch_session),
+    current_user=Depends(get_current_user),
     _role=Depends(has_hc_permission(_BILLING_STAFF_ROLES)),
 ):
     """List invoices with optional filters. Auth: billing_staff, branch_manager, clinic_owner."""
@@ -451,11 +460,12 @@ async def get_invoice(
     invoice_id: str,
     request: Request,
     db: Session = Depends(healthcare_branch_session),
+    current_user=Depends(get_current_user),
     _role=Depends(has_hc_permission(_BILLING_WRITE_ROLES)),
 ):
     """Get full invoice with lines. Calls write_phi_read_audit (patient data included)."""
     tenant_id = _resolve_tenant(request)
-    actor_id = _resolve_actor_id(request)
+    actor_id = str(current_user.id)
 
     inv = _fetch_invoice(db, invoice_id, branch_id, tenant_id)
     inv_lines = _fetch_invoice_lines(db, invoice_id)
@@ -480,11 +490,12 @@ async def finalize_invoice(
     invoice_id: str,
     request: Request,
     db: Session = Depends(healthcare_branch_session),
+    current_user=Depends(get_current_user),
     _role=Depends(has_hc_permission(_BILLING_WRITE_ROLES)),
 ):
     """Finalize invoice -- makes it IMMUTABLE. Auth: billing_staff, branch_manager."""
     tenant_id = _resolve_tenant(request)
-    actor_id = _resolve_actor_id(request)
+    actor_id = str(current_user.id)
 
     inv = _fetch_invoice(db, invoice_id, branch_id, tenant_id)
     if inv["status"] != "draft":
@@ -521,11 +532,12 @@ async def void_invoice(
     invoice_id: str,
     request: Request,
     db: Session = Depends(healthcare_branch_session),
+    current_user=Depends(get_current_user),
     _role=Depends(has_hc_permission(_MANAGER_ROLES)),
 ):
     """Void a finalized invoice. Auth: branch_manager, clinic_owner only."""
     tenant_id = _resolve_tenant(request)
-    actor_id = _resolve_actor_id(request)
+    actor_id = str(current_user.id)
 
     inv = _fetch_invoice(db, invoice_id, branch_id, tenant_id)
     if inv["status"] != "finalized":
@@ -564,11 +576,12 @@ async def record_payment(
     payload: PaymentCreate,
     request: Request,
     db: Session = Depends(healthcare_branch_session),
+    current_user=Depends(get_current_user),
     _role=Depends(has_hc_permission(_BILLING_WRITE_ROLES)),
 ):
     """Record a payment against an invoice. Auth: billing_staff, branch_manager."""
     tenant_id = _resolve_tenant(request)
-    actor_id = _resolve_actor_id(request)
+    actor_id = str(current_user.id)
 
     inv = _fetch_invoice(db, invoice_id, branch_id, tenant_id)
     if inv["status"] == "void":
@@ -945,6 +958,7 @@ async def create_bpjs_export(
     payload: BPJSExportCreate,
     request: Request,
     db: Session = Depends(healthcare_branch_session),
+    current_user=Depends(get_current_user),
     _role=Depends(has_hc_permission(_BILLING_WRITE_ROLES)),
 ):
     """
@@ -954,7 +968,7 @@ async def create_bpjs_export(
     PLACEHOLDER: Needs legal review before production use.
     """
     tenant_id = _resolve_tenant(request)
-    actor_id = _resolve_actor_id(request)
+    actor_id = str(current_user.id)
     year_month = payload.export_period
 
     rows = db.execute(
@@ -1043,6 +1057,7 @@ async def download_bpjs_export(
     export_id: str,
     request: Request,
     db: Session = Depends(healthcare_branch_session),
+    current_user=Depends(get_current_user),
     _role=Depends(has_hc_permission(_BILLING_WRITE_ROLES)),
 ):
     """Download BPJS export as CSV. Auth: billing_staff, branch_manager."""
