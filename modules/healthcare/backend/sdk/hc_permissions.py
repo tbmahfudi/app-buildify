@@ -41,28 +41,37 @@ def get_caller_hc_role(
     """
     Query hc_branch_staff to find the caller's role.
 
-    Clinic owner has a NULL branch_id sentinel row — detected first.
-    If branch_id is provided, also checks for a matching branch-specific row.
+    Clinic owner has a NULL branch_id sentinel row. When a ``branch_id`` is given, that
+    sentinel grants owner ONLY for branches in the owner's OWN Company — Company is the
+    isolation boundary under the shared SaaS tenant (ADR-HC-010). Otherwise a matching
+    branch-specific staff row is used.
 
-    Returns None if no matching row found (caller has no HC role).
+    Returns None if no matching row found (caller has no HC role for that branch).
     """
     from sqlalchemy import text
 
-    # Check for clinic_owner (NULL branch_id sentinel)
-    owner_row = db.execute(
-        text(
-            "SELECT role FROM hc_branch_staff "
-            "WHERE tenant_id = :tid AND user_id = :uid AND branch_id IS NULL "
-            "AND status = 'active' AND is_active = true "
-            "LIMIT 1"
-        ),
-        {"tid": tenant_id, "uid": user_id},
-    ).fetchone()
-
-    if owner_row and owner_row[0] == HCRole.clinic_owner:
-        return HCRole.clinic_owner
-
     if branch_id is not None:
+        # Branch-scoped check. The clinic_owner sentinel (branch_id IS NULL) is fenced to
+        # the owner's Company: it only authorizes for branches whose platform Company
+        # matches the sentinel's company_id. WITHOUT this join, any clinic_owner could act
+        # on ANY other Company's clinic simply by passing its branch_id — a confirmed
+        # cross-company account-takeover vector via routes_household.staff_link_account
+        # (ADR-HC-010: Company is the isolation boundary). A sentinel with a NULL
+        # company_id is malformed and fails closed (grants nothing here).
+        owner_row = db.execute(
+            text(
+                "SELECT 1 FROM hc_branch_staff s "
+                "JOIN hc_branches b ON b.id = :bid AND b.tenant_id = :tid "
+                "WHERE s.tenant_id = :tid AND s.user_id = :uid AND s.branch_id IS NULL "
+                "AND s.role = 'clinic_owner' AND s.status = 'active' AND s.is_active = true "
+                "AND s.company_id IS NOT NULL AND s.company_id = b.platform_company_id "
+                "LIMIT 1"
+            ),
+            {"tid": tenant_id, "uid": user_id, "bid": branch_id},
+        ).fetchone()
+        if owner_row:
+            return HCRole.clinic_owner
+
         branch_row = db.execute(
             text(
                 "SELECT role FROM hc_branch_staff "
@@ -78,6 +87,23 @@ def get_caller_hc_role(
                 return HCRole(branch_row[0])
             except ValueError:
                 return None
+        return None
+
+    # No branch context: "is this user a clinic owner at all?" The sentinel answers yes;
+    # any branch/Company-specific operation the caller performs must scope itself (a
+    # branch-scoped caller passes branch_id and hits the Company-fenced path above).
+    owner_row = db.execute(
+        text(
+            "SELECT role FROM hc_branch_staff "
+            "WHERE tenant_id = :tid AND user_id = :uid AND branch_id IS NULL "
+            "AND role = 'clinic_owner' AND status = 'active' AND is_active = true "
+            "LIMIT 1"
+        ),
+        {"tid": tenant_id, "uid": user_id},
+    ).fetchone()
+
+    if owner_row:
+        return HCRole.clinic_owner
 
     return None
 
