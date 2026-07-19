@@ -130,12 +130,21 @@ on D7.
   daily caps. It also adds purpose separation and tenant namespacing (the module keyed on a
   bare `otp:{phone}`, global across tenants).
 
-#### S6b — Remove `HC_PATIENT_OTP_ENABLED`  ⛔ BLOCKED — precondition unmet
-- **Blocked (verified 2026-07-15).** A3-Q6 gates removal on the D7 backfill completing.
-  It has not:
-  - `SELECT count(*) FROM users WHERE must_set_password` → **0** — the backfill has never run.
-  - `/patient/claim-account`, the interstitial D7 relies on to let a legacy patient set a
-    password, **does not exist** (404, no source).
+#### S6b — Remove `HC_PATIENT_OTP_ENABLED`  ✅ DONE (2026-07-20, PR #703)
+- **Done.** The precondition cleared: the D7 backfill (PR #696) + `/patients/auth/claim-account`
+  (PR #696/#697) shipped, and by DB state the migration is complete — **0 OTP-only patients**
+  (every `hc_patients` row with a phone has a linked `user_id`), and the only
+  `must_set_password=true` account is a D7 test fixture (`forced-…@example.com`).
+- **Removed:** the `HC_PATIENT_OTP_ENABLED` flag + `_otp_enabled`/`_require_otp_enabled`, the
+  three OTP-primary routes (`/patients/auth/otp/send`, `/otp/verify`, `/token`), and the
+  OTP-gated `/patients/auth/claim-account` (its only entry was the OTP-minted patient token, so
+  it was dead once OTP login went). Patient auth is now password-primary: platform login →
+  `/patients/auth/from-platform` bridge; straggler backfilled accounts onboard via staff-link +
+  password reset. The e2e OTP-contract suite was replaced by a retirement guard
+  (`test_patient_otp_login.py` now asserts the removed routes 404 while the kept ones don't).
+- **Original blocker (verified 2026-07-15), for the record:** at the time
+  `SELECT count(*) FROM users WHERE must_set_password` → **0** (backfill never run) and
+  `/patient/claim-account` did not exist.
 - **Correction (2026-07-16) — an earlier revision of this section overstated the impact.**
   It claimed "**4 of 7** `hc_patients` have a phone and a NULL `user_id` … legacy OTP-only
   patients with no platform account", implying four real stranded patients. Checked against

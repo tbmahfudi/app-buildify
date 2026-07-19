@@ -2,11 +2,17 @@
 Healthcare — Patient registration and authentication API.
 
 T-HC-020  POST /api/v1/patients/register              (PUBLIC)
-T-HC-021  POST /api/v1/patients/auth/otp/send         (PUBLIC)
-          POST /api/v1/patients/auth/otp/verify        (PUBLIC)
-          POST /api/v1/patients/auth/token             (PUBLIC)
+          POST /api/v1/patients/activate               (PUBLIC)
+          POST /api/v1/patients/auth/staff-link/confirm(PUBLIC)
+          POST /api/v1/patients/auth/from-platform     (PUBLIC)
           POST /api/v1/patients/auth/refresh           (PUBLIC)
           POST /api/v1/patients/auth/logout            (PUBLIC)
+
+Phone/OTP patient login (otp/send, otp/verify, auth/token) and the OTP-gated
+claim-account endpoint were removed with ADR-011 S6b once the D7 backfill left no
+OTP-only patients. Patient auth is now password-primary (email+password + platform
+MFA), with the platform login → from-platform bridge minting the portal session;
+any straggler backfilled account is onboarded via staff-link + password reset.
 """
 from __future__ import annotations
 
@@ -21,49 +27,30 @@ from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response
 from sqlalchemy import func, text
 from sqlalchemy.orm import Session
 
-from modules.sdk.dependencies import tenant_scoped_session
-from app.core.auth import hash_password
 from app.core.dependencies import get_db as _platform_get_db
-from app.core.password_validator import PasswordValidator
 from app.core.security_config import SecurityConfigService
 from app.models.user import User as _User
-from app.routers.otp import COOLDOWN_TTL
-from app.routers.otp import send_otp as _platform_send_otp
-from app.routers.otp import verify_otp as _platform_verify_otp
 from app.services.account_service import (
     AccountExistsError,
     WeakPasswordError,
     create_patient_account,
-    load_password_policy,
 )
 
 def _get_public_db():
     """Plain unauthenticated DB session for public endpoints."""
     yield from _platform_get_db()
 
-from modules.healthcare.models import HCPatient, HCPatientConsent, HCPatientRelationship
+from modules.healthcare.models import HCPatient, HCPatientConsent
 from modules.healthcare.schemas.patient_auth import (
     ActivateRequest,
     ActivateResponse,
-    ClaimAccountRequest,
-    ClaimAccountResponse,
-    OTPSendRequest,
-    OTPSendResponse,
-    OTPVerifyRequest,
-    OTPVerifyResponse,
     PatientRegisterRequest,
-    PatientTokenRequest,
     PatientTokenResponse,
     RegisterAcceptedResponse,
     StaffLinkConfirmRequest,
     StaffLinkConfirmResponse,
 )
 from modules.healthcare.sdk.captcha import require_captcha
-from modules.healthcare.sdk.patient_auth import (
-    PatientTokenData,
-    get_current_patient,
-    get_patient_db,
-)
 from modules.healthcare.sdk.patient_tokens import (
     create_patient_access_token,
     create_patient_refresh_token,
@@ -72,22 +59,6 @@ from modules.healthcare.sdk.patient_tokens import (
 from modules.healthcare.sdk.phi_audit import write_event_audit
 
 router = APIRouter(tags=["healthcare-patient-auth"])
-
-_OTP_VERIFIED_TTL = 900  # 15 minutes
-
-# tasks-011 S6a — patient phone OTP runs on the PLATFORM OTP service
-# (app.routers.otp), not a module-local implementation (ADR-009: OTP is a platform
-# service). Send and verify must address the same Redis bucket, so the purpose and
-# scope are fixed here rather than taken from the request.
-_OTP_PURPOSE = "patient_login"
-_OTP_CHANNEL = "phone"
-# The platform keys codes by (purpose, channel, tenant_code, target). These endpoints
-# take only a phone on purpose — resolving a patient's tenant before they have
-# authenticated would turn the endpoint into an enumeration oracle — so the module
-# uses one fixed scope. This is only a key namespace, and it widens no budget: the
-# R6 daily caps are keyed on the target and the source IP, never on tenant_code.
-_OTP_SCOPE = "healthcare"
-
 
 def _resolve_registration_scope(db: Session, reg_tenant: str) -> tuple[str, Optional[str]]:
     """Resolve (tenant_id, company_id) for a NEW patient under the SaaS model (ADR-HC-010).
@@ -125,63 +96,6 @@ def _get_redis():
     if not url:
         raise RuntimeError("REDIS_URL not configured")
     return _redis.from_url(url, decode_responses=True, socket_connect_timeout=2)
-
-
-def _otp_verified_key(phone: str) -> str:
-    return f"otp_verified:{phone}"
-
-
-def _require_otp_verified(phone: str) -> None:
-    """Raise 422 if otp_verified:{phone} is not present in Redis."""
-    r = _get_redis()
-    if not r.exists(_otp_verified_key(phone)):
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Phone verification required. Please complete OTP verification first.",
-        )
-
-
-def _otp_enabled() -> bool:
-    """Whether phone/OTP auth is enabled. Password login is the primary mechanism
-    (ADR-HC-009); OTP is optional and OFF by default. Enable per deployment with
-    HC_PATIENT_OTP_ENABLED=true."""
-    return os.environ.get("HC_PATIENT_OTP_ENABLED", "false").strip().lower() in (
-        "1", "true", "yes", "on",
-    )
-
-
-def _require_otp_enabled() -> None:
-    """Raise 403 when OTP auth is disabled (the default)."""
-    if not _otp_enabled():
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Phone/OTP login is disabled. Please sign in with your email or username and password.",
-        )
-
-
-def _verify_patient_otp(phone: str, code: str, *, failure_status: int, failure_detail: str) -> None:
-    """Verify a patient's phone code against the platform OTP service (S6a).
-
-    Consumes the code on success. Translates the platform's failure shape back to
-    this module's existing public contract: the attempt lockout (R7) stays a 429,
-    while an incorrect or expired code — which the platform reports as 400 — keeps
-    the status this endpoint has always returned. Changing those statuses would be
-    a breaking change for the portal without making anything safer; the messages
-    stay generic either way, so nothing is revealed about whether the phone is
-    registered.
-    """
-    try:
-        _platform_verify_otp(
-            channel=_OTP_CHANNEL,
-            target=phone,
-            purpose=_OTP_PURPOSE,
-            tenant_code=_OTP_SCOPE,
-            code=code,
-        )
-    except HTTPException as exc:
-        if exc.status_code == status.HTTP_429_TOO_MANY_REQUESTS:
-            raise
-        raise HTTPException(status_code=failure_status, detail=failure_detail) from None
 
 
 # ---------------------------------------------------------------------------
@@ -383,144 +297,6 @@ async def patient_activate(
     return ActivateResponse(activated=True, message="Account activated. You can now sign in.")
 
 
-# ---------------------------------------------------------------------------
-# T-HC-021 — OTP send
-# ---------------------------------------------------------------------------
-
-@router.post(
-    "/api/v1/patients/auth/otp/send",
-    response_model=OTPSendResponse,
-    summary="Send OTP to patient phone (public)",
-)
-async def otp_send(
-    payload: OTPSendRequest,
-    request: Request,
-    _captcha=Depends(require_captcha),
-) -> OTPSendResponse:
-    """Generate and send a 6-digit OTP to the given phone number."""
-    _require_otp_enabled()
-    # Platform OTP service (S6a): mints, applies the resend cooldown *and* the R6
-    # per-target/per-IP daily caps, and dispatches. Both a cooldown and a spent cap
-    # raise 429 — the same status this endpoint already returned for "too frequent" —
-    # so the outward contract is unchanged. The cap is new behaviour: the module
-    # implementation this replaces had no daily limit at all.
-    _platform_send_otp(
-        channel=_OTP_CHANNEL,
-        target=payload.phone,
-        purpose=_OTP_PURPOSE,
-        tenant_code=_OTP_SCOPE,
-        ip=request.client.host if request.client else None,
-    )
-    return OTPSendResponse(
-        message="OTP sent successfully.",
-        resend_after=COOLDOWN_TTL,
-    )
-
-
-# ---------------------------------------------------------------------------
-# T-HC-021 — OTP verify
-# ---------------------------------------------------------------------------
-
-@router.post(
-    "/api/v1/patients/auth/otp/verify",
-    response_model=OTPVerifyResponse,
-    summary="Verify OTP and mark phone as verified (public)",
-)
-async def otp_verify(
-    payload: OTPVerifyRequest,
-) -> OTPVerifyResponse:
-    """Verify the OTP; on success set Redis otp_verified:{phone} with 15-min TTL."""
-    _require_otp_enabled()
-    _verify_patient_otp(
-        payload.phone,
-        payload.code,
-        failure_status=status.HTTP_422_UNPROCESSABLE_ENTITY,
-        failure_detail="Verification failed. Please check your code and try again.",
-    )
-
-    r = _get_redis()
-    r.set(_otp_verified_key(payload.phone), "1", ex=_OTP_VERIFIED_TTL)
-
-    return OTPVerifyResponse(verified=True)
-
-
-# ---------------------------------------------------------------------------
-# T-HC-021 — Token (returning patient login)
-# ---------------------------------------------------------------------------
-
-@router.post(
-    "/api/v1/patients/auth/token",
-    response_model=PatientTokenResponse,
-    summary="Login with phone+OTP for returning patient (public)",
-)
-async def patient_token(
-    payload: PatientTokenRequest,
-    response: Response,
-    db: Session = Depends(_get_public_db),
-) -> PatientTokenResponse:
-    """Authenticate returning patient via phone + OTP, return access token + refresh cookie."""
-    _require_otp_enabled()
-    _verify_patient_otp(
-        payload.phone,
-        payload.code,
-        failure_status=status.HTTP_401_UNAUTHORIZED,
-        failure_detail="Authentication failed.",
-    )
-
-    # Lookup patient by phone hash
-    row = db.execute(
-        text(
-            "SELECT id, tenant_id, company_id, user_id FROM hc_patients "
-            "WHERE phone_hash = :ph AND status = 'active' AND deleted_at IS NULL "
-            "LIMIT 1"
-        ),
-        {"ph": _hash_phone(payload.phone)},
-    ).fetchone()
-
-    if row is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authentication failed.",
-        )
-
-    patient_id = str(row[0])
-    tenant_id = str(row[1]) if row[1] else None
-    company_id = str(row[2]) if row[2] else None  # ADR-HC-010 D5 Company claim
-    account_user_id = str(row[3]) if row[3] else None
-
-    # ADR-HC-009 D7 / epic-18 18.9.1: tell an authenticated backfilled patient that they
-    # still owe us a password, so the portal can route them to claim-account. Safe here
-    # (the OTP already proved control of the phone) in a way it is not on /auth/login.
-    must_set_password = False
-    if account_user_id:
-        urow = db.execute(
-            text("SELECT must_set_password FROM users WHERE id = :uid LIMIT 1"),
-            {"uid": account_user_id},
-        ).fetchone()
-        must_set_password = bool(urow[0]) if urow else False
-    access_token = create_patient_access_token(
-        patient_id=patient_id, phone=payload.phone, tenant_id=tenant_id, company_id=company_id)
-    refresh_token = create_patient_refresh_token(
-        patient_id=patient_id, tenant_id=tenant_id, company_id=company_id)
-
-    response.set_cookie(
-        key="patient_refresh_token",
-        value=refresh_token,
-        httponly=True,
-        secure=True,
-        samesite="strict",
-        max_age=7 * 24 * 3600,
-        path="/api/v1/patients/auth",
-    )
-
-    return PatientTokenResponse(
-        access_token=access_token,
-        patient_id=patient_id,
-        message="Login successful.",
-        must_set_password=must_set_password,
-    )
-
-
 @router.post(
     "/api/v1/patients/auth/staff-link/confirm",
     response_model=StaffLinkConfirmResponse,
@@ -592,7 +368,8 @@ async def staff_link_confirm(
     # unlike the force path, where staff asserted it on their behalf.
     user.is_verified = True
 
-    # Audit before the commit — write_event_audit only flushes (see claim_account).
+    # Audit before the commit — write_event_audit only add()s + flush()es (it does not
+    # commit), so auditing after db.commit() would silently drop the row.
     write_event_audit(
         db=db,
         actor_id=str(user.id),
@@ -613,128 +390,6 @@ async def staff_link_confirm(
             "Your email is linked. Use 'forgot password' on this address to set your "
             "password and sign in."
         ),
-    )
-
-
-# ---------------------------------------------------------------------------
-# Account claim (ADR-HC-009 D7 / epic-18 Story 18.9.1)
-# ---------------------------------------------------------------------------
-
-
-@router.post(
-    "/api/v1/patients/auth/claim-account",
-    response_model=ClaimAccountResponse,
-    summary="Set the first password on a backfilled legacy account",
-    responses={
-        401: {"description": "Not an authenticated patient."},
-        409: {"description": "Nothing to claim, or the email is unavailable."},
-        422: {"description": "Password does not meet policy."},
-    },
-)
-async def claim_account(
-    payload: ClaimAccountRequest,
-    request: Request,
-    patient: PatientTokenData = Depends(get_current_patient),
-    db: Session = Depends(get_patient_db),
-) -> ClaimAccountResponse:
-    """Give a backfilled patient a real password (and optionally a real email).
-
-    Authority is the **patient token**, which is only minted by phone+OTP — so the caller
-    has already proved control of the phone on record. That is the whole reason the claim
-    entry point is OTP login rather than the password form (18.9.1): the backfill created
-    accounts nobody had ever authenticated to, and the phone is the only thing linking a
-    human to that record.
-
-    Deliberately NOT reachable unauthenticated, and it never reveals whether some *other*
-    account exists.
-    """
-    tenant_id = patient.require_tenant()
-
-    prow = db.execute(
-        text(
-            "SELECT user_id FROM hc_patients "
-            "WHERE id = :pid AND tenant_id = :tid AND status = 'active' AND deleted_at IS NULL "
-            "LIMIT 1"
-        ),
-        {"pid": patient.patient_id, "tid": tenant_id},
-    ).fetchone()
-    if prow is None or not prow[0]:
-        # No linked platform account => nothing to claim. Not an error the caller can act
-        # on, and not a state we should describe in detail.
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="This account cannot be claimed.",
-        )
-
-    user = db.query(_User).filter(_User.id == str(prow[0])).first()
-    if user is None or not getattr(user, "must_set_password", False):
-        # Already claimed (or never needed claiming). Idempotent-ish and uninformative:
-        # the caller is authenticated as this patient anyway.
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="This account has already been set up. Please sign in with your password.",
-        )
-
-    # Same policy as registration — one implementation, no re-invention (R2).
-    policy = load_password_policy(db, tenant_id)
-    is_valid, errors = PasswordValidator(policy).validate_strength(
-        payload.password, user_email=user.email, user_name=user.full_name or ""
-    )
-    if not is_valid:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail={"message": "Password does not meet requirements.", "errors": errors},
-        )
-
-    # Optional real email. The backfill seeds a synthetic, non-deliverable address, so for
-    # most claimants this is the first real one. users.email is UNIQUE: a collision here
-    # is reported as a plain conflict to a caller who is already authenticated as this
-    # patient — it tells them nothing about anyone else that they could not learn from the
-    # register form, and refusing silently would strand them on a synthetic address.
-    if payload.email:
-        email_norm = payload.email.strip().lower()
-        if email_norm and email_norm != (user.email or "").lower():
-            taken = (
-                db.query(_User)
-                .filter(func.lower(_User.email) == email_norm, _User.id != user.id)
-                .first()
-            )
-            if taken is not None:
-                raise HTTPException(
-                    status_code=status.HTTP_409_CONFLICT,
-                    detail="That email address is not available. Try another.",
-                )
-            user.email = email_norm
-            # A claimed-at-claim-time email is self-asserted, not proven. Keep the account
-            # unverified so the normal activation path still has to happen before anything
-            # trusts it (e.g. password reset).
-            user.is_verified = False
-
-    user.hashed_password = hash_password(payload.password)
-    user.must_set_password = False
-    user.password_changed_at = datetime.utcnow()
-
-    # Audit BEFORE the commit, not after. write_event_audit only add()s + flush()es
-    # (sdk/phi_audit._write_audit) — it does not commit — so auditing after db.commit()
-    # silently drops the row when the session closes. Ordering it here also makes the
-    # audit atomic with the change it records: they land together or not at all.
-    write_event_audit(
-        db=db,
-        actor_id=str(user.id),
-        actor_type="patient",
-        event_type="patient.account_claimed",
-        entity_type="hc_patient",
-        entity_id=patient.patient_id,
-        tenant_id=tenant_id,
-        ip=request.client.host if request.client else None,
-        ua=request.headers.get("user-agent"),
-        metadata={"email_updated": bool(payload.email)},
-    )
-    db.commit()
-
-    return ClaimAccountResponse(
-        claimed=True,
-        message="Your password is set. You can now sign in with it.",
     )
 
 
