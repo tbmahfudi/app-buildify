@@ -9,7 +9,7 @@ import uuid
 from datetime import datetime
 
 from sqlalchemy import BigInteger, Boolean, Column, DateTime, ForeignKey, Integer, String, Text
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
 
 from ..core.database import Base
 
@@ -30,6 +30,12 @@ class Document(Base):
 
     # Blob location in the object store (bucket key of the current version).
     storage_key = Column(Text, nullable=False)
+
+    # Free-form tags (GIN-indexed) and arbitrary custom metadata. `doc_metadata`
+    # rather than `metadata` — the latter is reserved by SQLAlchemy's declarative
+    # Base. Exposed to the API as `metadata` via a serialization alias.
+    tags = Column(ARRAY(String), nullable=False, default=list, server_default="{}")
+    doc_metadata = Column(JSONB, nullable=False, default=dict, server_default="{}")
 
     uploaded_by = Column(UUID(as_uuid=True), nullable=True)
     is_active = Column(Boolean, nullable=False, default=True)

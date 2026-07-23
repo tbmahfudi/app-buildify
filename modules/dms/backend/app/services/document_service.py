@@ -17,6 +17,18 @@ from ..models.folder import Folder
 from ..models.version import DocumentVersion
 
 
+def _dedupe(tags: List[str]) -> List[str]:
+    """Trim, drop blanks, de-duplicate while preserving first-seen order."""
+    seen: set = set()
+    out: List[str] = []
+    for t in tags:
+        t = (t or "").strip()
+        if t and t not in seen:
+            seen.add(t)
+            out.append(t)
+    return out
+
+
 class DocumentError(Exception):
     def __init__(self, message: str, status_code: int = 400):
         super().__init__(message)
@@ -216,6 +228,56 @@ class DocumentService:
         doc.folder_id = folder_id
         await db.flush()
         return doc
+
+    # -- metadata & tags -----------------------------------------------------
+    @staticmethod
+    async def update_metadata(
+        db: AsyncSession, *, tenant_id: str, document_id: str,
+        tags: Optional[List[str]] = None, metadata: Optional[dict] = None,
+    ) -> Document:
+        doc = await DocumentService._require(db, tenant_id=tenant_id, document_id=document_id)
+        if tags is not None:
+            doc.tags = _dedupe(tags)
+        if metadata is not None:
+            doc.doc_metadata = dict(metadata)  # replace; new object so SA tracks it
+        await db.flush()
+        return doc
+
+    @staticmethod
+    async def bulk_update_metadata(
+        db: AsyncSession, *, tenant_id: str, document_ids: List[str],
+        set_tags: Optional[List[str]] = None, add_tags: Optional[List[str]] = None,
+        remove_tags: Optional[List[str]] = None, metadata: Optional[dict] = None,
+    ) -> int:
+        docs = (
+            await db.execute(
+                select(Document).where(
+                    Document.tenant_id == tenant_id,
+                    Document.id.in_(document_ids),
+                    Document.is_active.is_(True),
+                )
+            )
+        ).scalars().all()
+        remove_set = set(remove_tags or [])
+        for doc in docs:
+            # Tags: explicit replace wins; otherwise apply add/remove deltas.
+            if set_tags is not None:
+                doc.tags = _dedupe(set_tags)
+            elif add_tags or remove_tags:
+                current = [t for t in (doc.tags or []) if t not in remove_set]
+                doc.tags = _dedupe(current + list(add_tags or []))
+            # Metadata: shallow merge; a null value removes the key. Reassign a new
+            # dict so SQLAlchemy detects the JSONB change.
+            if metadata is not None:
+                merged = dict(doc.doc_metadata or {})
+                for k, v in metadata.items():
+                    if v is None:
+                        merged.pop(k, None)
+                    else:
+                        merged[k] = v
+                doc.doc_metadata = merged
+        await db.flush()
+        return len(docs)
 
     @staticmethod
     async def soft_delete(

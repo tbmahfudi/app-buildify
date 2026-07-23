@@ -8,10 +8,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ..config import settings
 from ..core.security import Principal, require_permission, tenant_session
 from ..schemas.document import (
+    BulkMetadataRequest,
+    BulkMetadataResponse,
     DocumentListResponse,
     DocumentResponse,
     DownloadLinkResponse,
     MoveDocumentRequest,
+    UpdateMetadataRequest,
     VersionResponse,
 )
 from ..services.document_service import DocumentError, DocumentService
@@ -70,6 +73,21 @@ async def list_documents(
         documents=[DocumentResponse.model_validate(d) for d in docs],
         total=total, page=page, page_size=page_size, total_pages=total_pages,
     )
+
+
+@router.post("/bulk/metadata", response_model=BulkMetadataResponse)
+async def bulk_update_metadata(
+    body: BulkMetadataRequest,
+    principal: Principal = Depends(require_permission("dms:document:write:company")),
+    db: AsyncSession = Depends(tenant_session),
+):
+    updated = await DocumentService.bulk_update_metadata(
+        db, tenant_id=principal.tenant_id,
+        document_ids=[str(d) for d in body.document_ids],
+        set_tags=body.set_tags, add_tags=body.add_tags,
+        remove_tags=body.remove_tags, metadata=body.metadata,
+    )
+    return BulkMetadataResponse(updated=updated)
 
 
 @router.get("/{document_id}", response_model=DocumentResponse)
@@ -164,6 +182,23 @@ async def move_document(
         doc = await DocumentService.move(
             db, tenant_id=principal.tenant_id, document_id=document_id,
             folder_id=str(body.folder_id) if body.folder_id else None,
+        )
+    except DocumentError as e:
+        raise HTTPException(e.status_code, str(e))
+    return DocumentResponse.model_validate(doc)
+
+
+@router.patch("/{document_id}/metadata", response_model=DocumentResponse)
+async def update_metadata(
+    document_id: str,
+    body: UpdateMetadataRequest,
+    principal: Principal = Depends(require_permission("dms:document:write:company")),
+    db: AsyncSession = Depends(tenant_session),
+):
+    try:
+        doc = await DocumentService.update_metadata(
+            db, tenant_id=principal.tenant_id, document_id=document_id,
+            tags=body.tags, metadata=body.metadata,
         )
     except DocumentError as e:
         raise HTTPException(e.status_code, str(e))
