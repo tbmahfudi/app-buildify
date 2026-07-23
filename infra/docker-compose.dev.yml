@@ -49,6 +49,24 @@ services:
       timeout: 3s
       retries: 5
 
+  minio:
+    container_name: app_buildify_minio
+    image: minio/minio:latest
+    command: server /data --console-address ":9101"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9100:9000"   # S3 API (host -> container 9000); browsers use localhost:9100
+      - "9101:9101"   # MinIO console UI
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   backend:
     container_name: app_buildify_backend
     build:
@@ -171,6 +189,43 @@ services:
     # container manually after code changes (docker restart app_buildify_healthcare).
     command: uvicorn modules.healthcare.app.main:app --host 0.0.0.0 --port 9002
 
+  dms-module:
+    container_name: app_buildify_dms
+    build:
+      context: ../modules/dms/backend
+      dockerfile: Dockerfile
+    ports:
+      - "9003:9003"
+    environment:
+      PYTHONPATH: /app
+      DATABASE_URL: postgresql://appuser:apppass@postgres:5432/appdb
+      # MUST equal the core backend SECRET_KEY so platform JWTs validate.
+      SECRET_KEY: dev-secret-key-change-in-production
+      CORE_PLATFORM_URL: http://backend:8000
+      # Blob storage (MinIO). Server-side calls use the in-cluster endpoint;
+      # presigned URLs handed to browsers use the host-published one.
+      STORAGE_ENDPOINT_URL: http://minio:9000
+      STORAGE_PUBLIC_ENDPOINT_URL: http://localhost:9100
+      STORAGE_ACCESS_KEY: minioadmin
+      STORAGE_SECRET_KEY: minioadmin
+      STORAGE_BUCKET: dms-documents
+      MODULE_NAME: dms
+      MODULE_VERSION: 1.0.0
+      MODULE_PORT: 9003
+      DEBUG: "true"
+      # Mounted below at a path outside /app to avoid a nested-mount placeholder.
+      MANIFEST_PATH: /srv/dms/manifest.json
+    working_dir: /app
+    volumes:
+      - ../modules/dms/backend:/app
+      - ../modules/dms/manifest.json:/srv/dms/manifest.json:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_started
+    command: uvicorn app.main:app --host 0.0.0.0 --port 9003 --reload
+
   frontend:
     container_name: app_buildify_frontend
     image: nginx:1.27-alpine
@@ -197,3 +252,4 @@ services:
 volumes:
   postgres_data:
   mysql_data:
+  minio_data:
