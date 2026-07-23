@@ -15,9 +15,9 @@ import { fileURLToPath } from 'url';
  *
  * The first three steps are REAL interactions against the backend (create a visit +
  * ticket, then call it and assert it actually moves to the Called column). The remaining
- * pages are navigated and confirmed to render; note that Prescriptions / Lab Orders /
- * Invoices are still sample-data placeholder UIs in the staff frontend (their backend
- * APIs exist and are covered by backend e2e — the staff pages just aren't wired yet).
+ * pages — EMR coding, Prescriptions, Lab Orders, Invoices, Departments — are all wired to
+ * their live backend APIs: each step navigates the page and asserts it rendered a real
+ * list (or a clean empty state) with no API error, not the old hard-coded sample rows.
  *
  * Screenshots land in tests/e2e/screenshots/clinic-journey/ and feed the companion doc
  * docs/healthcare-clinic-e2e.md.
@@ -50,6 +50,19 @@ async function settle(page, ms = 1500) {
   await page.locator('#app-content').getByText('Loading', { exact: false })
     .waitFor({ state: 'detached', timeout: 8000 }).catch(() => {});
   await page.waitForTimeout(ms);
+}
+
+// A wired list page renders either a real <table> (backed by the API) or a clean
+// empty-state card — and NEVER a red error box. This is what distinguishes the wired
+// pages from the old stubs, which hard-coded sample <tr> rows regardless of the backend.
+async function expectWiredList(page, bodySel, label) {
+  const body = page.locator(bodySel);
+  await expect(body.locator('.bg-red-50'),
+    `${label} should not show an API error`).toHaveCount(0);
+  const table = body.locator('table');
+  const empty = body.getByText(/No .* yet\./);
+  await expect(table.or(empty),
+    `${label} should render a live list or empty state`).toBeVisible({ timeout: 20000 });
 }
 
 test.beforeAll(async ({ request }) => {
@@ -132,19 +145,22 @@ test('clinic staff journey: registration → queue → EMR → pharmacy → lab 
   await settle(page);
   await shot(page, 'emr-coding');
 
-  // 5) Prescriptions (pharmacy).
+  // 5) Prescriptions (pharmacy) — live list from the pharmacy API.
   await gotoHash(page, '#/healthcare/prescriptions', 'Prescriptions');
   await settle(page);
+  await expectWiredList(page, '#hc-rx-body', 'Prescriptions');
   await shot(page, 'prescriptions');
 
-  // 6) Lab Orders.
+  // 6) Lab Orders — live list from the lab API.
   await gotoHash(page, '#/healthcare/lab-orders', 'Lab Orders');
   await settle(page);
+  await expectWiredList(page, '#hc-lab-body', 'Lab Orders');
   await shot(page, 'lab-orders');
 
-  // 7) Invoices (billing).
+  // 7) Invoices (billing) — live list from the billing API.
   await gotoHash(page, '#/healthcare/invoices', 'Invoices');
   await settle(page);
+  await expectWiredList(page, '#hc-inv-body', 'Invoices');
   await shot(page, 'invoices');
 
   // 8) Organization & Departments — the clinic structure the journey ran against.

@@ -19,22 +19,26 @@ npx playwright test tests/e2e/healthcare-clinic-journey.spec.js --reporter=list
 ```
 
 The suite **skips cleanly** (never fails red) if the stack or the seeded owner isn't
-reachable, so it's safe in any environment. Last run: **1 passed (22.5s)**.
+reachable, so it's safe in any environment. Last run: **1 passed (26.8s)**.
 
 ## What it proves
 
 The first three steps are **real interactions** against the backend — a walk-in visit and a
 queue ticket are created, then the ticket is **called** and the test asserts it genuinely
 moves to the *Called* column (ticket-specific: the card loses its **Call** action and gains
-**Serve**, not merely that the always-present "Called" column header exists). The remaining
-steps navigate the clinical/billing pages and confirm each renders with live data.
+**Serve**, not merely that the always-present "Called" column header exists). Every remaining
+page — EMR coding, Prescriptions, Lab Orders, Invoices, Departments — is **wired to its live
+backend API**: each step asserts the page rendered a real list (or a clean empty state) with
+no API error, never the hard-coded sample rows the old stubs shipped.
 
-> **Note — staff FE wiring gap (surfaced by this test):** **EMR / Clinical Coding** and
-> **Organization & Departments** are wired to the real backend, but **Prescriptions**,
-> **Lab Orders**, and **Invoices** are still *sample-data placeholder* pages in the staff
-> frontend. Their backend APIs exist and are exercised by the backend e2e (and were fixed in
-> the catalog/orders-billing PR), so wiring these three staff pages to those APIs is the
-> natural follow-up.
+> **Now fully wired.** Earlier, **Prescriptions**, **Lab Orders**, and **Invoices** were
+> sample-data placeholder pages. They now read live data from the pharmacy, lab, and billing
+> APIs respectively (`GET .../healthcare_pharmacy|healthcare_lab|healthcare_billing/branches/
+> {id}/…`), each with a status filter and refresh. Wiring them also uncovered that the nginx
+> gateway did not proxy the `healthcare_pharmacy` / `healthcare_lab` module prefixes to the
+> healthcare service (only `healthcare` / `healthcare_scheduling` / `healthcare_billing` were
+> routed) — so browser calls 404'd where the backend e2e, which reaches the service directly
+> over the compose network, had passed. That gateway route was added as part of this change.
 
 ---
 
@@ -78,17 +82,20 @@ ICD-9-CM procedure search, and clinical notes.
 ![EMR clinical coding](../frontend/tests/e2e/screenshots/clinic-journey/06-emr-coding.png)
 
 ### 7. Prescriptions (pharmacy)
-The pharmacy prescriptions page. *(Sample-data placeholder — see the wiring-gap note above.)*
+Live prescriptions from the pharmacy API — medications, issue date, and dispensing status,
+with a status filter and refresh. Backed by `GET .../healthcare_pharmacy/branches/{id}/prescriptions`.
 
 ![Prescriptions](../frontend/tests/e2e/screenshots/clinic-journey/07-prescriptions.png)
 
 ### 8. Lab Orders
-The laboratory orders & results page. *(Sample-data placeholder.)*
+Live lab orders from the lab API — masked patient, panel count, priority, and result progress.
+Backed by `GET .../healthcare_lab/branches/{id}/orders`.
 
 ![Lab orders](../frontend/tests/e2e/screenshots/clinic-journey/08-lab-orders.png)
 
 ### 9. Invoices (billing)
-The billing/invoices page. *(Sample-data placeholder.)*
+Live invoices from the billing API — invoice number, patient, amount, and draft/finalized/void
+status. Backed by `GET .../healthcare_billing/branches/{id}/invoices`.
 
 ![Invoices](../frontend/tests/e2e/screenshots/clinic-journey/09-invoices.png)
 
