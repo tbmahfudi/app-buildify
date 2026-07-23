@@ -8,7 +8,7 @@ already shaped for it (current_version, size/type captured per document).
 import uuid
 from datetime import datetime
 
-from sqlalchemy import BigInteger, Boolean, Column, DateTime, Integer, String, Text
+from sqlalchemy import BigInteger, Boolean, Column, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 
 from ..core.database import Base
@@ -19,6 +19,9 @@ class Document(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     tenant_id = Column(UUID(as_uuid=True), nullable=False, index=True)
+    folder_id = Column(
+        UUID(as_uuid=True), ForeignKey("dms_folders.id", ondelete="SET NULL"), nullable=True
+    )
 
     filename = Column(String(512), nullable=False)
     content_type = Column(String(255), nullable=False, default="application/octet-stream")

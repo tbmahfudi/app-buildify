@@ -18,7 +18,7 @@ from fastapi.responses import JSONResponse
 
 from .config import settings
 from .core.storage import storage
-from .routers import documents
+from .routers import documents, folders
 
 MANIFEST_PATH = Path(settings.MANIFEST_PATH)
 
@@ -112,4 +112,10 @@ app.include_router(
     documents.router,
     prefix=f"{settings.API_PREFIX}/documents",
     tags=["documents"],
+)
+
+app.include_router(
+    folders.router,
+    prefix=f"{settings.API_PREFIX}/folders",
+    tags=["folders"],
 )
