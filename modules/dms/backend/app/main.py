@@ -18,7 +18,7 @@ from fastapi.responses import JSONResponse
 
 from .config import settings
 from .core.storage import storage
-from .routers import acls, audit, documents, folders, shares
+from .routers import acls, audit, documents, folders, search, shares
 
 MANIFEST_PATH = Path(settings.MANIFEST_PATH)
 
@@ -136,4 +136,10 @@ app.include_router(
     acls.router,
     prefix=f"{settings.API_PREFIX}/acls",
     tags=["acls"],
+)
+
+app.include_router(
+    search.router,
+    prefix=f"{settings.API_PREFIX}/search",
+    tags=["search"],
 )
