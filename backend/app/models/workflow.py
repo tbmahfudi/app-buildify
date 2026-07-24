@@ -234,9 +234,13 @@ class WorkflowInstance(Base):
     # tenant_id: NULL = platform-level execution, specific ID = tenant-specific execution
     tenant_id = Column(GUID, ForeignKey("tenants.id"), nullable=True)
 
-    # Associated Record
-    entity_id = Column(GUID, ForeignKey("entity_definitions.id"), nullable=False)
+    # Associated Record. entity_id is set for no-code-entity workflows; for
+    # platform *module* records (e.g. DMS documents) entity_id is NULL and
+    # source_module names the owning module. record_id is the record's id in
+    # either case.
+    entity_id = Column(GUID, ForeignKey("entity_definitions.id"), nullable=True)
     record_id = Column(GUID, nullable=False)  # ID of the record being processed
+    source_module = Column(String(100), nullable=True, index=True)  # e.g. 'dms'
 
     # Current State
     current_state_id = Column(GUID, ForeignKey("workflow_states.id"))

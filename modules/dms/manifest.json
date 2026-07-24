@@ -1,0 +1,67 @@
+{
+  "name": "dms",
+  "display_name": "Document Management",
+  "version": "1.0.0",
+  "description": "Document Management System — secure storage, versioning, search, access control, and approval workflows for SME documents.",
+
+  "module_type": "code",
+  "category": "vertical",
+  "api_prefix": "/api/v1/dms",
+
+  "backend_service_url": "http://dms-module:9003",
+
+  "routes": [
+    {
+      "path": "#/dms/documents",
+      "name": "Documents",
+      "component": "pages/documents.js",
+      "permission": "dms:document:read:company",
+      "menu": {
+        "label": "Documents",
+        "icon": "ph-duotone ph-files",
+        "order": 21,
+        "parent": "dms"
+      }
+    },
+    {
+      "path": "#/dms/search",
+      "name": "Search",
+      "component": "pages/search.js",
+      "permission": "dms:document:read:company",
+      "menu": {
+        "label": "Search",
+        "icon": "ph-duotone ph-magnifying-glass",
+        "order": 22,
+        "parent": "dms"
+      }
+    }
+  ],
+
+  "navigation": {
+    "primary_menu": true,
+    "menu_items": [
+      {
+        "code": "dms",
+        "label": "Documents",
+        "icon": "ph-duotone ph-folder-open",
+        "icon_color": "text-blue-600",
+        "order": 20,
+        "is_parent": true,
+        "permission": null
+      }
+    ],
+    "dashboard_widgets": []
+  },
+
+  "permissions": [
+    { "code": "dms:document:read:company",   "description": "View and download documents" },
+    { "code": "dms:document:write:company",  "description": "Upload documents and new versions" },
+    { "code": "dms:document:delete:company", "description": "Delete documents" },
+    { "code": "dms:folder:read:company",     "description": "Browse folders" },
+    { "code": "dms:folder:manage:company",   "description": "Create, move, and configure folders" },
+    { "code": "dms:share:create:company",    "description": "Create external share links" },
+    { "code": "dms:audit:view:company",      "description": "View the document audit trail" }
+  ],
+
+  "dependencies": []
+}

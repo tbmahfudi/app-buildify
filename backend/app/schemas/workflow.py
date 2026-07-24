@@ -200,7 +200,10 @@ class WorkflowInstanceBase(BaseModel):
     """Base schema for workflow instances"""
 
     workflow_id: UUID
-    entity_id: UUID
+    # entity_id for no-code-entity workflows; source_module for module-owned
+    # records (e.g. 'dms'). Exactly one identifies the record's owner.
+    entity_id: Optional[UUID] = None
+    source_module: Optional[str] = None
     record_id: UUID
     context_data: Dict[str, Any] = Field(default_factory=dict)
 

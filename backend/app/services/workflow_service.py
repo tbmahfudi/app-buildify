@@ -408,6 +408,14 @@ class WorkflowService:
                 status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot start instance of unpublished workflow"
             )
 
+        # A record is identified either by a no-code entity_id or by a module
+        # (source_module) — require exactly one so instances are never orphaned.
+        if not instance_data.entity_id and not instance_data.source_module:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Provide either entity_id (no-code entity) or source_module (platform module).",
+            )
+
         # Find start state
         start_state = (
             self.db.query(WorkflowState)
@@ -465,7 +473,8 @@ class WorkflowService:
 
         return instance
 
-    async def list_instances(self, workflow_id: UUID = None, status: str = None, entity_id: UUID = None):
+    async def list_instances(self, workflow_id: UUID = None, status: str = None, entity_id: UUID = None,
+                             source_module: str = None, record_id: UUID = None):
         """List workflow instances with optional filters"""
         query = self.db.query(WorkflowInstance)
         query = apply_tenant_scope(query, WorkflowInstance, self.current_user)
@@ -478,6 +487,14 @@ class WorkflowService:
 
         if entity_id:
             query = query.filter(WorkflowInstance.entity_id == entity_id)
+
+        # Module-owned records: filter by the owning module and/or the record id
+        # (e.g. all approval instances for one DMS document).
+        if source_module:
+            query = query.filter(WorkflowInstance.source_module == source_module)
+
+        if record_id:
+            query = query.filter(WorkflowInstance.record_id == record_id)
 
         instances = query.order_by(WorkflowInstance.started_at.desc()).all()
         return instances

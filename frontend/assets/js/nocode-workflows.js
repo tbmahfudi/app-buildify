@@ -1600,101 +1600,140 @@ export class WorkflowsPage {
 
   drawTransitions(group) {
     group.innerHTML = '';
+    const SVGNS = 'http://www.w3.org/2000/svg';
     const states = this.currentStates;
     const transitions = this.currentTransitions;
 
     transitions.forEach(transition => {
       const fromState = states.find(s => s.id === transition.from_state_id);
       const toState = states.find(s => s.id === transition.to_state_id);
+      if (!fromState || !toState) return;
 
-      if (fromState && toState) {
-        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-        line.setAttribute('x1', fromState.position_x || 0);
-        line.setAttribute('y1', fromState.position_y || 0);
-        line.setAttribute('x2', toState.position_x || 0);
-        line.setAttribute('y2', toState.position_y || 0);
-        line.setAttribute('stroke', '#6B7280');
-        line.setAttribute('stroke-width', '2');
-        line.setAttribute('marker-end', 'url(#arrowhead)');
-        line.setAttribute('opacity', '0.5');
-        group.appendChild(line);
+      const fx = fromState.position_x || 0, fy = fromState.position_y || 0;
+      const tx = toState.position_x || 0, ty = toState.position_y || 0;
+      const a = this._nodeAnchor(fx, fy, tx, ty);
+      const b = this._nodeAnchor(tx, ty, fx, fy);
 
-        // Add transition label
-        const midX = (fromState.position_x + toState.position_x) / 2;
-        const midY = (fromState.position_y + toState.position_y) / 2;
-        const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-        text.setAttribute('x', midX);
-        text.setAttribute('y', midY - 5);
-        text.setAttribute('fill', '#4B5563');
-        text.setAttribute('font-size', '12');
-        text.setAttribute('text-anchor', 'middle');
-        text.textContent = transition.button_label || transition.name;
-        group.appendChild(text);
+      // Smooth cubic bezier, control points pushed out along each anchor normal.
+      const dist = Math.max(40, Math.hypot(b.x - a.x, b.y - a.y) * 0.4);
+      const c1x = a.x + a.nx * dist, c1y = a.y + a.ny * dist;
+      const c2x = b.x + b.nx * dist, c2y = b.y + b.ny * dist;
+      const d = `M ${a.x} ${a.y} C ${c1x} ${c1y}, ${c2x} ${c2y}, ${b.x} ${b.y}`;
+
+      const path = document.createElementNS(SVGNS, 'path');
+      path.setAttribute('d', d);
+      path.setAttribute('fill', 'none');
+      path.setAttribute('stroke', '#cbd5e1');
+      path.setAttribute('stroke-width', '2');
+      path.setAttribute('marker-end', 'url(#arrowhead)');
+      path.setAttribute('class', 'wf-edge');
+      group.appendChild(path);
+
+      // Label pill at the curve midpoint (bezier t=0.5).
+      const label = transition.button_label || transition.name;
+      if (label) {
+        const mx = 0.125 * a.x + 0.375 * c1x + 0.375 * c2x + 0.125 * b.x;
+        const my = 0.125 * a.y + 0.375 * c1y + 0.375 * c2y + 0.125 * b.y;
+        const text = this.truncateText(label, 18);
+        const pill = document.createElementNS(SVGNS, 'rect');
+        const wpx = text.length * 6.4 + 16;
+        pill.setAttribute('x', mx - wpx / 2);
+        pill.setAttribute('y', my - 10);
+        pill.setAttribute('width', wpx);
+        pill.setAttribute('height', 20);
+        pill.setAttribute('rx', 10);
+        pill.setAttribute('fill', '#ffffff');
+        pill.setAttribute('stroke', '#e2e8f0');
+        group.appendChild(pill);
+
+        const t = document.createElementNS(SVGNS, 'text');
+        t.setAttribute('x', mx);
+        t.setAttribute('y', my + 1);
+        t.setAttribute('text-anchor', 'middle');
+        t.setAttribute('dominant-baseline', 'middle');
+        t.setAttribute('fill', '#475569');
+        t.setAttribute('font-size', '11');
+        t.textContent = text;
+        group.appendChild(t);
       }
     });
   }
 
+  // Modern node card geometry (position_x/y is the node CENTRE).
+  static get NODE() { return { w: 188, h: 64 }; }
+
   drawStateNodes(group, workflowId) {
     group.innerHTML = '';
     const states = this.currentStates;
+    const SVGNS = 'http://www.w3.org/2000/svg';
 
-    const stateColors = {
-      'start': '#10B981',
-      'intermediate': '#3B82F6',
-      'end': '#EF4444',
-      'approval': '#8B5CF6',
-      'condition': '#F59E0B'
+    // Type → accent colour + glyph. Cards are white; the type shows in a chip.
+    const TYPE = {
+      start:        { color: '#10b981', glyph: '▶', label: 'Start' },
+      intermediate: { color: '#3b82f6', glyph: '•', label: 'Step' },
+      approval:     { color: '#8b5cf6', glyph: '✓', label: 'Approval' },
+      condition:    { color: '#f59e0b', glyph: '◆', label: 'Condition' },
+      end:          { color: '#ef4444', glyph: '■', label: 'End' },
     };
+    const { w, h } = WorkflowsPage.NODE;
+    const hw = w / 2, hh = h / 2;
 
     states.forEach(state => {
-      const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      const t = TYPE[state.state_type] || { color: '#64748b', glyph: '•', label: state.state_type || 'State' };
+      const g = document.createElementNS(SVGNS, 'g');
       g.setAttribute('class', 'state-node');
       g.setAttribute('data-state-id', state.id);
       g.setAttribute('transform', `translate(${state.position_x || 0}, ${state.position_y || 0})`);
       g.style.cursor = 'move';
 
-      // Circle
-      const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-      circle.setAttribute('r', '50');
-      circle.setAttribute('fill', stateColors[state.state_type] || '#6B7280');
-      circle.setAttribute('stroke', '#1F2937');
-      circle.setAttribute('stroke-width', '3');
-      g.appendChild(circle);
+      const el = (name, attrs, text) => {
+        const n = document.createElementNS(SVGNS, name);
+        for (const k in attrs) n.setAttribute(k, attrs[k]);
+        if (text != null) n.textContent = text;
+        g.appendChild(n);
+        return n;
+      };
 
-      // Label
-      const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-      text.setAttribute('text-anchor', 'middle');
-      text.setAttribute('dy', '0.3em');
-      text.setAttribute('fill', 'white');
-      text.setAttribute('font-size', '14');
-      text.setAttribute('font-weight', 'bold');
-      text.textContent = this.truncateText(state.label, 15);
-      g.appendChild(text);
+      // Card
+      el('rect', { x: -hw, y: -hh, width: w, height: h, rx: 14, ry: 14,
+        fill: '#ffffff', stroke: '#e2e8f0', 'stroke-width': 1.5, filter: 'url(#wf-node-shadow)' });
+      // Left accent bar (type colour)
+      el('rect', { x: -hw + 6, y: -14, width: 4, height: 28, rx: 2, fill: t.color });
+      // Icon chip
+      el('rect', { x: -hw + 18, y: -16, width: 32, height: 32, rx: 9, fill: t.color });
+      el('text', { x: -hw + 34, y: 1, 'text-anchor': 'middle', 'dominant-baseline': 'middle',
+        fill: '#ffffff', 'font-size': 15 }, t.glyph);
+      // Title
+      el('text', { x: -hw + 62, y: -3, fill: '#1e293b', 'font-size': 13.5, 'font-weight': 600 },
+        this.truncateText(state.label, 16));
+      // Type sub-label
+      el('text', { x: -hw + 62, y: 14, fill: '#94a3b8', 'font-size': 10, 'letter-spacing': 0.4 },
+        t.label.toUpperCase());
 
-      // Add final state indicator
+      // Final-state check badge (top-right)
       if (state.is_final) {
-        const badge = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-        badge.setAttribute('cx', '35');
-        badge.setAttribute('cy', '-35');
-        badge.setAttribute('r', '15');
-        badge.setAttribute('fill', '#1F2937');
-        g.appendChild(badge);
-
-        const badgeText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-        badgeText.setAttribute('x', '35');
-        badgeText.setAttribute('y', '-32');
-        badgeText.setAttribute('text-anchor', 'middle');
-        badgeText.setAttribute('fill', 'white');
-        badgeText.setAttribute('font-size', '12');
-        badgeText.textContent = '✓';
-        g.appendChild(badgeText);
+        el('circle', { cx: hw - 12, cy: -hh + 12, r: 10, fill: '#10b981', stroke: '#fff', 'stroke-width': 2 });
+        el('text', { x: hw - 12, y: -hh + 13, 'text-anchor': 'middle', 'dominant-baseline': 'middle',
+          fill: '#fff', 'font-size': 11, 'font-weight': 700 }, '✓');
       }
 
       group.appendChild(g);
-
-      // Make draggable
       this.makeStateDraggable(g, state, workflowId);
     });
+  }
+
+  // Anchor point on a node's border toward a target centre, plus the outward
+  // normal — used to draw connectors that meet the card edges (not the centre).
+  _nodeAnchor(cx, cy, tx, ty) {
+    const { w, h } = WorkflowsPage.NODE;
+    const hw = w / 2 + 2, hh = h / 2 + 2;
+    const dx = tx - cx, dy = ty - cy;
+    if (Math.abs(dx) >= Math.abs(dy)) {
+      const side = dx >= 0 ? 1 : -1;
+      return { x: cx + side * hw, y: cy, nx: side, ny: 0 };
+    }
+    const side = dy >= 0 ? 1 : -1;
+    return { x: cx, y: cy + side * hh, nx: 0, ny: side };
   }
 
   makeStateDraggable(element, state, workflowId) {
