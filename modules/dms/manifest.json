@@ -22,6 +22,18 @@
         "order": 21,
         "parent": "dms"
       }
+    },
+    {
+      "path": "#/dms/search",
+      "name": "Search",
+      "component": "pages/search.js",
+      "permission": "dms:document:read:company",
+      "menu": {
+        "label": "Search",
+        "icon": "ph-duotone ph-magnifying-glass",
+        "order": 22,
+        "parent": "dms"
+      }
     }
   ],
 
