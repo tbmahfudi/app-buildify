@@ -11,6 +11,16 @@ from ..models.document import Document
 from ..models.folder import Folder
 
 
+# Predefined workspace templates (F1.3): a starter folder tree per team type so
+# new teams start organised. Each value is the list of subfolders created under a
+# root folder named after the template.
+WORKSPACE_TEMPLATES = {
+    "HR": ["Policies", "Contracts", "Onboarding", "Payroll"],
+    "Finance": ["Invoices", "Statements", "Tax", "Budgets"],
+    "Legal": ["Contracts", "Compliance", "Intellectual Property", "Litigation"],
+}
+
+
 class FolderError(Exception):
     """Raised for folder rule violations (mapped to HTTP 4xx by the router)."""
 
@@ -119,6 +129,26 @@ class FolderService:
         except IntegrityError:
             raise FolderError("A folder with that name already exists there", 409)
         return folder
+
+    @staticmethod
+    async def apply_template(
+        db: AsyncSession, *, tenant_id: str, user_id: Optional[str],
+        template_name: str, parent_id: Optional[str],
+    ) -> Folder:
+        """Create a template's folder subtree; returns the created root folder."""
+        subfolders = WORKSPACE_TEMPLATES.get(template_name)
+        if subfolders is None:
+            raise FolderError(f"Unknown workspace template '{template_name}'", 404)
+        root = await FolderService.create(
+            db, tenant_id=tenant_id, user_id=user_id, name=template_name,
+            parent_id=parent_id,
+        )
+        for name in subfolders:
+            await FolderService.create(
+                db, tenant_id=tenant_id, user_id=user_id, name=name,
+                parent_id=str(root.id),
+            )
+        return root
 
     @staticmethod
     async def delete(db: AsyncSession, *, tenant_id: str, folder_id: str) -> None:

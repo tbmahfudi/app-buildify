@@ -62,6 +62,14 @@ class StorageService:
             lambda: self._s3.delete_object(Bucket=self._bucket, Key=key)
         )
 
+    def _get_bytes_sync(self, key: str) -> bytes:
+        resp = self._s3.get_object(Bucket=self._bucket, Key=key)
+        return resp["Body"].read()
+
+    async def get_bytes(self, key: str) -> bytes:
+        """Fetch a blob's bytes server-side (used to assemble zip archives)."""
+        return await run_in_threadpool(self._get_bytes_sync, key)
+
     async def presigned_get_url(
         self, key: str, filename: str, content_type: str
     ) -> str:

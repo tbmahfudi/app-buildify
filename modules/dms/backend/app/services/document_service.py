@@ -96,6 +96,23 @@ class DocumentService:
         return list(rows), int(total or 0)
 
     @staticmethod
+    async def all_in_folder(
+        db: AsyncSession, *, tenant_id: str, folder_id: Optional[str]
+    ) -> List[Document]:
+        """Every active document directly in a folder (root if folder_id is None)."""
+        rows = (
+            await db.execute(
+                select(Document).where(
+                    Document.tenant_id == tenant_id,
+                    Document.is_active.is_(True),
+                    Document.folder_id == folder_id if folder_id is not None
+                    else Document.folder_id.is_(None),
+                ).order_by(Document.filename)
+            )
+        ).scalars().all()
+        return list(rows)
+
+    @staticmethod
     async def get(
         db: AsyncSession, *, tenant_id: str, document_id: str
     ) -> Optional[Document]:

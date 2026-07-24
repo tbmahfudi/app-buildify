@@ -29,3 +29,11 @@ class FolderResponse(BaseModel):
 
 class FolderListResponse(BaseModel):
     folders: List[FolderResponse]
+
+
+class ApplyTemplateRequest(BaseModel):
+    parent_id: Optional[UUID] = None  # where to create the template tree; null = root
+
+
+class TemplateListResponse(BaseModel):
+    templates: dict[str, List[str]]
