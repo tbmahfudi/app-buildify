@@ -78,6 +78,7 @@ export default class DocumentsPage {
                 <button id="dms-new-folder" class="dms-btn">＋ New folder</button>
                 <select id="dms-template" class="dms-btn"><option value="">Apply template…</option></select>
                 <button id="dms-zip" class="dms-btn" title="Download this folder as a zip">⤓ Folder zip</button>
+                <button id="dms-expiring" class="dms-btn" title="Documents expiring soon">⏰ Expiring</button>
                 <button id="dms-activity" class="dms-btn" title="Recent activity (audit trail)">🕘 Activity</button>
               </div>
             </div>
@@ -216,10 +217,19 @@ export default class DocumentsPage {
                 </td></tr>`;
         }
 
+        function expiryBadge(iso) {
+            if (!iso) return '';
+            const ms = new Date(iso).getTime() - Date.now();
+            const days = Math.ceil(ms / 86400000);
+            const color = days <= 0 ? '#dc2626' : (days <= 7 ? '#d97706' : '#94a3b8');
+            const label = days <= 0 ? 'expired' : `${days}d`;
+            return ` <span title="Expires ${new Date(iso).toLocaleDateString()}" style="color:${color};font-size:.72rem;">⏰${label}</span>`;
+        }
+
         function docRow(d) {
             const tags = (d.tags || []).map((t) => `<span class="dms-tag">${esc(t)}</span>`).join('') || '';
             return `<tr class="dms-row" style="border-bottom:1px solid #f1f5f9;">
-                <td style="padding:.5rem;">📄 ${esc(d.filename)}${lock(d.is_private)}</td>
+                <td style="padding:.5rem;">📄 ${esc(d.filename)}${lock(d.is_private)}${expiryBadge(d.expires_at)}</td>
                 <td style="padding:.5rem;">${tags}</td>
                 <td style="padding:.5rem;white-space:nowrap;">${fmtBytes(d.size_bytes)}</td>
                 <td style="padding:.5rem;">v${d.current_version}</td>
@@ -230,6 +240,7 @@ export default class DocumentsPage {
                   <span class="dms-link" data-tags="${d.id}" data-name="${esc(d.filename)}">Tags</span> ·
                   <span class="dms-link" data-share="${d.id}" data-name="${esc(d.filename)}">Share</span> ·
                   <span class="dms-link" data-appr="${d.id}" data-name="${esc(d.filename)}">Approvals</span> ·
+                  <span class="dms-link" data-exp="${d.id}" data-name="${esc(d.filename)}" data-exp-at="${d.expires_at || ''}">Expiry</span> ·
                   <span class="dms-link" data-dperm="${d.id}" data-name="${esc(d.filename)}" data-priv="${d.is_private ? 1 : ''}">Permissions</span> ·
                   <span class="dms-link" data-dmove="${d.id}">Move</span> ·
                   <span class="dms-link" data-ddel="${d.id}" data-name="${esc(d.filename)}" style="color:#dc2626;">Delete</span>
@@ -253,6 +264,7 @@ export default class DocumentsPage {
             q('[data-tags]').forEach((el) => el.addEventListener('click', () => editTags(el.dataset.tags, el.dataset.name)));
             q('[data-share]').forEach((el) => el.addEventListener('click', () => shareDialog(el.dataset.share, el.dataset.name)));
             q('[data-appr]').forEach((el) => el.addEventListener('click', () => approvalsDialog(el.dataset.appr, el.dataset.name)));
+            q('[data-exp]').forEach((el) => el.addEventListener('click', () => expiryDialog(el.dataset.exp, el.dataset.name, el.dataset.expAt)));
             q('[data-dperm]').forEach((el) => el.addEventListener('click', () => permissionsDialog('document', el.dataset.dperm, el.dataset.name, !!el.dataset.priv)));
             q('[data-dmove]').forEach((el) => el.addEventListener('click', () => moveNode(el.dataset.dmove, 'doc')));
             q('[data-ddel]').forEach((el) => el.addEventListener('click', () => deleteDoc(el.dataset.ddel, el.dataset.name)));
@@ -632,6 +644,54 @@ export default class DocumentsPage {
             });
         }
 
+        // ---- expiry ----------------------------------------------------------
+        const EXPIRY = '/api/v1/dms/expiry';
+        async function expiryDialog(docId, name, currentIso) {
+            const cur = currentIso ? new Date(currentIso).toISOString().slice(0, 10) : '';
+            modal(`Expiry — ${name}`, `
+                <label style="font-size:.85rem;color:#475569;">Expiry date (blank = none)</label>
+                <input id="dms-exp-in" type="date" class="dms-in" style="margin:.35rem 0 1rem;" value="${cur}" />
+                <div id="dms-exp-err" style="color:#dc2626;font-size:.8rem;margin-bottom:.6rem;"></div>
+                <div style="display:flex;justify-content:space-between;">
+                  <button id="dms-exp-clear" class="dms-btn">Clear</button>
+                  <button id="dms-exp-save" class="dms-btn dms-btn-primary">Save</button>
+                </div>`, (dialog, close) => {
+                async function save(val) {
+                    try {
+                        await api(`${EXPIRY}/documents/${docId}`, {
+                            method: 'PUT', headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ expires_at: val }),
+                        });
+                        setStatus('Expiry updated ✓');
+                        close();
+                        refresh();
+                    } catch (err) { dialog.querySelector('#dms-exp-err').textContent = err.message; }
+                }
+                dialog.querySelector('#dms-exp-save').addEventListener('click', () => {
+                    const v = dialog.querySelector('#dms-exp-in').value;
+                    save(v ? new Date(v + 'T00:00:00Z').toISOString() : null);
+                });
+                dialog.querySelector('#dms-exp-clear').addEventListener('click', () => save(null));
+            });
+        }
+
+        async function expiringDialog() {
+            modal('Expiring soon (30 days)', '<div id="dms-exp-list" style="font-size:.85rem;">Loading…</div>', (dialog) => {
+                const el = dialog.querySelector('#dms-exp-list');
+                api(`${EXPIRY}/soon?within_days=30`).then((docs) => {
+                    if (!docs.length) { el.innerHTML = '<span style="color:#64748b;">Nothing expiring in the next 30 days.</span>'; return; }
+                    el.innerHTML = docs.map((d) => {
+                        const days = Math.ceil((new Date(d.expires_at).getTime() - Date.now()) / 86400000);
+                        const color = days <= 0 ? '#dc2626' : (days <= 7 ? '#d97706' : '#475569');
+                        return `<div style="display:flex;justify-content:space-between;border-bottom:1px solid #f1f5f9;padding:.35rem 0;">
+                            <span>📄 ${esc(d.filename)}</span>
+                            <span style="color:${color};">${days <= 0 ? 'expired' : days + ' days'} · ${new Date(d.expires_at).toLocaleDateString()}</span>
+                          </div>`;
+                    }).join('');
+                }).catch((err) => { el.innerHTML = `<span style="color:#dc2626;">${esc(err.message)}</span>`; });
+            });
+        }
+
         // ---- activity (audit trail) -----------------------------------------
         async function activityDialog() {
             modal('Recent activity', '<div id="dms-audit" style="font-size:.82rem;">Loading…</div>', (dialog) => {
@@ -665,6 +725,7 @@ export default class DocumentsPage {
         }
 
         // ---- toolbar ---------------------------------------------------------
+        container.querySelector('#dms-expiring').addEventListener('click', expiringDialog);
         container.querySelector('#dms-activity').addEventListener('click', activityDialog);
 
         container.querySelector('#dms-new-folder').addEventListener('click', () => {
