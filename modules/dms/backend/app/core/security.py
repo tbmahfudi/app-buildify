@@ -6,7 +6,7 @@ backend signs with, so platform sessions work transparently. Claims of interest
 (set in backend/app/routers/auth.py): `sub` (user id), `tenant_id`.
 """
 
-from typing import AsyncGenerator, Optional
+from typing import AsyncGenerator, List, Optional
 
 from fastapi import Depends, Header, HTTPException, status
 from jose import JWTError, jwt
@@ -17,10 +17,31 @@ from .database import get_tenant_db
 
 
 class Principal:
-    def __init__(self, user_id: str, tenant_id: Optional[str], token: str):
+    def __init__(self, user_id: str, tenant_id: Optional[str], token: str,
+                 permissions: Optional[List[str]] = None):
         self.user_id = user_id
         self.tenant_id = tenant_id
         self.token = token
+        # RBAC permission codes from the platform JWT (User→Group→Role→Permission).
+        self.permissions = set(permissions or [])
+
+    def has_permission(self, required_code: str) -> bool:
+        """True if a granted code satisfies `required_code`.
+
+        Format: ``<resource>:<action>:<scope>``. A ``*`` segment on the *granted*
+        side matches any value; wildcards are only honored on the granted side.
+        Mirrors the platform's `matches_permission` (backend dependencies.py).
+        """
+        if required_code in self.permissions:
+            return True
+        req = required_code.split(":")
+        for granted in self.permissions:
+            if "*" not in granted:
+                continue
+            g = granted.split(":")
+            if len(g) == len(req) and all(gs == "*" or gs == rs for gs, rs in zip(g, req)):
+                return True
+        return False
 
 
 def _unauthorized(detail: str) -> HTTPException:
@@ -56,7 +77,11 @@ async def get_principal(authorization: Optional[str] = Header(None)) -> Principa
             status_code=status.HTTP_403_FORBIDDEN,
             detail="A tenant-scoped session is required to access documents.",
         )
-    return Principal(user_id=str(user_id), tenant_id=str(tenant_id), token=token)
+    perms = payload.get("permissions") or []
+    if not isinstance(perms, list):
+        perms = []
+    return Principal(user_id=str(user_id), tenant_id=str(tenant_id), token=token,
+                     permissions=perms)
 
 
 async def tenant_session(
@@ -68,15 +93,20 @@ async def tenant_session(
 
 
 def require_permission(code: str):
-    """Permission guard.
+    """Permission guard (E3): 403 unless the caller's JWT grants `code`.
 
-    Phase 0: authenticates the caller and yields the principal. Full RBAC
-    enforcement (checking `code` against the platform-seeded permissions) lands
-    in Phase 2 (E3); the manifest already declares the permission codes so the
-    platform seeds them on enable.
+    Permissions are seeded via the platform RBAC chain (User→Group→Role→
+    Permission) — see backend/seed_dms_rbac.py — and travel in the JWT
+    `permissions[]` claim, so this standalone module enforces without a DB call.
+    Grants take effect on the caller's next login (token refresh).
     """
 
     async def _guard(principal: Principal = Depends(get_principal)) -> Principal:
+        if not principal.has_permission(code):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Missing required permission: {code}",
+            )
         return principal
 
     return _guard
