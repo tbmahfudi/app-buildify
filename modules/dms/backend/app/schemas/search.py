@@ -27,3 +27,22 @@ class SearchResponse(BaseModel):
     total: int
     page: int
     page_size: int
+
+
+class SavedSearchCreate(BaseModel):
+    name: str = Field(..., min_length=1, max_length=200)
+    params: Dict[str, Any] = Field(default_factory=dict)
+
+
+class SavedSearchResponse(BaseModel):
+    id: UUID
+    name: str
+    params: Dict[str, Any]
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class SavedSearchListResponse(BaseModel):
+    saved: List[SavedSearchResponse]

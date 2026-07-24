@@ -8,6 +8,7 @@
  */
 
 const SEARCH = '/api/v1/dms/search';
+const SAVED = '/api/v1/dms/search/saved';
 const DOCS = '/api/v1/dms/documents';
 
 function authHeaders() {
@@ -66,7 +67,10 @@ export default class SearchPage {
                   <option value="name">Name</option>
                   <option value="size">Size</option>
                 </select></label>
+              <span style="flex:1;"></span>
+              <button id="dms-save" title="Save current search" style="padding:.3rem .6rem;border:1px solid #cbd5e1;background:#fff;border-radius:6px;cursor:pointer;">☆ Save search</button>
             </div>
+            <div id="dms-saved-list" style="margin-bottom:1rem;display:flex;gap:.4rem;flex-wrap:wrap;align-items:center;"></div>
             <div id="dms-sr-status" style="color:#64748b;font-size:.85rem;margin-bottom:.5rem;"></div>
             <div id="dms-sr"></div>
           </div>
@@ -84,15 +88,27 @@ export default class SearchPage {
         const statusEl = el('#dms-sr-status');
         const resultsEl = el('#dms-sr');
 
+        // Current form state as a plain object (what we save / restore).
+        function currentParams() {
+            const p = {};
+            const q = el('#dms-q').value.trim(); if (q) p.q = q;
+            const tag = el('#dms-f-tag').value.trim(); if (tag) p.tag = tag;
+            const type = el('#dms-f-type').value; if (type) p.type = type;
+            p.sort = el('#dms-f-sort').value;
+            return p;
+        }
+
+        function applyParams(p) {
+            el('#dms-q').value = p.q || '';
+            el('#dms-f-tag').value = p.tag || '';
+            el('#dms-f-type').value = p.type || '';
+            el('#dms-f-sort').value = p.sort || 'relevance';
+        }
+
         async function runSearch() {
+            const p = currentParams();
             const params = new URLSearchParams();
-            const q = el('#dms-q').value.trim();
-            if (q) params.set('q', q);
-            const tag = el('#dms-f-tag').value.trim();
-            if (tag) params.set('tag', tag);
-            const type = el('#dms-f-type').value;
-            if (type) params.set('type', type);
-            params.set('sort', el('#dms-f-sort').value);
+            Object.entries(p).forEach(([k, v]) => params.set(k, v));
             params.set('page_size', '50');
 
             statusEl.textContent = 'Searching…';
@@ -136,6 +152,48 @@ export default class SearchPage {
         ['#dms-f-tag', '#dms-f-type', '#dms-f-sort'].forEach((id) =>
             el(id).addEventListener('change', runSearch));
 
+        // ---- saved searches (chips; a <select> would be swallowed by the
+        // shell's FlexSelect auto-upgrade, so we render clickable chips instead) --
+        const savedListEl = el('#dms-saved-list');
+        async function loadSaved() {
+            try {
+                const res = await fetch(SAVED, { headers: authHeaders() });
+                if (!res.ok) return;
+                const { saved } = await res.json();
+                if (!saved.length) { savedListEl.innerHTML = ''; return; }
+                savedListEl.innerHTML = '<span style="color:#94a3b8;font-size:.8rem;">Saved:</span>' +
+                    saved.map((s) => `
+                        <span style="display:inline-flex;align-items:center;gap:.3rem;background:#f1f5f9;border-radius:14px;padding:.15rem .55rem;font-size:.8rem;">
+                          <span class="dms-slink" data-load='${encodeURIComponent(JSON.stringify(s.params || {}))}'>${esc(s.name)}</span>
+                          <span class="dms-slink" data-del="${s.id}" style="color:#dc2626;" title="Delete">✕</span>
+                        </span>`).join('');
+                savedListEl.querySelectorAll('[data-load]').forEach((c) =>
+                    c.addEventListener('click', () => {
+                        applyParams(JSON.parse(decodeURIComponent(c.dataset.load)));
+                        runSearch();
+                    }));
+                savedListEl.querySelectorAll('[data-del]').forEach((c) =>
+                    c.addEventListener('click', async () => {
+                        try { await fetch(`${SAVED}/${c.dataset.del}`, { method: 'DELETE', headers: authHeaders() }); loadSaved(); }
+                        catch (err) { statusEl.textContent = err.message; }
+                    }));
+            } catch { /* non-fatal */ }
+        }
+        el('#dms-save').addEventListener('click', async () => {
+            const name = prompt('Name this search:');
+            if (!name) return;
+            try {
+                await fetch(SAVED, {
+                    method: 'POST',
+                    headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, params: currentParams() }),
+                });
+                await loadSaved();
+                statusEl.textContent = `Saved “${name}” ✓`;
+            } catch (err) { statusEl.textContent = err.message; }
+        });
+
+        await loadSaved();
         el('#dms-q').focus();
     }
 }

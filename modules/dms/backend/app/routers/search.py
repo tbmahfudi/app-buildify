@@ -4,18 +4,29 @@ Full-text + filtered search over documents the caller may view. Gated by
 dms:document:read:company; ACL visibility is applied on top.
 """
 
+import uuid
 from datetime import datetime
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..core.security import Principal, require_permission, tenant_session
-from ..schemas.search import SearchResponse, SearchResult
+from ..models.saved_search import DmsSavedSearch
+from ..schemas.search import (
+    SavedSearchCreate,
+    SavedSearchListResponse,
+    SavedSearchResponse,
+    SearchResponse,
+    SearchResult,
+)
 from ..services.acl_service import AclService
 from ..services.search_service import SearchService
 
 router = APIRouter()
+
+_READ = require_permission("dms:document:read:company")
 
 
 @router.get("", response_model=SearchResponse)
@@ -45,3 +56,54 @@ async def search(
         results=[SearchResult(**r) for r in results],
         total=total, page=page, page_size=page_size,
     )
+
+
+# --- saved searches (per user) ----------------------------------------------
+@router.get("/saved", response_model=SavedSearchListResponse)
+async def list_saved(
+    principal: Principal = Depends(_READ),
+    db: AsyncSession = Depends(tenant_session),
+):
+    rows = (
+        await db.execute(
+            select(DmsSavedSearch).where(
+                DmsSavedSearch.tenant_id == principal.tenant_id,
+                DmsSavedSearch.user_id == principal.user_id,
+            ).order_by(DmsSavedSearch.created_at.desc())
+        )
+    ).scalars().all()
+    return SavedSearchListResponse(saved=[SavedSearchResponse.model_validate(r) for r in rows])
+
+
+@router.post("/saved", response_model=SavedSearchResponse, status_code=status.HTTP_201_CREATED)
+async def create_saved(
+    body: SavedSearchCreate,
+    principal: Principal = Depends(_READ),
+    db: AsyncSession = Depends(tenant_session),
+):
+    row = DmsSavedSearch(
+        id=uuid.uuid4(), tenant_id=principal.tenant_id, user_id=principal.user_id,
+        name=body.name.strip(), params=body.params or {},
+    )
+    db.add(row)
+    await db.flush()
+    return SavedSearchResponse.model_validate(row)
+
+
+@router.delete("/saved/{saved_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_saved(
+    saved_id: str,
+    principal: Principal = Depends(_READ),
+    db: AsyncSession = Depends(tenant_session),
+):
+    row = await db.scalar(
+        select(DmsSavedSearch).where(
+            DmsSavedSearch.id == saved_id,
+            DmsSavedSearch.tenant_id == principal.tenant_id,
+            DmsSavedSearch.user_id == principal.user_id,
+        )
+    )
+    if not row:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Saved search not found")
+    await db.delete(row)
+    await db.flush()
