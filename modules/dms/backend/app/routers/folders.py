@@ -19,6 +19,7 @@ from ..schemas.folder import (
     FolderResponse,
     TemplateListResponse,
 )
+from ..services.audit_service import AuditService
 from ..services.document_service import DocumentService
 from ..services.folder_service import (
     WORKSPACE_TEMPLATES,
@@ -52,6 +53,11 @@ async def apply_template(
         )
     except FolderError as e:
         raise HTTPException(e.status_code, str(e))
+    await AuditService.safe_record(
+        db, tenant_id=principal.tenant_id, actor_id=principal.user_id,
+        action="folder.template.apply", entity_type="folder", entity_id=str(root.id),
+        detail={"template": template_name},
+    )
     return FolderResponse.model_validate(root)
 
 
@@ -68,6 +74,11 @@ async def create_folder(
         )
     except FolderError as e:
         raise HTTPException(e.status_code, str(e))
+    await AuditService.safe_record(
+        db, tenant_id=principal.tenant_id, actor_id=principal.user_id,
+        action="folder.create", entity_type="folder", entity_id=str(folder.id),
+        detail={"name": folder.name, "parent_id": str(body.parent_id) if body.parent_id else None},
+    )
     return FolderResponse.model_validate(folder)
 
 
@@ -113,6 +124,11 @@ async def download_folder_zip(
             zf.writestr(name, data)
     buf.seek(0)
 
+    await AuditService.safe_record(
+        db, tenant_id=principal.tenant_id, actor_id=principal.user_id,
+        action="folder.download", entity_type="folder", entity_id=str(folder_id),
+        detail={"documents": len(docs)},
+    )
     safe = folder.name.replace('"', "")
     return StreamingResponse(
         buf,
@@ -164,3 +180,7 @@ async def delete_folder(
         await FolderService.delete(db, tenant_id=principal.tenant_id, folder_id=folder_id)
     except FolderError as e:
         raise HTTPException(e.status_code, str(e))
+    await AuditService.safe_record(
+        db, tenant_id=principal.tenant_id, actor_id=principal.user_id,
+        action="folder.delete", entity_type="folder", entity_id=str(folder_id),
+    )

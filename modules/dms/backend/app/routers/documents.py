@@ -17,6 +17,7 @@ from ..schemas.document import (
     UpdateMetadataRequest,
     VersionResponse,
 )
+from ..services.audit_service import AuditService
 from ..services.document_service import DocumentError, DocumentService
 
 router = APIRouter()
@@ -50,6 +51,11 @@ async def upload_document(
         )
     except DocumentError as e:
         raise HTTPException(e.status_code, str(e))
+    await AuditService.safe_record(
+        db, tenant_id=principal.tenant_id, actor_id=principal.user_id,
+        action="document.upload", entity_type="document", entity_id=str(doc.id),
+        detail={"filename": doc.filename, "folder_id": folder_id, "size_bytes": doc.size_bytes},
+    )
     return DocumentResponse.model_validate(doc)
 
 
@@ -114,6 +120,11 @@ async def download_document(
     )
     if not url:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Document or version not found")
+    await AuditService.safe_record(
+        db, tenant_id=principal.tenant_id, actor_id=principal.user_id,
+        action="document.download", entity_type="document", entity_id=str(document_id),
+        detail={"version": version} if version else {},
+    )
     return DownloadLinkResponse(url=url, expires_in=settings.PRESIGN_EXPIRY_SECONDS)
 
 
@@ -136,6 +147,11 @@ async def upload_new_version(
         )
     except DocumentError as e:
         raise HTTPException(e.status_code, str(e))
+    await AuditService.safe_record(
+        db, tenant_id=principal.tenant_id, actor_id=principal.user_id,
+        action="document.version.add", entity_type="document", entity_id=str(document_id),
+        detail={"version": doc.current_version, "comment": change_comment},
+    )
     return DocumentResponse.model_validate(doc)
 
 
@@ -168,6 +184,11 @@ async def restore_version(
         )
     except DocumentError as e:
         raise HTTPException(e.status_code, str(e))
+    await AuditService.safe_record(
+        db, tenant_id=principal.tenant_id, actor_id=principal.user_id,
+        action="document.version.restore", entity_type="document", entity_id=str(document_id),
+        detail={"restored_from": version_no, "new_version": doc.current_version},
+    )
     return DocumentResponse.model_validate(doc)
 
 
@@ -185,6 +206,11 @@ async def move_document(
         )
     except DocumentError as e:
         raise HTTPException(e.status_code, str(e))
+    await AuditService.safe_record(
+        db, tenant_id=principal.tenant_id, actor_id=principal.user_id,
+        action="document.move", entity_type="document", entity_id=str(document_id),
+        detail={"folder_id": str(body.folder_id) if body.folder_id else None},
+    )
     return DocumentResponse.model_validate(doc)
 
 
@@ -216,3 +242,7 @@ async def delete_document(
     )
     if not ok:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Document not found")
+    await AuditService.safe_record(
+        db, tenant_id=principal.tenant_id, actor_id=principal.user_id,
+        action="document.delete", entity_type="document", entity_id=str(document_id),
+    )
