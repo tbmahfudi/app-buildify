@@ -64,12 +64,14 @@ async def list_instances(
     workflow_id: Optional[UUID] = Query(None),
     status: Optional[str] = Query(None),
     entity_id: Optional[UUID] = Query(None),
+    source_module: Optional[str] = Query(None, description="Owning module, e.g. 'dms'"),
+    record_id: Optional[UUID] = Query(None, description="Module record id, e.g. a document id"),
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
     """List all workflow instances"""
     service = WorkflowService(db, current_user)
-    return await service.list_instances(workflow_id, status, entity_id)
+    return await service.list_instances(workflow_id, status, entity_id, source_module, record_id)
 
 
 @router.get("/{workflow_id}", response_model=WorkflowDefinitionResponse)
