@@ -47,3 +47,15 @@ async def get_tenant_db(tenant_id: str) -> AsyncGenerator[AsyncSession, None]:
                 {"tid": str(tenant_id)},
             )
             yield session
+
+
+async def get_untenanted_db() -> AsyncGenerator[AsyncSession, None]:
+    """Yield a session with NO tenant GUC — for cross-tenant lookups by an
+    unguessable key (public share tokens), where the tenant is unknown until the
+    row is found. Callers MUST scope every subsequent query by the tenant_id they
+    read from that first row. RLS is bypassed by the DMS DB role anyway, so the
+    code-level tenant filter is the real guard (see tenant_isolation notes).
+    """
+    async with AsyncSessionLocal() as session:
+        async with session.begin():
+            yield session
