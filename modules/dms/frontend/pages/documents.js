@@ -229,6 +229,7 @@ export default class DocumentsPage {
                   <span class="dms-link" data-vers="${d.id}" data-name="${esc(d.filename)}">Versions</span> ·
                   <span class="dms-link" data-tags="${d.id}" data-name="${esc(d.filename)}">Tags</span> ·
                   <span class="dms-link" data-share="${d.id}" data-name="${esc(d.filename)}">Share</span> ·
+                  <span class="dms-link" data-appr="${d.id}" data-name="${esc(d.filename)}">Approvals</span> ·
                   <span class="dms-link" data-dperm="${d.id}" data-name="${esc(d.filename)}" data-priv="${d.is_private ? 1 : ''}">Permissions</span> ·
                   <span class="dms-link" data-dmove="${d.id}">Move</span> ·
                   <span class="dms-link" data-ddel="${d.id}" data-name="${esc(d.filename)}" style="color:#dc2626;">Delete</span>
@@ -251,6 +252,7 @@ export default class DocumentsPage {
             q('[data-vers]').forEach((el) => el.addEventListener('click', () => showVersions(el.dataset.vers, el.dataset.name)));
             q('[data-tags]').forEach((el) => el.addEventListener('click', () => editTags(el.dataset.tags, el.dataset.name)));
             q('[data-share]').forEach((el) => el.addEventListener('click', () => shareDialog(el.dataset.share, el.dataset.name)));
+            q('[data-appr]').forEach((el) => el.addEventListener('click', () => approvalsDialog(el.dataset.appr, el.dataset.name)));
             q('[data-dperm]').forEach((el) => el.addEventListener('click', () => permissionsDialog('document', el.dataset.dperm, el.dataset.name, !!el.dataset.priv)));
             q('[data-dmove]').forEach((el) => el.addEventListener('click', () => moveNode(el.dataset.dmove, 'doc')));
             q('[data-ddel]').forEach((el) => el.addEventListener('click', () => deleteDoc(el.dataset.ddel, el.dataset.name)));
@@ -542,6 +544,91 @@ export default class DocumentsPage {
                     } catch (err) { errEl.textContent = err.message; }
                 });
                 refreshGrants();
+            });
+        }
+
+        // ---- approvals (platform workflow engine) ---------------------------
+        const APPROVALS = '/api/v1/dms/approvals';
+        async function approvalsDialog(docId, name) {
+            const body = `
+                <div id="dms-appr-current" style="font-size:.85rem;margin-bottom:1rem;">Loading…</div>
+                <div style="border-top:1px solid #e2e8f0;padding-top:.7rem;">
+                  <div style="font-size:.8rem;color:#475569;margin-bottom:.35rem;">Start an approval</div>
+                  <div style="display:flex;gap:.4rem;flex-wrap:wrap;align-items:center;">
+                    <select id="dms-appr-wf" class="dms-in" style="flex:1;min-width:200px;"><option value="">Select a workflow…</option></select>
+                    <button id="dms-appr-start" class="dms-btn dms-btn-primary">Start</button>
+                  </div>
+                  <div id="dms-appr-err" style="color:#dc2626;font-size:.8rem;margin-top:.4rem;"></div>
+                </div>`;
+            modal(`Approvals — ${name}`, body, (dialog) => {
+                const errEl = dialog.querySelector('#dms-appr-err');
+                const curEl = dialog.querySelector('#dms-appr-current');
+
+                async function refreshInstances() {
+                    try {
+                        const instances = await api(`${APPROVALS}/documents/${docId}`);
+                        if (!instances.length) {
+                            curEl.innerHTML = '<span style="color:#64748b;">No approvals started yet.</span>';
+                            return;
+                        }
+                        curEl.innerHTML = instances.map((inst, i) => {
+                            const done = inst.status !== 'active';
+                            const color = inst.status === 'completed' ? '#16a34a' : (done ? '#dc2626' : '#2563eb');
+                            return `<div style="border:1px solid #e2e8f0;border-radius:8px;padding:.55rem .7rem;margin-bottom:.5rem;" data-inst="${inst.id}">
+                                <div style="display:flex;justify-content:space-between;">
+                                  <span>Approval #${i + 1}</span>
+                                  <span style="color:${color};font-weight:600;text-transform:capitalize;">${esc(inst.status)}</span>
+                                </div>
+                                <div class="dms-appr-actions" style="margin-top:.4rem;"></div>
+                              </div>`;
+                        }).join('');
+                        // Load available transitions for each active instance.
+                        for (const inst of instances) {
+                            if (inst.status !== 'active') continue;
+                            const holder = curEl.querySelector(`[data-inst="${inst.id}"] .dms-appr-actions`);
+                            try {
+                                const trans = await api(`${APPROVALS}/instances/${inst.id}/transitions`);
+                                if (!trans.length) { holder.innerHTML = '<span style="color:#94a3b8;font-size:.8rem;">Awaiting configuration…</span>'; continue; }
+                                holder.innerHTML = trans.map((t) =>
+                                    `<button class="dms-btn" data-exec="${t.id}" data-inst="${inst.id}" style="margin:0 .3rem .3rem 0;">${esc(t.button_label || t.name)}</button>`).join('');
+                                holder.querySelectorAll('[data-exec]').forEach((btn) =>
+                                    btn.addEventListener('click', async () => {
+                                        const comment = prompt('Comment (optional):') || '';
+                                        try {
+                                            await api(`${APPROVALS}/instances/${btn.dataset.inst}/execute`, {
+                                                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                                                body: JSON.stringify({ transition_id: btn.dataset.exec, comment }),
+                                            });
+                                            setStatus('Approval updated ✓');
+                                            refreshInstances();
+                                        } catch (err) { errEl.textContent = err.message; }
+                                    }));
+                            } catch (err) { holder.innerHTML = `<span style="color:#dc2626;font-size:.8rem;">${esc(err.message)}</span>`; }
+                        }
+                    } catch (err) { curEl.innerHTML = `<span style="color:#dc2626;">${esc(err.message)}</span>`; }
+                }
+
+                // Populate workflow picker.
+                api(`${APPROVALS}/workflows`).then((wfs) => {
+                    dialog.querySelector('#dms-appr-wf').innerHTML = '<option value="">Select a workflow…</option>' +
+                        wfs.map((w) => `<option value="${w.id}">${esc(w.name)}</option>`).join('');
+                }).catch((err) => { errEl.textContent = err.message; });
+
+                dialog.querySelector('#dms-appr-start').addEventListener('click', async () => {
+                    errEl.textContent = '';
+                    const wf = dialog.querySelector('#dms-appr-wf').value;
+                    if (!wf) { errEl.textContent = 'Pick a workflow first.'; return; }
+                    try {
+                        await api(`${APPROVALS}/documents/${docId}/start`, {
+                            method: 'POST', headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ workflow_id: wf }),
+                        });
+                        setStatus('Approval started ✓');
+                        refreshInstances();
+                    } catch (err) { errEl.textContent = err.message; }
+                });
+
+                refreshInstances();
             });
         }
 
