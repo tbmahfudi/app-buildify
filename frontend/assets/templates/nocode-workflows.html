@@ -104,13 +104,26 @@
 
     <!-- Canvas Container -->
     <div class="px-6">
-      <div class="bg-white rounded-lg shadow-sm border border-gray-200 relative" style="height: calc(100vh - 280px); min-height: 500px;">
+      <div class="rounded-xl shadow-sm border border-gray-200 relative overflow-hidden" style="height: calc(100vh - 280px); min-height: 500px; background:#f8fafc;">
         <svg id="workflowCanvas" class="absolute inset-0 w-full h-full" style="cursor: grab;">
           <defs>
-            <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
-              <polygon points="0 0, 10 3, 0 6" fill="#6B7280" />
+            <!-- Dot grid background -->
+            <pattern id="wf-grid" width="22" height="22" patternUnits="userSpaceOnUse">
+              <circle cx="1.5" cy="1.5" r="1.5" fill="#e2e8f0" />
+            </pattern>
+            <!-- Arrowhead for connectors -->
+            <marker id="arrowhead" markerWidth="9" markerHeight="9" refX="7.5" refY="3" orient="auto" markerUnits="userSpaceOnUse">
+              <path d="M0,0 L8,3 L0,6 Z" fill="#94a3b8" />
             </marker>
+            <marker id="arrowhead-active" markerWidth="9" markerHeight="9" refX="7.5" refY="3" orient="auto" markerUnits="userSpaceOnUse">
+              <path d="M0,0 L8,3 L0,6 Z" fill="#6366f1" />
+            </marker>
+            <!-- Soft drop shadow for node cards -->
+            <filter id="wf-node-shadow" x="-20%" y="-20%" width="140%" height="140%">
+              <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#0f172a" flood-opacity="0.10" />
+            </filter>
           </defs>
+          <rect x="-5000" y="-5000" width="10000" height="10000" fill="url(#wf-grid)" />
           <g id="transitionLines"></g>
           <g id="stateNodes"></g>
         </svg>
