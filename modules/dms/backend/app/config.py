@@ -30,6 +30,10 @@ class Settings:
     # Core platform integration (registration + audit/notification callbacks)
     CORE_PLATFORM_URL: str = os.getenv("CORE_PLATFORM_URL", "http://core-platform:8000")
 
+    # Shared secret guarding internal batch endpoints (e.g. the expiry-reminder
+    # scan the platform scheduler invokes as a webhook). Not user-facing.
+    INTERNAL_SECRET: str = os.getenv("DMS_INTERNAL_SECRET", "dev-dms-internal-secret")
+
     # Blob storage (S3 / MinIO)
     STORAGE_ENDPOINT_URL: str = os.getenv("STORAGE_ENDPOINT_URL", "http://minio:9000")
     STORAGE_ACCESS_KEY: str = os.getenv("STORAGE_ACCESS_KEY", "minioadmin")

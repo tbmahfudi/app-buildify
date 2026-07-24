@@ -23,6 +23,7 @@ class DocumentResponse(BaseModel):
     )
     uploaded_by: Optional[UUID] = None
     is_private: bool = False
+    expires_at: Optional[datetime] = None
     created_at: datetime
     updated_at: datetime
 

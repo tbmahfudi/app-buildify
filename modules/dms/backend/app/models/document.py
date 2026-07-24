@@ -40,6 +40,10 @@ class Document(Base):
     uploaded_by = Column(UUID(as_uuid=True), nullable=True)
     is_active = Column(Boolean, nullable=False, default=True)
     is_private = Column(Boolean, nullable=False, default=False)
+    # Expiry (E4): when the document expires, and the smallest reminder window
+    # (30/7/1/0 days) already fired — so the daily scan reminds once per window.
+    expires_at = Column(DateTime(timezone=True), nullable=True)
+    expiry_reminder_window = Column(Integer, nullable=True)
     created_at = Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
     updated_at = Column(
         DateTime(timezone=True),

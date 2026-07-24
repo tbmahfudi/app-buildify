@@ -18,7 +18,7 @@ from fastapi.responses import JSONResponse
 
 from .config import settings
 from .core.storage import storage
-from .routers import acls, approvals, audit, documents, folders, search, shares
+from .routers import acls, approvals, audit, documents, expiry, folders, search, shares
 
 MANIFEST_PATH = Path(settings.MANIFEST_PATH)
 
@@ -148,4 +148,10 @@ app.include_router(
     approvals.router,
     prefix=f"{settings.API_PREFIX}/approvals",
     tags=["approvals"],
+)
+
+app.include_router(
+    expiry.router,
+    prefix=f"{settings.API_PREFIX}/expiry",
+    tags=["expiry"],
 )
