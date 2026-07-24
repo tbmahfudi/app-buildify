@@ -11,6 +11,9 @@
 
 const DOCS = '/api/v1/dms/documents';
 const FOLDERS = '/api/v1/dms/folders';
+const SHARES = '/api/v1/dms/shares';
+const ACLS = '/api/v1/dms/acls';
+const AUDIT = '/api/v1/dms/audit';
 
 function authHeaders() {
     // The platform shell stores its JWT as JSON under "tokens" ({access, refresh});
@@ -75,6 +78,7 @@ export default class DocumentsPage {
                 <button id="dms-new-folder" class="dms-btn">＋ New folder</button>
                 <select id="dms-template" class="dms-btn"><option value="">Apply template…</option></select>
                 <button id="dms-zip" class="dms-btn" title="Download this folder as a zip">⤓ Folder zip</button>
+                <button id="dms-activity" class="dms-btn" title="Recent activity (audit trail)">🕘 Activity</button>
               </div>
             </div>
 
@@ -192,9 +196,13 @@ export default class DocumentsPage {
             }
         }
 
+        function lock(isPrivate) {
+            return isPrivate ? ' <span title="Private" style="font-size:.8rem;">🔒</span>' : '';
+        }
+
         function folderRow(f) {
             return `<tr class="dms-row" style="border-bottom:1px solid #f1f5f9;">
-                <td style="padding:.5rem;"><span class="dms-link" data-fopen="${f.id}">📁 ${esc(f.name)}</span></td>
+                <td style="padding:.5rem;"><span class="dms-link" data-fopen="${f.id}">📁 ${esc(f.name)}</span>${lock(f.is_private)}</td>
                 <td style="padding:.5rem;"></td>
                 <td style="padding:.5rem;color:#94a3b8;">—</td>
                 <td style="padding:.5rem;color:#94a3b8;">—</td>
@@ -202,6 +210,7 @@ export default class DocumentsPage {
                 <td style="padding:.5rem;text-align:right;white-space:nowrap;">
                   <span class="dms-link" data-frename="${f.id}" data-name="${esc(f.name)}">Rename</span> ·
                   <span class="dms-link" data-fmove="${f.id}">Move</span> ·
+                  <span class="dms-link" data-fperm="${f.id}" data-name="${esc(f.name)}" data-priv="${f.is_private ? 1 : ''}">Permissions</span> ·
                   <span class="dms-link" data-fzip="${f.id}" data-name="${esc(f.name)}">Zip</span> ·
                   <span class="dms-link" data-fdel="${f.id}" data-name="${esc(f.name)}" style="color:#dc2626;">Delete</span>
                 </td></tr>`;
@@ -210,7 +219,7 @@ export default class DocumentsPage {
         function docRow(d) {
             const tags = (d.tags || []).map((t) => `<span class="dms-tag">${esc(t)}</span>`).join('') || '';
             return `<tr class="dms-row" style="border-bottom:1px solid #f1f5f9;">
-                <td style="padding:.5rem;">📄 ${esc(d.filename)}</td>
+                <td style="padding:.5rem;">📄 ${esc(d.filename)}${lock(d.is_private)}</td>
                 <td style="padding:.5rem;">${tags}</td>
                 <td style="padding:.5rem;white-space:nowrap;">${fmtBytes(d.size_bytes)}</td>
                 <td style="padding:.5rem;">v${d.current_version}</td>
@@ -219,6 +228,8 @@ export default class DocumentsPage {
                   <span class="dms-link" data-dl="${d.id}">Download</span> ·
                   <span class="dms-link" data-vers="${d.id}" data-name="${esc(d.filename)}">Versions</span> ·
                   <span class="dms-link" data-tags="${d.id}" data-name="${esc(d.filename)}">Tags</span> ·
+                  <span class="dms-link" data-share="${d.id}" data-name="${esc(d.filename)}">Share</span> ·
+                  <span class="dms-link" data-dperm="${d.id}" data-name="${esc(d.filename)}" data-priv="${d.is_private ? 1 : ''}">Permissions</span> ·
                   <span class="dms-link" data-dmove="${d.id}">Move</span> ·
                   <span class="dms-link" data-ddel="${d.id}" data-name="${esc(d.filename)}" style="color:#dc2626;">Delete</span>
                 </td></tr>`;
@@ -233,11 +244,14 @@ export default class DocumentsPage {
             }));
             q('[data-frename]').forEach((el) => el.addEventListener('click', () => renameFolder(el.dataset.frename, el.dataset.name)));
             q('[data-fmove]').forEach((el) => el.addEventListener('click', () => moveNode(el.dataset.fmove, 'folder')));
+            q('[data-fperm]').forEach((el) => el.addEventListener('click', () => permissionsDialog('folder', el.dataset.fperm, el.dataset.name, !!el.dataset.priv)));
             q('[data-fzip]').forEach((el) => el.addEventListener('click', () => downloadFolderZip(el.dataset.fzip, el.dataset.name)));
             q('[data-fdel]').forEach((el) => el.addEventListener('click', () => deleteFolder(el.dataset.fdel, el.dataset.name)));
             q('[data-dl]').forEach((el) => el.addEventListener('click', () => downloadDoc(el.dataset.dl)));
             q('[data-vers]').forEach((el) => el.addEventListener('click', () => showVersions(el.dataset.vers, el.dataset.name)));
             q('[data-tags]').forEach((el) => el.addEventListener('click', () => editTags(el.dataset.tags, el.dataset.name)));
+            q('[data-share]').forEach((el) => el.addEventListener('click', () => shareDialog(el.dataset.share, el.dataset.name)));
+            q('[data-dperm]').forEach((el) => el.addEventListener('click', () => permissionsDialog('document', el.dataset.dperm, el.dataset.name, !!el.dataset.priv)));
             q('[data-dmove]').forEach((el) => el.addEventListener('click', () => moveNode(el.dataset.dmove, 'doc')));
             q('[data-ddel]').forEach((el) => el.addEventListener('click', () => deleteDoc(el.dataset.ddel, el.dataset.name)));
         }
@@ -412,7 +426,160 @@ export default class DocumentsPage {
             } catch (err) { setStatus(err.message, true); }
         }
 
+        // ---- share links -----------------------------------------------------
+        async function shareDialog(docId, name) {
+            const body = `
+                <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:flex-end;margin-bottom:.9rem;">
+                  <label style="font-size:.8rem;color:#475569;">Expiry (hours, blank = none)
+                    <input id="dms-sh-exp" class="dms-in" type="number" min="1" style="width:120px;margin-top:.2rem;" /></label>
+                  <label style="font-size:.8rem;color:#475569;">Max downloads (blank = ∞)
+                    <input id="dms-sh-max" class="dms-in" type="number" min="1" style="width:120px;margin-top:.2rem;" /></label>
+                  <button id="dms-sh-create" class="dms-btn dms-btn-primary">Create link</button>
+                </div>
+                <div id="dms-sh-list" style="font-size:.85rem;">Loading…</div>`;
+            modal(`Share — ${name}`, body, (dialog) => {
+                const listEl = dialog.querySelector('#dms-sh-list');
+                async function refreshShares() {
+                    try {
+                        const { shares } = await api(`${SHARES}?document_id=${docId}`);
+                        if (!shares.length) { listEl.innerHTML = '<span style="color:#64748b;">No links yet.</span>'; return; }
+                        listEl.innerHTML = shares.map((s) => {
+                            const url = window.location.origin + s.public_path;
+                            const status = s.is_revoked ? '<span style="color:#dc2626;">revoked</span>'
+                                : `${s.download_count}${s.max_downloads ? '/' + s.max_downloads : ''} dl`;
+                            const exp = s.expires_at ? new Date(s.expires_at).toLocaleString() : 'no expiry';
+                            return `<div style="border-bottom:1px solid #f1f5f9;padding:.4rem 0;">
+                                <input class="dms-in" style="font-family:monospace;font-size:.75rem;" readonly value="${esc(url)}" onclick="this.select()" />
+                                <div style="display:flex;justify-content:space-between;margin-top:.25rem;color:#64748b;">
+                                  <span>${status} · ${esc(exp)}</span>
+                                  ${s.is_revoked ? '' : `<span class="dms-link" data-revoke="${s.id}" style="color:#dc2626;">Revoke</span>`}
+                                </div></div>`;
+                        }).join('');
+                        listEl.querySelectorAll('[data-revoke]').forEach((el) =>
+                            el.addEventListener('click', async () => {
+                                try { await api(`${SHARES}/${el.dataset.revoke}`, { method: 'DELETE' }); refreshShares(); }
+                                catch (err) { setStatus(err.message, true); }
+                            }));
+                    } catch (err) { listEl.innerHTML = `<span style="color:#dc2626;">${esc(err.message)}</span>`; }
+                }
+                dialog.querySelector('#dms-sh-create').addEventListener('click', async () => {
+                    const exp = dialog.querySelector('#dms-sh-exp').value;
+                    const max = dialog.querySelector('#dms-sh-max').value;
+                    const payload = { document_id: docId };
+                    if (exp) payload.expires_in_hours = Number(exp);
+                    if (max) payload.max_downloads = Number(max);
+                    try {
+                        await api(SHARES, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                        refreshShares();
+                    } catch (err) { setStatus(err.message, true); }
+                });
+                refreshShares();
+            });
+        }
+
+        // ---- privacy + ACL grants -------------------------------------------
+        async function permissionsDialog(resourceType, resourceId, name, isPrivate = false) {
+            const body = `
+                <label style="display:flex;align-items:center;gap:.5rem;margin-bottom:1rem;font-size:.9rem;">
+                  <input type="checkbox" id="dms-priv" /> Private (only owner, admins and granted users/groups)
+                </label>
+                <div style="font-size:.85rem;color:#475569;margin-bottom:.3rem;font-weight:600;">Grants</div>
+                <div id="dms-acl-list" style="font-size:.85rem;margin-bottom:.8rem;">Loading…</div>
+                <div style="border-top:1px solid #e2e8f0;padding-top:.7rem;">
+                  <div style="font-size:.8rem;color:#475569;margin-bottom:.35rem;">Add grant (user/group ID)</div>
+                  <div style="display:flex;gap:.4rem;flex-wrap:wrap;align-items:center;">
+                    <select id="dms-acl-ptype" class="dms-in" style="width:90px;"><option value="user">user</option><option value="group">group</option></select>
+                    <input id="dms-acl-pid" class="dms-in" style="flex:1;min-width:200px;" placeholder="principal UUID" />
+                    <select id="dms-acl-cap" class="dms-in" style="width:100px;"><option value="view">view</option><option value="edit">edit</option><option value="manage">manage</option></select>
+                    <button id="dms-acl-add" class="dms-btn dms-btn-primary">Grant</button>
+                  </div>
+                  <div id="dms-acl-err" style="color:#dc2626;font-size:.8rem;margin-top:.4rem;"></div>
+                </div>`;
+            modal(`Permissions — ${name}`, body, (dialog) => {
+                const errEl = dialog.querySelector('#dms-acl-err');
+                const privEl = dialog.querySelector('#dms-priv');
+                privEl.checked = isPrivate;  // reflect current state; toggling PUTs live
+                privEl.addEventListener('change', async () => {
+                    try {
+                        await api(`${ACLS}/${resourceType}/${resourceId}/privacy`, {
+                            method: 'PUT', headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ is_private: privEl.checked }),
+                        });
+                        setStatus(`Marked ${privEl.checked ? 'private' : 'public'} ✓`);
+                        refresh();
+                    } catch (err) { errEl.textContent = err.message; privEl.checked = !privEl.checked; }
+                });
+                const listEl = dialog.querySelector('#dms-acl-list');
+                async function refreshGrants() {
+                    try {
+                        const { acls } = await api(`${ACLS}/${resourceType}/${resourceId}/grants`);
+                        listEl.innerHTML = acls.length ? acls.map((a) => `
+                            <div style="display:flex;justify-content:space-between;border-bottom:1px solid #f1f5f9;padding:.3rem 0;">
+                              <span>${esc(a.principal_type)} <code style="font-size:.75rem;">${esc(String(a.principal_id).slice(0, 8))}…</code> — <b>${esc(a.capability)}</b></span>
+                              <span class="dms-link" data-revacl="${a.id}" style="color:#dc2626;">Remove</span></div>`).join('')
+                            : '<span style="color:#64748b;">No grants.</span>';
+                        listEl.querySelectorAll('[data-revacl]').forEach((el) =>
+                            el.addEventListener('click', async () => {
+                                try { await api(`${ACLS}/grants/${el.dataset.revacl}`, { method: 'DELETE' }); refreshGrants(); }
+                                catch (err) { errEl.textContent = err.message; }
+                            }));
+                    } catch (err) { listEl.innerHTML = `<span style="color:#dc2626;">${esc(err.message)}</span>`; }
+                }
+                dialog.querySelector('#dms-acl-add').addEventListener('click', async () => {
+                    errEl.textContent = '';
+                    const payload = {
+                        principal_type: dialog.querySelector('#dms-acl-ptype').value,
+                        principal_id: dialog.querySelector('#dms-acl-pid').value.trim(),
+                        capability: dialog.querySelector('#dms-acl-cap').value,
+                    };
+                    if (!payload.principal_id) { errEl.textContent = 'Enter a principal UUID.'; return; }
+                    try {
+                        await api(`${ACLS}/${resourceType}/${resourceId}/grants`, {
+                            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
+                        });
+                        dialog.querySelector('#dms-acl-pid').value = '';
+                        refreshGrants();
+                    } catch (err) { errEl.textContent = err.message; }
+                });
+                refreshGrants();
+            });
+        }
+
+        // ---- activity (audit trail) -----------------------------------------
+        async function activityDialog() {
+            modal('Recent activity', '<div id="dms-audit" style="font-size:.82rem;">Loading…</div>', (dialog) => {
+                const el = dialog.querySelector('#dms-audit');
+                api(`${AUDIT}?page_size=60`).then(({ entries, total }) => {
+                    if (!entries.length) { el.innerHTML = '<span style="color:#64748b;">No activity yet.</span>'; return; }
+                    const rows = entries.map((e) => `
+                        <tr style="border-bottom:1px solid #f1f5f9;">
+                          <td style="padding:.3rem;white-space:nowrap;color:#94a3b8;">${new Date(e.created_at).toLocaleString()}</td>
+                          <td style="padding:.3rem;"><b>${esc(e.action)}</b></td>
+                          <td style="padding:.3rem;color:#64748b;">${esc(e.entity_type)}</td>
+                          <td style="padding:.3rem;color:#64748b;">${esc(Object.entries(e.detail || {}).map(([k, v]) => `${k}=${v}`).join(', '))}</td>
+                        </tr>`).join('');
+                    el.innerHTML = `
+                        <div style="margin-bottom:.5rem;"><a class="dms-link" id="dms-audit-csv">⤓ Export CSV</a> · ${total} events</div>
+                        <table style="width:100%;border-collapse:collapse;">
+                          <thead><tr style="text-align:left;color:#64748b;"><th style="padding:.3rem;">When</th><th>Action</th><th>Type</th><th>Detail</th></tr></thead>
+                          <tbody>${rows}</tbody></table>`;
+                    dialog.querySelector('#dms-audit-csv').addEventListener('click', async () => {
+                        try {
+                            const res = await fetch(`${AUDIT}/export.csv`, { headers: authHeaders() });
+                            if (!res.ok) throw new Error(`Export failed (${res.status})`);
+                            const blob = await res.blob();
+                            const a = document.createElement('a');
+                            a.href = URL.createObjectURL(blob); a.download = 'dms-audit.csv'; a.click();
+                            URL.revokeObjectURL(a.href);
+                        } catch (err) { setStatus(err.message, true); }
+                    });
+                }).catch((err) => { el.innerHTML = `<span style="color:#dc2626;">${esc(err.message)}</span>`; });
+            });
+        }
+
         // ---- toolbar ---------------------------------------------------------
+        container.querySelector('#dms-activity').addEventListener('click', activityDialog);
+
         container.querySelector('#dms-new-folder').addEventListener('click', () => {
             const name = prompt('New folder name:');
             if (!name) return;
