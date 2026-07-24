@@ -22,6 +22,7 @@ class DocumentResponse(BaseModel):
         serialization_alias="metadata",
     )
     uploaded_by: Optional[UUID] = None
+    is_private: bool = False
     created_at: datetime
     updated_at: datetime
 

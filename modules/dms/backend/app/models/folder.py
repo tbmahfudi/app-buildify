@@ -20,6 +20,7 @@ class Folder(Base):
     )
     created_by = Column(UUID(as_uuid=True), nullable=True)
     is_active = Column(Boolean, nullable=False, default=True)
+    is_private = Column(Boolean, nullable=False, default=False)
     created_at = Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
     updated_at = Column(
         DateTime(timezone=True), nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow

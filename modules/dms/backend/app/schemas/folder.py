@@ -24,6 +24,7 @@ class FolderResponse(BaseModel):
     id: UUID
     name: str
     parent_id: Optional[UUID] = None
+    is_private: bool = False
     created_at: datetime
 
 
